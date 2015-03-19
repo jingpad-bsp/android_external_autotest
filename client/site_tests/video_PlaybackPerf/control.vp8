@@ -13,18 +13,17 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = 'hw_video_acc_vp8'
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
 }
 
 DOC = """
 This test measures the CPU usage and dropped frame count of VP8 video playback
-for hardware decode and software decode.
+for software decode on all devices and hardware decode on those devices with
+hardware acceleration support.
 """
 
 VIDEO_NAME = 'traffic-1920x1080-ad53f821ff3cf8ffa7e991c9d2e0b854.vp8.webm'
 VIDEO_DESCRIPTION = 'vp8_1080p'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
              video_description=VIDEO_DESCRIPTION)
-

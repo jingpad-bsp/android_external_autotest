@@ -124,17 +124,13 @@ class video_PlaybackPerf(test.test):
         return result
 
 
-    def run_once(self, video_name, video_description,
-                 assert_hardware_acceleration=True, power_test=False):
+    def run_once(self, video_name, video_description, power_test=False):
         """
         Runs the video_PlaybackPerf test.
 
         @param video_name: the name of video to play in the DOWNLOAD_BASE
         @param video_description: a string describes the video to play which
                 will be part of entry name in dashboard.
-        @param assert_hardware_acceleration: True if we want to raise an
-                exception when hardware acceleration is not used,
-                False otherwise.
         @param power_test: True if this is a power test and it would only run
                 the power test. If False, it would run the cpu usage test and
                 the dropped frame count test.
@@ -146,30 +142,24 @@ class video_PlaybackPerf(test.test):
 
         if not power_test:
             # Run the video playback dropped frame tests.
-            keyvals = self.test_dropped_frames(local_path,
-                                               assert_hardware_acceleration)
+            keyvals = self.test_dropped_frames(local_path)
             self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION +
                                 video_description, 'frames')
 
             # Run the video playback cpu usage tests.
-            keyvals = self.test_cpu_usage(local_path,
-                                          assert_hardware_acceleration)
+            keyvals = self.test_cpu_usage(local_path)
             self.log_result(keyvals, CPU_USAGE_DESCRIPTION + video_description,
                             'percent')
         else:
-            keyvals = self.test_power(local_path,
-                                      assert_hardware_acceleration)
+            keyvals = self.test_power(local_path)
             self.log_result(keyvals, POWER_DESCRIPTION + video_description, 'W')
 
 
-    def test_dropped_frames(self, local_path, assert_hardware_acceleration):
+    def test_dropped_frames(self, local_path):
         """
         Runs the video dropped frame test.
 
         @param local_path: the path to the video file.
-        @param assert_hardware_acceleration: True if we want to raise an
-                exception when hardware acceleration is not used,
-                False otherwise.
 
         @return a dictionary that contains the test result.
         """
@@ -178,18 +168,14 @@ class video_PlaybackPerf(test.test):
             tab = cr.browser.tabs[0]
             return tab.EvaluateJavaScript("document.getElementsByTagName"
                                           "('video')[0].webkitDroppedFrameCount")
-        return self.test_playback(local_path, assert_hardware_acceleration,
-                                  get_dropped_frames)
+        return self.test_playback(local_path, get_dropped_frames)
 
 
-    def test_cpu_usage(self, local_path, assert_hardware_acceleration):
+    def test_cpu_usage(self, local_path):
         """
         Runs the video cpu usage test.
 
         @param local_path: the path to the video file.
-        @param assert_hardware_acceleration: True if we want to raise error
-                exception when it does not use hardware acceleration by
-                default, False otherwise.
 
         @return a dictionary that contains the test result.
         """
@@ -211,18 +197,14 @@ class video_PlaybackPerf(test.test):
         # Set the scaling governor to performance mode to set the cpu to the
         # highest frequency available.
         self._original_governors = utils.set_high_performance_mode()
-        return self.test_playback(local_path, assert_hardware_acceleration,
-                                  get_cpu_usage)
+        return self.test_playback(local_path, get_cpu_usage)
 
 
-    def test_power(self, local_path, assert_hardware_acceleration):
+    def test_power(self, local_path):
         """
         Runs the video power consumption test.
 
         @param local_path: the path to the video file.
-        @param assert_hardware_acceleration: True if we want to raise error
-                exception when it does not use hardware acceleration by
-                default, False otherwise.
 
         @return a dictionary that contains the test result.
         """
@@ -252,19 +234,14 @@ class video_PlaybackPerf(test.test):
             keyval = power_logger.calc()
             return keyval['result_' + measurements[0].domain + '_pwr']
 
-        return self.test_playback(local_path, assert_hardware_acceleration,
-                                  get_power)
+        return self.test_playback(local_path, get_power)
 
 
-    def test_playback(self, local_path, assert_hardware_acceleration,
-                      gather_result):
+    def test_playback(self, local_path, gather_result):
         """
         Runs the video playback test with and without hardware acceleration.
 
         @param local_path: the path to the video file.
-        @param assert_hardware_acceleration: True if we want to raise error
-                exception when it does not use hardware acceleration by
-                default, False otherwise.
         @param gather_result: a function to run and return the test result
                 after chrome opens. The input parameter of the funciton is
                 Autotest chrome instance.
@@ -282,11 +259,7 @@ class video_PlaybackPerf(test.test):
             if self.is_hardware_accelerated(cr):
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
             else:
-                if assert_hardware_acceleration:
-                    raise error.TestError(
-                            'Can not use hardware decoding.')
-                else:
-                    logging.info("Can not use hardware decoding.")
+                logging.info("Can not use hardware decoding.")
                 keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result
                 return keyvals
 
