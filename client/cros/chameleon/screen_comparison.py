@@ -56,7 +56,7 @@ class ScreenComparer(object):
             logging.error(message)
             return message
 
-        message = None
+        message = 'Unexpected exception'
         time_str = time.strftime('%H%M%S')
         try:
             # The size property is the resolution of the image.
@@ -93,6 +93,7 @@ class ScreenComparer(object):
             else:
                 logging.info('Result: all pixels match (within +/- %d)',
                              max_diff_value)
+            message = None
             return None
         finally:
             if message is not None:
