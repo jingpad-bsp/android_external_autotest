@@ -170,7 +170,7 @@ def idle_suspend(seconds):
     return alarm
 
 
-def memory_suspend(seconds, size):
+def memory_suspend(seconds, size=0):
     """Do a memory suspend.
 
     Suspend the system to RAM (S3), waking up again after |seconds|, using
@@ -178,7 +178,8 @@ def memory_suspend(seconds, size):
     completed or failed. Returns the wake alarm time from the RTC as epoch.
 
     @param seconds: The number of seconds to suspend the device.
-    @param size: Amount of memory to allocate, in bytes.
+    @param size: Amount of memory to allocate, in bytes. 
+                 Set to 0 to let memory_suspend_test determine amount of memory.   
     """
     # since we cannot have utils.system_output in here, we need a workaround
     output = '/tmp/memory_suspend_output'
