@@ -301,7 +301,9 @@ def bind_widgets(binder):
              do something on widget.
 
     """
-    binder.connect()
-    yield
-    binder.disconnect()
-    binder.release()
+    try:
+        binder.connect()
+        yield
+    finally:
+        binder.disconnect()
+        binder.release()
