@@ -194,7 +194,10 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         if (display.getHostless().getValue()) {
             hostSelector.setEnabled(false);
         }
-        display.getRequireSSP().setValue(jobObject.get("require_ssp").isBoolean().booleanValue());
+        if (jobObject.get("require_ssp").isNull() != null)
+            display.getRequireSSP().setValue(false);
+        else
+            display.getRequireSSP().setValue(jobObject.get("require_ssp").isBoolean().booleanValue());
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
             if (cloneObject.get("drone_set").isNull() == null) {
                 display.getDroneSet().selectByName(Utils.jsonToString(cloneObject.get("drone_set")));
