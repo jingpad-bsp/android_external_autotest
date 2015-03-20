@@ -1234,3 +1234,16 @@ class BtsocketRepo(_ExternalGitRepo):
             os.chdir(work_dir)
             self.temp_btsocket_dir.clean()
         return rv
+
+
+class NetifacesPackage(ExternalPackage):
+    """netifaces package."""
+    version = '0.10.4'
+    url_filename = 'netifaces-%s.tar.gz' % version
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/n/netifaces/%s' %
+            (url_filename),)
+    hex_sum = 'c3fcd491a89c2994815053e853b005e7fc27c79a'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
