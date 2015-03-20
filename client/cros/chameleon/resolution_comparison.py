@@ -5,6 +5,7 @@
 """Classes to do resolution comparison."""
 
 import logging
+import xmlrpclib
 
 
 class ExactMatchResolutionComparer(object):
@@ -35,7 +36,11 @@ class ExactMatchResolutionComparer(object):
                                     resolution.
         @return: None if the check passes; otherwise, a string of error message.
         """
-        chameleon_resolution = self._chameleon_port.get_resolution()
+        try:
+            chameleon_resolution = self._chameleon_port.get_resolution()
+        except xmlrpclib.Fault as e:
+            logging.exception(e)
+            return str(e)
         cros_resolution = self._display_facade.get_external_resolution()
 
         logging.info('Checking the resolutions of Chameleon and CrOS...')
@@ -88,7 +93,11 @@ class VgaResolutionComparer(object):
                                     resolution.
         @return: None if the check passes; otherwise, a string of error message.
         """
-        chameleon_resolution = self._chameleon_port.get_resolution()
+        try:
+            chameleon_resolution = self._chameleon_port.get_resolution()
+        except xmlrpclib.Fault as e:
+            logging.exception(e)
+            return str(e)
         cros_resolution = self._display_facade.get_external_resolution()
 
         logging.info('Checking the resolutions of Chameleon and CrOS...')
