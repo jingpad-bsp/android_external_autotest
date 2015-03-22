@@ -244,7 +244,8 @@ class buffet_Registration(test.test):
                     'device resource')
         logging.info('Registration successful')
         self._check_registration_status_is(
-                buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
+                buffet_config.STATUS_CONNECTED, expected_device_id=device_id,
+                timeout_seconds=5)
         # Confirm that we StartDevice after registering successfully.
         self._check_buffet_is_polling(device_id)
         # Now restart buffet, while maintaining our built up state.  Confirm
