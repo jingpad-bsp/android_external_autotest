@@ -17,7 +17,7 @@ MinijailConfig = collections.namedtuple('MinijailConfig', ['user', 'group'])
 class ProcessWatcher(object):
     """Start a process, and terminate it later."""
 
-    def __init__(self, command, args=[], minijail_config=None, host=None):
+    def __init__(self, command, args=tuple(), minijail_config=None, host=None):
         """Construst a ProcessWatcher without starting the process.
 
         @param command: string command to use to start the process.
@@ -27,7 +27,7 @@ class ProcessWatcher(object):
                 host.
 
         """
-        self._command = '%s %s' % (command, ' '.join(args))
+        self._command = ' '.join([command] + list(args))
         if '"' in self._command:
             raise error.TestError('Please implement shell escaping in '
                                   'ProcessWatcher.')
