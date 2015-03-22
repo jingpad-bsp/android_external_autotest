@@ -26,6 +26,7 @@ class graphics_Idle(test.test):
         with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk']):
             self._gpu_type = utils.get_gpu_family()
             self._cpu_type = utils.get_cpu_soc_family()
+            self._board = utils.get_board()
             errors = ''
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
@@ -180,7 +181,13 @@ class graphics_Idle(test.test):
 
             # available_frequencies are always sorted in ascending order
             lowest_freq = int(utils.read_one_line(freqs_path))
-            logging.info('Using min DVFS clock = %u', lowest_freq)
+
+            # daisy_* (exynos5250) boards set idle frequency to 266000000
+            # See: crbug.com/467401 and crosbug.com/p/19710
+            if self._board.startswith('daisy'):
+                lowest_freq = 266000000
+
+            logging.info('Expecting idle DVFS clock = %u', lowest_freq)
 
             tries = 0
             found = False
