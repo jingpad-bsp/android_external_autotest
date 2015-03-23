@@ -551,9 +551,9 @@ def parse_arguments(argv):
                              'against already installed DUT image. Examples: '
                              'link-paladin/R34-5222.0.0-rc2, '
                              'lumpy-release/R34-5205.0.0')
-    parser.add_argument('-p', '--pool', metavar='POOL', default='try-bot',
+    parser.add_argument('-p', '--pool', metavar='POOL', default='suites',
                         help='Pool to use when running tests in the lab. '
-                             'Default is "try-bot"')
+                             'Default is "suites"')
     parser.add_argument('--fast', action='store_true', dest='fast_mode',
                         default=False,
                         help='Enable fast mode.  This will cause test_that to '

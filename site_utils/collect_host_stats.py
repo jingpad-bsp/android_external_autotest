@@ -102,7 +102,7 @@ def main():
     options = parser.parse_args()
 
     boards = host_label_utils.get_all_boards()
-    pools = ['bvt', 'suites', 'try-bot', 'cq', 'pfq']
+    pools = ['bvt', 'suites', 'cq']
 
     if options.span == 24:
         today = datetime.combine(date.today(), datetime.min.time())
