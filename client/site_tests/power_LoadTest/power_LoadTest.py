@@ -324,8 +324,17 @@ class power_LoadTest(test.test):
                              self._energy_use_from_powerlogger(keyvals)
 
         if keyvals['ah_charge_used'] > 0:
-            bat_life_scale = (keyvals['wh_energy_full_design'] /
-                              keyvals['wh_energy_powerlogger']) * \
+            # For full runs, we should use charge to scale for battery life,
+            # since the voltage swing is accounted for.
+            # For short runs, energy will be a better estimate.
+            if self._loop_count > 1:
+                estimated_reps = (keyvals['ah_charge_full_design'] /
+                                  keyvals['ah_charge_used'])
+            else:
+                estimated_reps = (keyvals['wh_energy_full_design'] /
+                                  keyvals['wh_energy_powerlogger'])
+
+            bat_life_scale =  estimated_reps * \
                               ((100 - keyvals['percent_sys_low_battery']) / 100)
 
             keyvals['minutes_battery_life'] = bat_life_scale * \
