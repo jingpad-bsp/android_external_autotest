@@ -191,9 +191,11 @@ class DisplayFacadeRemoteAdapter(object):
     def get_external_resolution(self):
         """Gets the resolution of the external screen.
 
-        @return The resolution tuple (width, height)
+        @return The resolution tuple (width, height) or None if no external
+                display is connected.
         """
-        return tuple(self._display_proxy.get_external_resolution())
+        resolution = self._display_proxy.get_external_resolution()
+        return tuple(resolution) if resolution else None
 
 
     def get_internal_resolution(self):
