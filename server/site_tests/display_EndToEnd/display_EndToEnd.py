@@ -160,9 +160,11 @@ class display_EndToEnd(test.test):
         # Get the resolution for the edid applied
         self.resolution = utils.wait_for_value_changed(
                 self.display_facade.get_external_resolution,
-                old_value=(0, 0))
-        logging.debug('External display resolution: %s',
-                str(self.resolution))
+                old_value=None)
+        if self.resolution is None:
+            raise error.TestFail('No external display detected on DUT')
+
+        logging.debug('External display resolution: %dx%d', *self.resolution)
 
 
     def apply_edid(self, edid_file):

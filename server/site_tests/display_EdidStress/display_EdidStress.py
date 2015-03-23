@@ -68,15 +68,14 @@ class display_EdidStress(test.test):
                     continue
 
                 logging.info('Use EDID: %s...', filename)
-                resolution = (0, 0)
                 try:
                     with chameleon_port.use_edid(
                             edid.Edid.from_file(filepath, skip_verify=True)):
                         resolution = utils.wait_for_value_changed(
                                 display_facade.get_external_resolution,
-                                old_value=(0, 0))
-                        if resolution == (0, 0):
-                            raise error.TestFail('Detected resolution 0x0')
+                                old_value=None)
+                        if resolution is None:
+                            raise error.TestFail('No external display detected on DUT')
                         if screen_test.test_resolution(resolution):
                             raise error.TestFail('Resolution test failed')
                 except (error.TestFail, xmlrpclib.Fault) as e:
