@@ -220,7 +220,8 @@ class ManifestVersions(object):
             logging.debug('parsing manifest path %s', manifest_path)
             match = matcher.match(manifest_path)
             if not match:
-                logging.info('Failed to parse path %s', manifest_path)
+                logging.warning('Failed to parse path %s, regex: %s',
+                              manifest_path, matcher.pattern)
                 continue
             groups = match.groups()
             config_type, milestone, manifest = groups

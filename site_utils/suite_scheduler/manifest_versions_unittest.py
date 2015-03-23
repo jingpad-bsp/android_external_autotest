@@ -256,5 +256,17 @@ build-name/x86-alex-factory/pass/20/2048.1.0.xml
                 self.assertTrue(rgx.match(manifest), msg=builder_name)
 
 
+    def testGetManifests(self):
+        """Test _GetManifests when pattern is matched and not matched."""
+        rgx = re.compile(
+                self.mv._BOARD_MANIFEST_RE_PATTERN %
+                'lumpy')
+        self.assertEqual(self.mv._GetManifests(
+            rgx, ['build-name/lumpy-release/pass/25/1234.0.0.xml']),
+            {('release', '25'): ['1234.0.0']})
+        self.assertEqual(self.mv._GetManifests(
+            rgx, ['build-name/stumpy-release/pass/25/1234.0.0.xml']), {})
+
+
 if __name__ == '__main__':
     unittest.main()
