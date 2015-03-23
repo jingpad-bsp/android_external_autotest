@@ -360,7 +360,7 @@ void ClearBuffers() {
   glClearColor(0, 1.f, 0, 1.f);
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
   g_main_gl_interface->SwapBuffers();
-  glClearColor(0, 0, 0.f, 0.f);
+  glClearColor(0, 0, 0.f, 1.f);
 }
 
 } // namespace glbench

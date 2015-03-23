@@ -117,6 +117,7 @@ void WaffleInterface::InitOnce() {
     WAFFLE_RED_SIZE,        1,
     WAFFLE_GREEN_SIZE,      1,
     WAFFLE_BLUE_SIZE,       1,
+    WAFFLE_ALPHA_SIZE,      1,
     WAFFLE_DEPTH_SIZE,      1,
     WAFFLE_STENCIL_SIZE,    1,
     WAFFLE_DOUBLE_BUFFERED, true,
