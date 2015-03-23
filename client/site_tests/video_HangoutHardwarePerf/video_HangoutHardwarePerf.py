@@ -226,11 +226,15 @@ class video_HangoutHardwarePerf(chrome_binary_test.ChromeBinaryTest):
             # Insert the FPS requirement
             v.append(str(INPUT_FPS))
             test_stream_data.append(':'.join(v))
-        return [self.get_chrome_binary_path(VEA_BINARY),
-                '--gtest_filter=SimpleEncode/*/0',
-                '--test_stream_data=%s' % ';'.join(test_stream_data),
-                '--run_at_fps',
-                '--num_frames_to_encode=%d' % MAX_INT]
+        cmd_line = [
+            self.get_chrome_binary_path(VEA_BINARY),
+            '--gtest_filter=SimpleEncode/*/0',
+            '--test_stream_data=%s' % ';'.join(test_stream_data),
+            '--run_at_fps',
+            '--num_frames_to_encode=%d' % MAX_INT]
+        if utils.is_freon():
+            cmd_line.append('--ozone-platform=gbm')
+        return cmd_line
 
     def run_in_parallel(self, *commands):
         env = os.environ.copy()

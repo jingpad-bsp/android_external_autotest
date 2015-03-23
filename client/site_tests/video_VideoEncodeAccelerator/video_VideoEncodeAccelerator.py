@@ -8,6 +8,7 @@ import logging
 import os
 import urllib2
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 
@@ -72,6 +73,8 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
             cmd_line = '--test_stream_data="%s:%s:%s:%s:%s:%s"' % (
                     input_path, width, height, profile, output_path, bit_rate)
+            if utils.is_freon():
+                cmd_line += ' --ozone-platform=gbm'
             try:
                 self.run_chrome_test_binary(BINARY, cmd_line, as_chronos=False)
             except error.TestFail as test_failure:
