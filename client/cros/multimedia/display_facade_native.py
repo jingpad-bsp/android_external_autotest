@@ -244,9 +244,14 @@ class DisplayFacadeNative(object):
     def get_internal_resolution(self):
         """Gets the resolution of the internal screen.
 
-        @return The resolution tuple (width, height)
+        @return The resolution tuple (width, height) or None if internal screen
+                is not available
         """
-        return graphics_utils.get_internal_resolution()
+        for display in self.get_display_info():
+            if display['isInternal']:
+                bounds = display['bounds']
+                return (bounds['width'], bounds['height'])
+        return None
 
 
     def set_content_protection(self, state):
