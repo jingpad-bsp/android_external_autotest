@@ -19,14 +19,6 @@ class ImageGenerator(object):
     TEMPLATE_HEIGHT = 1052
     TEMPLATE_FILENAME = 'template-%dx%d.svg' % (TEMPLATE_WIDTH, TEMPLATE_HEIGHT)
 
-    # Note: change the coordinates if the image template changes.
-    # Normalized coordinates of a maximum (i.e., white pixel) at (150, 15)
-    MAX_X_NORM = 150.0 / TEMPLATE_WIDTH
-    MAX_Y_NORM = 15.0 / TEMPLATE_HEIGHT
-    # Normalized coordinates of a minimum (i.e., black pixel) at (80, 15)
-    MIN_X_NORM = 80.0 / TEMPLATE_WIDTH
-    MIN_Y_NORM = 15.0 / TEMPLATE_HEIGHT
-
 
     def __init__(self):
         """Construct an ImageGenerator.
@@ -59,9 +51,14 @@ class ImageGenerator(object):
         @return a tuple of (minimum, maximum)
         """
         w, h = image.size
-        max_location = (int(ImageGenerator.MAX_X_NORM * w),
-                        int(ImageGenerator.MAX_Y_NORM * h))
-        min_location = (int(ImageGenerator.MIN_X_NORM * w),
-                        int(ImageGenerator.MIN_Y_NORM * h))
-        return (image.getpixel(min_location)[0],
-                image.getpixel(max_location)[0])
+        min_value = 255
+        max_value = 0
+        # scan the middle vertical line
+        x = w / 2
+        for i in range(0, h/2):
+            v = image.getpixel((x, i))[0]
+            if v < min_value:
+                min_value = v
+            if v > max_value:
+                max_value = v
+        return (min_value, max_value)
