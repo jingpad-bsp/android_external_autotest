@@ -11,7 +11,7 @@ import urllib2
 class CommonClient(object):
     """Common client class."""
 
-    _DEFAULT_SERVER_URL = 'http://localhost:8080'
+    _DEFAULT_SERVER_URL = 'http://localhost:9876'
     _URL = '%(server_url)s/%(method)s'
 
 

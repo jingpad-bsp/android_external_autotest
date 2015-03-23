@@ -14,7 +14,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.cros import dbus_util
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros import process_watcher
+from autotest_lib.client.common_lib.cros.fake_device_server import \
+        fake_gcd_helper
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         commands
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
@@ -78,9 +79,7 @@ class buffet_Registration(test.test):
         self._temp_dir_path = None
         self._bus = dbus.SystemBus()
         # Spin up our mock server.
-        self._gcd = process_watcher.ProcessWatcher(
-                '/usr/local/autotest/common_lib/cros/'
-                        'fake_device_server/server.py')
+        self._gcd = fake_gcd_helper.FakeGCDHelper()
         self._gcd.start()
         # Create the command definition we want to use.
         self._temp_dir_path = tempfile.mkdtemp()

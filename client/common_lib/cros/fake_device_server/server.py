@@ -10,6 +10,7 @@ This module can be used in testing both in autotests and locally. To use locally
 you can just run this python module directly.
 """
 
+import argparse
 import logging
 import logging.handlers
 import cherrypy
@@ -18,19 +19,25 @@ import common
 from fake_device_server import commands
 from fake_device_server import devices
 from fake_device_server import fail_control
+from fake_device_server import meta_handler
 from fake_device_server import oauth
 from fake_device_server import registration_tickets
 from fake_device_server import resource_delegate
 
 PORT = 9876
 
+
 def stop_server():
     """Stops the cherrypy server and blocks."""
     cherrypy.engine.stop()
 
 
-def start_server():
-    """Starts the cherrypy server and blocks."""
+def start_server(generation):
+    """Starts the cherrypy server and blocks.
+   
+    @param generation: string unique to this instance of the fake device server.
+
+    """
     fail_control_handler = fail_control.FailControl()
     cherrypy.tree.mount(
         fail_control_handler, '/' + fail_control.FAIL_CONTROL_PATH,
@@ -75,6 +82,13 @@ def start_server():
             {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
         }
     )
+    cherrypy.tree.mount(
+        meta_handler.MetaHandler(generation),
+        '/' + meta_handler.META_HANDLER_PATH,
+        {'/':
+            {'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
+        }
+    )
     # Don't parse POST for params.
     cherrypy.config.update({'global': {'request.process_request_body': False}})
     cherrypy.engine.start()
@@ -82,8 +96,13 @@ def start_server():
 
 def main():
     """Main method for callers who start this module directly."""
+    parser = argparse.ArgumentParser(
+        description='Acts like a fake instance of GCD')
+    parser.add_argument('generation', metavar='generation', type=str,
+                        help='Unique generation id for confirming health')
+    args = parser.parse_args()
     cherrypy.config.update({'server.socket_port': PORT})
-    start_server()
+    start_server(args.generation)
     cherrypy.engine.block()
 
 
