@@ -57,3 +57,33 @@ class WebPageReplayWrapper(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self._server.__exit__(exc_type, exc_val, exc_tb)
+
+
+class NullWebPageReplayWrapper(object):
+    """
+    Empty class. Created to simply clients code, no other purpose.
+
+    Client will do:
+    with chrome.Chrome() as cr, wpr_server:
+       ....
+
+    When we are not using WPR we will return this empty class, leaving client's
+    code uniform and unchanged.
+
+    """
+
+    @property
+    def chrome_flags_for_wpr(self):
+        """
+        @return: an empty list. This is an empty class.
+
+        """
+        return []
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

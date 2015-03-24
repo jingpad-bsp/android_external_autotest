@@ -1,6 +1,7 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 
 import time
 
@@ -13,12 +14,14 @@ class VideoPlayer(object):
     """
     Provides interface to interact with and control video playback via js.
 
+    Specific players such as VimeoPlayer will inherit from this class and
+    customize its behavior.
+
     """
 
 
-    @method_logger.log
-    def __init__(self, tab, full_url, video_src_path, video_id,
-                 time_out_for_events_s, time_btwn_polling_s):
+    def __init__(self, tab, full_url, video_id, video_src_path='',
+                 event_timeout=1, polling_wait_time=1):
         """
         @param tab: object, tab to interact with the tab in the browser.
         @param full_url: string, full url pointing to html file to load.
@@ -32,65 +35,71 @@ class VideoPlayer(object):
         """
         self.tab = tab
         self.full_url = full_url
-        self.video_source_path = video_src_path
         self.video_id = video_id
-        self.time_out_for_events_s = time_out_for_events_s
-        self.time_btwn_polling_s = time_btwn_polling_s
+        self.video_src_path = video_src_path
+        self.event_timeout = event_timeout
+        self.polling_wait_time = polling_wait_time
 
 
     @method_logger.log
     def load_video(self):
         """
-         Loads video and waits for video to be ready to play.
+        Loads video into browser.
 
         """
         self.tab.Navigate(self.full_url)
         self._wait_for_page_to_load()
+        self.inject_source_file()
 
-        # Set video source to desired path in the html file.
-        self.tab.ExecuteJavaScript(
-            'loadVideoSource("%s")' % self.video_source_path)
 
-        self._wait_for_canplay_event()
+    def inject_source_file(self):
+        """
+        Injects source file into html file if needed.
+
+        Created for subclasses that need it
+
+        """
+        pass
 
 
     @method_logger.log
-    def seek_video_to_timestamp(self, timestamp):
+    def wait_for_video_ready(self):
+        """
+        Waits for video to signal that is ready.
+
+        Each class that inherits from this will define its is_video_ready
+        function.
+
+        """
+
+        exception_msg = 'Video did not signal ready in time.'
+
+        self._wait_for_event(self.is_video_ready, exception_msg)
+
+
+    @method_logger.log
+    def seek_to(self, timestamp):
         """
         Uses javascript to set currentTime property of video to desired time.
 
         @param timestamp: timedelta, instance of time to navigate video to.
 
         """
-
-        cmd = "%s.currentTime=%.3f" % (
-            self.video_id, timestamp.total_seconds())
-        self.tab.ExecuteJavaScript(cmd)
-
+        self.seek_to(timestamp)
 
 
     @method_logger.log
     def wait_for_video_to_seek(self):
         """
-         Waits for the javascript 'seeked' event.
+        Waits for video's currentTime to equal the time it was seeked to.
 
         """
-        def has_video_finished_seeking():
-            """
-            Helper function to get video seeking status via javascript.
-
-            """
-            return self.tab.EvaluateJavaScript('finishedSeeking()')
-
         exception_msg = 'Video did not complete seeking in time.'
 
-        self._wait_for_event(has_video_finished_seeking, exception_msg)
+        self._wait_for_event(self.has_video_finished_seeking, exception_msg)
 
-        # TODO: Fix this.
-        # There is a lag between assigning a value to the currentTimeElement
-        # and the new assigned value being displayed.
-        # TODO: Wait for 100ms once crosbug.com/p/32518 is fixed
-        time.sleep(1.5)
+        # it usually takes a little while before new frame renders, so wait
+        time.sleep(1)
 
 
     @method_logger.log
@@ -110,33 +119,12 @@ class VideoPlayer(object):
             commands in the page.
 
             """
-            result = self.tab.EvaluateJavaScript('(typeof %s)' % self.video_id)
+            result = self.tab.EvaluateJavaScript('typeof %s' %self.video_id)
             return result != 'undefined'
 
-        exception_msg = 'HTML page did not load at url : %s' % self.full_url
+        exception_msg = '%s did not load.' % self.full_url
 
         self._wait_for_event(has_page_loaded, exception_msg)
-
-
-    @method_logger.log
-    def _wait_for_canplay_event(self):
-        """
-         Waits for the javascript 'canplay' event.
-
-        """
-        def can_play_video():
-            """
-            Uses javascript to check if the 'canplay' event was raised.
-
-            Executing the javascript 'canplay()' function we return the value of
-            a bool variable set to true when the canplay event is raised.
-
-            """
-            return self.tab.EvaluateJavaScript('canplay()')
-
-        exception_msg = 'canplay event was not received in time'
-
-        self._wait_for_event(can_play_video, exception_msg)
 
 
     @method_logger.log
@@ -150,9 +138,9 @@ class VideoPlayer(object):
                                condition is not achieved in allowed time.
 
         """
-        fullmsg = exception_msg + ' Waited for %ss' % self.time_out_for_events_s
+        fullmsg = exception_msg + ' Waited for %ss' % self.event_timeout
 
         utils.poll_for_condition(predicate_function,
                                  error.TestError(fullmsg),
-                                 self.time_out_for_events_s,
-                                 self.time_btwn_polling_s)
+                                 self.event_timeout,
+                                 self.polling_wait_time)

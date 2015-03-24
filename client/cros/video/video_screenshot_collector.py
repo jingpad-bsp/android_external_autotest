@@ -34,7 +34,7 @@ class VideoScreenShotCollector(object):
         """
         filename = self.screnshot_namer.get_filename(timestamp)
 
-        self.player.seek_video_to_timestamp(timestamp)
+        self.player.seek_to(timestamp)
         self.player.wait_for_video_to_seek()
 
         return self.screnshot_capturer.capture(filename)

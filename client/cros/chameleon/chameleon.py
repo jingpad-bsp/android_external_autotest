@@ -413,6 +413,69 @@ class ChameleonVideoInput(ChameleonPort):
         return self.chameleond_proxy.IsVideoInputEncrypted(self.port_id)
 
 
+    def start_capturing_video(self, box=None):
+        """
+        Captures video frames. Asynchronous, returns immediately.
+
+        @param box: int tuple, left, upper, right, lower pixel coordinates.
+                    Defines the rectangular boundary within which to capture.
+        """
+
+        if box is None:
+            self.chameleond_proxy.StartCapturingVideo(self.port_id)
+        else:
+            self.chameleond_proxy.StartCapturingVideo(self.port_id, *box)
+
+
+    def stop_capturing_video(self):
+        """
+        Stops the ongoing video frame capturing.
+
+        """
+        self.chameleond_proxy.StopCapturingVideo(self.port_id)
+
+
+    def get_captured_frame_count(self):
+        """
+        @return: int, the number of frames that have been captured.
+
+        """
+        return self.chameleond_proxy.GetCapturedFrameCount()
+
+
+    def read_captured_frame(self, index):
+        """
+        @param index: int, index of the desired captured frame.
+        @return: xmlrpclib.Binary object containing a byte-array of the pixels.
+
+        """
+
+        frame = self.chameleond_proxy.ReadCapturedFrame(index)
+        return Image.fromstring('RGB',
+                                self.get_captured_resolution(),
+                                frame.data)
+
+
+    def get_captured_checksums(self, start_index=0, stop_index=None):
+        """
+        @param start_index: int, index of the frame to start with.
+        @param stop_index: int, index of the frame (excluded) to stop at.
+        @return: a list of checksums of frames captured.
+
+        """
+        return self.chameleond_proxy.GetCapturedChecksums(start_index,
+                                                          stop_index)
+
+
+    def get_captured_resolution(self):
+        """
+        @return: (width, height) tuple, the resolution of captured frames.
+
+        """
+        return self.chameleond_proxy.GetCapturedResolution()
+
+
+
 class ChameleonAudioInput(ChameleonPort):
     """ChameleonAudioInput is an abstraction of an audio input port.
 

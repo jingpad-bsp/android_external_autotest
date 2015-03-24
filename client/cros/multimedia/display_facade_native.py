@@ -10,9 +10,6 @@ import numpy
 import os
 import re
 import time
-import telemetry
-import logging
-import pprint
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, retry
@@ -377,7 +374,7 @@ class DisplayFacadeNative(object):
 
         @return True if mirrored mode is enabled.
         """
-        return bool(self.get_display_info()[0]['mirroringSourceId'])
+        return bool(self.get_display_info()[0].mirroring_source_id)
 
 
     def set_mirrored(self, is_mirrored):

@@ -8,17 +8,20 @@ import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import webpagereplay_wrapper
 from autotest_lib.client.cros.chameleon import chameleon
+from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import chameleon_video_capturer
 from autotest_lib.client.cros.graphics import graphics_utils
-from autotest_lib.client.cros.multimedia import display_facade_native
+from autotest_lib.client.cros.multimedia import local_facade_factory
 from autotest_lib.client.cros.video import chameleon_screenshot_capturer
-from autotest_lib.client.cros.video import golden_image_downloader
 from autotest_lib.client.cros.video import import_screenshot_capturer
-from autotest_lib.client.cros.video import media_player
 from autotest_lib.client.cros.video import method_logger
+from autotest_lib.client.cros.video import native_html5_player
 from autotest_lib.client.cros.video import screenshot_file_namer
 from autotest_lib.client.cros.video import sequence_generator
 from autotest_lib.client.cros.video import video_screenshot_collector
+from autotest_lib.client.cros.video import vimeo_player
 
 
 class MediaTestFactory(object):
@@ -49,8 +52,8 @@ class MediaTestFactory(object):
 
 
     @method_logger.log
-    def __init__(self, tab, http_server, bin_dir, channel, video_name,
-                 video_format, video_def):
+    def __init__(self, chrome, bin_dir, channel, video_name,
+                 video_format=None, video_def=None):
         """
         Initializes factory.
 
@@ -69,9 +72,9 @@ class MediaTestFactory(object):
         source file stored in the cloud.
 
         """
-
-        self.tab = tab
-        self.http_server = http_server
+        self.chrome = chrome
+        self.tab = chrome.browser.tabs[0]
+        self.http_server = chrome.browser.http_server
         self.bin_dir = bin_dir
 
         self.channel = channel
@@ -84,7 +87,8 @@ class MediaTestFactory(object):
         self.channel_spec_filename = 'channel_spec.conf'
 
         # HTML file specs
-        self.html_filename = 'video.html'
+        self.html_filename = ('vimeo.html' if video_name == 'vimeo' else
+                              'video.html')
 
         self.device_under_test = None
 
@@ -239,7 +243,9 @@ class MediaTestFactory(object):
                                                minutes=duration.minute,
                                                seconds=duration.second)
 
-        # We must have succeeded copying, save new file path
+        self.video_width = self.parser.getint(self.video_name, 'width')
+        self.video_height = self.parser.getint(self.video_name, 'height')
+
         http_fullpath = os.path.join(self.bin_dir, self.html_filename)
 
         self.media_url = self.http_server.UrlOf(http_fullpath)
@@ -277,21 +283,32 @@ class MediaTestFactory(object):
 
         self.stop_capture = min(self.stop_capture, self.media_length)
 
+        self.video_frame_count = self.parser.getint(self.channel,
+                                                    'video_frame_count')
 
-    def make_golden_image_downloader(self):
+
+    @property
+    def golden_images_remote_dir(self):
         """
-        @returns a golden image downloader based on configuration data.
+        @return: path to the remote directory where golden images can be found.
 
         """
-        return golden_image_downloader.GoldenImageDownloader(
-                self.test_working_dir,
-                self.remote_golden_image_root_dir,
-                self.video_name,
-                self.video_format,
-                self.video_def,
-                self.device_under_test,
-                screenshot_file_namer.ScreenShotFileNamer(
-                        self.screenshot_image_format))
+        return os.path.join(self.remote_golden_image_root_dir,
+                            self.video_name,
+                            self.video_format,
+                            self.video_def,
+                            'golden_images',
+                            self.device_under_test)
+
+
+    def make_screenshot_filenamer(self):
+        """
+
+        @return: ScreenShotFileNamer object.
+
+        """
+        return screenshot_file_namer.ScreenShotFileNamer(
+                self.screenshot_image_format)
 
 
     def make_capture_sequence_generator(self):
@@ -323,7 +340,7 @@ class MediaTestFactory(object):
         return gn
 
 
-    def make_chameleon_screenshot_capturer(self, chrome, hostname, args):
+    def make_chameleon_screenshot_capturer(self, hostname, args):
         """
 
         @param chrome: Chrome instance.
@@ -336,6 +353,8 @@ class MediaTestFactory(object):
         """
 
         chameleon_board = chameleon.create_chameleon_board(hostname, args)
+        facade = local_facade_factory.LocalFacadeFactory(
+                self.chrome).create_display_facade()
 
         box = (0, self.top_pixels_to_crop, self.screen_width_pixels,
                self.screen_height_pixels - self.bottom_pixels_to_crop)
@@ -343,10 +362,46 @@ class MediaTestFactory(object):
         return chameleon_screenshot_capturer.ChameleonScreenshotCapturer(
                 chameleon_board,
                 self.chameleon_interface,
-                display_facade_native.DisplayFacadeNative(chrome),
+                facade,
                 self.test_working_dir,
                 self.timeout_video_input_s,
                 box)
+
+
+    def make_chameleon_video_capturer(self, hostname, args):
+        """
+        @param hostname: string, name of  host that chameleon is connected to.
+        @param args: dictionary, key-value of pairs of additional arguments.
+                     includes the ip the chameleon board itself.
+
+        @returns: ChameleonVideoCapturer object.
+
+        """
+        chameleon_board = chameleon.create_chameleon_board(hostname, args)
+        facade = local_facade_factory.LocalFacadeFactory(
+                self.chrome).create_display_facade()
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board,
+                facade)
+
+        # TODO: mussa There is a banner that displays a warning that we are
+        # ignoring certificates. Right now just crop it out, need to figure out
+        # what to do about the banner, crop it out permanently or dig inside
+        # chrome flags to figure out how to disable it
+
+        top_pixels_to_crop = self.top_pixels_to_crop + 30
+
+        box = (0, top_pixels_to_crop, self.video_width,
+               top_pixels_to_crop + self.video_height)
+
+        return chameleon_video_capturer.ChameleonVideoCapturer(
+                chameleon_port=finder.find_port(
+                        interface=self.chameleon_interface),
+                display_facade=facade,
+                dest_dir=self.test_working_dir,
+                image_format=self.screenshot_image_format,
+                timeout_input_stable_s=self.timeout_video_input_s,
+                box=box)
 
 
     def make_import_screenshot_capturer(self):
@@ -362,27 +417,66 @@ class MediaTestFactory(object):
                 self.bottom_pixels_to_crop)
 
 
-    def make_video_screenshot_collector(self, capturer):
+    def make_video_player(self):
+        """
+        @return: VimeoPlayer or HTML5Player depending on video being tested.
+
+        """
+        player = None
+        args = {'tab': self.tab, 'full_url': self.media_url,
+                'video_src_path': self.video_source_file,
+                'video_id': self.media_id,
+                'event_timeout': self.time_out_events_s,
+                'polling_wait_time': self.time_btwn_polling_s}
+
+        if self.video_name == 'bigbuck':
+            player = native_html5_player.NativeHtml5Player(**args)
+
+        elif self.video_name == 'vimeo':
+            player = vimeo_player.VimeoPlayer(**args)
+
+        return player
+
+
+    def make_video_screenshot_collector(self, capturer, player):
         """
         Create an object to coordinate navigating video to specific times and
         taking screenshots.
 
         @param capturer: ImportScreenshotCapturer or ChameleonScreenshotCapturer
                          object.
+
+        @param player: VideoPlayer, video player object to use.
         @returns an object that accepts timestamps as input and takes
         screenshots of a video at those times.
 
         """
-        player = media_player.VideoPlayer(self.tab,
-                                          self.media_url,
-                                          self.video_source_file,
-                                          self.media_id,
-                                          self.time_out_events_s,
-                                          self.time_btwn_polling_s)
 
-        namer = screenshot_file_namer.ScreenShotFileNamer(
-                self.screenshot_image_format)
+        namer = self.make_screenshot_filenamer()
 
         return video_screenshot_collector.VideoScreenShotCollector(player,
                                                                    namer,
                                                                    capturer)
+
+
+    @classmethod
+    def make_webpagereplay_server(cls, video_name):
+        """
+        @param wpr_conf_filepath: Complete path to a WPR configuration file.
+        @param video_name: string, name of the video being tested.
+        @returns a ReplayServer object used to start WPR server on DUT.
+
+        """
+
+        wpr_conf_filepath = '/usr/local/autotest/cros/video/wpr.conf'
+        section = 'archive_paths'
+
+        parser = ConfigParser.SafeConfigParser()
+
+        parser.read(wpr_conf_filepath)
+
+        if parser.has_option(section, video_name):
+            path = parser.get(section, video_name)
+            return webpagereplay_wrapper.WebPageReplayWrapper(path)
+
+        return webpagereplay_wrapper.NullWebPageReplayWrapper()
