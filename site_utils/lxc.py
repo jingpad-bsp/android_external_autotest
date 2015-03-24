@@ -622,7 +622,8 @@ class ContainerBucket(object):
         1. Disable master ssh connection in shadow config, as it is not working
            properly in container yet, and produces noise in the log.
         2. Update AUTOTEST_WEB/host and SERVER/hostname to be the IP of the host
-           if any is set to localhost or 127.0.0.1.
+           if any is set to localhost or 127.0.0.1. Otherwise, set it to be the
+           FQDN of the config value.
 
         @param container: The container object to be updated in shadow config.
         @param shadow_config: Path the the shadow config file to be used in the
@@ -639,14 +640,19 @@ class ContainerBucket(object):
 
         db_host = config.get_config_value('AUTOTEST_WEB', 'host')
         if db_host.lower() in local_names:
-            container.attach_run(
-                    'echo $\'\n[AUTOTEST_WEB]\nhost: %s\n\' >> %s' %
-                    (host_ip, shadow_config))
+            new_host = host_ip
+        else:
+            new_host = socket.getfqdn(db_host)
+        container.attach_run('echo $\'\n[AUTOTEST_WEB]\nhost: %s\n\' >> %s' %
+                             (new_host, shadow_config))
 
         afe_host = config.get_config_value('SERVER', 'hostname')
         if afe_host.lower() in local_names:
-            container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
-                                 (host_ip, shadow_config))
+            new_host = host_ip
+        else:
+            new_host = socket.getfqdn(afe_host)
+        container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
+                             (new_host, shadow_config))
 
 
     @timer.decorate
