@@ -48,6 +48,15 @@ class LinuxSystem(object):
         return self._capabilities
 
 
+    @property
+    def board(self):
+        """@return string self reported board of this device."""
+        if self._board is None:
+            # Remove 'board:' prefix.
+            self._board = self.host.get_board().split(':')[1]
+        return self._board
+
+
     def __init__(self, host, role, inherit_interfaces=False):
         # Command locations.
         cmd_iw = path_utils.must_be_installed('/usr/sbin/iw', host=host)
@@ -77,6 +86,7 @@ class LinuxSystem(object):
 
         self._wlanifs_in_use = []
         self._capture_interface = None
+        self._board = None
         # Some uses of LinuxSystem don't use the interface allocation facility.
         # Don't force us to remove all the existing interfaces if this facility
         # is not desired.

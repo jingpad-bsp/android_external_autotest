@@ -113,6 +113,9 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def run_once(self):
+        if self.context.router.board == "panther":
+            raise error.TestNAError('Panther router does not support manual '
+                                    'beacon frame generation')
         self.context.router.require_capabilities(
                   [site_linux_system.LinuxSystem.
                           CAPABILITY_SEND_MANAGEMENT_FRAME])

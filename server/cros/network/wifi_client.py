@@ -89,15 +89,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
     CONNECTED_STATES = 'ready', 'portal', 'online'
 
     @property
-    def board(self):
-        """@return string self reported board of this device."""
-        if self._board is None:
-            # Remove 'board:' prefix.
-            self._board = self.host.get_board().split(':')[1]
-        return self._board
-
-
-    @property
     def machine_id(self):
         """@return string unique to a particular board/cpu configuration."""
         if self._machine_id:
@@ -250,7 +241,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         """
         super(WiFiClient, self).__init__(client_host, 'client',
                                          inherit_interfaces=True)
-        self._board = None
         self._command_ip = 'ip'
         self._command_iptables = 'iptables'
         self._command_ping6 = 'ping6'
