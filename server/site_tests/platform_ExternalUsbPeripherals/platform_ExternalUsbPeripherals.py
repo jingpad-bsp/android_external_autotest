@@ -100,8 +100,8 @@ class platform_ExternalUsbPeripherals(test.test):
         thread.start()
         self.host.test_wait_for_sleep(_LONG_TIMEOUT)
         logging.debug('--- Suspended')
+        self.suspend_status = True
         return boot_id
-
 
 
     def action_resume(self, boot_id):
@@ -113,7 +113,7 @@ class platform_ExternalUsbPeripherals(test.test):
         self.host.servo.power_short_press()
         self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
         logging.debug('--- Resumed')
-
+        self.suspend_status = False
 
 
     def crash_not_detected(self, crash_path):
