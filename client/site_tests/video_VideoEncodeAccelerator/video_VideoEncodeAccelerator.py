@@ -51,6 +51,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     version = 1
 
 
+    @chrome_binary_test.nuke_chrome
     def run_once(self, in_cloud, streams, profile):
         """Runs video_encode_accelerator_unittest on the streams.
 
