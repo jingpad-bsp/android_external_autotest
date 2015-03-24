@@ -29,8 +29,6 @@ from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
 
 
-TEST_DEVICE_KIND = 'test_device_kind'
-TEST_DEVICE_NAME = 'test_device_name'
 TEST_DISPLAY_NAME = 'test_display_name '
 TEST_DESCRIPTION = 'test_description '
 TEST_LOCATION = 'test_location '
@@ -226,8 +224,6 @@ class buffet_Registration(test.test):
         registration_params = dbus.Dictionary(signature='sv')
         registration_params.update({
                 'ticket_id': ticket['id'],
-                'device_kind': TEST_DEVICE_KIND,
-                'name': TEST_DEVICE_NAME,
                 'display_name': TEST_DISPLAY_NAME,
                 'description': TEST_DESCRIPTION,
                 'location': TEST_LOCATION,
@@ -237,7 +233,7 @@ class buffet_Registration(test.test):
         # Confirm that registration has populated some fields.
         device_resource = device_client.get_device(device_id)
         logging.debug('Got device resource=%r', device_resource)
-        _assert_has(device_resource, 'name', TEST_DEVICE_NAME,
+        _assert_has(device_resource, 'displayName', TEST_DISPLAY_NAME,
                     'device resource')
         _assert_has(device_resource, 'modelManifestId', 'TST',
                     'device resource')
