@@ -170,20 +170,14 @@ class video_WebRtcPerf(test.test):
         return tab
 
 
-    def run_once(self, run_hardware_acceleration_only=True,
-                 decode_time_test=False, cpu_test=False, power_test=False):
+    def run_once(self, decode_time_test=False, cpu_test=False, power_test=False):
         """
         Runs the video_WebRtcPerf test.
 
-        @param run_hardware_acceleration_only: True if running the test using
-                hardware acceleration only and raise an exception when HW
-                acceleration is not used. False if running the test using both
-                HW and SW. No excpetion will be raised if HW is not used.
         @param decode_time_test: Pass True to run decode time test.
         @param cpu_test: Pass True to run CPU usage test.
         @param power_test: Pass True to run power consumption test.
         """
-        self._run_hardware_acceleration_only = run_hardware_acceleration_only
         # Download test video.
         url = DOWNLOAD_BASE + VIDEO_NAME
         local_path = os.path.join(self.bindir, VIDEO_NAME)
@@ -234,11 +228,7 @@ class video_WebRtcPerf(test.test):
             # Check if decode is hardware accelerated.
             if self.is_hardware_accelerated(cr):
                 keyvals[WEBRTC_WITH_HW_ACCELERATION] = result
-                if self._run_hardware_acceleration_only:
-                    return keyvals
             else:
-                if self._run_hardware_acceleration_only:
-                    raise error.TestError('HW decode is not used.')
                 logging.info("Can not use hardware decoding.")
                 keyvals[WEBRTC_WITHOUT_HW_ACCELERATION] = result
                 return keyvals

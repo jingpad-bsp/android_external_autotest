@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "video_PowerConsumption.webrtc_daily"
+NAME = "video_PowerConsumption.webrtc"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
@@ -34,7 +34,6 @@ def _run_client_test(machine):
     try:
         client_at = autotest.Autotest(client)
         client_at.run_test("video_WebRtcPerf",
-                           run_hardware_acceleration_only=True,
                            decode_time_test=False,
                            cpu_test=False,
                            power_test=True)
