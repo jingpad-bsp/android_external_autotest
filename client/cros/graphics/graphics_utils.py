@@ -622,7 +622,7 @@ def get_external_resolution():
     """
     if utils.is_freon():
         crtcs = get_modetest_crtcs()
-        if len(crtcs) > 1:
+        if len(crtcs) > 1 and crtcs[1].size != (0, 0):
             return crtcs[1].size
         return None
     else:
