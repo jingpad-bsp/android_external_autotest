@@ -319,7 +319,7 @@ class ChromiumOSUpdater():
         @raise RootFSUpdateError if anything went wrong.
 
         """
-        version = self.get_build_id()
+        version = self.host.get_release_version()
         # Introduced can_rollback in M36 (build 5772). # etc/lsb-release matches
         # X.Y.Z. This version split just pulls the first part out.
         try:
@@ -417,7 +417,7 @@ class ChromiumOSUpdater():
             the DUT.
 
         """
-        booted_version = self.get_build_id()
+        booted_version = self.host.get_release_version()
         if (self.check_version() and not force_update):
             logging.info('System is already up to date. Skipping update.')
             return False
@@ -484,7 +484,7 @@ class ChromiumOSUpdater():
             the autoupdater tries to update to.
 
         """
-        booted_version = self.get_build_id()
+        booted_version = self.host.get_release_version()
         return (self.update_version and
                 self.update_version.endswith(booted_version))
 
@@ -495,7 +495,7 @@ class ChromiumOSUpdater():
         The method should not be used to check if DUT needs to have a full
         reimage. Only use it to confirm a image is installed.
 
-        The method is designed to verify version for following 4 scenarios with
+        The method is designed to verify version for following 6 scenarios with
         samples of version to update to and expected booted version:
         1. trybot paladin build.
         update version: trybot-lumpy-paladin/R27-3837.0.0-b123
@@ -547,52 +547,9 @@ class ChromiumOSUpdater():
         if self.check_version():
             return True
 
-        # Remove R#- and -b# at the end of build version
-        stripped_version = re.sub(r'(R\d+-|-b\d+)', '', self.update_version)
-
-        booted_version = self.get_build_id()
-
-        is_trybot_paladin_build = re.match(r'.+trybot-.+-paladin',
-                                           self.update_url)
-
-        # Replace date string with 0 in booted_version
-        booted_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
-                                        booted_version)
-        has_date_string = booted_version != booted_version_no_date
-
-        is_pgo_generate_build = re.match(r'.+-pgo-generate',
-                                           self.update_url)
-
-        # Remove |-pgo-generate| in booted_version
-        booted_version_no_pgo = booted_version.replace('-pgo-generate', '')
-        has_pgo_generate = booted_version != booted_version_no_pgo
-
-        if is_trybot_paladin_build:
-            if not has_date_string:
-                logging.error('A trybot paladin build is expected. Version ' +
-                              '"%s" is not a paladin build.', booted_version)
-                return False
-            return stripped_version == booted_version_no_date
-        elif is_pgo_generate_build:
-            if not has_pgo_generate:
-                logging.error('A pgo-generate build is expected. Version ' +
-                              '"%s" is not a pgo-generate build.',
-                              booted_version)
-                return False
-            return stripped_version == booted_version_no_pgo
-        else:
-            if has_date_string:
-                logging.error('Unexpected date found in a non trybot paladin' +
-                              ' build.')
-                return False
-            # Versioned build, i.e., rc or release build.
-            return stripped_version == booted_version
-
-
-    def get_build_id(self):
-        """Pulls the CHROMEOS_RELEASE_VERSION string from /etc/lsb-release."""
-        return self._run('grep CHROMEOS_RELEASE_VERSION'
-                         ' /etc/lsb-release').stdout.split('=')[1].strip()
+        return utils.version_match(self.update_version,
+                                   self.host.get_release_version(),
+                                   self.update_url)
 
 
     def verify_boot_expectations(self, expected_kernel_state, rollback_message):

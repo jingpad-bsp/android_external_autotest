@@ -18,6 +18,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -1495,8 +1496,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                  occurs while restarting ui.
         """
         if self._is_factory_image():
-           raise FactoryImageCheckerException('Cannot restart ui on factory '
-                                              'images')
+            raise FactoryImageCheckerException('Cannot restart ui on factory '
+                                               'images')
 
         # TODO(jrbarnette):  The command to stop/start the ui job
         # should live inside cros_ui, too.  However that would seem
@@ -1505,6 +1506,54 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         prompt = cros_ui.get_login_prompt_state(self)
         self.run('stop ui; start ui')
         cros_ui.wait_for_chrome_ready(prompt, self)
+
+
+    def get_release_version(self):
+        """Get the value of attribute CHROMEOS_RELEASE_VERSION from lsb-release.
+
+        @returns The version string in lsb-release, under attribute
+                 CHROMEOS_RELEASE_VERSION.
+        """
+        lsb_release_content = self.run(
+                    'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
+        return lsbrelease_utils.get_chromeos_release_version(
+                    lsb_release_content=lsb_release_content)
+
+
+    def verify_cros_version_label(self):
+        """ Make sure host's cros-version label match the actual image in dut.
+
+        Remove any cros-version: label that doesn't match that installed in
+        the dut.
+
+        @param raise_error: Set to True to raise exception if any mismatch found
+
+        @raise error.AutoservError: If any mismatch between cros-version label
+                                    and the build installed in dut is found.
+        """
+        labels = self._AFE.get_labels(
+                name__startswith=ds_constants.VERSION_PREFIX,
+                host__hostname=self.hostname)
+        mismatch_found = False
+        if labels:
+            # Get CHROMEOS_RELEASE_VERSION from lsb-release, e.g., 6908.0.0.
+            # Note that it's different from cros-version label, which has
+            # builder and branch info, e.g.,
+            # cros-version:peppy-release/R43-6908.0.0
+            release_version = self.get_release_version()
+            host_list = [self.hostname]
+            for label in labels:
+                # Remove any cros-version label that does not match
+                # release_version.
+                build_version = label.name[len(ds_constants.VERSION_PREFIX):]
+                if not utils.version_match(build_version, release_version):
+                    logging.warn('cros-version label "%s" does not match '
+                                 'release version %s. Removing the label.',
+                                 label.name, release_version)
+                    label.remove_hosts(hosts=host_list)
+                    mismatch_found = True
+        if mismatch_found:
+            raise error.AutoservError('The host has wrong cros-version label.')
 
 
     def cleanup(self):
@@ -1520,6 +1569,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # Check if the rpm outlet was manipulated.
         if self.has_power():
             self._cleanup_poweron()
+        self.verify_cros_version_label()
 
 
     def reboot(self, **dargs):
@@ -1623,6 +1673,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # We have seen cases where importing cPickle fails with undefined
         # symbols in cPickle.so.
         self.run('python -c "import cPickle"')
+
+        self.verify_cros_version_label()
 
 
     def verify_hardware(self):

@@ -82,5 +82,27 @@ class GetFunctionArgUnittest(unittest.TestCase):
         self.run_test(TestClass.test_static_function, False)
 
 
+class VersionMatchUnittest(unittest.TestCase):
+    """Test version_match function."""
+
+    def test_version_match(self):
+        """Test version_match function."""
+        canary_build = 'lumpy-release/R43-6803.0.0'
+        canary_release = '6803.0.0'
+        cq_build = 'lumpy-release/R43-6803.0.0-rc1'
+        cq_release = '6803.0.0-rc1'
+        trybot_build = 'trybot-lumpy-paladin/R43-6803.0.0-b123'
+        trybot_release = '6803.0.2015_03_12_2103'
+
+        builds = [canary_build, cq_build, trybot_build]
+        releases = [canary_release, cq_release, trybot_release]
+        for i in range(len(builds)):
+            for j in range(len(releases)):
+                self.assertEqual(
+                        utils.version_match(builds[i], releases[j]), i==j,
+                        'Build version %s should%s match release version %s.' %
+                        (builds[i], '' if i==j else ' not', releases[j]))
+
+
 if __name__ == "__main__":
     unittest.main()
