@@ -476,9 +476,16 @@ def main():
         initialize(options.testing)
 
         host_scheduler = HostScheduler()
+        minimum_tick_sec = global_config.global_config.get_config_value(
+                'SCHEDULER', 'minimum_tick_sec', type=float)
         while not _shutdown:
+            start = time.time()
             host_scheduler.tick()
-            time.sleep(_tick_pause_sec)
+            curr_tick_sec = time.time() - start
+            if (minimum_tick_sec > curr_tick_sec):
+                time.sleep(minimum_tick_sec - curr_tick_sec)
+            else:
+                time.sleep(0.0001)
     except Exception:
         email_manager.manager.log_stacktrace(
                 'Uncaught exception; terminating host_scheduler.')
