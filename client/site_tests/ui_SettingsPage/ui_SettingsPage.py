@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.ui import ui_test_base
 from autotest_lib.client.common_lib import error
@@ -40,10 +41,14 @@ class ui_SettingsPage(ui_test_base.ui_TestBase):
                 raise error.TestFailure('Could not capture screenshot')
 
             image_util.WritePngFile(screenshot, filepath)
-            self.draw_image_mask(filepath, self.mask_points)
 
 
     def run_once(self, mask_points):
         self.mask_points = mask_points
+
+        # Check if we should find mobile data in settings
+        mobile = utils.system_output('modem status')
+        if mobile:
+            self.tagged_testname += '.mobile'
         self.run_screenshot_comparison_test()
 

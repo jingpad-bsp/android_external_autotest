@@ -61,7 +61,8 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
 
             # Take a screenshot and crop to just the launcher
             w, h = graphics_utils.get_display_resolution()
-            box = (w - self.width, h - self.height, self.width, self.height)
+            box = (w - self.width * 2, h - self.height * 2, self.width,
+                   self.height)
             graphics_utils.take_screenshot_crop(filepath, box)
 
 
