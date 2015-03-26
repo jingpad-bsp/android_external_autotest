@@ -118,6 +118,9 @@ class Crossystem(object):
         { # third vector position
             '0': {'ecfw_act': 'RO',},
             '1': {'ecfw_act': 'RW',},
+            # Skip the ecfw_act check when the value is neither 'RO' nor 'RW'.
+            # It happens on non-Chrome-EC devices.
+            '*': {},
             },
         ]
 
@@ -181,8 +184,12 @@ class Crossystem(object):
         for vector_map in self.VECTOR_MAPS:
             for (digit, values) in vector_map.iteritems():
                 for (name, value) in values.iteritems():
-                    # Get the actual attribute value from crossystem.
-                    attr_value = self.__getattr__(name)
+                    try:
+                        # Get the actual attribute value from crossystem.
+                        attr_value = self.__getattr__(name)
+                    except ChromeOSInterfaceError:
+                        # Skip the error in case of missing field in crossystem.
+                        break
                     if isinstance(value, str):
                         if attr_value != value:
                             break
