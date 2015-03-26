@@ -10,6 +10,7 @@ import logging
 import tempfile
 
 from autotest_lib.client.cros.audio import audio_data
+from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.audio import sox_utils
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
@@ -288,21 +289,29 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
         self._port.start_capturing_audio()
 
 
-    # TODO(cychiang): Handle recorded data scaling when recording
-    # from peripheral mic.
     def stop_recording(self):
         """Stops recording.
+
+        Gets recorded binary and format from Chameleon. Also, handle scaling
+        if needed.
 
         @returns: A tuple (data_binary, data_format) for recorded data.
                   Refer to stop_capturing_audio call of ChameleonAudioInput.
 
-
-        @raises: NotImplementedError: If scale is not None.
         """
-        if self.scale:
-            raise NotImplementedError(
-                    'Scale on ChameleonInputWidgetHandler is not implemented')
-        return self._port.stop_capturing_audio()
+        with tempfile.NamedTemporaryFile(prefix='recorded_') as f:
+            # Gets recorded data and format by Chameleon port.
+            rec_binary, rec_format = self._port.stop_capturing_audio()
+
+            # Handles scaling using audio_test_data.
+            open(f.name, 'w').write(rec_binary)
+            test_data = audio_test_data.AudioTestData(rec_format, f.name)
+            converted_test_data = test_data.convert(
+                    rec_format, self.scale)
+            scaled_binary = converted_test_data.get_binary()
+            converted_test_data.delete()
+
+            return scaled_binary, rec_format
 
 
     def _find_port(self, interface):
