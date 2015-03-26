@@ -12,6 +12,10 @@ TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "server"
 
+# TODO(crbug.com/470962) This test can not use server-side package until gsutil
+# is supported in container.
+REQUIRE_SSP = False
+
 DOC = """
 Pulls WebPageReplay archives from storage onto devices, and uses them to verify
 that vimeo videos play.
