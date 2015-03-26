@@ -22,7 +22,7 @@ from autotest_lib.server import site_utils
 from autotest_lib.server.cros.network import wpa_cli_proxy
 from autotest_lib.server.hosts import adb_host
 
-# wake-on-WiFi feature strings
+# Wake-on-WiFi feature strings
 WAKE_ON_WIFI_NONE = 'none'
 WAKE_ON_WIFI_PACKET = 'packet'
 WAKE_ON_WIFI_SSID = 'ssid'
@@ -86,6 +86,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
     ROAM_THRESHOLD = 'RoamThreshold'
     WAKE_ON_WIFI_FEATURES = 'WakeOnWiFiFeaturesEnabled'
     NET_DETECT_SCAN_PERIOD = 'NetDetectScanPeriodSeconds'
+    WAKE_TO_SCAN_PERIOD = 'WakeToScanPeriodSeconds'
+    FORCE_WAKE_TO_SCAN_TIMER = 'ForceWakeToScanTimer'
 
     CONNECTED_STATES = 'ready', 'portal', 'online'
 
@@ -755,6 +757,40 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                      self.wifi_if,
                                      self.NET_DETECT_SCAN_PERIOD,
                                      period)
+
+
+    def wake_to_scan_period_seconds(self, period):
+        """Sets the period between RTC timer wakeups where the system is woken
+        from suspend to perform scans. This setting only takes effect if the
+        NIC is programmed to wake on SSID. Use as with roam_threshold.
+
+        @param period: integer number of seconds between wake to scan RTC timer
+                wakes.
+
+        @return a context manager for the net detect scan period
+
+        """
+        return TemporaryDBusProperty(self._shill_proxy,
+                                     self.wifi_if,
+                                     self.WAKE_TO_SCAN_PERIOD,
+                                     period)
+
+
+    def force_wake_to_scan_timer(self, is_forced):
+        """Sets the boolean value determining whether or not to force the use of
+        the wake to scan RTC timer, which wakes the system from suspend
+        periodically to scan for networks.
+
+        @param is_forced: boolean whether or not to force the use of the wake to
+                scan timer
+
+        @return a context manager for the net detect scan period
+
+        """
+        return TemporaryDBusProperty(self._shill_proxy,
+                                     self.wifi_if,
+                                     self.FORCE_WAKE_TO_SCAN_TIMER,
+                                     is_forced)
 
 
     def request_roam(self, bssid):

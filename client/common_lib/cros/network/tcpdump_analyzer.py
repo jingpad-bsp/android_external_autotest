@@ -81,17 +81,25 @@ def get_frames(pcap_path, remote_host=None, pcap_filter='',
     logging.info('Parsing frames')
     bad_lines = 0
     for frame in result.stdout.splitlines():
-        match = re.search(r'^(?P<ts>\d+\.\d{6}).* '
-                          r'(?P<rate>\d+.\d) Mb/s', frame)
+        # Valid captured frames should start with a timestamp.
+        # e.g. 1427306168.029790 [...]
+        match = re.search(r'^(\d+\.\d{6}) ', frame)
         if not match:
             logging.debug('Found bad tcpdump line: %s', frame)
             bad_lines += 1
             continue
 
         frame_datetime = datetime.datetime.fromtimestamp(
-            float(match.group('ts')))
-        rate = float(match.group('rate'))
+                float(match.group(1)))
 
+        # e.g. 1427306168.029790 1.0 Mb/s [...]
+        match = re.search(r'(\d+.\d) Mb/s', frame)
+        if match:
+            rate = float(match.group(1))
+        else:
+            rate = None
+
+        # e.g. [...] 2462 MHz 11g -14dB signal antenna 0 26.0 Mb/s MCS 3 [...]
         match = re.search(r'MCS (\d+)', frame)
         if match:
             mcs_index = int(match.group(1))
@@ -99,6 +107,7 @@ def get_frames(pcap_path, remote_host=None, pcap_filter='',
             mcs_index = None
 
         # Note: this fails if the SSID contains a ')'
+        # e.g. [...] -36dB signal [bit 29] Probe Request (my_ap) [...]
         match = re.search(r'Probe Request \(([^)]*)\)', frame)
         if match:
             probe_ssid = match.group(1)

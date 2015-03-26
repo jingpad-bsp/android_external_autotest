@@ -15,6 +15,7 @@ from autotest_lib.server.cros.network import wifi_client
 SUSPEND_WAIT_TIME_SECONDS = 10
 DARK_RESUME_WAIT_TIME_SECONDS = 25
 WAIT_UP_TIMEOUT_SECONDS = 10
+RECEIVE_PACKET_WAIT_TIME_SECONDS = 10
 
 
 class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
@@ -53,7 +54,8 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
                 router.send_magic_packet(dut_ip, dut_mac)
 
                 # Wait for the DUT to wake up in dark resume and suspend again.
-                time.sleep(DARK_RESUME_WAIT_TIME_SECONDS)
+                time.sleep(RECEIVE_PACKET_WAIT_TIME_SECONDS +
+                           DARK_RESUME_WAIT_TIME_SECONDS)
 
                 # Ensure that wake on packet did not trigger a full wake.
                 if client.host.wait_up(timeout=WAIT_UP_TIMEOUT_SECONDS):
