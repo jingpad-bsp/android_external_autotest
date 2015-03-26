@@ -82,6 +82,8 @@ class AudioLinkFactory(object):
                 audio_widget_link.AudioBusToChameleonLink,
         (ids.ChameleonIds.LINEOUT, ids.CrosIds.EXTERNAL_MIC):
                 audio_widget_link.AudioBusToCrosLink,
+        (ids.ChameleonIds.LINEOUT, ids.PeripheralIds.SPEAKER):
+                audio_widget_link.AudioBusChameleonToPeripheralLink,
         # TODO(cychiang): Add link for other widget pairs.
     }
 

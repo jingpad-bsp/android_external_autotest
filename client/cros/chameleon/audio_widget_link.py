@@ -307,6 +307,25 @@ class AudioBusToChameleonLink(AudioBusLink):
                 'channel map %r', self.name, self.channel_map)
 
 
+class AudioBusChameleonToPeripheralLink(AudioBusLink):
+    """The abstraction for audio bus connecting Chameleon to peripheral."""
+    # This is the channel map which maps 2-channel data at peripehral speaker
+    # to 8 channel data at Chameleon.
+    # The left channel at speaker comes from the second channel at Chameleon.
+    # The right channel at speaker comes from the first channel at Chameleon.
+    # Other channels at Chameleon are neglected.
+    _DEFAULT_CHANNEL_MAP = [1, 0]
+
+    def __init__(self, *args, **kwargs):
+        super(AudioBusChameleonToPeripheralLink, self).__init__(
+              *args, **kwargs)
+        self.name = 'Audio board bus %s to peripheral' % self._audio_bus.bus_index
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
+        logging.debug(
+                'Create an AudioBusToPeripheralLink named %s with '
+                'channel map %r', self.name, self.channel_map)
+
+
 class AudioBusToCrosLink(AudioBusLink):
     """The abstraction for audio bus that is connected to Cros device."""
     # This is the default channel map for 1-channel data recorded on

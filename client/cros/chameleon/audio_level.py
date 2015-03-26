@@ -70,7 +70,7 @@ class _AudioScale(object):
     """
     DOWN_SCALE = 0.0033
     UP_SCALE = 300.0
-    NO_SCALE = None
+    NO_SCALE = 1.0
 
 
 class LevelControllerError(Exception):
