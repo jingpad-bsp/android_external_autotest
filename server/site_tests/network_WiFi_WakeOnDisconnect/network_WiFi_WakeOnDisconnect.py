@@ -12,11 +12,6 @@ from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-SUSPEND_WAIT_TIME_SECONDS = 10
-DARK_RESUME_WAIT_TIME_SECONDS = 25
-WAIT_UP_TIMEOUT_SECONDS = 10
-
-
 class network_WiFi_WakeOnDisconnect(wifi_cell_test_base.WiFiCellTestBase):
     """Test that WiFi disconnect wakes up the system."""
 
@@ -42,16 +37,17 @@ class network_WiFi_WakeOnDisconnect(wifi_cell_test_base.WiFiCellTestBase):
             logging.info('Set up WoWLAN')
 
             with self._dr_utils.suspend():
-                time.sleep(SUSPEND_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 # Kick over the router to trigger wake on disconnect.
                 router.deconfig_aps(silent=True)
 
                 # Wait for the DUT to wake up in dark resume and suspend again.
-                time.sleep(DARK_RESUME_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.DARK_RESUME_WAIT_TIME_SECONDS)
 
                 # Ensure that wake on packet did not trigger a full wake.
-                if client.host.wait_up(timeout=WAIT_UP_TIMEOUT_SECONDS):
+                if client.host.wait_up(
+                        timeout=wifi_client.WAIT_UP_TIMEOUT_SECONDS):
                     raise error.TestFail('Client woke up fully.')
 
                 if self._dr_utils.count_dark_resumes() < 1:

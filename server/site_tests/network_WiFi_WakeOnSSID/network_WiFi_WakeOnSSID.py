@@ -13,12 +13,6 @@ from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-SUSPEND_WAIT_TIME_SECONDS = 10
-DARK_RESUME_WAIT_TIME_SECONDS = 25
-NET_DETECT_SCAN_WAIT_TIME_SECONDS = 15
-WAIT_UP_TIMEOUT_SECONDS = 10
-
-
 class network_WiFi_WakeOnSSID(wifi_cell_test_base.WiFiCellTestBase):
     """Test that known WiFi access points wake up the system."""
 
@@ -43,7 +37,7 @@ class network_WiFi_WakeOnSSID(wifi_cell_test_base.WiFiCellTestBase):
         with contextlib.nested(
                 client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),
                 client.net_detect_scan_period_seconds(
-                        NET_DETECT_SCAN_WAIT_TIME_SECONDS)):
+                        wifi_client.NET_DETECT_SCAN_WAIT_TIME_SECONDS)):
             logging.info('Set up WoWLAN')
 
             # Bring the AP down so the DUT suspends disconnected.
@@ -51,8 +45,8 @@ class network_WiFi_WakeOnSSID(wifi_cell_test_base.WiFiCellTestBase):
 
             with self._dr_utils.suspend():
                 # Wait for suspend actions and first scan to finish.
-                time.sleep(SUSPEND_WAIT_TIME_SECONDS +
-                           NET_DETECT_SCAN_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS +
+                           wifi_client.NET_DETECT_SCAN_WAIT_TIME_SECONDS)
 
                 # Bring the AP back up to wake up the DUT.
                 logging.info('Bringing AP back online.')
@@ -62,11 +56,12 @@ class network_WiFi_WakeOnSSID(wifi_cell_test_base.WiFiCellTestBase):
                 # Wait long enough for the NIC on the DUT to perform a net
                 # detect scan, discover the AP with the white-listed SSID, wake
                 # up in dark resume, then suspend again.
-                time.sleep(NET_DETECT_SCAN_WAIT_TIME_SECONDS +
-                           DARK_RESUME_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.NET_DETECT_SCAN_WAIT_TIME_SECONDS +
+                           wifi_client.DARK_RESUME_WAIT_TIME_SECONDS)
 
                 # Ensure that net detect did not trigger a full wake.
-                if client.host.wait_up(timeout=WAIT_UP_TIMEOUT_SECONDS):
+                if client.host.wait_up(
+                        timeout=wifi_client.WAIT_UP_TIMEOUT_SECONDS):
                     raise error.TestFail('Client woke up fully.')
 
                 if self._dr_utils.count_dark_resumes() < 1:

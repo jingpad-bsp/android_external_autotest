@@ -15,13 +15,6 @@ from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-SUSPEND_WAIT_TIME_SECONDS = 10
-RECEIVE_PACKET_WAIT_TIME_SECONDS = 10
-DARK_RESUME_WAIT_TIME_SECONDS = 25
-WAKE_TO_SCAN_PERIOD_SECONDS = 30
-DISCONNECT_WAIT_TIME_SECONDS = 10
-
-
 class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
     """
     Test that no active scans are launched when the system wakes on dark resumes
@@ -93,7 +86,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
             client.add_wake_packet_source(self.context.router.wifi_ip)
 
             with self._dr_utils.suspend():
-                time.sleep(SUSPEND_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 # Start capture after suspend concludes in case probe requests
                 # are launched on the way to suspend.
@@ -105,8 +98,8 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 router.send_magic_packet(dut_ip, dut_mac)
 
                 # Wait for the DUT to wake up in dark resume and suspend again.
-                time.sleep(RECEIVE_PACKET_WAIT_TIME_SECONDS +
-                           DARK_RESUME_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.RECEIVE_PACKET_WAIT_TIME_SECONDS +
+                           wifi_client.DARK_RESUME_WAIT_TIME_SECONDS)
 
                 # Check for packet capture before waking the DUT with
                 # |count_dark_resumes| because probe requests might be launched
@@ -121,15 +114,16 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
         # probe requests were launched during this dark resume.
         with contextlib.nested(
                 client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),
-                client.wake_to_scan_period_seconds(WAKE_TO_SCAN_PERIOD_SECONDS),
+                client.wake_to_scan_period_seconds(
+                        wifi_client.WAKE_TO_SCAN_PERIOD_SECONDS),
                 client.force_wake_to_scan_timer(True)):
 
             # Bring the AP down so the DUT suspends disconnected.
             router.deconfig_aps()
-            time.sleep(DISCONNECT_WAIT_TIME_SECONDS)
+            time.sleep(wifi_client.DISCONNECT_WAIT_TIME_SECONDS)
 
             with self._dr_utils.suspend():
-                time.sleep(SUSPEND_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 # Start capture after suspend concludes in case probe requests
                 # are launched on the way to suspend.
@@ -138,8 +132,8 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                         ht_type=ap_config.ht_packet_capture_mode)
 
                 # Wait for the DUT to wake to scan and suspend again.
-                time.sleep(WAKE_TO_SCAN_PERIOD_SECONDS +
-                           DARK_RESUME_WAIT_TIME_SECONDS)
+                time.sleep(wifi_client.WAKE_TO_SCAN_PERIOD_SECONDS +
+                           wifi_client.DARK_RESUME_WAIT_TIME_SECONDS)
 
                 # Check for packet capture before waking the DUT with
                 # |count_dark_resumes| because probe requests might be launched
