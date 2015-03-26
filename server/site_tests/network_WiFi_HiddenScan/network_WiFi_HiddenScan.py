@@ -36,8 +36,7 @@ class network_WiFi_HiddenScan(wifi_cell_test_base.WiFiCellTestBase):
                                   'capture but got %d instead.' %
                                   len(results))
         probe_ssids = tcpdump_analyzer.get_probe_ssids(
-                results[0].pcap_path,
-                remote_host=self.context.router.host,
+                results[0].local_pcap_path,
                 probe_sender=self.context.client.wifi_mac)
         if len(probe_ssids) != 2:
             raise error.TestError('Expected exactly two SSIDs, but got %s' %

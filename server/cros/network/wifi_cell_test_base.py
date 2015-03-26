@@ -5,11 +5,13 @@
 import logging
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import site_utils
 from autotest_lib.server import test
+from autotest_lib.site_utils import lxc
 from autotest_lib.server.cros.network import wifi_test_context_manager
 
 class WiFiCellTestBase(test.test):
@@ -30,7 +32,30 @@ class WiFiCellTestBase(test.test):
 
     """
 
+    def _install_pyshark(self):
+        """Installs pyshark and its dependencies for packet capture analysis.
+
+        Uses SSP to install the required pyshark python module and its
+        dependencies including the tshark binary.
+        """
+        logging.info('Installing Pyshark')
+        try:
+            lxc.install_package('tshark')
+            lxc.install_package('python-dev')
+            lxc.install_package('libxml2-dev')
+            lxc.install_package('libxslt-dev')
+            lxc.install_package('zlib1g-dev')
+            # This will take care of downloading all the required dependent
+            # modules.
+            lxc.install_python_package('pyshark')
+        except error.ContainerError as e:
+            logging.info('Not installing pyshark: %s', e)
+        except error.CmdError as e:
+            raise error.TestError('Error installing pyshark: %s', e)
+
+
     def initialize(self, host):
+        self._install_pyshark()
         if utils.host_could_be_in_afe(host.hostname):
             # There are some DUTs that have different types of wifi modules.
             # In order to generate separate performance graphs, a variant

@@ -18,8 +18,11 @@ class PacketCapturesDisabledError(Exception):
 
 # pcap_path refers to the path of the result on the remote host.
 # log_path refers to the tcpdump log file path on the remote host.
-RemoteCaptureResult = collections.namedtuple('RemoteCaptureResult',
-                                             ['pcap_path', 'log_path'])
+# local_pcap_path refers to the path of the result on the local host.
+# local_log_path refers to the tcpdump log file path on the local host.
+CaptureResult = collections.namedtuple('CaptureResult',
+                                       ['pcap_path', 'log_path',
+                                        'local_pcap_path', 'local_log_path'])
 
 # The number of bytes needed for a probe request is hard to define,
 # because the frame contents are variable (e.g. radiotap header may
@@ -329,16 +332,19 @@ class PacketCapturer(object):
             pcap_filename = os.path.basename(remote_pcap)
             pcap_log_filename = os.path.basename(remote_pcap_log)
             if local_pcap_filename:
-                pcap_filename = local_pcap_filename
-                pcap_log_filename = '%s.log' % local_pcap_filename
+                pcap_filename = os.path.join(local_save_dir or save_dir,
+                                             local_pcap_filename)
+                pcap_log_filename = os.path.join(local_save_dir or save_dir,
+                                                 '%s.log' % local_pcap_filename)
             pairs = [(remote_pcap, pcap_filename),
                      (remote_pcap_log, pcap_log_filename)]
 
-            for remote_file, local_filename in pairs:
-                local_file = os.path.join(local_save_dir or save_dir,
-                                          local_filename)
+            for remote_file, local_file in pairs:
                 self._host.get_file(remote_file, local_file)
             self._ongoing_captures.pop(pid)
-            results.append(RemoteCaptureResult(remote_pcap, remote_pcap_log))
+            results.append(CaptureResult(remote_pcap,
+                                         remote_pcap_log,
+                                         pcap_filename,
+                                         pcap_log_filename))
         self._remote_results += results
         return results

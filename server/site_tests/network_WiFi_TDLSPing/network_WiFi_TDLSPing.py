@@ -62,18 +62,16 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
         logging.info('Analyzing packet capture...')
 
         # Filter for packets from the DUT.
-        client_mac_filter = 'ether src host %s' % self.context.client.wifi_mac
+        client_mac_filter = 'wlan.sa==%s' % self.context.client.wifi_mac
 
         # In this test we only care that the outgoing ICMP requests are
         # sent over IBSS, so we filter for ICMP echo requests explicitly.
-        icmp_filter = 'icmp[icmptype] = icmp-echo'
+        icmp_filter = 'icmp.type==0x08'
 
-        # This filter requires a little explaining.  The "link[1]" identifier
-        # tells tcpdump to provide the second byte of the link header, which
-        # in the case of a received 802.11 frame is the second byte of the
-        # frame control field.  This field contains the "tods" and "fromds"
-        # bits in bit 0 and 1 respsectively.  These bits have the following
-        # interpretation:
+        # This filter requires a little explaining. DS status is the second byte
+        # of the frame control field. This field contains the "tods" and
+        # "fromds" bits in bit 0 and 1 respsectively. These bits have the
+        # following interpretation:
         #
         #   ToDS  FromDS
         #     0     0      Ad-Hoc (IBSS)
@@ -82,17 +80,15 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
         #     1     1      4-address mode for wireless distribution system
         #
         # TDLS co-opts the ToDS=0, FromDS=0 (IBSS) mode when transferring
-        # data directly between peers.  Therefore, to detect TDLS, we mask
-        # the ToDS and FromDS bits out of the second byte of the frame control
-        # and compare it with 0.
-        tdls_filter = 'link[1] & 0x3 == 0'
+        # data directly between peers. Therefore, to detect TDLS, we compare it
+        # with 0.
+        tdls_filter = 'wlan.fc.ds==0x00'
 
-        dut_icmp_pcap_filter = ' and '.join(
+        dut_icmp_display_filter = ' and '.join(
                 [client_mac_filter, icmp_filter, tdls_filter])
         frames = tcpdump_analyzer.get_frames(
-                pcap_result.pcap_path,
-                remote_host=self.context.router.host,
-                pcap_filter=dut_icmp_pcap_filter)
+                pcap_result.local_pcap_path,
+                dut_icmp_diplay_filter)
         if expected and not frames:
             raise error.TestFail('Packet capture did not contain a IBSS '
                                  'frames from the DUT!')

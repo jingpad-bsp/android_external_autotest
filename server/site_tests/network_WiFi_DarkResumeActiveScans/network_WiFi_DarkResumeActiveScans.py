@@ -44,13 +44,12 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                                   len(results))
 
         logging.info('Analyzing packet capture...')
-        probe_req_pcap_filter = ('type mgt subtype probe-req and ether src %s'
-                                 % mac)
+        probe_req_pcap_filter = '%s and wlan.sa==%s' % (
+                tcpdump_analyzer.WLAN_PROBE_REQ_FILTER, mac)
         # Get all the frames in chronological order.
         frames = tcpdump_analyzer.get_frames(
-                results[0].pcap_path,
-                remote_host=self.context.router.host,
-                pcap_filter=probe_req_pcap_filter)
+                results[0].local_pcap_path,
+                probe_req_pcap_filter)
         if len(frames) > 0:
             raise error.TestFail('Packet capture contained probe requests!')
 

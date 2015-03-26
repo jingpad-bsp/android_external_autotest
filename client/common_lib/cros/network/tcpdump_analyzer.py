@@ -8,7 +8,15 @@ import re
 
 from autotest_lib.client.common_lib import utils
 
-WLAN_PROBE_FILTER = 'wlan type mgt subtype probe-req'
+PYSHARK_LOAD_TIMEOUT = 2
+FRAME_FIELD_RADIOTAP_DATARATE = "radiotap.datarate"
+FRAME_FIELD_RADIOTAP_MCS = "radiotap.mcs"
+FRAME_FIELD_WLAN_FRAME_TYPE = "wlan.fc_type_subtype"
+FRAME_FIELD_WLAN_MGMT_SSID = "wlan_mgt.ssid"
+WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
+WLAN_PROBE_REQ_FILTER = "wlan.fc.type_subtype==0x04"
+PYSHARK_BROADCAST_SSID = 'SSID: '
+BROADCAST_SSID = ''
 
 class Frame(object):
     """A frame from a packet capture."""
@@ -60,69 +68,103 @@ class Frame(object):
         return self._datetime.strftime(self.TIME_FORMAT)
 
 
-def get_frames(pcap_path, remote_host=None, pcap_filter='',
-               command_tcpdump='tcpdump'):
+def _fetch_frame_field_value(frame, field):
+    """
+    Retrieve the value of |field| within the |frame|.
+
+    @param frame: Pyshark packet object corresponding to a captured frame.
+    @param field: Field for which the value needs to be extracted from |frame|.
+
+    @return Value extracted from the frame if the field exists, else None.
+
+    """
+    layer_object = frame
+    for layer in field.split('.'):
+        try:
+            layer_object = getattr(layer_object, layer)
+        except AttributeError:
+            return None
+    return layer_object
+
+def _match_frame_field_with_value(frame, field, match_value):
+    """
+    Check if the value of |field| within the |frame| matches |match_value|.
+
+    @param frame: Pyshark packet object corresponding to a captured frame.
+    @param field: Field for which the value needs to be extracted from |frame|.
+    @param match_value: Value to be matched.
+
+    @return True if |match_value| macthes the value retrieved from the frame,
+            False otherwise.
+
+    """
+    value = _fetch_frame_field_value(frame, field)
+    return (match_value == value)
+
+def _open_capture(pcap_path, display_filter):
+    """
+    Get pyshark packet object parsed contents of a pcap file.
+
+    @param pcap_path: string path to pcap file.
+    @param display_filter: string filter to apply to captured frames.
+
+    @return list of Pyshark packet objects.
+
+    """
+    import pyshark
+    capture = pyshark.FileCapture(input_file=pcap_path,
+                                  display_filter=display_filter)
+    capture.load_packets(timeout=PYSHARK_LOAD_TIMEOUT)
+    return capture
+
+def get_frames(local_pcap_path, display_filter):
     """
     Get a parsed representation of the contents of a pcap file.
 
-    @param pcap_path: string path to pcap file.
-    @param remote_host: Host object (if the file is remote).
-    @param pcap_filter: string filter to apply to captured frames.
-    @param command_tcpdump: string path of tcpdump command.
+    @param local_pcap_path: string path to a local pcap file on the host.
+    @param diplay_filter: string filter to apply to captured frames.
+
     @return list of Frame structs.
 
     """
-    run = utils.run
-    if remote_host:
-        run = remote_host.run
-    result = run('%s -n -tt -r %s "%s"' % (command_tcpdump, pcap_path,
-                                           pcap_filter))
+    logging.debug('Capture: %s, Filter: %s', local_pcap_path, display_filter)
+    capture_frames = _open_capture(local_pcap_path, display_filter)
     frames = []
     logging.info('Parsing frames')
-    bad_lines = 0
-    for frame in result.stdout.splitlines():
-        # Valid captured frames should start with a timestamp.
-        # e.g. 1427306168.029790 [...]
-        match = re.search(r'^(\d+\.\d{6}) ', frame)
-        if not match:
-            logging.debug('Found bad tcpdump line: %s', frame)
-            bad_lines += 1
+
+    for frame in capture_frames:
+        rate = _fetch_frame_field_value(frame, FRAME_FIELD_RADIOTAP_DATARATE)
+        if rate:
+            rate = float(rate)
+        else:
+            logging.debug('Found bad capture frame: %s', frame)
             continue
 
-        frame_datetime = datetime.datetime.fromtimestamp(
-                float(match.group(1)))
+        frametime = frame.sniff_time
 
-        # e.g. 1427306168.029790 1.0 Mb/s [...]
-        match = re.search(r'(\d+.\d) Mb/s', frame)
-        if match:
-            rate = float(match.group(1))
-        else:
-            rate = None
+        mcs_index = _fetch_frame_field_value(frame, FRAME_FIELD_RADIOTAP_MCS)
+        if mcs_index:
+            mcs_index = int(mcs_index)
 
-        # e.g. [...] 2462 MHz 11g -14dB signal antenna 0 26.0 Mb/s MCS 3 [...]
-        match = re.search(r'MCS (\d+)', frame)
-        if match:
-            mcs_index = int(match.group(1))
-        else:
-            mcs_index = None
-
-        # Note: this fails if the SSID contains a ')'
-        # e.g. [...] -36dB signal [bit 29] Probe Request (my_ap) [...]
-        match = re.search(r'Probe Request \(([^)]*)\)', frame)
-        if match:
-            probe_ssid = match.group(1)
+        # Get the SSID for any probe requests
+        is_probe_req = _match_frame_field_with_value(
+                frame, FRAME_FIELD_WLAN_FRAME_TYPE, WLAN_PROBE_REQ_FRAME_TYPE)
+        if is_probe_req:
+            probe_ssid = _fetch_frame_field_value(
+                    frame, FRAME_FIELD_WLAN_MGMT_SSID)
+            # Since the SSID name is a variable length field, there seems to be
+            # a bug in the pyshark parsing, it returns 'SSID: ' instead of ''
+            # for broadcast SSID's.
+            if probe_ssid == PYSHARK_BROADCAST_SSID:
+                probe_ssid = BROADCAST_SSID
         else:
             probe_ssid = None
 
-        frames.append(Frame(frame_datetime, rate, mcs_index, probe_ssid))
-
-    if bad_lines:
-        logging.error('Failed to parse %d lines.', bad_lines)
+        frames.append(Frame(frametime, rate, mcs_index, probe_ssid))
 
     return frames
 
-
-def get_probe_ssids(pcap_path, remote_host=None, probe_sender=None):
+def get_probe_ssids(local_pcap_path, probe_sender=None):
     """
     Get the SSIDs that were named in 802.11 probe requests frames.
 
@@ -130,7 +172,7 @@ def get_probe_ssids(pcap_path, remote_host=None, probe_sender=None):
     request frames. If |probe_sender| is specified, only probes
     from that MAC address will be considered.
 
-    @param pcap_path: string path to pcap file.
+    @param pcap_path: string path to a local pcap file on the host.
     @param remote_host: Host object (if the file is remote).
     @param probe_sender: MAC address of the device sending probes.
 
@@ -138,12 +180,12 @@ def get_probe_ssids(pcap_path, remote_host=None, probe_sender=None):
 
     """
     if probe_sender:
-        pcap_filter = '%s and wlan addr2 %s' % (
-            WLAN_PROBE_FILTER, probe_sender)
+        diplay_filter = '%s and wlan.addr==%s' % (
+                WLAN_PROBE_REQ_FILTER, probe_sender)
     else:
-        pcap_filter = WLAN_PROBE_FILTER
+        diplay_filter = WLAN_PROBE_REQ_FILTER
 
-    frames = get_frames(pcap_path, remote_host, pcap_filter)
+    frames = get_frames(local_pcap_path, diplay_filter)
 
     return frozenset(
             [frame.probe_ssid for frame in frames
