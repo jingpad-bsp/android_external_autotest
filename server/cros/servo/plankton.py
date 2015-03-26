@@ -7,6 +7,8 @@ import re
 import time
 import xmlrpclib
 
+from autotest_lib.client.bin import utils
+
 
 class PlanktonError(Exception):
     pass
@@ -38,6 +40,11 @@ class Plankton(object):
     VBUS_VOLTAGE_MV = 'vbus_voltage'
     VBUS_CURRENT_MA = 'vbus_current'
     VBUS_POWER_MW = 'vbus_power'
+    # USBC PD states.
+    USBC_PD_STATES = {
+        'sink': 'SNK_READY',
+        'source': 'SRC_READY'}
+    POLL_STATE_SECS = 2
 
 
     def __init__(self, args_dict=None):
@@ -125,3 +132,19 @@ class Plankton(object):
             return 0
 
         raise PlanktonError('Invalid USBC role: %s' % usbc_role)
+
+
+    def poll_pd_state(self, state):
+        """Polls until Plankton pd goes to the specific state.
+
+        @param state: Specified pd state name.
+        """
+        if state not in self.USBC_PD_STATES:
+            raise PlanktonError('Invalid state name: %s' % state)
+        utils.poll_for_condition(
+            lambda: self.get('pd_state') == self.USBC_PD_STATES[state],
+            exception=utils.TimeoutError('Plankton not in %s state '
+                                         'after %s seconds.' %
+                                         (self.USBC_PD_STATES[state],
+                                          self.POLL_STATE_SECS)),
+            timeout=self.POLL_STATE_SECS)
