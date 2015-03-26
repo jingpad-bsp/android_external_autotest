@@ -485,6 +485,23 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    def discover_tdls_link(self, wifi_interface, peer_mac_address):
+        """Send a TDLS Discover to |peer_mac_address| on |wifi_interface|.
+
+        @param wifi_interface: string name of interface to send the discover on.
+        @param peer_mac_address: string mac address of the TDLS peer device.
+
+        @return True if it the operation was initiated; False otherwise
+
+        """
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': wifi_interface})
+        if device_object is None:
+            return False
+        device_object.PerformTDLSOperation('Discover', peer_mac_address)
+        return True
+
+
     def establish_tdls_link(self, wifi_interface, peer_mac_address):
         """Establish a TDLS link with |peer_mac_address| on |wifi_interface|.
 

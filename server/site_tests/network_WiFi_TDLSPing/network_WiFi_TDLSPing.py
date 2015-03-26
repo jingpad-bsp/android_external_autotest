@@ -140,6 +140,13 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestError(
                     'DUT does not report a missing TDLS link: %r' % link_state)
 
+        # Perform TDLS discover and check the status
+        self.context.client.discover_tdls_link(peer_ip)
+        link_state = self.context.client.query_tdls_link(peer_ip)
+        if link_state != 'Disconnected':
+            logging.error('DUT does not report TDLS link is disconnected: %r' %
+                          link_state)
+
         # Ping from DUT to the associated peer without TDLS.
         self.ping_and_check_for_tdls(frequency, expected=False)
 
