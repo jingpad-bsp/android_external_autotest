@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = 'graphics_SanAngeles with Credentials'
+NAME = 'graphics_SanAngeles.hwqual'
 PURPOSE = 'Benchmark OpenGL object rendering.'
 CRITERIA = 'This test is a benchmark. It will fail if it fails to complete.'
 SUITE = 'hwqual'

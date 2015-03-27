@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "sque"
-NAME = "graphics_VTSwitch"
+NAME = "graphics_VTSwitch.100"
 PURPOSE = 'Verify that VT switching works.'
 CRITERIA = """
 Test fails if any of the following happen:
