@@ -3,8 +3,8 @@
 import cPickle
 import logging
 import os
-import tempfile
 import time
+
 import common
 from autotest_lib.scheduler import drone_utility, email_manager
 from autotest_lib.client.bin import local_host
@@ -14,6 +14,8 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
                                                  'drone_installation_directory')
+DEFAULT_CONTAINER_PATH = global_config.global_config.get_config_value(
+        'AUTOSERV', 'container_path')
 
 class DroneUnreachable(Exception):
     """The drone is non-sshable."""
@@ -152,9 +154,18 @@ class _BaseAbstractDrone(object):
                              'packaging before host is set.')
         if self._support_ssp is None:
             try:
+                # TODO(crbug.com/471316): We need a better way to check if drone
+                # supports container, and install/upgrade base container. The
+                # check of base container folder is not reliable and shall be
+                # obsoleted once that bug is fixed.
                 self._host.run('which lxc-start')
+                # Test if base container is setup.
+                base_container = os.path.join(DEFAULT_CONTAINER_PATH, 'base')
+                self._host.run('ls "%s"' %  base_container)
                 self._support_ssp = True
-            except error.AutotestHostRunError:
+            except (error.AutoservRunError, error.AutotestHostRunError):
+                # Local drone raises AutotestHostRunError, while remote drone
+                # raises AutoservRunError.
                 self._support_ssp = False
         return self._support_ssp
 
