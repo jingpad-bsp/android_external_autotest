@@ -104,8 +104,8 @@ class Peer(dbus_property_exposer.DBusPropertyExposer):
             service_path = '%s/services/%d' % (self._path,
                                                self._services_counter)
             self.services[service_id] = service.Service(
-                    self._bus, service_path, service_id, service_info, ip_info,
-                    self._object_manager)
+                    self._bus, service_path, self.uuid, service_id,
+                    service_info, ip_info, self._object_manager)
         logging.info('service=%s has info %r.', service_id, service_info)
         self._update_last_seen()
         self.on_property_changed(peerd_dbus_helper.PEER_PROPERTY_LAST_SEEN)

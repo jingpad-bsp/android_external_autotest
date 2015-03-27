@@ -31,6 +31,7 @@ PEER_PROPERTY_LAST_SEEN = 'LastSeen'
 SERVICE_PROPERTY_ID = 'ServiceId'
 SERVICE_PROPERTY_INFO = 'ServiceInfo'
 SERVICE_PROPERTY_IPS = 'IpInfos'
+SERVICE_PROPERTY_PEER_ID = 'PeerId'
 
 # Possible technologies for use with PeerdDBusHelper.start_monitoring().
 TECHNOLOGY_ALL = 'all'

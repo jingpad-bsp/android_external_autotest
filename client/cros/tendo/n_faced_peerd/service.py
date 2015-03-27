@@ -14,7 +14,7 @@ class Service(dbus_property_exposer.DBusPropertyExposer):
     """Represents local and remote services."""
 
 
-    def __init__(self, bus, path, service_id, service_info, ip_info,
+    def __init__(self, bus, path, peer_id, service_id, service_info, ip_info,
                  object_manager):
         """Construct a org.chromium.peerd.Service DBus object.
 
@@ -29,10 +29,13 @@ class Service(dbus_property_exposer.DBusPropertyExposer):
         """
         super(Service, self).__init__(
                 bus, path, peerd_dbus_helper.DBUS_INTERFACE_SERVICE)
+        self.peer_id = peer_id
         self.service_id = service_id
         self.service_info = service_info
         self.ip_info = ip_info
         # Register properties with the property exposer.
+        self.register_property(peerd_dbus_helper.SERVICE_PROPERTY_PEER_ID,
+                               self._get_peer_id)
         self.register_property(peerd_dbus_helper.SERVICE_PROPERTY_ID,
                                self._get_service_id)
         self.register_property(peerd_dbus_helper.SERVICE_PROPERTY_INFO,
@@ -45,6 +48,15 @@ class Service(dbus_property_exposer.DBusPropertyExposer):
         self._object_manager.claim_interface(
                 path, peerd_dbus_helper.DBUS_INTERFACE_SERVICE,
                 self.property_getter)
+
+
+    def _get_peer_id(self):
+        """Getter for SERVICE_PROPERTY_PEER_ID.
+
+        @return dbus.String containing this service's peer_id.
+
+        """
+        return dbus.String(self.peer_id)
 
 
     def _get_service_id(self):
