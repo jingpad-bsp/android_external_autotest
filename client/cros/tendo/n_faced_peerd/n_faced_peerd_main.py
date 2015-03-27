@@ -18,6 +18,7 @@ from autotest_lib.client.cros.tendo import peerd_dbus_helper
 from autotest_lib.client.cros.tendo.n_faced_peerd import manager
 from autotest_lib.client.cros.tendo.n_faced_peerd import object_manager
 
+
 class NFacedPeerd(object):
     """An object which looks like N different instances of peerd.
 
@@ -50,13 +51,11 @@ class NFacedPeerd(object):
         # Construct N fake instances of peerd
         for i in range(num_instances):
             bus = dbus.SystemBus(private=True, mainloop=loop)
-            on_service_modified = lambda service_id: (
-                    self._on_service_modified(i, service_id))
             unique_name = n_faced_peerd_helper.get_nth_service_name(i)
             om = object_manager.ObjectManager(
                     bus, peerd_dbus_helper.DBUS_PATH_OBJECT_MANAGER)
             self._instances.append(manager.Manager(
-                    bus, ip_address, on_service_modified, unique_name, om))
+                    bus, ip_address, self._on_service_modified, unique_name, om))
         # Now tell them all about each other
         for instance in self._instances:
             for other_instance in self._instances:
@@ -66,7 +65,7 @@ class NFacedPeerd(object):
                 instance.add_remote_peer(other_instance.self_peer)
 
 
-    def _on_service_modified(self, updated_manager_index, service_id):
+    def _on_service_modified(self, updated_manager, service_id):
         """Called on a service being modified by a manager.
 
         We use this callback to propagate services exposed to a particular
@@ -79,7 +78,8 @@ class NFacedPeerd(object):
         @param service_id: string service ID of service being modified.
 
         """
-        updated_manager = self._instances[updated_manager_index]
+        logging.debug('Service %s modified on instance %r',
+                      service_id, updated_manager)
         updated_peer = updated_manager.self_peer
         for other_manager in self._instances:
             if other_manager == updated_manager:

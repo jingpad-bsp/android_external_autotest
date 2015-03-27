@@ -4,6 +4,7 @@
 
 import dbus
 import dbus.service
+import logging
 import time
 
 from autotest_lib.client.cros.tendo import peerd_dbus_helper
@@ -105,6 +106,7 @@ class Peer(dbus_property_exposer.DBusPropertyExposer):
             self.services[service_id] = service.Service(
                     self._bus, service_path, service_id, service_info, ip_info,
                     self._object_manager)
+        logging.info('service=%s has info %r.', service_id, service_info)
         self._update_last_seen()
         self.on_property_changed(peerd_dbus_helper.PEER_PROPERTY_LAST_SEEN)
 

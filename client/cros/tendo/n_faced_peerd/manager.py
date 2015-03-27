@@ -7,7 +7,6 @@ import dbus
 import dbus.bus
 import dbus.service
 import logging
-import time
 import uuid
 
 
@@ -37,9 +36,9 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
 
         @param bus: dbus.Bus object to export this object on.
         @param ip_address: string IP address (e.g. '127.0.01').
-        @param on_service_modified: callback that takes a service ID.
-                We'll call this whenever we Expose/Remove a service via the
-                DBus API.
+        @param on_service_modified: callback that takes a Manager instance and
+                a service ID.  We'll call this whenever we Expose/Remove a
+                service via the DBus API.
         @param unique_name: string DBus well known name to claim on DBus.
         @param object_manager: an instance of ObjectManager.
 
@@ -57,7 +56,7 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
         self._watches = dict()
         self.self_peer = peer.Peer(self._bus,
                                    peerd_dbus_helper.DBUS_PATH_SELF,
-                                   uuid.uuid1(),
+                                   uuid.uuid4(),
                                    self._object_manager,
                                    is_self=True)
         # TODO(wiley) Expose monitored technologies property
@@ -100,12 +99,12 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
                 instance of Manager.
 
         """
+        logging.info('Adding remote peer %s', remote_peer.uuid)
         self._peer_counter += 1
         peer_path = '%s%d' % (peerd_dbus_helper.PEER_PATH_PREFIX,
                               self._peer_counter)
         self._peers[remote_peer.uuid] = peer.Peer(
-                self._bus, peer_path, remote_peer.uuid, time.time,
-                self._object_manager)
+                self._bus, peer_path, remote_peer.uuid, self._object_manager)
 
 
     def on_remote_service_modified(self, remote_peer, service_id):
@@ -120,10 +119,12 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
         local_peer = self._peers[remote_peer.uuid]
         remote_service = remote_peer.services.get(service_id)
         if remote_service is not None:
+            logging.info('Exposing remote service: %s', service_id)
             local_peer.update_service(remote_service.service_id,
                                       remote_service.service_info,
-                                      remote_service.ip_infos)
+                                      remote_service.ip_info)
         else:
+            logging.info('Removing remote service: %s', service_id)
             local_peer.remove_service(service_id)
 
 
@@ -143,6 +144,9 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
         """
         if (service_id in self._watches and
                 sender != self._watches[service_id].sender):
+            logging.error('Asked to advertise a duplicate service by %s. '
+                          'Expected %s.',
+                          sender, self._watches[service_id].sender)
             raise Exception('Will not advertise duplicate services.')
         logging.info('Exposing service %s', service_id)
         port = options.get('mdns', dict()).get('port', 0)
@@ -153,7 +157,7 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
             cb = lambda owner: self._on_name_owner_changed(service_id, owner)
             watch = dbus.bus.NameOwnerWatch(self._bus, sender, cb)
             self._watches[service_id] = SenderWatch(sender, watch)
-        self._on_service_modified(service_id)
+        self._on_service_modified(self, service_id)
 
 
     @dbus.service.method(
@@ -168,7 +172,7 @@ class Manager(dbus_property_exposer.DBusPropertyExposer):
         logging.info('Removing service %s', service_id)
         self._watches.pop(service_id, None)
         self.self_peer.remove_service(service_id)
-        self._on_service_modified(service_id)
+        self._on_service_modified(self, service_id)
 
 
     @dbus.service.method(

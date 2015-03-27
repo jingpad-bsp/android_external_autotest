@@ -110,7 +110,6 @@ class ObjectManager(dbus.service.Object):
         @param interfaces2properties: see class documentation.
 
         """
-        logging.debug('Emitted signal InterfacesAdded()')
 
 
     @dbus.service.signal(dbus_interface=OBJECT_MANAGER_INTERFACE,
@@ -122,4 +121,3 @@ class ObjectManager(dbus.service.Object):
         @param interfaces: see class documentation.
 
         """
-        logging.debug('Emitted signal InterfacesRemoved()')

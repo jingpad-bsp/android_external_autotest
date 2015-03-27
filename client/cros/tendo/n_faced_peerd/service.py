@@ -38,7 +38,7 @@ class Service(dbus_property_exposer.DBusPropertyExposer):
         self.register_property(peerd_dbus_helper.SERVICE_PROPERTY_INFO,
                                self._get_service_info)
         self.register_property(peerd_dbus_helper.SERVICE_PROPERTY_IPS,
-                               self._get_ip_infos)
+                               self._get_ip_info)
         # Claim the service interface.
         self._object_manager = object_manager
         self._path = path
@@ -65,7 +65,7 @@ class Service(dbus_property_exposer.DBusPropertyExposer):
         return dbus.Dictionary(self.service_info, 'ss')
 
 
-    def _get_ip_infos(self):
+    def _get_ip_info(self):
         """Getter for SERVICE_PROPERTY_IPS.
 
         @return dbus.Array of dbus.Struct objects containing an array of bytes
