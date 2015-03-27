@@ -33,12 +33,13 @@ try:
 except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
-from autotest_lib.client.common_lib import global_config, mail
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.hosts import cros_host
+from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
 CONFIG = global_config.global_config
@@ -419,12 +420,11 @@ def main():
         print str(e)
         # Send out email about the test failure.
         if arguments.email:
-            mail.send(MAIL_FROM,
-                      [arguments.email],
-                      [],
-                      'Test for pushing to prod failed. Do NOT push!',
-                      ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
-                       'run_suite output:\n\n%s' % '\n'.join(run_suite_output)))
+            gmail_lib.send_email(
+                    arguments.email,
+                    'Test for pushing to prod failed. Do NOT push!',
+                    ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
+                     'run_suite output:\n\n%s' % '\n'.join(run_suite_output)))
         raise
 
     message = ('\nAll tests are completed successfully, prod branch is ready to'
@@ -432,11 +432,10 @@ def main():
     print message
     # Send out email about test completed successfully.
     if arguments.email:
-        mail.send(MAIL_FROM,
-                  [arguments.email],
-                  [],
-                  'Test for pushing to prod completed successfully',
-                  message)
+        gmail_lib.send_email(
+                arguments.email,
+                'Test for pushing to prod completed successfully',
+                message)
 
 
 if __name__ == '__main__':
