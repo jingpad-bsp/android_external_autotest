@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'wiley, avakulenko, zeuthen'
-NAME = 'buffet_Registration'
+AUTHOR = 'zeuthen, wiley, avakulenko'
+NAME = 'buffet_IntermittentConnectivity'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 SUITE = 'tendo_experimental, smoke'
 
 DOC = """
-Check that Buffet goes through the basic registration process as expected.
+Test that buffet reconnects if it loses connectivity.
 """
 
 
-job.run_test('buffet_Registration')
+job.run_test('buffet_IntermittentConnectivity')

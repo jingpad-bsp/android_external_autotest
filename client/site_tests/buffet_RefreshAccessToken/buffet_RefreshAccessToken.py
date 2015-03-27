@@ -6,8 +6,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
 from autotest_lib.client.common_lib.cros.tendo import buffet_tester
 
-class buffet_Registration(test.test):
-    """Test that buffet can go through registration."""
+class buffet_RefreshAccessToken(test.test):
+    """Test that buffet can refresh its access token."""
     version = 1
 
     def initialize(self):
@@ -22,6 +22,15 @@ class buffet_Registration(test.test):
         self._helper.check_buffet_status_is(buffet_config.STATUS_UNCONFIGURED)
         device_id = self._helper.register_with_server()
         self._helper.check_buffet_is_polling(device_id)
+
+        # Now invalidate buffet's current access token and check that
+        # we can still poll for commands. This demonstrates that
+        # buffet is able to get a new access token if the one that
+        # it's been using has been revoked.
+        self._helper._oauth_client.invalidate_all_access_tokens()
+        self._helper.check_buffet_is_polling(device_id)
+        self._helper.check_buffet_status_is(
+                buffet_config.STATUS_CONNECTED, expected_device_id=device_id)
 
 
     def cleanup(self):

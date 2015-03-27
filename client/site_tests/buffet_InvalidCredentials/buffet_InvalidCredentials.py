@@ -6,8 +6,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
 from autotest_lib.client.common_lib.cros.tendo import buffet_tester
 
-class buffet_Registration(test.test):
-    """Test that buffet can go through registration."""
+class buffet_InvalidCredentials(test.test):
+    """Test that buffet transitions properly if refresh token is revoked."""
     version = 1
 
     def initialize(self):
@@ -22,6 +22,15 @@ class buffet_Registration(test.test):
         self._helper.check_buffet_status_is(buffet_config.STATUS_UNCONFIGURED)
         device_id = self._helper.register_with_server()
         self._helper.check_buffet_is_polling(device_id)
+
+        # Now invalidate buffet's access and refresh token and check
+        # that buffet transitions to the invalid_credentials state.
+        self._helper._oauth_client.invalidate_all_refresh_tokens()
+        self._helper._oauth_client.invalidate_all_access_tokens()
+        self._helper.check_buffet_status_is(
+                buffet_config.STATUS_INVALID_CREDENTIALS,
+                expected_device_id=device_id,
+                timeout_seconds=20)
 
 
     def cleanup(self):
