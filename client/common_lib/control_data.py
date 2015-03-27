@@ -61,6 +61,7 @@ class ControlData(object):
         # job. This can be overridden by global config
         # AUTOSERV/enable_ssp_container
         self.require_ssp = None
+        self.attributes = set()
 
         diff = REQUIRED_VARS - set(vars)
         if diff:
@@ -205,6 +206,10 @@ class ControlData(object):
 
     def set_require_ssp(self, val):
         self._set_bool('require_ssp', val)
+
+
+    def set_attributes(self, val):
+        self._set_set('attributes', val)
 
 
 def _extract_const(expr):

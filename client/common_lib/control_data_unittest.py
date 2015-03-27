@@ -25,6 +25,7 @@ TEST_CATEGORY='Stress'
 TEST_TYPE='client'
 RETRIES = 5
 REQUIRE_SSP = False
+ATTRIBUTES = "suite:smoke, suite:bvt, interval:daily"
 """
 
 
@@ -54,6 +55,7 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.test_type, "client")
         self.assertEquals(cd.retries, 5)
         self.assertEquals(cd.require_ssp, False)
+        self.assertEquals(cd.attributes, set(["suite:smoke","suite:bvt","interval:daily"]))
 
 
 class ParseControlFileBugTemplate(unittest.TestCase):
