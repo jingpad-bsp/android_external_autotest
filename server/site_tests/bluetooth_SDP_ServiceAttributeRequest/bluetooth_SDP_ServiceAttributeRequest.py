@@ -73,30 +73,56 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
     INVALID_SYNTAX_REQUEST           = '123'
     INVALID_PDU_SIZE                 = 11
 
+    @staticmethod
+    def assert_equal(actual, expected):
+        """Verify that |actual| is equal to |expected|.
+
+        @param actual: The value we got.
+        @param expected: The value we expected.
+        @raise error.TestFail: If the values are unequal.
+        """
+        if actual != expected:
+            raise error.TestFail(
+                'Expected |%s|, got |%s|' % (expected, actual))
+
+
+    @staticmethod
+    def assert_nonempty_list(value):
+        """Verify that |value| is a list, and that the list is non-empty.
+
+        @param value: The value to check.
+        @raise error.TestFail: If the value is not a list, or is empty.
+        """
+        if not isinstance(value, list):
+            raise error.TestFail('Value is not a list. Got |%s|.' % value)
+
+        if value == []:
+            raise error.TestFail('List is empty')
+
 
     def get_single_handle(self, class_id):
         """Send a Service Search Request to get a handle for specific class ID.
 
-        @return -1 if request failed, record handle as int otherwise
-
+        @param class_id: The class that we want a handle for.
+        @return The record handle, as an int.
+        @raise error.TestFail: If we failed to retrieve a handle.
         """
         res = self.tester.service_search_request([class_id], self.MAX_REC_CNT)
         if not (isinstance(res, list) and len(res) > 0):
-            return -1
+            raise error.TestFail('Failed to retrieve handle for %d' % class_id)
         return res[0]
 
 
+    # TODO(quiche): Place this after get_attribute(), so all the tests are
+    # grouped together.
     def test_record_handle_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-01-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         # Send Service Search Request to find out record handle for
         # SDP Server service.
         record_handle = self.get_single_handle(self.SDP_SERVER_CLASS_ID)
-        if record_handle == -1:
-            return False
 
         # Send Service Attribute Request for Service Record Handle Attribute.
         res = self.tester.service_attribute_request(
@@ -105,7 +131,8 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
                   [self.SERVICE_RECORD_HANDLE_ATTR_ID])
 
         # Ensure that returned attribute is correct.
-        return res == [self.SERVICE_RECORD_HANDLE_ATTR_ID, record_handle]
+        self.assert_equal(res,
+                          [self.SERVICE_RECORD_HANDLE_ATTR_ID, record_handle])
 
 
     def get_attribute(self, class_id, attr_id):
@@ -113,143 +140,118 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
 
         @param class_id: Class ID of service to check.
         @param attr_id: ID of attribute to check.
-
         @return attribute value if attribute exists, None otherwise
 
         """
         record_handle = self.get_single_handle(class_id)
-        if record_handle == -1:
-            return False
-
         res = self.tester.service_attribute_request(
                   record_handle, self.MAX_ATTR_BYTE_CNT, [attr_id])
-
         if isinstance(res, list) and len(res) == 2 and res[0] == attr_id:
             return res[1]
         return None
 
 
-    def test_attribute(self, class_id, attr_id, attr_value):
-        """Test a single attribute of a single service
+    # TODO(quiche): Move this up, to be grouped with the other |assert|
+    # methods.
+    @staticmethod
+    def assert_attribute_equals(self, class_id, attr_id, expected_value):
+        """Verify that |attr_id| of service with |class_id| has |expected_value|
 
         @param class_id: Class ID of service to check.
         @param attr_id: ID of attribute to check.
-        @param attr_value: expected value of the attribute
-
-        @return True if value of attribute equals to attr_value, False otherwise
-
+        @param expected_value: The expected value for the attribute.
+        @raise error.TestFail: If the actual value differs from |expected_value|
         """
-        record_handle = self.get_single_handle(class_id)
-        if record_handle == -1:
-            return False
-
-        res = self.tester.service_attribute_request(
-                  record_handle, self.MAX_ATTR_BYTE_CNT, [attr_id])
-
-        return res == [attr_id, attr_value]
+        self.assert_equal(self.get_attribute(class_id, attr_id),
+                          expected_value)
 
 
     def test_browse_group_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-08-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        return self.test_attribute(self.GAP_CLASS_ID,
-                                   self.BROWSE_GROUP_LIST_ATTR_ID,
-                                   [self.PUBLIC_BROWSE_ROOT])
+        self.assert_attribute_equals(self.GAP_CLASS_ID,
+                                     self.BROWSE_GROUP_LIST_ATTR_ID,
+                                     [self.PUBLIC_BROWSE_ROOT])
 
 
     def test_icon_url_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-11-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        return self.test_attribute(self.GAP_CLASS_ID,
-                                   self.ICON_URL_ATTR_ID,
-                                   self.BLUEZ_URL)
+        self.assert_attribute_equals(self.GAP_CLASS_ID,
+                                     self.ICON_URL_ATTR_ID,
+                                     self.BLUEZ_URL)
 
 
     def test_documentation_url_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-18-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        return self.test_attribute(self.GAP_CLASS_ID,
-                                   self.DOCUMENTATION_URL_ATTR_ID,
-                                   self.BLUEZ_URL)
+        self.assert_attribute_equals(self.GAP_CLASS_ID,
+                                     self.DOCUMENTATION_URL_ATTR_ID,
+                                     self.BLUEZ_URL)
 
 
     def test_client_executable_url_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-19-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        return self.test_attribute(self.GAP_CLASS_ID,
-                                   self.CLIENT_EXECUTABLE_URL_ATTR_ID,
-                                   self.BLUEZ_URL)
+        self.assert_attribute_equals(self.GAP_CLASS_ID,
+                                     self.CLIENT_EXECUTABLE_URL_ATTR_ID,
+                                     self.BLUEZ_URL)
 
 
     def test_protocol_descriptor_list_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-05-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         value = self.get_attribute(self.GAP_CLASS_ID,
                                    self.PROTOCOL_DESCRIPTOR_LIST_ATTR_ID)
 
         # The first-layer protocol is L2CAP, using the PSM for ATT protocol.
-        if value[0] != [self.L2CAP_UUID, self.ATT_PSM]:
-            return False
+        self.assert_equal(value[0], [self.L2CAP_UUID, self.ATT_PSM])
 
         # The second-layer protocol is ATT. The additional parameters are
         # ignored, since they may reasonably vary between implementations.
-        if value[1][0] != self.ATT_UUID:
-            return False
-
-        return True
+        self.assert_equal(value[1][0], self.ATT_UUID)
 
 
     def test_continuation_state(self):
         """Implementation of test TP/SERVER/SA/BV-03-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         record_handle = self.get_single_handle(self.PNP_INFORMATION_CLASS_ID)
-        if record_handle == -1:
-            return False
-
-        res = self.tester.service_attribute_request(
-                  record_handle, self.MIN_ATTR_BYTE_CNT, [[0, 0xFFFF]])
-
-        return isinstance(res, list) and res != []
+        self.assert_nonempty_list(
+            self.tester.service_attribute_request(
+                record_handle, self.MIN_ATTR_BYTE_CNT, [[0, 0xFFFF]]))
 
 
     def test_version_list_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-15-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        version_list = self.get_attribute(self.SDP_SERVER_CLASS_ID,
-                                          self.VERSION_NUMBER_LIST_ATTR_ID)
-        return isinstance(version_list, list) and version_list != []
+        self.assert_nonempty_list(
+            self.get_attribute(self.SDP_SERVER_CLASS_ID,
+                self.VERSION_NUMBER_LIST_ATTR_ID))
 
 
     def test_service_database_state_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-16-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         state = self.get_attribute(self.SDP_SERVER_CLASS_ID,
                                    self.SERVICE_DATABASE_STATE_ATTR_ID)
-        return isinstance(state, int)
+        if not isinstance(state, int):
+            raise error.TestFail('State is not an int: %s' % state)
 
 
     def test_profile_descriptor_list_attribute(self):
@@ -260,55 +262,51 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         """
         profile_list = self.get_attribute(self.PNP_INFORMATION_CLASS_ID,
                                           self.PROFILE_DESCRIPTOR_LIST_ATTR_ID)
-        return (isinstance(profile_list, list) and len(profile_list) == 1 and
-                isinstance(profile_list[0], list) and
-                len(profile_list[0]) == 2 and
-                profile_list[0][0] == self.PNP_INFORMATION_CLASS_ID)
+
+        if not isinstance(profile_list, list):
+            raise error.TestFail('Value is not a list')
+        self.assert_equal(len(profile_list), 1)
+
+        if not isinstance(profile_list[0], list):
+            raise error.TestFail('Item is not a list')
+        self.assert_equal(len(profile_list[0]), 2)
+
+        self.assert_equal(profile_list[0][0], self.PNP_INFORMATION_CLASS_ID)
 
 
     def test_additional_protocol_descriptor_list_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-21-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
-        protocol_list = self.get_attribute(self.AVRCP_TG_CLASS_ID,
-                                           self.ADDITIONAL_PROTOCOLLIST_ATTR_ID)
-        return isinstance(protocol_list, list) and protocol_list != []
+        self.assert_nonempty_list(
+            self.get_attribute(self.AVRCP_TG_CLASS_ID,
+                self.ADDITIONAL_PROTOCOLLIST_ATTR_ID))
 
 
     def test_non_existing_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-20-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         record_handle = self.get_single_handle(self.FAKE_SERVICE_CLASS_ID)
-        if record_handle == -1:
-            return False
-
         res = self.tester.service_attribute_request(
                   record_handle, self.MAX_ATTR_BYTE_CNT,
                   [self.NON_EXISTING_ATTRIBUTE_ID])
-
-        return res == []
+        self.assert_equal(res, [])
 
 
     def test_fake_attributes(self):
         """Test values of attributes of the fake service record.
 
-        @return True if all tests pass, False otherwise
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         for attr_id in self.FAKE_GENERAL_ATTRIBUTE_IDS:
-            if not self.test_attribute(self.FAKE_SERVICE_CLASS_ID,
-                                       attr_id, self.FAKE_ATTRIBUTE_VALUE):
-                return False
+            self.assert_attribute_equals(self.FAKE_SERVICE_CLASS_ID,
+                                         attr_id, self.FAKE_ATTRIBUTE_VALUE)
 
         for offset in self.FAKE_LANGUAGE_ATTRIBUTE_OFFSETS:
             record_handle = self.get_single_handle(self.FAKE_SERVICE_CLASS_ID)
-            if record_handle == -1:
-                return False
 
             lang_base = self.tester.service_attribute_request(
                             record_handle, self.MAX_ATTR_BYTE_CNT,
@@ -317,89 +315,68 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
 
             response = self.tester.service_attribute_request(
                            record_handle, self.MAX_ATTR_BYTE_CNT, [attr_id])
-
-            if response != [attr_id, self.FAKE_ATTRIBUTE_VALUE]:
-                return False
-
-        return True
+            self.assert_equal(response, [attr_id, self.FAKE_ATTRIBUTE_VALUE])
 
 
     def test_invalid_record_handle(self):
         """Implementation of test TP/SERVER/SA/BI-01-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         res = self.tester.service_attribute_request(
                   self.INVALID_RECORD_HANDLE, self.MAX_ATTR_BYTE_CNT,
                   [self.NON_EXISTING_ATTRIBUTE_ID])
-
-        return res == self.ERROR_CODE_INVALID_RECORD_HANDLE
+        self.assert_equal(res, self.ERROR_CODE_INVALID_RECORD_HANDLE)
 
 
     def test_invalid_request_syntax(self):
         """Implementation of test TP/SERVER/SA/BI-02-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         record_handle = self.get_single_handle(self.SDP_SERVER_CLASS_ID)
-        if record_handle == -1:
-            return False
-
         res = self.tester.service_attribute_request(
                   record_handle,
                   self.MAX_ATTR_BYTE_CNT,
                   [self.SERVICE_RECORD_HANDLE_ATTR_ID],
                   invalid_request=self.INVALID_SYNTAX_REQUEST)
-
-        return res == self.ERROR_CODE_INVALID_SYNTAX
+        self.assert_equal(res, self.ERROR_CODE_INVALID_SYNTAX)
 
 
     def test_invalid_pdu_size(self):
         """Implementation of test TP/SERVER/SA/BI-03-C from SDP Specification.
 
-        @return True if test passes, False if test fails
-
+        @raise error.TestFail: If the DUT failed the test.
         """
         record_handle = self.get_single_handle(self.SDP_SERVER_CLASS_ID)
-        if record_handle == -1:
-            return False
-
         res = self.tester.service_attribute_request(
                   record_handle,
                   self.MAX_ATTR_BYTE_CNT,
                   [self.SERVICE_RECORD_HANDLE_ATTR_ID],
                   forced_pdu_size=self.INVALID_PDU_SIZE)
-
-        return res == self.ERROR_CODE_INVALID_PDU_SIZE
+        self.assert_equal(res, self.ERROR_CODE_INVALID_PDU_SIZE)
 
 
     def correct_request(self):
-        """Run basic tests for Service Attribute Request.
-
-        @return True if all tests finishes correctly, False otherwise
-
-        """
+        """Run basic tests for Service Attribute Request."""
         # Connect to the DUT via L2CAP using SDP socket.
         self.tester.connect(self.adapter['Address'])
-
-        return (self.test_record_handle_attribute() and
-                self.test_browse_group_attribute() and
-                self.test_icon_url_attribute() and
-                self.test_documentation_url_attribute() and
-                self.test_client_executable_url_attribute() and
-                self.test_protocol_descriptor_list_attribute() and
-                self.test_continuation_state() and
-                self.test_version_list_attribute() and
-                self.test_service_database_state_attribute() and
-                self.test_profile_descriptor_list_attribute() and
-                self.test_additional_protocol_descriptor_list_attribute() and
-                self.test_fake_attributes() and
-                self.test_non_existing_attribute() and
-                self.test_invalid_record_handle() and
-                self.test_invalid_request_syntax() and
-                self.test_invalid_pdu_size())
+        self.test_record_handle_attribute()
+        self.test_browse_group_attribute()
+        self.test_icon_url_attribute()
+        self.test_documentation_url_attribute()
+        self.test_client_executable_url_attribute()
+        self.test_protocol_descriptor_list_attribute()
+        self.test_continuation_state()
+        self.test_version_list_attribute()
+        self.test_service_database_state_attribute()
+        self.test_profile_descriptor_list_attribute()
+        self.test_additional_protocol_descriptor_list_attribute()
+        self.test_fake_attributes()
+        self.test_non_existing_attribute()
+        self.test_invalid_record_handle()
+        self.test_invalid_request_syntax()
+        self.test_invalid_pdu_size()
 
 
     def build_service_record(self):
@@ -456,14 +433,4 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         if not self.tester.setup('computer'):
             raise error.TestFail('Tester could not be initialized')
 
-        # Since radio is involved, this test is not 100% reliable; instead we
-        # repeat a few times until it succeeds.
-        for failed_attempts in range(0, 5):
-            if self.correct_request():
-                break
-        else:
-            raise error.TestFail('Expected device was not found')
-
-        # Record how many attempts this took, hopefully we'll one day figure out
-        # a way to reduce this to zero and then the loop above can go away.
-        self.write_perf_keyval({'failed_attempts': failed_attempts })
+        self.correct_request()
