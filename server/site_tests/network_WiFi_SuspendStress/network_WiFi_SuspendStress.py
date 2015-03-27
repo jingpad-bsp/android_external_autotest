@@ -84,8 +84,10 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestNAError('This DUT does not support cold reset, '
                                     'exiting')
         for router_conf, client_conf in self._configurations:
-            self.context.configure(router_conf)
+            self.context.configure(configuration_parameters=router_conf)
             assoc_params = xmlrpc_datatypes.AssociationParameters(
+                is_hidden=client_conf.is_hidden,
+                security_config=client_conf.security_config,
                 ssid=self.context.router.get_ssid())
             self.context.assert_connect_wifi(assoc_params)
 

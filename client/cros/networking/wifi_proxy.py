@@ -134,7 +134,7 @@ class WifiProxy(shill_proxy.ShillProxy):
             which may contain a meaningful description of failures.
 
         """
-        logging.info('Attempting to conect to %s', ssid)
+        logging.info('Attempting to connect to %s', ssid)
         service_proxy = None
         start_time = time.time()
         discovery_time = -1.0
