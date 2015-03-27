@@ -8,6 +8,7 @@ display in extended mode using the Chameleon board."""
 import logging
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -86,15 +87,25 @@ class display_HotPlugNoisy(test.test):
                                             else self.PULSES_UNPLUGGED)
 
                 if plugged_after_noise:
+                    chameleon_port.wait_video_input_stable()
+                    if test_mirrored:
+                        # Wait for resolution change to make sure the resolution
+                        # is stable before moving on. This is to deal with the
+                        # case where DUT may respond slowly after the noise.
+                        # If the resolution doesn't change, then we are
+                        # confident that it is stable. Otherwise, a slow
+                        # response is caught.
+                        r = display_facade.get_internal_resolution()
+                        utils.wait_for_value_changed(
+                                display_facade.get_internal_resolution,
+                                old_value=r)
+
                     err = screen_test.check_external_display_connected(
                             expected_connector)
 
                     if not err:
-                        if chameleon_port.wait_video_input_stable():
-                            err = screen_test.test_screen_with_image(
-                                    resolution, test_mirrored)
-                        else:
-                            err = 'video input not stable'
+                        err = screen_test.test_screen_with_image(
+                                resolution, test_mirrored)
                     if err:
                         # When something goes wrong after the noise, a normal
                         # user would try to re-plug the cable to recover.
