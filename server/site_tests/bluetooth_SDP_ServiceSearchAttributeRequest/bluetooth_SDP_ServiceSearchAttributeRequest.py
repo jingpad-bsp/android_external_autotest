@@ -42,6 +42,8 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
     L2CAP_UUID                       = 0x0100
     ATT_UUID                         = 0x0007
 
+    ATT_PSM                          = 0x001F
+
     BLUEZ_URL                        = 'http://www.bluez.org/'
 
     FAKE_SERVICE_PATH                = '/autotest/fake_service'
@@ -221,7 +223,17 @@ class bluetooth_SDP_ServiceSearchAttributeRequest(bluetooth_test.BluetoothTest):
         """
         value = self.test_attribute(self.GAP_CLASS_ID,
                                     self.PROTOCOL_DESCRIPTOR_LIST_ATTR_ID)
-        return value == [[self.L2CAP_UUID, 31], [self.ATT_UUID, 1, 8]]
+
+        # The first-layer protocol is L2CAP, using the PSM for ATT protocol.
+        if value[0] != [self.L2CAP_UUID, self.ATT_PSM]:
+            return False
+
+        # The second-layer protocol is ATT. The additional parameters are
+        # ignored, since they may reasonably vary between implementations.
+        if value[1][0] != self.ATT_UUID:
+            return False
+
+        return True
 
 
     def test_browse_group_attribute(self):

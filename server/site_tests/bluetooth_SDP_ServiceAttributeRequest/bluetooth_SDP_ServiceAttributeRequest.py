@@ -33,13 +33,15 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
     L2CAP_UUID                       = 0x0100
     ATT_UUID                         = 0x0007
 
+    ATT_PSM                          = 0x001F
+
     PNP_INFORMATION_CLASS_ID         = 0x1200
     MIN_ATTR_BYTE_CNT                = 7
 
     VERSION_NUMBER_LIST_ATTR_ID      = 0x0200
     SERVICE_DATABASE_STATE_ATTR_ID   = 0x0201
 
-    AVRCP_TG_CLASS_ID                = 0x110c
+    AVRCP_TG_CLASS_ID                = 0x110C
     PROFILE_DESCRIPTOR_LIST_ATTR_ID  = 0x0009
     ADDITIONAL_PROTOCOLLIST_ATTR_ID  = 0x000D
 
@@ -197,10 +199,19 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         @return True if test passes, False if test fails
 
         """
-        return self.test_attribute(self.GAP_CLASS_ID,
-                                   self.PROTOCOL_DESCRIPTOR_LIST_ATTR_ID,
-                                   [[self.L2CAP_UUID, 31],
-                                    [self.ATT_UUID, 1, 8]])
+        value = self.get_attribute(self.GAP_CLASS_ID,
+                                   self.PROTOCOL_DESCRIPTOR_LIST_ATTR_ID)
+
+        # The first-layer protocol is L2CAP, using the PSM for ATT protocol.
+        if value[0] != [self.L2CAP_UUID, self.ATT_PSM]:
+            return False
+
+        # The second-layer protocol is ATT. The additional parameters are
+        # ignored, since they may reasonably vary between implementations.
+        if value[1][0] != self.ATT_UUID:
+            return False
+
+        return True
 
 
     def test_continuation_state(self):
