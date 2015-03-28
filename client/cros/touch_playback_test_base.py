@@ -107,15 +107,22 @@ class touch_playback_test_base(test.test):
         self._autotest_ext = None
         self._has_inputcontrol = os.path.isfile(self._INPUTCONTROL)
 
+        def _get_input_events():
+            return utils.run('ls /dev/input/event*').stdout.strip().split()
+
         # Emulate mouse if property file was provided.
         if mouse_props:
             logging.info('Emulating mouse: %s', mouse_props)
+            events_before = len(_get_input_events())
             self._device_emulation_process = subprocess.Popen(
                     ['evemu-device', mouse_props], stdout=subprocess.PIPE)
             self._names['mouse'] = mouse_name
+            utils.poll_for_condition(
+                    lambda: len(_get_input_events()) > events_before,
+                    exception=error.TestError('Error emulating mouse!'))
 
         # Cycle through all possible input devices.
-        input_events = utils.run('ls /dev/input/event*').stdout.strip().split()
+        input_events = _get_input_events()
         for event in input_events:
             input_type = self._determine_input_type(event)
             if input_type:
@@ -227,15 +234,21 @@ class touch_playback_test_base(test.test):
         """Set the autotest extension.
 
         @ext: the autotest extension object.
+
         """
         self._autotest_ext = ext
+
+    def _set_default_scroll_position(self):
+        """Set scroll position of page to default.  Presuposes self._tab."""
+        self._tab.EvaluateJavaScript(
+                'document.body.scrollTop=%s' % self._DEFAULT_SCROLL)
 
     def _get_scroll_position(self):
         """Return current scroll position of page.  Presuposes self._tab."""
         return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
 
     def _wait_for_default_scroll_position(self):
-        """Wait for page to be the default scroll position.
+        """Wait for page to be at the default scroll position.
 
         @raise: TestError if page either does not move or does not stop moving.
 
@@ -243,7 +256,6 @@ class touch_playback_test_base(test.test):
         utils.poll_for_condition(
                 lambda: self._get_scroll_position() == self._DEFAULT_SCROLL,
                 exception=error.TestError('Page not set to default scroll!'))
-
 
     def _wait_for_scroll_position_to_settle(self):
         """Wait for page to move and then stop moving.
@@ -254,7 +266,7 @@ class touch_playback_test_base(test.test):
         # Wait until page starts moving.
         utils.poll_for_condition(
                 lambda: self._get_scroll_position() != self._DEFAULT_SCROLL,
-                exception=error.TestError('No scrolling occurred!'))
+                exception=error.TestError('No scrolling occurred!'), timeout=30)
 
         # Wait until page has stopped moving.
         self._previous = self._DEFAULT_SCROLL
@@ -266,5 +278,6 @@ class touch_playback_test_base(test.test):
 
         utils.poll_for_condition(
                 lambda: _movement_stopped(), sleep_interval=1,
-                exception=error.TestError('Page did not stop moving!'))
+                exception=error.TestError('Page did not stop moving!'),
+                timeout=30)
 

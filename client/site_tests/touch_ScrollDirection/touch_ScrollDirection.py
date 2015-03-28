@@ -27,7 +27,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         @raises TestFail if actual scrolling did not match expected.
 
         """
-        self._reload_page()
+        self._set_default_scroll_position()
         self._wait_for_default_scroll_position()
         self._playback(filepath=filename)
         self._wait_for_scroll_position_to_settle()
@@ -67,7 +67,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
-            raise error.TestFail('No touchpad found on this %d' % device)
+            raise error.TestFail('No touchpad found on this %s' % device)
 
         # Log in and start test.
         with chrome.Chrome(autotest_ext=True) as cr:

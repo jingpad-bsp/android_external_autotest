@@ -30,7 +30,7 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         @raise: TestFail if scrolling did not occur in expected direction.
 
         """
-        self._reload_page()
+        self._set_default_scroll_position()
         self._wait_for_default_scroll_position()
         self._playback(self._dut_paths[name], touch_type='mouse')
         self._wait_for_scroll_position_to_settle()
