@@ -26,7 +26,7 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
         log_cmd = 'grep -i touch /var/log/messages'
 
         pass_terms = ['chromeos-touch-firmware-update']
-        fail_terms = ['error', 'fail']
+        fail_terms = ['error']
 
         # Check for key terms in touch logs.
         for term in pass_terms + fail_terms:
