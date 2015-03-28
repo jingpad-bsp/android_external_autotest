@@ -1,12 +1,9 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname $(readlink -f $0))
-RUNDATE=$(date +%Y-%m-%d.%H)
-RUNFILE=$SCRIPT_DIR/../logs/dut-data/boards-$RUNDATE.txt
-GMAIL_SCRIPT=$SCRIPT_DIR/../site_utils/gmail_lib.py
 
-# By default, we're invoked without arguments.  This is used by
-# the cron job, and means we should generate output and mail it to
+# By default, we're invoked without arguments.  This is how the cron
+# job does it, and means we should generate output and mail it to
 # the default mail alias.
 #
 # Invoking with arguments is for testing:  It allows running through
@@ -14,6 +11,7 @@ GMAIL_SCRIPT=$SCRIPT_DIR/../site_utils/gmail_lib.py
 # aliases.
 
 cd $SCRIPT_DIR
+OPTIONS=""
 if [ $# -eq 0 ]; then
   # TODO(jrbarnette):  Really, this feels like a hack.  The cron job
   # that invokes this script is installed and enabled on both a
@@ -32,8 +30,12 @@ if [ $# -eq 0 ]; then
   )
 else
   INTEREST=( "$@" )
+  OPTIONS=--print
 fi
 
-./board-status-summary >$RUNFILE
-
-$GMAIL_SCRIPT -s "DUT board inventories $RUNDATE" "${INTEREST[@]}" <$RUNFILE
+cd ..
+NOTIFY=(
+  --board-notify
+  $(echo "${INTEREST[@]}" | sed 's/ /,/g')
+)
+site_utils/lab_inventory.py $OPTIONS "${NOTIFY[@]}"

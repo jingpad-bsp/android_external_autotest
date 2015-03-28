@@ -344,6 +344,24 @@ class HostJobHistory(object):
         self._history = newhistory
 
 
+    def _extract_prefixed_label(self, prefix):
+        label = [l for l in self._host.labels
+                    if l.startswith(prefix)][0]
+        return label[len(prefix) : ]
+
+
+    def get_host_board(self):
+        """Return the board name for this history's DUT."""
+        prefix = constants.Labels.BOARD_PREFIX
+        return self._extract_prefixed_label(prefix)
+
+
+    def get_host_pool(self):
+        """Return the pool name for this history's DUT."""
+        prefix = constants.Labels.POOL_PREFIX
+        return self._extract_prefixed_label(prefix)
+
+
     def last_diagnosis(self):
         """Return the diagnosis of whether the DUT is working.
 
