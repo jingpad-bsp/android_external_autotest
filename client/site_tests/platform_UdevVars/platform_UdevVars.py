@@ -81,8 +81,8 @@ class platform_UdevVars(test.test):
         boards_with_touchscreen = ['link', 'samus']
         boards_maybe_touchscreen = ['rambi', 'peppy', 'glimmer', 'clapper',
                                     'nyan_big', 'nyan_blaze', 'expresso']
-        boards_chromebox = ['tricky', 'mccloud', 'zako', 'panther', 'beltino',
-                            'stumpy']
+        boards_chromebox = ['beltino', 'guado', 'mccloud', 'panther', 'rikku', 
+                            'stumpy', 'tidus', 'tricky', 'zako']
         boards_aio = ['nyan_kitty', 'tiny', 'anglar', 'monroe']
 
         expect_keyboard = None
