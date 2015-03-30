@@ -263,7 +263,9 @@ class graphics_GLBench(test.test):
       self.write_perf_keyval(keyvals)
 
     # Raise exception if images don't match.
-    if failed_tests:
+    # TODO(ihf): Once we have updated all reference images and the test is
+    # known to be stable also fail on hasty/freon.
+    if failed_tests and not (utils.is_freon() and hasty):
       logging.info('Some images are not matching their reference in %s.',
                    self.reference_images_file)
       logging.info('Please verify that the output images are correct '

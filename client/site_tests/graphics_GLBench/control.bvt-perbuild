@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'graphics_GLBench.bvt-cq'
+NAME = 'graphics_GLBench.bvt-perbuild'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
 CRITERIA = """
@@ -20,8 +20,9 @@ the unknown image and older versions in ../../deps/glbench-images/.
 Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
-# TODO(ihf): enable test again on bvt-cq once shown stable.
-#SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'
+# TODO(ihf): enable test again on bvt-cq once shown stable (and delete this
+# control file).
+SUITE = 'bvt-perbuild, graphics_per-day, graphics, graphics_system'
 TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
