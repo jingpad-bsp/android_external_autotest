@@ -17,7 +17,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
     version = 1
 
     _VALID_BOARDS = ['squawks', 'nyan_big', 'parrot', 'link', 'peppy', 'daisy',
-                     'peach_pit', 'x86-alex']
+                     'peach_pit', 'x86-alex', 'veyron_mighty', 'samus', 'auron_paine']
 
     def _check_scroll_direction(self, filename, down):
         """Playback and raise error if scrolling does not match down value.
