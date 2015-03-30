@@ -1247,3 +1247,78 @@ class NetifacesPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class TrolliusPackage(ExternalPackage):
+    """ trollius module """
+    module_name = 'trollius'
+    version = '1.0.4'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/t/trollius/%s' %
+            (url_filename),)
+    hex_sum = '4368cf44efd140f82f6b87412019431be006de67'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class LogbookPackage(ExternalPackage):
+    """ logbook module """
+    module_name = 'Logbook'
+    version = '0.9.0'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/L/Logbook/%s' %
+            (url_filename),)
+    hex_sum = '1cd2ffa320a095daa7f9f6c31bcde46b8d5ae317'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class LxmlPackage(ExternalPackage):
+    """ lxml futures module """
+    module_name = 'lxml'
+    version = '3.4.2'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/l/lxml/%s' %
+            (url_filename),)
+    hex_sum = '7285670314e3f3327bfb06b3c11d794b823fad07'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class FuturesPackage(ExternalPackage):
+    """ futures module """
+    module_name = 'futures'
+    version = '2.2.0'
+    url_filename = '%s-%s.tar.gz' % (module_name, version)
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/f/futures/%s' %
+            (url_filename),)
+    hex_sum = '0302253fb7e4fbbc48000b3e3dde244e9e7cd353'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class PysharkPackage(ExternalPackage):
+    """ pyshark module """
+    module_name = 'pyshark'
+    version = '0.3.4'
+    url_filename = '%s-%s.zip' % (module_name, version)
+    local_filename = url_filename
+    urls = ('https://pypi.python.org/packages/source/p/pyshark/%s' %
+            (url_filename),)
+    hex_sum = '1ace848568c76609459670f7b1657e4aa1b10e40'
+
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_noegg)
