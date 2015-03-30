@@ -124,7 +124,12 @@ class ESMetadata(object):
         @param type_str: sets the _type field in elasticsearch db.
         @param metadata: dictionary object containing metadata
         """
-        self.es.index(index=self.index, doc_type=type_str, body=metadata)
+        try:
+            self.es.index(index=self.index, doc_type=type_str, body=metadata)
+        except elasticsearch.ElasticsearchException as e:
+            # Mute exceptions from metadata reporting to prevent meta data
+            # reporting errors from killing test.
+            logging.error(e)
 
 
     def _send_data_udp(self, type_str, metadata):
@@ -176,6 +181,7 @@ class ESMetadata(object):
                 self._send_data_udp(type_str, metadata)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
+
 
     def _compose_query(self, equality_constraints=[], fields_returned=None,
                        range_constraints=[], size=1000000, sort_specs=None,

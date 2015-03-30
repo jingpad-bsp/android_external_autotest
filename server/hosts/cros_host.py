@@ -1553,6 +1553,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     label.remove_hosts(hosts=host_list)
                     mismatch_found = True
         if mismatch_found:
+            autotest_es.post(use_http=True,
+                             type_str='cros_version_label_mismatch',
+                             metadata={'hostname': self.hostname})
             raise error.AutoservError('The host has wrong cros-version label.')
 
 
