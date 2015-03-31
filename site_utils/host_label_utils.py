@@ -107,13 +107,13 @@ def collect_info():
         info = {'hostname': host.hostname,
                 'labels': [label.name for label in host.labels.all()],
                 'time_index': time_index}
-        autotest_es.post(type_str=_HOST_LABEL_TYPE, metadata=info,
-                                   log_time_recorded=False)
+        autotest_es.post(use_http=True, type_str=_HOST_LABEL_TYPE,
+                         metadata=info, log_time_recorded=False)
 
     # After all host label information is logged, save the time stamp.
-    autotest_es.post(type_str=_HOST_LABEL_TIME_INDEX_TYPE,
-                               metadata={'time_index': time_index},
-                               log_time_recorded=False)
+    autotest_es.post(use_http=True, type_str=_HOST_LABEL_TIME_INDEX_TYPE,
+                     metadata={'time_index': time_index},
+                     log_time_recorded=False)
     logging.info('Finished collecting host labels for %d hosts.', len(hosts))
 
 

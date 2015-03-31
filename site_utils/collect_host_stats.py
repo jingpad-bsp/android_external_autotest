@@ -15,9 +15,9 @@ from datetime import datetime
 from datetime import timedelta
 
 import common
-from autotest_lib.client.common_lib import mail
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import host_history_utils
 from autotest_lib.site_utils import host_label_utils
@@ -126,9 +126,9 @@ def main():
             if error:
                 errors.append(error)
     if options.email and errors:
-        mail.send('chromeos-test@google.com', [options.email], [],
-                  'Error occured when collecting host stats.',
-                  '\n'.join(errors))
+        gmail_lib.send_email(options.email,
+                             'Error occured when collecting host stats.',
+                             '\n'.join(errors))
 
 
 if __name__ == '__main__':
