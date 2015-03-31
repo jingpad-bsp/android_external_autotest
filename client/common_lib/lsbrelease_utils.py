@@ -6,6 +6,7 @@
 # various information.
 
 import logging
+import os
 import re
 
 import common
@@ -68,14 +69,14 @@ def is_moblab(lsb_release_content=None):
 
     @return the board string if this is a Moblab device or None if it is not.
     """
+    if os.path.exists(constants.LSB_RELEASE):
+        return _lsbrelease_search(
+                r'.*moblab', lsb_release_content=lsb_release_content)
     try:
         from chromite.lib import cros_build_lib
         if cros_build_lib.IsInsideChroot():
             return None
-
-        return _lsbrelease_search(r'.*moblab',
-                                  lsb_release_content=lsb_release_content)
-    except (IOError, ImportError) as e:
+    except ImportError as e:
         logging.error('Unable to determine if this is a moblab system: %s', e)
 
 
