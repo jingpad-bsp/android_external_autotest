@@ -590,7 +590,7 @@ class ChromiumOSUpdater():
                 # The crash names contain timestamps that may be useful:
                 #   kernel.20131207.005945.0.kcrash
                 for crash in kernel_crashes:
-                  logging.debug('  %s', os.path.basename(crash))
+                    logging.debug('  %s', os.path.basename(crash))
 
             # Print out some information to make it easier to debug
             # the rollback.

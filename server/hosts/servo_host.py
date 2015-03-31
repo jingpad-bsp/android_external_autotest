@@ -18,11 +18,13 @@ import xmlrpclib
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
+from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -374,6 +376,18 @@ class ServoHost(ssh_host.SSHHost):
                         (self.hostname, e))
 
 
+    def get_release_version(self):
+        """Get the value of attribute CHROMEOS_RELEASE_VERSION from lsb-release.
+
+        @returns The version string in lsb-release, under attribute
+                 CHROMEOS_RELEASE_VERSION.
+        """
+        lsb_release_content = self.run(
+                    'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
+        return lsbrelease_utils.get_chromeos_release_version(
+                    lsb_release_content=lsb_release_content)
+
+
     @_timer.decorate
     def _update_image(self):
         """Update the image on the servo host, if needed.
@@ -421,7 +435,7 @@ class ServoHost(ssh_host.SSHHost):
             url = ds.get_update_url(latest_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
-        current_build_number = updater.get_build_id()
+        current_build_number = self.get_release_version()
         status = updater.check_update_status()
 
         if status == autoupdater.UPDATER_NEED_REBOOT:
@@ -443,7 +457,7 @@ class ServoHost(ssh_host.SSHHost):
             # raised, so test requires servo should fail.
             self.reboot(**kwargs)
             if self.wait_up(timeout=120):
-                current_build_number = updater.get_build_id()
+                current_build_number = self.get_release_version()
                 logging.info('servo host %s back from reboot, with build %s',
                              self.hostname, current_build_number)
             else:

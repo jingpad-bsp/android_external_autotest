@@ -596,7 +596,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 'Failed to update %s to build %s; found build '
                 '%s instead' % (self.hostname,
                                 updater.update_version,
-                                updater.get_build_id()))
+                                self.get_release_version()))
 
 
     def _stage_image_for_update(self, image_name=None):
