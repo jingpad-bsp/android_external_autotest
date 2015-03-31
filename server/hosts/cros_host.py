@@ -109,6 +109,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     INSTALL_TIMEOUT = 480
     POWERWASH_BOOT_TIMEOUT = 60
 
+    # Minimum OS version that supports server side packaging. Older builds may
+    # not have server side package built or with Autotest code change to support
+    # server-side packaging.
+    MIN_VERSION_SUPPORT_SSP = 6919
+
     # REBOOT_TIMEOUT: How long to wait for a reboot.
     #
     # We have a long timeout to ensure we don't flakily fail due to other
@@ -515,6 +520,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                             'no job_report_url attribute or version label.')
                 image_name = labels[0].name[len(ds_constants.VERSION_PREFIX):]
                 ds = dev_server.ImageServer.resolve(image_name)
+
+        # Get the OS version of the build, for any build older than
+        # MIN_VERSION_SUPPORT_SSP, server side packaging is not supported.
+        match = re.match('.*/R\d+-(\d+)\.', image_name)
+        if match and int(match.group(1)) < self.MIN_VERSION_SUPPORT_SSP:
+            logging.warn('Build %s is older than %s. Server side packaging is '
+                         'disabled.', image_name, self.MIN_VERSION_SUPPORT_SSP)
+            return None
+
         ds.stage_artifacts(image_name, ['autotest_server_package'])
         return '%s/static/%s/%s' % (ds.url(), image_name,
                                     'autotest_server_package.tar.bz2')
