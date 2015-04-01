@@ -709,6 +709,25 @@ class ContainerBucket(object):
                                                'shadow_config.ini')
         run('cp %s %s' % (shadow_config, container_shadow_config))
 
+        # Copy over local .ssh/config file if exists.
+        ssh_config = os.path.expanduser('~/.ssh/config')
+        container_ssh = os.path.join(self.container_path, name,
+                                     'rootfs' if IS_MOBLAB else 'delta0',
+                                     'root', '.ssh')
+        container_ssh_config = os.path.join(container_ssh, 'config')
+        if os.path.exists(ssh_config):
+            run('mkdir -p %s'% container_ssh)
+            run('cp "%s" "%s"' % (ssh_config, container_ssh_config))
+            # Remove domain specific flags.
+            run('sed -i "s/UseProxyIf=false//g" %s' % container_ssh_config)
+
+        # Copy over resolv.conf for DNS search path. The file is copied to
+        # autotest folder so its content can be appended in /etc/resolv.conf
+        # after the container is started.
+        resolv_conf = '/etc/resolv.conf'
+        container_resolv_conf = os.path.join(autotest_path, 'resolv.conf')
+        run('cp "%s" "%s"' % (resolv_conf, container_resolv_conf))
+
         # Copy over control file to run the test job.
         if control:
             container_drone_temp = os.path.join(autotest_path, 'drone_tmp')
@@ -747,6 +766,11 @@ class ContainerBucket(object):
         container.start(name)
         # Make sure the rsa file has right permission.
         container.attach_run('chmod 700 /root/.ssh/testing_rsa')
+        container.attach_run('chmod 700 /root/.ssh/config')
+        # Update resolv.conf
+        container.attach_run('cat /usr/local/autotest/resolv.conf >> '
+                             '/etc/resolv.conf')
+
         self.modify_shadow_config(
                 container,
                 os.path.join(CONTAINER_AUTOTEST_DIR, 'shadow_config.ini'))
