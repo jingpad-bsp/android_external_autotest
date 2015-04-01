@@ -67,6 +67,27 @@ class Suspender(object):
         # Hard disk sync and overall just slow
         'parrot': 8,
         'kiev': 9,
+
+        # TODO: Remove when http://crbug.com/468809 is fixed.
+        'auron_paine': 5,
+        'auron_yuna': 5,
+        'candy': 5,
+        'clapper': 5,
+        'falco': 5,
+        'gnawty': 5,
+        'kip': 5,
+        'leon': 5,
+        'link': 5,
+        'mccloud': 5,
+        'monroe': 5,
+        'panther': 5,
+        'peppy': 5,
+        'quawks': 5,
+        'samus': 5,
+        'squawks': 5,
+        'winky': 5,
+        'wolf': 5,
+        'zako': 5,
     }
 
     # alarm/not_before value guaranteed to raise SpuriousWakeup in _hwclock_ts
