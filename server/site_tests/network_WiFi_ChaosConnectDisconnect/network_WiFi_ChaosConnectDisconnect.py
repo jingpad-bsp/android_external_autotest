@@ -75,3 +75,4 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
                       (pprint.pformat(results), assoc_params, debug_info,
                        client.wifi_mac))
             raise error.TestFail(msg)
+        logging.debug('Debug info: %s', debug_info)

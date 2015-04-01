@@ -444,7 +444,10 @@ class ChaosRunner(object):
                         if not firmware_ver:
                             firmware_ver = "Unknown"
 
-                        debug_dict = {'ap_name': name,
+                        debug_dict = {'+++PARSE DATA+++': '+++PARSE DATA+++',
+                                      'SSID': ap._ssid,
+                                      'DUT': client.wifi_mac,
+                                      'AP Info': ap.name,
                                       'kernel_version': kernel_ver,
                                       'wifi_firmware_version': firmware_ver}
                         debug_string = pprint.pformat(debug_dict)
