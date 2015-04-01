@@ -9,6 +9,7 @@ import time
 from contextlib import contextmanager
 from collections import namedtuple
 
+from autotest_lib.client.bin import site_utils as client_site_utils
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
@@ -36,6 +37,7 @@ WAKE_TO_SCAN_PERIOD_SECONDS = 30
 NET_DETECT_SCAN_WAIT_TIME_SECONDS = 15
 WAIT_UP_TIMEOUT_SECONDS = 10
 DISCONNECT_WAIT_TIME_SECONDS = 10
+INTERFACE_DOWN_WAIT_TIME_SECONDS = 10
 
 ConnectTime = namedtuple('ConnectTime', 'state, time')
 
@@ -297,8 +299,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.powersave_switch(False)
         # All tests that use this object assume the interface starts enabled.
         self.set_device_enabled(self._wifi_if, True)
-        # Make sure wpa_supplicant is started.
-        self.start_wpasupplicant(warn_if_not_running=True)
 
 
     def _assert_method_supported(self, method_name):
@@ -354,8 +354,6 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.stop_capture()
         self.powersave_switch(False)
         self.shill.clean_profiles()
-        # Start wpasupplicant if it was stopped during the test.
-        self.start_wpasupplicant()
         super(WiFiClient, self).close()
 
 
@@ -978,25 +976,36 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self.assert_disconnect_count(0)
 
 
-    def stop_wpasupplicant(self):
-        """Stop wpa_supplicant."""
-        self.host.run('stop wpasupplicant', ignore_status=True)
-        # wpa_supplicant will bring down the link when it goes down. Bring up
-        # the interface to allow the test to use the interface.
-        self.host.run('%s link set %s up' % (self.cmd_ip, self.wifi_if))
+    def release_wifi_if(self):
+        """Release the control over the wifi interface back to normal operation.
 
+        This will give the ownership of the wifi interface back to shill and
+        wpa_supplicant.
 
-    def start_wpasupplicant(self, warn_if_not_running=False):
-        """Start wpa_supplicant if it is not running
-
-        @param warn_if_not_running: boolean that determines whether or not to
-        log a warning when we start supplicant if it is not running.
         """
-        if (self.host.run('pgrep -l wpa_supplicant',
-                          ignore_status=True).exit_status != 0):
-            if warn_if_not_running:
-                logging.warning('wpasupplicant is not running, will be started')
-            self.host.run('start wpasupplicant', ignore_status=True)
+        self.set_device_enabled(self._wifi_if, True)
+
+
+    def claim_wifi_if(self):
+        """Claim the control over the wifi interface from this wifi client.
+
+        This claim the ownership of the wifi interface from shill and
+        wpa_supplicant. The wifi interface should be UP when this call returns.
+
+        """
+        # Disabling a wifi device in shill will remove that device from
+        # wpa_supplicant as well.
+        self.set_device_enabled(self._wifi_if, False)
+
+        # Wait for shill to bring down the wifi interface.
+        is_interface_down = lambda: not self._interface.is_up
+        client_site_utils.poll_for_condition(
+                is_interface_down,
+                timeout=INTERFACE_DOWN_WAIT_TIME_SECONDS,
+                sleep_interval=0.5,
+                desc='Timeout waiting for interface to go down.')
+        # Bring up the wifi interface to allow the test to use the interface.
+        self.host.run('%s link set %s up' % (self.cmd_ip, self.wifi_if))
 
 
     def set_sched_scan(self, enable, fail_on_unsupported=False):

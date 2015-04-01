@@ -192,6 +192,35 @@ class Interface:
 
 
     @property
+    def is_up(self):
+        """@return True if this interface is UP, False otherwise."""
+        # "ip addr show %s 2> /dev/null" returns something that looks like:
+        #
+        # 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast
+        #    link/ether ac:16:2d:07:51:0f brd ff:ff:ff:ff:ff:ff
+        #    inet 172.22.73.124/22 brd 172.22.75.255 scope global eth0
+        #    inet6 2620:0:1000:1b02:ae16:2dff:fe07:510f/64 scope global dynamic
+        #       valid_lft 2591982sec preferred_lft 604782sec
+        #    inet6 fe80::ae16:2dff:fe07:510f/64 scope link
+        #       valid_lft forever preferred_lft forever
+        #
+        # We only cares about the flags in the first line.
+        result = self._run('ip addr show %s 2> /dev/null' % self._name,
+                           ignore_status=True)
+        address_info = result.stdout
+        if result.exit_status != 0:
+            # The "ip" command will return non-zero if the interface does
+            # not exist.
+            return False
+        status_line = address_info.splitlines()[0]
+        flags_str = status_line[status_line.find('<')+1:status_line.find('>')]
+        flags = flags_str.split(',')
+        if 'UP' not in flags:
+            return False
+        return True
+
+
+    @property
     def mac_address(self):
         """@return the (first) MAC address, e.g., "00:11:22:33:44:55"."""
         return self.addresses.get(self.ADDRESS_TYPE_MAC, [None])[0]
