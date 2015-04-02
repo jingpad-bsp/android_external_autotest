@@ -340,6 +340,7 @@ class MediaTestFactory(object):
         return gn
 
 
+    @method_logger.log
     def make_chameleon_screenshot_capturer(self, hostname, args):
         """
 
@@ -368,6 +369,7 @@ class MediaTestFactory(object):
                 box)
 
 
+    @method_logger.log
     def make_chameleon_video_capturer(self, hostname, args):
         """
         @param hostname: string, name of  host that chameleon is connected to.
@@ -389,10 +391,8 @@ class MediaTestFactory(object):
         # what to do about the banner, crop it out permanently or dig inside
         # chrome flags to figure out how to disable it
 
-        top_pixels_to_crop = self.top_pixels_to_crop + 30
-
-        box = (0, top_pixels_to_crop, self.video_width,
-               top_pixels_to_crop + self.video_height)
+        box = (0, self.top_pixels_to_crop, self.video_width,
+               self.top_pixels_to_crop + self.video_height)
 
         return chameleon_video_capturer.ChameleonVideoCapturer(
                 chameleon_port=finder.find_port(

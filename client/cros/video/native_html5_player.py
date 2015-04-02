@@ -33,6 +33,14 @@ class NativeHtml5Player(video_player.VideoPlayer):
         return self.tab.EvaluateJavaScript('canplay()')
 
 
+    def play(self):
+        """
+        Plays the video.
+
+        """
+        self.tab.ExecuteJavaScript('play()')
+
+
     def seek_to(self, t):
         """
         Seeks a vimeo video to a time stamp.

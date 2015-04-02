@@ -101,12 +101,9 @@ class ChameleonVideoCapturer(object):
                 prev_img.save(fullpath)
 
                 logging.debug("Copied image and skipping iteration.")
-                continue
-
-            # current image is previous image for the next iteration
-            prev_img = self.chameleon_port.read_captured_frame(i)
-
-            prev_img.save(fullpath)
+            else: # current image is previous image for the next iteration
+                prev_img = self.chameleon_port.read_captured_frame(i)
+                prev_img.save(fullpath)
 
             test_images.append(fullpath)
 
