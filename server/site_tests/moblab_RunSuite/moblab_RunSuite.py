@@ -3,10 +3,15 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros import moblab_test
 from autotest_lib.server.hosts import moblab_host
+
+
+FAILURE_FOLDERS = ['/usr/local/autotest/results', '/usr/local/autotest/logs']
 
 
 class moblab_RunSuite(moblab_test.MoblabTest):
@@ -37,8 +42,20 @@ class moblab_RunSuite(moblab_test.MoblabTest):
         build = build_pattern % (board, stable_version)
 
         logging.debug('Running suite: %s.', suite_name)
-        result = host.run_as_moblab(
-                "%s/site_utils/run_suite.py --pool='' "
-                "--board=%s --build=%s --suite_name=%s" %
-                (moblab_host.AUTOTEST_INSTALL_DIR, board, build, suite_name))
+        try:
+            result = host.run_as_moblab(
+                    "%s/site_utils/run_suite.py --pool='' "
+                    "--board=%s --build=%s --suite_name=%s" %
+                    (moblab_host.AUTOTEST_INSTALL_DIR, board, build,
+                     suite_name))
+        except error.AutoservRunError as e:
+            # Collect the results and logs from the moblab device.
+            moblab_logs_dir = os.path.join(self.resultsdir, 'moblab_logs')
+            for folder in FAILURE_FOLDERS:
+                try:
+                    host.get_file(folder, moblab_logs_dir)
+                except error.AutoservRunError as e2:
+                    logging.error(e2)
+                    pass
+            raise e
         logging.debug('Suite Run Output:\n%s', result.stdout)
