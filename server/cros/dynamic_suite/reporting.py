@@ -258,9 +258,7 @@ class MachineKillerBug(Bug):
 class PoolHealthBug(Bug):
     """Report information about a critical pool of DUTs in the lab."""
 
-    _POOL_HEALTH_LABELS = global_config.global_config.get_config_value(
-                            'BUG_REPORTING', 'pool_health_labels',
-                            type=list, default=[])
+    _POOL_HEALTH_LABELS = ['recoverduts', 'Hardware-Lab', 'Pri-1']
     _CC_ADDRESS = global_config.global_config.get_config_value(
                             'BUG_REPORTING', 'pool_health_cc',
                             type=list, default=[])
