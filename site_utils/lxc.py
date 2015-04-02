@@ -564,10 +564,11 @@ class ContainerBucket(object):
 
         base_path = os.path.join(self.container_path, name)
         if self.exist(name) and not force_delete:
-            raise error.ContainerError(
+            logging.error(
                     'Base container already exists. Set force_delete to True '
                     'to force to re-stage base container. Note that this '
                     'action will destroy all running test containers')
+            return
 
         # Destroy existing base container if exists.
         if self.exist(name):
