@@ -27,6 +27,7 @@ if [ $# -eq 0 ]; then
   fi
 
   INTEREST=(
+    chromeos-infra-eng@grotations.appspotmail.com
     chromeos-lab-alerts@google.com
   )
 else
