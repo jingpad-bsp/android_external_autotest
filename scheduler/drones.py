@@ -161,7 +161,7 @@ class _BaseAbstractDrone(object):
                 self._host.run('which lxc-start')
                 # Test if base container is setup.
                 base_container = os.path.join(DEFAULT_CONTAINER_PATH, 'base')
-                self._host.run('ls "%s"' %  base_container)
+                self._host.run('sudo ls "%s"' %  base_container)
                 self._support_ssp = True
             except (error.AutoservRunError, error.AutotestHostRunError):
                 # Local drone raises AutotestHostRunError, while remote drone
