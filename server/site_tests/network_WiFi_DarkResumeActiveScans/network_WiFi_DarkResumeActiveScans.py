@@ -73,6 +73,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
         router = self.context.router
         dut_mac = client.wifi_mac
         dut_ip = client.wifi_ip
+        prev_num_dark_resumes = 0
 
         logging.info('DUT WiFi MAC = %s, IPv4 = %s', dut_mac, dut_ip)
         logging.info('Router WiFi IPv4 = %s', router.wifi_ip)
@@ -106,7 +107,8 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 # during the wake.
                 self.stop_capture_and_check_for_probe_requests(mac=dut_mac)
 
-                if self._dr_utils.count_dark_resumes() < 1:
+                prev_num_dark_resumes = self._dr_utils.count_dark_resumes()
+                if prev_num_dark_resumes < 1:
                     raise error.TestFail('Client failed to wake on packet.')
                 logging.info('Client woke up on packet successfully.')
 
@@ -140,7 +142,8 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 # during the wake.
                 self.stop_capture_and_check_for_probe_requests(mac=dut_mac)
 
-                if self._dr_utils.count_dark_resumes() < 1:
+                if (self._dr_utils.count_dark_resumes() -
+                    prev_num_dark_resumes) < 1:
                     raise error.TestFail('Client failed to wake up to scan.')
                 logging.info('Client woke up to scan successfully.')
 
