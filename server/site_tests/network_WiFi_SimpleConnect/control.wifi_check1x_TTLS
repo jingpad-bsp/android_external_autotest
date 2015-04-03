@@ -32,7 +32,8 @@ def run(machine):
               xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_MD5,
               xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_TTLS_MSCHAPV2,
               xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_TTLS_MSCHAP,
-              xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_TTLS_PAP)
+              xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_TTLS_PAP,
+              xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_GTC)
     for inner in inners:
         configurations += tunneled_1x_tests.get_positive_8021x_test_cases(
                 xmlrpc_security_types.Tunneled1xConfig.LAYER1_TYPE_TTLS,

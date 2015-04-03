@@ -12,7 +12,7 @@ DEPENDENCIES = 'wificell'
 
 DOC = """
 This test attempts to verify that we can connect to a router while using
-PEAP authentication with tunneled MSCHAPv2 and MD5.
+PEAP authentication with tunneled MSCHAPv2, MD5, and GTC.
 """
 
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -29,7 +29,8 @@ def run(machine):
             xmlrpc_security_types.Tunneled1xConfig.LAYER1_TYPE_PEAP,
             xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_MSCHAPV2)
     for inner in (xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_MSCHAPV2,
-                  xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_MD5):
+                  xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_MD5,
+                  xmlrpc_security_types.Tunneled1xConfig.LAYER2_TYPE_GTC):
         configurations += tunneled_1x_tests.get_positive_8021x_test_cases(
                 xmlrpc_security_types.Tunneled1xConfig.LAYER1_TYPE_PEAP,
                 inner)
