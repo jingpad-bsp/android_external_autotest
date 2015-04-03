@@ -86,9 +86,30 @@ def ClearTPMServer(client, out_dir):
         logging.warn(e.args[0])
         client.run('crossystem clear_tpm_owner_request=1')
 
-    client.run('rm -rf /home/.shadow/*')
-    client.run('rm -rf /var/lib/whitelist/*')
-    client.run('rm -f /home/chronos/Local\ State')
+    CleanupAndReboot(client)
+
+
+def ClearTPMOwnerRequest(client):
+    """Clears the TPM using crossystem command.
+
+    @param client: client object to run commands on.
+    """
+    if not client.run('crossystem clear_tpm_owner_request=1',
+                      ignore_status=True).exit_status == 0:
+        raise error.TestFail('Unable to clear TPM.')
+
+    CleanupAndReboot(client)
+
+
+def CleanupAndReboot(client):
+    """Cleanup and reboot the device.
+
+    @param client: client object to run commands on.
+    """
+    client.run('rm -rf /home/.shadow/*', ignore_status=True)
+    client.run('rm -rf /var/lib/whitelist/*', ignore_status=True)
+    client.run('rm -f /home/chronos/Local\ State', ignore_status=True)
+    client.run('sync', ignore_status=True)
     client.reboot()
 
 

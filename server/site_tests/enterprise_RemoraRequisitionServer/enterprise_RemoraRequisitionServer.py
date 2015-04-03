@@ -14,7 +14,6 @@ class enterprise_RemoraRequisitionServer(test.test):
     def run_once(self, host=None):
         self.client = host
 
-        tpm_utils.ClearTPMServer(self.client, self.resultsdir)
+        tpm_utils.ClearTPMOwnerRequest(self.client)
         autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition')
-        tpm_utils.ClearTPMServer(self.client, self.resultsdir)
-
+        tpm_utils.ClearTPMOwnerRequest(self.client)
