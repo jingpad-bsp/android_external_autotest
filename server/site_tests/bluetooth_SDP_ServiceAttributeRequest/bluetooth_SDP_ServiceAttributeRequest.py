@@ -153,7 +153,6 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
 
     # TODO(quiche): Move this up, to be grouped with the other |assert|
     # methods.
-    @staticmethod
     def assert_attribute_equals(self, class_id, attr_id, expected_value):
         """Verify that |attr_id| of service with |class_id| has |expected_value|
 
