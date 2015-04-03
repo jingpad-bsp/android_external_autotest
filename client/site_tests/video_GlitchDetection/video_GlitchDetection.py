@@ -84,9 +84,7 @@ class video_GlitchDetection(test.test):
 
         file_utils.ensure_dir_exists(test_dir)
 
-        golden_images = self.get_golden_images()
-
-        test_images = self.get_test_images()
+        golden_images, test_images = self.get_images()
 
         file_utils.ensure_all_files_exist(golden_images)
 
@@ -97,39 +95,7 @@ class video_GlitchDetection(test.test):
         file_utils.rm_dir_if_exists(test_dir)
 
 
-    def get_golden_images(self):
-        if self.use_chameleon:
-            filenames = [str(i) + '.' + self.factory.screenshot_image_format
-                         for i in xrange(0, self.factory.video_frame_count)]
-
-        else:
-            timestamps = sequence_generator.generate_random_sequence(
-                    self.factory.start_capture,
-                    self.factory.stop_capture,
-                    self.factory.samples_per_min)
-
-
-            namer = self.factory.make_screenshot_filenamer()
-
-            filenames = [namer.get_filename(t) for t in timestamps]
-
-
-        golden_images_dir = self.factory.local_golden_images_dir
-        golden_images = []
-
-        for f in filenames:
-            local_path = os.path.join(golden_images_dir, f)
-            remote_path = os.path.join(self.factory.golden_images_remote_dir, f)
-
-            file_utils.download_file(remote_path, local_path)
-
-            golden_images.append(local_path)
-
-        return golden_images
-
-
-    def get_test_images(self):
-
+    def get_images(self):
         if self.use_chameleon:
             video_capturer = self.factory.make_chameleon_video_capturer(
             self.host.hostname, self.args)
@@ -140,6 +106,10 @@ class video_GlitchDetection(test.test):
                 test_images = video_capturer.capture(
                         self.player,
                         self.factory.video_frame_count)
+
+            # golden images
+            filenames = [str(i) + '.' + self.factory.screenshot_image_format
+                         for i in xrange(0, self.factory.video_frame_count)]
 
         else:
             capturer = self.factory.make_import_screenshot_capturer()
@@ -154,8 +124,21 @@ class video_GlitchDetection(test.test):
             test_images = screenshot_collector.collect_multiple_screenshots(
                     timestamps)
 
+            namer = self.factory.make_screenshot_filenamer()
+            filenames = [namer.get_filename(t) for t in timestamps]
 
-        return test_images
+        golden_images_dir = self.factory.local_golden_images_dir
+        golden_images = []
+
+        for f in filenames:
+            local_path = os.path.join(golden_images_dir, f)
+            remote_path = os.path.join(self.factory.golden_images_remote_dir, f)
+
+            file_utils.download_file(remote_path, local_path)
+
+            golden_images.append(local_path)
+
+        return test_images, golden_images
 
 
     def run_once(self, channel, video_name, video_format='', video_def='',
