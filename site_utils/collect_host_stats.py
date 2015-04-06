@@ -119,6 +119,8 @@ def main():
             time_utils.epoch_time_to_date_string(end_time)))
 
     errors = []
+    if not boards:
+        errors.append('Error! No board found in metadb.')
     for board in boards:
         for pool in pools:
             error = report_stats(board, pool, start_time, end_time,

@@ -387,7 +387,7 @@ class ESMetadata(object):
             converted = {}
             if 'fields' in hit:
                 for key, value in hit['fields'].items():
-                    converted[key] = value[0]
+                    converted[key] = value[0] if len(value)==1 else value
             else:
                 converted = hit['_source'].copy()
             output.hits.append(converted)
