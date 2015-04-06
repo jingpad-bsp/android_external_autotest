@@ -12,9 +12,12 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
+SUITE = "stress_experimental"
+DEPENDENCIES = "servo"
 
 DOC = """
-This test uses servo to simulate USB connect/removal events
+This test uses servo to simulate USB connect/removal,
+and lid close/open events.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -23,11 +26,11 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
-    suspends = int(args_dict.get('suspends', 1000))
+    repeat = int(args_dict.get('repeat', 10))
     network_debug = bool(args_dict.get('network_debug', True))
 
     job.run_test("platform_ExternalUSBStress", host=host, disable_sysinfo=True,
-                 client_autotest='desktopui_SimpleLogin', suspends=suspends,
+                 client_autotest='desktopui_SimpleLogin', repeat=repeat,
                  network_debug=network_debug)
 
 parallel_simple(run, machines)
