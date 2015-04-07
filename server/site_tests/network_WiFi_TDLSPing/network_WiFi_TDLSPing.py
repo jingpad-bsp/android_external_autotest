@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
@@ -140,10 +141,13 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestError(
                     'DUT does not report a missing TDLS link: %r' % link_state)
 
-        # Perform TDLS discover and check the status
+        # Perform TDLS discover and check the status after waiting for response.
         self.context.client.discover_tdls_link(peer_ip)
-        link_state = self.context.client.query_tdls_link(peer_ip)
-        if link_state != 'Disconnected':
+        link_state_disconnected = utils.poll_for_condition(
+                lambda: (self.context.client.query_tdls_link(peer_ip) ==
+                'Disconnected'), timeout=1)
+        if not link_state_disconnected:
+            link_state = self.context.client.query_tdls_link(peer_ip)
             logging.error('DUT does not report TDLS link is disconnected: %r' %
                           link_state)
 
