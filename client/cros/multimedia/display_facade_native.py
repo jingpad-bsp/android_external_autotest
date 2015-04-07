@@ -374,7 +374,7 @@ class DisplayFacadeNative(object):
 
         @return True if mirrored mode is enabled.
         """
-        return bool(self.get_display_info()[0].mirroring_source_id)
+        return bool(self.get_display_info()[0]['mirroringSourceId'])
 
 
     def set_mirrored(self, is_mirrored):
