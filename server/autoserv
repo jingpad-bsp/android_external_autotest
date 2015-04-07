@@ -184,17 +184,17 @@ def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
         test_container.destroy()
 
 
-def run_autoserv(pid_file_manager, results, parser, ssp_url):
+def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     """Run server job with given options.
 
     @param pid_file_manager: PidFileManager used to monitor the autoserv process
     @param results: Folder to store results.
     @param parser: Parser for the command line arguments.
     @param ssp_url: Url to server-side package.
+    @param use_ssp: Set to True to run with server-side packaging.
     """
     if parser.options.warn_no_ssp:
-        # Post a warning in the log and force to not use server-side packaging.
-        parser.options.require_ssp = False
+        # Post a warning in the log.
         logging.warn('Autoserv is required to run with server-side packaging. '
                      'However, no drone is found to support server-side '
                      'packaging. The test will be executed in a drone without '
@@ -225,7 +225,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url):
         # This sleep allows the pending output to be logged before the kill
         # signal is sent.
         time.sleep(.1)
-        if parser.options.require_ssp and ssp_url:
+        if use_ssp:
             logging.debug('Destroy container %s before aborting the autoserv '
                           'process.', container_name)
             try:
@@ -355,9 +355,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url):
             elif cleanup:
                 job.cleanup(job_labels)
             else:
-                # Server-side packaging will only be used if it's required and
-                # the package is available.
-                if parser.options.require_ssp and ssp_url:
+                if use_ssp:
                     try:
                         _run_with_ssp(container_name, job_or_task_id, results,
                                       parser, ssp_url)
@@ -444,9 +442,12 @@ def main():
 
     # If the job requires to run with server-side package, try to stage server-
     # side package first. If that fails with error that autotest server package
-    # does not exist, fall back to run the job without using server-side package
+    # does not exist, fall back to run the job without using server-side
+    # packaging. If option warn_no_ssp is specified, that means autoserv is
+    # running in a drone does not support SSP, thus no need to stage server-side
+    # package.
     ssp_url = None
-    if parser.options.require_ssp:
+    if (not parser.options.warn_no_ssp and parser.options.require_ssp):
         ssp_url = _stage_ssp(parser)
         if not ssp_url:
             # The build does not have autotest server package. Fall back to not
@@ -481,7 +482,13 @@ def main():
         if not os.path.isdir(results):
             os.makedirs(results)
 
-    if parser.options.require_ssp and ssp_url:
+    # Server-side packaging will only be used if it's required and the package
+    # is available. If warn_no_ssp is specified, it means that autoserv is
+    # running in a drone does not have SSP supported and a warning will be logs.
+    # Therefore, it should not run with SSP.
+    use_ssp = (not parser.options.warn_no_ssp and parser.options.require_ssp
+               and ssp_url)
+    if use_ssp:
         log_dir = os.path.join(results, 'wrapper') if results else None
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
@@ -582,7 +589,8 @@ def main():
                             ).mock_results()
                 return
             else:
-                run_autoserv(pid_file_manager, results, parser, ssp_url)
+                run_autoserv(pid_file_manager, results, parser, ssp_url,
+                             use_ssp)
         except SystemExit as e:
             exit_code = e.code
             if exit_code:
