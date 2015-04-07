@@ -179,6 +179,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         self._total_hostapd_instances = 0
         self.local_servers = []
+        self.server_address_index = []
         self.hostapd_instances = []
         self.station_instances = []
         self.dhcp_low = 1
@@ -469,10 +470,46 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         return iface.mac_address
 
 
-    def start_local_server(self, interface):
+    def _get_unused_server_address_index(self):
+        """@return an unused server address index."""
+        for address_index in range(0, 256):
+            if address_index not in self.server_address_index:
+                return address_index
+        raise error.TestFail('No available server address index')
+
+
+    def change_server_address_index(self, ap_num=0, server_address_index=None):
+        """Restart the local server with a different server address index.
+
+        This will restart the local server with different gateway IP address
+        and DHCP address ranges.
+
+        @param ap_num: int hostapd instance number.
+        @param server_address_index: int server address index.
+
+        """
+        interface = self.local_servers[ap_num]['interface'];
+        # Get an unused server address index if one is not specified, which
+        # will be different from the one that's currently in used.
+        if server_address_index is None:
+            server_address_index = self._get_unused_server_address_index()
+
+        # Restart local server with the new server address index.
+        self.stop_local_server(self.local_servers[ap_num])
+        self.start_local_server(interface,
+                                ap_num=ap_num,
+                                server_address_index=server_address_index)
+
+
+    def start_local_server(self,
+                           interface,
+                           ap_num=None,
+                           server_address_index=None):
         """Start a local server on an interface.
 
         @param interface string (e.g. wlan0)
+        @param ap_num int the ap instance to start the server for
+        @param server_address_index int server address index
 
         """
         logging.info('Starting up local server...')
@@ -480,11 +517,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         if len(self.local_servers) >= 256:
             raise error.TestFail('Exhausted available local servers')
 
+        # Get an unused server address index if one is not specified.
+        # Validate server address index if one is specified.
+        if server_address_index is None:
+            server_address_index = self._get_unused_server_address_index()
+        elif server_address_index in self.server_address_index:
+            raise error.TestFail('Server address index %d already in used' %
+                                 server_address_index)
+
         server_addr = netblock.from_addr(
-                self.local_server_address(len(self.local_servers)),
+                self.local_server_address(server_address_index),
                 prefix_len=24)
 
         params = {}
+        params['address_index'] = server_address_index
         params['netblock'] = server_addr
         params['dhcp_range'] = ' '.join(
             (server_addr.get_addr_in_block(1),
@@ -494,7 +540,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                                (server_addr.netblock,
                                 server_addr.broadcast,
                                 interface))
-        self.local_servers.append(params)
+        if ap_num is None:
+            self.local_servers.append(params)
+        else:
+            self.local_servers.insert(ap_num, params)
+        self.server_address_index.append(server_address_index)
 
         self.router.run('%s addr flush %s' %
                         (self.cmd_ip, interface))
@@ -503,6 +553,20 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.router.run('%s link set %s up' %
                         (self.cmd_ip, interface))
         self.start_dhcp_server(interface)
+
+
+    def stop_local_server(self, server):
+        """Stop a local server on the router
+
+        @param server object server configuration parameters.
+
+        """
+        self.stop_dhcp_server(server['interface'])
+        self.router.run("%s addr del %s" %
+                        (self.cmd_ip, server['ip_params']),
+                        ignore_status=True)
+        self.server_address_index.remove(server['address_index'])
+        self.local_servers.remove(server)
 
 
     def start_dhcp_server(self, interface):
@@ -663,13 +727,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 for server in self.local_servers:
                     if server['interface'] == instances[0].interface:
                         local_servers = [server]
-                        self.local_servers.remove(server)
                         break
             else:
                 instances = self.hostapd_instances
                 self.hostapd_instances = []
                 local_servers = self.local_servers
-                self.local_servers = []
 
             for instance in instances:
                 if silent:
@@ -681,7 +743,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self.release_interface(instance.interface)
         if self.station_instances:
             local_servers = self.local_servers
-            self.local_servers = []
             instance = self.station_instances.pop()
             if instance.dev_type == 'ibss':
                 self.iw_runner.ibss_leave(instance.interface)
@@ -694,10 +755,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                             (self.cmd_ip, instance.interface))
 
         for server in local_servers:
-            self.stop_dhcp_server(server['interface'])
-            self.router.run("%s addr del %s" %
-                            (self.cmd_ip, server['ip_params']),
-                             ignore_status=True)
+            self.stop_local_server(server)
 
 
     def set_ap_interface_down(self, instance=0):

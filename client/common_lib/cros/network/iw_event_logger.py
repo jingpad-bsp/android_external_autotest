@@ -19,6 +19,7 @@ class IwEventLogger(object):
         self._command_iw = command_iw
         self._local_file = local_file
         self._pid = None
+        self._start_time = 0
 
 
     def __enter__(self):
@@ -44,7 +45,10 @@ class IwEventLogger(object):
         """
         command = '%s event -t > %s & echo $!' % (self._command_iw,
                                                   IW_REMOTE_EVENT_LOG_FILE)
-        self._pid = int(self._host.run(command).stdout)
+        command += ';date +%s'
+        out_lines = self._host.run(command).stdout.splitlines()
+        self._pid = int(out_lines[0])
+        self._start_time = float(out_lines[1])
 
 
     def stop(self):
@@ -138,3 +142,20 @@ class IwEventLogger(object):
         """
         return [entry.message.startswith('disconnected')
                 for entry in self.get_log_entries()].count(True)
+
+
+    def get_time_to_disconnected(self):
+        """Return disconnect time.
+
+        This function will search the iw event log to determine the number of
+        seconds between the time iw event logger is started to the time
+        "disconnected" event is received.
+
+        @return float number of seconds between the time iw event logger is
+                started to the time "disconnected" event is received. Return
+                None if no "disconnected" event is detected in the iw event log.
+        """
+        for entry in self.get_log_entries():
+            if entry.message.startswith('disconnected'):
+                return entry.timestamp - self._start_time
+        return None
