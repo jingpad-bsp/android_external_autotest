@@ -40,16 +40,16 @@ class EC_Common(object):
             raise error.TestNAError("Platform doesn't support ectool")
         self._target = target
 
-    def ec_command(self, cmd, ignore_status=False):
+    def ec_command(self, cmd, **kwargs):
         """Executes ec command and returns results.
 
         @param cmd: string of command to execute.
-        @param ignore_status: (OPTIONAL) ignore exit status of system call
+        @param kwargs: optional params passed to utils.system_output
 
         @returns: string of results from ec command.
         """
         full_cmd = 'ectool --name=%s %s' % (self._target, cmd)
-        result = utils.system_output(full_cmd, ignore_status=ignore_status)
+        result = utils.system_output(full_cmd, **kwargs)
         logging.debug('Command: %s', full_cmd)
         logging.debug('Result: %s', result)
         return result
@@ -151,6 +151,9 @@ class EC(EC_Common):
 class EC_USBPD_Port(EC_Common):
     """Class for CrOS embedded controller for USB-PD Port.
 
+    Public attributes:
+        index: integer of USB type-C port index.
+
     Public Methods:
         is_dfp: Determine if data role is Downstream Facing Port (DFP).
         is_amode_supported: Check if alternate mode is supported by port.
@@ -167,12 +170,12 @@ class EC_USBPD_Port(EC_Common):
         _get_port_info: Get USB-PD port info.
         _get_amodes: parse and return port's svid info.
     """
-    def __init__(self, port):
+    def __init__(self, index):
         """Constructor.
 
-        @param port: integer of USB type-C port id.
+        @param index: integer of USB type-C port index.
         """
-        self._port = port
+        self.index = index
         # TODO(crosbug.com/p/38133) target= only works for samus
         super(EC_USBPD_Port, self).__init__(target='cros_pd')
 
@@ -211,9 +214,9 @@ class EC_USBPD_Port(EC_Common):
                        'Polarity:CC(\d+)\s+State:(\w+)'
 
         match = re.search(PORT_INFO_RE,
-                          self.ec_command("usbpd %s" % (self._port)))
-        if not match or int(match.group(1)) != self._port:
-            error.TestError('Unable to determine port %d info' % self._port)
+                          self.ec_command("usbpd %s" % (self.index)))
+        if not match or int(match.group(1)) != self.index:
+            error.TestError('Unable to determine port %d info' % self.index)
 
         pinfo = dict(enabled=None, power_role=None, data_role=None,
                     is_reversed=None, state=None)
@@ -243,7 +246,7 @@ class EC_USBPD_Port(EC_Common):
         """
         SVID_RE = r'(\*?)SVID:(\S+)\s+(.*)'
         svids = dict()
-        cmd = 'pdgetmode %d' % self._port
+        cmd = 'pdgetmode %d' % self.index
         for line in self.ec_command(cmd, ignore_status=True).split('\n'):
             if line.strip() == '':
                 continue
@@ -268,7 +271,7 @@ class EC_USBPD_Port(EC_Common):
                 configs.append(config)
             svids[svid] = dict(active=active, configs=configs, opos=opos)
 
-        logging.debug("Port %d svids = %s", self._port, svids)
+        logging.debug("Port %d svids = %s", self.index, svids)
         return svids
 
     def is_dfp(self):
@@ -334,7 +337,7 @@ class EC_USBPD_Port(EC_Common):
         if opos > len(self._amodes[svid]['configs']):
             raise error.TestError("opos > available configs")
 
-        cmd = "pdsetmode %d %s %d %d" % (self._port, svid, opos,
+        cmd = "pdsetmode %d %s %d %d" % (self.index, svid, opos,
                                          1 if enter else 0)
         self.ec_command(cmd, ignore_status=True)
         self._invalidate_port_data()
@@ -342,6 +345,42 @@ class EC_USBPD_Port(EC_Common):
         # allow some time for mode entry/exit
         time.sleep(delay_secs)
         return self.is_amode_entered(svid, opos) == enter
+
+    def get_flash_info(self):
+        mat0_re = r'has no discovered device'
+        mat1_re = r'.*ptype:(\d+)\s+vid:(\w+)\s+pid:(\w+).*'
+        mat2_re = r'.*DevId:(\d+)\.(\d+)\s+Hash:\s*(\w+.*)\s*CurImg:(\w+).*'
+        flash_dict = dict.fromkeys(['ptype', 'vid', 'pid', 'dev_major',
+                                    'dev_minor', 'rw_hash', 'image_status'])
+
+        cmd = 'infopddev %d' % self.index
+
+        tries = 3
+        while (tries):
+            res = self.ec_command(cmd, ignore_status=True)
+            if not 'has no discovered device' in res:
+                break
+
+            tries -= 1
+            time.sleep(1)
+
+        for ln in res.split('\n'):
+            mat1 = re.match(mat1_re, ln)
+            if mat1:
+                flash_dict['ptype'] = int(mat1.group(1))
+                flash_dict['vid'] = mat1.group(2)
+                flash_dict['pid'] = mat1.group(3)
+                continue
+
+            mat2 = re.match(mat2_re, ln)
+            if mat2:
+                flash_dict['dev_major'] = int(mat2.group(1))
+                flash_dict['dev_minor'] = int(mat2.group(2))
+                flash_dict['rw_hash'] = mat2.group(3)
+                flash_dict['image_status'] = mat2.group(4)
+                break
+
+        return flash_dict
 
 
 class EC_USBPD(EC_Common):
