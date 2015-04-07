@@ -95,18 +95,13 @@ a1598f7
         run_cmd.return_value = 'nothing to commit (working directory clean)\n'
         dpl.verify_repo_clean()
 
-        # We allow a single branch named 'prod' in the autotest directory.
-        # repo uses bold highlights when reporting it.
+        # If repo contains any branches (even clean ones), raise.
         run_cmd.return_value = self.PROD_STATUS
-        dpl.verify_repo_clean()
-
-        # If repo doesn't return what we expect, raise.
-        run_cmd.return_value = "That's a very dirty repo you've got."
         with self.assertRaises(dpl.DirtyTreeException):
             dpl.verify_repo_clean()
 
-        # Dirty tree with 'prod' branch.
-        run_cmd.return_value = self.PROD_STATUS + 'other stuff is dirty.\n'
+        # If repo doesn't return what we expect, raise.
+        run_cmd.return_value = "That's a very dirty repo you've got."
         with self.assertRaises(dpl.DirtyTreeException):
             dpl.verify_repo_clean()
 

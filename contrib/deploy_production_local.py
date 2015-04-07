@@ -60,16 +60,8 @@ def verify_repo_clean():
     out = strip_terminal_codes(out).strip()
 
     CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
-    PROD_BRANCH_OUTPUT = ('project autotest/                            '
-                          '   branch prod')
-
-    # We're clean, if there are no branches and we are clean, or
-    # if a local prod branch exists. We wouldn't allow the branch if it wasn't
-    # required for a local commit on cautotest (ugly).
-    if out in (CLEAN_STATUS_OUTPUT, PROD_BRANCH_OUTPUT):
-        return
-
-    raise DirtyTreeException(out)
+    if out != CLEAN_STATUS_OUTPUT:
+      raise DirtyTreeException(out)
 
 
 def repo_versions():
