@@ -9,9 +9,10 @@ from autotest_lib.client.common_lib import error
 _CHARGING = 'CHARGING'
 _DISCHARGING = 'DISCHARGING'
 _WAIT_SECS_AFTER_SWITCH = 5
-_LONG_TIMEOUT = 300
+_LONG_TIMEOUT = 120
 _CLIENT_LOGIN = 'desktopui_SimpleLogin'
-
+_WAKE_PRESS_IN_SEC = 0.2
+_SUSPEND_TIME = 10
 
 class platform_PowerStatusStress(test.test):
     """Uses RPM and servo to test the power_supply_info output. """
@@ -34,47 +35,47 @@ class platform_PowerStatusStress(test.test):
         @param suspend_timeout: Time in seconds to wait to disconnect
 
         @exception TestFail if fail to suspend/disconnect in time
-        @returns time took to suspend/disconnect
+
         """
-        start_time = int(time.time())
         if not self.host.ping_wait_down(timeout=suspend_timeout):
             raise error.TestFail("Unable to suspend in %s sec" %
                                  suspend_timeout)
-        return int(time.time()) - start_time
 
 
-    def wait_to_come_up(self, resume_timeout):
+    def wait_to_come_up(self, resume_timeout = _LONG_TIMEOUT):
         """Wait for DUT to resume.
 
         @param resume_timeout: Time in seconds to wait to come up
 
         @exception TestFail if fail to come_up in time
-        @returns time took to come up
+
         """
-        start_time = int(time.time())
         if not self.host.wait_up(timeout=resume_timeout):
             raise error.TestFail("Unable to resume in %s sec" %
                                  resume_timeout)
-        return int(time.time()) - start_time
 
 
-
-    def do_suspend_resume(self, suspend_time):
+    def do_suspend_resume(self):
         """ Suspends the DUT through powerd_dbus_suspend
-
-        @param suspend_time: time in sec to suspend device for
-
         """
-        #Suspend i.e. close lid
-        self.host.servo.lid_close()
-        stime = self.wait_to_suspend(_LONG_TIMEOUT)
-        logging.debug('Suspended in %d sec', stime)
-        #Suspended for suspend_time
-        time.sleep(suspend_time)
-        #Resume i.e. open lid
-        self.host.servo.lid_open()
-        rtime = self.wait_to_come_up(_LONG_TIMEOUT)
-        logging.debug('Resumed in %d sec', rtime)
+        #Suspend
+        logging.debug('Suspending...')
+        if self.has_lid:
+            self.host.servo.lid_close()
+            self.wait_to_suspend()
+            time.sleep(_SUSPEND_TIME)
+        else:
+            self.host.suspend(suspend_time=_SUSPEND_TIME)
+
+        #Resume
+        logging.debug('Resuming...')
+        if self.has_lid:
+            self.host.servo.lid_open()
+        else:
+            self.host.servo.power_key(_WAKE_PRESS_IN_SEC)
+        self.wait_to_come_up()
+
+
 
 
 
@@ -117,7 +118,7 @@ class platform_PowerStatusStress(test.test):
             raise error.TestFail('Bad %s state!' % bat_state)
 
 
-    def run_once(self, host, loop_count, suspend_time):
+    def run_once(self, host, loop_count):
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
 
@@ -126,6 +127,17 @@ class platform_PowerStatusStress(test.test):
             self.host.power_on()
         else:
             raise error.TestFail('No RPM is setup to device')
+
+        # Check if DUT has lid.
+        self.has_lid = True
+        if self.host.servo.get('lid_open') == 'not_applicable':
+            self.has_lid = False
+        else:
+            # Check if lid_open control is good.
+            self.host.servo.lid_open()
+            if self.host.servo.get('lid_open') != 'yes':
+                raise error.TestError('BAD lid_open control. Reset servo!')
+
         # Login to device
         self.action_login()
 
@@ -134,13 +146,15 @@ class platform_PowerStatusStress(test.test):
             logging.info('--- Iteration %d', (i + 1))
 
             # Suspend/resume
-            if suspend_time > 0:
-                self.do_suspend_resume(suspend_time)
-
-            # Charging state - it could be any of the three below
-            expected = ('yes', 'AC', '(Charging|Fully charged|Discharging)')
-            self.switch_power_and_verify(True, expected)
+            self.do_suspend_resume()
 
             # Discharging state
             expected = ('no', 'Disconnected', 'Discharging')
             self.switch_power_and_verify(False, expected)
+
+            # Suspend/resume
+            self.do_suspend_resume()
+
+            # Charging state - it could be any of the three below
+            expected = ('yes', 'AC', '(Charging|Fully charged|Discharging)')
+            self.switch_power_and_verify(True, expected)

@@ -12,7 +12,7 @@ TEST_CATEGORY = "Stress"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 SUITE = "stress5"
-DEPENDENCIES = "servo"
+DEPENDENCIES = "servo, power:battery"
 
 DOC = """
 Power stress test would be:
@@ -35,9 +35,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     loop_count = int(args_dict.get('loop_count', 20))
-    suspend_time = int(args_dict.get('suspend_time', 5))
     job.run_test("platform_PowerStatusStress", host=host,
-                 disable_sysinfo=True, loop_count=loop_count,
-                 suspend_time=suspend_time)
+                 disable_sysinfo=True, loop_count=loop_count)
 
 parallel_simple(run, machines)
