@@ -1,0 +1,55 @@
+#!/bin/bash
+
+cd $(dirname $(readlink -f $0))/..
+
+BOARD="$1"
+if [[ "${BOARD}" = *_* ]]; then
+  FREON=${BOARD}-freon
+else
+  FREON=${BOARD}_freon
+fi
+
+case "${BOARD}" in
+    x86-*) PLATFORM=${BOARD#x86-} ;;
+    daisy) PLATFORM=snow ;;
+    daisy_spring) PLATFORM=spring ;;
+    daisy_skate) PLATFORM=skate ;;
+    parrot_ivb) PLATFORM=parrot_2 ;;
+    falco_li) PLATFORM=falco ;;
+    *) PLATFORM=$BOARD ;;
+esac
+
+BROKEN=( $(dut-status -n -b $FREON) )
+if [[ ${#BROKEN[@]} -eq 0 ]]; then
+  echo "No broken DUTs for $FREON" >&2
+  exit 0
+fi
+echo "Found ${#BROKEN[@]} broken $FREON DUTs" >&2
+
+HOST_FILTER='
+  NR == 1 || /pool:.*pool:/ {next}
+  {print $1}
+'
+ELIGIBLE=( $(atest list -b board:$BOARD,pool:suites | awk "${HOST_FILTER}") )
+WORKING=( $(dut-status -w "${ELIGIBLE[@]}" | tail -${#BROKEN[@]}) )
+if [[ ${#WORKING[@]} -eq 0 ]]; then
+  echo "No working DUTs for $BOARD" >&2
+  exit 1
+fi
+echo "Found ${#WORKING[@]} working $BOARD DUTs" >&2
+
+if [[ ${#WORKING[@]} -lt ${#BROKEN[@]} ]]; then
+  echo "Short by $(( ${#BROKEN[@]} - ${#WORKING[@]} )) spares" >&2
+  echo "Not all devices will be replaced" >&2
+  while [[ ${#WORKING[@]} -lt ${#BROKEN[@]} ]]; do
+    unset BROKEN[$(( ${#BROKEN[@]} - 1 ))]
+  done
+fi
+
+BROKEN_M=$(echo "${BROKEN[@]}" | sed 's/ /,/g')
+WORKING_M=$(echo "${WORKING[@]}" | sed 's/ /,/g')
+
+cli/atest label remove -m $BROKEN_M pool:bvt board:$FREON $FREON
+cli/atest label add -m $BROKEN_M pool:suites board:$BOARD $PLATFORM
+cli/atest label remove -m $WORKING_M pool:suites board:$BOARD $PLATFORM
+cli/atest label add -m $WORKING_M pool:bvt board:$FREON $FREON
