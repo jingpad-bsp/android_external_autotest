@@ -1061,10 +1061,24 @@ class _ExternalGitRepo(ExternalPackage):
 
     os_requirements = {('/usr/bin/git') : 'git-core'}
 
+    # All the chromiumos projects used on the lab servers should have a 'prod'
+    # branch used to track the software version deployed in prod.
+    PROD_BRANCH = 'prod'
+
     def is_needed(self, unused_install_dir):
         """Tell build_externals that we need to fetch."""
         # TODO(beeps): check if we're already upto date.
         return True
+
+
+    def git_pull_or_clone_to_prod(self, git_repo):
+      """
+      Pull or clone repo and checkout the 'prod' branch.
+
+      @param git_repo: A revision_controlGitRepo object to use for git commands.
+      """
+      git_repo.pull_or_clone()
+      git_repo.checkout(self.PROD_BRANCH)
 
 
     def build_and_install(self, unused_install_dir):
@@ -1109,7 +1123,7 @@ class HdctoolsRepo(_ExternalGitRepo):
                         self._GIT_URL,
                         None,
                         abs_work_tree=self.temp_hdctools_dir)
-        git_repo.pull_or_clone()
+        self.git_pull_or_clone_to_prod(git_repo)
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1144,9 +1158,12 @@ class ChromiteRepo(_ExternalGitRepo):
         @param install_dir: destination directory for chromite installation.
         """
         local_chromite_dir = os.path.join(install_dir, 'chromite')
-        git_repo = revision_control.GitRepo(local_chromite_dir, self._GIT_URL,
-                                            abs_work_tree=local_chromite_dir)
-        git_repo.pull_or_clone()
+        git_repo = revision_control.GitRepo(
+                local_chromite_dir,
+                self._GIT_URL,
+                abs_work_tree=local_chromite_dir)
+        self.git_pull_or_clone_to_prod(git_repo)
+
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1172,7 +1189,7 @@ class DevServerRepo(_ExternalGitRepo):
         local_devserver_dir = os.path.join(install_dir, 'devserver')
         git_repo = revision_control.GitRepo(local_devserver_dir, self._GIT_URL,
                                             abs_work_tree=local_devserver_dir)
-        git_repo.pull_or_clone()
+        self.git_pull_or_clone_to_prod(git_repo)
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1206,7 +1223,7 @@ class BtsocketRepo(_ExternalGitRepo):
                             self._GIT_URL,
                             None,
                             abs_work_tree=self.temp_btsocket_dir.name)
-            git_repo.pull_or_clone()
+            self.git_pull_or_clone_to_prod(git_repo)
 
             if git_repo.get_latest_commit_hash():
                 return True
