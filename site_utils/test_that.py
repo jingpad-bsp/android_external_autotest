@@ -707,7 +707,7 @@ def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv,
         logging.info('Skipping quickmerge step.')
     else:
         logging.info('Running autotest_quickmerge step.')
-        command = [_QUICKMERGE_SCRIPTNAME, '--board='+arguments.board]
+        command = [_QUICKMERGE_SCRIPTNAME, '--board='+arguments.board, '--force']
         if legacy_path:
           command.append('--legacy_path')
         s = subprocess.Popen(command,
