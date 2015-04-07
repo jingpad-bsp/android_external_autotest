@@ -38,7 +38,7 @@ SOURCES_TEARTEST = teartest.cc utils.cc xlib_window.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc utils.cc waffle_stuff.cc
 
 PKG_CONFIG ?= pkg-config
-BASE_VER ?= 307740
+BASE_VER ?= 323904
 PC_DEPS = libchrome-$(BASE_VER) libpng
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
