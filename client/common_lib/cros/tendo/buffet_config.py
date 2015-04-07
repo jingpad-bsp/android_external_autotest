@@ -65,7 +65,10 @@ class BuffetConfig(object):
                  log_verbosity=None,
                  state_file_path=TEST_STATE_PATH,
                  use_local_cloud_fakes=True,
-                 test_definitions_dir=None):
+                 test_definitions_dir=None,
+                 # TODO(tendo) See brbug.com/769
+                 enable_xmpp=False):
+        self.enable_xmpp = enable_xmpp
         self.log_verbosity = log_verbosity
         self.state_file_path = state_file_path
         self.use_local_cloud_fakes = use_local_cloud_fakes
@@ -89,6 +92,8 @@ class BuffetConfig(object):
         flag_list = []
         if self.log_verbosity:
             flag_list.append('BUFFET_LOG_LEVEL=%d' % self.log_verbosity)
+        flag_list.append('BUFFET_ENABLE_XMPP=%s' % ('true' if self.enable_xmpp
+                                                    else 'false'))
         if self.use_local_cloud_fakes:
             conf_lines = ['%s=%s' % pair
                           for pair in LOCAL_CLOUD_FAKES.iteritems()]
