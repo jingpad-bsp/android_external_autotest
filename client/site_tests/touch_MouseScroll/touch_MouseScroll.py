@@ -106,12 +106,14 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
             shutil.copyfile(host_path, dut_path)
 
         with chrome.Chrome() as cr:
-            # Open test page.
+            # Open test page and position cursor.
             cr.browser.SetHTTPServerDirectories(self.bindir)
             self._tab = cr.browser.tabs[0]
             self._tab.Navigate(cr.browser.http_server.UrlOf(
                     os.path.join(self.bindir, 'long_page.html')))
             self._tab.WaitForDocumentReadyStateToBeComplete()
+            self._blocking_playback(self._dut_paths['center_cursor'],
+                                    touch_type='mouse')
 
             # Test
             for direction in ['down', 'up']:

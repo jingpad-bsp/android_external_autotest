@@ -5,8 +5,9 @@
 from collections import defaultdict
 import logging
 import os
-import tempfile
 import subprocess
+import tempfile
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -160,6 +161,25 @@ class touch_playback_test_base(test.test):
         logging.info('Playing back finger-movement on %s, file=%s.', node,
                      filepath)
         utils.run(self._PLAYBACK_COMMAND % (node, filepath))
+
+    def _blocking_playback(self, filepath, touch_type='touchpad'):
+        """Playback a given set of touch movements and wait.
+
+        @param filepath: path to the movements file on the DUT.
+        @param touch_type: name of device type; 'touchpad' by default.
+                           Types are returned by the _determine_input_type()
+                           function.
+                           self._has_inputs[touch_type] must be True.
+
+        """
+        with open(filepath) as fh:
+            lines = fh.readlines()
+            start = float(lines[0].split(' ')[1])
+            end = float(lines[-1].split(' ')[1])
+            sleep_time = end - start
+        self._playback(filepath, touch_type)
+        logging.info('Sleeping for %s seconds during playback.', sleep_time)
+        time.sleep(sleep_time)
 
     def _set_touch_setting_by_inputcontrol(self, setting, value):
         """Set a given touch setting the given value by inputcontrol.
