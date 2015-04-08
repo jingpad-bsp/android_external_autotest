@@ -572,8 +572,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             touch_path = os.path.join(folder, test_file)
             self.run('touch %s' % touch_path)
 
-        if not updater.run_update(force_update=True, update_root=False):
-            return False
+        updater.run_update(update_root=False)
 
         # Reboot to complete stateful update.
         self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
@@ -613,20 +612,30 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                 updater.update_version,
                                 self.get_release_version()))
 
+        logging.debug('Cleaning up old autotest directories.')
+        try:
+            installed_autodir = autotest.Autotest.get_installed_autodir(self)
+            self.run('rm -rf ' + installed_autodir)
+        except autotest.AutodirNotFoundError:
+            logging.debug('No autotest installed directory found.')
+
 
     def _stage_image_for_update(self, image_name=None):
-        """Stage a build on a devserver and return the update_url.
+        """Stage a build on a devserver and return the update_url and devserver.
 
         @param image_name: a name like lumpy-release/R27-3837.0.0
-        @returns an update URL like:
+        @returns a tuple with an update URL like:
             http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
+            and the devserver instance.
         """
         if not image_name:
             image_name = self.get_repair_image_name()
+
         logging.info('Staging build for AU: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name)
         devserver.trigger_download(image_name, synchronous=False)
-        return tools.image_url_pattern() % (devserver.url(), image_name)
+        return (tools.image_url_pattern() % (devserver.url(), image_name),
+                devserver)
 
 
     def stage_image_for_servo(self, image_name=None):
@@ -679,8 +688,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, update_url=None, force_update=False,
-                        local_devserver=False, repair=False,
-                        force_full_update=False):
+                        local_devserver=False, force_full_update=False):
         """Install the DUT.
 
         Use stateful update if the DUT is already running the same build.
@@ -703,111 +711,106 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 is the same. Default:False
         @param local_devserver: Used by run_remote_test to allow people to
                 use their local devserver. Default: False
-        @param repair: Whether or not we are in repair mode. This adds special
-                cases for repairing a machine like starting update_engine.
-                Setting repair to True sets force_update to True as well.
-                default: False
         @param force_full_update: If True, do not attempt to run stateful
                 update, force a full reimage. If False, try stateful update
                 first when the dut is already installed with the same version.
         @raises autoupdater.ChromiumOSError
 
         """
-        if update_url:
-            logging.debug('update url is set to %s', update_url)
-        else:
-            logging.debug('update url is not set, resolving...')
-            if self._parser.options.image:
-                requested_build = self._parser.options.image
-                if requested_build.startswith('http://'):
-                    update_url = requested_build
-                    logging.debug('update url is retrieved from requested_build'
-                                  ': %s', update_url)
-                else:
-                    # Try to stage any build that does not start with
-                    # http:// on the devservers defined in
-                    # global_config.ini.
-                    update_url = self._stage_image_for_update(requested_build)
-                    logging.debug('Build staged, and update_url is set to: %s',
-                                  update_url)
-            elif repair:
-                update_url = self._stage_image_for_update()
-                logging.debug('Build staged, and update_url is set to: %s',
-                              update_url)
+        if not update_url and not self._parser.options.image:
+            raise error.AutoservError(
+                 'There is no update URL, nor a method to get one.')
+
+        # Variable to determine whether or not the devserver is mungible.
+        update_url_is_fixed = True
+        if not update_url and self._parser.options.image:
+            # This is the base case where we have no given update URL i.e.
+            # dynamic suites logic etc. This is the most flexible case where we
+            # can serve an update from any of our fleet of devservers.
+            requested_build = self._parser.options.image
+            if not requested_build.startswith('http://'):
+                update_url_is_fixed = False
+                logging.debug('Update will be staged for this installation')
+                update_url, devserver = self._stage_image_for_update(
+                         requested_build)
             else:
-                raise autoupdater.ChromiumOSError(
-                    'Update failed. No update URL provided.')
+                update_url = requested_build
 
-        if repair:
-            # In case the system is in a bad state, we always reboot
-            # the machine before trying to repair.
-            #
-            # If Chrome is crashing, the ui-respawn job may reboot
-            # the DUT to try and "fix" it.  Guard against that
-            # behavior by stopping the 'ui' job.
-            #
-            # If Chrome failed to start, update-engine won't be running,
-            # so restart it by force.
-            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-            self.run('stop ui || true')
-            self.run('stop update-engine; start update-engine')
-            force_update = True
+        logging.debug('Update URL is %s', update_url)
 
-        updater = autoupdater.ChromiumOSUpdater(update_url, host=self,
-                                                local_devserver=local_devserver)
-        updated = False
         # Remove cros-version and job_repo_url host attribute from host.
         self.clear_cros_version_labels_and_job_repo_url()
-        # If the DUT is already running the same build, try stateful update
-        # first. Stateful update does not update kernel and tends to run much
-        # faster than a full reimage.
+
+        update_complete = False
+        updater = autoupdater.ChromiumOSUpdater(
+                 update_url, host=self, local_devserver=local_devserver)
         if not force_full_update:
             try:
-                updated = self._try_stateful_update(
-                        update_url, force_update, updater)
-                if updated:
-                    logging.info('DUT is updated with stateful update.')
+                # If the DUT is already running the same build, try stateful
+                # update first as it's much quicker than a full re-image.
+                update_complete = self._try_stateful_update(
+                         update_url, force_update, updater)
             except Exception as e:
                 logging.exception(e)
-                logging.warning('Failed to stateful update DUT, force to update.')
 
         inactive_kernel = None
-        # Do a full update if stateful update is not applicable or failed.
-        if not updated:
-            # TODO(sosa): Remove temporary hack to get rid of bricked machines
-            # that can't update due to a corrupted policy.
-            self.run('rm -rf /var/lib/whitelist')
-            self.run('mkdir /var/lib/whitelist')
-            self.run('chmod -w /var/lib/whitelist')
-            self.run('stop update-engine; start update-engine')
+        if update_complete or (not force_update and updater.check_version()):
+            logging.info('Install complete without full update')
+        else:
+            logging.info('DUT requires full update.')
+            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
-            if updater.run_update(force_update):
-                updated = True
-                # Figure out active and inactive kernel.
-                active_kernel, inactive_kernel = updater.get_kernel_state()
+            # Determine the number of attempts to use.
+            # If the update url isn't fixed we can be more flexible in allowing
+            # devserver flake because we can switch devservers.
+            num_of_attempts = 1
+            if not update_url_is_fixed:
+                num_of_attempts = provision.FLAKY_DEVSERVER_ATTEMPTS
 
-                # Ensure inactive kernel has higher priority than active.
-                if (updater.get_kernel_priority(inactive_kernel)
-                        < updater.get_kernel_priority(active_kernel)):
-                    raise autoupdater.ChromiumOSError(
-                        'Update failed. The priority of the inactive kernel'
-                        ' partition is less than that of the active kernel'
-                        ' partition.')
+            while num_of_attempts > 0:
+                num_of_attempts -= 1
+                try:
+                    updater.run_update()
+                except Exception:
+                    logging.warn('Autoupdate did not complete.')
+                    # Do additional check for the devserver health. Ideally,
+                    # the autoupdater.py could raise an exception when it
+                    # detected network flake but that would require
+                    # instrumenting the update engine and parsing it log.
+                    if (dev_server.DevServer.devserver_healthy(devserver.url())
+                            or num_of_attempts <= 0):
+                         raise
 
-                # Updater has returned successfully; reboot the host.
-                self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
+                    logging.warn('Devserver looks unhealthy. Trying another')
+                    update_url, devserver = self._stage_image_for_update(
+                            requested_build)
+                    logging.debug('New Update URL is %s', update_url)
+                    updater = autoupdater.ChromiumOSUpdater(
+                            update_url, host=self,
+                            local_devserver=local_devserver)
+                else:
+                    break
 
-        if updated:
-            self._post_update_processing(updater, inactive_kernel)
-            image_name = autoupdater.url_to_image_name(update_url)
-            self.add_cros_version_labels_and_job_repo_url(image_name)
+            # Give it some time in case of IO issues.
+            time.sleep(10)
 
-        logging.debug('Cleaning up old autotest directories.')
-        try:
-            installed_autodir = autotest.Autotest.get_installed_autodir(self)
-            self.run('rm -rf ' + installed_autodir)
-        except autotest.AutodirNotFoundError:
-            logging.debug('No autotest installed directory found.')
+            # Figure out active and inactive kernel.
+            active_kernel, inactive_kernel = updater.get_kernel_state()
+
+            # Ensure inactive kernel has higher priority than active.
+            if (updater.get_kernel_priority(inactive_kernel)
+                    < updater.get_kernel_priority(active_kernel)):
+                raise autoupdater.ChromiumOSError(
+                    'Update failed. The priority of the inactive kernel'
+                    ' partition is less than that of the active kernel'
+                    ' partition.')
+
+            # Updater has returned successfully; reboot the host.
+            self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
+
+        self._post_update_processing(updater, inactive_kernel)
+        self.add_cros_version_labels_and_job_repo_url(
+                autoupdater.url_to_image_name(update_url))
 
 
     def _clear_fw_version_labels(self):
@@ -860,8 +863,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # crbug.com/271834 is fixed.
         board = self._get_board_from_afe()
 
-        # If build is not set, assume it's repair mode and try to install
-        # firmware from stable CrOS.
+        # If build is not set, try to install firmware from stable CrOS.
         if not build:
             build = self.get_repair_image_name()
 
@@ -929,7 +931,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _install_repair(self):
-        """Attempt to repair this host using upate-engine.
+        """Attempt to repair this host using the update-engine.
 
         If the host is up, try installing the DUT with a stable
         "repair" version of Chrome OS as defined in afe_stable_versions table.
@@ -944,7 +946,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservRepairMethodNA('DUT unreachable for install.')
         logging.info('Attempting to reimage machine to repair image.')
         try:
-            self.machine_install(repair=True)
+            update_url = self._stage_image_for_update()
+            logging.debug('Build staged, and update_url is set to: %s',
+                          update_url)
+            self.machine_install(update_url=update_url, force_update=True)
         except autoupdater.ChromiumOSError as e:
             logging.exception(e)
             logging.info('Repair via install failed.')

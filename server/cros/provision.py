@@ -16,6 +16,10 @@ from autotest_lib.server.cros import provision_actionables as actionables
 CROS_VERSION_PREFIX = 'cros-version'
 FW_VERSION_PREFIX = 'fw-version'
 
+# Default number of provisions attempts to try if we believe the devserver is
+# flaky.
+FLAKY_DEVSERVER_ATTEMPTS = 2
+
 
 ### Helpers to convert value to label
 def cros_version_to_label(image):
