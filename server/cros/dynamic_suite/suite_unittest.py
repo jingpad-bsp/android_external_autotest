@@ -43,6 +43,7 @@ class SuiteTest(mox.MoxTestBase):
     _BOARD = 'board:board'
     _BUILD = 'build'
     _TAG = 'suite_tag'
+    _ATTR = {'attr:attr'}
     _DEVSERVER_HOST = 'http://dontcare:8080'
     _FAKE_JOB_ID = 10
 
@@ -59,23 +60,27 @@ class SuiteTest(mox.MoxTestBase):
         self.devserver = dev_server.ImageServer(self._DEVSERVER_HOST)
 
         self.files = OrderedDict(
-                [('one', FakeControlData(self._TAG, 'data_one', 'FAST',
-                                         expr=True)),
-                 ('two', FakeControlData(self._TAG, 'data_two', 'SHORT',
-                                         dependencies=['feta'])),
-                 ('three', FakeControlData(self._TAG, 'data_three', 'MEDIUM')),
-                 ('four', FakeControlData('other', 'data_four', 'LONG',
-                                          dependencies=['arugula'])),
-                 ('five', FakeControlData(self._TAG, 'data_five', 'LONG',
-                                          dependencies=['arugula',
-                                                        'caligula'])),
-                 ('six', FakeControlData(self._TAG, 'data_six', 'LENGTHY')),
-                 ('seven', FakeControlData(self._TAG, 'data_seven',
+                [('one', FakeControlData(self._TAG, self._ATTR, 'data_one',
+                                         'FAST', expr=True)),
+                 ('two', FakeControlData(self._TAG, self._ATTR, 'data_two',
+                                         'SHORT', dependencies=['feta'])),
+                 ('three', FakeControlData(self._TAG, self._ATTR, 'data_three',
+                                           'MEDIUM')),
+                 ('four', FakeControlData('other', self._ATTR, 'data_four',
+                                          'LONG', dependencies=['arugula'])),
+                 ('five', FakeControlData(self._TAG, {'other'}, 'data_five',
+                                          'LONG', dependencies=['arugula',
+                                                                'caligula'])),
+                 ('six', FakeControlData(self._TAG, self._ATTR, 'data_six',
+                                         'LENGTHY')),
+                 ('seven', FakeControlData(self._TAG, self._ATTR, 'data_seven',
                                            'FAST', job_retries=1))])
 
         self.files_to_filter = {
-            'with/deps/...': FakeControlData(self._TAG, 'gets filtered'),
-            'with/profilers/...': FakeControlData(self._TAG, 'gets filtered')}
+            'with/deps/...': FakeControlData(self._TAG, self._ATTR,
+                                             'gets filtered'),
+            'with/profilers/...': FakeControlData(self._TAG, self._ATTR,
+                                                  'gets filtered')}
 
 
     def tearDown(self):
@@ -141,7 +146,7 @@ class SuiteTest(mox.MoxTestBase):
                                    forgiving_parser=False)
 
 
-    def testFindAndParseTests(self):
+    def testFindAndParseTestsSuite(self):
         """Should find all tests that match a predicate."""
         self.expect_control_file_parsing()
         self.mox.ReplayAll()
@@ -156,6 +161,25 @@ class SuiteTest(mox.MoxTestBase):
         self.assertTrue(self.files['two'] in tests)
         self.assertTrue(self.files['three'] in tests)
         self.assertTrue(self.files['five'] in tests)
+        self.assertTrue(self.files['six'] in tests)
+        self.assertTrue(self.files['seven'] in tests)
+
+
+    def testFindAndParseTestsAttr(self):
+        """Should find all tests that match a predicate."""
+        self.expect_control_file_parsing()
+        self.mox.ReplayAll()
+
+        predicate = Suite.matches_attribute_expression_predicate('attr:attr')
+        tests = Suite.find_and_parse_tests(self.getter,
+                                           predicate,
+                                           self._TAG,
+                                           add_experimental=True)
+        self.assertEquals(len(tests), 6)
+        self.assertTrue(self.files['one'] in tests)
+        self.assertTrue(self.files['two'] in tests)
+        self.assertTrue(self.files['three'] in tests)
+        self.assertTrue(self.files['four'] in tests)
         self.assertTrue(self.files['six'] in tests)
         self.assertTrue(self.files['seven'] in tests)
 

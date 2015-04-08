@@ -32,6 +32,15 @@ from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.job_status import Status
 
+try:
+    from chromite.lib import boolparse_lib
+    from chromite.lib import cros_logging as logging
+except ImportError:
+    print 'Unable to import chromite.'
+    print 'This script must be either:'
+    print '  - Be run in the chroot.'
+    print '  - (not yet supported) be run after running '
+    print '    ../utils/build_externals.py'
 
 class RetryHandler(object):
     """Maintain retry information.
@@ -388,6 +397,24 @@ class Suite(object):
         return lambda t: hasattr(t, 'path') and re.match(test_file_pattern,
                                                          t.path)
 
+
+    @staticmethod
+    def matches_attribute_expression_predicate(test_attr_boolstr):
+        """Returns predicate that matches based on boolean expression of
+        attributes.
+
+        Builds a predicate that takes in a parsed control file (a ControlData)
+        ans returns True if the test attributes satisfy the given attribute
+        boolean expression.
+
+        @param test_attr_boolstr: boolean expression of the attributes to be
+                                  test, like 'system:all and interval:daily'.
+
+        @return a callable that takes a ControlData and returns True if the test
+                attributes satisfy the given boolean expression.
+        """
+        return lambda t: boolparse_lib.BoolstrResult(
+            test_attr_boolstr, t.attributes)
 
     @staticmethod
     def test_name_similarity_predicate(test_name):

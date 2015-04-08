@@ -8,13 +8,14 @@
 
 class FakeControlData(object):
     """A fake parsed control file data structure."""
-    def __init__(self, suite, data, time='LONG', expr=False,
+    def __init__(self, suite, attributes, data, time='LONG', expr=False,
                  dependencies=None, job_retries=0):
         self.string = 'text-' + data
         self.name = 'name-' + data
         self.path = None  # Will be set during 'parsing'.
         self.data = data
         self.suite = suite
+        self.attributes = attributes
         self.test_type = 'Client'
         self.experimental = expr
         if not dependencies:
