@@ -5,12 +5,12 @@
 # found in the LICENSE file.
 set -e
 
-USAGE="Usage: setup_dev_autotest.sh [-p <password>] [-a </path/to/autotest>]"
+USAGE='Usage: setup_dev_autotest.sh [-pavnm]'
 HELP="${USAGE}\n\n\
 Install and configure software needed to run autotest locally.\n\
 If you're just working on tests, you do not need to run this.\n\n\
 Options:\n\
-  -p Desired Autotest DB password.\n\
+  -p Desired Autotest DB password. Must be non-empty.\n\
   -a Absolute path to autotest source tree.\n\
   -v Show info logging from build_externals.py and compile_gwt_clients.py \n\
   -n Non-interactive mode, doesn't ask for any user input.
@@ -67,17 +67,25 @@ while getopts ":p:a:vnmh" opt; do
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
-      echo "${USAGE}" >&2
+      echo -e "${HELP}" >&2
       exit 1
       ;;
     :)
       echo "Option -$OPTARG requires an argument." >&2
-      echo "${USAGE}" >&2
+      echo -e "${HELP}" >&2
       exit 1
       ;;
   esac
 done
 
+if [[ $EUID -eq 0 ]]; then
+  echo "Running with sudo / as root is not recommended"
+  get_y_or_n verify "Continue as root? [y/N]: " "n"
+  if [[ "${verify}" = 'n' ]]; then
+    echo "Bailing!"
+    exit 1
+  fi
+fi
 
 if [ "${noninteractive}" = "TRUE" ]; then
   if [ -z "${AUTOTEST_DIR}" ]; then
