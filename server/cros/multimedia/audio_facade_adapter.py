@@ -132,3 +132,17 @@ class AudioFacadeRemoteAdapter(object):
 
         """
         return self._audio_proxy.get_selected_node_types()
+
+
+    def dump_diagnostics(self, file_path):
+        """Dumps audio diagnostics results to a file.
+
+        @param file_path: The path to dump results.
+
+        @returns: True
+
+        """
+        remote_path = self._generate_client_temp_file_path('txt')
+        self._audio_proxy.dump_diagnostics(remote_path)
+        self._client.get_file(remote_path, file_path)
+        return True

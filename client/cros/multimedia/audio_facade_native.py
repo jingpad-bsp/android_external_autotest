@@ -9,6 +9,7 @@ import multiprocessing
 import shutil
 import tempfile
 
+from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
 
@@ -138,6 +139,19 @@ class AudioFacadeNative(object):
         output_node, input_node = cras_utils.get_selected_nodes()
         return (cras_utils.get_node_type(output_node),
                 cras_utils.get_node_type(input_node))
+
+
+    def dump_dignostics(self, file_path):
+        """Dumps audio diagnostics results to a file.
+
+        @param file_path: The path to dump results.
+
+        @returns: True
+
+        """
+        with open(file_path, 'w') as f:
+            f.write(audio_helper.get_audio_diagnostics())
+        return True
 
 
 class RecorderError(Exception):
