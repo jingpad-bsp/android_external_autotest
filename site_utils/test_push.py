@@ -20,10 +20,13 @@ The script uses latest stumpy canary build as test build by default.
 
 import argparse
 import getpass
+import multiprocessing
 import os
 import re
 import subprocess
 import sys
+import time
+import traceback
 import urllib2
 
 import common
@@ -123,10 +126,10 @@ def get_default_build(devserver=None, board='stumpy'):
     build = None
     if not devserver:
         for server in DEVSERVERS:
-             url = LATEST_BUILD_URL_PATTERN % (server, board)
-             build = urllib2.urlopen(url).read()
-             if build and re.match(BUILD_REGEX, build):
-                 return '%s-release/%s' % (board, build)
+            url = LATEST_BUILD_URL_PATTERN % (server, board)
+            build = urllib2.urlopen(url).read()
+            if build and re.match(BUILD_REGEX, build):
+                return '%s-release/%s' % (board, build)
 
     # If no devserver has any build staged for the given board, use the stable
     # build in config.
@@ -208,8 +211,8 @@ def do_run_suite(suite_name, arguments, use_shard=False):
                       if l.startswith(provision.CROS_VERSION_PREFIX)]:
             afe.run('host_remove_labels', id=host.id, labels=[label])
 
-    dir = os.path.dirname(os.path.realpath(__file__))
-    cmd = [os.path.join(dir, RUN_SUITE_COMMAND),
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    cmd = [os.path.join(current_dir, RUN_SUITE_COMMAND),
            '-s', suite_name,
            '-b', board,
            '-i', build,
@@ -346,6 +349,25 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False):
         raise TestPushException('\n'.join(summary))
 
 
+def test_suite_wrapper(queue, suite_name, expected_results, arguments,
+                       use_shard=False):
+    """Wrapper to call test_suite. Handle exception and pipe it to parent
+    process.
+
+    @param queue: Queue to save exception to be accessed by parent process.
+    @param suite_name: Name of a suite, e.g., dummy
+    @param expected_results: A dictionary of test name to test result.
+    @param arguments: Arguments for run_suite command.
+    @param use_shard: If true, suite is scheduled for shard board.
+    """
+    try:
+        test_suite(suite_name, expected_results, arguments, use_shard)
+    except:
+        # Store the whole exc_info leads to a PicklingError.
+        except_type, except_value, tb = sys.exc_info()
+        queue.put((except_type, except_value, traceback.extract_tb(tb)))
+
+
 def close_bug():
     """Close all existing bugs filed for dummy_Fail.
 
@@ -399,6 +421,20 @@ def check_bug_filed_and_deduped(old_issue_ids):
     print 'Issue %d was filed and deduped successfully.' % issue.id
 
 
+def check_queue(queue):
+    """Check the queue for any exception being raised.
+
+    @param queue: Queue used to store exception for parent process to access.
+    @raise: Any exception found in the queue.
+    """
+    if queue.empty():
+        return
+    exc_info = queue.get()
+    # Raise the exception with original backtrace.
+    print 'Original stack trace of the exception:\n%s' % exc_info[2]
+    raise exc_info[0](exc_info[1])
+
+
 def main():
     """Entry point for test_push script."""
     arguments = parse_arguments()
@@ -406,15 +442,44 @@ def main():
     try:
         # Close existing bugs. New bug should be filed in dummy_Fail test.
         old_issue_ids = close_bug()
-        test_suite(PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS, arguments)
-        check_bug_filed_and_deduped(old_issue_ids)
 
-        test_suite(DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY, arguments,
-                   use_shard=True)
+        queue = multiprocessing.Queue()
+
+        push_to_prod_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
+                      arguments))
+        push_to_prod_suite.start()
 
         # TODO(dshi): Remove following line after crbug.com/267644 is fixed.
         # Also, merge EXPECTED_TEST_RESULTS_AU to EXPECTED_TEST_RESULTS
-        test_suite(AU_SUITE, EXPECTED_TEST_RESULTS_AU, arguments)
+        au_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, AU_SUITE, EXPECTED_TEST_RESULTS_AU,
+                      arguments))
+        au_suite.start()
+
+        shard_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
+                      arguments, True))
+        shard_suite.start()
+
+        bug_filing_checked = False
+        while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
+               shard_suite.is_alive()):
+            check_queue(queue)
+            # Check bug filing results to fail early if bug filing failed.
+            if not bug_filing_checked and not push_to_prod_suite.is_alive():
+                check_bug_filed_and_deduped(old_issue_ids)
+                bug_filing_checked = True
+            time.sleep(5)
+
+        check_queue(queue)
+
+        push_to_prod_suite.join()
+        au_suite.join()
+        shard_suite.join()
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
