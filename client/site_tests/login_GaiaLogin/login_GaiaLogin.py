@@ -16,7 +16,7 @@ class login_GaiaLogin(test.test):
     _USERNAME = 'powerloadtest@gmail.com'
     # TODO(achuith): Get rid of this when crbug.com/358427 is fixed.
     _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
-    _PASSWORD = 'power_LoadTest3'
+    _PASSWORD = 'power_LoadTest4'
 
     def run_once(self):
         with chrome.Chrome(gaia_login=True, username=self._USERNAME,

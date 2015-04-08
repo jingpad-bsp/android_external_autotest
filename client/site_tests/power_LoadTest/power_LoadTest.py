@@ -29,7 +29,7 @@ class power_LoadTest(test.test):
     """test class"""
     version = 2
     _username = 'powerloadtest@gmail.com'
-    _password = 'power_LoadTest3'
+    _password = 'power_LoadTest4'
 
 
     def initialize(self, percent_initial_charge_min=None,
