@@ -19,6 +19,11 @@ class LinksyseSingleBandAPConfigurator(
     """Base class for objects to configure Linksys single band access points
        using webdriver."""
 
+    def __init__(self, ap_config):
+        super(LinksyseSingleBandAPConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 30
+
+
     def _sec_alert(self, alert):
         text = alert.text
         if 'Your wireless security mode is not compatible with' in text:
@@ -56,6 +61,13 @@ class LinksyseSingleBandAPConfigurator(
 
 
     def is_security_mode_supported(self, security_mode):
+        """Returns if the passes security mode is supported.
+
+        @param security_mode: a valid ap_spec security mode
+
+        @returns True if the mode is supported; False otherwise
+
+        """
         return security_mode in (ap_spec.SECURITY_TYPE_DISABLED,
                                  ap_spec.SECURITY_TYPE_WPAPSK,
                                  ap_spec.SECURITY_TYPE_WPA2PSK,
@@ -63,6 +75,11 @@ class LinksyseSingleBandAPConfigurator(
 
 
     def navigate_to_page(self, page_number):
+        """Navigates to the passed in page.
+
+        @param page_number: the page number as an integer
+
+        """
         if page_number == 1:
             page_url = urlparse.urljoin(self.admin_interface_url,
                                         'Wireless_Basic.asp')
@@ -78,6 +95,11 @@ class LinksyseSingleBandAPConfigurator(
 
 
     def save_page(self, page_number):
+        """Save the given page.
+
+        @param page_number: the page number as an integer
+
+        """
         try:
             self.click_button_by_id('divBT1', alert_handler=self._sec_alert)
         except:

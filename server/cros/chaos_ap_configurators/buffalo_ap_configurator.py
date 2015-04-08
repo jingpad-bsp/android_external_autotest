@@ -18,6 +18,12 @@ class BuffaloAPConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
     """Configurator for Buffalo AP."""
 
+
+    def __init__(self, ap_config):
+        super(BuffaloAPConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 30
+
+
     def get_number_of_pages(self):
         return 2
 

@@ -19,6 +19,12 @@ class BelkinF9KAPConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
     """Class to configure Blekin f9k1002v4 router."""
 
+
+    def __init__(self, ap_config):
+        super(BelkinF9KAPConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 30
+
+
     security_popup = '//select[@name="security_type"]'
 
     def _security_alert(self, alert):

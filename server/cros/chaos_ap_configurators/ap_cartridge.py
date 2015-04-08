@@ -4,6 +4,7 @@
 
 import logging
 import Queue
+import time
 import traceback
 
 from autotest_lib.client.common_lib.cros.network import chaos_constants
@@ -60,6 +61,9 @@ class APCartridge(object):
                                configurator.name, trace)
             finally:
                 configurator.reset_command_list()
+                logging.info('Waiting %d seconds for AP dhcp server',
+                             configurator.dhcp_delay)
+                time.sleep(configurator.dhcp_delay)
                 logging.info('Configuration of AP %s complete.',
                               configurator.name)
                 self.cartridge.task_done()

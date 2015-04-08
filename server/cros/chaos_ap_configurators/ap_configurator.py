@@ -22,6 +22,19 @@ class PduNotResponding(Exception):
 class APConfiguratorAbstract(object):
     """Abstract Base class to find and control access points."""
 
+    def __init__(self):
+        super(APConfiguratorAbstract, self).__init__()
+        # Some APs will turn on their beacon, but the DHCP server is not
+        # running.  Each configurator can add this delay to have the test
+        # wait before attempting to connect.
+        self._dhcp_delay = 0
+
+
+    @property
+    def dhcp_delay(self):
+        """Returns the DHCP delay."""
+        return self._dhcp_delay
+
 
     @property
     def ssid(self):
