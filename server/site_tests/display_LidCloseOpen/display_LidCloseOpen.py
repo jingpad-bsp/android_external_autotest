@@ -85,8 +85,8 @@ class display_LidCloseOpen(test.test):
         """Checks the display mode is as expected"""
         if self.display_facade.is_mirrored_enabled() is not self.test_mirrored:
             self.errors.append('Display mode %s is not preserved!' %
-                                'mirrored' if self.test_mirrored
-                                    else 'extended')
+                                ('mirrored' if self.test_mirrored
+                                    else 'extended'))
 
 
     def check_docked(self):
