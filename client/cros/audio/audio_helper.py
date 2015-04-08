@@ -570,10 +570,18 @@ def generate_rms_postmortem():
     try:
         logging.info('audio postmortem report')
         log_loopback_dongle_status()
-        logging.info(cmd_utils.execute(
-                [_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE))
+        logging.info(get_audio_diagnostics())
     except Exception:
         logging.exception('Error while generating postmortem report')
+
+
+def get_audio_diagnostics():
+    """Gets audio diagnostic results.
+
+    @returns: a string containing diagnostic results.
+
+    """
+    return cmd_utils.execute([_AUDIO_DIAGNOSTICS_PATH], stdout=cmd_utils.PIPE)
 
 
 def get_max_cross_correlation(signal_a, signal_b):
