@@ -678,8 +678,7 @@ def _create_results_directory(results_directory=None):
     return results_directory
 
 
-def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv,
-                                          legacy_path=False):
+def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv):
     """
     Perfoms a bootstrap to run test_that from the |autotest_path|.
 
@@ -693,8 +692,6 @@ def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv,
                       parse_arguments(...).
     @param autotest_path: Full absolute path to the autotest root directory.
     @param argv: The arguments list, as passed to main(...)
-    @param legacy_path: Flag for backwards compatibility with builds
-                        that have autotest in old usr/local/autotest location
 
     @returns: The return code of the test_that script that was executed in
               |autotest_path|.
@@ -708,8 +705,6 @@ def _perform_bootstrap_into_autotest_root(arguments, autotest_path, argv,
     else:
         logging.info('Running autotest_quickmerge step.')
         command = [_QUICKMERGE_SCRIPTNAME, '--board='+arguments.board, '--force']
-        if legacy_path:
-          command.append('--legacy_path')
         s = subprocess.Popen(command,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT)
@@ -826,7 +821,6 @@ def _main_for_local_run(argv, arguments):
     results_directory = _create_results_directory(arguments.results_dir)
     _add_ssh_identity(results_directory)
     arguments.results_dir = results_directory
-    legacy_path = False
 
     # If the board has not been specified through --board, and is not set in the
     # default_board file, determine the board by ssh-ing into the host. Also
@@ -847,19 +841,7 @@ def _main_for_local_run(argv, arguments):
                                   'setup_board?' % sysroot_path)
             return 1
 
-        # For backwards compatibility with builds that pre-date
-        # https://chromium-review.googlesource.com/#/c/62880/
-        # This code can eventually be removed once those builds no longer need
-        # test_that support.
-        new_path = 'usr/local/build/autotest'
-        old_path = 'usr/local/autotest'
-        legacy_path = (os.path.exists(os.path.join(sysroot_path, old_path))
-                       and not
-                       os.path.exists(os.path.join(sysroot_path, new_path)))
-        if legacy_path:
-            path_ending = old_path
-        else:
-            path_ending = new_path
+        path_ending = 'usr/local/build/autotest'
         autotest_path = os.path.join(sysroot_path, path_ending)
 
     site_utils_path = os.path.join(autotest_path, 'site_utils')
@@ -879,7 +861,7 @@ def _main_for_local_run(argv, arguments):
     # the sysroot version of script with the same arguments.
     if os.path.dirname(realpath) != site_utils_path:
         return _perform_bootstrap_into_autotest_root(
-                arguments, autotest_path, argv, legacy_path)
+                arguments, autotest_path, argv)
     else:
         return _perform_run_from_autotest_root(
                 arguments, autotest_path, argv)
