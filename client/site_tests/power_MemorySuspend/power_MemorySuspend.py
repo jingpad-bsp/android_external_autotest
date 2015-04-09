@@ -31,5 +31,8 @@ class power_MemorySuspend(test.test):
         if spurious_wakeup_count > 0:
             logging.info("Have %d SpuriousWakeupError", spurious_wakeup_count)
 
+        keyval = { 'numSpuriousWakeupError' : spurious_wakeup_count }
+        self.write_perf_keyval(keyval)
+
     def cleanup(self):
         utils.system('start ui')
