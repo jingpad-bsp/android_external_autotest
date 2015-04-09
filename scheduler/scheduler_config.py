@@ -10,7 +10,6 @@ class SchedulerConfig(object):
     FIELDS = [
                 ('max_processes_per_drone', int),
                 ('max_processes_warning_threshold', float),
-                ('max_processes_started_per_cycle', int),
                 ('clean_interval_minutes', int),
                 ('max_parse_processes', int),
                 ('tick_pause_sec', float),
@@ -28,6 +27,10 @@ class SchedulerConfig(object):
 
 
     def read_config(self):
+        """
+        Reads the attributes (listed in `FIELDS`) from the global config
+        and copies them into self.
+        """
         config = global_config.global_config
         config.parse_config_file()
         for field, data_type in self.FIELDS:

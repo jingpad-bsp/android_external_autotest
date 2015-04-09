@@ -1,6 +1,4 @@
 #!/usr/bin/python
-#pylint: disable-msg=C0111
-
 """
 Autotest scheduler
 """
@@ -706,7 +704,7 @@ class BaseDispatcher(object):
                 # host has already been recovered in some way
                 continue
             if self._host_has_scheduled_special_task(host):
-                # host will have a special task scheduled on the next cycle
+                # host will have a special task scheduled on the next tick
                 continue
             if print_message:
                 logging.info(print_message, host.hostname)
@@ -939,8 +937,7 @@ class BaseDispatcher(object):
                     agent.task.abort()
 
 
-    def _can_start_agent(self, agent, num_started_this_cycle,
-                         have_reached_limit):
+    def _can_start_agent(self, agent, have_reached_limit):
         # always allow zero-process agents to run
         if agent.task.num_processes == 0:
             return True
@@ -953,14 +950,6 @@ class BaseDispatcher(object):
                 agent.task.owner_username,
                 agent.task.get_drone_hostnames_allowed())
         if agent.task.num_processes > max_runnable_processes:
-            return False
-        # if a single agent exceeds the per-cycle throttling, still allow it to
-        # run when it's the first agent in the cycle
-        if num_started_this_cycle == 0:
-            return True
-        # per-cycle throttling
-        if (num_started_this_cycle + agent.task.num_processes >
-                scheduler_config.config.max_processes_started_per_cycle):
             return False
         return True
 
@@ -998,8 +987,8 @@ class BaseDispatcher(object):
                 it's finish method, and set the success member of the
                 task based on this exit code.
         """
-        num_started_this_cycle = 0
-        num_finished_this_cycle = 0
+        num_started_this_tick = 0
+        num_finished_this_tick = 0
         have_reached_limit = False
         # iterate over copy, so we can remove agents during iteration
         logging.debug('Handling %d Agents', len(self._agents))
@@ -1008,26 +997,25 @@ class BaseDispatcher(object):
                                 'queue_entry ids:%s' % (agent.host_ids,
                                 agent.queue_entry_ids))
             if not agent.started:
-                if not self._can_start_agent(agent, num_started_this_cycle,
-                                             have_reached_limit):
+                if not self._can_start_agent(agent, have_reached_limit):
                     have_reached_limit = True
                     logging.debug('Reached Limit of allowed running Agents.')
                     continue
-                num_started_this_cycle += agent.task.num_processes
+                num_started_this_tick += agent.task.num_processes
                 self._log_extra_msg('Starting Agent')
             agent.tick()
             self._log_extra_msg('Agent tick completed.')
             if agent.is_done():
-                num_finished_this_cycle += agent.task.num_processes
+                num_finished_this_tick += agent.task.num_processes
                 self._log_extra_msg("Agent finished")
                 self.remove_agent(agent)
         autotest_stats.Gauge('scheduler.jobs_per_tick').send(
-                'agents_started', num_started_this_cycle)
+                'agents_started', num_started_this_tick)
         autotest_stats.Gauge('scheduler.jobs_per_tick').send(
-                'agents_finished', num_finished_this_cycle)
-        logging.info('%d running processes. %d added this cycle.',
+                'agents_finished', num_finished_this_tick)
+        logging.info('%d running processes. %d added this tick.',
                      _drone_manager.total_running_processes(),
-                     num_started_this_cycle)
+                     num_started_this_tick)
 
 
     def _process_recurring_runs(self):
@@ -1326,11 +1314,10 @@ class HostlessQueueTask(AbstractQueueTask):
         # When a job is added to database, its initial status is always
         # Starting. In a scheduler tick, scheduler finds all jobs in Starting
         # status, check if any of them can be started. If scheduler hits some
-        # limit, e.g., max_hostless_jobs_per_drone,
-        # max_processes_started_per_cycle, scheduler will leave these jobs in
-        # Starting status. Otherwise, the jobs' status will be changed to
-        # Running, and an autoserv process will be started in drone for each of
-        # these jobs.
+        # limit, e.g., max_hostless_jobs_per_drone, scheduler will
+        # leave these jobs in Starting status. Otherwise, the jobs'
+        # status will be changed to Running, and an autoserv process
+        # will be started in drone for each of these jobs.
         # If the entry is still in status Starting, the process has not started
         # yet. Therefore, there is no need to parse and collect log. Without
         # this check, exception will be raised by scheduler as execution_subdir

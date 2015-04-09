@@ -1,5 +1,4 @@
 #!/usr/bin/python
-#pylint: disable-msg=C0111
 
 import gc, time
 import common
@@ -234,7 +233,7 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
 
     def _run_scheduler(self):
         self._dispatcher._host_scheduler.tick()
-        for _ in xrange(2): # metahost scheduling can take two cycles
+        for _ in xrange(2): # metahost scheduling can take two ticks
             self._dispatcher._schedule_new_jobs()
 
 
@@ -477,8 +476,6 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
     def setUp(self):
         super(DispatcherThrottlingTest, self).setUp()
         scheduler_config.config.max_processes_per_drone = self._MAX_RUNNING
-        scheduler_config.config.max_processes_started_per_cycle = (
-            self._MAX_STARTED)
 
         def fake_max_runnable_processes(fake_self, username,
                                         drone_hostnames_allowed):
@@ -495,7 +492,7 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
         self._dispatcher._agents = list(self._agents)
 
 
-    def _run_a_few_cycles(self):
+    def _run_a_few_ticks(self):
         for i in xrange(4):
             self._dispatcher._handle_agents()
 
@@ -513,22 +510,15 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
 
     def test_throttle_total(self):
         self._setup_some_agents(4)
-        self._run_a_few_cycles()
+        self._run_a_few_ticks()
         self._assert_agents_started([0, 1, 2])
         self._assert_agents_not_started([3])
-
-
-    def test_throttle_per_cycle(self):
-        self._setup_some_agents(3)
-        self._dispatcher._handle_agents()
-        self._assert_agents_started([0, 1])
-        self._assert_agents_not_started([2])
 
 
     def test_throttle_with_synchronous(self):
         self._setup_some_agents(2)
         self._agents[0].task.num_processes = 3
-        self._run_a_few_cycles()
+        self._run_a_few_ticks()
         self._assert_agents_started([0])
         self._assert_agents_not_started([1])
 
@@ -539,12 +529,12 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
         """
         self._setup_some_agents(3)
         self._agents[1].task.num_processes = 3
-        self._run_a_few_cycles()
+        self._run_a_few_ticks()
         self._assert_agents_started([0])
         self._assert_agents_not_started([1, 2])
 
         self._agents[0].set_done(True)
-        self._run_a_few_cycles()
+        self._run_a_few_ticks()
         self._assert_agents_started([1])
         self._assert_agents_not_started([2])
 
@@ -552,7 +542,7 @@ class DispatcherThrottlingTest(BaseSchedulerTest):
     def test_zero_process_agent(self):
         self._setup_some_agents(5)
         self._agents[4].task.num_processes = 0
-        self._run_a_few_cycles()
+        self._run_a_few_ticks()
         self._assert_agents_started([0, 1, 2, 4])
         self._assert_agents_not_started([3])
 
