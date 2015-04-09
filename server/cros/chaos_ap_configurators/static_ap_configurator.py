@@ -27,6 +27,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         @param ap_config: ChaosAP object to configure this instance
 
         """
+        super(StaticAPConfigurator, self).__init__()
         self._command_list = list()
 
         # This allows the ability to build a generic configurator
