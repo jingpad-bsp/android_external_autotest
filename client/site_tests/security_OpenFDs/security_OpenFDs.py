@@ -191,6 +191,10 @@ class security_OpenFDs(test.test):
         filters.extend([r'0[57]00 /dev/shm/..*',
                         r'0500 /opt/google/chrome/.*.pak',
                         r'0500 /opt/google/chrome/icudtl.dat',
+                        # These used to be bundled with the Chrome binary.
+                        # See crbug.com/475170.
+                        r'0500 /opt/google/chrome/natives_blob.bin',
+                        r'0500 /opt/google/chrome/snapshot_blob.bin',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
                                          allowed_fd_type_check))
