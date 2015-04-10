@@ -123,17 +123,35 @@ class GitRepo(object):
                          timeout, ignore_status)
 
 
-    def gitcmd(self, cmd, ignore_status=False):
+    def gitcmd(self, cmd, ignore_status=False, error_class=None,
+               error_msg=None):
         """
         Wrapper for a git command.
 
         @param cmd: Git subcommand (ex 'clone').
-        @param ignore_status: Whether we should supress error.CmdError
-                exceptions if the command did return exit code !=0 (True), or
-                not supress them (False).
+        @param ignore_status: If True, ignore the CmdError raised by the
+                underlying command runner. NB: Passing in an error_class
+                impiles ignore_status=True.
+        @param error_class: When ignore_status is False, optional error
+                error class to log and raise in case of errors. Must be a
+                (sub)type of GitError.
+        @param error_msg: When passed with error_class, used as a friendly
+                error message.
         """
+        # TODO(pprabhu) Get rid of the ignore_status argument.
+        # Now that we support raising custom errors, we always want to get a
+        # return code from the command execution, instead of an exception.
+        ignore_status = ignore_status or error_class is not None
         cmd = '%s %s' % (self.gen_git_cmd_base(), cmd)
-        return self._run(cmd, ignore_status=ignore_status)
+        rv = self._run(cmd, ignore_status=ignore_status)
+        if rv.exit_status != 0 and error_class is not None:
+            logging.error('git command failed: %s: %s',
+                          cmd, error_msg if error_msg is not None else '')
+            logging.error(rv.stderr)
+            raise error_class(error_msg if error_msg is not None
+                              else rv.stderr)
+
+        return rv
 
 
     def clone(self):
@@ -194,9 +212,24 @@ class GitRepo(object):
             raise revision_control.GitCommitError('Unable to commit', rv)
 
 
+    def reset(self, branch_or_sha):
+        """
+        Reset repo to the given branch or git sha.
+
+        @param branch_or_sha: Name of a local or remote branch or git sha.
+
+        @raises GitResetError if operation fails.
+        """
+        self.gitcmd('reset --hard %s' % branch_or_sha,
+                    error_class=GitResetError,
+                    error_msg='Failed to reset to %s' % branch_or_sha)
+
+
     def reset_head(self):
         """
         Reset repo to HEAD@{0} by running git reset --hard HEAD.
+
+        TODO(pprabhu): cleanup. Use reset.
 
         @raises GitResetError: if we fails to reset HEAD.
         """
@@ -222,20 +255,48 @@ class GitRepo(object):
             raise GitFetchError(e_msg, rv)
 
 
-    def pull_or_clone(self):
+    def reinit_repo_at(self, remote_branch):
         """
-        Pulls if the repo is already initialized, clones if it isn't.
+        Does all it can to ensure that the repo is at remote_branch.
+
+        This will try to be nice and detect any local changes and bail early.
+        OTOH, if it finishes successfully, it'll blow away anything and
+        everything so that local repo reflects the upstream branch requested.
         """
-        # TODO beeps: if the user has local changes in the repo they're
-        # pulling into, this could fail on rebase. Currently the only consumer
-        # of this method is external_packages and it makes sense for
-        # build_externals to fail in such a scenario. Investigate ways to get
-        # this to squash local changes using git rev-parse to get the upstream
-        # tracking branch name, and then do a fetch + reset head.
-        if self.is_repo_initialized():
-            self.pull(rebase=True)
-        else:
+        if not self.is_repo_initialized():
             self.clone()
+
+        # Play nice. Detect any local changes and bail.
+        # Re-stat all files before comparing index. This is needed for
+        # diff-index to work properly in cases when the stat info on files is
+        # stale. (e.g., you just untarred the whole git folder that you got from
+        # Alice)
+        rv = self.gitcmd('update-index --refresh -q',
+                         error_class=GitError,
+                         error_msg='Failed to refresh index.')
+        rv = self.gitcmd(
+                'diff-index --quiet HEAD --',
+                error_class=GitError,
+                error_msg='Failed to check for local changes.')
+        if rv.stdout:
+            loggin.error(rv.stdout)
+            e_msg = 'Local checkout dirty. (%s)'
+            raise GitError(e_msg % rv.stdout)
+
+        # Play the bad cop. Destroy everything in your path.
+        # Don't trust the existing repo setup at all (so don't trust the current
+        # config, current branches / remotes etc).
+        self.gitcmd('config remote.origin.url %s' % self.giturl,
+                    error_class=GitError,
+                    error_msg='Failed to set origin.')
+        self.gitcmd('checkout -f',
+                    error_class=GitError,
+                    error_msg='Failed to checkout.')
+        self.gitcmd('clean -qxdf',
+                    error_class=GitError,
+                    error_msg='Failed to clean.')
+        self.fetch_remote()
+        self.reset('origin/%s' % remote_branch)
 
 
     def get(self, **kwargs):

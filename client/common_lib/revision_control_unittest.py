@@ -1,5 +1,8 @@
 #! /usr/bin/python
-import logging, mox, os, shutil, tempfile, utils
+import logging, mox, os, shutil, tempfile, unittest, utils
+
+# This makes autotest_lib imports available.
+import common
 from autotest_lib.client.common_lib import revision_control
 
 
@@ -29,6 +32,11 @@ class GitRepoManager(object):
                                         self.repodir,
                                         self.repodir,
                                         abs_work_tree=self.repodir)
+            # Create an initial commit. We really care about the common case
+            # where there exists a commit in the upstream repo.
+            self._edit('initial_commit_file', 'is_non_empty')
+            self.add()
+            self.commit('initial_commit')
         else:
             self.repodir = tempfile.mktemp(suffix='dependent')
             self.git_repo_manager = revision_control.GitRepo(
@@ -95,7 +103,7 @@ class GitRepoManager(object):
         Get everything from masters TOT squashing local changes.
         If the dependent repo is empty pull from master.
         """
-        self.git_repo_manager.pull_or_clone()
+        self.git_repo_manager.reinit_repo_at('master')
         self.commit_hash = self.git_repo_manager.get_latest_commit_hash()
 
 
@@ -156,14 +164,8 @@ class RevisionControlUnittest(mox.MoxTestBase):
         Test that git clone raises a ValueError if giturl is unset.
         """
         self.dependent_repo.git_repo_manager._giturl = None
-        self.mox.StubOutWithMock(revision_control.GitRepo,
-            'is_repo_initialized')
-        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
-            False)
-        self.mox.ReplayAll()
-
         self.assertRaises(ValueError,
-                  self.dependent_repo.git_repo_manager.pull_or_clone)
+                          self.dependent_repo.git_repo_manager.clone)
 
 
     def testGitUrlPull(self):
@@ -171,14 +173,8 @@ class RevisionControlUnittest(mox.MoxTestBase):
         Test that git pull raises a ValueError if giturl is unset.
         """
         self.dependent_repo.git_repo_manager._giturl = None
-        self.mox.StubOutWithMock(revision_control.GitRepo,
-            'is_repo_initialized')
-        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
-            True)
-        self.mox.ReplayAll()
-
         self.assertRaises(ValueError,
-                  self.dependent_repo.git_repo_manager.pull_or_clone)
+                          self.dependent_repo.git_repo_manager.pull)
 
 
     def testGitUrlFetch(self):
@@ -186,11 +182,9 @@ class RevisionControlUnittest(mox.MoxTestBase):
         Test that git fetch raises a ValueError if giturl is unset.
         """
         self.dependent_repo.git_repo_manager._giturl = None
-        self.mox.StubOutWithMock(revision_control.GitRepo,
-            'is_repo_initialized')
-        self.dependent_repo.git_repo_manager.is_repo_initialized().AndReturn(
-            True)
-        self.mox.ReplayAll()
-
         self.assertRaises(ValueError,
-                  self.dependent_repo.git_repo_manager.pull_or_clone)
+                          self.dependent_repo.git_repo_manager.fetch_remote)
+
+
+if __name__ == '__main__':
+  unittest.main()

@@ -1071,16 +1071,6 @@ class _ExternalGitRepo(ExternalPackage):
         return True
 
 
-    def git_pull_or_clone_to_prod(self, git_repo):
-      """
-      Pull or clone repo and checkout the 'prod' branch.
-
-      @param git_repo: A revision_controlGitRepo object to use for git commands.
-      """
-      git_repo.pull_or_clone()
-      git_repo.checkout(self.PROD_BRANCH)
-
-
     def build_and_install(self, unused_install_dir):
         """
         Fall through method to install a package.
@@ -1123,7 +1113,7 @@ class HdctoolsRepo(_ExternalGitRepo):
                         self._GIT_URL,
                         None,
                         abs_work_tree=self.temp_hdctools_dir)
-        self.git_pull_or_clone_to_prod(git_repo)
+        git_repo.reinit_repo_at(self.PROD_BRANCH)
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1162,7 +1152,7 @@ class ChromiteRepo(_ExternalGitRepo):
                 local_chromite_dir,
                 self._GIT_URL,
                 abs_work_tree=local_chromite_dir)
-        self.git_pull_or_clone_to_prod(git_repo)
+        git_repo.reinit_repo_at(self.PROD_BRANCH)
 
 
         if git_repo.get_latest_commit_hash():
@@ -1189,7 +1179,7 @@ class DevServerRepo(_ExternalGitRepo):
         local_devserver_dir = os.path.join(install_dir, 'devserver')
         git_repo = revision_control.GitRepo(local_devserver_dir, self._GIT_URL,
                                             abs_work_tree=local_devserver_dir)
-        self.git_pull_or_clone_to_prod(git_repo)
+        git_repo.reinit_repo_at(self.PROD_BRANCH)
 
         if git_repo.get_latest_commit_hash():
             return True
@@ -1223,7 +1213,7 @@ class BtsocketRepo(_ExternalGitRepo):
                             self._GIT_URL,
                             None,
                             abs_work_tree=self.temp_btsocket_dir.name)
-            self.git_pull_or_clone_to_prod(git_repo)
+            git_repo.reinit_repo_at(self.PROD_BRANCH)
 
             if git_repo.get_latest_commit_hash():
                 return True
