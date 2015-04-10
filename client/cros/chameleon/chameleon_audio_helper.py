@@ -145,9 +145,13 @@ class AudioLinkFactory(object):
         # specific than AudioBusLink.
         # Controls this link using AudioBus object obtained from AudioBoard
         # object.
+        # Plugs/unplugs 3.5mm jack using AudioJackPlugger object obtained from
+        # AudioBoard object.
         elif issubclass(link_type, audio_widget_link.AudioBusLink):
             bus_index = self._acquire_audio_bus_index()
-            link = link_type(self._audio_board.get_audio_bus(bus_index))
+            link = link_type(
+                    self._audio_board.get_audio_bus(bus_index),
+                    self._audio_board.get_jack_plugger())
             self._audio_bus_links[bus_index] = link
         else:
             raise NotImplementedError('Link %s is not implemented' % link_type)

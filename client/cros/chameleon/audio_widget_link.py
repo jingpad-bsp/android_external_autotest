@@ -194,18 +194,36 @@ class WidgetLink(object):
 class AudioBusLink(WidgetLink):
     """The abstraction of widget link using audio bus on audio board.
 
+    This class handles two tasks.
+    1. Audio bus routing.
+    2. 3.5mm 4-ring audio cable plugging/unplugging between audio board
+       and Cros device using motor in audio box.
+    Note that in the configuration where there is no audio box, assume that
+    audio board and Cros device are always connected by 3.5mm 4-ring audio
+    cable and there is no need to plug/unplug the cable.
+
+    Note that audio jack is shared by headphone and external microphone on
+    Cros device. So plugging/unplugging headphone widget will also affect
+    external microphone. This should be handled outside of this class
+    when we need to support complicated test case.
+
     Properties:
         _audio_bus: An AudioBus object.
 
     """
-    def __init__(self, audio_bus):
+    def __init__(self, audio_bus, jack_plugger):
         """Initializes an AudioBusLink.
 
         @param audio_bus: An AudioBus object.
+        @param jack_plugger: An AudioJackPlugger object if there is an audio
+                             jack plugger on audio board.
+                             A DummyAudioJackPlugger object if there is no
+                             jack plugger on audio board.
 
         """
         super(AudioBusLink, self).__init__()
         self._audio_bus = audio_bus
+        self._jack_plugger = jack_plugger
         logging.debug('Create an AudioBusLink with bus index %d',
                       audio_bus.bus_index)
 
@@ -218,11 +236,10 @@ class AudioBusLink(WidgetLink):
         """
         self._check_widget_role('source', widget)
 
-        self._audio_bus.connect(widget.audio_port.port_id)
+        if widget.audio_port.host == 'Cros':
+            self._jack_plugger.plug()
 
-        # TODO(cychiang) Implement fixture control to plug 3.5mm jack if
-        # widget is on Cros device and it is not plugged yet.
-        # e.g. self._audio_fixture_plug.plug_audio_jack()
+        self._audio_bus.connect(widget.audio_port.port_id)
 
         logging.info(
                 'Plugged audio board bus %d input to %s',
@@ -237,13 +254,10 @@ class AudioBusLink(WidgetLink):
         """
         self._check_widget_role('source', widget)
 
-        self._audio_bus.disconnect(widget.audio_port.port_id)
+        if widget.audio_port.host == 'Cros':
+            self._jack_plugger.unplug()
 
-        # TODO(cychiang) Implement fixture control to unplug 3.5mm jack if
-        # widget is on Cros device and both headphone and external mic are not
-        # used.
-        # e.g. self._audio_fixture_plug.unplug_audio_jack()
-        # We might need an argument here to decide to unplug 3.5mm jack or not.
+        self._audio_bus.disconnect(widget.audio_port.port_id)
 
         logging.info(
                 'Unplugged audio board bus %d input from %s',
@@ -258,11 +272,10 @@ class AudioBusLink(WidgetLink):
         """
         self._check_widget_role('sink', widget)
 
-        self._audio_bus.connect(widget.audio_port.port_id)
+        if widget.audio_port.host == 'Cros':
+            self._jack_plugger.plug()
 
-        # TODO(cychiang) Implement fixture control to plug 3.5mm jack if
-        # widget is on Cros device and it is not plugged yet.
-        # e.g. self._audio_fixture_plug.plug_audio_jack()
+        self._audio_bus.connect(widget.audio_port.port_id)
 
         logging.info(
                 'Plugged audio board bus %d output to %s',
@@ -277,14 +290,10 @@ class AudioBusLink(WidgetLink):
         """
         self._check_widget_role('sink', widget)
 
+        if widget.audio_port.host == 'Cros':
+            self._jack_plugger.unplug()
+
         self._audio_bus.disconnect(widget.audio_port.port_id)
-
-        # TODO(cychiang) Implement fixture control to unplug 3.5mm jack if
-        # widget is on Cros device and both headphone and external mic are not
-        # used.
-        # e.g. self._audio_fixture_plug.unplug_audio_jack()
-        # We might need an argument here to decide to unplug 3.5mm jack or not.
-
         logging.info(
                 'Unplugged audio board bus %d output from %s',
                 self._audio_bus.bus_index, widget.audio_port)
