@@ -17,6 +17,7 @@ from autotest_lib.client.cros.graphics import graphics_utils
 # ./gpureset
 # start ui
 
+
 class graphics_GpuReset(test.test):
   """
   Reset the GPU and check recovery mechanism.

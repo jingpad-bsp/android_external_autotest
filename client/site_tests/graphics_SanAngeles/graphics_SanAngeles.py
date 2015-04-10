@@ -2,12 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re
+import logging
+import os
+import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
+
 
 class graphics_SanAngeles(test.test):
     """
@@ -58,10 +61,10 @@ class graphics_SanAngeles(test.test):
         cmd += ' ' + utils.graphics_platform()
         cmd = graphics_utils.xcommand(cmd)
         result = utils.run(cmd,
-                           stderr_is_expected = False,
-                           stdout_tee = utils.TEE_TO_LOGS,
-                           stderr_tee = utils.TEE_TO_LOGS,
-                           ignore_status = True)
+                           stderr_is_expected=False,
+                           stdout_tee=utils.TEE_TO_LOGS,
+                           stderr_tee=utils.TEE_TO_LOGS,
+                           ignore_status=True)
 
         report = re.findall(r'frame_rate = ([0-9.]+)', result.stdout)
         if not report:
@@ -72,6 +75,8 @@ class graphics_SanAngeles(test.test):
         logging.info('frame_rate = %.1f', frame_rate)
         self.write_perf_keyval(
             {'frames_per_sec_rate_san_angeles': frame_rate})
+        self.output_perf_value(description='fps', value=frame_rate,
+                               units='fps', higher_is_better=True)
         if 'error' in result.stderr.lower():
             raise error.TestFail('Error on stderr while running SanAngeles: ' +
                                  result.stderr + ' (' + report[0] + ')')

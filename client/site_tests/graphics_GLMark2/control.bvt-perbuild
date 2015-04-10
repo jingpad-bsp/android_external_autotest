@@ -2,11 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = 'graphics_GLMark2.bvt-cq'
+NAME = 'graphics_GLMark2.bvt-perbuild'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
-#TODO(ihf): Move this test back to bvt-cq once it works on freon.
-#SUITE = 'bvt-cq'
+SUITE = 'bvt-perbuild'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"

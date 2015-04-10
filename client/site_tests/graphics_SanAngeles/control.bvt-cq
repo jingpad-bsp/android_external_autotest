@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'chromeos-gfx.bvt-cq'
-NAME = 'graphics_SanAngeles'
+AUTHOR = 'chromeos-gfx'
+NAME = 'graphics_SanAngeles.bvt-cq'
 PURPOSE = 'Benchmark OpenGL object rendering.'
 CRITERIA = 'This test is a benchmark. It will fail if it fails to complete.'
 SUITE = 'bvt-cq'

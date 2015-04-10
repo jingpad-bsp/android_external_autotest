@@ -15,8 +15,10 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
-GLMARK2_TEST_RE = r"^\[(?P<scene>.*)\] (?P<options>.*): FPS: (?P<fps>\d+) FrameTime: (?P<frametime>\d+.\d+) ms$"
-GLMARK2_SCORE_RE = r"glmark2 Score: (\d+)"
+GLMARK2_TEST_RE = (
+    r'^\[(?P<scene>.*)\] (?P<options>.*): FPS: (?P<fps>\d+) FrameTime: '
+    r'(?P<frametime>\d+.\d+) ms$')
+GLMARK2_SCORE_RE = r'glmark2 Score: (\d+)'
 
 # perf value description strings may only contain letters, numbers, periods,
 # dashes and underscores.
@@ -24,8 +26,9 @@ GLMARK2_SCORE_RE = r"glmark2 Score: (\d+)"
 #   scene-name:opt=val:opt=v1,v2;v3,v4 or scene:<default>
 # which we convert to:
 #   scene-name.opt_val.opt_v1-v2_v3-v4 or scene.default
-description_table = string.maketrans(":,=;", ".-__")
-description_delete = "<>"
+description_table = string.maketrans(':,=;', '.-__')
+description_delete = '<>'
+
 
 class graphics_GLMark2(test.test):
     """Runs glmark2, which benchmarks only calls compatible with OpenGL ES 2.0"""
@@ -57,7 +60,8 @@ class graphics_GLMark2(test.test):
     def run_once(self, size='800x600', hasty=False, min_score=None):
         # TODO(ihf): Remove this once GLMark works on freon.
         if utils.is_freon():
-	    return
+            raise error.TestNAError(
+                'Test needs work on Freon. See crbug.com/413081.')
 
         dep = 'glmark2'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
@@ -78,7 +82,7 @@ class graphics_GLMark2(test.test):
         else:
             options.append('-b :duration=2')
         cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (
-          glmark2, ' '.join(options))
+            glmark2, ' '.join(options))
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
@@ -95,9 +99,9 @@ class graphics_GLMark2(test.test):
 
         try:
             result = utils.run(cmd,
-                               stderr_is_expected = False,
-                               stdout_tee = utils.TEE_TO_LOGS,
-                               stderr_tee = utils.TEE_TO_LOGS)
+                               stderr_is_expected=False,
+                               stdout_tee=utils.TEE_TO_LOGS,
+                               stderr_tee=utils.TEE_TO_LOGS)
         finally:
             # Just sending SIGTERM to X is not enough; we must wait for it to
             # really die before we start a new X server (ie start ui).
