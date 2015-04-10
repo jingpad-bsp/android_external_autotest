@@ -8,7 +8,7 @@ PURPOSE = "Monitor the performance of the Chromium hardware VDA."
 CRITERIA = """
 The test fails if the video_decode_accelerator_unittest fails or crashes.
 """
-SUITE = "performance"
+SUITE = "performance_optional"
 TIME = "SHORT"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"

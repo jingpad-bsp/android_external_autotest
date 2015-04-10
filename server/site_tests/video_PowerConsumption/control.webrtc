@@ -7,9 +7,9 @@ NAME = "video_PowerConsumption.webrtc"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
-SUITE = "performance"
+SUITE = "video"
 TEST_TYPE = "server"
-DEPENDENCIES = "rpm, power:battery"
+DEPENDENCIES = "rpm, power:battery, hw_video_acc_vp8"
 BUG_TEMPLATE = {
     "labels": ["OS-Chrome", "Cr-OS-Kernel-Video"],
 }
