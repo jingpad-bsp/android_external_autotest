@@ -1012,6 +1012,7 @@ def is_booted_from_internal_disk():
     """Return True if boot from internal disk. False, otherwise."""
     return get_root_device() == get_fixed_dst_drive()
 
+
 def get_ui_use_flags():
     """Parses the USE flags as listed in /etc/ui_use_flags.txt.
 
@@ -1026,9 +1027,11 @@ def get_ui_use_flags():
 
     return flags
 
+
 def is_freon():
     """Returns False if the system uses X, True otherwise."""
     return 'X' not in get_ui_use_flags()
+
 
 def graphics_platform():
     """
@@ -1042,6 +1045,7 @@ def graphics_platform():
         return 'x11_egl'
     return 'glx'
 
+
 def graphics_api():
     """Return a string identifying the graphics api, e.g. gl or gles2."""
     use_flags = get_ui_use_flags()
@@ -1049,9 +1053,26 @@ def graphics_api():
         return 'gles2'
     return 'gl'
 
+
 def assert_has_X_server():
     """Using X is soon to be deprecated. Print warning or raise error."""
     if is_freon():
         # TODO(ihf): Think about if we could support X for testing for a while.
         raise error.TestFail('freon: can\'t use X server.')
     logging.warning('freon: Using the X server will be deprecated soon.')
+
+
+def is_vm():
+    """Check if the process is running in a virtual machine.
+
+    @return: True if the process is running in a virtual machine, otherwise
+             return False.
+    """
+    try:
+        virt = utils.run('sudo virt-what').stdout
+        logging.debug('virt-what output: %s', virt)
+        return virt is not None
+    except error.CmdError:
+        logging.warn('Package virt-what is not installed, default to assume '
+                     'it is not a virtual machine.')
+        return False

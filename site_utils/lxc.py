@@ -79,6 +79,12 @@ MOBLAB_SITE_PACKAGES_CONTAINER = '/usr/local/lib/python2.7/dist-packages/'
 # different behavior in Moblab.
 IS_MOBLAB = utils.is_moblab()
 
+# Flag to indicate it's running in a VM(Ganeti instance). Due to t/16003207,
+# lxc-clone does not support snapshot in Ganeti instance.
+IS_VM = utils.is_vm()
+
+SUPPORT_SNAPSHOT_CLONE = not IS_VM and not IS_MOBLAB
+
 # Number of seconds to wait for network to be up in a container.
 NETWORK_INIT_TIMEOUT = 120
 # Network bring up is slower in Moblab.
@@ -538,7 +544,7 @@ class ContainerBucket(object):
             raise error.ContainerError('Container %s already exists.' % name)
         # TODO(crbug.com/464834): Snapshot clone is disabled until Moblab can
         # support overlayfs, which requires a newer kernel.
-        snapshot = '-s' if not IS_MOBLAB else ''
+        snapshot = '-s' if SUPPORT_SNAPSHOT_CLONE else ''
         cmd = ('lxc-clone -p %s -P %s %s %s %s' %
                (self.container_path, self.container_path, snapshot, BASE, name))
         run(cmd)
@@ -694,9 +700,10 @@ class ContainerBucket(object):
         container = self.create_from_base(name)
 
         # Deploy server side package
-        usr_local_path = os.path.join(self.container_path, name,
-                                      'rootfs' if IS_MOBLAB else 'delta0',
-                                      'usr', 'local')
+        usr_local_path = os.path.join(
+                self.container_path, name,
+                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0',
+                'usr', 'local')
         autotest_pkg_path = os.path.join(usr_local_path,
                                          'autotest_server_package.tar.bz2')
         autotest_path = os.path.join(usr_local_path, 'autotest')
@@ -712,9 +719,10 @@ class ContainerBucket(object):
 
         # Copy over local .ssh/config file if exists.
         ssh_config = os.path.expanduser('~/.ssh/config')
-        container_ssh = os.path.join(self.container_path, name,
-                                     'rootfs' if IS_MOBLAB else 'delta0',
-                                     'root', '.ssh')
+        container_ssh = os.path.join(
+                self.container_path, name,
+                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0',
+                'root', '.ssh')
         container_ssh_config = os.path.join(container_ssh, 'config')
         if os.path.exists(ssh_config):
             run('mkdir -p %s'% container_ssh)
