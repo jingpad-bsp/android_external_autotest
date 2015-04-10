@@ -183,12 +183,18 @@ class platform_KernelErrorPaths(test.test):
         does the following for successive sysrq-x invocations within a 20
         second interval:
         1. Abort the chrome process whose parent is the session_manager process.
-        2. Abort the X process.
+        2. Abort the X process. On Freon enabled systems, X is no longer present
+           so this step is a no-op.
         3. Panic the kernel.
         This function tests the above steps.
         """
         for process, parent in [('chrome', 'session_manager'),
                                 ('X', None)]:
+            if process is 'X':
+                # With Freon there is no longer an X process. Lets send the
+                # sysrq_x and then continue on.
+                self._trigger_sysrq_x()
+                continue
             orig_pid = self._get_pid(process, parent)
             self._trigger_sysrq_x()
             for _ in range(10):
