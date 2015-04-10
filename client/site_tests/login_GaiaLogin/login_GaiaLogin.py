@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import urllib2
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.common_lib import error
@@ -16,11 +17,14 @@ class login_GaiaLogin(test.test):
     _USERNAME = 'powerloadtest@gmail.com'
     # TODO(achuith): Get rid of this when crbug.com/358427 is fixed.
     _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
-    _PASSWORD = 'power_LoadTest4'
 
     def run_once(self):
+        pltp = urllib2.urlopen(
+                'https://sites.google.com/a/chromium.org/dev/chromium-os/testing/power-testing/pltp/pltp')
+        self._password = pltp.read().rstrip()
+
         with chrome.Chrome(gaia_login=True, username=self._USERNAME,
-                                            password=self._PASSWORD) as cr:
+                                            password=self._password) as cr:
             if not cryptohome.is_vault_mounted(user=self._USERNAME):
                 raise error.TestFail('Expected to find a mounted vault for %s'
                                      % self._USERNAME)
