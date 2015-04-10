@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from yaml import load
+import json
+import logging
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -24,8 +25,9 @@ class login_OobeLocalization(test.test):
     # created by dump_vpd_log and read. See
     # /platform/login_manager/init/machine-info.conf.)
     _FILTERED_VPD_FILENAME = '/var/log/vpd_2.0.txt'
-    # regions.yaml has information for each region (locale, input method, etc.).
-    _REGIONS_FILENAME = '/usr/local/factory/share/regions.yaml'
+    # cros-regions.json has information for each region (locale, input method,
+    # etc.) in JSON format.
+    _REGIONS_FILENAME = '/usr/share/misc/cros-regions.json'
     # input_methods.txt lists supported input methods.
     _INPUT_METHODS_FILENAME = ('/usr/share/chromeos-assets/input_methods/'
                               'input_methods.txt')
@@ -39,7 +41,21 @@ class login_OobeLocalization(test.test):
 
     def run_once(self):
         for region in self._get_regions():
-            self._set_vpd(region['vpd_settings'])
+            # Unconfirmed regions may have incorrect data. The 'confirm'
+            # property is optional when all regions in database are confirmed so
+            # we have to check explicit 'False'.
+            if region.get('confirmed', True) is False:
+                logging.info('Skip unconfirmed region: %s',
+                             region['region_code'])
+                continue
+
+            # TODO(hungte) When OOBE supports cros-regions.json
+            # (crosbug.com/p/34536) we can remove initial_locale,
+            # initial_timezone, and keyboard_layout.
+            self._set_vpd({'region': region['region_code'],
+                           'initial_locale': ','.join(region['locales']),
+                           'initial_timezone': ','.join(region['time_zones']),
+                           'keyboard_layout': ','.join(region['keyboards'])})
             self._run_with_chrome(self._run_localization_test, region)
 
 
@@ -62,7 +78,7 @@ class login_OobeLocalization(test.test):
         """Checks the network screen for the proper dropdown values."""
 
         # Find the language(s), or acceptable alternate value(s).
-        initial_locale = region['vpd_settings']['initial_locale']
+        initial_locale = ','.join(region['locales'])
         if not self._verify_initial_options(
                 self._LANGUAGE_SELECT,
                 initial_locale,
@@ -76,7 +92,7 @@ class login_OobeLocalization(test.test):
                             self._dump_options(self._LANGUAGE_SELECT)))
 
         # We expect to see only login keyboards at OOBE.
-        keyboards = region['vpd_settings']['keyboard_layout'].split(',')
+        keyboards = region['keyboards']
         keyboards = [kbd for kbd in keyboards if kbd in self._login_keyboards]
 
         # If there are no login keyboards, expect only the fallback keyboard.
@@ -220,7 +236,7 @@ class login_OobeLocalization(test.test):
     def _get_regions(self):
         regions = {}
         with open(self._REGIONS_FILENAME, 'r') as regions_file:
-            return  load(regions_file).values()
+            return json.load(regions_file).values()
 
 
     def _get_comp_ime_prefix(self):
@@ -238,7 +254,7 @@ class login_OobeLocalization(test.test):
         language but not the country. Mirrors
         chromium:ui/base/l10n/l10n_util.cc.
         """
-        lang, _, region = map(str.lower, locale.partition('-'))
+        lang, _, region = map(str.lower, str(locale).partition('-'))
         if not region:
             return ''
 
