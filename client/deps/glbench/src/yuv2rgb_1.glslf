@@ -30,7 +30,7 @@
  */
 
 /*
- * This is a conversion of a cg shader from Chrome:
+ * This is a conversion of a conversion of a cg shader from Chrome:
  * http://src.chromium.org/viewvc/chrome/trunk/src/o3d/samples/shaders/yuv2rgb.shader
  */
 
@@ -61,71 +61,13 @@ uniform mat4 conversion;
 varying vec4 v1;
 
 /**
- * This fetches an individual Y pixel from the image, given the current
- * texture coordinates (which range from 0 to 1 on the source texture
- * image).  They are mapped to the portion of the image that contains
- * the Y component.
- *
- * @param position This is the position of the main image that we're
- *        trying to render, in parametric coordinates.
- */
-float getYPixel(vec2 position) {
-  position.y = 1. - (position.y * 2.0 / 3.0 + 1.0 / 3.0);
-  return texture2D(textureSampler, position).x;
-}
-
-/**
- * This does the crazy work of calculating the planar position (the
- * position in the byte stream of the image) of the U or V pixel, and
- * then converting that back to x and y coordinates, so that we can
- * account for the fact that V is appended to U in the image, and the
- * complications that causes (see below for a diagram).
- *
- * @param position This is the position of the main image that we're
- *        trying to render, in pixels.
- *
- * @param planarOffset This is an offset to add to the planar address
- *        we calculate so that we can find the U image after the V
- *        image.
- */
-vec2 mapCommon(vec2 position, float planarOffset) {
-  planarOffset += imageWidth * floor(position.y / 2.0) / 2.0 +
-                  floor((imageWidth - 1.0 - position.x) / 2.0);
-  float x = floor(imageWidth - 1.0 - floor(mod(planarOffset, imageWidth)));
-  float y = floor(planarOffset / imageWidth);
-  return vec2((x + 0.5) / imageWidth, 1. - (y + 0.5) / (1.5 * imageHeight));
-}
-
-/**
- * This is a helper function for mapping pixel locations to a texture
- * coordinate for the U plane.
- *
- * @param position This is the position of the main image that we're
- *        trying to render, in pixels.
- */
-vec2 mapU(vec2 position) {
-  float planarOffset = (imageWidth * imageHeight) / 4.0;
-  return mapCommon(position, planarOffset);
-}
-
-/**
- * This is a helper function for mapping pixel locations to a texture
- * coordinate for the V plane.
- *
- * @param position This is the position of the main image that we're
- *        trying to render, in pixels.
- */
-vec2 mapV(vec2 position) {
-  return mapCommon(position, 0.0);
-}
-
-/**
  * Given the texture coordinates, our pixel shader grabs the right
  * value from each channel of the source image, converts it from Y'UV
  * to RGB, and returns the result.
  *
- * Each U and V pixel provides color information for a 2x2 block of Y
- * pixels.  The U and V planes are just appended to the Y image.
+ * Each Y texel provides luminance information for one pixel in the image.
+ * Each U and V texel provides color information for a 2x2 block of pixels.
+ * The U and V texels are just appended to the Y texels.
  *
  * For images that have a height divisible by 4, things work out nicely.
  * For images that are merely divisible by 2, it's not so nice
@@ -135,68 +77,98 @@ vec2 mapV(vec2 position) {
  * Notice that the V plane starts halfway through the last scanline
  * that has U on it.
  *
- * 1  +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- *    +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- *    +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- *    +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- *    +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- *    +---+---+---+---+---+---+
- *    | Y | Y | Y | Y | Y | Y |
- * .3 +---+---+---+---+---+---+
- *    | U | U | U | U | U | U |
- *    +---+---+---+---+---+---+
- *    | U | U | U | V | V | V |
- *    +---+---+---+---+---+---+
- *    | V | V | V | V | V | V |
  * 0  +---+---+---+---+---+---+
- *    0                       1
- *
+ *    | Y0| Y0| Y1| Y1| Y2| Y2|
+ *    +---+---+---+---+---+---+
+ *    | Y0| Y0| Y1| Y1| Y2| Y2|
+ *    +---+---+---+---+---+---+
+ *    | Y3| Y3| Y4| Y4| Y5| Y5|
+ *    +---+---+---+---+---+---+
+ *    | Y3| Y3| Y4| Y4| Y5| Y5|
+ *    +---+---+---+---+---+---+
+ *    | Y6| Y6| Y7| Y7| Y8| Y8|
+ *    +---+---+---+---+---+---+
+ *    | Y6| Y6| Y7| Y7| Y8| Y8|
+ *2/3 +---+---+---+---+---+---+
+ *    | U0| U1| U2| U3| U4| U5|
+ *    +---+---+---+---+---+---+
+ *5/6 | U6| U7| U8| V0| V1| V2|
+ *    +---+---+---+---+---+---+
+ *    | V3| V4| V5| V6| V7| V8|
+ * 1  +---+---+---+---+---+---+
+ *    0          0.5          1
+ * 
  * Here is a 4x4 image, where the U and V planes are nicely split into
  * separable blocks.
  *
- * 1  +---+---+---+---+
- *    | Y | Y | Y | Y |
- *    +---+---+---+---+
- *    | Y | Y | Y | Y |
- *    +---+---+---+---+
- *    | Y | Y | Y | Y |
- *    +---+---+---+---+
- *    | Y | Y | Y | Y |
- * .3 +---+---+---+---+
- *    | U | U | U | U |
- *    +---+---+---+---+
- *    | V | V | V | V |
  * 0  +---+---+---+---+
- *    0               1
+ *    | Y0| Y0| Y1| Y1|
+ *    +---+---+---+---+
+ *    | Y0| Y0| Y1| Y1|
+ *    +---+---+---+---+
+ *    | Y2| Y2| Y3| Y3|
+ *    +---+---+---+---+
+ *    | Y2| Y2| Y3| Y3|
+ *2/3 +---+---+---+---+
+ *    | U0| U1| U2| U3|
+ *5/6 +---+---+---+---+
+ *    | V0| V1| V2| V3|
+ * 1  +---+---+---+---+
+ *    0      0.5      1
  *
- */
+ * The number in a cell indicates which U and V values map onto
+ * the cell: Un and Vn are used to color the four 'n' cells.  As the
+ * image is drawn its texture coordinates range from 0 to 1.  The 'y'
+ * coordinate is scaled by 2/3 to map from the Y texels, scaled by 1/6
+ * and shifted down 2/3 to map from the U texels, and scaled by 1/6
+ * and shifted down 5/6 to map from the V texels.  To map from U or V
+ * texels the 'x' coordinate is scaled by 1/2 always and shifted right
+ * 1/2 when needed.  For example rows 0 and 1 use left side U texels
+ * (U0-U2 in the first example) while rows 2 and 3 right side U texels
+ * (U3-U5 in the first example), and so on for the remaining rows.
+ * When the image height is a multiple of 4, the 'V side' is the same
+ * as the 'U side,' otherwise it is opposite.
+*/
+
+
 void main() {
-  /*
-   * Calculate what image pixel we're on, since we have to calculate
-   * the location in the image stream, using floor in several places
-   * which makes it hard to use parametric coordinates.
-   */
-  vec2 pixelPosition = vec2(floor(imageWidth * v1.x),
-                            floor(imageHeight * v1.y));
+  float uside, vside;
 
-  /*
-   * We can use the parametric coordinates to get the Y channel, since it's
-   * a relatively normal image.
-   */
-  float yChannel = getYPixel(vec2(v1));
+  // texture origin at top left, vertex origin at bottom left
+  vec2 t = vec2(v1.x, (1. - v1.y));
 
-  /*
-   * As noted above, the U and V planes are smashed onto the end of
-   * the image in an odd way (in our 2D texture mapping, at least), so
-   * these mapping functions take care of that oddness.
-   */
-  float uChannel = texture2D(textureSampler, mapU(pixelPosition)).x;
-  float vChannel = texture2D(textureSampler, mapV(pixelPosition)).x;
+  // y position in pixels
+  float ypixel = floor(t.y * imageHeight);
+
+  if (mod(ypixel, 4) < 2.) {
+    // rows 0-1, U on left side
+    uside = 0.;
+  } else {
+    // rows 2-3, U on right side
+    uside = .5;
+  }
+
+  if (mod(imageHeight, 4) == 0.) {
+    // multiple of 4, V same side as U
+    vside = uside;
+  } else {
+    // assume multiple of 2, V opposite side to U
+    vside = .5 - uside;
+  }
+
+  // shrink y tex. coord. by 2/3 to cover Y section
+  vec2 y = t * vec2(1., 2./3.);
+
+  // for U and V shrink x tex. coord. by 0.5, y by 1/6
+  t *= vec2(.5, 1./6.);
+
+  // shift to proper side and translate down...
+  vec2 u = t + vec2(uside, 2./3.); // ...to U section
+  vec2 v = t + vec2(vside, 5./6.); // ...to V section
+
+  float yChannel = texture2D(textureSampler, y).x;
+  float uChannel = texture2D(textureSampler, u).x;
+  float vChannel = texture2D(textureSampler, v).x;
 
   /*
    * This does the colorspace conversion from Y'UV to RGB as a matrix
