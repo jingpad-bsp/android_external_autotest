@@ -36,7 +36,6 @@ class hardware_Memtester(test.test):
 
         cmd = 'memtester %dK %d' % (size, loop)
         logging.info('cmd: %s', cmd)
-        res = utils.run(cmd)
 
         with open(os.path.join(self.resultsdir, 'memtester_stdout'), 'w') as f:
-            f.write(res.stdout)
+            utils.run(cmd, stdout_tee=f)
