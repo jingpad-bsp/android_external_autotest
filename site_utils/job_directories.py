@@ -180,20 +180,15 @@ class RegularJobDirectory(_JobDirectory):
     @returns the latest hqe finished_on time. If the finished_on times are null
              returns the job's created_on time.
     """
-    entry = _AFE.run('get_jobs', id=self._id, finished=True)
+    entry = _AFE.get_jobs(id=self._id, finished=True)
     if not entry:
       return None
-    hqes = _AFE.run('get_host_queue_entries', finished_on__isnull=False,
-                    job_id=self._id)
+    hqes = _AFE.get_host_queue_entries(finished_on__isnull=False,
+                                       job_id=self._id)
     if not hqes:
-      return entry[0]['created_on']
-    latest_finished_time = hqes[0]['finished_on']
+      return entry[0].created_on
     # While most Jobs have 1 HQE, some can have multiple, so check them all.
-    for hqe in hqes[1:]:
-      if (time_utils.time_string_to_datetime(hqe['finished_on']) >
-          time_utils.time_string_to_datetime(latest_finished_time)):
-        latest_finished_time = hqe['finished_on']
-    return latest_finished_time
+    return max([hqe.finished_on for hqe in hqes])
 
 
 class SpecialJobDirectory(_JobDirectory):
@@ -205,5 +200,5 @@ class SpecialJobDirectory(_JobDirectory):
     super(SpecialJobDirectory, self).__init__(resultsdir)
 
   def get_timestamp_if_finished(self):
-    entry = _AFE.run('get_special_tasks', id=self._id, is_complete=True)
-    return entry[0]['time_finished'] if entry else None
+    entry = _AFE.get_special_tasks(id=self._id, is_complete=True)
+    return entry[0].time_finished if entry else None

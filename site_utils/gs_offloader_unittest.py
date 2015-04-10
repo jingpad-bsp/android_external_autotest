@@ -411,6 +411,24 @@ class EmailTemplateTests(mox.MoxTestBase):
         gs_offloader.report_offload_failures(self._joblist)
 
 
+class _MockJob(object):
+    """Class to mock the return value of `AFE.get_jobs()`."""
+    def __init__(self, created):
+        self.created_on = created
+
+
+class _MockHostQueueEntry(object):
+    """Class to mock the return value of `AFE.get_host_queue_entries()`."""
+    def __init__(self, finished):
+        self.finished_on = finished
+
+
+class _MockSpecialTask(object):
+    """Class to mock the return value of `AFE.get_special_tasks()`."""
+    def __init__(self, finished):
+        self.time_finished = finished
+
+
 class JobDirectorySubclassTests(mox.MoxTestBase):
     """Test specific to RegularJobDirectory and SpecialJobDirectory.
 
@@ -421,7 +439,11 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
 
     def setUp(self):
         super(JobDirectorySubclassTests, self).setUp()
-        self.mox.StubOutWithMock(job_directories._AFE, 'run')
+        self.mox.StubOutWithMock(job_directories._AFE, 'get_jobs')
+        self.mox.StubOutWithMock(job_directories._AFE,
+                                 'get_host_queue_entries')
+        self.mox.StubOutWithMock(job_directories._AFE,
+                                 'get_special_tasks')
 
 
     def test_regular_job_fields(self):
@@ -451,6 +473,34 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         self.assertEqual(job._id, 118)
 
 
+    def _check_finished_job(self, jobtime, hqetimes, expected):
+        """Mock and test behavior of a finished job.
+
+        Initialize the mocks for a call to
+        `get_timestamp_if_finished()`, then simulate one call.
+        Assert that the returned timestamp matches the passed
+        in expected value.
+
+        @param jobtime Time used to construct a _MockJob object.
+        @param hqetimes List of times used to construct
+                        _MockHostQueueEntry objects.
+        @param expected Expected time to be returned by
+                        get_timestamp_if_finished
+
+        """
+        job = job_directories.RegularJobDirectory('118-fubar')
+        job_directories._AFE.get_jobs(
+                id=job._id, finished=True).AndReturn(
+                        [_MockJob(jobtime)])
+        job_directories._AFE.get_host_queue_entries(
+                finished_on__isnull=False,
+                job_id=job._id).AndReturn(
+                        [_MockHostQueueEntry(t) for t in hqetimes])
+        self.mox.ReplayAll()
+        self.assertEqual(expected, job.get_timestamp_if_finished())
+        self.mox.VerifyAll()
+
+
     def test_finished_regular_job(self):
         """Test getting the timestamp for a finished regular job.
 
@@ -459,18 +509,11 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         the AFE indicates the job is finished.
 
         """
-        job = job_directories.RegularJobDirectory('118-fubar')
-        timestamp = _make_timestamp(0, True)
-        job_directories._AFE.run(
-            'get_jobs', id=job._id, finished=True).AndReturn(
-                [{'created_on': _make_timestamp(0, True)}])
-        job_directories._AFE.run(
-            'get_host_queue_entries', finished_on__isnull=False,
-            job_id=job._id).AndReturn(
-                [{'finished_on': timestamp}])
-        self.mox.ReplayAll()
-        self.assertEqual(timestamp,
-                         job.get_timestamp_if_finished())
+        created_timestamp = _make_timestamp(1, True)
+        hqe_timestamp = _make_timestamp(0, True)
+        self._check_finished_job(created_timestamp,
+                                 [hqe_timestamp],
+                                 hqe_timestamp)
 
 
     def test_finished_regular_job_multiple_hqes(self):
@@ -481,35 +524,23 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         the AFE indicates the job is finished and the job has multiple host
         queue entries.
 
-        If there is more than one HQE, this test guarantees latest timestamp is
-        the one returned.
+        Tests that the returned timestamp is the latest timestamp in
+        the list of HQEs, regardless of the returned order.
+
         """
-        job = job_directories.RegularJobDirectory('118-fubar')
         created_timestamp = _make_timestamp(2, True)
         older_hqe_timestamp = _make_timestamp(1, True)
         newer_hqe_timestamp = _make_timestamp(0, True)
-        job_directories._AFE.run(
-            'get_jobs', id=job._id, finished=True).AndReturn(
-                [{'created_on': created_timestamp}])
-        job_directories._AFE.run(
-            'get_host_queue_entries', finished_on__isnull=False,
-            job_id=job._id).AndReturn(
-                [{'finished_on': older_hqe_timestamp},
-                 {'finished_on': newer_hqe_timestamp}])
-        # For the second call return the latest hqe last.
-        job_directories._AFE.run(
-            'get_jobs', id=job._id, finished=True).AndReturn(
-                [{'created_on': created_timestamp}])
-        job_directories._AFE.run(
-            'get_host_queue_entries', finished_on__isnull=False,
-            job_id=job._id).AndReturn(
-                [{'finished_on': newer_hqe_timestamp},
-                 {'finished_on': older_hqe_timestamp}])
-        self.mox.ReplayAll()
-        self.assertEqual(newer_hqe_timestamp,
-                         job.get_timestamp_if_finished())
-        self.assertEqual(newer_hqe_timestamp,
-                         job.get_timestamp_if_finished())
+        hqe_list = [older_hqe_timestamp,
+                    newer_hqe_timestamp]
+        self._check_finished_job(created_timestamp,
+                                 hqe_list,
+                                 newer_hqe_timestamp)
+        self.mox.ResetAll()
+        hqe_list.reverse()
+        self._check_finished_job(created_timestamp,
+                                 hqe_list,
+                                 newer_hqe_timestamp)
 
 
     def test_finished_regular_job_null_finished_times(self):
@@ -521,17 +552,8 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         queue entries.
 
         """
-        job = job_directories.RegularJobDirectory('118-fubar')
         timestamp = _make_timestamp(0, True)
-        job_directories._AFE.run(
-            'get_jobs', id=job._id, finished=True).AndReturn(
-                [{'created_on': timestamp}])
-        job_directories._AFE.run(
-            'get_host_queue_entries', finished_on__isnull=False,
-            job_id=job._id).AndReturn([])
-        self.mox.ReplayAll()
-        self.assertEqual(timestamp,
-                         job.get_timestamp_if_finished())
+        self._check_finished_job(timestamp, [], timestamp)
 
 
     def test_unfinished_regular_job(self):
@@ -543,10 +565,11 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
 
         """
         job = job_directories.RegularJobDirectory('118-fubar')
-        job_directories._AFE.run(
-            'get_jobs', id=job._id, finished=True).AndReturn(None)
+        job_directories._AFE.get_jobs(
+                id=job._id, finished=True).AndReturn([])
         self.mox.ReplayAll()
         self.assertIsNone(job.get_timestamp_if_finished())
+        self.mox.VerifyAll()
 
 
     def test_finished_special_job(self):
@@ -560,13 +583,13 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         job = job_directories.SpecialJobDirectory(
                 'hosts/host1/118-reset')
         timestamp = _make_timestamp(0, True)
-        job_directories._AFE.run('get_special_tasks',
-                                 id=job._id,
-                                 is_complete=True).AndReturn(
-                                     [{'time_finished': timestamp}])
+        job_directories._AFE.get_special_tasks(
+                id=job._id, is_complete=True).AndReturn(
+                    [_MockSpecialTask(timestamp)])
         self.mox.ReplayAll()
         self.assertEqual(timestamp,
                          job.get_timestamp_if_finished())
+        self.mox.VerifyAll()
 
 
     def test_unfinished_special_job(self):
@@ -579,11 +602,11 @@ class JobDirectorySubclassTests(mox.MoxTestBase):
         """
         job = job_directories.SpecialJobDirectory(
                 'hosts/host1/118-reset')
-        job_directories._AFE.run('get_special_tasks',
-                                 id=job._id,
-                                 is_complete=True).AndReturn(None)
+        job_directories._AFE.get_special_tasks(
+                id=job._id, is_complete=True).AndReturn([])
         self.mox.ReplayAll()
         self.assertIsNone(job.get_timestamp_if_finished())
+        self.mox.VerifyAll()
 
 
 class _TempResultsDirTestBase(mox.MoxTestBase):
