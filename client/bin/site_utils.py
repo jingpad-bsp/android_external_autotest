@@ -1069,9 +1069,9 @@ def is_vm():
              return False.
     """
     try:
-        virt = utils.run('sudo virt-what').stdout
+        virt = utils.run('sudo virt-what').stdout.strip()
         logging.debug('virt-what output: %s', virt)
-        return virt is not None
+        return bool(virt)
     except error.CmdError:
         logging.warn('Package virt-what is not installed, default to assume '
                      'it is not a virtual machine.')
