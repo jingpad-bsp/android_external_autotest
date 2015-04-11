@@ -116,7 +116,15 @@ def parse_options():
     parser.add_option("-d", "--delay_sec", type="int",
                       dest="delay_sec", default=10)
     parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
-                      help="Skips running suite; creates report for given ID.")
+                      help="Attach to existing job id for already running "
+                           "suite, and creates report.")
+    # NOTE(akeshet): This looks similar to --no_wait, but behaves differently.
+    # --no_wait is passed in to the suite rpc itself and affects the suite,
+    # while this does not.
+    parser.add_option("-c", "--create_and_return", dest="create_and_return",
+                      action="store_true",
+                      help="Create the suite and print the job id, then "
+                           "finish immediately.")
     parser.add_option("-u", "--num", dest="num", type="int", default=None,
                       help="Run on at most NUM machines.")
     #  Same boolean flag issue applies here.
@@ -1314,7 +1322,13 @@ def main_without_exception_handling():
     logging.info('%s Created suite job: %s',
                  job_timer.format_time(job_timer.job_created_time),
                  job_url)
+    # TODO(akeshet): Move this link-printing to chromite.
     logging.info(GetBuildbotStepLink('Suite created', job_url))
+
+    if options.create_and_return:
+        logging.info('--create_and_return was specified, terminating now.')
+        return RETURN_CODES.OK
+
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
