@@ -16,6 +16,14 @@ from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 
 CartridgeCmd = collections.namedtuple('CartridgeCmd', ['method', 'args'])
 
+# DHCP delayed devices.  Some APs need additional time for the DHCP
+# server to come on-line.  These are AP based, so the BSS is used
+# since that is unique.
+DHCP_DELAY_DEVICES=['44:94:fc:71:88:9b', # Netgear wndr4300
+                    '10:0d:7f:4d:68:3c', # Netgear wndr3700v4
+                    '14:35:8b:0b:6c:80', # Medialink mwn_wapr150nv2
+                    '20:4e:7f:49:86:8f'] # Netgear wpn824n
+
 class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
     """Derived class to supply AP configuration information."""
 
@@ -61,6 +69,11 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
                      'Hostname': ap_config.get_wan_host()}
 
         self._name = pprint.pformat(name_dict)
+
+        # Check if a delay needs to be added for this AP.
+        if (ap_config.get_bss() in DHCP_DELAY_DEVICES or
+            ap_config.get_bss5() in DHCP_DELAY_DEVICES):
+            self._dhcp_delay = 60
 
         if self.rpm_managed:
             rpm_frontend_server = global_config.global_config.get_config_value(

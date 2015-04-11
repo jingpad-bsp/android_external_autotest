@@ -452,6 +452,10 @@ class ChaosRunner(object):
                                       'wifi_firmware_version': firmware_ver}
                         debug_string = pprint.pformat(debug_dict)
 
+                        logging.info('Waiting %d seconds for the AP dhcp '
+                                     'server', ap.dhcp_delay)
+                        time.sleep(ap.dhcp_delay)
+
                         result = job.run_test(self._test,
                                      capturer=capturer,
                                      capturer_frequency=networks[0].frequency,
