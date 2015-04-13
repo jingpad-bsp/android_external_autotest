@@ -23,6 +23,8 @@ import common
 
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 try:
     from autotest_lib.puppylab import results_mocker
 except ImportError:
@@ -178,9 +180,21 @@ def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
 
     cmd_line = ' '.join(args)
     logging.info('Run command in container: %s', cmd_line)
+    success = False
     try:
         test_container.attach_run(cmd_line)
+        success = True
     finally:
+        counter_key = '%s.%s' % (lxc.STATS_KEY,
+                                 'success' if success else 'fail')
+        autotest_stats.Counter(counter_key).increment()
+        # metadata is uploaded separately so it can use http to upload.
+        metadata = {'drone': socket.gethostname(),
+                    'job_id': job_id,
+                    'success': success}
+        autotest_es.post(use_http=True,
+                         type_str=lxc.CONTAINER_RUN_TEST_METADB_TYPE,
+                         metadata=metadata)
         test_container.destroy()
 
 

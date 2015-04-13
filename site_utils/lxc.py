@@ -32,6 +32,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
@@ -46,8 +47,7 @@ CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 # Naming convention of the result directory in test container.
 RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results', '%s')
 # Attributes to retrieve about containers.
-ATTRIBUTES = ['name', 'state', 'ipv4', 'ipv6', 'autostart', 'pid', 'memory',
-              'ram', 'swap']
+ATTRIBUTES = ['name', 'state']
 
 # Format for mount entry to share a directory in host with container.
 # source is the directory in host, destination is the directory in container.
@@ -90,7 +90,11 @@ NETWORK_INIT_TIMEOUT = 120
 # Network bring up is slower in Moblab.
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
-STATS_KEY = 'lxc.%s' % socket.gethostname()
+# Type string for container related metadata.
+CONTAINER_CREATE_METADB_TYPE = 'container_create'
+CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
+
+STATS_KEY = 'lxc.%s' % socket.gethostname().replace('.', '_')
 timer = autotest_stats.Timer(STATS_KEY)
 
 def run(cmd, sudo=True, **kwargs):
@@ -261,6 +265,18 @@ def cleanup_if_fail():
                         container.destroy()
                 except error.CmdError as e:
                     logging.error(e)
+
+                try:
+                    job_id = utils.get_function_arg_value(
+                            func, 'job_id', args, kwargs)
+                except (KeyError, ValueError):
+                    job_id = ''
+                autotest_es.post(use_http=True,
+                                 type_str=CONTAINER_CREATE_METADB_TYPE,
+                                 metadata={'drone': socket.gethostname(),
+                                           'job_id': job_id,
+                                           'success': False})
+
                 # Raise the cached exception with original backtrace.
                 raise exc_info[0], exc_info[1], exc_info[2]
         return func_cleanup_if_fail
@@ -288,6 +304,8 @@ class Container(object):
     name: Name of the container.
     state: State of the container, e.g., ABORTING, RUNNING, STARTING, STOPPED,
            or STOPPING.
+
+    lxc-ls can also collect other attributes of a container including:
     ipv4: IP address for IPv4.
     ipv6: IP address for IPv6.
     autostart: If the container will autostart at system boot.
@@ -295,6 +313,8 @@ class Container(object):
     memory: Memory used by the container, as a string, e.g., "6.2MB"
     ram: Physical ram used by the container, as a string, e.g., "6.2MB"
     swap: swap used by the container, as a string, e.g., "1.0MB"
+
+    For performance reason, such info is not collected for now.
 
     The attributes available are defined in ATTRIBUTES constant.
     """
@@ -691,6 +711,8 @@ class ContainerBucket(object):
 
         @raise ContainerError: If container does not exist, or not running.
         """
+        start_time = time.time()
+
         if not os.path.exists(result_path):
             raise error.ContainerError('Result directory does not exist: %s',
                                        result_path)
@@ -785,6 +807,13 @@ class ContainerBucket(object):
                 os.path.join(CONTAINER_AUTOTEST_DIR, 'shadow_config.ini'))
 
         container.verify_autotest_setup(job_id)
+
+        autotest_es.post(use_http=True,
+                         type_str=CONTAINER_CREATE_METADB_TYPE,
+                         metadata={'drone': socket.gethostname(),
+                                   'job_id': job_id,
+                                   'time_used': time.time() - start_time,
+                                   'success': True})
 
         logging.debug('Test container %s is set up.', name)
         return container

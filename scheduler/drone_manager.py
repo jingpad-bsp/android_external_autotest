@@ -292,6 +292,8 @@ class BaseDroneManager(object):
             logging.info('Drone %s.enabled: %s', hostname, drone.enabled)
             logging.info('Drone %s.allowed_users: %s', hostname,
                          drone.allowed_users)
+            logging.info('Drone %s.support_ssp: %s', hostname,
+                         drone.support_ssp)
 
         self._reorder_drone_queue() # max_processes may have changed
         # Clear notification record about reaching max_processes limit.
