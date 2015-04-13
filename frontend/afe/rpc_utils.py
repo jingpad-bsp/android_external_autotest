@@ -1193,28 +1193,6 @@ def route_rpc_to_master(rpc_name, **kwargs):
     return master_afe.run(rpc_name, **kwargs)
 
 
-def get_serialized_local_host_queue_entries(**kwargs):
-    """Gets serialized HQEs from local DB.
-
-    @param **kwargs: The kwargs for the rpc.
-    @return: List of serialized HQEs. Each HQE is represented by a dict.
-    """
-    return prepare_rows_as_nested_dicts(
-            models.HostQueueEntry.query_objects(kwargs),
-            ('host', 'atomic_group', 'job'))
-
-
-def get_serialized_local_special_tasks(**kwargs):
-    """Gets serialized special tasks from local DB.
-
-    @param **kwargs: The kwargs for the rpc.
-    @return: List of serialized special tasks.
-             Each task is represented by a dict.
-    """
-    return prepare_rows_as_nested_dicts(
-            models.SpecialTask.query_objects(kwargs), ('host', 'queue_entry'))
-
-
 def pack_in_list(obj, list):
     """Packs objects into a list appropriately.
 
