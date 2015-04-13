@@ -224,7 +224,7 @@ class MoblabHost(cros_host.CrosHost):
         logging.debug('DUTs scheduled for reverification: %s', hosts)
         # Wait till all pending special tasks are completed.
         total_time = 0
-        while (self.afe.run('get_special_tasks', is_complete=False) and
+        while (self.afe.get_special_tasks(is_complete=False) and
                total_time < DUT_VERIFY_TIMEOUT):
             total_time = total_time + DUT_VERIFY_SLEEP_SECS
             time.sleep(DUT_VERIFY_SLEEP_SECS)
