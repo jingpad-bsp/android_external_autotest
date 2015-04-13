@@ -68,7 +68,7 @@ uinput:!:258:bluetooth,volume
 apmanager:!:259:apmanager,privetd
 peerd:!:260:chronos,leaderd,peerd,privetd
 privetd:!:262:chronos,leaderd,privetd
-buffet:!:264:chronos,buffet,privetd
+buffet:!:264:chronos,buffet,privetd,power
 leaderd:!:265:chronos,leaderd
 webservd:!:266:leaderd,privetd,webservd
 ntfs-3g:!:300:
