@@ -315,6 +315,12 @@ class AFE(RpcClient):
         return [SpecialTask(self, t) for t in tasks]
 
 
+    def get_host_special_tasks(self, host_id, **data):
+        tasks = self.run('get_host_special_tasks',
+                         host_id=host_id, **data)
+        return [SpecialTask(self, t) for t in tasks]
+
+
     def create_job_by_test(self, tests, kernel=None, use_container=False,
                            kernel_cmdline=None, **dargs):
         """

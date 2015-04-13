@@ -153,10 +153,10 @@ class _SpecialTaskEvent(_JobEvent):
         """
         filter_start = time_utils.epoch_time_to_date_string(start_time)
         filter_end = time_utils.epoch_time_to_date_string(end_time)
-        tasks = afe.get_special_tasks(
-                host_id=host_id,
+        tasks = afe.get_host_special_tasks(
+                host_id,
                 time_started__gte=filter_start,
-                time_started__lte=filter_end,
+                time_finished__lte=filter_end,
                 is_complete=1)
         return [cls(afe.server, t) for t in tasks]
 
