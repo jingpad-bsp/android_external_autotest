@@ -22,7 +22,7 @@ class test_aggregate_iterations(unittest.TestCase):
                 'stddev': 0.0,
                 'units': 'units1',
                 'higher_is_better': True,
-                'graph':None
+                'graph': None
             },
             {
                 'description': 'metric2',
@@ -48,7 +48,7 @@ class test_aggregate_iterations(unittest.TestCase):
                 'stddev': 0.0,
                 'units': 'units1',
                 'higher_is_better': True,
-                'graph':None,
+                'graph': None,
             },
             {
                 'description': 'metric2',
@@ -252,16 +252,13 @@ class test_format_for_upload(unittest.TestCase):
         },
     }
 
-
     _PRESENT_INFO = {
         'master_name': 'new_master_name',
         'test_name': 'new_test_name',
     }
 
-
     def setUp(self):
         self._perf_data = self._PERF_DATA
-
 
     def _verify_result_string(self, actual_result, expected_result):
         """Verifies a JSON string matches the expected result.
