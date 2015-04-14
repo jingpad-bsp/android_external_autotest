@@ -15,6 +15,7 @@ TEST_CLASS = "video"
 TEST_TYPE = "client"
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+    'cc': ['chromeos-video-test-failures@google.com'],
 }
 
 DOC = """

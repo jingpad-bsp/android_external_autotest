@@ -22,6 +22,7 @@ DEPENDENCIES = "cleanup-reboot, hw_video_acc_h264"
 RETRIES = 1
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+    'cc': ['chromeos-video-test-failures@google.com'],
 }
 
 DOC = """

@@ -18,6 +18,7 @@ TEST_TYPE = "client"
 DEPENDENCIES = 'hw_video_acc_enc_h264'
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+    'cc': ['chromeos-video-test-failures@google.com'],
 }
 
 DOC = """

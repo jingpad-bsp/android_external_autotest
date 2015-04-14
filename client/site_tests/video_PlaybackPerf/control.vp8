@@ -13,9 +13,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
-}
 
 DOC = """
 This test measures the CPU usage and dropped frame count of VP8 video playback
