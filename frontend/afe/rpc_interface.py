@@ -1099,15 +1099,6 @@ def get_hqe_percentage_complete(**filter_data):
 
 # special tasks
 
-def _get_local_special_tasks(**filter_data):
-    # TODO(jrbarnette): This function represents the correct
-    # implementation of get_special_tasks().  It's being kept
-    # separate until we can fix get_special_tasks() (see below).
-    return rpc_utils.prepare_rows_as_nested_dicts(
-            models.SpecialTask.query_objects(filter_data),
-            ('host', 'queue_entry'))
-
-
 def get_special_tasks(**filter_data):
     """Get special task entries from the local database.
 
@@ -1125,17 +1116,9 @@ def get_special_tasks(**filter_data):
                         database query.
 
     """
-    # TODO(jrbarnette): Currently, this code still forwards to
-    # shards despite the specification that says we don't.  This is
-    # a temporary measure to provide compatibility to dut-status
-    # clients that haven't been updated to use
-    # get_host_special_tasks().  This code must be fixed/deleted
-    # once all those clients have been updated.
-    if 'id' in filter_data or 'id__in' in filter_data:
-        return _get_local_special_tasks(**filter_data)
-    else:
-        return rpc_utils.get_data(_get_local_special_tasks,
-                                  'get_special_tasks', **filter_data)
+    return rpc_utils.prepare_rows_as_nested_dicts(
+            models.SpecialTask.query_objects(filter_data),
+            ('host', 'queue_entry'))
 
 
 def get_host_special_tasks(host_id, **filter_data):
@@ -1153,9 +1136,7 @@ def get_host_special_tasks(host_id, **filter_data):
     """
     host = models.Host.smart_get(host_id)
     if not host.shard:
-        # TODO(jrbarnette): change to get_special_tasks() once
-        # all dut-status clients are updated.
-        return _get_local_special_tasks(host_id=host_id, **filter_data)
+        return get_special_tasks(host_id=host_id, **filter_data)
     else:
         # The return value from AFE.get_special_tasks() is a list of
         # post-processed objects that aren't JSON-serializable.  So,
