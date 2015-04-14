@@ -24,10 +24,11 @@ class power_ProbeDriver(test.test):
             type_path = os.path.join(path, 'type')
             if not os.path.exists(type_path):
                 continue
-            type = utils.read_one_line(type_path)
-            if type == 'Mains':
+            # With the advent of USB Type-C, mains power might show up as USB.
+            psu_type = utils.read_one_line(type_path)
+            if psu_type == 'Mains' or psu_type == 'USB':
                 ac_paths.append(path)
-            elif type == 'Battery':
+            elif psu_type == 'Battery':
                 bat_paths.append(path)
         run_dict = { 'Mains': self.run_ac, 'Battery': self.run_bat }
         run = run_dict.get(test_which)
