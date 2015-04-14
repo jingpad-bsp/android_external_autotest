@@ -4,16 +4,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/chaos_ap_configurators/ap_configurator_factory.py.
+"""Unit tests for server/cros/ap_configurators/ap_configurator_factory.py.
 """
 
 import mox
 
-from autotest_lib.server.cros.chaos_ap_configurators import \
+from autotest_lib.server.cros.ap_configurators import \
     ap_configurator_config
-from autotest_lib.server.cros.chaos_ap_configurators import \
+from autotest_lib.server.cros.ap_configurators import \
     ap_configurator_factory
-from autotest_lib.server.cros.chaos_ap_configurators import \
+from autotest_lib.server.cros.ap_configurators import \
     ap_spec
 
 

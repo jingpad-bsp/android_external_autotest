@@ -10,9 +10,10 @@ from time import sleep
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server.cros.chaos_ap_configurators import \
+from autotest_lib.server.cros.ap_configurators import \
     ap_configurator_factory
-from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
+from autotest_lib.client.common_lib.cros.network import ap_constants
+from autotest_lib.server.cros.ap_configurators import ap_cartridge
 
 
 # Max number of retry attempts to lock an ap.
@@ -48,7 +49,8 @@ class ApLocker(object):
                 self.retries)
 
 
-def construct_ap_lockers(ap_spec, retries, hostname_matching_only=False):
+def construct_ap_lockers(ap_spec, retries, hostname_matching_only=False,
+                         ap_test_type=ap_constants.AP_TEST_TYPE_CHAOS):
     """Convert APConfigurator objects to ApLocker objects for locking.
 
     @param ap_spec: an APSpec object
@@ -56,11 +58,13 @@ def construct_ap_lockers(ap_spec, retries, hostname_matching_only=False):
     @param hostname_matching_only: a boolean, if True matching against
                                    all other APSpec parameters is not
                                    performed.
+    @param ap_test_type: Used to determine which type of test we're
+                         currently running (Chaos vs Clique).
 
     @return a list of ApLocker objects.
     """
     ap_lockers_list = []
-    factory = ap_configurator_factory.APConfiguratorFactory()
+    factory = ap_configurator_factory.APConfiguratorFactory(ap_test_type)
     if hostname_matching_only:
         for ap in factory.get_aps_by_hostnames(ap_spec.hostnames):
             ap_lockers_list.append(ApLocker(ap, retries))
@@ -93,7 +97,8 @@ class ApBatchLocker(object):
 
 
     def __init__(self, lock_manager, ap_spec, retries=MAX_RETRIES,
-                 hostname_matching_only=False):
+                 hostname_matching_only=False,
+                 ap_test_type=ap_constants.AP_TEST_TYPE_CHAOS):
         """Initialize.
 
         @param ap_spec: an APSpec object
@@ -102,9 +107,12 @@ class ApBatchLocker(object):
         @param hostname_matching_only : a boolean, if True matching against
                                         all other APSpec parameters is not
                                         performed.
+        @param ap_test_type: Used to determine which type of test we're
+                             currently running (Chaos vs Clique).
         """
         self.aps_to_lock = construct_ap_lockers(ap_spec, retries,
-                           hostname_matching_only=hostname_matching_only)
+                           hostname_matching_only=hostname_matching_only,
+                           ap_test_type=ap_test_type)
         self.manager = lock_manager
         self._locked_aps = []
 

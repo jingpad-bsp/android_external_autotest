@@ -7,8 +7,8 @@ import Queue
 import time
 import traceback
 
-from autotest_lib.client.common_lib.cros.network import chaos_constants
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
+from autotest_lib.client.common_lib.cros.network import ap_constants
+from autotest_lib.server.cros.ap_configurators import ap_configurator
 from threading import Thread
 
 # Maximum configurators to run at once
@@ -47,14 +47,14 @@ class APCartridge(object):
                 # Don't run this thread if the PDU in question was found to be
                 # down by any previous thread.
                 if configurator.pdu in broken_pdus:
-                   configurator.configuration_success = chaos_constants.PDU_FAIL
+                   configurator.configuration_success = ap_constants.PDU_FAIL
                    raise ap_configurator.PduNotResponding(configurator.pdu)
                 configurator.apply_settings()
             except ap_configurator.PduNotResponding as e:
                 if configurator.pdu not in broken_pdus:
                     broken_pdus.append(configurator.pdu)
             except Exception:
-                configurator.configuration_success = chaos_constants.CONFIG_FAIL
+                configurator.configuration_success = ap_constants.CONFIG_FAIL
                 trace = ''.join(traceback.format_exc())
                 configurator.store_config_failure(trace)
                 logging.error('Configuration failed for AP: %s\n%s',

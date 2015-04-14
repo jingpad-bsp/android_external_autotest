@@ -4,7 +4,7 @@
 
 import traceback
 
-from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.server import utils
 
 AUTHOR = 'krisr, wiley, jabele'
@@ -40,7 +40,7 @@ def run_chaos_config_failure(machine):
         trace = ''.join(traceback.format_exc())
         ap.store_config_failure(trace)
     job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
-                  error_string=chaos_constants.AP_CONFIG_FAIL, tag=ap.ssid)
+                  error_string=ap_constants.AP_CONFIG_FAIL, tag=ap.ssid)
 
 
 parallel_simple(run_chaos_config_failure, machines)

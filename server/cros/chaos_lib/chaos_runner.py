@@ -10,17 +10,17 @@ import pprint
 import time
 import re
 
-from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import host_lock_manager
-from autotest_lib.server.cros.chaos_ap_configurators import ap_batch_locker
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
-from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_batch_locker
+from autotest_lib.server.cros.ap_configurators import ap_configurator
+from autotest_lib.server.cros.ap_configurators import ap_cartridge
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.network import wifi_client
 
 
@@ -134,7 +134,7 @@ class ChaosRunner(object):
         conn_status = conn_worker.connect_work_client(assoc_params)
         if not conn_status:
             job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
-                         error_string=chaos_constants.WORK_CLI_CONNECT_FAIL,
+                         error_string=ap_constants.WORK_CLI_CONNECT_FAIL,
                          tag=ap.ssid)
             # Obtain the logs from the worker
             log_dir_name = str('worker_client_logs_%s' % ap.ssid)
@@ -159,15 +159,15 @@ class ChaosRunner(object):
         for ap in aps:
             failed_ap = False
             if ap.pdu in self._broken_pdus:
-                ap.configuration_success = chaos_constants.PDU_FAIL
+                ap.configuration_success = ap_constants.PDU_FAIL
 
-            if (ap.configuration_success == chaos_constants.PDU_FAIL):
+            if (ap.configuration_success == ap_constants.PDU_FAIL):
                 failed_ap = True
-                error_string = chaos_constants.AP_PDU_DOWN
+                error_string = ap_constants.AP_PDU_DOWN
                 tag = ap.host_name + '_PDU'
-            elif (ap.configuration_success == chaos_constants.CONFIG_FAIL):
+            elif (ap.configuration_success == ap_constants.CONFIG_FAIL):
                 failed_ap = True
-                error_string = chaos_constants.AP_CONFIG_FAIL
+                error_string = ap_constants.AP_CONFIG_FAIL
                 tag = ap.host_name
 
             if failed_ap:
@@ -177,7 +177,7 @@ class ChaosRunner(object):
                              error_string=error_string,
                              tag=tag)
                 aps_to_remove.append(ap)
-                if error_string == chaos_constants.AP_CONFIG_FAIL:
+                if error_string == ap_constants.AP_CONFIG_FAIL:
                     self._release_ap(ap, batch_locker)
                 else:
                     # Cannot use _release_ap, since power_down will fail
@@ -255,7 +255,7 @@ class ChaosRunner(object):
                 # The SSID wasn't even found, abort
                 logging.error('The ssid %s was not found in the scan', ap.ssid)
                 job.run_test('network_WiFi_ChaosConfigFailure', ap=ap,
-                             error_string=chaos_constants.AP_SSID_NOTFOUND,
+                             error_string=ap_constants.AP_SSID_NOTFOUND,
                              tag=ap.ssid)
                 return list()
             security = self._get_security_from_scan(ap, networks, job)
@@ -273,7 +273,7 @@ class ChaosRunner(object):
                           networks)
             job.run_test('network_WiFi_ChaosConfigFailure',
                          ap=ap,
-                         error_string=chaos_constants.AP_SECURITY_MISMATCH,
+                         error_string=ap_constants.AP_SECURITY_MISMATCH,
                          tag=ap.ssid)
             networks = list()
         return networks
@@ -369,8 +369,9 @@ class ChaosRunner(object):
                 work_client_machine = self._allocate_packet_capturer(
                         lock_manager, hostname=work_client_hostname)
                 conn_worker.prepare_work_client(work_client_machine)
-            batch_locker = ap_batch_locker.ApBatchLocker(lock_manager,
-                                                         self._ap_spec)
+            batch_locker = ap_batch_locker.ApBatchLocker(
+                    lock_manager, self._ap_spec,
+                    ap_test_type=ap_constants.AP_TEST_TYPE_CHAOS)
 
             while batch_locker.has_more_aps():
                 # Work around crbug.com/358716

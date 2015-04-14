@@ -7,9 +7,9 @@
 import logging
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server.cros import chaos_config
-from autotest_lib.server.cros.chaos_ap_configurators import ap_cartridge
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros import ap_config
+from autotest_lib.server.cros.ap_configurators import ap_cartridge
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 CONFIG = global_config.global_config
@@ -30,7 +30,7 @@ class APConfiguratorFactory(object):
     @attribute ap_config: an APConfiguratorConfig object.
     """
 
-    PREFIX='autotest_lib.server.cros.chaos_ap_configurators.'
+    PREFIX='autotest_lib.server.cros.ap_configurators.'
     CONFIGURATOR_MAP = {
         'LinksysAPConfigurator':
             [PREFIX + 'linksys_ap_configurator',
@@ -241,10 +241,10 @@ class APConfiguratorFactory(object):
     HOSTNAMES = 'hostnames'
 
 
-    def __init__(self):
+    def __init__(self, ap_test_type):
         webdriver_ready = False
         self.ap_list = []
-        for ap in chaos_config.get_ap_list():
+        for ap in ap_config.get_ap_list(ap_test_type):
             module_name, configurator_class = \
                     self.CONFIGURATOR_MAP[ap.get_class()]
             module = __import__(module_name, fromlist=configurator_class)
@@ -254,7 +254,7 @@ class APConfiguratorFactory(object):
             #       is to avoid 'import'ing webdriver if the available
             #       configurators do not require it (ie. StaticAPConfigurator).
             if not webdriver_ready and hasattr(configurator, 'webdriver_port'):
-                from autotest_lib.server.cros.chaos_ap_configurators import \
+                from autotest_lib.server.cros.ap_configurators import \
                     download_chromium_prebuilt
                 download_chromium_prebuilt.check_webdriver_ready()
                 webdriver_ready = True

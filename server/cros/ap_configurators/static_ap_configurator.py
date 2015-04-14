@@ -8,11 +8,11 @@ import re
 import xmlrpclib
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_configurator
+from autotest_lib.server.cros.ap_configurators import ap_spec
 
 CartridgeCmd = collections.namedtuple('CartridgeCmd', ['method', 'args'])
 
@@ -32,7 +32,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         """
         Initialize instance
 
-        @param ap_config: ChaosAP object to configure this instance
+        @param ap_config: AP object to configure this instance
 
         """
         super(StaticAPConfigurator, self).__init__()
@@ -59,7 +59,7 @@ class StaticAPConfigurator(ap_configurator.APConfiguratorAbstract):
         self._ssid = ap_config.get_ssid()
         self.rpm_managed = ap_config.get_rpm_managed()
 
-        self._configuration_success = chaos_constants.CONFIG_SUCCESS
+        self._configuration_success = ap_constants.CONFIG_SUCCESS
         self.config_data = ap_config
 
         name_dict = {'Router name': self._short_name,

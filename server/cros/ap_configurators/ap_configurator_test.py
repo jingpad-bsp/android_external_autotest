@@ -31,11 +31,11 @@ class ConfiguratorTest(unittest.TestCase):
     Launch this unit test from outside chroot:
       $ cd ~/chromeos/src/third_party/autotest/files
       $ python utils/unittest_suite.py \
-        server.cros.chaos_ap_configurators.ap_configurator_test --debug
+        server.cros.ap_configurators.ap_configurator_test --debug
 
     To run a single test, from outside chroot, e.g.
       $ cd ~/chromeos/src/third_party/autotest/files/\
-           server/cros/chaos_ap_configurators
+           server/cros/ap_configurators
       $ python -m unittest ap_configurator_test.ConfiguratorTest.test_ssid
     """
 

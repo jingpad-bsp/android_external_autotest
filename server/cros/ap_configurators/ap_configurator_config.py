@@ -4,7 +4,7 @@
 
 
 class APConfiguratorConfig(object):
-    """Parameters to configure a Chaos APConfigurator."""
+    """Parameters to configure a APConfigurator."""
 
     BAND_2GHZ = '2.4GHz'
     BAND_5GHZ = '5GHz'

@@ -7,19 +7,31 @@ import logging
 import os
 import time
 
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.site_utils.rpm_control_system import rpm_client
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 
-DYNAMIC_AP_CONFIG_FILE = 'chaos_dynamic_ap_list.conf'
-SHADOW_AP_CONFIG_FILE = 'chaos_shadow_ap_list.conf'
+AP_CONFIG_FILES = { ap_constants.AP_TEST_TYPE_CHAOS:
+                    ('chaos_dynamic_ap_list.conf', 'chaos_shadow_ap_list.conf'),
+                    ap_constants.AP_TEST_TYPE_CLIQUE:
+                    ('clique_ap_list.conf',)}
 
 TIMEOUT = 100
 
-def get_ap_list():
+def get_ap_list(ap_test_type):
+    """
+    Returns the list of AP's from the corresponding configuration file.
+
+    @param ap_test_type: Used to determine which type of test we're
+                         currently running (Chaos vs Clique).
+    @returns a list of AP objects.
+
+    """
     aps = []
-    for filename in (DYNAMIC_AP_CONFIG_FILE, SHADOW_AP_CONFIG_FILE):
+    ap_config_files = AP_CONFIG_FILES.get(ap_test_type, None)
+    for filename in ap_config_files:
         ap_config = ConfigParser.RawConfigParser(
-                {ChaosAP.CONF_RPM_MANAGED: 'False'})
+                {AP.CONF_RPM_MANAGED: 'False'})
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             filename)
         if not os.path.exists(path):
@@ -29,7 +41,7 @@ def get_ap_list():
         logging.debug('Reading config from: "%s"', path)
         ap_config.read(path)
         for bss in ap_config.sections():
-            aps.append(ChaosAP(bss, ap_config))
+            aps.append(AP(bss, ap_config))
     return aps
 
 
@@ -41,7 +53,7 @@ class APSectionError(Exception):
     """ Exception raised when AP instance does not exist in the config. """
     pass
 
-class ChaosAP(object):
+class AP(object):
     """ An instance of an ap defined in the chaos config file.
 
     This object is a wrapper that can be used to retrieve information

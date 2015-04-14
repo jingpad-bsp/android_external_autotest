@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Unit tests for server/cros/chaos_ap_configurators/ap_spec.py.
+"""Unit tests for server/cros/ap_configurators/ap_spec.py.
 """
 
 import unittest
 
-from autotest_lib.server.cros.chaos_ap_configurators import \
+from autotest_lib.server.cros.ap_configurators import \
     ap_spec
 
 class APSpecTest(unittest.TestCase):

@@ -14,3 +14,7 @@ WORK_CLI_CONNECT_FAIL = 'Work client was not able to connect to the AP'
 CONFIG_SUCCESS = 0
 PDU_FAIL = 1
 CONFIG_FAIL = 2
+#These constants are used by the AP configurator to determine if this is
+#a chaos vs clique test.
+AP_TEST_TYPE_CHAOS = 1
+AP_TEST_TYPE_CLIQUE = 2

@@ -45,7 +45,7 @@ def _webdriver_is_running(webdriver_port=9515):
                        if a connection cannot be established.
     """
     # address and port are pulled from establish_driver_connection() in
-    # ../chaos_ap_configurators/ap_configurator.py
+    # ../ap_configurators/ap_configurator.py
 
     # While working on http://crbug.com/255191, we will use krisr's
     # workstation as a stop gap.

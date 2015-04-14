@@ -17,10 +17,10 @@ import download_chromium_prebuilt as prebuilt
 import web_driver_core_helpers
 
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
-from autotest_lib.server.cros.chaos_ap_configurators import ap_configurator
+from autotest_lib.server.cros.ap_configurators import ap_configurator
 
 try:
   from selenium import webdriver
@@ -77,7 +77,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         self.driver_connection_established = False
         self.router_on = False
-        self._configuration_success = chaos_constants.CONFIG_SUCCESS
+        self._configuration_success = ap_constants.CONFIG_SUCCESS
         self._webdriver_port = 9515
 
         self.ap_spec = None
@@ -660,7 +660,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                                         executed successfully.
 
         """
-        self.configuration_success = chaos_constants.CONFIG_FAIL
+        self.configuration_success = ap_constants.CONFIG_FAIL
         if len(self._command_list) == 0:
             return
 
@@ -712,7 +712,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                     command['method'](*command['args'])
                 self.save_page(i)
         self._command_list = []
-        self.configuration_success = chaos_constants.CONFIG_SUCCESS
+        self.configuration_success = ap_constants.CONFIG_SUCCESS
         self._traceback = None
         self.destroy_driver_connection()
 
@@ -757,7 +757,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         @param outputdir: a string directory path for debug files
         """
-        if self.configuration_success != chaos_constants.PDU_FAIL:
+        if self.configuration_success != ap_constants.PDU_FAIL:
             self._save_all_pages()
             self._write_screenshots('final_configuration', outputdir)
             self.clear_screenshot_list()

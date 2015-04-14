@@ -4,9 +4,9 @@
 
 import logging
 
-from autotest_lib.client.common_lib.cros.network import chaos_constants
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import ping_runner
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 
 
 class PduNotResponding(Exception):
@@ -50,7 +50,7 @@ class APConfiguratorAbstract(object):
 
     @property
     def configuration_success(self):
-        """Returns configuration status as defined in chaos_constants"""
+        """Returns configuration status as defined in ap_constants"""
         return self._configuration_success
 
 
@@ -88,7 +88,7 @@ class APConfiguratorAbstract(object):
         logging.info('ping result = %s', str(ping_result))
         # If all ping packets failed then mark PDU down.
         if ping_result.loss == 100:
-            self.configuration_success = chaos_constants.PDU_FAIL
+            self.configuration_success = ap_constants.PDU_FAIL
             raise PduNotResponding(self.pdu)
 
 

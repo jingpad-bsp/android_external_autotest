@@ -129,8 +129,8 @@ class APSpec(object):
     def __init__(self, visible=True, security=SECURITY_TYPE_DISABLED,
                  band=None, mode=None, channel=None, hostnames=None,
                  configurator_type=CONFIGURATOR_ANY,
-                 # lab_ap set to true means the AP must be in the Chaos lab;
-                 # if it set to false the AP is outside of the Chaos lab.
+                 # lab_ap set to true means the AP must be in the lab;
+                 # if it set to false the AP is outside of the lab.
                  lab_ap=True):
         super(APSpec, self).__init__()
         self._visible = visible
