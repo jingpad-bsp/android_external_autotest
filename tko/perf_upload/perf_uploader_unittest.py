@@ -232,6 +232,70 @@ class test_gather_presentation_info(unittest.TestCase):
                     self._PRESENT_INFO_MISSING_MASTER, 'test_name')
 
 
+class test_get_id_from_version(unittest.TestCase):
+    """Tests for the _get_id_from_version function."""
+
+    def test_correctly_formatted_versions(self):
+        """Verifies that the expected ID is returned when input is OK."""
+        chrome_version = '27.0.1452.2'
+        cros_version = '27.3906.0.0'
+        # 1452.2 + 3906.0.0
+        # --> 01452 + 002 + 03906 + 000 + 00
+        # --> 14520020390600000
+        self.assertEqual(
+                14520020390600000,
+                perf_uploader._get_id_from_version(
+                        chrome_version, cros_version))
+
+        chrome_version = '25.10.1000.0'
+        cros_version = '25.1200.0.0'
+        # 1000.0 + 1200.0.0
+        # --> 01000 + 000 + 01200 + 000 + 00
+        # --> 10000000120000000
+        self.assertEqual(
+                10000000120000000,
+                perf_uploader._get_id_from_version(
+                        chrome_version, cros_version))
+
+    def test_returns_none_when_given_invalid_input(self):
+        """Checks the return value when invalid input is given."""
+        chrome_version = '27.0'
+        cros_version = '27.3906.0.0'
+        self.assertIsNone(perf_uploader._get_id_from_version(
+                chrome_version, cros_version))
+
+
+class test_get_version_numbers(unittest.TestCase):
+    """Tests for the _get_version_numbers function."""
+
+    def test_with_valid_versions(self):
+      """Checks the version numbers used when data is formatted as expected."""
+      self.assertEqual(
+              ('34.5678.9.0', '34.5.678.9'),
+              perf_uploader._get_version_numbers(
+                  {
+                      'CHROME_VERSION': '34.5.678.9',
+                      'CHROMEOS_RELEASE_VERSION': '5678.9.0',
+                  }))
+
+    def test_with_missing_version_raises_error(self):
+      """Checks that an error is raised when a version is missing."""
+      with self.assertRaises(perf_uploader.PerfUploadingError):
+          perf_uploader._get_version_numbers(
+              {
+                  'CHROMEOS_RELEASE_VERSION': '5678.9.0',
+              })
+
+    def test_with_unexpected_version_format_raises_error(self):
+      """Checks that an error is raised when there's a rN suffix."""
+      with self.assertRaises(perf_uploader.PerfUploadingError):
+          perf_uploader._get_version_numbers(
+              {
+                  'CHROME_VERSION': '34.5.678.9',
+                  'CHROMEOS_RELEASE_VERSION': '5678.9.0r1',
+              })
+
+
 class test_format_for_upload(unittest.TestCase):
     """Tests for the format_for_upload function."""
 
@@ -299,6 +363,10 @@ class test_format_for_upload(unittest.TestCase):
                     expected[idx]['supplemental_columns']['r_chrome_version'],
                     msg=fail_msg)
             self.assertEqual(
+                    actual[idx]['supplemental_columns']['a_default_rev'],
+                    expected[idx]['supplemental_columns']['a_default_rev'],
+                    msg=fail_msg)
+            self.assertEqual(
                     actual[idx]['supplemental_columns']['a_hardware_identifier'],
                     expected[idx]['supplemental_columns']['a_hardware_identifier'],
                     msg=fail_msg)
@@ -308,6 +376,8 @@ class test_format_for_upload(unittest.TestCase):
                     msg=fail_msg)
             self.assertEqual(
                     actual[idx]['bot'], expected[idx]['bot'], msg=fail_msg)
+            self.assertEqual(
+                    actual[idx]['revision'], expected[idx]['revision'], msg=fail_msg)
             self.assertAlmostEqual(
                     actual[idx]['value'], expected[idx]['value'], 4,
                     msg=fail_msg)
@@ -329,21 +399,25 @@ class test_format_for_upload(unittest.TestCase):
     def test_format_for_upload(self):
         """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
-                'platform', '1200.0.0', '25.10.0.0', 'WINKY E2A-F2K-Q35',
+                'platform', '25.1200.0.0', '25.10.1000.0', 'WINKY E2A-F2K-Q35',
                 'i7', 'test_machine', self._perf_data, self._PRESENT_INFO)
         expected_result_string = (
-                '[{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '[{"supplemental_columns": {"r_cros_version": "25.1200.0.0", '
+                '"a_default_rev" : "r_chrome_version",'
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform-i7", '
+                '"r_chrome_version": "25.10.1000.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": false, "value": 2.7, '
+                '"revision": 10000000120000000, '
                 '"units": "msec", "master": "new_master_name", '
                 '"error": 0.2, "test": "new_test_name/graph_name/metric1"}, '
-                '{"supplemental_columns": {"r_cros_version": "1200.0.0", '
+                '{"supplemental_columns": {"r_cros_version": "25.1200.0.0", '
+                '"a_default_rev" : "r_chrome_version",'
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"r_chrome_version": "25.10.0.0"}, "bot": "cros-platform-i7", '
+                '"r_chrome_version": "25.10.1000.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": true, "value": 101.35, '
+                '"revision": 10000000120000000, '
                 '"units": "frames_per_sec", "master": "new_master_name", '
                 '"error": 5.78, "test": "new_test_name/metric2"}]')
 

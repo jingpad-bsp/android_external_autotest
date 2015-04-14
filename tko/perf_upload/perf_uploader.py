@@ -13,7 +13,7 @@ must be logged in with an @google.com account to view chromeOS perf data there.
 
 """
 
-import httplib, json, math, os, urllib, urllib2
+import httplib, json, math, os, re, urllib, urllib2
 
 import common
 from autotest_lib.client.cros import constants
@@ -24,6 +24,8 @@ _PRESENTATION_CONFIG_FILE = os.path.join(
         _ROOT_DIR, 'perf_dashboard_config.json')
 _DASHBOARD_UPLOAD_URL = 'https://chromeperf.appspot.com/add_point'
 
+# Format for Chrome and Chrome OS version strings.
+VERSION_REGEXP = r'^(\d+)\.(\d+)\.(\d+)\.(\d+)$'
 
 class PerfUploadingError(Exception):
     """Exception raised in perf_uploader"""
@@ -138,6 +140,8 @@ def _gather_presentation_info(config_data, test_name):
 
     @return A dictionary containing presentation information extracted from
         |config_data| for the given autotest name.
+
+    @raises PerfUploadingError if some required data is missing.
     """
     if not test_name in config_data:
         raise PerfUploadingError(
@@ -211,9 +215,11 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
             'error': data['stddev'],
             'units': data['units'],
             'higher_is_better': data['higher_is_better'],
+            'revision': _get_id_from_version(chrome_version, cros_version),
             'supplemental_columns': {
                 'r_cros_version': cros_version,
                 'r_chrome_version': chrome_version,
+                'a_default_rev': 'r_chrome_version',
                 'a_hardware_identifier': hardware_id,
                 'a_hardware_hostname': hardware_hostname,
             }
@@ -223,6 +229,93 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
 
     json_string = json.dumps(dash_entries)
     return {'data': json_string}
+
+
+def _get_version_numbers(test_attributes):
+    """Gets the version numbers from the test attributes and validates them.
+
+    @param test_attributes: The attributes property (which is a dict) of an
+        autotest tko.models.test object.
+
+    @return A pair of strings (Chrome OS version, Chrome version).
+
+    @raises PerfUploadingError if a version isn't formatted as expected.
+    """
+    chrome_version = test_attributes.get('CHROME_VERSION', '')
+    cros_version = test_attributes.get('CHROMEOS_RELEASE_VERSION', '')
+    # Prefix the ChromeOS version number with the Chrome milestone.
+    cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
+    if not re.match(VERSION_REGEXP, cros_version):
+        raise PerfUploadingError('CrOS version "%s" does not match expected '
+                                 'format.' % cros_version)
+    if not re.match(VERSION_REGEXP, chrome_version):
+        raise PerfUploadingError('Chrome version "%s" does not match expected '
+                                 'format.' % chrome_version)
+    return (cros_version, chrome_version)
+
+
+def _get_id_from_version(chrome_version, cros_version):
+    """Computes the point ID to use, from Chrome and ChromeOS version numbers.
+
+    For ChromeOS row data, data values are associated with both a Chrome
+    version number and a ChromeOS version number (unlike for Chrome row data
+    that is associated with a single revision number).  This function takes
+    both version numbers as input, then computes a single, unique integer ID
+    from them, which serves as a 'fake' revision number that can uniquely
+    identify each ChromeOS data point, and which will allow ChromeOS data points
+    to be sorted by Chrome version number, with ties broken by ChromeOS version
+    number.
+
+    To compute the integer ID, we take the portions of each version number that
+    serve as the shortest unambiguous names for each (as described here:
+    http://www.chromium.org/developers/version-numbers).  We then force each
+    component of each portion to be a fixed width (padded by zeros if needed),
+    concatenate all digits together (with those coming from the Chrome version
+    number first), and convert the entire string of digits into an integer.
+    We ensure that the total number of digits does not exceed that which is
+    allowed by AppEngine NDB for an integer (64-bit signed value).
+
+    For example:
+      Chrome version: 27.0.1452.2 (shortest unambiguous name: 1452.2)
+      ChromeOS version: 27.3906.0.0 (shortest unambiguous name: 3906.0.0)
+      concatenated together with padding for fixed-width columns:
+          ('01452' + '002') + ('03906' + '000' + '00') = '014520020390600000'
+      Final integer ID: 14520020390600000
+
+    @param chrome_ver: The Chrome version number as a string.
+    @param cros_ver: The ChromeOS version number as a string.
+
+    @return A unique integer ID associated with the two given version numbers.
+
+    """
+
+    # Number of digits to use from each part of the version string for Chrome
+    # and Chrome OS versions when building a point ID out of these two versions.
+    chrome_version_col_widths = [0, 0, 5, 3]
+    cros_version_col_widths = [0, 5, 3, 2]
+
+    def get_digits_from_version(version_num, column_widths):
+        if re.match(VERSION_REGEXP, version_num):
+            computed_string = ''
+            version_parts = version_num.split('.')
+            for i, version_part in enumerate(version_parts):
+                if column_widths[i]:
+                   computed_string += version_part.zfill(column_widths[i])
+            return computed_string
+        else:
+            return None
+
+    chrome_digits = get_digits_from_version(
+            chrome_version, chrome_version_col_widths)
+    cros_digits = get_digits_from_version(
+            cros_version, cros_version_col_widths)
+    if not chrome_digits or not cros_digits:
+        return None
+    result_digits = chrome_digits + cros_digits
+    max_digits = sum(chrome_version_col_widths + cros_version_col_widths)
+    if len(result_digits) > max_digits:
+        return None
+    return int(result_digits)
 
 
 def _send_to_dashboard(data_obj):
@@ -274,17 +367,12 @@ def upload_test(job, test):
     # Format the perf data for the upload, then upload it.
     test_name = test.testname
     platform_name = job.machine_group
-    cros_version = test.attributes.get('CHROMEOS_RELEASE_VERSION', '')
-    chrome_version = test.attributes.get('CHROME_VERSION', '')
     hardware_id = test.attributes.get('hwid', '')
     hardware_hostname = test.machine
     variant_name = test.attributes.get(constants.VARIANT_KEY, None)
-    # Prefix the chromeOS version number with the chrome milestone.
-    # TODO(dennisjeffrey): Modify the dashboard to accept the chromeOS version
-    # number *without* the milestone attached.
-    cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
     config_data = _parse_config_file()
     try:
+        cros_version, chrome_version = _get_version_numbers(test.attributes)
         presentation_info = _gather_presentation_info(config_data, test_name)
         formatted_data = _format_for_upload(
                 platform_name, cros_version, chrome_version, hardware_id,
