@@ -46,6 +46,7 @@ from autotest_lib.frontend.tko import rpc_interface as tko_rpc_interface
 from autotest_lib.server import frontend
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.site_utils import status_history
 
 
 _timer = autotest_stats.Timer('rpc_interface')
@@ -1138,13 +1139,52 @@ def get_host_special_tasks(host_id, **filter_data):
     if not host.shard:
         return get_special_tasks(host_id=host_id, **filter_data)
     else:
-        # The return value from AFE.get_special_tasks() is a list of
-        # post-processed objects that aren't JSON-serializable.  So,
-        # we have to call AFE.run() to get the raw, serializable
-        # output from the shard.
+        # The return values from AFE methods are post-processed
+        # objects that aren't JSON-serializable.  So, we have to
+        # call AFE.run() to get the raw, serializable output from
+        # the shard.
         shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
         return shard_afe.run('get_special_tasks',
                              host_id=host_id, **filter_data)
+
+
+def get_status_task(host_id, end_time):
+    """Get the special task identifying a host's status.
+
+    Returns information for a single special task for a host
+    identifying whether the host was working or broken at the given
+    `end_time`.  A successful task indicates a working host; a
+    failed task indicates a broken host.
+
+    If the host is managed by a shard, this call forwards the
+    request.
+
+    @param host_id      Id in the database of the target host.
+    @param end_time     Time reference for the host's status.
+
+    @return A single task; its status (successful or not)
+            corresponds to the status of the host (working or
+            broken) at the given time.  If no task is found, return
+            `None`.
+
+    """
+    host = models.Host.smart_get(host_id)
+    if not host.shard:
+        tasklist = rpc_utils.prepare_rows_as_nested_dicts(
+                status_history.get_status_task(host_id, end_time),
+                ('host', 'queue_entry'))
+        if tasklist:
+            return tasklist[0]
+        else:
+            return None
+    else:
+        # The return values from AFE methods are post-processed
+        # objects that aren't JSON-serializable.  So, we have to
+        # call AFE.run() to get the raw, serializable output from
+        # the shard.
+        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        return shard_afe.run('get_status_task',
+                             host_id=host_id, end_time=end_time)
 
 
 # support for host detail view

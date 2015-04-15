@@ -3,8 +3,12 @@
 # found in the LICENSE file.
 
 import common
+from autotest_lib.frontend import setup_django_environment
+from django.db import models as django_models
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.site_utils.suite_scheduler import constants
 
 
@@ -392,3 +396,36 @@ class HostJobHistory(object):
             if status != UNKNOWN:
                 return job.diagnosis, job
         return UNKNOWN, None
+
+
+def get_status_task(host_id, end_time):
+    """Get the task indicating a host's status at a given time.
+
+    This is the RPC endpoint for `_SpecialTaskEvent.get_status_task()`.
+    This performs a database query to find the status task for the
+    given host at the given time.
+
+    The status task is the last diagnostic task before `end_time`.
+    A "diagnostic task" is any Repair task or a succesful special
+    task of any type.  The status of the last diagnostic task
+    (`WORKING` or `BROKEN`) determines whether the host is working
+    or broken.
+
+    @param host_id     Database host id of the desired host.
+    @param end_time    End time of the range of interest.
+
+    @return A Django query-set selecting the single special task of
+            interest.
+
+    """
+    # Selects diag tasks:  any Repair task, or any successful task.
+    diag_tasks = (django_models.Q(task='Repair') |
+                  django_models.Q(success=True))
+    # Our caller needs a Django query set in order to serialize the
+    # result, so we don't resolve the query here; we just return a
+    # slice with at most one element.
+    return afe_models.SpecialTask.objects.filter(
+            diag_tasks,
+            host_id=host_id,
+            time_finished__lte=end_time,
+            is_complete=True).order_by('time_started').reverse()[0:1]
