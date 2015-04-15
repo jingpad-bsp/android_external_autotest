@@ -13,6 +13,10 @@ class BelkinF9K1001APConfigurator(
         belkinF5D8236_ap_configurator.BelkinF5D8236APConfigurator):
     """Class to configure Belkin F9K1001v5 (01B) router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF9K1001APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
 
     def _security_alert(self, alert):
         text = alert.text

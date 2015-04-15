@@ -14,6 +14,10 @@ class BelkinF5D7234APConfigurator(
         belkinF9K_ap_configurator.BelkinF9KAPConfigurator):
     """Class to configure Belkin F5D7234 router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF5D7234APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
 
     def save_page(self, page_number):
         """Save changes and logout from the router.

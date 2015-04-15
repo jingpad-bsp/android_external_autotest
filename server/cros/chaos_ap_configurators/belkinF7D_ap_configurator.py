@@ -11,6 +11,10 @@ class BelkinF7DAPConfigurator(
         belkinF9K_ap_configurator.BelkinF9KAPConfigurator):
     """Class to configure Belkin F7D1301 v1 (01A) router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF7DAPConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
 
     def set_mode(self, mode):
         self.add_item_to_command_list(self._set_mode, (mode,), 1, 900)

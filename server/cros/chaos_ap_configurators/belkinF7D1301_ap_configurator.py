@@ -12,6 +12,10 @@ class BelkinF7D1301APConfigurator(
         belkinF9K_ap_configurator.BelkinF9KAPConfigurator):
     """Class to configure Belkin F7D1301 v1 (01) router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF7D1301APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
 
     def save_page(self, page_number):
         """

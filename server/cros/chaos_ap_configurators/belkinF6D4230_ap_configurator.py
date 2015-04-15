@@ -15,6 +15,11 @@ class BelkinF6D4230APConfigurator(
     """Class to configure Belkin F6D4230-4 router."""
 
 
+    def __init__(self, ap_config):
+        super(BelkinF6D4230APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
+
     def _set_channel(self, channel):
         position = self._get_channel_popup_position(channel)
         channel_choices = ['1', '2', '3', '4', '5', '6', '7', '8',

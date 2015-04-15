@@ -11,6 +11,10 @@ class BelkinF5D8236APConfigurator(
         belkinF9K_ap_configurator.BelkinF9KAPConfigurator):
     """Class to configure Blekin f5d8236-4 v2 router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF5D8236APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
 
     def _set_security_wpapsk(self, security, shared_key, update_interval=None):
         key_field = '//input[@name="wpa_key_pass"]'

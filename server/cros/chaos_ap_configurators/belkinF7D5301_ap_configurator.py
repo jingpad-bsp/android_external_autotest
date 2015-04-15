@@ -10,6 +10,11 @@ class BelkinF7D5301APConfigurator(
         belkinF9K_ap_configurator.BelkinF9KAPConfigurator):
     """Class to configure Belkin F7D5301 router."""
 
+    def __init__(self, ap_config):
+        super(BelkinF7D5301APConfigurator, self).__init__(ap_config)
+        self._dhcp_delay = 0
+
+
     def _set_mode(self, mode):
         mode_mapping = {ap_spec.MODE_G: '802.11g',
                         ap_spec.MODE_N: '1x1 802.11n',
