@@ -117,6 +117,7 @@ class TestBaseAutotest(unittest.TestCase):
     def test_full_client_install(self):
         self.record_install_prologue()
 
+        self.host.run.expect_call('rm -f "autodir/packages.checksum"')
         c = autotest.global_config.global_config
         c.get_config_value.expect_call('PACKAGES',
                                        'serve_packages_from_autoserv',

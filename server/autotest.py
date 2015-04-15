@@ -5,7 +5,8 @@ import re, os, sys, traceback, time, glob, tempfile
 import logging
 from autotest_lib.server import installable_object, prebuild, utils
 from autotest_lib.client.common_lib import base_job, error, autotemp
-from autotest_lib.client.common_lib import global_config, packages
+from autotest_lib.client.common_lib import base_packages, packages
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
@@ -258,6 +259,12 @@ class BaseAutotest(installable_object.InstallableObject):
                     global_config.ConfigError), e:
                 logging.info("Could not install autotest using the packaging "
                              "system: %s. Trying other methods", e)
+        else:
+            # Delete the package checksum file to force dut updating local
+            # packages.
+            command = ('rm -f "%s"' %
+                       (os.path.join(autodir, base_packages.CHECKSUM_FILE)))
+            host.run(command)
 
         # try to install from file or directory
         if self.source_material:

@@ -452,7 +452,7 @@ class BasePackageManager(object):
                 # not match, or checksums are disabled entirely
                 need_to_fetch = (
                         not use_checksum or not pkg_exists
-                        or not self.compare_checksum(dest_path, fetcher.url))
+                        or not self.compare_checksum(dest_path))
                 if need_to_fetch:
                     fetcher.fetch_pkg_file(pkg_name, dest_path)
                     # update checksum so we won't refetch next time.
@@ -754,14 +754,13 @@ class BasePackageManager(object):
         self._save_checksum_dict(checksum_dict)
 
 
-    def compare_checksum(self, pkg_path, repo_url):
+    def compare_checksum(self, pkg_path):
         '''
         Calculate the checksum of the file specified in pkg_path and
         compare it with the checksum in the checksum file
         Return True if both match else return False.
         pkg_path : The full path to the package file for which the
                    checksum is being compared
-        repo_url : The URL to fetch the checksum from
         '''
         checksum_dict = self._get_checksum_dict()
         package_name = os.path.basename(pkg_path)
