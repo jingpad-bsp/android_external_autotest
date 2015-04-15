@@ -9,6 +9,7 @@ NAME = 'network_WiFi_WakeOnSSID'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell, servo, board:samus'
+SUITE = 'wifi_matfunc, wifi_correctness_cros_core, wifi_release'
 
 DOC = """
 This test verifies that the NIC wakes the DUT up in dark resume on the
