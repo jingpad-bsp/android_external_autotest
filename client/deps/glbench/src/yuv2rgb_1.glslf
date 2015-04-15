@@ -140,7 +140,7 @@ void main() {
   // y position in pixels
   float ypixel = floor(t.y * imageHeight);
 
-  if (mod(ypixel, 4) < 2.) {
+  if (mod(ypixel, 4.) < 2.) {
     // rows 0-1, U on left side
     uside = 0.;
   } else {
@@ -148,7 +148,7 @@ void main() {
     uside = .5;
   }
 
-  if (mod(imageHeight, 4) == 0.) {
+  if (mod(imageHeight, 4.) == 0.) {
     // multiple of 4, V same side as U
     vside = uside;
   } else {
