@@ -36,6 +36,8 @@ class AudioBoard(object):
                     'Use DummyAudioJackPlugger instead')
             self._jack_plugger = DummyAudioJackPlugger()
 
+        self._bluetooth_controller = BluetoothController(chameleon_connection)
+
 
     def get_audio_bus(self, bus_index):
         """Gets an audio bus on this audio board.
@@ -57,6 +59,15 @@ class AudioBoard(object):
 
         """
         return self._jack_plugger
+
+
+    def get_bluetooth_controller(self):
+        """Gets an BluetoothController on this audio board.
+
+        @returns: An BluetoothController object.
+
+        """
+        return self._bluetooth_controller
 
 
 class AudioBus(object):
@@ -197,3 +208,31 @@ class DummyAudioJackPlugger(object):
         logging.warning(
                 'Do nothing as DummyAudioJackPlugger has audio jack '
                 'always plugged.')
+
+
+class BluetoothController(object):
+    """An abstraction of bluetooth module on audio board.
+
+    There is a bluetooth module on the audio board. It can be controlled through
+    API provided by chameleon proxy.
+
+    """
+    def __init__(self, chameleon_connection):
+        """Constructs an BluetoothController.
+
+        @param chameleon_connection: A ChameleonConnection object.
+
+        """
+        self._chameleond_proxy = chameleon_connection.chameleond_proxy
+
+
+    def reset(self):
+        """Resets the bluetooth module."""
+        self._chameleond_proxy.AudioBoardResetBluetooth()
+        logging.info('Resets bluetooth module on audio board.')
+
+
+    def disable(self):
+        """Disables the bluetooth module."""
+        self._chameleond_proxy.AudioBoardDisableBluetooth()
+        logging.info('Disables bluetooth module on audio board.')
