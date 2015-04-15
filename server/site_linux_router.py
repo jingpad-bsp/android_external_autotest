@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import collections
+import copy
 import logging
 import random
 import string
@@ -731,7 +732,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             else:
                 instances = self.hostapd_instances
                 self.hostapd_instances = []
-                local_servers = self.local_servers
+                local_servers = copy.copy(self.local_servers)
 
             for instance in instances:
                 if silent:
@@ -742,7 +743,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 self.kill_hostapd_instance(instance)
                 self.release_interface(instance.interface)
         if self.station_instances:
-            local_servers = self.local_servers
+            local_servers = copy.copy(self.local_servers)
             instance = self.station_instances.pop()
             if instance.dev_type == 'ibss':
                 self.iw_runner.ibss_leave(instance.interface)
