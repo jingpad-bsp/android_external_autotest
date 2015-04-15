@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import logging, os, re, struct, time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -30,6 +30,7 @@ class graphics_Idle(test.test):
             errors = ''
             errors += self.verify_graphics_dvfs()
             errors += self.verify_graphics_fbc()
+            errors += self.verify_graphics_psr()
             errors += self.verify_graphics_gem_idle()
             errors += self.verify_graphics_i915_min_clock()
             errors += self.verify_graphics_rc6()
@@ -59,12 +60,27 @@ class graphics_Idle(test.test):
 
 
     def verify_short_blanking(self):
-        """On some baytrail systems, checks the kernel log for a message that a
-        short blanking mode has been added."""
+        """On baytrail systems with a known panel, checks the kernel log for a
+        message that a short blanking mode has been added."""
         logging.info('Running verify_short_blanking')
-        board = utils.get_board()
-        # TODO(marcheu): add more BYT machines
-        if (board != 'rambi'):
+        if self._gpu_type != 'baytrail':
+            return ''
+
+        # Open the EDID to find the panel model.
+        param_path = '/sys/class/drm/card0-eDP-1/edid'
+        if not os.path.exists(param_path):
+            logging.error('Error: %s not found.', param_path)
+            return 'Short blanking not added (no EDID found). '
+
+        with open(param_path, 'r') as edp_edid_file:
+            edp_edid_file.seek(8)
+            bytes = edp_edid_file.read(2)
+            manufacturer = int(struct.unpack('<H', bytes)[0])
+            bytes = edp_edid_file.read(2)
+            product_code = int(struct.unpack('<H', bytes)[0])
+
+        # This is not the panel we are looking for (AUO B116XTN02.2)
+        if manufacturer != 0xaf06 or product_code != 0x225c:
             return ''
 
         # Get the downclock message from the logs.
@@ -92,7 +108,7 @@ class graphics_Idle(test.test):
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
                     break
-                with open (param_path, 'r') as drpc_info_file:
+                with open(param_path, 'r') as drpc_info_file:
                     for line in drpc_info_file:
                         match = re.search(r'Current RC state: (.*)', line)
                         if match and match.group(1) != 'on':
@@ -113,8 +129,9 @@ class graphics_Idle(test.test):
         """ On i915 systems, check that we get into the lowest clock frequency;
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_i915_min_clock')
-        if (self._gpu_type == 'baytrail' or self._gpu_type == 'haswell' or
-            self._gpu_type == 'ivybridge' or self._gpu_type == 'sandybridge'):
+        if (self._gpu_type == 'baytrail' or self._gpu_type == 'broadwell' or
+            self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
+            self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
             while not found and tries < 80:
@@ -124,7 +141,7 @@ class graphics_Idle(test.test):
                     logging.error('Error: %s not found.', param_path)
                     break
 
-                with open (param_path, 'r') as delayinfo_file:
+                with open(param_path, 'r') as delayinfo_file:
                     for line in delayinfo_file:
                         # This file has a different format depending on the board,
                         # so we parse both. Also, it would be tedious to add the
@@ -239,7 +256,7 @@ class graphics_Idle(test.test):
                 if not os.path.exists(param_path):
                     logging.error('Error: %s not found.', param_path)
                     break
-                with open (param_path, 'r') as fbc_info_file:
+                with open(param_path, 'r') as fbc_info_file:
                     for line in fbc_info_file:
                         if re.search('FBC enabled', line):
                             found = True
@@ -250,6 +267,40 @@ class graphics_Idle(test.test):
             if not found:
                 logging.error('Error: did not see FBC enabled.')
                 return 'Did not see FBC enabled. '
+
+
+        return ''
+
+
+    def verify_graphics_psr(self):
+        """ On systems which support PSR, check that we can get into PSR;
+        idle before doing so, and retry every second for 20 seconds."""
+        logging.info('Running verify_graphics_psr')
+
+        board = utils.get_board()
+        if board != 'samus':
+            return ''
+
+        tries = 0
+        found = False
+        while not found and tries < 20:
+            time.sleep(1)
+            param_path = '/sys/kernel/debug/dri/0/i915_edp_psr_state'
+            if not os.path.exists(param_path):
+                logging.error('Error: %s not found.', param_path)
+                break
+            with open(param_path, 'r') as fbc_info_file:
+                for line in fbc_info_file:
+                    match = re.search(r'Performance_Counter: (.*)', line)
+                    if match and int(match.group(1)) > 0:
+                        found = True
+                        break
+
+            tries += 1
+
+        if not found:
+            logging.error('Error: did not see PSR enabled.')
+            return 'Did not see PSR enabled. '
 
 
         return ''
@@ -271,7 +322,7 @@ class graphics_Idle(test.test):
                 if not os.path.exists(gem_path):
                     logging.error('Error: %s not found.', gem_path)
                     break
-                with open (gem_path, 'r') as gem_file:
+                with open(gem_path, 'r') as gem_file:
                     for line in gem_file:
                         if re.search('Total 0 objects', line):
                             found = True
