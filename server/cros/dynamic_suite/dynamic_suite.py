@@ -240,7 +240,7 @@ class SuiteSpec(object):
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
                  wait_for_results=True, job_retry=False, max_retries=None,
-                 **dargs):
+                 offload_failures_only=False, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -303,6 +303,8 @@ class SuiteSpec(object):
                             has been retried, the total number of retries
                             happening in the suite can't exceed _max_retries.
                             Default to None, no max.
+        @param offload_failures_only: Only enable gs_offloading for failed
+                                      jobs.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -349,6 +351,7 @@ class SuiteSpec(object):
         self.wait_for_results = wait_for_results
         self.job_retry = job_retry
         self.max_retries = max_retries
+        self.offload_failures_only = offload_failures_only
 
 
 def skip_reimage(g):
@@ -406,6 +409,7 @@ def reimage_and_run(**dargs):
                         has been retried, the total number of retries
                         happening in the suite can't exceed _max_retries.
                         Default to None, no max.
+    @param offload_failures_only: Only enable gs_offloading for failed jobs.
     @raises AsynchronousBuildFailure: if there was an issue finishing staging
                                       from the devserver.
     @raises MalformedDependenciesException: if the dependency_info file for
@@ -496,7 +500,8 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         file_experimental_bugs=spec.file_experimental_bugs,
         suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
         priority=spec.priority, wait_for_results=spec.wait_for_results,
-        job_retry=spec.job_retry, max_retries=spec.max_retries)
+        job_retry=spec.job_retry, max_retries=spec.max_retries,
+        offload_failures_only=spec.offload_failures_only)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

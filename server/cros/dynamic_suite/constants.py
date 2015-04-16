@@ -39,3 +39,8 @@ PAYLOAD_FINISHED_TIME = 'payload_finished_time'
 REIMAGE_TYPE_OS = 'os'
 REIMAGE_TYPE_FIRMWARE = 'firmware'
 LATEST_BUILD_URL = 'gs://chromeos-image-archive/master-paladin/LATEST-master'
+
+JOB_OFFLOAD_FAILURES_KEY = 'offload_failures_only'
+
+GS_OFFLOADER_INSTRUCTIONS = '.GS_OFFLOADER_INSTRUCTIONS'
+GS_OFFLOADER_NO_OFFLOAD = 'no_offload'

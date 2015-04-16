@@ -120,7 +120,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
                      max_retries=None, max_runtime_mins=None, suite_min_duts=0,
-                     **kwargs):
+                     offload_failures_only=False, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -155,6 +155,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                            minimum number of machines for the suite when it is
                            competing with another suite that has a higher
                            priority but already got minimum machines it needs.
+    @param offload_failures_only: Only enable gs_offloading for failed jobs.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -203,6 +204,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'job_retry': job_retry,
                    'max_retries': max_retries,
                    'max_runtime_mins': max_runtime_mins,
+                   'offload_failures_only': offload_failures_only
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)

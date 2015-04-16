@@ -518,7 +518,7 @@ class Suite(object):
                  ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
                  wait_for_results=True, job_retry=False,
-                 max_retries=sys.maxint):
+                 max_retries=sys.maxint, offload_failures_only=False):
         """
         Constructor
 
@@ -559,6 +559,9 @@ class Suite(object):
                             has been retried, the total number of retries
                             happening in the suite can't exceed _max_retries.
                             Default to sys.maxint.
+        @param offload_failures_only: Only enable gs_offloading for failed
+                                      jobs.
+
         """
         def combined_predicate(test):
             #pylint: disable-msg=C0111
@@ -596,6 +599,7 @@ class Suite(object):
         # RetryHandler to be initialized in schedule()
         self._retry_handler = None
         self.wait_for_results = wait_for_results
+        self._offload_failures_only = offload_failures_only
 
 
     @property
@@ -656,6 +660,8 @@ class Suite(object):
             # relationship and invalidate the results of the old job
             # in tko database.
             keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
+        if self._offload_failures_only:
+            keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
 
         test_obj = self._afe.create_job(
             control_file=test.text,

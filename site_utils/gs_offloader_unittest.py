@@ -288,6 +288,11 @@ class _MockJobDirectory(job_directories._JobDirectory):
             os.rmdir(self._dirname)
 
 
+    def process_gs_instructions(self):
+        """Always still offload the job directory."""
+        return True
+
+
 class CommandListTests(unittest.TestCase):
     """Tests for `get_cmd_list()`."""
 

@@ -1,12 +1,15 @@
 import abc
 import datetime
 import glob
+import json
 import os
 import re
+import shutil
 import time
 
 import common
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
@@ -146,7 +149,8 @@ class _JobDirectory(object):
         return
       self._first_offload_start = time.time()
     self._offload_count += 1
-    queue.put([self._dirname, os.path.dirname(self._dirname)])
+    if self.process_gs_instructions():
+      queue.put([self._dirname, os.path.dirname(self._dirname)])
 
   def is_offloaded(self):
     """Return whether this job has been successfully offloaded."""
@@ -168,11 +172,39 @@ class _JobDirectory(object):
     """Return the name of this job's results directory."""
     return self._dirname
 
+  def process_gs_instructions(self):
+    """Process any gs_offloader instructions for this special task.
+
+    @returns True/False if there is anything left to offload.
+    """
+    # Default support is to still offload the directory.
+    return True
+
 
 class RegularJobDirectory(_JobDirectory):
   """Subclass of _JobDirectory for regular test jobs."""
 
   GLOB_PATTERN = '[0-9]*-*'
+
+  def process_gs_instructions(self):
+    """Process any gs_offloader instructions for this job.
+
+    @returns True/False if there is anything left to offload.
+    """
+    # Go through the gs_offloader instructions file for each test in this job.
+    for path in glob.glob(os.path.join(self._dirname, '*',
+                                       constants.GS_OFFLOADER_INSTRUCTIONS)):
+      with open(path, 'r') as f:
+        gs_off_instructions = json.load(f)
+      if gs_off_instructions.get(constants.GS_OFFLOADER_NO_OFFLOAD):
+        shutil.rmtree(os.path.dirname(path))
+
+    # Finally check if there's anything left to offload.
+    if not os.listdir(self._dirname):
+      shutil.rmtree(self._dirname)
+      return False
+    return True
+
 
   def get_timestamp_if_finished(self):
     """Get the timestamp to use for finished jobs.

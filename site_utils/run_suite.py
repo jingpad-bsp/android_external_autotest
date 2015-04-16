@@ -160,7 +160,11 @@ def parse_options():
     parser.add_option("--suite_args", dest="suite_args",
                       default=None, action="store",
                       help="Argument string for suite control file.")
-
+    parser.add_option('--offload_failures_only', dest='offload_failures_only',
+                      action='store', default='False',
+                      help='Only enable gs_offloading for failed tests. '
+                           'Successful tests will be deleted. Must pass "True"'
+                           ' or "False" if used.')
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -1232,6 +1236,7 @@ def create_suite(afe, options):
     wait = options.no_wait == 'False'
     file_bugs = options.file_bugs == 'True'
     retry = options.retry == 'True'
+    offload_failures_only = options.offload_failures_only == 'True'
     try:
         priority = int(options.priority)
     except ValueError:
@@ -1253,7 +1258,8 @@ def create_suite(afe, options):
                    timeout_mins=options.timeout_mins,
                    max_runtime_mins=options.max_runtime_mins,
                    job_retry=retry, max_retries=options.max_retries,
-                   suite_min_duts=options.suite_min_duts)
+                   suite_min_duts=options.suite_min_duts,
+                   offload_failures_only=offload_failures_only)
 
 
 def main_without_exception_handling():

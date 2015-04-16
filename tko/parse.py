@@ -1,6 +1,7 @@
 #!/usr/bin/python -u
 
 import datetime
+import json
 import os, sys, optparse, fcntl, errno, traceback, socket
 
 import common
@@ -254,15 +255,33 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
 
     # check for failures
     message_lines = [""]
+    job_successful = True
     for test in job.tests:
         if not test.subdir:
             continue
         tko_utils.dprint("* testname, status, reason: %s %s %s"
                          % (test.subdir, test.status, test.reason))
-        if test.status in ("FAIL", "WARN"):
+        if test.status != 'GOOD':
+            job_successful = False
             message_lines.append(format_failure_message(
                 jobname, test.kernel.base, test.subdir,
                 test.status, test.reason))
+    if job_successful:
+        # Check if we should not offload this test's results.
+        if job_keyval.get(constants.JOB_OFFLOAD_FAILURES_KEY, False):
+            # Update the gs_offloader_instructions json file.
+            gs_instructions_file = os.path.join(
+                    path, constants.GS_OFFLOADER_INSTRUCTIONS)
+            gs_offloader_instructions = {}
+            if os.path.exists(gs_instructions_file):
+                with open(gs_instructions_file, 'r') as f:
+                    gs_offloader_instructions = json.load(f)
+
+            gs_offloader_instructions[constants.GS_OFFLOADER_NO_OFFLOAD] = True
+            with open(gs_instructions_file, 'w') as f:
+                json.dump(gs_offloader_instructions, f)
+
+
     message = "\n".join(message_lines)
 
     # send out a email report of failure
