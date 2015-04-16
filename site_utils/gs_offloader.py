@@ -14,6 +14,7 @@ import datetime
 import logging
 import logging.handlers
 import os
+import re
 import shutil
 import signal
 import socket
@@ -90,6 +91,9 @@ ERROR_EMAIL_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 USE_RSYNC_ENABLED = global_config.global_config.get_config_value(
     'CROS', 'gs_offloader_use_rsync', type=bool, default=False)
 
+# According to https://cloud.google.com/storage/docs/bucket-naming#objectnames
+INVALID_GS_CHARS = ['[', ']', '*', '?', '#']
+INVALID_GS_CHAR_RANGE = [(0x00, 0x1F), (0x7F, 0x84), (0x86, 0xFF)]
 
 class TimeoutException(Exception):
   """Exception raised by the timeout_handler."""
@@ -154,6 +158,40 @@ def get_directory_size_kibibytes(directory):
     return int(stdout_data.split('\t', 1)[0])
 
 
+def get_sanitized_name(name):
+  """Get a string with all invalid characters in the name being replaced.
+
+  @param name: Name to be processed.
+
+  @return: A a string with all invalid characters in the name being replaced.
+  """
+  match_pattern = ''.join([re.escape(c) for c in INVALID_GS_CHARS])
+  match_pattern += ''.join([r'\x%02x-\x%02x' % (r[0], r[1])
+                            for r in INVALID_GS_CHAR_RANGE])
+  invalid = re.compile('[%s]' % match_pattern)
+  return invalid.sub(lambda x: '%%%02x' % ord(x.group(0)), name)
+
+
+def sanitize_dir(dir_entry):
+  """Replace all invalid characters in folder and file names with valid ones.
+
+  @param dir_entry: Directory entry to be sanitized.
+  """
+  if not os.path.exists(dir_entry):
+    return
+  renames = []
+  for root, dirs, files in os.walk(dir_entry):
+    sanitized_root = get_sanitized_name(root)
+    for name in dirs + files:
+      sanitized_name = get_sanitized_name(name)
+      if name != sanitized_name:
+        renames.append((os.path.join(sanitized_root, name),
+                        os.path.join(sanitized_root, sanitized_name)))
+  for src, dest in renames:
+    logging.warn('Invalid character found. Renaming %s to %s.', src, dest)
+    shutil.move(src, dest)
+
+
 def get_offload_dir_func(gs_uri):
   """Returns the offload directory function for the given gs_uri
 
@@ -173,6 +211,8 @@ def get_offload_dir_func(gs_uri):
     try:
       counter = autotest_stats.Counter(STATS_KEY)
       counter.increment('jobs_offload_started')
+
+      sanitize_dir(dir_entry)
 
       error = False
       stdout_file = tempfile.TemporaryFile('w+')

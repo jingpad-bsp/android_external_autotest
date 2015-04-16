@@ -767,6 +767,44 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self._run_offload_dir(False)
 
 
+    def test_sanitize_dir(self):
+        """Test that folder/file name with invalid character can be corrected.
+        """
+        results_folder = tempfile.mkdtemp()
+        invalid_chars = '_'.join(gs_offloader.INVALID_GS_CHARS)
+        invalid_files = []
+        invalid_folder = os.path.join(
+                results_folder,
+                'invalid_name_folder_%s' % invalid_chars)
+        invalid_files.append(os.path.join(
+                invalid_folder,
+                'invalid_name_file_%s' % invalid_chars))
+        for r in gs_offloader.INVALID_GS_CHAR_RANGE:
+            for c in range(r[0], r[1]+1):
+                # NULL cannot be in file name.
+                if c != 0:
+                    invalid_files.append(os.path.join(
+                            invalid_folder,
+                            'invalid_name_file_%s' % chr(c)))
+        good_folder =  os.path.join(results_folder, 'valid_name_folder')
+        good_file = os.path.join(good_folder, 'valid_name_file')
+        for folder in [invalid_folder, good_folder]:
+            os.makedirs(folder)
+        for f in invalid_files + [good_file]:
+            with open(f, 'w'):
+                pass
+        gs_offloader.sanitize_dir(results_folder)
+        for _, dirs, files in os.walk(results_folder):
+            for name in dirs + files:
+                self.assertEqual(name, gs_offloader.get_sanitized_name(name))
+                for c in name:
+                    self.assertFalse(c in gs_offloader.INVALID_GS_CHARS)
+                    for r in gs_offloader.INVALID_GS_CHAR_RANGE:
+                        self.assertFalse(ord(c) >= r[0] and ord(c) <= r[1])
+        self.assertTrue(os.path.exists(good_file))
+        shutil.rmtree(results_folder)
+
+
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
     """Tests for `_JobDirectory.enqueue_offload()`.
 
