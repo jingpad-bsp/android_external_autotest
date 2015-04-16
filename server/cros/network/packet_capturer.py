@@ -289,11 +289,12 @@ class PacketCapturer(object):
         remote_log_file = '%s.log' % remote_file
         # Redirect output because SSH refuses to return until the child file
         # descriptors are closed.
-        cmd = '%s -i %s -w %s -s %d >%s 2>&1 & echo $!' % (self._cmd_netdump,
-                                                           interface,
-                                                           remote_file,
-                                                           snaplen or 0,
-                                                           remote_log_file)
+        cmd = '%s -U -i %s -w %s -s %d >%s 2>&1 & echo $!' % (
+            self._cmd_netdump,
+            interface,
+            remote_file,
+            snaplen or 0,
+            remote_log_file)
         logging.debug('Starting managed packet capture')
         pid = int(self._host.run(cmd).stdout)
         self._ongoing_captures[pid] = (remote_file,
