@@ -37,4 +37,5 @@ dynamic_suite.reimage_and_run(
     max_runtime_mins=60, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX, job_retry=job_retry,
     max_retries=max_retries, suite_dependencies='wifi:marvell8897',
-    wait_for_results=wait_for_results)
+    wait_for_results=wait_for_results,
+    offload_failures_only=offload_failures_only)
