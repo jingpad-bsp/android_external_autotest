@@ -9,12 +9,13 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
-
+from autotest_lib.client.cros import dbus_util
 
 BUFFET_SERVICE_NAME = 'org.chromium.Buffet'
 
 BUFFET_MANAGER_INTERFACE = 'org.chromium.Buffet.Manager'
 BUFFET_MANAGER_OBJECT_PATH = '/org/chromium/Buffet/Manager'
+DBUS_PROPERTY_INTERFACE = 'org.freedesktop.DBus.Properties'
 
 class buffet_BasicDBusAPI(test.test):
     """Check that basic buffet daemon DBus APIs are functional."""
@@ -24,9 +25,50 @@ class buffet_BasicDBusAPI(test.test):
         """Test entry point."""
         buffet_config.BuffetConfig().restart_with_config()
         bus = dbus.SystemBus()
+        buffet_object = bus.get_object(BUFFET_SERVICE_NAME,
+                                       BUFFET_MANAGER_OBJECT_PATH)
         manager_proxy = dbus.Interface(
-                bus.get_object(BUFFET_SERVICE_NAME, BUFFET_MANAGER_OBJECT_PATH),
+                buffet_object,
                 dbus_interface=BUFFET_MANAGER_INTERFACE)
+        properties = dbus.Interface(buffet_object,
+                                    DBUS_PROPERTY_INTERFACE)
+
+
+        #pylint: disable=C0111
+        def assert_property_equal(expected, name):
+            value = dbus_util.dbus2primitive(
+                    properties.Get(dbus.String(BUFFET_MANAGER_INTERFACE),
+                                   dbus.String(name)))
+            if expected != value:
+                raise error.TestFail('Expected=%s, actual=%s' % (expected,
+                                                                 value))
+
+
+        assert_property_equal('', 'DeviceId')
+        assert_property_equal('Chromium', 'OemName')
+        assert_property_equal('Brillo', 'ModelName')
+        assert_property_equal('AATST', 'ModelId')
+        assert_property_equal('Developer device', 'Name')
+        assert_property_equal('', 'Description')
+        assert_property_equal('', 'Location')
+
+        dbus_util.dbus2primitive(
+                manager_proxy.UpdateDeviceInfo(dbus.String('A'),
+                                               dbus.String('B'),
+                                               dbus.String('C')))
+
+        assert_property_equal('A', 'Name')
+        assert_property_equal('B', 'Description')
+        assert_property_equal('C', 'Location')
+
+        try:
+            dbus_util.dbus2primitive(
+                    manager_proxy.UpdateDeviceInfo(dbus.String(''),
+                                                   dbus.String('B'),
+                                                   dbus.String('C')))
+            raise error.TestFail('Exception expected')
+        except dbus.exceptions.DBusException:
+            pass
 
         # The test method better work.
         test_message = 'Hello world!'
