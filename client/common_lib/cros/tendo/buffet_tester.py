@@ -237,7 +237,7 @@ class BuffetTester(object):
         logging.debug('Got device resource=%r', device_resource)
         _assert_has(device_resource, 'name', TEST_NAME,
                     'device resource')
-        _assert_has(device_resource, 'modelManifestId', 'TST',
+        _assert_has(device_resource, 'modelManifestId', 'AATST',
                     'device resource')
         logging.info('Registration successful')
         self.check_buffet_status_is(
