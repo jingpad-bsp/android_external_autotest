@@ -155,14 +155,32 @@ class _SpecialTaskEvent(_JobEvent):
         @return A list of `_SpecialTaskEvent` objects.
 
         """
-        filter_start = time_utils.epoch_time_to_date_string(start_time)
-        filter_end = time_utils.epoch_time_to_date_string(end_time)
         tasks = afe.get_host_special_tasks(
                 host_id,
-                time_started__gte=filter_start,
-                time_finished__lte=filter_end,
+                time_started__gte=start_time,
+                time_finished__lte=end_time,
                 is_complete=1)
         return [cls(afe.server, t) for t in tasks]
+
+
+    @classmethod
+    def get_status_task(cls, afe, host_id, end_time):
+        """Return the task indicating a host's status at a given time.
+
+        The task returned determines the status of the DUT; the
+        diagnosis on the task indicates the diagnosis for the DUT at
+        the given `end_time`.
+
+        @param afe         Autotest frontend
+        @param host_id     Database host id of the desired host.
+        @param end_time    Find status as of this time.
+
+        @return A `_SpecialTaskEvent` object for the requested task,
+                or `None` if no task was found.
+
+        """
+        task = afe.get_status_task(host_id, end_time)
+        return cls(afe.server, task) if task else None
 
 
     def __init__(self, afe_hostname, afetask):
@@ -215,12 +233,10 @@ class _TestJobEvent(_JobEvent):
         @return A list of `_TestJobEvent` objects.
 
         """
-        filter_start = time_utils.epoch_time_to_date_string(start_time)
-        filter_end = time_utils.epoch_time_to_date_string(end_time)
         hqelist = afe.get_host_queue_entries(
                 host_id=host_id,
-                start_time=filter_start,
-                end_time=filter_end,
+                start_time=start_time,
+                end_time=end_time,
                 complete=1)
         return [cls(afe.server, hqe) for hqe in hqelist]
 
@@ -240,10 +256,7 @@ class _TestJobEvent(_JobEvent):
 
     @property
     def diagnosis(self):
-        if self._hqe.finished_on is not None:
-            return WORKING
-        else:
-            return UNKNOWN
+        return UNKNOWN
 
 
 class HostJobHistory(object):
@@ -327,25 +340,30 @@ class HostJobHistory(object):
         self.start_time = start_time
         self.end_time = end_time
         self._host = afehost
-        # Don't spend time filling in the history until it's needed.
+        # Don't spend time on queries until they're needed.
         self._history = None
+        self._status_diagnosis = None
+        self._status_task = None
+
+
+    def _get_history(self):
+        """Fill in `self._history`."""
+        if self._history is not None:
+            return
+        start_time = time_utils.epoch_time_to_date_string(self.start_time)
+        end_time = time_utils.epoch_time_to_date_string(self.end_time)
+        newtasks = _SpecialTaskEvent.get_tasks(
+                self._afe, self._host.id, start_time, end_time)
+        newhqes = _TestJobEvent.get_hqes(
+                self._afe, self._host.id, start_time, end_time)
+        newhistory = newtasks + newhqes
+        newhistory.sort(reverse=True)
+        self._history = newhistory
 
 
     def __iter__(self):
         self._get_history()
         return self._history.__iter__()
-
-
-    def _get_history(self):
-        if self._history is not None:
-            return
-        newtasks = _SpecialTaskEvent.get_tasks(
-                self._afe, self._host.id, self.start_time, self.end_time)
-        newhqes = _TestJobEvent.get_hqes(
-                self._afe, self._host.id, self.start_time, self.end_time)
-        newhistory = newtasks + newhqes
-        newhistory.sort(reverse=True)
-        self._history = newhistory
 
 
     def _extract_prefixed_label(self, prefix):
@@ -366,36 +384,42 @@ class HostJobHistory(object):
         return self._extract_prefixed_label(prefix)
 
 
+    def _get_status_task(self):
+        """Fill in `self._status_diagnosis` and `_status_task`."""
+        if self._status_diagnosis is not None:
+            return
+        end_time = time_utils.epoch_time_to_date_string(self.end_time)
+        self._status_task = _SpecialTaskEvent.get_status_task(
+                self._afe, self._host.id, end_time)
+        if self._status_task is not None:
+            self._status_diagnosis = self._status_task.diagnosis
+        else:
+            self._status_diagnosis = UNKNOWN
+
+
     def last_diagnosis(self):
         """Return the diagnosis of whether the DUT is working.
 
         This searches the DUT's job history from most to least
         recent, looking for jobs that indicate whether the DUT
-        was working.  Return a tuple of `(diagnosis, job)`.
+        was working.  Return a tuple of `(diagnosis, task)`.
 
         The `diagnosis` entry in the tuple is one of these values:
-          * UNUSED - The job history is empty.
-          * UNKNOWN - All jobs in the history returned _UNKNOWN
-              status.
           * WORKING - The DUT is working.
           * BROKEN - The DUT likely requires manual intervention.
+          * UNKNOWN - No task could be found indicating status for
+              the DUT.
 
-        The `job` entry in the tuple is the job that led to the
-        diagnosis.  The job will be `None` if the diagnosis is
-        `UNUSED` or `UNKNOWN`.
+        The `task` entry in the tuple is the task that led to the
+        diagnosis.  The task will be `None` if the diagnosis is
+        `UNKNOWN`.
 
-        @return A tuple with the DUT's diagnosis and the job that
+        @return A tuple with the DUT's diagnosis and the task that
                 determined it.
 
         """
-        self._get_history()
-        if not self._history:
-            return UNUSED, None
-        for job in self:
-            status = job.diagnosis
-            if status != UNKNOWN:
-                return job.diagnosis, job
-        return UNKNOWN, None
+        self._get_status_task()
+        return self._status_diagnosis, self._status_task
 
 
 def get_status_task(host_id, end_time):

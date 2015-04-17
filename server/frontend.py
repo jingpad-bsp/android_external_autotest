@@ -321,6 +321,12 @@ class AFE(RpcClient):
         return [SpecialTask(self, t) for t in tasks]
 
 
+    def get_status_task(self, host_id, end_time):
+        task = self.run('get_status_task',
+                         host_id=host_id, end_time=end_time)
+        return SpecialTask(self, task) if task else None
+
+
     def create_job_by_test(self, tests, kernel=None, use_container=False,
                            kernel_cmdline=None, **dargs):
         """
