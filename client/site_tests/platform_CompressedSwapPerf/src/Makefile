@@ -4,7 +4,7 @@
 
 TARGET = hog
 SRC = hog.c
-CFLAGS = -std=c99 -D_GNU_SOURCE -O0 -frecord-gcc-switches
+CFLAGS = -std=c99 -D_GNU_SOURCE -O0
 LDFLAGS = -lrt
 
 $(TARGET): $(SRC)
