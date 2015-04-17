@@ -160,7 +160,7 @@ class display_EndToEnd(test.test):
         # Get the resolution for the edid applied
         self.resolution = utils.wait_for_value_changed(
                 self.display_facade.get_external_resolution,
-                old_value=None)
+                old_value=self.resolution)
         if self.resolution is None:
             raise error.TestFail('No external display detected on DUT')
 
@@ -199,6 +199,7 @@ class display_EndToEnd(test.test):
         self.host = host
         self.test_mirrored = test_mirrored
         self.errors = []
+        self.resolution = None
 
         # Check the servo object
         if self.host.servo is None:
@@ -302,6 +303,9 @@ class display_EndToEnd(test.test):
             # Set mode back to mirror after resuming with diff monitor
             if self.test_mirrored:
                 self.switch_display_mode()
+            else:
+                # Update the resolution
+                self.check_external_resolution()
 
             # Check status
             self.check_external_display()
