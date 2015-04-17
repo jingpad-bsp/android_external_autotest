@@ -112,7 +112,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # Minimum OS version that supports server side packaging. Older builds may
     # not have server side package built or with Autotest code change to support
     # server-side packaging.
-    MIN_VERSION_SUPPORT_SSP = 6919
+    MIN_VERSION_SUPPORT_SSP = global_config.global_config.get_config_value(
+            'AUTOSERV', 'min_version_support_ssp', type=int)
 
     # REBOOT_TIMEOUT: How long to wait for a reboot.
     #
