@@ -11,26 +11,20 @@ from autotest_lib.client.cros import perf
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
 
-# to run this test manually on a test target
-# ssh root@machine
-# cd /usr/local/autotest/deps/glbench
-# stop ui
-# ./glbench [-save [-oudir=<dir>]]
-# start ui
-
 
 class graphics_GLBench(test.test):
   """Run glbench, a benchmark that times graphics intensive activities."""
   version = 1
   preserve_srcdir = True
-
-  # None-init vars used by cleanup() here, in case setup() fails
   _services = None
 
+  # Good images.
   reference_images_file = 'deps/glbench/glbench_reference_images.txt'
+  # Images that are bad but for which the bug has not been fixed yet.
   knownbad_images_file = 'deps/glbench/glbench_knownbad_images.txt'
+  # Images that are bad and for which a fix has been submitted.
+  fixedbad_images_file = 'deps/glbench/glbench_fixedbad_images.txt'
 
-  # TODO(ihf) not sure these are still needed
   # These tests do not draw anything, they can only be used to check
   # performance.
   no_checksum_tests = set([
@@ -104,6 +98,16 @@ class graphics_GLBench(test.test):
       if testname.startswith(prefix):
         return True
     return False
+
+  def load_imagenames(self, filename):
+    """Loads text file with MD5 file names.
+
+    @param filename: name of file to load.
+    """
+    imagenames = os.path.join(self.autodir, filename)
+    with open(imagenames, 'r') as f:
+      imagenames = f.read()
+      return imagenames
 
   def run_once(self, options='', hasty=False):
     dep = 'glbench'
@@ -179,17 +183,10 @@ class graphics_GLBench(test.test):
                            'run_remote_tests.../graphics_GLBench/summary.txt' +
                            ' for details.')
 
-    # initialize reference images index for lookup
-    reference_imagenames = os.path.join(self.autodir,
-                                        self.reference_images_file)
-    g = open(reference_imagenames, 'r')
-    reference_imagenames = g.read()
-    g.close()
-    knownbad_imagenames = os.path.join(self.autodir,
-                                       self.knownbad_images_file)
-    g = open(knownbad_imagenames, 'r')
-    knownbad_imagenames = g.read()
-    g.close()
+    # The good images, the silenced and the zombie/recurring failures.
+    reference_imagenames = self.load_imagenames(self.reference_images_file)
+    knownbad_imagenames = self.load_imagenames(self.knownbad_images_file)
+    fixedbad_imagenames = self.load_imagenames(self.fixedbad_images_file)
 
     # Check if we saw GLBench end as expected (without crashing).
     test_ended_normal = False
@@ -215,8 +212,8 @@ class graphics_GLBench(test.test):
         raise error.TestFail('Unknown test unit "%s" for %s' % (unit, testname))
 
       if not hasty:
-        # prepend unit to test name to maintain backwards compatibility with
-        # existing per data
+        # Prepend unit to test name to maintain backwards compatibility with
+        # existing per data.
         perf_value_name = '%s_%s' % (unit, testname)
         self.output_perf_value(description=perf_value_name, value=testrating,
                                units=unit, higher_is_better=higher,
@@ -228,32 +225,40 @@ class graphics_GLBench(test.test):
                                units=unit, higher_is_better=higher,
                                graph=perf_value_name)
 
-      # classify result image
+      # Classify result image.
       if testrating == -1.0:
-        # tests that generate GL Errors
+        # Tests that generate GL Errors.
         glerror = imagefile.split('=')[1]
         f.write('# GLError ' + glerror + ' during test (perf set to -3.0)\n')
         keyvals[testname] = -3.0
+        failed_tests[testname] = 'GLError'
       elif testrating == 0.0:
-        # tests for which glbench does not generate a meaningful perf score
+        # Tests for which glbench does not generate a meaningful perf score.
         f.write('# No score for test\n')
         keyvals[testname] = 0.0
+      elif imagefile in fixedbad_imagenames:
+        # We know the image looked bad at some point in time but we thought
+        # it was fixed. Throw an exception as a reminder.
+        keyvals[testname] = -2.0
+        f.write('# fixedbad [' + imagefile + '] (setting perf as -2.0)\n')
+        failed_tests[testname] = imagefile
       elif imagefile in knownbad_imagenames:
-        # we already know the image looks bad and have filed a bug
-        # so don't throw an exception and remind there is a problem
+        # We have triaged the failure and have filed a tracking bug.
+        # Don't throw an exception and remind there is a problem.
         keyvals[testname] = -1.0
         f.write('# knownbad [' + imagefile + '] (setting perf as -1.0)\n')
+        # This failure is whitelisted so don't add to failed_tests.
       elif imagefile in reference_imagenames:
-        # known good reference images
+        # Known good reference images (default).
         keyvals[testname] = testrating
       elif imagefile == 'none':
-        # tests that do not write images
+        # Tests that do not write images can't fail because of them.
         keyvals[testname] = testrating
       elif self.is_no_checksum_test(testname):
-        # TODO(ihf) these really should not write any images
+        # TODO(ihf): these really should not write any images
         keyvals[testname] = testrating
       else:
-        # completely unknown images
+        # Completely unknown images. Raise a failure.
         keyvals[testname] = -2.0
         failed_tests[testname] = imagefile
         f.write('# unknown [' + imagefile + '] (setting perf as -2.0)\n')

@@ -56,16 +56,11 @@ Handling of reference images
 ============================
 
 Good reference images themselves are located at       ../glbench-images/glbench_reference_images/
-while images that have defects and a bug filed are at ../glbench-images/glbench_knownbad_images/cros-bug-NNNNN/
+Images that have outstanding defects and an open bug filed are at ../glbench-images/glbench_knownbad_images/chromium-bug-NNNNN/
+When that bug is closed the directory should be moved to ../glbench-images/glbench_fixedbad_images/chromium-bug-NNNNN/
 
 To push out new reference images place them in the appropriate 
 directories (create a new bug if needed) and run 
     > update_glbench_image_filelists.sh 
 
-to update the image filelists in deps/glbench/glbench_reference_images.txt
-and deps/glbench/glbench_knownbad_images.txt 
-
-Unfortunately one has to manually keep the web locations in sync. 
-But they are not critical for now.
-http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/glbench_reference_images/
-http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/glbench_knownbad_images/
+to update the image filelists in deps/glbench/glbench_reference_images.txt etc.
