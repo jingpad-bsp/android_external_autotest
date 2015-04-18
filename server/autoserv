@@ -178,7 +178,7 @@ def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
     if not '--pidfile-label' in args:
         args.extend(['--pidfile-label', 'container_autoserv'])
 
-    cmd_line = ' '.join(args)
+    cmd_line = ' '.join(["'%s'" % arg if ' ' in arg else arg for arg in args])
     logging.info('Run command in container: %s', cmd_line)
     success = False
     try:
