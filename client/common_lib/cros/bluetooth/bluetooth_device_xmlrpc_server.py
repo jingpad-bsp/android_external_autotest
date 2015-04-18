@@ -5,6 +5,9 @@
 # found in the LICENSE file.
 
 import dbus
+import dbus.mainloop.glib
+import dbus.service
+import gobject
 import json
 import logging
 import logging.handlers
@@ -16,6 +19,33 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_socket
 from autotest_lib.client.cros import constants
+
+
+class _PinAgent(dbus.service.Object):
+    """The agent handling bluetooth device with a known pin code.
+
+    _PinAgent overrides RequestPinCode method to return a given pin code.
+    User can use this agent to pair bluetooth device which has a known pin code.
+
+    """
+    def __init__(self, pin, *args, **kwargs):
+        super(_PinAgent, self).__init__(*args, **kwargs)
+        self._pin = pin
+
+
+    @dbus.service.method('org.bluez.Agent1', in_signature="o", out_signature="s")
+    def RequestPinCode(self, device_path):
+        """Requests pin code for a device.
+
+        Returns the known pin code for the request.
+
+        @param device_path: The object path of the device.
+
+        @returns: The known pin code.
+
+        """
+        logging.info('RequestPinCode for %s, return %s', device_path, self._pin)
+        return self._pin
 
 
 class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
@@ -44,8 +74,11 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     BLUEZ_MANAGER_IFACE = 'org.freedesktop.DBus.ObjectManager'
     BLUEZ_ADAPTER_IFACE = 'org.bluez.Adapter1'
     BLUEZ_DEVICE_IFACE = 'org.bluez.Device1'
+    BLUEZ_AGENT_MANAGER_PATH = '/org/bluez'
+    BLUEZ_AGENT_MANAGER_IFACE = 'org.bluez.AgentManager1'
     BLUEZ_PROFILE_MANAGER_PATH = '/org/bluez'
     BLUEZ_PROFILE_MANAGER_IFACE = 'org.bluez.ProfileManager1'
+    BLUEZ_ERROR_ALREADY_EXISTS = 'org.bluez.Error.AlreadyExists'
 
     BLUETOOTH_LIBDIR = '/var/lib/bluetooth'
 
@@ -81,12 +114,19 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 None,
                 bluetoothd_path)
 
+        # Arrange for the GLib main loop to be the default.
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
         # Set up the connection to the D-Bus System Bus, get the object for
         # the Bluetooth Userspace Daemon (BlueZ) and that daemon's object for
         # the Bluetooth Adapter.
         self._system_bus = dbus.SystemBus()
         self._update_bluez()
         self._update_adapter()
+
+        # The agent to handle pin code request, which will be
+        # created when user calls pair_legacy_device method.
+        self._pin_agent = None
 
 
     def _update_bluez(self):
@@ -447,6 +487,205 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                                   self.BLUEZ_PROFILE_MANAGER_PATH),
                               self.BLUEZ_PROFILE_MANAGER_IFACE)
         profile_manager.RegisterProfile(path, uuid, options)
+        return True
+
+
+    def _find_device(self, address):
+        """Finds the device with a given address.
+
+        Find the device with a given address and returns the
+        device interface.
+
+        @param address: Address of the device to pair.
+
+        @returns: An 'org.bluez.Device1' interface to the device.
+                  None if device can not be found.
+
+        """
+        objects = self._bluez.GetManagedObjects(
+                dbus_interface=self.BLUEZ_MANAGER_IFACE)
+        for path, ifaces in objects.iteritems():
+            device = ifaces.get(self.BLUEZ_DEVICE_IFACE)
+            if device is None:
+                continue
+            if (device['Address'] == address and
+                path.startswith(self._adapter.object_path)):
+                obj = self._system_bus.get_object(
+                        self.BLUEZ_SERVICE_NAME, path)
+                return dbus.Interface(obj, self.BLUEZ_DEVICE_IFACE)
+        logging.error('Device not found')
+        return None
+
+
+    def _setup_pin_agent(self, pin):
+        """Initializes a _PinAgent and registers it to handle pin code request.
+
+        @param pin: The pin code this agent will answer.
+
+        """
+        agent_path = '/test/agent'
+        if self._pin_agent:
+            logging.info('Removing the old agent before initializing a new one')
+            self._pin_agent.remove_from_connection()
+            self._pin_agent = None
+        self._pin_agent = _PinAgent(pin, self._system_bus, agent_path)
+        agent_manager = dbus.Interface(
+                              self._system_bus.get_object(
+                                  self.BLUEZ_SERVICE_NAME,
+                                  self.BLUEZ_AGENT_MANAGER_PATH),
+                              self.BLUEZ_AGENT_MANAGER_IFACE)
+        try:
+            agent_manager.RegisterAgent(agent_path, 'NoInputNoOutput')
+        except dbus.exceptions.DBusException, e:
+            if e.get_dbus_name() == self.BLUEZ_ERROR_ALREADY_EXISTS:
+                logging.info('Unregistering the old agent and register the new one.')
+                agent_manager.UnregisterAgent(agent_path)
+                agent_manager.RegisterAgent(agent_path, 'NoInputNoOutput')
+            else:
+                raise
+        logging.info('Agent registered')
+
+
+    def _is_paired(self,  device):
+        """Checks if a device is paired.
+
+        @param device: An 'org.bluez.Device1' interface to the device.
+
+        @returns: True if device is paired. False otherwise.
+
+        """
+        props = dbus.Interface(device, dbus.PROPERTIES_IFACE)
+        paired = props.Get(self.BLUEZ_DEVICE_IFACE, 'Paired')
+        return bool(paired)
+
+
+    def _is_connected(self,  device):
+        """Checks if a device is connected.
+
+        @param device: An 'org.bluez.Device1' interface to the device.
+
+        @returns: True if device is connected. False otherwise.
+
+        """
+        props = dbus.Interface(device, dbus.PROPERTIES_IFACE)
+        connected = props.Get(self.BLUEZ_DEVICE_IFACE, 'Connected')
+        logging.info('Get connected = %r', connected)
+        return bool(connected)
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def pair_legacy_device(self, address, pin, timeout):
+        """Pairs a device with a given pin code.
+
+        Registers a agent who handles pin code request and
+        pairs a device with known pin code.
+
+        @param address: Address of the device to pair.
+        @param pin: The pin code of the device to pair.
+        @param timeout: The timeout in seconds for pairing.
+
+        @returns: True on success. False otherwise.
+
+        """
+        device = self._find_device(address)
+        if not device:
+            logging.error('Device not found')
+            return False
+        if self._is_paired(device):
+            logging.info('Device is already paired')
+            return True
+
+        self._setup_pin_agent(pin)
+        mainloop = gobject.MainLoop()
+
+
+        def pair_reply():
+            """Handler when pairing succeeded."""
+            logging.info('Device paired')
+            mainloop.quit()
+
+
+        def pair_error(error):
+            """Handler when pairing failed."""
+            try:
+                error_name = error.get_dbus_name()
+                if error_name == 'org.freedesktop.DBus.Error.NoReply':
+                    logging.error('Timed out. Cancelling pairing')
+                    device.CancelPairing()
+                else:
+                    logging.error('Pairing device failed: %s', error)
+            finally:
+                mainloop.quit()
+
+
+        device.Pair(reply_handler=pair_reply, error_handler=pair_error,
+                    timeout=timeout * 1000)
+        mainloop.run()
+        return self._is_paired(device)
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def remove_device_object(self, address):
+        """Removes a device object and the pairing information.
+
+        Calls RemoveDevice method to remove remote device
+        object and the pairing information.
+
+        @param address: Address of the device to unpair.
+
+        @returns: True on success. False otherwise.
+
+        """
+        device = self._find_device(address)
+        if not device:
+            logging.error('Device not found')
+            return False
+        self._adapter.RemoveDevice(
+                device.object_path, dbus_interface=self.BLUEZ_ADAPTER_IFACE)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def connect_device(self, address):
+        """Connects a device.
+
+        Connects a device if it is not connected.
+
+        @param address: Address of the device to connect.
+
+        @returns: True on success. False otherwise.
+
+        """
+        device = self._find_device(address)
+        if not device:
+            logging.error('Device not found')
+            return False
+        if self._is_connected(device):
+          logging.info('Device is already connected')
+          return True
+        device.Connect()
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def disconnect_device(self, address):
+        """Disconnects a device.
+
+        Disconnects a device if it is connected.
+
+        @param address: Address of the device to disconnect.
+
+        @returns: True on success. False otherwise.
+
+        """
+        device = self._find_device(address)
+        if not device:
+            logging.error('Device not found')
+            return False
+        if not self._is_connected(device):
+          logging.info('Device is not connected')
+          return True
+        device.Disconnect()
         return True
 
 
