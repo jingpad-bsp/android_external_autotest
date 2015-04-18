@@ -13,6 +13,7 @@ TESTS = [
     'dromaeo.domcoremodify',
     'dromaeo.domcorequery',
     'dromaeo.domcoretraverse',
+    'image_decoding.image_decoding_measurement',
     'jetstream',
     'kraken',
     'media.chromeOS4kOnly.tough_video_cases',
