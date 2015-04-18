@@ -751,6 +751,17 @@ class ContainerBucket(object):
             run('cp "%s" "%s"' % (ssh_config, container_ssh_config))
             # Remove domain specific flags.
             run('sed -i "s/UseProxyIf=false//g" %s' % container_ssh_config)
+            # TODO(dshi): crbug.com/451622 ssh connection loglevel is set to
+            # ERROR in container before master ssh connection works. This is
+            # to avoid logs being flooded with warning `Permanently added
+            # '[hostname]' (RSA) to the list of known hosts.` (crbug.com/478364)
+            # The sed command injects following at the beginning of .ssh/config
+            # used in config. With such change, ssh command will not post
+            # warnings.
+            # Host *
+            #   LogLevel Error
+            run('sed -i "1s/^/Host *\\n  LogLevel ERROR\\n\\n/" %s' %
+                container_ssh_config)
 
         # Copy over resolv.conf for DNS search path. The file is copied to
         # autotest folder so its content can be appended in /etc/resolv.conf
