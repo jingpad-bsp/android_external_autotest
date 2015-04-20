@@ -1,49 +1,10 @@
 #!/bin/bash
 
+# We have some very rudimentary command line processing, which we
+# share with run-board-inventory.
+
 SCRIPT_DIR=$(dirname $(readlink -f $0))
+cd $SCRIPT_DIR/..
+. contrib/inventory_options
 
-# By default, we're invoked without arguments.  This is how the cron
-# job does it, and means we should generate output and mail it to
-# the default mail alias.
-#
-# Invoking with arguments is for testing:  It allows running through
-# the full logic and output generation, without spamming the alert
-# aliases.
-
-cd $SCRIPT_DIR
-OPTIONS=""
-if [ $# -eq 0 ]; then
-  # TODO(jrbarnette):  Really, this feels like a hack.  The cron job
-  # that invokes this script is installed and enabled on both a
-  # primary and backup server, meaning the e-mail will be generated
-  # twice.  We don't want that, so unless this is the primary server,
-  # quash this job.
-  if ! ../cli/atest server list $(hostname) 2>&1 |
-      grep -q '^Status *: *primary'; then
-    exit 0
-  fi
-
-  POOL_INTEREST=(
-    chromeos-infra-eng@grotations.appspotmail.com
-    chromeos-lab-alerts@google.com
-  )
-  BOARD_INTEREST=(
-    skc-fireteam@google.com
-    "${POOL_INTEREST[@]}"
-  )
-else
-  BOARD_INTEREST=( "$@" )
-  POOL_INTEREST=( "$@" )
-  OPTIONS=--print
-fi
-
-cd ..
-BOARD_NOTIFY=(
-  --board-notify
-  $(echo "${BOARD_INTEREST[@]}" | sed 's/ /,/g')
-)
-POOL_NOTIFY=(
-  --pool-notify
-  $(echo "${POOL_INTEREST[@]}" | sed 's/ /,/g')
-)
 site_utils/lab_inventory.py $OPTIONS "${BOARD_NOTIFY[@]}" "${POOL_NOTIFY[@]}"
