@@ -461,18 +461,13 @@ def main():
     # running in a drone does not support SSP, thus no need to stage server-side
     # package.
     ssp_url = None
+    ssp_url_warning = False
     if (not parser.options.warn_no_ssp and parser.options.require_ssp):
         ssp_url = _stage_ssp(parser)
-        if not ssp_url:
-            # The build does not have autotest server package. Fall back to not
-            # to use server-side package, reset logging to log in results
-            # folder.
-            logging.warn(
-                    'Autoserv is required to run with server-side packaging. '
-                    'However, no server-side package can be found based on '
-                    '`--image`, host attribute job_repo_url or host label of '
-                    'cros-version. The test will be executed without '
-                    'server-side packaging supported.')
+        # The build does not have autotest server package. Fall back to not
+        # to use server-side package. Logging is postponed until logging being
+        # set up.
+        ssp_url_warning = not ssp_url
 
     if parser.options.no_logging:
         results = None
@@ -514,6 +509,14 @@ def main():
             use_console=not parser.options.no_tee,
             verbose=parser.options.verbose,
             no_console_prefix=parser.options.no_console_prefix)
+
+    if ssp_url_warning:
+        logging.warn(
+                'Autoserv is required to run with server-side packaging. '
+                'However, no server-side package can be found based on '
+                '`--image`, host attribute job_repo_url or host label of '
+                'cros-version. The test will be executed without '
+                'server-side packaging supported.')
 
     if results:
         logging.info("Results placed in %s" % results)
