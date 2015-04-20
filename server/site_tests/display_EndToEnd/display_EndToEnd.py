@@ -41,7 +41,7 @@ class display_EndToEnd(test.test):
                   ]
     # EDID data files names for different ports
     EDID_FILE_NAMES = [('DELL_U3011T_HDMI.txt', 'ASUS_VE258_HDMI.txt'),
-                       ('DELL_U3011T_DP.txt', 'ASUS_VE258_DP.txt')]
+                       ('MEL_18546_MDT551S_DP.txt', 'ASUS_VE258_DP.txt')]
     NO_LID_BOARDS = ['stumpy', 'panther', 'zako', 'tricky', 'mccloud']
 
     def remove_crash_data(self):
