@@ -215,7 +215,10 @@ class platform_ToolchainOptions(test.test):
         now_cmd = ("(%s {} | grep -q statically) ||"
                    "%s -d {} 2>&1 | "
                    "egrep -q \"BIND_NOW\"" % (FILE_CMD, readelf_cmd))
-        now_whitelist = os.path.join(self.bindir, "now_whitelist")
+        if utils.is_freon():
+            now_whitelist = os.path.join(self.bindir, "now_whitelist")
+        else:
+            now_whitelist = os.path.join(self.bindir, "now_whitelist_x")
         option_sets.append(self.create_and_filter("-Wl,-z,now",
                                                   now_cmd,
                                                   now_whitelist))
@@ -251,7 +254,10 @@ class platform_ToolchainOptions(test.test):
         loadwx_cmd = ("%s -lW {} 2>&1 | "
                       "grep \"LOAD\" | egrep -v \"(RW |R E)\" | "
                       "wc -l | grep -q \"^0$\"" % readelf_cmd)
-        loadwx_whitelist = os.path.join(self.bindir, "loadwx_whitelist")
+        if utils.is_freon():
+            loadwx_whitelist = os.path.join(self.bindir, "loadwx_whitelist")
+        else:
+            loadwx_whitelist = os.path.join(self.bindir, "loadwx_whitelist_x")
         option_sets.append(self.create_and_filter("LOAD Writable and Exec",
                                                   loadwx_cmd,
                                                   loadwx_whitelist))
