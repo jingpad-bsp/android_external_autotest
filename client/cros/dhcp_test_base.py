@@ -33,6 +33,7 @@ DHCPCD_KEY_BROADCAST_ADDR = 'Broadcast'
 DHCPCD_KEY_ADDRESS = 'Address'
 DHCPCD_KEY_PREFIX_LENGTH = 'Prefixlen'
 DHCPCD_KEY_DOMAIN_NAME = 'DomainName'
+DHCPCD_KEY_ACCEPTED_HOSTNAME = 'AcceptedHostname'
 DHCPCD_KEY_SEARCH_DOMAIN_LIST = 'SearchDomains'
 
 # We should be able to complete a DHCP negotiation in this amount of time.
@@ -330,6 +331,13 @@ class DhcpTestBase(test.test):
             raise error.TestFail('Expected to be configured with domain '
                                  'name %s, but got %s instead.' %
                                  (expected_domain_name, configured_domain_name))
+
+        expected_host_name = dhcp_options.get(dhcp_packet.OPTION_HOST_NAME)
+        configured_host_name = dhcp_config.get(DHCPCD_KEY_ACCEPTED_HOSTNAME)
+        if expected_host_name != configured_host_name:
+            raise error.TestFail('Expected to be configured with host '
+                                 'name %s, but got %s instead.' %
+                                 (expected_host_name, configured_host_name))
 
         expected_search_list = dhcp_options.get(
                 dhcp_packet.OPTION_DNS_DOMAIN_SEARCH_LIST)
