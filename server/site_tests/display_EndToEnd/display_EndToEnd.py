@@ -162,7 +162,11 @@ class display_EndToEnd(test.test):
                 self.display_facade.get_external_resolution,
                 old_value=self.resolution)
         if self.resolution is None:
-            raise error.TestFail('No external display detected on DUT')
+            self.resolution = utils.wait_for_value_changed(
+                    self.display_facade.get_external_resolution,
+                    old_value=None)
+            if self.resolution is None:
+                raise error.TestFail('No external display detected on DUT')
 
         logging.debug('External display resolution: %dx%d', *self.resolution)
 
