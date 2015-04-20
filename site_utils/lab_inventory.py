@@ -352,6 +352,15 @@ def _generate_board_inventory_message(inventory):
     return '\n'.join(message)
 
 
+_POOL_INVENTORY_HEADER = '''\
+Notice to Infrastructure deputy:  If there are shortages below,
+please take action to resolve them.  If it's safe, you should
+balance shortages by running `balance_pool` or `freon_swap` as
+necessary.  Detailed instructions can be found here:
+    http://go/cros-manage-duts
+'''
+
+
 def _generate_pool_inventory_message(inventory):
     """Generate the "pool inventory" e-mail message.
 
@@ -368,7 +377,7 @@ def _generate_pool_inventory_message(inventory):
 
     """
     logging.debug('Creating pool inventory')
-    message = []
+    message = [_POOL_INVENTORY_HEADER]
     newline = ''
     for pool in _CRITICAL_POOLS:
         message.append(

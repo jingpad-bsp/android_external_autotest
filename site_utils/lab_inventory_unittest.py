@@ -539,6 +539,9 @@ aardvark                   2     0     2
 platypus                   1     1     2
 '''
 
+_POOL_ADMIN_URL = 'http://go/cros-manage-duts'
+
+
 
 class PoolInventoryTests(unittest.TestCase):
     """Tests for `_generate_pool_inventory_message()`.
@@ -549,7 +552,10 @@ class PoolInventoryTests(unittest.TestCase):
     original message text.
 
     The output message text is parsed against the following grammar:
-        <message> -> <pool> { "blank line" <pool> }
+        <message> -> <intro> <pool> { "blank line" <pool> }
+        <intro> ->
+            Instructions to depty mentioning the admin page URL
+            A blank line
         <pool> ->
             <description>
             <header line>
@@ -643,11 +649,19 @@ class PoolInventoryTests(unittest.TestCase):
         message = lab_inventory._generate_pool_inventory_message(
                 self._inventory).split('\n')
         poolset = set(lab_inventory._CRITICAL_POOLS)
+        seen_url = False
+        seen_intro = False
         description = ''
         board_text = {}
         current_pool = None
         for line in message:
-            if current_pool is None:
+            if not seen_url:
+                if _POOL_ADMIN_URL in line:
+                    seen_url = True
+            elif not seen_intro:
+                if not line:
+                    seen_intro = True
+            elif current_pool is None:
                 if line == self._header:
                     pools_mentioned = [p for p in poolset
                                            if p in description]
