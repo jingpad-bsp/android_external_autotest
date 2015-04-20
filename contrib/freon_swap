@@ -19,7 +19,7 @@ case "${BOARD}" in
     *) PLATFORM=$BOARD ;;
 esac
 
-BROKEN=( $(dut-status -n -b $FREON) )
+BROKEN=( $(site_utils/dut_status.py -n -b $FREON) )
 if [[ ${#BROKEN[@]} -eq 0 ]]; then
   echo "No broken DUTs for $FREON" >&2
   exit 0
@@ -30,8 +30,10 @@ HOST_FILTER='
   NR == 1 || /pool:.*pool:/ {next}
   {print $1}
 '
-ELIGIBLE=( $(atest list -b board:$BOARD,pool:suites | awk "${HOST_FILTER}") )
-WORKING=( $(dut-status -w "${ELIGIBLE[@]}" | tail -${#BROKEN[@]}) )
+ELIGIBLE=( $(cli/atest host list -b board:$BOARD,pool:suites |
+                 awk "${HOST_FILTER}") )
+WORKING=( $(site_utils/dut_status.py -w "${ELIGIBLE[@]}" |
+                tail -${#BROKEN[@]}) )
 if [[ ${#WORKING[@]} -eq 0 ]]; then
   echo "No working DUTs for $BOARD" >&2
   exit 1
