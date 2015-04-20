@@ -85,7 +85,7 @@ def download_chromium_prebuilt_binaries():
     # FIXME(tgao): this is a temporary hack until we completely and cleanly
     #              deprecates use of PyAuto across the board.
     fetch_prebuilt = os.path.join(os.path.dirname(__file__),
-        '..', 'chaos_lib', 'fetch_prebuilt_pyauto.py')
+            'fetch_prebuilt_pyauto.py')
     logging.info('Attempt to locate: %s', fetch_prebuilt)
     if not os.path.exists(fetch_prebuilt):
         err = ('Unable to locate script to fetch prebuilt binaries: %s' %
@@ -106,7 +106,7 @@ def check_webdriver_ready(webdriver_port=9515):
     """Checks if webdriver binary is installed and running.
 
     If it is running, skip install path check. This is needed to run dynamic
-    Chaos tests on Autotest drones.
+    tests on Autotest drones.
 
     @param webdriver_port: port of the webdriver server
 

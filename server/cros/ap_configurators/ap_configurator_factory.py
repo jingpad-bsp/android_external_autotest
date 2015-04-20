@@ -7,6 +7,7 @@
 import logging
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.server.cros import ap_config
 from autotest_lib.server.cros.ap_configurators import ap_cartridge
 from autotest_lib.server.cros.ap_configurators import ap_spec
@@ -244,6 +245,7 @@ class APConfiguratorFactory(object):
     def __init__(self, ap_test_type):
         webdriver_ready = False
         self.ap_list = []
+        self.test_type = ap_test_type
         for ap in ap_config.get_ap_list(ap_test_type):
             module_name, configurator_class = \
                     self.CONFIGURATOR_MAP[ap.get_class()]
@@ -338,8 +340,8 @@ class APConfiguratorFactory(object):
     def get_aps_by_hostnames(self, hostnames, ap_list=None):
         """Returns specific APs by host name.
 
-        @param hostnames: a list of strings, AP's wan_hostname defined in
-                          ../chaos_dynamic_ap_list.conf.
+        @param hostnames: a list of strings, AP's wan_hostname defined in the AP
+                          configuration file.
         @param ap_list: a list of APConfigurator objects.
 
         @return a list of APConfigurators.
@@ -371,11 +373,11 @@ class APConfiguratorFactory(object):
         return aps
 
 
-    def _get_aps_by_lab_location(self, want_chaos_aps, ap_list):
-        """Returns APs that are inside or outside of the chaos lab.
+    def _get_aps_by_lab_location(self, want_chamber_aps, ap_list):
+        """Returns APs that are inside or outside of the chaos/clique lab.
 
-        @param want_chaos_aps: True to select only APs in the chaos chamber.
-                               False to select APs outside of the chaos chamber.
+        @param want_chamber_aps: True to select only APs in the chaos/clique
+        chamber. False to select APs outside of the chaos/clique chamber.
 
         @return a list of APConfigurators
         """
@@ -383,14 +385,20 @@ class APConfiguratorFactory(object):
         afe = frontend_wrappers.RetryingAFE(server=_DEFAULT_AUTOTEST_INSTANCE,
                                             timeout_min=10,
                                             delay_sec=5)
-        all_aps = set(afe.get_hostnames(label='chaos_ap'))
-        chaos_devices = set(afe.get_hostnames(label='chaos_chamber'))
-        chaos_aps = all_aps.intersection(chaos_devices)
+        if self.test_type == ap_constants.AP_TEST_TYPE_CHAOS:
+            ap_label = 'chaos_ap'
+            lab_label = 'chaos_chamber'
+        else:
+            ap_label = 'clique_ap'
+            lab_label = 'clique_chamber'
+        all_aps = set(afe.get_hostnames(label=ap_label))
+        chamber_devices = set(afe.get_hostnames(label=lab_label))
+        chamber_aps = all_aps.intersection(chamber_devices)
         for ap in ap_list:
-            if want_chaos_aps and ap.host_name in chaos_aps:
+            if want_chamber_aps and ap.host_name in chamber_aps:
                 aps.append(ap)
 
-            if not want_chaos_aps and ap.host_name not in chaos_aps:
+            if not want_chamber_aps and ap.host_name not in chamber_aps:
                 aps.append(ap)
 
         return aps
