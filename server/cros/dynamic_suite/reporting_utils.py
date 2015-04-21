@@ -298,7 +298,7 @@ def _get_metadata_dict(build):
         gs_cmd = '%s%s%s/metadata.json' % (_gs_file_prefix,
                                            _chromeos_image_archive,
                                            build)
-        return json.loads(gs_context.Cat(gs_cmd).output)
+        return json.loads(gs_context.Cat(gs_cmd))
     except (cros_build_lib.RunCommandError, gs.GSContextException) as e:
         logging.debug(e)
     finally:
