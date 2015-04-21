@@ -210,7 +210,9 @@ class LinuxSystem(object):
         elif len(self.phy_bus_type) > 1:
             caps.add(self.CAPABILITY_MULTI_AP)
         for phy in self.phy_list:
-            if 'tdls_mgmt' in phy.commands or 'tdls_oper' in phy.commands:
+            if ('tdls_mgmt' in phy.commands or
+                'tdls_oper' in phy.commands or
+                'T-DLS' in phy.features):
                 caps.add(self.CAPABILITY_TDLS)
             if phy.support_vht:
                 caps.add(self.CAPABILITY_VHT)
