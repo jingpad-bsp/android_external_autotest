@@ -40,12 +40,14 @@ IwTimedScan = collections.namedtuple('IwTimedScan', ['time', 'bss_list'])
 #   name: string name of the phy, such as "phy0"
 #   bands: list of IwBand objects.
 #   modes: List of strings containing interface modes supported, such as "AP".
-#   command: List of strings containing nl80211 commands supported, such as
+#   commands: List of strings containing nl80211 commands supported, such as
 #          "authenticate".
+#   features: List of strings containing nl80211 features supported, such as
+#          "T-DLS".
 #   max_scan_ssids: Maximum number of SSIDs which can be scanned at once.
 IwPhy = collections.namedtuple(
-    'Phy', ['name', 'bands', 'modes', 'commands', 'max_scan_ssids',
-            'avail_tx_antennas', 'avail_rx_antennas',
+    'Phy', ['name', 'bands', 'modes', 'commands', 'features',
+            'max_scan_ssids', 'avail_tx_antennas', 'avail_rx_antennas',
             'supports_setting_antenna_mask', 'support_vht'])
 
 DEFAULT_COMMAND_IW = 'iw'
@@ -305,6 +307,7 @@ class IwRunner(object):
                             bands,
                             tuple(pending_phy_modes),
                             tuple(pending_phy_commands),
+                            tuple(pending_phy_features),
                             pending_phy_max_scan_ssids,
                             pending_phy_tx_antennas,
                             pending_phy_rx_antennas,
@@ -321,6 +324,7 @@ class IwRunner(object):
                 pending_phy_bands = []
                 pending_phy_modes = []
                 pending_phy_commands = []
+                pending_phy_features = []
                 pending_phy_max_scan_ssids = None
                 pending_phy_tx_antennas = 0
                 pending_phy_rx_antennas = 0
@@ -373,6 +377,11 @@ class IwRunner(object):
                         match_avail_antennas.group(1), 16)
                 pending_phy_rx_antennas = int(
                         match_avail_antennas.group(2), 16)
+                continue
+
+            match_device_support = re.match('\s*Device supports (.*)\.', line)
+            if match_device_support and pending_phy_name:
+                pending_phy_features.append(match_device_support.group(1))
                 continue
 
             if not all([current_band, pending_phy_name,
