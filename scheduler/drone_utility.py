@@ -216,25 +216,63 @@ class BaseDroneUtility(object):
         return results
 
 
+    def get_signal_queue_to_kill(self, process):
+        """Get the signal queue needed to kill a process.
+
+        autoserv process has a handle on SIGTERM, in which it can do some
+        cleanup work. However, abort a process with SIGTERM then SIGKILL has
+        its overhead, detailed in following CL:
+        https://chromium-review.googlesource.com/230323
+        This method checks the process's argument and determine if SIGTERM is
+        required, and returns signal queue accordingly.
+
+        @param process: A drone_manager.Process object to be killed.
+
+        @return: The signal queue needed to kill a process.
+
+        """
+        signal_queue_with_sigterm = (signal.SIGTERM, signal.SIGKILL)
+        try:
+            ps_output = subprocess.check_output(
+                    ['/bin/ps', '-p', str(process.pid), '-o', 'args'])
+            # For test running with server-side packaging, SIGTERM needs to be
+            # sent for autoserv process to destroy container used by the test.
+            if '--require-ssp' in ps_output:
+                logging.debug('PID %d requires SIGTERM to abort to cleanup '
+                              'container.', process.pid)
+                return signal_queue_with_sigterm
+        except subprocess.CalledProcessError:
+            # Ignore errors, return the signal queue with SIGTERM to be safe.
+            return signal_queue_with_sigterm
+        # Default to kill the process with SIGKILL directly.
+        return (signal.SIGKILL,)
+
+
     @timer.decorate
     def kill_processes(self, process_list):
         """Send signals escalating in severity to the processes in process_list.
 
-        @param process_list: A list of drone_manager.Process objects representing
-            the processes to kill.
+        @param process_list: A list of drone_manager.Process objects
+                             representing the processes to kill.
         """
         kill_proc_key = 'kill_processes'
         autotest_stats.Gauge(_STATS_KEY).send('%s.%s' % (kill_proc_key, 'net'),
                                               len(process_list))
         try:
             logging.info('List of process to be killed: %s', process_list)
-            sig_counts = utils.nuke_pids(
-                            [-process.pid for process in process_list],
-                            signal_queue=(signal.SIGKILL,))
+            processes_to_kill = {}
+            for p in process_list:
+                signal_queue = self.get_signal_queue_to_kill(p)
+                processes_to_kill[signal_queue] = (
+                        processes_to_kill.get(signal_queue, []) + [p])
+            sig_counts = {}
+            for signal_queue, processes in processes_to_kill.iteritems():
+                sig_counts.update(utils.nuke_pids(
+                        [-process.pid for process in processes],
+                        signal_queue=signal_queue))
             for name, count in sig_counts.iteritems():
-                autotest_stats.Gauge(_STATS_KEY).send('%s.%s' %
-                                                      (kill_proc_key, name),
-                                                      count)
+                autotest_stats.Gauge(_STATS_KEY).send(
+                        '%s.%s' % (kill_proc_key, name), count)
         except error.AutoservRunError as e:
             self._warn('Error occured when killing processes. Error: %s' % e)
 
@@ -314,14 +352,33 @@ class BaseDroneUtility(object):
         in_devnull.close()
 
 
-    def write_to_file(self, file_path, contents):
+    def write_to_file(self, file_path, contents, is_retry=False):
+        """Write the specified contents to the end of the given file.
+
+        @param file_path: Path to the file.
+        @param contents: Content to be written to the file.
+        @param is_retry: True if this is a retry after file permission be
+                         corrected.
+        """
         self._ensure_directory_exists(os.path.dirname(file_path))
         try:
             file_object = open(file_path, 'a')
             file_object.write(contents)
             file_object.close()
-        except IOError, exc:
-            self._warn('Error write to file %s: %s' % (file_path, exc))
+        except IOError as e:
+            # TODO(dshi): crbug.com/459344 Remove following retry when test
+            # container can be unprivileged container.
+            # If write failed with error 'Permission denied', one possible cause
+            # is that the file was created in a container and thus owned by
+            # root. If so, fix the file permission, and try again.
+            if e.errno == 13 and not is_retry:
+                logging.error('Error write to file %s: %s. Will be retried.',
+                              file_path, e)
+                utils.run('sudo chown %s "%s"' % (os.getuid(), file_path))
+                utils.run('sudo chgrp %s "%s"' % (os.getgid(), file_path))
+                self.write_to_file(file_path, contents, is_retry=True)
+            else:
+                self._warn('Error write to file %s: %s' % (file_path, e))
 
 
     def copy_file_or_directory(self, source_path, destination_path):
