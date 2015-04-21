@@ -6,7 +6,7 @@ AUTHOR = 'wiley'
 NAME = 'leaderd_Election'
 TIME = 'FAST'
 TEST_TYPE = 'client'
-SUITE = ''
+SUITE = 'tendo_experimental'
 
 DOC = """
 This test sets up a number of instances of leaderd on the local
