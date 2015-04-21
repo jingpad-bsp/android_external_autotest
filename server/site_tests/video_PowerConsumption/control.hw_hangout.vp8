@@ -9,13 +9,13 @@ TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 SUITE = "video"
 TEST_TYPE = "server"
-DEPENDENCIES = "rpm, power:battery, hw_video_acc_h264"
+DEPENDENCIES = "rpm, power:battery, hw_video_acc_vp8"
 BUG_TEMPLATE = {
     "labels": ["OS-Chrome", "Cr-OS-Kernel-Video"],
 }
 
 DOC = """
-The test outputs the video power consumption for H264 video decode.
+The test outputs the video power consumption for vp8 video decode.
 """
 
 import logging
