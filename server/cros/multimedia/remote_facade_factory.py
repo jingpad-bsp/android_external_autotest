@@ -6,7 +6,7 @@ import httplib
 import logging
 import socket
 import xmlrpclib
-import pprint, traceback
+import pprint
 import sys
 
 from autotest_lib.client.common_lib.cros import retry
@@ -84,6 +84,8 @@ class RemoteFacadeProxy(object):
                  pprint.pformat(dargs)))
             try:
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+                if type(value) is str and value.startswith('Traceback'):
+                    raise Exception('RPC error: %s\n%s' % (name, value))
                 logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
                 return value
             except (socket.error,
@@ -94,6 +96,8 @@ class RemoteFacadeProxy(object):
                 # Try again.
                 logging.warning('Retrying RPC %s.', rpc)
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
+                if type(value) is str and value.startswith('Traceback'):
+                    raise Exception('RPC error: %s\n%s' % (name, value))
                 logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
                 return value
         except:
