@@ -6,6 +6,31 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.tendo import privetd_helper
 from autotest_lib.server import test
 
+def _assert_equal(expected, actual):
+    """Compares objects.
+
+    @param expected: the expected value.
+    @param actual: the actual value.
+
+    """
+    if expected != actual:
+        raise error.TestFail('Expected: %r, actual: %r' % (expected, actual))
+
+
+def _assert_not_empty(dictionary, key):
+    """Compares objects.
+
+    @param expected: the expected value.
+    @param actual: the actual value.
+
+    """
+    if not key in dictionary:
+        raise error.TestFail('Missing key: %s' % key)
+
+    if not dictionary[key]:
+        raise error.TestFail('Key "%s" is empty' % key)
+
+
 class privetd_PrivetInfo(test.test):
     """This test verifies that the privetd responds to /privet/info request and
     returns the expected JSON response object.
@@ -22,44 +47,52 @@ class privetd_PrivetInfo(test.test):
 
 
     def validate_api(self, apis):
-        """Validates the 'api' section of /privet/info response.
+        """Validates the 'api' section.
 
         @param apis: an array of API urls from JSON.
 
         """
         expected = ['/privet/info',
                     '/privet/v3/auth',
+                    '/privet/v3/commandDefs',
+                    '/privet/v3/commands/cancel',
+                    '/privet/v3/commands/execute',
+                    '/privet/v3/commands/execute',
+                    '/privet/v3/commands/list',
+                    '/privet/v3/commands/status',
                     '/privet/v3/pairing/cancel',
                     '/privet/v3/pairing/confirm',
                     '/privet/v3/pairing/start',
                     '/privet/v3/setup/start',
                     '/privet/v3/setup/status']
-        for api in expected:
-            if api not in apis:
-                raise error.TestFail('Expected API URL %s is not found' % api)
-
-
-    def validate_authentication(self, auth):
-        """Validates the 'authentication' section of /privet/info response.
-
-        @param auth: the authentication dict from JSON.
-
-        """
-        expected = {'crypto': ['p224_spake2'],
-                    'mode': ['anonymous', 'pairing'],
-                    'pairing': ['pinCode']};
-        if auth != expected:
-            raise error.TestFail('Expected authentication: %r, given: %r'
-                                 % (auth, expected))
+        api_diff = set(expected) - set(apis)
+        if api_diff:
+           raise error.TestFail('Missing API items: %s' % api_diff)
 
 
     def run_once(self, host):
         helper = privetd_helper.PrivetdHelper(host=host)
         helper.ping_server()  # Make sure the server is up and running.
-        json_data = helper.send_privet_request(privetd_helper.URL_INFO)
+        info = helper.send_privet_request(privetd_helper.URL_INFO)
 
         # Do some sanity checks on the returned JSON object.
-        if json_data['version'] != '3.0':
+        if info['version'] != '3.0':
             raise error.TestFail('Expected privet version 3.0')
-        self.validate_api(json_data['api'])
-        self.validate_authentication(json_data['authentication'])
+        self.validate_api(info['api'])
+
+        _assert_equal({'crypto': ['p224_spake2'],
+                       'mode': ['anonymous', 'pairing'],
+                       'pairing': ['pinCode']}, info['authentication'])
+
+        _assert_not_empty(info, 'name')
+        _assert_not_empty(info, 'id')
+
+        _assert_not_empty(info, 'modelManifestId')
+        _assert_equal(5, len(info['modelManifestId']))
+
+        manifest = info['basicModelManifest']
+        _assert_not_empty(manifest, 'modelName')
+        _assert_not_empty(manifest, 'oemName')
+        _assert_not_empty(manifest, 'uiDeviceKind')
+        
+        _assert_equal({'id': '', 'status': 'unconfigured'}, info['gcd'])
