@@ -84,7 +84,11 @@ class ChameleonBoard(object):
         @param chameleon_connection: ChameleonConnection object.
         """
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
-        self._audio_board = audio_board.AudioBoard(chameleon_connection)
+        if self._chameleond_proxy.HasAudioBoard():
+            self._audio_board = audio_board.AudioBoard(chameleon_connection)
+        else:
+            self._audio_board = None
+            logging.info('There is no audio board on this Chameleon.')
 
     def reset(self):
         """Resets Chameleon board."""
