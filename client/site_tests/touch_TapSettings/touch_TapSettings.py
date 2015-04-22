@@ -5,7 +5,6 @@
 import itertools
 import os
 import logging
-import shutil
 import time
 
 from autotest_lib.client.bin import utils
@@ -19,8 +18,6 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     version = 1
 
     _test_timeout = 3 # Number of seconds the test will wait for a click.
-    _click_name = 'tap_click' # Suffix for files containing a tap-to-click.
-    _drag_name = 'tap_drag' # Suffix for files containing a tap drag.
 
     def _check_for_click(self, expected):
         """Playback and check whether tap-to-click occurred.  Fail if needed.
@@ -31,7 +28,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         """
         expected_count = 1 if expected else 0
         self._reload_page()
-        self._playback(filepath=self._files[self._click_name])
+        self._playback(filepath=self._click_filepath)
         time.sleep(self._test_timeout)
         actual_count = int(self._tab.EvaluateJavaScript('clickCount'))
         if actual_count is not expected_count:
@@ -47,7 +44,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._reload_page()
-        self._playback(filepath=self._files[self._drag_name])
+        self._playback(filepath=self._drag_filepath)
         time.sleep(self._test_timeout)
         actual = self._tab.EvaluateJavaScript('movementOccurred')
         if actual is not expected:
@@ -58,19 +55,17 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     def run_once(self):
         """Entry point of this test."""
 
-        # Copy playback files to DUT, if available.  Deleted during cleanup.
-        self._files = dict()
+        # Check if playback files are available on DUT to run test.
         device = utils.get_board()
-        gestures_dir = os.path.join(self.bindir, 'gestures')
-        for elt in [self._click_name, self._drag_name]:
-            filename = '%s_%s' % (device, elt)
-            original_file = os.path.join(gestures_dir, filename)
-            self._files[elt] = os.path.join('/tmp', filename)
-            try:
-                shutil.copyfile(original_file, self._files[elt])
-            except IOError:
-                raise error.TestNAError('Aborting test; %s is not supported.' %
-                                        device)
+        gest_dir = os.path.join(self.bindir, 'gestures')
+        tap_click_file = '%s_tap_click' % device
+        tap_drag_file = '%s_tap_drag' % device
+        self._click_filepath = os.path.join(gest_dir, tap_click_file)
+        self._drag_filepath = os.path.join(gest_dir, tap_drag_file)
+        if not (os.path.exists(self._click_filepath) and
+                os.path.exists (self._drag_filepath)):
+            logging.info('Missing gesture files, Aborting test')
+            return
 
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
@@ -101,14 +96,3 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
                 self._set_tap_dragging(drag_value)
                 self._check_for_click(click_value)
                 self._check_for_drag(click_value and drag_value)
-
-
-    def cleanup(self):
-        # Remove file, if present.
-        for filetype in self._files:
-            try:
-                os.remove(self._files[filetype])
-            except OSError:
-                pass
-
-

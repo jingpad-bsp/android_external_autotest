@@ -4,7 +4,6 @@
 
 import os
 import logging
-import shutil
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
@@ -32,7 +31,7 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         """
         self._set_default_scroll_position()
         self._wait_for_default_scroll_position()
-        self._playback(self._dut_paths[name], touch_type='mouse')
+        self._playback(self._gest_file_path[name], touch_type='mouse')
         self._wait_for_scroll_position_to_settle()
         delta = self._get_scroll_position() - self._DEFAULT_SCROLL
         logging.info('Test %s: saw scroll delta of %d.  Expected direction %d.',
@@ -78,16 +77,11 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
                                   (direction, slow_delta, fast_delta))
 
     def warmup(self):
-        # Copy device file to DUT, if available.  Deleted during cleanup.
-        self._copied_files = []
-        self._mouse_file = os.path.join('/tmp', self._MOUSE_DESCRIPTION)
-        self._copied_files.append(self._mouse_file)
-        shutil.copyfile(os.path.join(self.bindir, self._MOUSE_DESCRIPTION),
-                        self._mouse_file)
 
         # Initiate super with property file for emulation.
+        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
         super(touch_MouseScroll, self).warmup(
-                mouse_props=self._mouse_file, mouse_name=self._MOUSE_NAME)
+                mouse_props=mouse_file, mouse_name=self._MOUSE_NAME)
 
     def run_once(self):
         """Entry point of this test."""
@@ -95,15 +89,11 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         if not self._has_mouse:
             raise error.TestError('No USB mouse found on this device.')
 
-        # Copy playback files to DUT.  Deleted during cleanup.
-        self._dut_paths = {}
+        # Link path for files to playback on DUT.
+        self._gest_file_path = {}
         gestures_dir = os.path.join(self.bindir, 'gestures')
         for filename in os.listdir(gestures_dir):
-            dut_path = os.path.join('/tmp', filename)
-            host_path = os.path.join(gestures_dir, filename)
-            self._copied_files.append(dut_path)
-            self._dut_paths[filename] = dut_path
-            shutil.copyfile(host_path, dut_path)
+            self._gest_file_path[filename] = os.path.join(gestures_dir, filename)
 
         with chrome.Chrome() as cr:
             # Open test page and position cursor.
@@ -112,7 +102,7 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
             self._tab.Navigate(cr.browser.http_server.UrlOf(
                     os.path.join(self.bindir, 'long_page.html')))
             self._tab.WaitForDocumentReadyStateToBeComplete()
-            self._blocking_playback(self._dut_paths['center_cursor'],
+            self._blocking_playback(self._gest_file_path['center_cursor'],
                                     touch_type='mouse')
 
             # Test
@@ -123,12 +113,3 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
     def cleanup(self):
         # Call parent cleanup to close mouse emulation
         super(touch_MouseScroll, self).cleanup()
-
-        # Remove files, if present.
-        for path in self._copied_files:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-
-
