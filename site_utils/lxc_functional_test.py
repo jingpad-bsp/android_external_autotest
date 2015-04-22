@@ -209,7 +209,7 @@ def main(options):
 
     setup_base(bucket)
     container_test_name = (lxc.TEST_CONTAINER_NAME_FMT %
-                           (TEST_JOB_ID, time.time()))
+                           (TEST_JOB_ID, time.time(), os.getpid()))
     container = setup_test(bucket, container_test_name, options.skip_cleanup)
     test_share(container)
     test_autoserv(container)

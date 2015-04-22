@@ -227,7 +227,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     job_or_task_id = job_directories.get_job_id_or_task_id(
             parser.options.results)
     container_name = (lxc.TEST_CONTAINER_NAME_FMT %
-                      (job_or_task_id, time.time()))
+                      (job_or_task_id, time.time(), os.getpid()))
 
     # Implement SIGTERM handler
     def handle_sigterm(signum, frame):

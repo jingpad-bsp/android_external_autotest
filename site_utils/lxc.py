@@ -40,9 +40,11 @@ config = global_config.global_config
 
 # Name of the base container.
 BASE = 'base'
-# Naming convention of test container, e.g., test_300_1422862512, where 300 is
-# the test job ID, 1422862512 is the tick when container is created.
-TEST_CONTAINER_NAME_FMT = 'test_%s_%d'
+# Naming convention of test container, e.g., test_300_1422862512_2424, where:
+# 300:        The test job ID.
+# 1422862512: The tick when container is created.
+# 2424:       The PID of autoserv that starts the container.
+TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
 CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 # Naming convention of the result directory in test container.
 RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results', '%s')
