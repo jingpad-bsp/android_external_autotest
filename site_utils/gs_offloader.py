@@ -298,6 +298,27 @@ def report_offload_failures(joblist):
                                    email_message)
 
 
+def wait_for_gs_write_access(gs_uri):
+  """Verify and wait until we have write access to Google Storage.
+
+  @param gs_uri: The Google Storage URI we are trying to offload to.
+  """
+  # TODO (sbasi) - Try to use the gsutil command to check write access.
+  # Ensure we have write access to gs_uri.
+  dummy_file = tempfile.NamedTemporaryFile()
+  test_cmd = get_cmd_list(dummy_file.name, gs_uri)
+  while True:
+    try:
+      subprocess.check_call(test_cmd)
+      subprocess.check_call(
+          ['gsutil', 'rm',
+           os.path.join(gs_uri, os.path.basename(dummy_file.name))])
+      break
+    except subprocess.CalledProcessError:
+      logging.debug('Unable to offload to %s, sleeping.', gs_uri)
+      time.sleep(120)
+
+
 class Offloader(object):
   """State of the offload process.
 
@@ -321,9 +342,9 @@ class Offloader(object):
     if options.delete_only:
       self._offload_func = delete_files
     else:
-      gs_uri = utils.get_offload_gsuri()
-      logging.debug('Offloading to: %s', gs_uri)
-      self._offload_func = get_offload_dir_func(gs_uri)
+      self.gs_uri = utils.get_offload_gsuri()
+      logging.debug('Offloading to: %s', self.gs_uri)
+      self._offload_func = get_offload_dir_func(self.gs_uri)
     classlist = []
     if options.process_hosts_only or options.process_all:
       classlist.append(job_directories.SpecialJobDirectory)
@@ -503,6 +524,8 @@ def main():
   signal.signal(signal.SIGALRM, timeout_handler)
 
   offloader = Offloader(options)
+  if not options.delete_only:
+    wait_for_gs_write_access(offloader.gs_uri)
   while True:
     offloader.offload_once()
     time.sleep(SLEEP_TIME_SECS)
