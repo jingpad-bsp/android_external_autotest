@@ -17,12 +17,12 @@ def setup(top_dir):
     if (os.path.exists(dst_bin)):
         return
 
-    # Look for glmark2 or glmark2-es2, installed by app-benchmarks/glmark2
-    # Prefer glmark2 if both are present.
-    src_bin = os.environ['SYSROOT'] + '/usr/bin/glmark2'
-    if not os.path.exists(src_bin):
-        src_bin = os.environ['SYSROOT'] + '/usr/bin/glmark2-es2'
-    if not os.path.exists(src_bin):
+    # Look for an executable installed by app-benchmarks/glmark2
+    for exe in 'glmark2', 'glmark2-es2', 'glmark2-waffle':
+        src_bin = os.environ['SYSROOT'] + '/usr/bin/' + exe
+        if os.path.exists(src_bin):
+            break
+    else:
         # TODO: throw an exception here?
         return
 

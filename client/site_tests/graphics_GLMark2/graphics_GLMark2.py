@@ -58,11 +58,6 @@ class graphics_GLMark2(test.test):
             self.write_perf_keyval(keyvals)
 
     def run_once(self, size='800x600', hasty=False, min_score=None):
-        # TODO(ihf): Remove this once GLMark works on freon.
-        if utils.is_freon():
-            raise error.TestNAError(
-                'Test needs work on Freon. See crbug.com/413081.')
-
         dep = 'glmark2'
         dep_dir = os.path.join(self.autodir, 'deps', dep)
         self.job.install_pkg(dep, 'dep', dep_dir)
@@ -81,8 +76,9 @@ class graphics_GLMark2(test.test):
             options.append('-b :duration=0.2')
         else:
             options.append('-b :duration=2')
-        cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 %s %s' % (
-            glmark2, ' '.join(options))
+        cmd = glmark2 + ' ' + ' '.join(options)
+        if not utils.is_freon():
+            cmd = 'X :1 vt1 & sleep 1; chvt 1 && DISPLAY=:1 ' + cmd
 
         if os.environ.get('CROS_FACTORY'):
             from autotest_lib.client.cros import factory_setup_modules
@@ -105,7 +101,8 @@ class graphics_GLMark2(test.test):
         finally:
             # Just sending SIGTERM to X is not enough; we must wait for it to
             # really die before we start a new X server (ie start ui).
-            utils.ensure_processes_are_dead_by_name('^X$')
+            if not utils.is_freon():
+                utils.ensure_processes_are_dead_by_name('^X$')
 
         logging.info(result)
         for line in result.stderr.splitlines():
