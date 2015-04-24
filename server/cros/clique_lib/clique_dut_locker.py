@@ -170,7 +170,7 @@ class CliqueDUTBatchLocker(object):
                 hostname = site_utils.lock_host_with_labels(
                         afe, self.lock_manager, labels=labels) + '.cros'
             except error.NoEligibleHostException as e:
-                raise error.TestError("Unable to find a sutiable device.")
+                raise error.TestError("Unable to find a suitable device.")
             except error.TestError as e:
                 logging.error(e)
         return hostname
@@ -273,5 +273,5 @@ class CliqueDUTBatchLocker(object):
     def unlock_and_close_duts(self):
         """Unlock DUTs after we're done and close the associated WifiClient."""
         for dut in self.locked_duts:
-            self._unlock_one_dut(dut)
             dut.wifi_client.close()
+            self._unlock_one_dut(dut)

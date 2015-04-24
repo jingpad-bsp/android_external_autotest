@@ -10,7 +10,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.server import hosts
 
 """DUT Control module is used to control all the DUT's in a Clique set.
 We need to execute a sequence of steps on each DUT in the pool parallely and
@@ -73,11 +72,13 @@ class CliqueControl(object):
     test. Not to be directly instantiated.
     """
 
-    def __init__(self, dut_objs, test_params=None, uid=""):
+    def __init__(self, dut_objs, assoc_params=None, test_params=None, uid=""):
         """Initialize.
 
         @param dut_objs: A list of objects that is being controlled by this
-                         control class.
+                         control object.
+        @param assoc_params: Association paramters to be used for this control
+                             object.
         @param test_params: A dictionary of params to be used for executing the
                             test.
         @param uid: UID of this instance of the object. Host name for DUTRole
@@ -85,6 +86,7 @@ class CliqueControl(object):
         """
         self._dut_objs = dut_objs
         self._test_params = test_params
+        self._assoc_params = assoc_params
         self._uid = uid
 
     def find_param(self, param_key):
@@ -117,6 +119,10 @@ class CliqueControl(object):
         """
         return self._uid
 
+    @property
+    def assoc_params(self):
+        """Returns the association params corresponding to the object."""
+        return self._assoc_params
 
     def setup(self, run_num):
         """Setup the DUT/DUT-set in the correct state before the sequence of
@@ -161,15 +167,17 @@ class CliqueDUTRole(CliqueControl):
     DUT in the Clique Test. Not to be directly instantiated.
     """
 
-    def __init__(self, dut, test_params=None):
+    def __init__(self, dut, assoc_params=None, test_params=None):
         """Initialize.
 
         @param dut: A DUTObject representing a DUT in the set.
+        @param assoc_params: Association paramters to be used for this role.
         @param test_params: A dictionary of params to be used for executing the
                             test.
         """
         super(CliqueDUTRole, self).__init__(
-                [dut], test_params, dut.host.hostname)
+                dut_objs=[dut], assoc_params=assoc_params,
+                test_params=test_params, uid=dut.host.hostname)
 
 
 # todo(rpius): Move these role implementations to a separate file since we'll
@@ -181,7 +189,7 @@ class DUTRoleConnectDisconnect(CliqueDUTRole):
 
     def setup(self, run_num):
         try:
-            assoc_params = self.find_param('assoc_params')
+            assoc_params = self.assoc_params
             self.dut_obj.wifi_client.shill.disconnect(assoc_params.ssid)
             if not self.dut_obj.wifi_client.shill.init_test_network_state():
                 result = ControlResult(uid=self.uid,
@@ -218,6 +226,7 @@ class DUTRoleConnectDisconnect(CliqueDUTRole):
 
     def execute(self, run_num):
         try:
+            assoc_params = self.assoc_params
             success = False
             logging.info('Connection attempt %d', run_num)
             self.dut_obj.host.syslog('Connection attempt %d' % run_num)
@@ -225,7 +234,7 @@ class DUTRoleConnectDisconnect(CliqueDUTRole):
             start_time = start_time.strip()
             assoc_result = xmlrpc_datatypes.deserialize(
                 self.dut_obj.wifi_client.shill.connect_wifi(assoc_params))
-            end_time = host.run("date '+%FT%T.%N%:z'").stdout
+            end_time = self.dut_obj.host.run("date '+%FT%T.%N%:z'").stdout
             end_time = end_time.strip()
             success = assoc_result.success
             if not success:
@@ -276,7 +285,8 @@ def dut_batch_worker(dut_control_obj, method, error_results_queue, run_num):
 
 class CliqueDUTBatch(CliqueControl):
     """CliqueDUTBatch is a base class which is used to control a batch of DUTs.
-    This could either be a DUT set or the entire DUT pool.
+    This could either be a DUT set or the entire DUT pool. Not to be directly
+    instantiated.
     """
     # Used to store the instance number of derived classes.
     BATCH_UID_NUM = {}
@@ -288,10 +298,11 @@ class CliqueDUTBatch(CliqueControl):
         @param test_params: A dictionary of params to be used for executing the
                             test.
         """
-        uid_num = self.BATCH_UID_NUM.get(self.__class__, 1)
+        uid_num = self.BATCH_UID_NUM.get(self.__class__.__name__, 1)
         uid = self.__class__.__name__ + str(uid_num)
-        self.BATCH_UID_NUM[self.__class__] = uid_num + 1
-        super(CliqueDUTBatch, self).__init__(dut_objs, test_params, uid)
+        self.BATCH_UID_NUM[self.__class__.__name__] = uid_num + 1
+        super(CliqueDUTBatch, self).__init__(
+                dut_objs=dut_objs, test_params=test_params, uid=uid)
 
     def _spawn_worker_threads(self, method, run_num):
         """Spawns multiple threads to run the the |method(run_num)| on all the
@@ -312,8 +323,10 @@ class CliqueDUTBatch(CliqueControl):
                     args=(dut_obj, method, error_results_queue, run_num))
             tasks.append(task)
         # Run the tasks in parallel.
-        for task in tasks: task.start()
-        for task in tasks: task.join()
+        for task in tasks:
+            task.start()
+        for task in tasks:
+            task.join()
         error_results = []
         while not error_results_queue.empty():
             result = error_results_queue.get()
@@ -427,7 +440,9 @@ class CliqueDUTPool(CliqueDUTBatch):
         return super(CliqueDUTPool, self).execute(run_num)
 
 
-def execute_dut_pool(dut_pool, dut_role_classes, test_params, num_runs=1):
+def execute_dut_pool(dut_pool, dut_role_classes, assoc_params_list,
+                     test_params, num_runs=1):
+
     """Controls the DUT's in a given test scenario. The DUT's are assigned a
     role according to the dut_role_classes provided for each DUT-set and all of
     the sequence of steps are executed parallely on all the DUT's in the pool.
@@ -437,6 +452,9 @@ def execute_dut_pool(dut_pool, dut_role_classes, test_params, num_runs=1):
     @param dut_role_classes: List of roles to be assigned to each set in the DUT
                              pool. Each element has to be a derived class of
                              CliqueDUTRole.
+    @param assoc_params_list: List of association parameters corrresponding
+                              to the AP to test against for each set in the
+                              DUT.
     @param test_params: List of params to be used for the test.
     @num_runs: Number of iterations of the test to be run.
     """
@@ -446,10 +464,11 @@ def execute_dut_pool(dut_pool, dut_role_classes, test_params, num_runs=1):
                         (len(dut_pool), len(dut_role_classes)))
 
     dut_set_control_objs = []
-    for dut_set, dut_role_class in zip(dut_pool, dut_role_classes):
+    for dut_set, dut_role_class, assoc_params in
+        zip(dut_pool, dut_role_classes, assoc_params_list):
         dut_control_objs = []
         for dut in dut_set:
-            dut_control_obj = dut_role_class(dut, test_params)
+            dut_control_obj = dut_role_class(dut, assoc_params, test_params)
             dut_control_objs.append(dut_control_obj)
         dut_set_control_obj = CliqueDUTSet(dut_control_objs, test_params)
         dut_set_control_objs.append(dut_set_control_obj)

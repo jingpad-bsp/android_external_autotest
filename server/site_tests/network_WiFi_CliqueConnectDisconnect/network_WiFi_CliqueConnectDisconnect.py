@@ -15,7 +15,7 @@ class network_WiFi_CliqueConnectDisconnect(test.test):
 
 
     def run_once(self, capturer, capturer_frequency, capturer_ht_type,
-                 dut_pool, assoc_params, tries, debug_info=None):
+                 dut_pool, assoc_params_list, tries, debug_info=None):
         """ Main entry function for autotest.
 
         @param capturer: a packet capture device
@@ -23,7 +23,7 @@ class network_WiFi_CliqueConnectDisconnect(test.test):
         @param capturer_ht_type: string specifier of channel HT type.
         @param dut_pool: the DUT pool to be used for the test. It is a 2D list
                          of DUTObjects.
-        @param assoc_params: an AssociationParameters object.
+        @param assoc_params_list: a list of AssociationParameters objects.
         @param tries: an integer, number of connection attempts.
         @param debug_info: a string of additional info to display on failure
 
@@ -33,13 +33,13 @@ class network_WiFi_CliqueConnectDisconnect(test.test):
             raise error.TestFail("Incorrect pool configuration for this test.")
 
         dut_role_classes = [clique_dut_control.DUTRoleConnectDisconnect]
-        test_params = { 'assoc_params': assoc_params,
-                        'capturer': capturer,
+        test_params = { 'capturer': capturer,
                         'capturer_frequency': capturer_frequency,
                         'capturer_ht_type': capturer_ht_type,
                         'debug_info': debug_info }
         error_results = clique_dut_control.execute_dut_pool(
-            dut_pool, dut_role_classes, test_params)
+                dut_pool, dut_role_classes, assoc_params_list, test_params)
         if error_results:
+            logging.debug('Debug info: %s', debug_info)
             raise error.TestFail("Failed test. Error Results: %s" %
                                  str(error_results))

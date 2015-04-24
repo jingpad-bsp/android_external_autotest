@@ -8,9 +8,8 @@ TIME = 'SHORT'
 TEST_TYPE = 'server'
 
 DOC = """
-This script iterates through all of the access points in the AP compatibility
-lab and has a chrome device connect to each in series. This test must be
-performed in the AP compatibility lab.
+This test makes 2 sets of DUTs repeatedly (2 runs) connect/disconnect
+simultaneously to 2 APs.
 """
 
 from autotest_lib.server.cros.ap_configurators import ap_spec
@@ -25,18 +24,19 @@ def run_clique_debug(machine):
                 ap_spec.APSpec(band=ap_spec.BAND_5GHZ, hostnames=debug_aps)]
     # Test with 2 DUT's in a set
     dut_pool_spec = clique_dut_locker.DUTPoolSpec()
-    dut_set_spec = clique_dut_locker.DUTSetSpec()
+    dut_set_spec1 = clique_dut_locker.DUTSetSpec()
+    dut_set_spec2 = clique_dut_locker.DUTSetSpec()
     dut_spec1 = clique_dut_locker.DUTSpec(
             host_name='chromeos1-row3-rack9-host1.cros')
     dut_spec2 = clique_dut_locker.DUTSpec(
             host_name='chromeos1-row1-rack10-host2.cros')
-    dut_set_spec.extend([dut_spec1, dut_spec2])
-    dut_pool_spec.append(dut_set_spec)
+    dut_set_spec1.append(dut_spec1)
+    dut_set_spec2.append(dut_spec2)
+    dut_pool_spec.extend([dut_set_spec1, dut_set_spec2])
 
-    for spec in ap_specs:
-        runner = clique_runner.CliqueRunner(
-                'network_WiFi_CliqueConnectDisconnect', dut_pool_spec, spec)
-        runner.run(job, batch_size=15, tries=2)
+    runner = clique_runner.CliqueRunner(
+            'network_WiFi_CliqueConnectDisconnect', dut_pool_spec, ap_specs)
+    runner.run(job, tries=2)
 
 
 parallel_simple(run_clique_debug, machines)

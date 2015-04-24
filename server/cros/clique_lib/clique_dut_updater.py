@@ -9,9 +9,7 @@ import sys
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server import test, hosts
-from autotest_lib.server.cros import provision
-from autotest_lib.server.cros.dynamic_suite import suite, constants
+from autotest_lib.server.cros.dynamic_suite import constants
 
 #Update status
 UPDATE_SUCCESS = 0
@@ -31,7 +29,7 @@ def update_dut_worker(updater_obj, dut, image, force):
                   update regardless, and force a full-reimage.
 
     """
-    updater_obj._update_dut(dut_host=dut.host, image=image, force=force)
+    updater_obj.update_dut(dut_host=dut.host, image=image, force=force)
 
 
 class CliqueDUTUpdater(object):
@@ -43,7 +41,8 @@ class CliqueDUTUpdater(object):
         """Initializes the DUT updater for updating the DUT's in the pool."""
 
 
-    def _get_board_name_from_host(self, dut_host):
+    @staticmethod
+    def _get_board_name_from_host(dut_host):
         """Get the board name of the remote host.
 
         @param host: Host object representing the DUT.
@@ -58,8 +57,8 @@ class CliqueDUTUpdater(object):
         logging.debug('Detected board %s for host %s', board, dut_host.hostname)
         return board
 
-
-    def _construct_image_label(self, dut_board, release_version):
+    @staticmethod
+    def _construct_image_label(dut_board, release_version):
         """Constructs a label combining the board name and release version.
 
         @param dut_board: A string representing the board of the remote host.
@@ -72,16 +71,16 @@ class CliqueDUTUpdater(object):
         # images from trybot's, etc.
         return dut_board + '-release/' + release_version
 
-
-    def _get_update_url(self, ds_url, image):
+    @staticmethod
+    def _get_update_url(ds_url, image):
         """Returns the full update URL. """
-        CONFIG = global_config.global_config
-        IMAGE_URL_PATTERN = CONFIG.get_config_value(
+        config = global_config.global_config
+        image_url_pattern = config.get_config_value(
                 'CROS', 'image_url_pattern', type=str)
-        return IMAGE_URL_PATTERN % (ds_url, image)
+        return image_url_pattern % (ds_url, image)
 
-
-    def _get_release_version_from_dut(self, dut_host):
+    @staticmethod
+    def _get_release_version_from_dut(dut_host):
         """Get release version from the DUT located in lsb-release file.
 
         @param dut_host: Host object representing the DUT.
@@ -90,8 +89,8 @@ class CliqueDUTUpdater(object):
         """
         return dut_host.get_release_version()
 
-
-    def _get_release_version_from_image(self, image):
+    @staticmethod
+    def _get_release_version_from_image(image):
         """Get release version from the image label.
 
         @param image: The build type and version to install on the host.
@@ -100,8 +99,22 @@ class CliqueDUTUpdater(object):
         """
         return image.split('-')[-1]
 
+    @staticmethod
+    def _get_latest_release_version_from_server(dut_board):
+        """Gets the latest release version for a given board from a dev server.
 
-    def _update_dut(self, dut_host, image, force=True):
+        @param dut_board: A string representing the board of the remote host.
+
+        @return: A string representing the release version.
+        """
+        build_target = dut_board + "-release"
+        config = global_config.global_config
+        server_url_list = config.get_config_value(
+                'CROS', 'dev_server', type=list, default=[])
+        ds = dev_server.ImageServer(server_url_list[0])
+        return ds.get_latest_build_in_server(build_target)
+
+    def update_dut(self, dut_host, image, force=True):
         """The method called by to start the upgrade of a single DUT.
 
         @param dut_host: Host object representing the DUT.
@@ -152,7 +165,7 @@ class CliqueDUTUpdater(object):
         logging.info('Host: %s. Finished updating DUT to %s', dut_host, image)
         sys.exit(UPDATE_SUCCESS)
 
-    def update_dut_pool(self, dut_objects, release_version):
+    def update_dut_pool(self, dut_objects, release_version=""):
         """Updates all the DUT's in the pool to a provided release version.
 
         @param dut_objects: An array of DUTObjects corresponding to all the
@@ -164,16 +177,20 @@ class CliqueDUTUpdater(object):
         tasks = []
         for dut in dut_objects:
             dut_board = self._get_board_name_from_host(dut.host)
+            if release_version == "":
+                release_version = self._get_latest_release_version_from_server(
+                        dut_board)
             dut_image = self._construct_image_label(dut_board, release_version)
             # Schedule the update for this DUT to the update process pool.
             task = multiprocessing.Process(
                     target=update_dut_worker,
                     args=(self, dut, dut_image, False))
             tasks.append(task)
-
         # Run the updates in parallel.
-        for task in tasks: task.start()
-        for task in tasks: task.join()
+        for task in tasks:
+            task.start()
+        for task in tasks:
+            task.join()
 
         # Check the exit code to determine if the updates were all successful
         # or not.
@@ -181,5 +198,3 @@ class CliqueDUTUpdater(object):
             if task.exitcode == UPDATE_FAILURE:
                 return False
         return True
-
-
