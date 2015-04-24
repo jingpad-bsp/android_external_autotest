@@ -85,7 +85,15 @@ IS_MOBLAB = utils.is_moblab()
 # lxc-clone does not support snapshot in Ganeti instance.
 IS_VM = utils.is_vm()
 
-SUPPORT_SNAPSHOT_CLONE = not IS_VM and not IS_MOBLAB
+# TODO(dshi): If we are adding more logic in how lxc should interact with
+# different systems, we should consider code refactoring to use a setting-style
+# object to store following flags mapping to different systems.
+# moblab is on an old kernel, which does not support either overlayfs or aufs.
+# Snapshot clone is disabled for moblab until its kernel is updated.
+SUPPORT_SNAPSHOT_CLONE = not IS_MOBLAB
+# overlayfs is the default clone backend storage. However it is not supported
+# in Ganeti yet. Use aufs as the alternative.
+SNAPSHOT_CLONE_REQUIRE_AUFS = IS_VM
 
 # Number of seconds to wait for network to be up in a container.
 NETWORK_INIT_TIMEOUT = 120
@@ -567,8 +575,10 @@ class ContainerBucket(object):
         # TODO(crbug.com/464834): Snapshot clone is disabled until Moblab can
         # support overlayfs, which requires a newer kernel.
         snapshot = '-s' if SUPPORT_SNAPSHOT_CLONE else ''
-        cmd = ('lxc-clone -p %s -P %s %s %s %s' %
-               (self.container_path, self.container_path, snapshot, BASE, name))
+        aufs = '-B aufs' if SNAPSHOT_CLONE_REQUIRE_AUFS else ''
+        cmd = ('lxc-clone -p %s -P %s %s' %
+               (self.container_path, self.container_path,
+                ' '.join([BASE, name, snapshot, aufs])))
         run(cmd)
         return self.get(name)
 
