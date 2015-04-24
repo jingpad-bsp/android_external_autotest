@@ -150,11 +150,13 @@ class ChromiumOSUpdater():
 
 
     def reset_update_engine(self):
-        """Resets the host to prepare for a clean update regardless of state."""
+        """Restarts the update-engine service."""
         self._run('rm -f %s' % UPDATED_MARKER)
-        self._run('stop ui || true')
-        self._run('stop update-engine || true')
-        self._run('start update-engine')
+        try:
+            self._run('initctl stop update-engine')
+        except error.AutoservRunError:
+            logging.warning('Stopping update-engine service failed. Already dead?')
+        self._run('initctl start update-engine')
 
         if self.check_update_status() != UPDATER_IDLE:
             raise ChromiumOSError('%s is not in an installable state' %
@@ -350,11 +352,14 @@ class ChromiumOSUpdater():
 
 
     def update_rootfs(self):
-        """Run the standard command to force an update."""
+        """Updates the rootfs partition only."""
+        logging.info('Updating root partition...')
+
+        # Run update_engine using the specified URL.
         try:
             autoupdate_cmd = '%s --update --omaha_url=%s 2>&1' % (
                 UPDATER_BIN, self.update_url)
-            self._run(autoupdate_cmd, timeout=1200)
+            self._run(autoupdate_cmd, timeout=900)
         except error.AutoservRunError:
             list_image_dir_contents(self.update_url)
             update_error = RootFSUpdateError('update-engine failed on %s' %
@@ -402,12 +407,21 @@ class ChromiumOSUpdater():
             raise e
 
 
-    def run_update(self, update_root=True):
+    def run_update(self, force_update, update_root=True):
         """Update the DUT with image of specific version.
 
-        @param update_root: True to force a rootfs update.
+        @param force_update: True to update DUT even if it's running the same
+            version already.
+        @param update_root: True to force a kernel update. If it's False and
+            force_update is True, stateful update will be used to clean up
+            the DUT.
+
         """
         booted_version = self.host.get_release_version()
+        if (self.check_version() and not force_update):
+            logging.info('System is already up to date. Skipping update.')
+            return False
+
         if self.update_version:
             logging.info('Updating from version %s to %s.',
                          booted_version, self.update_version)
@@ -449,6 +463,7 @@ class ChromiumOSUpdater():
                 raise update_error
 
             logging.info('Update complete.')
+            return True
         except:
             # Collect update engine logs in the event of failure.
             if self.host.job:
