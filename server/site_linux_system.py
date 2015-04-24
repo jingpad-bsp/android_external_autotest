@@ -5,6 +5,7 @@
 import datetime
 import collections
 import logging
+import os
 import time
 
 from autotest_lib.client.common_lib import error
@@ -216,12 +217,14 @@ class LinuxSystem(object):
         return caps
 
 
-    def start_capture(self, frequency, ht_type=None, snaplen=None):
+    def start_capture(self, frequency,
+                      ht_type=None, snaplen=None, filename=None):
         """Start a packet capture.
 
         @param frequency int frequency of channel to capture on.
         @param ht_type string one of (None, 'HT20', 'HT40+', 'HT40-').
         @param snaplen int number of bytes to retain per capture frame.
+        @param filename string filename to write capture to.
 
         """
         if self._packet_capturer.capture_running:
@@ -241,8 +244,13 @@ class LinuxSystem(object):
                           (self.cmd_ip, self._capture_interface))
 
         # Start the capture.
-        self._packet_capturer.start_capture(self._capture_interface, './debug/',
-                                            snaplen=snaplen)
+        if filename:
+            remote_path = os.path.join('/tmp', os.path.basename(filename))
+        else:
+            remote_path = None
+        self._packet_capturer.start_capture(
+            self._capture_interface, './debug/', snaplen=snaplen,
+            remote_file=remote_path)
 
 
     def stop_capture(self, save_dir=None, save_filename=None):
