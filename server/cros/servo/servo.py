@@ -346,14 +346,6 @@ class Servo(object):
         self.set('rec_mode', 'on')
 
 
-    def custom_recovery_mode(self):
-        """Custom key combination to enter recovery mode."""
-        self._press_keys('rec_mode')
-        self.power_normal_press()
-        time.sleep(self.SERVO_KEY_PRESS_DELAY)
-        self.set_nocheck('kbd_en', 'off')
-
-
     def disable_recovery_mode(self):
         """Disable recovery mode on device."""
         self.set('rec_mode', 'off')
