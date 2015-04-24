@@ -304,7 +304,7 @@ class AFE(RpcClient):
             host_hash[host.hostname] = host
         for status in job_statuses:
             if status.host:
-                status.host = host_hash[status.host.hostname]
+                status.host = host_hash.get(status.host.hostname)
         # filter job statuses that have either host or meta_host
         return [status for status in job_statuses if (status.host or
                                                       status.meta_host)]
