@@ -1506,7 +1506,12 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # If this changes or they are triggered manually, this applies:
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
-        query = Job.objects.filter(dependency_labels=shard.labels.all())
+        query = Job.objects.filter(
+                dependency_labels=shard.labels.all(),
+                # If an HQE associated with a job is removed in some reasons,
+                # such jobs should be excluded. Refer crbug.com/479766
+                hostqueueentry__isnull=False
+                )
         query = cls._add_filters_for_shard_assignment(query, known_ids)
         job_ids = set(query.distinct().values_list('pk', flat=True))
 
