@@ -476,3 +476,19 @@ def version_match(build_version, release_version, update_url=''):
             return False
         # Versioned build, i.e., rc or release build.
         return stripped_version == release_version
+
+
+def get_real_user():
+    """Get the real user that runs the script.
+
+    The function check environment variable SUDO_USER for the user if the
+    script is run with sudo. Otherwise, it returns the value of environment
+    variable USER.
+
+    @return: The user name that runs the script.
+
+    """
+    user = os.environ.get('SUDO_USER')
+    if not user:
+        user = os.environ.get('USER')
+    return user

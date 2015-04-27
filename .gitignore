@@ -65,3 +65,6 @@ puppylab/.vagrant
 
 # Container directory
 containers/
+
+# Shadow config for ssp deploy
+ssp_deploy_shadow_config.json

@@ -27,13 +27,14 @@ import sys
 import time
 
 import common
-import netifaces
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.site_utils import lxc_config
+from autotest_lib.site_utils import lxc_utils
 
 
 config = global_config.global_config
@@ -45,9 +46,9 @@ BASE = 'base'
 # 1422862512: The tick when container is created.
 # 2424:       The PID of autoserv that starts the container.
 TEST_CONTAINER_NAME_FMT = 'test_%s_%d_%d'
-CONTAINER_AUTOTEST_DIR = '/usr/local/autotest'
 # Naming convention of the result directory in test container.
-RESULT_DIR_FMT = os.path.join(CONTAINER_AUTOTEST_DIR, 'results', '%s')
+RESULT_DIR_FMT = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR, 'results',
+                              '%s')
 # Attributes to retrieve about containers.
 ATTRIBUTES = ['name', 'state']
 
@@ -63,7 +64,7 @@ DEFAULT_CONTAINER_PATH = config.get_config_value('AUTOSERV', 'container_path')
 
 # Path to drone_temp folder in the container, which stores the control file for
 # test job to run.
-CONTROL_TEMP_PATH = os.path.join(CONTAINER_AUTOTEST_DIR, 'drone_tmp')
+CONTROL_TEMP_PATH = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR, 'drone_tmp')
 
 # Bash command to return the file count in a directory. Test the existence first
 # so the command can return an error code if the directory doesn't exist.
@@ -107,54 +108,6 @@ CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 STATS_KEY = 'lxc.%s' % socket.gethostname().replace('.', '_')
 timer = autotest_stats.Timer(STATS_KEY)
 
-def run(cmd, sudo=True, **kwargs):
-    """Runs a command on the local system.
-
-    @param cmd: The command to run.
-    @param sudo: True to run the command as root user, default to True.
-    @param kwargs: Other parameters can be passed to utils.run, e.g., timeout.
-
-    @returns: A CmdResult object.
-
-    @raise error.CmdError: If there was a non-0 return code.
-    """
-    # TODO(dshi): crbug.com/459344 Set sudo to default to False when test
-    # container can be unprivileged container.
-    if sudo:
-        cmd = 'sudo ' + cmd
-    logging.debug(cmd)
-    return utils.run(cmd, kwargs)
-
-
-def is_in_container():
-    """Check if the process is running inside a container.
-
-    @return: True if the process is running inside a container, otherwise False.
-    """
-    try:
-        run('cat /proc/1/cgroup | grep "/lxc/" || false')
-        return True
-    except error.CmdError:
-        return False
-
-
-def path_exists(path):
-    """Check if path exists.
-
-    If the process is not running with root user, os.path.exists may fail to
-    check if a path owned by root user exists. This function uses command
-    `ls path` to check if path exists.
-
-    @param path: Path to check if it exists.
-
-    @return: True if path exists, otherwise False.
-    """
-    try:
-        run('ls "%s"' % path)
-        return True
-    except error.CmdError:
-        return False
-
 
 def _get_container_info_moblab(container_path, **filters):
     """Get a collection of container information in the given container path
@@ -181,7 +134,7 @@ def _get_container_info_moblab(container_path, **filters):
              a container. The keys are defined in ATTRIBUTES.
     """
     info_collection = []
-    active_containers = run('lxc-ls --active').stdout.split()
+    active_containers = utils.run('sudo lxc-ls --active').stdout.split()
     name_filter = filters.get('name', None)
     state_filter = filters.get('state', None)
     if filters and set(filters.keys()) - set(['name', 'state']):
@@ -191,7 +144,8 @@ def _get_container_info_moblab(container_path, **filters):
     for name in os.listdir(container_path):
         # Skip all files and folders without rootfs subfolder.
         if (os.path.isfile(os.path.join(container_path, name)) or
-            not path_exists(os.path.join(container_path, name, 'rootfs'))):
+            not lxc_utils.path_exists(os.path.join(container_path, name,
+                                                   'rootfs'))):
             continue
         info = {'name': name,
                 'state': 'RUNNING' if name in active_containers else 'STOPPED'
@@ -223,9 +177,9 @@ def get_container_info(container_path, **filters):
     if IS_MOBLAB:
         return _get_container_info_moblab(container_path, **filters)
 
-    cmd = 'lxc-ls -P %s -f -F %s' % (os.path.realpath(container_path),
-                                     ','.join(ATTRIBUTES))
-    output = run(cmd).stdout
+    cmd = 'sudo lxc-ls -P %s -f -F %s' % (os.path.realpath(container_path),
+                                          ','.join(ATTRIBUTES))
+    output = utils.run(cmd).stdout
     info_collection = []
 
     for line in output.splitlines()[2:]:
@@ -301,8 +255,8 @@ def download_extract(url, target, extract_dir):
     @param target: Path of the file to save to.
     @param extract_dir: Directory to extract the content of the file to.
     """
-    run('wget --timeout=300 -nv %s -O %s' % (url, target))
-    run('tar -xvf %s -C %s' % (target, extract_dir))
+    utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target))
+    utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
 @timer.decorate
@@ -313,13 +267,13 @@ def install_package(package):
 
     @raise error.CmdError: If the package doesn't exist or failed to install.
     """
-    if not is_in_container():
+    if not lxc_utils.is_in_container():
         raise error.ContainerError('Package installation is only supported '
                                    'when test is running inside container.')
     # Always run apt-get update before installing any container. The base
     # container may have outdated cache.
-    run('apt-get update')
-    run('apt-get install %s -y' % package)
+    utils.run('sudo apt-get update')
+    utils.run('sudo apt-get install %s -y' % package)
 
 
 @timer.decorate
@@ -331,7 +285,7 @@ def install_python_package(package):
     @raise error.CmdError: If the package doesn't exist or failed to install.
     """
     install_package('python-pip')
-    run('pip install %s' % package)
+    utils.run('sudo pip install %s' % package)
 
 
 class Container(object):
@@ -395,11 +349,13 @@ class Container(object):
 
         @raise error.CmdError: If container does not exist, or not running.
         """
-        cmd = 'lxc-attach -P %s -n %s' % (self.container_path, self.name)
+        cmd = 'sudo lxc-attach -P %s -n %s' % (self.container_path, self.name)
         if bash and not command.startswith('bash -c'):
-            command = 'bash -c "%s"' % command
+            command = 'bash -c "%s"' % utils.sh_escape(command)
         cmd += ' -- %s' % command
-        return run(cmd)
+        # TODO(dshi): crbug.com/459344 Set sudo to default to False when test
+        # container can be unprivileged container.
+        return utils.run(cmd)
 
 
     def is_network_up(self):
@@ -424,8 +380,8 @@ class Container(object):
 
         @raise ContainerError: If container does not exist, or fails to start.
         """
-        cmd = 'lxc-start -P %s -n %s -d' % (self.container_path, self.name)
-        output = run(cmd).stdout
+        cmd = 'sudo lxc-start -P %s -n %s -d' % (self.container_path, self.name)
+        output = utils.run(cmd).stdout
         self.refresh_status()
         if self.state != 'RUNNING':
             raise error.ContainerError(
@@ -449,8 +405,8 @@ class Container(object):
 
         @raise ContainerError: If container does not exist, or fails to start.
         """
-        cmd = 'lxc-stop -P %s -n %s' % (self.container_path, self.name)
-        output = run(cmd).stdout
+        cmd = 'sudo lxc-stop -P %s -n %s' % (self.container_path, self.name)
+        output = utils.run(cmd).stdout
         self.refresh_status()
         if self.state != 'STOPPED':
             raise error.ContainerError(
@@ -470,11 +426,11 @@ class Container(object):
         @raise ContainerError: If container does not exist or failed to destroy
                                the container.
         """
-        cmd = 'lxc-destroy -P %s -n %s' % (self.container_path,
-                                           self.name)
+        cmd = 'sudo lxc-destroy -P %s -n %s' % (self.container_path,
+                                                self.name)
         if force:
             cmd += ' -f'
-        run(cmd)
+        utils.run(cmd)
 
 
     def mount_dir(self, source, destination, readonly=False):
@@ -490,15 +446,15 @@ class Container(object):
         # created from base container by snapshot, base_dir should be set to
         # the path to the delta0 folder.
         base_dir = os.path.join(self.container_path, self.name, 'delta0')
-        if not path_exists(base_dir):
+        if not lxc_utils.path_exists(base_dir):
             base_dir = os.path.join(self.container_path, self.name, 'rootfs')
         # Create directory in container for mount.
-        run('mkdir -p %s' % os.path.join(base_dir, destination))
+        utils.run('sudo mkdir -p %s' % os.path.join(base_dir, destination))
         config_file = os.path.join(self.container_path, self.name, 'config')
         mount = MOUNT_FMT % {'source': source,
                              'destination': destination,
                              'readonly': ',ro' if readonly else ''}
-        run(APPEND_CMD_FMT % {'content': mount, 'file': config_file})
+        utils.run(APPEND_CMD_FMT % {'content': mount, 'file': config_file})
 
 
     def verify_autotest_setup(self, job_id):
@@ -513,10 +469,10 @@ class Container(object):
         if IS_MOBLAB:
             site_packages_path = MOBLAB_SITE_PACKAGES_CONTAINER
         else:
-            site_packages_path = os.path.join(CONTAINER_AUTOTEST_DIR,
+            site_packages_path = os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR,
                                               'site-packages')
         directories_to_check = [
-                (CONTAINER_AUTOTEST_DIR, 3),
+                (lxc_config.CONTAINER_AUTOTEST_DIR, 3),
                 (RESULT_DIR_FMT % job_id, 0),
                 (site_packages_path, 3)]
         for directory, count in directories_to_check:
@@ -605,11 +561,17 @@ class ContainerBucket(object):
         # support overlayfs, which requires a newer kernel.
         snapshot = '-s' if SUPPORT_SNAPSHOT_CLONE else ''
         aufs = '-B aufs' if SNAPSHOT_CLONE_REQUIRE_AUFS else ''
-        cmd = ('lxc-clone -p %s -P %s %s' %
+        cmd = ('sudo lxc-clone -p %s -P %s %s' %
                (self.container_path, self.container_path,
                 ' '.join([BASE, name, snapshot, aufs])))
-        run(cmd)
-        return self.get(name)
+        utils.run(cmd)
+        container = self.get(name)
+        # base_dir is the path (in host) mapping to / inside container. Files
+        # copied to that folder are visible inside container.
+        container.base_dir = os.path.join(
+                self.container_path, name,
+                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0')
+        return container
 
 
     @cleanup_if_fail()
@@ -635,6 +597,12 @@ class ContainerBucket(object):
                     'Base container already exists. Set force_delete to True '
                     'to force to re-stage base container. Note that this '
                     'action will destroy all running test containers')
+            # Set proper file permission. base container in moblab may have
+            # owner of not being root. Force to update the folder's owner.
+            # TODO(dshi): Change root to current user when test container can be
+            # unprivileged container.
+            utils.run('sudo chown -R root "%s"' % base_path)
+            utils.run('sudo chgrp -R root "%s"' % base_path)
             return
 
         # Destroy existing base container if exists.
@@ -648,79 +616,20 @@ class ContainerBucket(object):
         path_to_cleanup = [tar_path, base_path]
         for path in path_to_cleanup:
             if os.path.exists(path):
-                run('rm -rf "%s"' % path)
+                utils.run('sudo rm -rf "%s"' % path)
         download_extract(CONTAINER_BASE_URL, tar_path, self.container_path)
         # Remove the downloaded container tar file.
-        run('rm "%s"' % tar_path)
+        utils.run('sudo rm "%s"' % tar_path)
         # Set proper file permission.
         # TODO(dshi): Change root to current user when test container can be
         # unprivileged container.
-        run('sudo chown -R root "%s"' % base_path)
-        run('sudo chgrp -R root "%s"' % base_path)
+        utils.run('sudo chown -R root "%s"' % base_path)
+        utils.run('sudo chgrp -R root "%s"' % base_path)
 
         # Update container config with container_path from global config.
         config_path = os.path.join(base_path, 'config')
-        run('sed -i "s|container_dir|%s|g" "%s"' %
-            (self.container_path, config_path))
-
-
-    def get_host_ip(self):
-        """Get the IP address of the host running containers on lxcbr*.
-
-        This function gets the IP address on network interface lxcbr*. The
-        assumption is that lxc uses the network interface started with "lxcbr".
-
-        @return: IP address of the host running containers.
-        """
-        lxc_network = None
-        for name in netifaces.interfaces():
-            if name.startswith('lxcbr'):
-                lxc_network = name
-                break
-        if not lxc_network:
-            raise error.ContainerError('Failed to find network interface used '
-                                       'by lxc. All existing interfaces are: '
-                                       '%s' % netifaces.interfaces())
-        return netifaces.ifaddresses(lxc_network)[netifaces.AF_INET][0]['addr']
-
-
-    def modify_shadow_config(self, container, shadow_config):
-        """Update the shadow config used in container with correct values.
-
-        1. Disable master ssh connection in shadow config, as it is not working
-           properly in container yet, and produces noise in the log.
-        2. Update AUTOTEST_WEB/host and SERVER/hostname to be the IP of the host
-           if any is set to localhost or 127.0.0.1. Otherwise, set it to be the
-           FQDN of the config value.
-
-        @param container: The container object to be updated in shadow config.
-        @param shadow_config: Path the the shadow config file to be used in the
-                              container.
-        """
-        # Inject "AUTOSERV/enable_master_ssh: False" in shadow config as
-        # container does not support master ssh connection yet.
-        container.attach_run(
-                'echo $\'\n[AUTOSERV]\nenable_master_ssh: False\n\' >> %s' %
-                shadow_config)
-
-        host_ip = self.get_host_ip()
-        local_names = ['localhost', '127.0.0.1']
-
-        db_host = config.get_config_value('AUTOTEST_WEB', 'host')
-        if db_host.lower() in local_names:
-            new_host = host_ip
-        else:
-            new_host = socket.getfqdn(db_host)
-        container.attach_run('echo $\'\n[AUTOTEST_WEB]\nhost: %s\n\' >> %s' %
-                             (new_host, shadow_config))
-
-        afe_host = config.get_config_value('SERVER', 'hostname')
-        if afe_host.lower() in local_names:
-            new_host = host_ip
-        else:
-            new_host = socket.getfqdn(afe_host)
-        container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
-                             (new_host, shadow_config))
+        utils.run('sudo sed -i "s|container_dir|%s|g" "%s"' %
+                  (self.container_path, config_path))
 
 
     @timer.decorate
@@ -771,53 +680,19 @@ class ContainerBucket(object):
                                          'autotest_server_package.tar.bz2')
         autotest_path = os.path.join(usr_local_path, 'autotest')
         # sudo is required so os.makedirs may not work.
-        run('mkdir -p %s'% usr_local_path)
+        utils.run('sudo mkdir -p %s'% usr_local_path)
 
         download_extract(server_package_url, autotest_pkg_path, usr_local_path)
-        # Copy over local shadow_config.ini
-        shadow_config = os.path.join(common.autotest_dir, 'shadow_config.ini')
-        container_shadow_config = os.path.join(autotest_path,
-                                               'shadow_config.ini')
-        run('cp %s %s' % (shadow_config, container_shadow_config))
-
-        # Copy over local .ssh/config file if exists.
-        ssh_config = os.path.expanduser('~/.ssh/config')
-        container_ssh = os.path.join(
-                self.container_path, name,
-                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0',
-                'root', '.ssh')
-        container_ssh_config = os.path.join(container_ssh, 'config')
-        if os.path.exists(ssh_config):
-            run('mkdir -p %s'% container_ssh)
-            run('cp "%s" "%s"' % (ssh_config, container_ssh_config))
-            # Remove domain specific flags.
-            run('sed -i "s/UseProxyIf=false//g" %s' % container_ssh_config)
-            # TODO(dshi): crbug.com/451622 ssh connection loglevel is set to
-            # ERROR in container before master ssh connection works. This is
-            # to avoid logs being flooded with warning `Permanently added
-            # '[hostname]' (RSA) to the list of known hosts.` (crbug.com/478364)
-            # The sed command injects following at the beginning of .ssh/config
-            # used in config. With such change, ssh command will not post
-            # warnings.
-            # Host *
-            #   LogLevel Error
-            run('sed -i "1s/^/Host *\\n  LogLevel ERROR\\n\\n/" %s' %
-                container_ssh_config)
-
-        # Copy over resolv.conf for DNS search path. The file is copied to
-        # autotest folder so its content can be appended in /etc/resolv.conf
-        # after the container is started.
-        resolv_conf = '/etc/resolv.conf'
-        container_resolv_conf = os.path.join(autotest_path, 'resolv.conf')
-        run('cp "%s" "%s"' % (resolv_conf, container_resolv_conf))
+        deploy_config_manager = lxc_config.DeployConfigManager(container)
+        deploy_config_manager.deploy_pre_start()
 
         # Copy over control file to run the test job.
         if control:
             container_drone_temp = os.path.join(autotest_path, 'drone_tmp')
-            run('mkdir -p %s'% container_drone_temp)
+            utils.run('sudo mkdir -p %s'% container_drone_temp)
             container_control_file = os.path.join(
                     container_drone_temp, os.path.basename(control))
-            run('cp %s %s' % (control, container_control_file))
+            utils.run('sudo cp %s %s' % (control, container_control_file))
 
         if IS_MOBLAB:
             site_packages_path = MOBLAB_SITE_PACKAGES
@@ -825,12 +700,13 @@ class ContainerBucket(object):
         else:
             site_packages_path = os.path.join(common.autotest_dir,
                                               'site-packages')
-            site_packages_container_path = os.path.join(CONTAINER_AUTOTEST_DIR,
-                                                        'site-packages')
+            site_packages_container_path = os.path.join(
+                    lxc_config.CONTAINER_AUTOTEST_DIR, 'site-packages')
         mount_entries = [(site_packages_path, site_packages_container_path,
                           True),
                          (os.path.join(common.autotest_dir, 'puppylab'),
-                          os.path.join(CONTAINER_AUTOTEST_DIR, 'puppylab'),
+                          os.path.join(lxc_config.CONTAINER_AUTOTEST_DIR,
+                                       'puppylab'),
                           True),
                          (result_path,
                           os.path.join(RESULT_DIR_FMT % job_id),
@@ -843,20 +719,11 @@ class ContainerBucket(object):
         # Update file permissions.
         # TODO(dshi): crbug.com/459344 Skip following action when test container
         # can be unprivileged container.
-        run('chown -R root "%s"' % autotest_path)
-        run('chgrp -R root "%s"' % autotest_path)
+        utils.run('sudo chown -R root "%s"' % autotest_path)
+        utils.run('sudo chgrp -R root "%s"' % autotest_path)
 
         container.start(name)
-        # Make sure the rsa file has right permission.
-        container.attach_run('chmod 700 /root/.ssh/testing_rsa')
-        container.attach_run('chmod 700 /root/.ssh/config')
-        # Update resolv.conf
-        container.attach_run('cat /usr/local/autotest/resolv.conf >> '
-                             '/etc/resolv.conf')
-
-        self.modify_shadow_config(
-                container,
-                os.path.join(CONTAINER_AUTOTEST_DIR, 'shadow_config.ini'))
+        deploy_config_manager.deploy_post_start()
 
         container.verify_autotest_setup(job_id)
 

@@ -21,6 +21,7 @@ import urllib2
 
 import common
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
@@ -61,6 +62,7 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import lxc
+from autotest_lib.site_utils import lxc_utils
 from autotest_lib.client.common_lib import pidfile, logging_manager
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
@@ -213,8 +215,8 @@ def correct_results_folder_permission(results):
     if not results:
         return
 
-    lxc.run('chown -R %s "%s"' % (os.getuid(), results))
-    lxc.run('chgrp -R %s "%s"' % (os.getgid(), results))
+    utils.run('sudo chown -R %s "%s"' % (os.getuid(), results))
+    utils.run('sudo chgrp -R %s "%s"' % (os.getgid(), results))
 
 
 def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
@@ -558,7 +560,7 @@ def main():
 
         # wait until now to perform this check, so it get properly logged
         if (parser.options.use_existing_results and not resultdir_exists and
-            not lxc.is_in_container()):
+            not lxc_utils.is_in_container()):
             logging.error("No existing results directory found: %s", results)
             sys.exit(1)
 

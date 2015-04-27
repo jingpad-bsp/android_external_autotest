@@ -20,6 +20,7 @@ import tempfile
 import time
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.site_utils import lxc
 
 
@@ -188,10 +189,30 @@ def test_package_install(container):
     container.attach_run('sudo pip install selenium')
 
 
+def test_ssh(container, remote):
+    """Test container can run ssh to remote server.
+
+    @param container: The test container.
+    @param remote: The remote server to ssh to.
+
+    @raise: error.CmdError if container can't ssh to remote server.
+    """
+    logging.info('Test ssh to %s.', remote)
+    container.attach_run('ssh %s -a -x -o StrictHostKeyChecking=no '
+                         '-o BatchMode=yes -o UserKnownHostsFile=/dev/null '
+                         '-p 22 "true"' % remote)
+
+
 def parse_options():
     """Parse command line inputs.
     """
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--dut', type=str,
+                        help='Test device to ssh to.',
+                        default=None)
+    parser.add_argument('-r', '--devserver', type=str,
+                        help='Test devserver to ssh to.',
+                        default=None)
     parser.add_argument('-v', '--verbose', action='store_true',
                         default=False,
                         help='Print out ALL entries.')
@@ -223,6 +244,11 @@ def main(options):
     container = setup_test(bucket, container_test_name, options.skip_cleanup)
     test_share(container)
     test_autoserv(container)
+    if options.dut:
+        test_ssh(container, options.dut)
+    if options.devserver:
+        test_ssh(container, options.devserver)
+    # Install package takes the longest time, leave it to the last test.
     test_package_install(container)
     logging.info('All tests passed.')
 
@@ -237,4 +263,4 @@ if __name__ == '__main__':
             try:
                 lxc.ContainerBucket(TEMP_DIR).destroy_all()
             finally:
-                lxc.run('rm -rf "%s"' % TEMP_DIR)
+                utils.run('sudo rm -rf "%s"' % TEMP_DIR)
