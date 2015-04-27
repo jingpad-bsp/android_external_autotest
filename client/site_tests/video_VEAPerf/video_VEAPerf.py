@@ -22,15 +22,27 @@ DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com'
                  '/chromiumos-test-assets-public/')
 
 VEA_BINARY = 'video_encode_accelerator_unittest'
+TIME_BINARY = '/usr/local/bin/time'
 
-LOG_FILE_SUFFIX = 'output.log'
+# The format used for 'time': <real time> <kernel time> <user time>
+TIME_OUTPUT_FORMAT = '%e %S %U'
 
-# Performance keys
+TEST_LOG_SUFFIX = 'test.log'
+TIME_LOG_SUFFIX = 'time.log'
+
+# Performance keys:
+# FPS (i.e. encoder throughput)
 KEY_FPS = 'fps'
+# CPU usage in kernel space
+KEY_CPU_KERNEL_USAGE = 'cpu_usage.kernel'
+# CPU usage in user space
+KEY_CPU_USER_USAGE = 'cpu_usage.user'
 
-# These strings should match chromium/src/tools/perf/unit-info.json.
+# Units of performance values:
+# (These strings should match chromium/src/tools/perf/unit-info.json.)
 UNIT_MILLISECOND = 'milliseconds'
 UNIT_MICROSECOND = 'us'
+UNIT_PERCENT = 'percent'
 UNIT_FPS = 'fps'
 
 RE_FPS = re.compile(r'^Measured encoder FPS: ([+\-]?[0-9.]+)$', re.MULTILINE)
@@ -71,6 +83,14 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
             raise error.TestError('Parsing FPS failed w/ %d occurrence(s).' %
                                   len(fps))
         self._logperf(test_name, KEY_FPS, fps[0], UNIT_FPS, True)
+
+
+    def _analyze_cpu_usage(self, test_name, time_log_file):
+        with open(time_log_file) as f:
+            content = f.read()
+        r, s, u = (float(x) for x in content.split())
+        self._logperf(test_name, KEY_CPU_USER_USAGE, u / r, UNIT_PERCENT)
+        self._logperf(test_name, KEY_CPU_KERNEL_USAGE, s / r, UNIT_PERCENT)
 
 
     def _get_profile_name(self, profile):
@@ -143,23 +163,42 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         @param test_name: Name of this test case.
         @param test_stream_data: Parameter to --test_stream_data in vea_unittest.
         """
-        # Get FPS
-        log_file = self._get_result_filename(test_name, 'fps', LOG_FILE_SUFFIX)
-        cmd_line = [
+        # Get FPS.
+        test_log_file = self._get_result_filename(test_name, 'fps',
+                                                  TEST_LOG_SUFFIX)
+        vea_args = [
             '--gtest_filter=EncoderPerf/*/0',
             '--test_stream_data=%s' % test_stream_data,
-            '--output_log="%s"' % log_file]
-        self._append_freon_switch_if_needed(cmd_line)
-        self.run_chrome_test_binary(VEA_BINARY, ' '.join(cmd_line))
-        self._analyze_fps(test_name, log_file)
-        # TODO(jchuang): Get CPU time under specified FPS.
+            '--output_log="%s"' % test_log_file]
+        self._append_freon_switch_if_needed(vea_args)
+        self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
+        self._analyze_fps(test_name, test_log_file)
+
+        # Get CPU usage under specified FPS.
+        test_log_file = self._get_result_filename(test_name, 'cpu',
+                                                  TEST_LOG_SUFFIX)
+        time_log_file = self._get_result_filename(test_name, 'cpu',
+                                                  TIME_LOG_SUFFIX)
+        vea_args = [
+            '--gtest_filter=SimpleEncode/*/0',
+            '--test_stream_data=%s' % test_stream_data,
+            '--run_at_fps',
+            '--output_log="%s"' % test_log_file]
+        self._append_freon_switch_if_needed(vea_args)
+        time_cmd = ('%s -f "%s" -o "%s" ' %
+                    (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
+        self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args),
+                                    prefix=time_cmd)
+        self._analyze_cpu_usage(test_name, time_log_file)
+
         # TODO(jchuang): Get per-frame encoder latency.
 
 
     @chrome_binary_test.nuke_chrome
     def run_once(self, test_cases):
         last_error = None
-        for (path, on_cloud, width, height, bit_rate, profile) in test_cases:
+        for (path, on_cloud, width, height, requested_bit_rate,
+             profile, requested_frame_rate) in test_cases:
             try:
                 test_name, output_name = self._convert_test_name(
                     path, on_cloud, profile)
@@ -170,8 +209,9 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
                 else:
                     input_path = os.path.join(self.cr_source_dir, path)
                 output_path = os.path.join(self.tmpdir, output_name)
-                test_stream_data = '%s:%s:%s:%s:%s:%s' % (
-                    input_path, width, height, profile, output_path, bit_rate)
+                test_stream_data = '%s:%s:%s:%s:%s:%s:%s' % (
+                    input_path, width, height, profile, output_path,
+                    requested_bit_rate, requested_frame_rate)
                 self._run_test_case(test_name, test_stream_data)
             except Exception as last_error:
                 # Log the error and continue to the next test case.

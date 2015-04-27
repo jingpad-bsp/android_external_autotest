@@ -27,15 +27,20 @@ performance of the Chromium hardware Video Encode Accelerator.
 """
 
 # A list of test cases. Each entry consists of the following parts:
-#   (path, on_cloud, width, height, request_bit_rate, profile)
+#   (path, on_cloud, width, height, requested_bit_rate, profile, requested_frame_rate)
 #
-# Bitrates setting come from http://www.webmproject.org/hardware/rtc-coding-requirements/
+# Bitrate settings come from http://www.webmproject.org/hardware/rtc-coding-requirements/
 # Please do not change bitrates.
+#
+# Requested_frame_rate settings control input frame rates when measuring CPU
+# usage. 
+# (VEA_unittest reuses per-stream requested-frame-rate as input frame rate when
+# --run_at_fps option is enabled.)
 test_cases = [
-    ('tulip2/tulip2-1280x720-1b95123232922fe0067869c74e19cd09.yuv', True, 1280, 720, 1200000, 1),
-    ('tulip2/tulip2-640x360-094bd827de18ca196a83cc6442b7b02f.yuv', True, 640, 360, 500000, 1),
-    ('tulip2/tulip2-320x180-55be7124b3aec1b72bfb57f433297193.yuv', True, 320, 180, 100000, 1),
-    ('tulip2/tulip2-240x136-ed58afc99d08e5d21013c1a5056e43bf.yuv', True, 240, 136, 100000, 1)
+    ('tulip2/tulip2-1280x720-1b95123232922fe0067869c74e19cd09.yuv', True, 1280, 720, 1200000, 1, 30),
+    ('tulip2/tulip2-640x360-094bd827de18ca196a83cc6442b7b02f.yuv', True, 640, 360, 500000, 1, 30),
+    ('tulip2/tulip2-320x180-55be7124b3aec1b72bfb57f433297193.yuv', True, 320, 180, 100000, 1, 30),
+    ('tulip2/tulip2-240x136-ed58afc99d08e5d21013c1a5056e43bf.yuv', True, 240, 136, 100000, 1, 30)
 ]
 
 job.run_test('video_VEAPerf', test_cases=test_cases)

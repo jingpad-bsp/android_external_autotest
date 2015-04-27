@@ -27,9 +27,9 @@ performance of the Chromium hardware Video Encode Accelerator.
 """
 
 # A list of test cases. Each entry consists of the following parts:
-#   (path, on_cloud, width, height, request_bit_rate, profile)
+#   (path, on_cloud, width, height, requested_bit_rate, profile, requested_frame_rate)
 test_cases = [
-    ('media/test/data/bear_320x192_40frames.yuv', False, 320, 192, 200000, 1)
+    ('media/test/data/bear_320x192_40frames.yuv', False, 320, 192, 200000, 1, 30)
 ]
 
 job.run_test('video_VEAPerf', test_cases=test_cases)
