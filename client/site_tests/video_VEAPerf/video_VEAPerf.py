@@ -33,6 +33,12 @@ TIME_LOG_SUFFIX = 'time.log'
 # Performance keys:
 # FPS (i.e. encoder throughput)
 KEY_FPS = 'fps'
+# Encode latencies at the 50th, 75th, and 95th percentiles.
+# Encode latency is the delay from input of a frame to output of the encoded
+# bitstream.
+KEY_ENCODE_LATENCY_50 = 'encode_latency.50_percentile'
+KEY_ENCODE_LATENCY_75 = 'encode_latency.75_percentile'
+KEY_ENCODE_LATENCY_95 = 'encode_latency.95_percentile'
 # CPU usage in kernel space
 KEY_CPU_KERNEL_USAGE = 'cpu_usage.kernel'
 # CPU usage in user space
@@ -46,6 +52,15 @@ UNIT_PERCENT = 'percent'
 UNIT_FPS = 'fps'
 
 RE_FPS = re.compile(r'^Measured encoder FPS: ([+\-]?[0-9.]+)$', re.MULTILINE)
+RE_ENCODE_LATENCY_50 = re.compile(
+    r'^Encode latency for the 50th percentile: (\d+) us$',
+    re.MULTILINE)
+RE_ENCODE_LATENCY_75 = re.compile(
+    r'^Encode latency for the 75th percentile: (\d+) us$',
+    re.MULTILINE)
+RE_ENCODE_LATENCY_95 = re.compile(
+    r'^Encode latency for the 95th percentile: (\d+) us$',
+    re.MULTILINE)
 
 
 def _remove_if_exists(filepath):
@@ -73,7 +88,7 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
 
     def _analyze_fps(self, test_name, log_file):
         """
-        Analyze FPS info from result log file.
+        Analyzes FPS info from result log file.
         """
         with open(log_file, 'r') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
@@ -85,7 +100,33 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         self._logperf(test_name, KEY_FPS, fps[0], UNIT_FPS, True)
 
 
+    def _analyze_encode_latency(self, test_name, log_file):
+        """
+        Analyzes encode latency from result log file.
+        """
+        with open(log_file, 'r') as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            latency_50 = [int(m.group(1)) for m in
+                          RE_ENCODE_LATENCY_50.finditer(mm)]
+            latency_75 = [int(m.group(1)) for m in
+                          RE_ENCODE_LATENCY_75.finditer(mm)]
+            latency_95 = [int(m.group(1)) for m in
+                          RE_ENCODE_LATENCY_95.finditer(mm)]
+            mm.close()
+        if any([len(l) != 1 for l in [latency_50, latency_75, latency_95]]):
+            raise error.TestError('Parsing encode latency failed.')
+        self._logperf(test_name, KEY_ENCODE_LATENCY_50, latency_50[0],
+                      UNIT_MICROSECOND)
+        self._logperf(test_name, KEY_ENCODE_LATENCY_75, latency_75[0],
+                      UNIT_MICROSECOND)
+        self._logperf(test_name, KEY_ENCODE_LATENCY_95, latency_95[0],
+                      UNIT_MICROSECOND)
+
+
     def _analyze_cpu_usage(self, test_name, time_log_file):
+        """
+        Analyzes CPU usage from the output of 'time' command.
+        """
         with open(time_log_file) as f:
             content = f.read()
         r, s, u = (float(x) for x in content.split())
@@ -164,7 +205,7 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         @param test_stream_data: Parameter to --test_stream_data in vea_unittest.
         """
         # Get FPS.
-        test_log_file = self._get_result_filename(test_name, 'fps',
+        test_log_file = self._get_result_filename(test_name, 'fullspeed',
                                                   TEST_LOG_SUFFIX)
         vea_args = [
             '--gtest_filter=EncoderPerf/*/0',
@@ -174,24 +215,23 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args))
         self._analyze_fps(test_name, test_log_file)
 
-        # Get CPU usage under specified FPS.
-        test_log_file = self._get_result_filename(test_name, 'cpu',
+        # Get CPU usage and encode latency under specified frame rate.
+        test_log_file = self._get_result_filename(test_name, 'fixedspeed',
                                                   TEST_LOG_SUFFIX)
-        time_log_file = self._get_result_filename(test_name, 'cpu',
+        time_log_file = self._get_result_filename(test_name, 'fixedspeed',
                                                   TIME_LOG_SUFFIX)
         vea_args = [
             '--gtest_filter=SimpleEncode/*/0',
             '--test_stream_data=%s' % test_stream_data,
-            '--run_at_fps',
+            '--run_at_fps', '--measure_latency',
             '--output_log="%s"' % test_log_file]
         self._append_freon_switch_if_needed(vea_args)
         time_cmd = ('%s -f "%s" -o "%s" ' %
                     (TIME_BINARY, TIME_OUTPUT_FORMAT, time_log_file))
         self.run_chrome_test_binary(VEA_BINARY, ' '.join(vea_args),
                                     prefix=time_cmd)
+        self._analyze_encode_latency(test_name, test_log_file)
         self._analyze_cpu_usage(test_name, time_log_file)
-
-        # TODO(jchuang): Get per-frame encoder latency.
 
 
     @chrome_binary_test.nuke_chrome
