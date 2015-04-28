@@ -46,7 +46,12 @@ class WifiProxy(shill_proxy.ShillProxy):
             profile_properties = profile.GetProperties(utf8_strings=True)
             entries = profile_properties[self.PROFILE_PROPERTY_ENTRIES]
             for entry_id in entries:
-                if profile.GetEntry(entry_id)[self.ENTRY_FIELD_TYPE] == 'wifi':
+                try:
+                    entry = profile.GetEntry(entry_id)
+                except dbus.exceptions.DBusException as e:
+                    logging.error('Unable to retrieve entry %s', entry_id)
+                    continue
+                if entry[self.ENTRY_FIELD_TYPE] == 'wifi':
                     profile.DeleteEntry(entry_id)
 
 
