@@ -17,7 +17,7 @@ connection to the AP.
 
 from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
-from autotest_lib.server.cros.chaos_lib import connection_worker
+from autotest_lib.server.cros.network import connection_worker
 
 def run_chaos_wpa2psk(machine):
     host = hosts.create_host(machine)
