@@ -28,6 +28,8 @@ class HostapConfig(object):
                    # 12, 13 are only legitimate outside the US.
                    2467: 12,
                    2472: 13,
+                   # 14 is for Japan, DSSS and CCK only.
+                   2484: 14,
                    # 34 valid in Japan.
                    5170: 34,
                    # 36-116 valid in the US, except 38, 42, and 46, which have
@@ -56,6 +58,9 @@ class HostapConfig(object):
                    5660: 132,
                    5680: 136,
                    5700: 140,
+                   # 144 is supported by a subset of WiFi chips
+                   # (e.g. bcm4354, but not ath9k).
+                   5720: 144,
                    5745: 149,
                    5765: 153,
                    5785: 157,
