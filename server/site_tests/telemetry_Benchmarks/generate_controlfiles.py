@@ -8,36 +8,49 @@ This file generates all telemetry_Benchmarks control files from a master list.
 # obtained by executing
 # /build/${BOARD}/usr/local/telemetry/src/tools/perf/list_benchmarks
 
-TESTS = [
+# PLEASE READ THIS:
+
+# PERF_TESTS: these tests run on each build: tot, tot-1, tot-2 and expensive to
+# run.
+
+# PERF_DAILY_RUN_TESTS: these tests run on a nightly build: tot. If you are
+# trying to gain confidence for a new test, adding your test in this list is a
+# good start.
+
+# For adding a new test to any of these lists, please add rohitbm, lafeenstra,
+# haddowk in the change.
+
+PERF_TESTS = [
+    'jetstream',
+    'kraken',
+    'octane',
+    'page_cycler.typical_25',
+    'session_restore.cold.typical_25',
+    'smoothness.top_25_smooth',
+    'speedometer',
+    'startup.cold.blank_page',
+]
+
+PERF_DAILY_RUN_TESTS = [
     'dromaeo.domcoreattr',
     'dromaeo.domcoremodify',
     'dromaeo.domcorequery',
     'dromaeo.domcoretraverse',
     'image_decoding.image_decoding_measurement',
-    'jetstream',
-    'kraken',
-    'media.chromeOS4kOnly.tough_video_cases',
-    'media.chromeOS.tough_video_cases',
     'memory.top_7_stress',
-    'octane',
-    'page_cycler.typical_25',
     'robohornet_pro',
-    'session_restore.cold.typical_25',
-    'smoothness.top_25_smooth',
     'smoothness.tough_animation_cases',
     'smoothness.tough_canvas_cases',
     'smoothness.tough_filters_cases',
     'smoothness.tough_pinch_zoom_cases',
     'smoothness.tough_scrolling_cases',
     'smoothness.tough_webgl_cases',
-    'speedometer',
-    'startup.cold.blank_page',
     'sunspider',
     'tab_switching.top_10',
     'webrtc.webrtc_cases',
 ]
 
-CONTROLFILE_TEMPLATE =(
+CONTROLFILE_TEMPLATE = (
 """# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -47,8 +60,8 @@ CONTROLFILE_TEMPLATE =(
 from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'sbasi, achuith, rohitbm'
-NAME = 'telemetry_Benchmarks.{0}'
-SUITE = 'performance'
+NAME = 'telemetry_Benchmarks.{1}'
+SUITE = '{0}'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
 TEST_CLASS = 'performance'
@@ -56,7 +69,7 @@ TEST_TYPE = 'server'
 
 DOC = '''
 This server side test suite executes the Telemetry Benchmark:
-{0}
+{1}
 This is part of Chrome for Chrome OS performance testing.
 
 Pass local=True to run with local telemetry and no AFE server.
@@ -65,14 +78,17 @@ Pass local=True to run with local telemetry and no AFE server.
 def run_benchmark(machine):
     host = hosts.create_host(machine)
     job.run_test('telemetry_Benchmarks', host=host,
-                 benchmark='{0}',
-                 tag='{0}',
+                 benchmark='{1}',
+                 tag='{1}',
                  args=utils.args_to_dict(args))
 
 parallel_simple(run_benchmark, machines)""")
 
-for test in TESTS:
+for test in PERF_TESTS + PERF_DAILY_RUN_TESTS:
     filename = 'control.%s' % test
     with open(filename, 'w+') as f:
-        content = CONTROLFILE_TEMPLATE.format(test)
+        if test in PERF_TESTS:
+            content = CONTROLFILE_TEMPLATE.format('performance', test)
+        else:
+            content = CONTROLFILE_TEMPLATE.format('performance_optional', test)
         f.write(content)

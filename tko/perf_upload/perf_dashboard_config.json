@@ -358,16 +358,6 @@
     "dashboard_test_name": "kraken"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.media.chromeOS.tough_video_cases",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "media.tough_media_cases"
-  },
-  {
-    "autotest_name": "telemetry_Benchmarks.media.chromeOS4kOnly.tough_video_cases",
-    "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "media.tough_media_cases"
-  },
-  {
     "autotest_name": "telemetry_Benchmarks.memory.top_7_stress",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "memory.top_7_stress"
