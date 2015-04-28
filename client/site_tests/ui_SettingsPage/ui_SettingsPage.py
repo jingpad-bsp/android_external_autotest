@@ -2,12 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.ui import ui_test_base
 from autotest_lib.client.common_lib import error
 from telemetry.image_processing import image_util
-
 
 class ui_SettingsPage(ui_test_base.ui_TestBase):
     """
@@ -36,19 +37,32 @@ class ui_SettingsPage(ui_test_base.ui_TestBase):
             if not tab.screenshot_supported:
                 raise error.TestError('Tab did not support taking screenshots')
 
+            #TODO(dhaddock): remove this after investigation
+            # crbug.com/482209
+            # Screenshots aren't matching expected behaviour from initial check
+            # Test if modem status is different here
+            modem_status = utils.system_output('modem status')
+            if modem_status:
+                logging.info('Modem found')
+                logging.info(modem_status)
+            else:
+                logging.info('Modem not found')
+
             screenshot = tab.Screenshot()
             if screenshot is None:
                 raise error.TestFailure('Could not capture screenshot')
 
             image_util.WritePngFile(screenshot, filepath)
 
-
     def run_once(self, mask_points):
         self.mask_points = mask_points
 
         # Check if we should find mobile data in settings
-        mobile = utils.system_output('modem status')
-        if mobile:
+        modem_status = utils.system_output('modem status')
+        if modem_status:
+            logging.info('Modem found')
+            logging.info(modem_status)
             self.tagged_testname += '.mobile'
+        else:
+            logging.info('Modem not found')
         self.run_screenshot_comparison_test()
-
