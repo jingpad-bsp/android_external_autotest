@@ -11,6 +11,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import iw_event_logger
 
+# These must mirror the values in 'iw list' output.
+CHAN_FLAG_DISABLED = 'disabled'
+CHAN_FLAG_NO_IR = 'no IR'
+CHAN_FLAG_PASSIVE_SCAN = 'passive scan'
+CHAN_FLAG_RADAR_DETECT = 'radar detection'
 
 HT20 = 'HT20'
 HT40_ABOVE = 'HT40+'
@@ -30,7 +35,8 @@ HT_TABLE = {'no secondary': HT20,
             'above': HT40_ABOVE,
             'below': HT40_BELOW}
 
-IwBand = collections.namedtuple('Band', ['num', 'frequencies', 'mcs_indices'])
+IwBand = collections.namedtuple(
+    'Band', ['num', 'frequencies', 'frequency_flags', 'mcs_indices'])
 IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
                                          'ht'])
 IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
@@ -301,6 +307,7 @@ class IwRunner(object):
             """Add the pending phy into |all_phys|."""
             bands = tuple(IwBand(band.num,
                                  tuple(band.frequencies),
+                                 dict(band.frequency_flags),
                                  tuple(band.mcs_indices))
                           for band in pending_phy_bands)
             new_phy = IwPhy(pending_phy_name,
@@ -338,6 +345,7 @@ class IwRunner(object):
                 if match_band:
                     current_band = IwBand(num=int(match_band.group(1)),
                                           frequencies=[],
+                                          frequency_flags={},
                                           mcs_indices=[])
                     pending_phy_bands.append(current_band)
                 continue
@@ -388,9 +396,27 @@ class IwRunner(object):
                         line.startswith('\t')]):
                 continue
 
-            mhz_match = re.search('(\d+) MHz', line)
-            if mhz_match:
-                current_band.frequencies.append(int(mhz_match.group(1)))
+            # E.g.
+            # * 2412 MHz [1] (20.0 dBm)
+            # * 2467 MHz [12] (20.0 dBm) (passive scan)
+            # * 2472 MHz [13] (disabled)
+            # * 5260 MHz [52] (19.0 dBm) (no IR, radar detection)
+            match_chan_info = re.search(
+                r'(?P<frequency>\d+) MHz'
+                r' (?P<chan_num>\[\d+\])'
+                r'(?: \((?P<tx_power_limit>[0-9.]+ dBm)\))?'
+                r'(?: \((?P<flags>[a-zA-Z, ]+)\))?', line)
+            if match_chan_info:
+                frequency = int(match_chan_info.group('frequency'))
+                current_band.frequencies.append(frequency)
+                flags_string = match_chan_info.group('flags')
+                if flags_string:
+                    current_band.frequency_flags[frequency] = frozenset(
+                        flags_string.split(','))
+                else:
+                    # Populate the dict with an empty set, to make
+                    # things uniform for client code.
+                    current_band.frequency_flags[frequency] = frozenset()
                 continue
 
             # re_mcs needs to match something like:
