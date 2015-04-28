@@ -5,6 +5,7 @@
 import dbus
 import logging
 import os.path
+import socket
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -21,6 +22,7 @@ class security_RestartJob(test.test):
 
 
     def _ps(self, proc=constants.BROWSER):
+        """Grab the oldest pid for a process named |proc|."""
         pscmd = 'ps -C %s -o pid --no-header | head -1' % proc
         return utils.system_output(pscmd)
 
@@ -43,7 +45,6 @@ class security_RestartJob(test.test):
 
         # Try to get our malicious replacement to run.
         logging.info('Calling RestartJob(%s, \'%s\')', pid, cmd)
-        testfail = False
         try:
             if sessionmanager.RestartJob(pid, cmd):
                 raise error.TestFail(
@@ -54,6 +55,27 @@ class security_RestartJob(test.test):
 
         if os.path.exists(self._FLAGFILE):
             raise error.TestFail('RestartJob regression, see crbug.com/189233')
+
+        # Try to get our malicious replacement to run via RestartJobWithAuth.
+        try:
+            remote, local = socket.socketpair(socket.AF_UNIX)
+            logging.info('Calling RestartJobWithAuth(<socket>, \'%s\')', cmd)
+            if sessionmanager.RestartJobWithAuth(dbus.types.UnixFd(remote),
+                                                 cmd):
+                raise error.TestFail('RestartJobWithAuth regression!')
+        except dbus.DBusException as e:
+            logging.info(e.get_dbus_message())
+            pass
+        except OSError as e:
+            raise error.TestError('Could not create sockets for creds: %s', e)
+        finally:
+            try:
+                local.close()
+            except OSError:
+                pass
+
+        if os.path.exists(self._FLAGFILE):
+            raise error.TestFail('RestartJobWithAuth regression!')
 
 
     def cleanup(self):
