@@ -196,6 +196,7 @@ class AbstractHostModel(dbmodels.Model, ModelValidators):
                                             default=host_protections.default)
     lock_time = dbmodels.DateTimeField(null=True, blank=True, editable=False)
     dirty = dbmodels.BooleanField(default=True, editable=settings.FULL_ADMIN)
+    lock_reason = dbmodels.CharField(max_length=255, blank=True, default='')
 
 
     class Meta:

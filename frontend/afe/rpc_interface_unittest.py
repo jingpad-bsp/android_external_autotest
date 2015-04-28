@@ -454,9 +454,11 @@ class RpcInterfaceTest(unittest.TestCase,
             self.god.stub_with(frontend, 'AFE', mock_afe)
 
             mock_afe2 = frontend.AFE.expect_new(server=shard_hostname)
-            mock_afe2.run.expect_call('modify_host', id=host.id, locked=True)
+            mock_afe2.run.expect_call('modify_host', id=host.id, locked=True,
+                                      lock_reason='_modify_host_helper lock')
 
-        rpc_interface.modify_host(id=host.id, locked=True)
+        rpc_interface.modify_host(id=host.id, locked=True,
+                                  lock_reason='_modify_host_helper lock')
 
         host = models.Host.objects.get(pk=host.id)
         self.assertTrue(host.locked)
@@ -507,16 +509,20 @@ class RpcInterfaceTest(unittest.TestCase,
         mock_afe2.run.expect_call(
             'modify_hosts',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
-            update_data={'locked': True})
+            update_data={'locked': True,
+                         'lock_reason': 'Testing forward to shard'})
 
         mock_afe1 = frontend.AFE.expect_new(server='shard1')
         mock_afe1.run.expect_call(
             'modify_hosts',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
-            update_data={'locked': True})
+            update_data={'locked': True,
+                         'lock_reason': 'Testing forward to shard'})
 
         rpc_interface.modify_hosts(host_filter_data={'status': 'Ready'},
-                                   update_data={'locked': True})
+                                   update_data={
+                                    'locked': True,
+                                    'lock_reason': 'Testing forward to shard'})
 
         host1 = models.Host.objects.get(pk=host1.id)
         self.assertTrue(host1.locked)

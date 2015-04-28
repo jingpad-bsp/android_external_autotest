@@ -239,9 +239,14 @@ def get_atomic_groups(**filter_data):
 
 # hosts
 
-def add_host(hostname, status=None, locked=None, protection=None):
+def add_host(hostname, status=None, locked=None, lock_reason='', protection=None):
+    if locked and not lock_reason:
+        raise model_logic.ValidationError(
+            {'locked': 'Please provide a reason for locking when adding host.'})
+
     return models.Host.add_object(hostname=hostname, status=status,
-                                  locked=locked, protection=protection).id
+                                  locked=locked, lock_reason=lock_reason,
+                                  protection=protection).id
 
 
 @rpc_utils.forward_single_host_rpc_to_shard

@@ -572,7 +572,7 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         }
         if other_metadata:
             metadata = dict(metadata.items() + other_metadata.items())
-        autotest_es.post(type_str=type_str, metadata=metadata)
+        autotest_es.post(use_http=True, type_str=type_str, metadata=metadata)
 
 
     def save(self, *args, **kwargs):
@@ -589,7 +589,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             self.locked_by = User.current_user()
             self.lock_time = datetime.now()
             self.record_state('lock_history', 'locked', self.locked,
-                              {'changed_by': self.locked_by.login})
+                              {'changed_by': self.locked_by.login,
+                               'lock_reason': self.lock_reason})
             self.dirty = True
         elif not self.locked and self.locked_by:
             self.record_state('lock_history', 'locked', self.locked,

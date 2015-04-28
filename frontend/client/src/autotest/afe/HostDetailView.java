@@ -165,6 +165,7 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
     private DatetimeSegmentFilter startedTimeFilter = new DatetimeSegmentFilter();
     private TextBox hostnameInput = new TextBox();
     private Button hostnameFetchButton = new Button("Go");
+    private TextBox lockReasonInput = new TextBox();
 
     public HostDetailView(HostDetailListener hostDetailListener,
                           JobCreateListener jobCreateListener) {
@@ -265,7 +266,9 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         if (currentHostObject.get("locked").isBoolean().booleanValue()) {
             String lockedBy = Utils.jsonToString(currentHostObject.get("locked_by"));
             String lockedTime = Utils.jsonToString(currentHostObject.get("lock_time"));
+            String lockReasonText = Utils.jsonToString(currentHostObject.get("lock_reason"));
             lockedText += ", by " + lockedBy + " on " + lockedTime;
+            lockedText += ", reason: " + lockReasonText;
         }
 
         showField(currentHostObject, "status", "view_host_status");
@@ -288,6 +291,7 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         String pageTitle = "Host " + hostname;
         hostnameInput.setText(hostname);
         updateLockButton();
+        updateLockReasonInput();
         displayObjectData(pageTitle);
 
         jobsTable.setHostId(getObjectId());
@@ -348,12 +352,6 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
             }
         });
 
-        lockButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-               boolean locked = currentHostObject.get("locked").isBoolean().booleanValue();
-               changeLock(!locked);
-            }
-        });
         startedTimeFilter.addValueChangeHandler(
             new ValueChangeHandler() {
                 public void onValueChange(ValueChangeEvent event) {
@@ -374,7 +372,24 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
                 }
             }
         );
+
         addWidget(lockButton, "view_host_lock_button");
+        addWidget(lockReasonInput, "view_host_lock_reason_input");
+
+        lockButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+               boolean locked = currentHostObject.get("locked").isBoolean().booleanValue();
+               changeLock(!locked);
+            }
+        });
+        lockReasonInput.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress (KeyPressEvent event) {
+                if (event.getCharCode() == (char) KeyCodes.KEY_ENTER) {
+                    boolean locked = currentHostObject.get("locked").isBoolean().booleanValue();
+                    changeLock(!locked);
+                }
+            }
+        });
 
         reverifyButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
@@ -466,11 +481,22 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         }
     }
 
+    private void updateLockReasonInput() {
+        boolean locked = currentHostObject.get("locked").isBoolean().booleanValue();
+        if (locked) {
+            lockReasonInput.setText("");
+            lockReasonInput.setEnabled(false);
+        } else {
+            lockReasonInput.setEnabled(true);
+        }
+    }
+
     private void changeLock(final boolean lock) {
         JSONArray hostIds = new JSONArray();
         hostIds.set(0, currentHostObject.get("id"));
 
-        AfeUtils.changeHostLocks(hostIds, lock, "Host " + hostname, new SimpleCallback() {
+        AfeUtils.changeHostLocks(hostIds, lock, lockReasonInput.getText(),
+                                 "Host " + hostname, new SimpleCallback() {
             public void doCallback(Object source) {
                 refresh();
             }

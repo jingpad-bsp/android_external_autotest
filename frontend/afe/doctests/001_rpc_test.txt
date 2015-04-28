@@ -97,7 +97,7 @@ True
 
 # all the add*, modify*, delete*, and get* methods work the same way
 # hosts...
->>> rpc_interface.add_host(hostname='ipaj1', locked=True)
+>>> rpc_interface.add_host(hostname='ipaj1', locked=True, lock_reason='Locked device on creation')
 1
 >>> data = rpc_interface.get_hosts()
 
@@ -118,7 +118,8 @@ True
 ...           'locked_by': 'debug_user',
 ...           'dirty': True,
 ...           'leased': 1,
-...           'shard': None}]
+...           'shard': None,
+...           'lock_reason': 'Locked device on creation'}]
 True
 >>> rpc_interface.modify_host(id='ipaj1', status='Hello')
 Traceback (most recent call last):
@@ -135,7 +136,7 @@ False
 >>> rpc_interface.modify_host(id='ipaj1000', locked=False)
 Traceback (most recent call last):
 ValidationError: {'locked': 'Host already unlocked.'}
->>> rpc_interface.modify_host(id='ipaj1000', locked=True)
+>>> rpc_interface.modify_host(id='ipaj1000', locked=True, lock_reason='Locking a locked device')
 >>> try:
 ...     rpc_interface.modify_host(id='ipaj1000', locked=True)
 ... except model_logic.ValidationError, err:
@@ -381,7 +382,7 @@ u'label2'
 
 >>> rpc_interface.modify_hosts(
 ...     host_filter_data={'hostname__in': ['host1', 'host2']},
-...     update_data={'locked': True})
+...     update_data={'locked': True, 'lock_reason': 'Locked for testing'})
 >>> data = rpc_interface.get_hosts(hostname__in=['host1', 'host2'])
 
 >>> data[0]['locked']
@@ -578,6 +579,7 @@ True
 ...           'protection': 'No protection',
 ...           'locked_by': None,
 ...           'lock_time': None,
+...           'lock_reason': 'Locked for testing',
 ...           'dirty': True,
 ...           'leased': 1,
 ...           'shard': None},

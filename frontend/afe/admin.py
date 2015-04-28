@@ -135,6 +135,19 @@ class HostForm(ModelWithInvalidForm):
         self.fields['labels'].help_text = ('Please enter a comma seperated '
                                            'list of labels.')
 
+    def clean(self):
+        """ ModelForm validation
+
+        Ensure that a lock_reason is provided when locking a device.
+        """
+        cleaned_data = super(HostForm, self).clean()
+        locked = cleaned_data.get('locked')
+        lock_reason = cleaned_data.get('lock_reason')
+        if locked and not lock_reason:
+            raise forms.ValidationError(
+                    'Please provide a lock reason when locking a device.')
+        return cleaned_data
+
     class Meta:
         model = models.Host
 
@@ -158,9 +171,24 @@ class HostAdmin(SiteAdmin):
         self.successful_hosts = []
         super(HostAdmin, self).__init__(model, admin_site)
 
+    def add_view(self, request, form_url='', extra_context=None):
+        """ Field layout for admin page.
+
+        fields specifies the visibility and order of HostAdmin attributes
+        displayed on the device addition page.
+
+        @param request:  django request
+        @param form_url: url
+        @param extra_context: A dict used to alter the page view
+        """
+        self.fields = ('hostname', 'locked', 'lock_reason', 'leased',
+                       'protection', 'labels', 'shard', 'labels_autodetection')
+        return super(HostAdmin, self).add_view(request, form_url, extra_context)
+
     def change_view(self, request, obj_id, form_url='', extra_context=None):
         # Hide labels_autodetection when editing a host.
-        self.fields = ('hostname', 'locked', 'leased', 'protection', 'labels')
+        self.fields = ('hostname', 'locked', 'lock_reason',
+                       'leased', 'protection', 'labels')
         # Only allow editing host attributes when a host has been created.
         self.inlines = [
             HostAttributeInline,
@@ -193,6 +221,7 @@ class HostAdmin(SiteAdmin):
         hosts = [str(hostname)]
         platform = None
         locked = form.cleaned_data['locked']
+        lock_reason = form.cleaned_data['lock_reason']
         labels = [label.name for label in form.cleaned_data['labels']]
         protection = form.cleaned_data['protection']
         acls = []
@@ -200,7 +229,7 @@ class HostAdmin(SiteAdmin):
         # Pipe to cli to perform autodetection and create host.
         host_create_obj = site_host.site_host_create.construct_without_parse(
                 web_server, hosts, platform,
-                locked, labels, acls,
+                locked, lock_reason, labels, acls,
                 protection)
         try:
             self.successful_hosts = host_create_obj.execute()

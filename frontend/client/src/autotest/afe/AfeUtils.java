@@ -341,13 +341,19 @@ public class AfeUtils {
     }
 
     public static void changeHostLocks(JSONArray hostIds, final boolean lock,
-                                       final String messagePrefix, final SimpleCallback callback) {
+                                       String lockReason, final String messagePrefix,
+                                       final SimpleCallback callback) {
         JSONObject hostFilterData = new JSONObject();
         JSONObject updateData = new JSONObject();
         JSONObject params = new JSONObject();
 
         hostFilterData.put("id__in", hostIds);
         updateData.put("locked", JSONBoolean.getInstance(lock));
+        updateData.put("lock_reason", new JSONString(""));
+
+        if (lockReason != null && !lockReason.trim().isEmpty()) {
+            updateData.put("lock_reason", new JSONString(lockReason.trim()));
+        }
 
         params.put("host_filter_data", hostFilterData);
         params.put("update_data", updateData);

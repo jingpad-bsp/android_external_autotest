@@ -63,7 +63,11 @@ class host(topic_common.atest):
             self.messages.append('Locked host')
         elif options.unlock:
             self.data['locked'] = False
+            self.data['lock_reason'] = ''
             self.messages.append('Unlocked host')
+
+        if options.lock and options.lock_reason:
+            self.data['lock_reason'] = options.lock_reason
 
 
     def _cleanup_labels(self, labels, platform=None):
@@ -196,7 +200,7 @@ class host_list(action_common.atest_list, host):
             self.print_list(results, key='hostname')
         else:
             keys = ['hostname', 'status',
-                    'shard', 'locked', 'platform', 'labels']
+                    'shard', 'locked', 'lock_reason', 'platform', 'labels']
             super(host_list, self).output(results, keys=keys)
 
 
@@ -240,7 +244,7 @@ class host_stat(host):
             self.print_fields(stats,
                               keys=['hostname', 'platform',
                                     'status', 'locked', 'locked_by',
-                                    'lock_time', 'protection',])
+                                    'lock_time', 'lock_reason', 'protection',])
             self.print_by_ids(acls, 'ACLs', line_before=True)
             labels = self._cleanup_labels(labels)
             self.print_by_ids(labels, 'Labels', line_before=True)
@@ -325,6 +329,9 @@ class host_mod(host):
         self.parser.add_option('-u', '--unlock',
                                help='Unlock hosts',
                                action='store_true')
+        self.parser.add_option('-r', '--lock_reason',
+                               help='Reason for locking hosts',
+                               default='')
         self.parser.add_option('-p', '--protection', type='choice',
                                help=('Set the protection level on a host.  '
                                      'Must be one of: %s' %
@@ -405,6 +412,9 @@ class host_create(host):
                                help='Create the hosts as '
                                'unlocked (default)',
                                action='store_true')
+        self.parser.add_option('-r', '--lock_reason',
+                               help='Reason for locking hosts',
+                               default='')
         self.parser.add_option('-t', '--platform',
                                help='Sets the platform label')
         self.parser.add_option('-b', '--labels',
@@ -449,8 +459,12 @@ class host_create(host):
 
     def _execute_add_one_host(self, host):
         # Always add the hosts as locked to avoid the host
-        # being picked up by the scheduler before it's ACL'ed
+        # being picked up by the scheduler before it's ACL'ed.
+        # We enforce lock reasons for each lock, so we
+        # provide a 'dummy' if we are intending to unlock after.
         self.data['locked'] = True
+        if not self.locked:
+            self.data['lock_reason'] = 'Forced lock on device creation'
         self.execute_rpc('add_host', hostname=host,
                          status="Ready", **self.data)
 
@@ -473,7 +487,8 @@ class host_create(host):
 
             if not self.locked:
                 for host in successful_hosts:
-                    self.execute_rpc('modify_host', id=host, locked=False)
+                    self.execute_rpc('modify_host', id=host, locked=False,
+                                     lock_reason='')
         return successful_hosts
 
 

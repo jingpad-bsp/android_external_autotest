@@ -31,7 +31,7 @@ class site_host_create(site_host, host.host_create):
     @classmethod
     def construct_without_parse(
             cls, web_server, hosts, platform=None,
-            locked=False, labels=[], acls=[],
+            locked=False, lock_reason='', labels=[], acls=[],
             protection=host_protections.Protection.NO_PROTECTION):
         """Construct an site_host_create object and fill in data from args.
 
@@ -44,6 +44,7 @@ class site_host_create(site_host, host.host_create):
         @param hosts: A list of hostnames as strings.
         @param platform: A string or None.
         @param locked: A boolean.
+        @param lock_reason: A string.
         @param labels: A list of labels as strings.
         @param acls: A list of acls as strings.
         @param protection: An enum defined in host_protections.
@@ -58,6 +59,8 @@ class site_host_create(site_host, host.host_create):
         obj.hosts = hosts
         obj.platform = platform
         obj.locked = locked
+        if locked and lock_reason.strip():
+            obj.data['lock_reason'] = lock_reason.strip()
         obj.labels = labels
         obj.acls = acls
         if protection:
@@ -69,6 +72,8 @@ class site_host_create(site_host, host.host_create):
         # Always add the hosts as locked to avoid the host
         # being picked up by the scheduler before it's ACL'ed.
         self.data['locked'] = True
+        if not self.locked:
+            self.data['lock_reason'] = 'Forced lock on device creation'
         self.execute_rpc('add_host', hostname=host,
                          status="Ready", **self.data)
         # If there are labels avaliable for host, use them.

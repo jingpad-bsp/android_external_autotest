@@ -84,13 +84,13 @@ public class HostListView extends TabView implements TableActionsListener {
         }, "Hosts");
     }
 
-    private void changeLockStatus(final boolean lock) {
+    private void changeLockStatus(final boolean lock, String lockReason) {
         JSONArray hostIds = getSelectedHostIds();
         if (hostIds == null) {
             return;
         }
 
-        AfeUtils.changeHostLocks(hostIds, lock, "Hosts", new SimpleCallback() {
+        AfeUtils.changeHostLocks(hostIds, lock, lockReason, "Hosts", new SimpleCallback() {
             public void doCallback(Object source) {
                 refresh();
             }
@@ -140,14 +140,29 @@ public class HostListView extends TabView implements TableActionsListener {
                 reverifySelectedHosts();
             }
         });
-        menu.addItem("Lock hosts", new Command() {
+        menu.addItem("Lock hosts for testing", new Command() {
             public void execute() {
-                changeLockStatus(true);
+                changeLockStatus(true, "Device is under test");
+            }
+        });
+        menu.addItem("Lock hosts for recovery", new Command() {
+            public void execute() {
+                changeLockStatus(true, "Device is recovering");
+            }
+        });
+        menu.addItem("Lock hosts for resource exclusion", new Command() {
+            public void execute() {
+                changeLockStatus(true, "Device is an excluded resource");
+            }
+        });
+        menu.addItem("Lock hosts for defects", new Command() {
+            public void execute() {
+                changeLockStatus(true, "Device is defective");
             }
         });
         menu.addItem("Unlock hosts", new Command() {
             public void execute() {
-                changeLockStatus(false);
+                changeLockStatus(false, "");
             }
         });
         menu.addItem("Reinstall hosts", new Command() {

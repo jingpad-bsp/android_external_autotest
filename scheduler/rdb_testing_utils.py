@@ -201,7 +201,7 @@ class DBHelper(object):
 
     @classmethod
     def create_host(cls, name, deps=set([]), acls=set([]), status='Ready',
-                 locked=0, leased=0, protection=0, dirty=0):
+                 locked=0, lock_reason='', leased=0, protection=0, dirty=0):
         """Create a host.
 
         Also adds the appropriate labels to the host, and adds the host to the
@@ -213,6 +213,7 @@ class DBHelper(object):
             acls: The aclgroups this host must be a part of.
             status: The status of the host.
             locked: 1 if the host is locked.
+            lock_reason: non-empty string if the host is locked.
             leased: 1 if the host is leased.
             protection: Any protection level, such as Do Not Verify.
             dirty: 1 if the host requires cleanup.
@@ -223,7 +224,8 @@ class DBHelper(object):
         # crbug.com/350995 is fixed.
         host = models.Host.add_object(
                 hostname=name, status=status, locked=locked,
-                leased=leased, protection=protection)
+                lock_reason=lock_reason, leased=leased,
+                protection=protection)
         cls.add_labels_to_host(host, label_names=deps)
         cls.add_host_to_aclgroup(host, aclgroup_names=acls)
 

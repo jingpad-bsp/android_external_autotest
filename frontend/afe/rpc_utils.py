@@ -440,6 +440,7 @@ def check_modify_host_locking(host, update_data):
     @param update_data: A dictionary with the changes to make to the host.
     """
     locked = update_data.get('locked', None)
+    lock_reason = update_data.get('lock_reason', None)
     if locked is not None:
         if locked and host.locked:
             raise model_logic.ValidationError({
@@ -448,6 +449,9 @@ def check_modify_host_locking(host, update_data):
         if not locked and not host.locked:
             raise model_logic.ValidationError({
                     'locked': 'Host already unlocked.'})
+        if locked and not lock_reason and not host.locked:
+            raise model_logic.ValidationError({
+                    'locked': 'Please provide a reason for locking'})
 
 
 def get_motd():
