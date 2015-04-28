@@ -429,7 +429,7 @@ class MediaTestFactory(object):
                 'event_timeout': self.time_out_events_s,
                 'polling_wait_time': self.time_btwn_polling_s}
 
-        if self.video_name == 'bigbuck':
+        if self.video_name == 'bigbuck' or self.video_name == 'switch_res':
             player = native_html5_player.NativeHtml5Player(**args)
 
         elif self.video_name == 'vimeo':
