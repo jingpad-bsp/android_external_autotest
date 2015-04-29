@@ -26,7 +26,6 @@ from autotest_lib.server.cros.clique_lib import clique_dut_updater
 class CliqueRunner(object):
     """Object to run a network_WiFi_CliqueXXX test."""
 
-
     def __init__(self, test, dut_pool_spec, ap_specs):
         """Initializes and runs test.
 
@@ -107,7 +106,7 @@ class CliqueRunner(object):
         return healthy
 
     @staticmethod
-    def _sanitize_all_clients(dut_objects):
+    def _sanitize_all_duts(dut_objects):
         """Clean up logs and reboot all the DUTs.
 
         @param dut_objects: A list of DUTObjects for all DUTs allocated for the
@@ -115,6 +114,20 @@ class CliqueRunner(object):
         """
         for dut in dut_objects:
             utils.sanitize_client(dut.host)
+
+    @staticmethod
+    def _sync_time_on_all_duts(dut_objects):
+        """Syncs time on all the DUTs in the pool to the time on the host.
+
+        @param dut_objects: A list of DUTObjects for all DUTs allocated for the
+                            test.
+        """
+        # Let's get the timestamp once on the host and then set it on all
+        # the duts.
+        epoch_seconds = time.time()
+        logging.info('Syncing epoch time on DUTs to %d seconds.', epoch_seconds)
+        for dut in dut_objects:
+            dut.wifi_client.shill.sync_time_to(epoch_seconds)
 
     @staticmethod
     def _get_debug_string(dut_objects, aps):
@@ -132,8 +145,8 @@ class CliqueRunner(object):
         """
         debug_string = ""
         for dut in dut_objects:
-            kernel_ver = dut.get_kernel_ver()
-            firmware_ver = utils.get_firmware_ver(dut)
+            kernel_ver = dut.host.get_kernel_ver()
+            firmware_ver = utils.get_firmware_ver(dut.host)
             if not firmware_ver:
                 firmware_ver = "Unknown"
             debug_dict = {'host_name': dut.host.hostname,
@@ -145,7 +158,7 @@ class CliqueRunner(object):
         return debug_string
 
     @staticmethod
-    def _are_conn_workers_healthy(workers, aps, assoc_params_list, job):
+    def _are_all_conn_workers_healthy(workers, aps, assoc_params_list, job):
         """Returns if all the connection workers are working properly.
 
         From time to time the connection worker will fail to establish a
@@ -238,7 +251,7 @@ class CliqueRunner(object):
 
             # Reset all the DUTs before the test starts and configure all the
             # APs.
-            self._sanitize_all_clients(dut_objects)
+            self._sanitize_all_duts(dut_objects)
             utils.configure_aps(aps, self._ap_specs)
 
             # This is a list of association parameters for the test for all the
@@ -268,13 +281,14 @@ class CliqueRunner(object):
                               capturer, conn_workers)
                 raise error.TestError('Not all DUTs healthy.')
 
-            if not self._are_conn_workers_healthy(
+            if not self._are_all_conn_workers_healthy(
                     conn_workers, aps, assoc_params_list, job):
                 self._cleanup(dut_objects, dut_locker, ap_locker,
                               capturer, conn_workers)
                 raise error.TestError('Not all connection workers healthy.')
 
             debug_string = self._get_debug_string(dut_objects, aps)
+            self._sync_time_on_all_duts(dut_objects)
 
             result = job.run_test(
                     self._test,

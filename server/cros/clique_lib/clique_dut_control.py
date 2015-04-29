@@ -50,13 +50,13 @@ CliqueDUTSet objects to control.
 
 
 # Dummy result error reason to be used when exception is encountered in a role.
-ROLE_SETUP_EXCEPTION = "Role Setup Exception!"
-ROLE_EXECUTE_EXCEPTION = "Role Execute Exception!"
-ROLE_CLEANUP_EXCEPTION = "Role Teardown Exception!"
+ROLE_SETUP_EXCEPTION = "Role Setup Exception! "
+ROLE_EXECUTE_EXCEPTION = "Role Execute Exception! "
+ROLE_CLEANUP_EXCEPTION = "Role Teardown Exception! "
 
 # Dummy result error reason to be used when exception is encountered in a role.
-POOL_SETUP_EXCEPTION = "Pool Setup Exception!"
-POOL_CLEANUP_EXCEPTION = "Pool Teardown Exception!"
+POOL_SETUP_EXCEPTION = "Pool Setup Exception! "
+POOL_CLEANUP_EXCEPTION = "Pool Teardown Exception! "
 
 # Result to returned after execution a sequence of steps.
 ControlResult = collections.namedtuple(
@@ -398,7 +398,18 @@ class CliqueDUTBatch(CliqueControl):
         error_results = []
         while not error_results_queue.empty():
             result = error_results_queue.get()
-            error_results.append(result)
+            # error_results returned at the DUT set level will be a list of
+            # ControlResult objects from each of the DUTs in the set.
+            # error_results returned at the DUT pool level will be a list of
+            # lists from each DUT set. Let's flatten out the list in that case
+            # since there could be ControlResult objects that are generated at
+            # the pool or set level which will make the final error result list
+            # assymetric where some elements are lists of ControlResult objects
+            # and some are just ControlResult objects.
+            if isinstance(result, list):
+                error_results.extend(result)
+            else:
+                error_results.append(result)
         return error_results
 
     def setup(self, run_num):
