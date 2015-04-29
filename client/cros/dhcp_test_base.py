@@ -334,7 +334,7 @@ class DhcpTestBase(test.test):
 
         expected_host_name = dhcp_options.get(dhcp_packet.OPTION_HOST_NAME)
         configured_host_name = dhcp_config.get(DHCPCD_KEY_ACCEPTED_HOSTNAME)
-        if expected_host_name != configured_host_name:
+        if expected_host_name and expected_host_name != configured_host_name:
             raise error.TestFail('Expected to be configured with host '
                                  'name %s, but got %s instead.' %
                                  (expected_host_name, configured_host_name))
