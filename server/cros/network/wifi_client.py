@@ -236,6 +236,27 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._interface.signal_level
 
 
+    @staticmethod
+    def assert_bsses_include_ssids(found_bsses, expected_ssids):
+        """Verifies that |found_bsses| includes |expected_ssids|.
+
+        @param found_bsses list of IwBss objects.
+        @param expected_ssids list of string SSIDs.
+        @raise error.TestFail if any element of |expected_ssids| is not found.
+
+        """
+        for ssid in expected_ssids:
+            if not ssid:
+                continue
+
+            for bss in found_bsses:
+                if bss.ssid == ssid:
+                    break
+            else:
+                raise error.TestFail('SSID %s is not in scan results: %r' %
+                                     (ssid, found_bsses))
+
+
     def wifi_noise_level(self, frequency_mhz):
         """Returns the noise level of this DUT's WiFi interface.
 
@@ -464,33 +485,31 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                  (scan_result.time))
 
         # Verify all ssids are discovered
-        for ssid in ssids:
-            if not ssid:
-                continue
-
-            for bss in scan_result.bss_list:
-                if bss.ssid == ssid:
-                    break
-            else:
-                raise error.TestFail('SSID %s is not in scan results: %r' %
-                                     (ssid, scan_result.bss_list))
+        self.assert_bsses_include_ssids(scan_result.bss_list, ssids)
 
         logging.info('Wifi scan completed in %.2f seconds', scan_result.time)
         return scan_result.time
 
 
-    def scan(self, frequencies, ssids, timeout_seconds=10):
-        """Request a scan and check that certain SSIDs appear in the results.
+    def scan(self, frequencies, ssids, timeout_seconds=10, require_match=True):
+        """Request a scan and (optionally) check that requested SSIDs appear in
+        the results.
 
         This method will retry for a default of |timeout_seconds| until it is
         able to successfully kick off a scan.  Sometimes, the device on the DUT
         claims to be busy and rejects our requests.
+
+        If |ssids| is non-empty, we will speficially probe for those SSIDs.
+
+        If |require_match| is True, we will verify that every element
+        of |ssids| was found in scan results.
 
         @param frequencies list of int WiFi frequencies to scan for.
         @param ssids list of string ssids to probe request for.
         @param timeout_seconds: float number of seconds to retry scanning
                 if the interface is busy.  This does not retry if certain
                 SSIDs are missing from the results.
+        @param require_match: bool True if we must find |ssids|.
 
         """
         start_time = time.time()
@@ -504,17 +523,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         else:
             raise error.TestFail('Unable to trigger scan on client.')
 
-        for ssid in ssids:
-            if not ssid:
-                continue
-
-            for bss in bss_list:
-                if bss.ssid == ssid:
-                    break
-
-            else:
-                raise error.TestFail('SSID %s is not in scan results: %r' %
-                                     (ssid, bss_list))
+        if require_match:
+            self.assert_bsses_include_ssids(bss_list, ssids)
 
 
     def wait_for_bsses(self, ssid, num_bss_expected, timeout_seconds=15):
