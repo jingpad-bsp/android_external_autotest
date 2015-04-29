@@ -4,7 +4,7 @@
 
 NAME = "platform_KernelErrorPaths.SYSRQ_X"
 AUTHOR = "Chrome OS Team"
-SUITE = "kernel_per-build_regression"
+SUITE = "kernel_per-build_regression, partners"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

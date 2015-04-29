@@ -9,7 +9,7 @@ CRITERIA = '''
 Test will fail if 1. cras is not running 2. cras crashes 3. active stream count
 does not match.
 '''
-SUITE = 'bvt-perbuild'
+SUITE = 'bvt-perbuild, partners'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'audio'
