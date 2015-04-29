@@ -11,7 +11,7 @@ from autotest_lib.server import test
 from autotest_lib.server.cros.clique_lib import clique_dut_control
 
 
-class network_WiFi_CliqueConnectDisconnect(test.test):
+class network_WiFi_CliqueLongConnect(test.test):
     """ Dynamic Clique test to connect and disconnect to an AP. """
 
     version = 1
@@ -39,15 +39,13 @@ class network_WiFi_CliqueConnectDisconnect(test.test):
         # We need 2 AP's in the pool for this test.
         if len(assoc_params_list) != 2:
             raise error.TestFail("Incorrect AP pool configuration.")
-        # No connection workers expected for this test.
-        if conn_workers:
+        # We need 2 connection workers in the pool for this test.
+        if len(conn_workers) != 2:
             raise error.TestFail("Incorrect connection worker configuration.")
-        else:
-            conn_workers = [None, None]
 
-        # Both DUT sets are performing connect/disconnect.
-        dut_role_classes = [clique_dut_control.DUTRoleConnectDisconnect,
-                            clique_dut_control.DUTRoleConnectDisconnect]
+        # Both DUT sets are performing long connects.
+        dut_role_classes = [clique_dut_control.DUTRoleConnectDuration,
+                            clique_dut_control.DUTRoleConnectDuration]
 
         test_params = { 'capturer': capturer,
                         'capturer_frequency': capturer_frequency,

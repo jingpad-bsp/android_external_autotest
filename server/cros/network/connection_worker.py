@@ -25,6 +25,23 @@ class ConnectionWorker(object):
         raise NotImplementedError('Missing subclass implementation')
 
 
+    @classmethod
+    def create_from_parent(cls, parent_obj, **init_args):
+        """Creates a derived ConnectionWorker object from the provided parent
+        object.
+
+        @param cls: derived class object which we're trying to create.
+        @param obj: existing parent class object.
+        @param init_args: Args to be passed to the derived class constructor.
+
+        @returns Instance of cls with the required fields copied from parent.
+        """
+        obj = cls(**init_args)
+        obj.work_client = parent_obj.work_client
+        obj.host = parent_obj.host
+        return obj
+
+
     def prepare_work_client(self, work_client_machine):
         """Prepare the SSHHost object into WiFiClient object
 

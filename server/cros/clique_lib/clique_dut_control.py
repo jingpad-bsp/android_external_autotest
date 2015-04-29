@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.server.cros.network import connection_worker
 
 """DUT Control module is used to control all the DUT's in a Clique set.
 We need to execute a sequence of steps on each DUT in the pool parallely and
@@ -72,13 +73,16 @@ class CliqueControl(object):
     test. Not to be directly instantiated.
     """
 
-    def __init__(self, dut_objs, assoc_params=None, test_params=None, uid=""):
+    def __init__(self, dut_objs, assoc_params=None, conn_worker=None,
+                 test_params=None, uid=""):
         """Initialize.
 
         @param dut_objs: A list of objects that is being controlled by this
                          control object.
         @param assoc_params: Association paramters to be used for this control
                              object.
+        @param conn_worker: ConnectionWorkerAbstract object, to run extra
+                            work after successful connection.
         @param test_params: A dictionary of params to be used for executing the
                             test.
         @param uid: UID of this instance of the object. Host name for DUTRole
@@ -87,6 +91,7 @@ class CliqueControl(object):
         self._dut_objs = dut_objs
         self._test_params = test_params
         self._assoc_params = assoc_params
+        self._conn_worker = conn_worker
         self._uid = uid
 
     def find_param(self, param_key):
@@ -123,6 +128,12 @@ class CliqueControl(object):
     def assoc_params(self):
         """Returns the association params corresponding to the object."""
         return self._assoc_params
+
+    @property
+    def conn_worker(self):
+        """Returns the connection worker corresponding to the object."""
+        return self._conn_worker
+
 
     def setup(self, run_num):
         """Setup the DUT/DUT-set in the correct state before the sequence of
@@ -167,25 +178,21 @@ class CliqueDUTRole(CliqueControl):
     DUT in the Clique Test. Not to be directly instantiated.
     """
 
-    def __init__(self, dut, assoc_params=None, test_params=None):
+    def __init__(self, dut, assoc_params=None, conn_worker=None,
+                 test_params=None):
         """Initialize.
 
         @param dut: A DUTObject representing a DUT in the set.
         @param assoc_params: Association paramters to be used for this role.
+        @param conn_worker: ConnectionWorkerAbstract object, to run extra
+                            work after successful connection.
         @param test_params: A dictionary of params to be used for executing the
                             test.
         """
         super(CliqueDUTRole, self).__init__(
                 dut_objs=[dut], assoc_params=assoc_params,
-                test_params=test_params, uid=dut.host.hostname)
-
-
-# todo(rpius): Move these role implementations to a separate file since we'll
-# end up having a lot of roles defined.
-class DUTRoleConnectDisconnect(CliqueDUTRole):
-    """DUTRoleConnectDisconnect is used to make a DUT connect and disconnect
-    to a given AP repeatedly.
-    """
+                conn_worker=conn_worker, test_params=test_params,
+                uid=dut.host.hostname)
 
     def setup(self, run_num):
         try:
@@ -224,34 +231,95 @@ class DUTRoleConnectDisconnect(CliqueDUTRole):
                                    end_time="")
             return result
 
+    def _connect_wifi(self, run_num):
+        """Helper function to make a connection to the associated AP."""
+        assoc_params = self.assoc_params
+        logging.info('Connection attempt %d', run_num)
+        self.dut_obj.host.syslog('Connection attempt %d' % run_num)
+        start_time = self.dut_obj.host.run("date '+%FT%T.%N%:z'").stdout
+        start_time = start_time.strip()
+        assoc_result = xmlrpc_datatypes.deserialize(
+            self.dut_obj.wifi_client.shill.connect_wifi(assoc_params))
+        end_time = self.dut_obj.host.run("date '+%FT%T.%N%:z'").stdout
+        end_time = end_time.strip()
+        success = assoc_result.success
+        if not success:
+            logging.error('Connection attempt %d failed; reason: %s',
+                          run_num, assoc_result.failure_reason)
+            result = ControlResult(uid=self.uid,
+                                   run_num=run_num,
+                                   success=success,
+                                   error_reason=assoc_result.failure_reason,
+                                   start_time=start_time,
+                                   end_time=end_time)
+            return result
+        else:
+            logging.info('Connection attempt %d passed', run_num)
+            return None
+
+    def _disconnect_wifi(self):
+        """Helper function to disconnect from the associated AP."""
+        assoc_params = self.assoc_params
+        self.dut_obj.wifi_client.shill.disconnect(assoc_params.ssid)
+
+
+# todo(rpius): Move these role implementations to a separate file since we'll
+# end up having a lot of roles defined.
+class DUTRoleConnectDisconnect(CliqueDUTRole):
+    """DUTRoleConnectDisconnect is used to make a DUT connect and disconnect
+    to a given AP repeatedly.
+    """
+
     def execute(self, run_num):
         try:
-            assoc_params = self.assoc_params
-            success = False
-            logging.info('Connection attempt %d', run_num)
-            self.dut_obj.host.syslog('Connection attempt %d' % run_num)
-            start_time = self.dut_obj.host.run("date '+%FT%T.%N%:z'").stdout
-            start_time = start_time.strip()
-            assoc_result = xmlrpc_datatypes.deserialize(
-                self.dut_obj.wifi_client.shill.connect_wifi(assoc_params))
-            end_time = self.dut_obj.host.run("date '+%FT%T.%N%:z'").stdout
-            end_time = end_time.strip()
-            success = assoc_result.success
-            if not success:
-                logging.error('Connection attempt %d failed; reason: %s',
-                              run_num, assoc_result.failure_reason)
-                result = ControlResult(uid=self.uid,
-                                       run_num=run_num,
-                                       success=success,
-                                       error_reason=assoc_result.failure_reason,
-                                       start_time=start_time,
-                                       end_time=end_time)
+            result = self._connect_wifi(run_num)
+            if result:
                 return result
-            else:
-                logging.info('Connection attempt %d passed', run_num)
-                # Now disconnect from the AP.
-                self.dut_obj.wifi_client.shill.disconnect(assoc_params.ssid)
-                return None
+
+            # Now disconnect from the AP.
+            self._disconnect_wifi()
+
+            return None
+        except Exception as e:
+            result = ControlResult(uid=self.uid,
+                                   run_num=run_num,
+                                   success=False,
+                                   error_reason=ROLE_EXECUTE_EXCEPTION + str(e),
+                                   start_time="",
+                                   end_time="")
+            return result
+
+
+class DUTRoleConnectDuration(CliqueDUTRole):
+    """DUTRoleConnectDuration is used to make a DUT connect to a given AP and
+    then check the liveness of the connection from another worker device.
+    """
+
+    def setup(self, run_num):
+        result = super(DUTRoleConnectDuration, self).setup(run_num)
+        if result:
+            return result
+        # Let's check for the worker client now.
+        if not self.conn_worker:
+            return ControlResult(uid=self.uid,
+                                 run_num=run_num,
+                                 success=False,
+                                 error_reason="No connection worker found",
+                                 start_time="",
+                                 end_time="")
+
+    def execute(self, run_num):
+        try:
+            result = self._connect_wifi(run_num)
+            if result:
+                return result
+
+            # Let's start the ping from the worker client.
+            worker = connection_worker.ConnectionDuration.create_from_parent(
+                    self.conn_worker)
+            worker.run(self.dut_obj.wifi_client)
+
+            return None
         except Exception as e:
             result = ControlResult(uid=self.uid,
                                    run_num=run_num,
@@ -441,7 +509,7 @@ class CliqueDUTPool(CliqueDUTBatch):
 
 
 def execute_dut_pool(dut_pool, dut_role_classes, assoc_params_list,
-                     test_params, num_runs=1):
+                     conn_workers, test_params, num_runs=1):
 
     """Controls the DUT's in a given test scenario. The DUT's are assigned a
     role according to the dut_role_classes provided for each DUT-set and all of
@@ -455,20 +523,40 @@ def execute_dut_pool(dut_pool, dut_role_classes, assoc_params_list,
     @param assoc_params_list: List of association parameters corrresponding
                               to the AP to test against for each set in the
                               DUT.
+    @param conn_workers: List of ConnectionWorkerAbstract objects, to
+                         run extra work after successful connection.
     @param test_params: List of params to be used for the test.
     @num_runs: Number of iterations of the test to be run.
     """
-    if len(dut_pool) != len(dut_role_classes):
-        error.TestError("Number of sets in the DUT pool does not match the"
-                        "number of roles assigned. Num sets: %d, Num roles: %d"%
-                        (len(dut_pool), len(dut_role_classes)))
+    # Every DUT set in the pool needs to have a corresponding DUT role,
+    # association parameters and connection worker assigned from the test.
+    # It is the responsibilty of the test scenario to make sure that there is a
+    # one to one mapping of all these elements since DUT control is going to
+    # be generic.
+    # This might mean that the test needs to duplicate the association
+    # parameters in the list if there is only 1 AP and 2 DUT sets.
+    # Or if there is no connection worker required, then the test should create
+    # a list of 'None' objects with length of 2.
+    # DUT control does not care if the same AP is used for 2 DUT sets or if the
+    # same connection worker is shared across 2 DUT sets as long as the
+    # length of the lists are equal.
+
+    if ((len(dut_pool) != len(dut_role_classes)) or
+        (len(dut_pool) != len(assoc_params_list)) or
+        (len(dut_pool) != len(conn_workers))):
+        raise error.TestError("Incorrect test configuration. Num DUT sets: %d, "
+                              "Num DUT roles: %d, Num association params: %d, "
+                              "Num connection workers: %d" %
+                              (len(dut_pool), len(dut_role_classes),
+                               len(assoc_params_list), len(conn_workers)))
 
     dut_set_control_objs = []
-    for dut_set, dut_role_class, assoc_params in
-        zip(dut_pool, dut_role_classes, assoc_params_list):
+    for dut_set, dut_role_class, assoc_params, conn_worker in \
+        zip(dut_pool, dut_role_classes, assoc_params_list, conn_workers):
         dut_control_objs = []
         for dut in dut_set:
-            dut_control_obj = dut_role_class(dut, assoc_params, test_params)
+            dut_control_obj = dut_role_class(
+                    dut, assoc_params, conn_worker, test_params)
             dut_control_objs.append(dut_control_obj)
         dut_set_control_obj = CliqueDUTSet(dut_control_objs, test_params)
         dut_set_control_objs.append(dut_set_control_obj)
@@ -478,17 +566,17 @@ def execute_dut_pool(dut_pool, dut_role_classes, assoc_params_list,
         # This setup, execute, cleanup calls on pool object, results in parallel
         # invocation of call on all the DUT-sets which in turn results in
         # parallel invocation of call on all the DUTs.
-        error = dut_pool_control_obj.setup(run_num)
-        if error:
-            return error
+        error_results = dut_pool_control_obj.setup(run_num)
+        if error_results:
+            return error_results
 
-        error = dut_pool_control_obj.execute(run_num)
-        if error:
+        error_results = dut_pool_control_obj.execute(run_num)
+        if error_results:
             # Try to cleanup before we leave.
             dut_pool_control_obj.cleanup(run_num)
-            return error
+            return error_results
 
-        error = dut_pool_control_obj.cleanup(run_num)
-        if error:
-            return error
+        error_results = dut_pool_control_obj.cleanup(run_num)
+        if error_results:
+            return error_results
     return None

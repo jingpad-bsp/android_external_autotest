@@ -17,6 +17,7 @@ from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.network import chaos_clique_utils as utils
+from autotest_lib.server.cros.network import connection_worker
 from autotest_lib.server.cros.clique_lib import clique_dut_locker
 from autotest_lib.server.cros.clique_lib import clique_dut_log_collector
 from autotest_lib.server.cros.clique_lib import clique_dut_updater
@@ -106,7 +107,7 @@ class CliqueRunner(object):
         return healthy
 
     @staticmethod
-    def _sanitize_all_clients(self, dut_objects):
+    def _sanitize_all_clients(dut_objects):
         """Clean up logs and reboot all the DUTs.
 
         @param dut_objects: A list of DUTObjects for all DUTs allocated for the
@@ -136,8 +137,8 @@ class CliqueRunner(object):
             if not firmware_ver:
                 firmware_ver = "Unknown"
             debug_dict = {'host_name': dut.host.hostname,
-                          'kernel_versions': kernel_vers,
-                          'wifi_firmware_versions': firmware_vers}
+                          'kernel_versions': kernel_ver,
+                          'wifi_firmware_versions': firmware_ver}
             debug_string += pprint.pformat(debug_dict)
         for ap in aps:
             debug_string += pprint.pformat({'ap_name': ap.name})
@@ -184,7 +185,7 @@ class CliqueRunner(object):
         ap_locker.unlock_aps()
         dut_locker.unlock_and_close_duts()
 
-    def run(self, job, tries=10, capturer_hostname=None, conn_workers=[],
+    def run(self, job, tries=10, capturer_hostname=None,
             conn_worker_hostnames=[], release_version="",
             disabled_sysinfo=False):
         """Executes Clique test.
@@ -192,8 +193,6 @@ class CliqueRunner(object):
         @param job: an Autotest job object.
         @param tries: an integer, number of iterations to run per AP.
         @param capturer_hostname: a string or None, hostname or IP of capturer.
-        @param conn_workers: List of ConnectionWorkerAbstract objects, to
-                             run extra work after successful connection.
         @param conn_worker_hostnames: a list of string, hostname of
                                       connection workers.
         @param release_version: the DUT cros image version to use for testing.
@@ -214,11 +213,18 @@ class CliqueRunner(object):
                     lock_manager, hostname=capturer_hostname)
             capturer = site_linux_system.LinuxSystem(
                     capture_host, {}, 'packet_capturer')
-            for worker, hostname in zip(conn_workers, conn_worker_hostnames):
-                if worker:
-                    work_client = utils.allocate_packet_capturer(
-                            lock_manager, hostname=hostname)
-                    worker.prepare_work_client(work_client)
+
+            conn_workers = []
+            for hostname in conn_worker_hostnames:
+                conn_worker_host = utils.allocate_packet_capturer(
+                        lock_manager, hostname=hostname)
+                # Let's create generic connection workers and make them connect
+                # to the corresponding AP. The DUT role will recast each of
+                # these connection workers based on the role we want them to
+                # perform.
+                conn_worker = connection_worker.ConnectionWorker()
+                conn_worker.prepare_work_client(conn_worker_host)
+                conn_workers.append(conn_worker)
 
             aps = []
             for ap_spec in self._ap_specs:
@@ -279,9 +285,9 @@ class CliqueRunner(object):
                     assoc_params_list=assoc_params_list,
                     tries=tries,
                     debug_info=debug_string,
+                    conn_workers=conn_workers,
                     # Copy all logs from the system
-                    disabled_sysinfo=disabled_sysinfo,
-                    conn_workers=conn_workers)
+                    disabled_sysinfo=disabled_sysinfo)
 
             # Reclaim all the APs, DUTs and capturers used in the test and
             # collect the required logs.
