@@ -33,7 +33,6 @@ def main(argv):
 
   # When execute is True, run the script to seed attributes in control files.
   if args.execute:
-    logging.info('Starting to seed attributes in all control files...')
     # Get the whitelist path, hardcode the path currently
     path_whitelist = os.path.join(common.autotest_dir,
                                   'site_utils/attribute_whitelist.txt')
@@ -43,9 +42,14 @@ def main(argv):
     fs_getter = Suite.create_fs_getter(common.autotest_dir)
     changelist = AttrSuiteMatch(
         fs_getter.get_control_file_list(), path_whitelist)
+    count = len(changelist)
 
+    logging.info('Starting to seed attributes in %d control files...' % count)
     # Modify attributes based on suite for the control files not match.
     for path in changelist:
+      logging.info('Seeding ATTRIBUTES in %s' % path)
+      count = count - 1
+      logging.info('%d files remaining...' % count)
       SeedAttributes(path)
 
     logging.info('Finished seeding attributes.')
@@ -88,7 +92,7 @@ def AttrSuiteMatch(path_list, path_whitelist):
       if cd_attrs != target_attrs:
           unmatch_pathlist.append(path)
     # Test when suite not exists, whether attributes is empty
-    elif not hasattr(cd, 'suite') and not cd_attrs:
+    elif not hasattr(cd, 'suite') and cd_attrs:
       unmatch_pathlist.append(path)
 
   return unmatch_pathlist
@@ -118,7 +122,8 @@ def SeedAttributes(path_controlfile):
   # Read control file and modify the suite line with attribute added.
   with open(path_controlfile, 'r') as f:
     lines = f.readlines()
-    index = [i for i, val in enumerate(lines) if val.startswith('SUITE =')][0]
+    index = [i for i, val in enumerate(lines) if val.startswith('SUITE =') or
+             val.startswith('SUITE=')][0]
     suite_line = lines[index]
     lines[index] = attr_line + suite_line
 
