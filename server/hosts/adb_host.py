@@ -44,7 +44,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         try:
-            result = host.run('which adb 2> /dev/null', timeout=timeout)
+            result = host.run(
+                    'test -f /mnt/stateful_partition/.android_tester',
+                    timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
         return result.exit_status == 0
