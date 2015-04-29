@@ -123,7 +123,7 @@ def cleanup(container, options):
         # Kill autoserv process
         if pid and utils.pid_is_alive(pid):
             logging.info('Stopping process %s...', pid)
-            utils.nuke_pid(int(pid), (signal.SIGKILL))
+            utils.nuke_pid(int(pid), (signal.SIGKILL,))
 
         # Destroy container
         logging.info('Destroying container %s...', container.name)
@@ -149,6 +149,9 @@ def parse_options():
                         help=('Execute the actions to kill autoserv processes '
                               'and destroy containers. Default is False to do '
                               'dry run'))
+    # TODO(dshi): Consider to adopt the scheduler log model:
+    # 1. Create one log per run.
+    # 2. Create a symlink to the latest log.
     parser.add_argument('-l', '--logfile', type=str,
                         default=None,
                         help='Path to the log file to save logs.')
@@ -167,6 +170,7 @@ def main(options):
                 level=logging.DEBUG if options.verbose else logging.INFO)
 
     bucket = lxc.ContainerBucket()
+    logging.info('')
     logging.info('Cleaning container bucket %s', bucket.container_path)
     success_count = 0
     failure_count = 0
@@ -180,6 +184,7 @@ def main(options):
         key = 'container_cleanup.%s' % socket.gethostname().replace('.', '_')
         autotest_stats.Gauge(key).send('success', success_count)
         autotest_stats.Gauge(key).send('failure', failure_count)
+    logging.info('Cleanup finished.')
 
 
 if __name__ == '__main__':

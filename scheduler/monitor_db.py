@@ -273,7 +273,7 @@ class BaseDispatcher(object):
         self._periodic_cleanup = monitor_db_cleanup.UserCleanup(
                 _db, user_cleanup_time)
         self._24hr_upkeep = monitor_db_cleanup.TwentyFourHourUpkeep(
-                _db)
+                _db, _drone_manager)
         self._host_agents = {}
         self._queue_entry_agents = {}
         self._tick_count = 0

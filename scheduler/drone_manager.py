@@ -304,6 +304,24 @@ class BaseDroneManager(object):
         return self._drones.itervalues()
 
 
+    def cleanup_orphaned_containers(self):
+        """Queue cleanup_orphaned_containers call at each drone.
+        """
+        drones = list(self.get_drones())
+        for drone in drones:
+            logging.info('Queue cleanup_orphaned_containers at %s', drone)
+            drone.queue_call('cleanup_orphaned_containers')
+        with self._timer.get_client('cleanup_orphaned_containers'):
+            # Each task will start a new process of lxc_cleanup in drone and
+            # exit, the wait time is about 2-3 seconds at most. If this call
+            # does not wait, the drone refresh may have a race condition when
+            # it tries to process all queued calls in a different thread. The
+            # race condition will lead to scheduler crash. Therefore, the tasks
+            # queued here will be waited for finishing. Considering it will
+            # only be called once a day, the overhead should be minimum.
+            self._refresh_task_queue.execute(drones, wait=True)
+
+
     def _get_drone_for_process(self, process):
         return self._drones[process.hostname]
 

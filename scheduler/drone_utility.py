@@ -23,6 +23,7 @@ from autotest_lib.scheduler import drone_logging_config
 from autotest_lib.scheduler import email_manager, scheduler_config
 from autotest_lib.server import hosts, subcommand
 
+
 # An environment variable we add to the environment to enable us to
 # distinguish processes we started from those that were started by
 # something else during recovery.  Name credit goes to showard. ;)
@@ -30,6 +31,13 @@ DARK_MARK_ENVIRONMENT_VAR = 'AUTOTEST_SCHEDULER_DARK_MARK'
 
 _TEMPORARY_DIRECTORY = 'drone_tmp'
 _TRANSFER_FAILED_FILE = '.transfer_failed'
+
+# script and log file for cleaning up orphaned lxc containers.
+LXC_CLEANUP_SCRIPT = os.path.join(common.autotest_dir, 'site_utils',
+                                  'lxc_cleanup.py')
+LXC_CLEANUP_LOG_FILE = os.path.join(common.autotest_dir, 'logs',
+                                    'lxc_cleanup.log')
+
 
 _STATS_KEY = 'drone_utility'
 timer = autotest_stats.Timer(_STATS_KEY)
@@ -420,6 +428,22 @@ class BaseDroneUtility(object):
         return os.path.samefile(source_path, destination_path)
 
 
+    def cleanup_orphaned_containers(self):
+        """Run lxc_cleanup script to clean up orphaned container.
+        """
+        # The script needs to run with sudo as the containers are privileged.
+        # TODO(dshi): crbug.com/459344 Call lxc_cleanup.main when test
+        # container can be unprivileged container.
+        command = ['sudo', LXC_CLEANUP_SCRIPT, '-x', '-v', '-l',
+                   LXC_CLEANUP_LOG_FILE]
+        logging.info('Running %s', command)
+        # stdout and stderr needs to be direct to /dev/null, otherwise existing
+        # of drone_utils process will kill lxc_cleanup script.
+        subprocess.Popen(
+                command, shell=False, stdin=None, stdout=open('/dev/null', 'w'),
+                stderr=open('/dev/null', 'a'), preexec_fn=os.setpgrp)
+
+
     def wait_for_all_async_commands(self):
         for subproc in self._subcommands:
             subproc.fork_waitfor()
@@ -543,7 +567,7 @@ def parse_input():
 
     try:
         return pickle.loads(pickled_input)
-    except Exception, exc:
+    except Exception:
         separator = '*' * 50
         raise ValueError('Unpickling input failed\n'
                          'Input: %r\n'

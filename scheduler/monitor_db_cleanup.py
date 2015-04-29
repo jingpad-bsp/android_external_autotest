@@ -6,12 +6,16 @@ Autotest AFE Cleanup used by the scheduler
 import time, logging, random
 
 from autotest_lib.frontend.afe import models
-from autotest_lib.scheduler import email_manager, scheduler_config
+from autotest_lib.scheduler import email_manager
+from autotest_lib.scheduler import scheduler_config
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
-class PeriodicCleanup(object):
 
+class PeriodicCleanup(object):
+    """Base class to schedule periodical cleanup work.
+    """
 
     def __init__(self, db, clean_interval_minutes, run_at_initialize=False):
         self._db = db
@@ -21,11 +25,15 @@ class PeriodicCleanup(object):
 
 
     def initialize(self):
+        """Method called by scheduler at the startup.
+        """
         if self._run_at_initialize:
             self._cleanup()
 
 
     def run_cleanup_maybe(self):
+        """Test if cleanup method should be called.
+        """
         should_cleanup = (self._last_clean_time +
                           self.clean_interval_minutes * 60
                           < time.time())
@@ -222,7 +230,16 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     timer = autotest_stats.Timer('monitor_db_cleanup.twentyfourhour_cleanup')
 
 
-    def __init__(self, db, run_at_initialize=True):
+    def __init__(self, db, drone_manager, run_at_initialize=True):
+        """Initialize TwentyFourHourUpkeep.
+
+        @param db: Database connection object.
+        @param drone_manager: DroneManager to access drones.
+        @param run_at_initialize: True to run cleanup when scheduler starts.
+                                  Default is set to True.
+
+        """
+        self.drone_manager = drone_manager
         clean_interval_minutes = 24 * 60 # 24 hours
         super(TwentyFourHourUpkeep, self).__init__(
             db, clean_interval_minutes, run_at_initialize=run_at_initialize)
@@ -232,6 +249,7 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     def _cleanup(self):
         logging.info('Running 24 hour clean up')
         self._check_for_uncleanable_db_inconsistencies()
+        self._cleanup_orphaned_containers()
 
 
     @timer.decorate
@@ -326,3 +344,21 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         if len(message) > 5000:
             message = message[:5000] + '\n(truncated)\n'
         email_manager.manager.enqueue_notify_email(subject, message)
+
+
+    @timer.decorate
+    def _cleanup_orphaned_containers(self):
+        """Cleanup orphaned containers in each drone.
+
+        The function queues a lxc_cleanup call in each drone without waiting for
+        the script to finish, as the cleanup procedure could take minutes and the
+        script output is logged.
+
+        """
+        ssp_enabled = global_config.global_config.get_config_value(
+                'AUTOSERV', 'enable_ssp_container')
+        if not ssp_enabled:
+            logging.info('Server-side packaging is not enabled, no need to clean'
+                         ' up orphaned containers.')
+            return
+        self.drone_manager.cleanup_orphaned_containers()
