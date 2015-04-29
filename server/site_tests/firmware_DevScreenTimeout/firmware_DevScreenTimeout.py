@@ -38,7 +38,7 @@ class firmware_DevScreenTimeout(FirmwareTest):
     def ctrl_d_repeatedly(self):
         """Press Ctrl-D repeatedly."""
         for _ in range(self.CTRL_D_REPEAT_COUNT):
-            self.press_ctrl_d()
+            self.servo.ctrl_d()
             time.sleep(self.CTRL_D_REPEAT_DELAY)
 
     def record_fw_boot_time(self, tag):

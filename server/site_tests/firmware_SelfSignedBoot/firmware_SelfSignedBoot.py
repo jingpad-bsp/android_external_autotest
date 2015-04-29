@@ -62,7 +62,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         # If the above Ctrl-U doesn't work, the firmware beeps twice.
         # Should wait the beep done before pressing Ctrl-D.
         time.sleep(self.faft_config.beep)
-        self.press_ctrl_d()
+        self.servo.ctrl_d()
 
     def resignimage_ssdkeys(self):
         """Re-signing the USB image using the SSD keys."""

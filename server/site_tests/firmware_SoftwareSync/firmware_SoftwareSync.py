@@ -47,7 +47,7 @@ class firmware_SoftwareSync(FirmwareTest):
         if self.dev_mode:
             time.sleep(self.faft_config.software_sync_update +
                        self.faft_config.dev_screen)
-            self.press_ctrl_d()
+            self.servo.ctrl_d()
         else:
             time.sleep(self.faft_config.software_sync_update)
 

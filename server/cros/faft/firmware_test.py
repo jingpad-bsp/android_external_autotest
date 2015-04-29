@@ -687,54 +687,20 @@ class FirmwareTest(FAFTBase):
                                    self._old_ec_wp))
             self.wait_dev_screen_and_ctrl_d()
 
-    def press_ctrl_d(self, press_secs=''):
-        """Send Ctrl-D key to DUT.
-
-        @param press_secs : Str. Time to press key.
-        """
-        self.servo.ctrl_d(press_secs)
-
-    def press_ctrl_u(self):
-        """Send Ctrl-U key to DUT.
-
-        @raise TestError: if a non-Chrome EC device or no Ctrl-U command given
-                          on a no-build-in-keyboard device.
-        """
-        if not self.faft_config.has_keyboard:
-            self.servo.ctrl_u()
-        elif self.check_ec_capability(['keyboard'], suppress_warning=True):
-            self.ec.key_down('<ctrl_l>')
-            self.ec.key_down('u')
-            self.ec.key_up('u')
-            self.ec.key_up('<ctrl_l>')
-        elif self.faft_config.has_keyboard:
-            raise error.TestError(
-                    "Can't send Ctrl-U to DUT without using Chrome EC.")
-        else:
-            raise error.TestError(
-                    "Should specify the ctrl_u_cmd argument.")
-
-    def press_enter(self, press_secs=''):
-        """Send Enter key to DUT.
-
-        @param press_secs: Seconds of holding the key.
-        """
-        self.servo.enter_key(press_secs)
-
     def wait_dev_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.faft_config.dev_screen)
-        self.press_ctrl_d()
+        self.servo.ctrl_d()
 
     def wait_fw_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
         time.sleep(self.faft_config.firmware_screen)
-        self.press_ctrl_d()
+        self.servo.ctrl_d()
 
     def wait_fw_screen_and_ctrl_u(self):
         """Wait for firmware warning screen and press Ctrl-U."""
         time.sleep(self.faft_config.firmware_screen)
-        self.press_ctrl_u()
+        self.servo.ctrl_u()
 
     def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
         """Wait for firmware warning screen and trigger recovery boot.
@@ -746,13 +712,13 @@ class FirmwareTest(FAFTBase):
 
         # Pressing Enter for too long triggers a second key press.
         # Let's press it without delay
-        self.press_enter(press_secs=0)
+        self.servo.enter_key(press_secs=0)
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
         if need_dev_transition:
             time.sleep(self.faft_config.legacy_text_screen)
-            self.press_ctrl_d()
+            self.servo.ctrl_d()
 
     def wait_fw_screen_and_unplug_usb(self):
         """Wait for firmware warning screen and then unplug the servo USB."""
@@ -977,7 +943,7 @@ class FirmwareTest(FAFTBase):
         """
         time.sleep(self.faft_config.firmware_screen)
         if dev:
-            self.press_ctrl_d()
+            self.servo.ctrl_d()
             time.sleep(self.faft_config.confirm_screen)
             if self.faft_config.rec_button_dev_switch:
                 logging.info('RECOVERY button pressed to switch to dev mode')
@@ -986,11 +952,11 @@ class FirmwareTest(FAFTBase):
                 self.servo.set('rec_mode', 'off')
             else:
                 logging.info('ENTER pressed to switch to dev mode')
-                self.press_enter()
+                self.servo.enter_key()
         else:
-            self.press_enter()
+            self.servo.enter_key()
             time.sleep(self.faft_config.confirm_screen)
-            self.press_enter()
+            self.servo.enter_key()
 
     def enable_keyboard_dev_mode(self):
         """Enable keyboard controlled developer mode"""

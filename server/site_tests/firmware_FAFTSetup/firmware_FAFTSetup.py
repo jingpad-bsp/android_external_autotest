@@ -146,8 +146,8 @@ class firmware_FAFTSetup(FirmwareTest):
         logging.debug("keyboard_checker")
 
         def keypress():
-            self.press_ctrl_d()
-            self.press_enter()
+            self.servo.ctrl_d()
+            self.servo.enter()
 
         keys = self.faft_config.key_checker
 
