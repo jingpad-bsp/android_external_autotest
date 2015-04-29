@@ -20,12 +20,14 @@ class _FakeHostHistory(object):
         self._status = status
 
 
-    def get_host_board(self):
+    @property
+    def host_board(self):
         """Return the recorded board."""
         return self._board
 
 
-    def get_host_pool(self):
+    @property
+    def host_pool(self):
         """Return the recorded host."""
         return self._pool
 

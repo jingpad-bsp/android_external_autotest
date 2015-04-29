@@ -372,13 +372,21 @@ class HostJobHistory(object):
         return label[len(prefix) : ]
 
 
-    def get_host_board(self):
+    @property
+    def host(self):
+        """Return the AFE host object for this history."""
+        return self._host
+
+
+    @property
+    def host_board(self):
         """Return the board name for this history's DUT."""
         prefix = constants.Labels.BOARD_PREFIX
         return self._extract_prefixed_label(prefix)
 
 
-    def get_host_pool(self):
+    @property
+    def host_pool(self):
         """Return the pool name for this history's DUT."""
         prefix = constants.Labels.POOL_PREFIX
         return self._extract_prefixed_label(prefix)

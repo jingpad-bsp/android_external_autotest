@@ -190,7 +190,7 @@ class _BoardCounts(object):
                             remembered.
 
         """
-        pool = host_history.get_host_pool()
+        pool = host_history.host_pool
         self._pools[pool].record_host(host_history)
 
 
@@ -292,12 +292,12 @@ class _LabInventory(dict):
 
 
     def __init__(self, histories):
-        boards = set([h.get_host_board() for h in histories])
+        boards = set([h.host_board for h in histories])
         initval = { board: _BoardCounts() for board in boards }
         super(_LabInventory, self).__init__(initval)
         self._dut_count = len(histories)
         for h in histories:
-            self[h.get_host_board()].record_host(h)
+            self[h.host_board].record_host(h)
 
 
     def get_num_duts(self):
