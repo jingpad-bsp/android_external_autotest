@@ -46,30 +46,6 @@ class privetd_PrivetInfo(test.test):
         privetd_helper.PrivetdConfig.naive_restart(host=host)
 
 
-    def validate_api(self, apis):
-        """Validates the 'api' section.
-
-        @param apis: an array of API urls from JSON.
-
-        """
-        expected = ['/privet/info',
-                    '/privet/v3/auth',
-                    '/privet/v3/commandDefs',
-                    '/privet/v3/commands/cancel',
-                    '/privet/v3/commands/execute',
-                    '/privet/v3/commands/execute',
-                    '/privet/v3/commands/list',
-                    '/privet/v3/commands/status',
-                    '/privet/v3/pairing/cancel',
-                    '/privet/v3/pairing/confirm',
-                    '/privet/v3/pairing/start',
-                    '/privet/v3/setup/start',
-                    '/privet/v3/setup/status']
-        api_diff = set(expected) - set(apis)
-        if api_diff:
-           raise error.TestFail('Missing API items: %s' % api_diff)
-
-
     def run_once(self, host):
         helper = privetd_helper.PrivetdHelper(host=host)
         helper.ping_server()  # Make sure the server is up and running.
@@ -78,7 +54,6 @@ class privetd_PrivetInfo(test.test):
         # Do some sanity checks on the returned JSON object.
         if info['version'] != '3.0':
             raise error.TestFail('Expected privet version 3.0')
-        self.validate_api(info['api'])
 
         _assert_equal({'crypto': ['p224_spake2'],
                        'mode': ['anonymous', 'pairing'],
