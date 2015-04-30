@@ -9,7 +9,7 @@ CRITERIA = """
 The test will fail if startup times or shut down times are exceeded. These
 values are set in the suite control file.
 """
-SUITE = "performance_optional"
+SUITE = "crosbolt_perf_nightly"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "platform"

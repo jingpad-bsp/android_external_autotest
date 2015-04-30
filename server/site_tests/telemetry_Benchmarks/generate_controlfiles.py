@@ -88,7 +88,7 @@ for test in PERF_TESTS + PERF_DAILY_RUN_TESTS:
     filename = 'control.%s' % test
     with open(filename, 'w+') as f:
         if test in PERF_TESTS:
-            content = CONTROLFILE_TEMPLATE.format('performance', test)
+            content = CONTROLFILE_TEMPLATE.format('crosbolt_perf_perbuild', test)
         else:
-            content = CONTROLFILE_TEMPLATE.format('performance_optional', test)
+            content = CONTROLFILE_TEMPLATE.format('crosbolt_perf_nightly', test)
         f.write(content)
