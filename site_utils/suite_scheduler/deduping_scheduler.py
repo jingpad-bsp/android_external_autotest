@@ -72,27 +72,6 @@ class DedupingScheduler(object):
             raise DedupException(e)
 
 
-    # TODO(fdeng): Add status='Available' back into the bug submittal;
-    # right now it will be marked as Unconfirmed.
-    def _ReportBug(self, title, description):
-        """File a bug using bug reporter.
-
-        @param title: A string, representing the bug title.
-        @param description: A string, representing the bug description.
-        @return: The id of the issue that was created,
-                 or None if bug is not filed.
-        """
-        if not self._file_bug:
-            return None
-        lab_sheriff = site_utils.get_sheriffs(lab_only=True)
-        logging.info('Filing a bug: %s', title)
-        return reporting.submit_generic_bug_report(
-            title=title,
-            summary=description,
-            cc=lab_sheriff,
-            labels=['Hardware-lab'])
-
-
     def _Schedule(self, suite, board, build, pool, num, priority, timeout,
                   file_bugs=False):
         """Schedule |suite|, if it hasn't already been run.
@@ -127,14 +106,16 @@ class DedupingScheduler(object):
                     "Can't schedule %s for %s." % (suite, build))
         except (error.ControlFileNotFound, error.ControlFileEmpty,
                 error.ControlFileMalformed, error.NoControlFileList) as e:
-            title = ('Exception "%s" occurs when scheduling %s on '
-                     '%s against %s (pool: %s)' %
-                     (e.__class__.__name__, suite, build, board, pool))
-            if self._ReportBug(title, str(e)) is None:
-                # Raise the exception if not filing or failed to file a bug.
-                raise ScheduleException(e)
-            else:
-                return False
+            if self._file_bug:
+                b = reporting.SuiteSchedulerBug(suite, build, board, e)
+                # If a bug has filed with the same <suite, build, error type>
+                # will not file again, but simply gets the existing bug id.
+                bid, _ = reporting.Reporter().report(
+                        b, ignore_duplicate=True)
+                if bid is not None:
+                    return False
+            # Raise the exception if not filing a bug or failed to file bug.
+            raise ScheduleException(e)
         except Exception as e:
             raise ScheduleException(e)
 

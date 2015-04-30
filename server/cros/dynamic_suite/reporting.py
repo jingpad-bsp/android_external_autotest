@@ -14,6 +14,7 @@ from xml.parsers import expat
 
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -307,6 +308,70 @@ class PoolHealthBug(Bug):
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
         return 'PoolHealthBug(%s, %s)' % (self._pool, self._board)
+
+class SuiteSchedulerBug(Bug):
+    """Bug filed for suite scheduler."""
+
+    _SUITE_SCHEDULER_LABELS = ['Hardware-Lab', 'Pri-1', 'suite_scheduler']
+
+    def __init__(self, suite, build, board, control_file_exception):
+        self._suite = suite
+        self._build = build
+        self._board = board
+        self._exception = control_file_exception
+        # TODO(fdeng): fix get_sheriffs crbug.com/483254
+        lab_deputies = site_utils.get_sheriffs(lab_only=True)
+        self.owner = lab_deputies[0] if lab_deputies else ''
+        self.labels = self._SUITE_SCHEDULER_LABELS
+        self.cc = lab_deputies[1:] if lab_deputies else []
+
+
+    def title(self):
+        """Return Title of the bug"""
+        if isinstance(self._exception, error.ControlFileNotFound):
+            t = 'Missing control file'
+        else:
+            t = 'Problem with getting control file'
+        return '[suite scheduler] %s for suite: "%s", build: %s' % (
+                t, self._suite, self._build)
+
+
+    def summary(self):
+        """Combines information about this bug into a summary string."""
+        template = ('Suite scheduler could not schedule suite due to '
+                    'a control file problem:\n\n'
+                    'Suite:\t%(suite)s\n'
+                    'Build:\t%(build)s\n'
+                    'Board:\t%(board)s (The problem may happen for other '
+                    'boards as well, only the first board is reported.)\n'
+                    'Diagnose:\n%(diagnose)s\n')
+
+        if isinstance(self._exception, error.ControlFileNotFound):
+            diagnose = (
+                    '\tThe suite\'s control file does not exist in the build.\n'
+                    '\tDo you expect the suite to run for the said build?\n'
+                    '\t- If yes, please add/backport the control file to '
+                    'the build,\n'
+                    '\t- If not, please fix the entry for this suite in '
+                    'suite_scheduler.ini so that it specifies the '
+                    'right builds to run;\n'
+                    '\t  and request a push to prod.')
+        else:
+            diagnose = ('\tNo suggestion. Please ask infra deputy '
+                        'to triage.\n%s\n') % str(self._exception)
+        specifics = {'suite': self._suite,
+                     'build': self._build,
+                     'board': self._board,
+                     'error': type(self._exception),
+                     'diagnose': diagnose,}
+        return template % specifics
+
+
+    def search_marker(self):
+        """Returns an Anchor that we can use to dedupe this bug."""
+        # TODO(fdeng): flaky deduping behavior, see crbug.com/486895
+        return 'SuiteSchedulerBug(%s, %s, %s)' % (
+                self._suite, self._build, type(self._exception))
 
 
 class Reporter(object):
@@ -624,21 +689,50 @@ class Reporter(object):
         return None
 
 
-    def _create_autofiled_count_update(self, issue):
-        """Calculate an 'autofiled-count' label update.
+    def _get_count_labels_and_max(self, issue):
+        """Read the current autofiled count labels and count.
 
-        Automatically filed issues have a label of the form
+         Automatically filed issues have a label of the form
         `autofiled-count-<number>` that indicates about how many
         times the autofiling code has updated the issue.  This
         routine goes through the labels for the given issue to find
-        the existing count label, and calculates a new count label.
+        the existing count label(s).
+
+        Old bugs may not have a count; this routine implicitly
+        assigns those bugs an initial count of one.
+
+        Usually, only one count label should exist. But
+        this method is written to take care of the case
+        where multiple count labels exist. In such case,
+        All the labels and the max count is returned.
+
+        @param issue: Issue whose 'autofiled-count' is to be read.
+
+        @returns: 2-tuple with a list of labels and
+                  the max count.
+        """
+        count_labels = []
+        count_max = 1
+        is_count_label = lambda l: l.startswith(self.AUTOFILED_COUNT)
+        for label in filter(is_count_label, issue.labels):
+            try:
+                count = int(label[len(self.AUTOFILED_COUNT):])
+            except ValueError:
+                continue
+            count_max = max(count, count_max)
+            count_labels.append(label)
+        return count_labels, count_max
+
+
+    def _create_autofiled_count_update(self, issue):
+        """Calculate an 'autofiled-count' label update.
+
+        Remove all the existing autofiled count labels
+        and calculate a new count label.
 
         Updates to issues aren't guaranteed to be atomic, so in
         some cases count labels may (in theory at least) be dropped
         or duplicated.
-
-        Old bugs may not have a count; this routine implicitly
-        assigns those bugs an initial count of one.
 
         The return values are a list of label updates and the
         count value of the new count label.  For the label updates,
@@ -650,22 +744,16 @@ class Reporter(object):
         @return      2-tuple with a list of label updates and the
                      new count value.
         """
-        counts = []
-        count_max = 1
-        is_count_label = lambda l: l.startswith(self.AUTOFILED_COUNT)
-        for label in filter(is_count_label, issue.labels):
-            try:
-                count = int(label[len(self.AUTOFILED_COUNT):])
-            except ValueError:
-                continue
-            count_max = max(count, count_max)
-            counts.append('-%s' % label)
+        count_labels, count_max = self._get_count_labels_and_max(issue)
+        label_updates = []
+        for label in count_labels:
+            label_updates.append('-%s' % label)
         new_count = count_max + 1
-        counts.append('%s%d' % (self.AUTOFILED_COUNT, new_count))
-        return counts, new_count
+        label_updates.append('%s%d' % (self.AUTOFILED_COUNT, new_count))
+        return label_updates, new_count
 
 
-    def report(self, bug, bug_template={}):
+    def report(self, bug, bug_template={}, ignore_duplicate=False):
         """Report an issue to the bug tracker.
 
         If this issue has happened before, post a comment on the
@@ -677,6 +765,9 @@ class Reporter(object):
         @param bug_template A template dictionary specifying the
                             default bug filing options for an issue
                             with this suite.
+        @param ignore_duplicate: If True, when a duplicate is found,
+                            simply ignore the new one rather than
+                            posting an update.
         @return             A 2-tuple of the issue id of the issue
                             that was either created or modified, and
                             a count of the number of times the bug
@@ -700,6 +791,12 @@ class Reporter(object):
             # create a new issue than fail in deduplicating such cases.
             logging.warning('Unable to deduplicate, creating new issue: %s',
                             str(e))
+
+        if issue and ignore_duplicate:
+            logging.debug('Duplicate found for %s, not filing as requested.',
+                          bug.search_marker())
+            _, bug_count = self._get_count_labels_and_max(issue)
+            return issue.id, bug_count
 
         if issue:
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))

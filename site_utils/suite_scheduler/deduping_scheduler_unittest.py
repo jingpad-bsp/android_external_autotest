@@ -230,11 +230,18 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           self._TIMEOUT)
 
 
-    def testScheduleReportsBug(self):
-        """Test that the scheduler file a bug for ControlFileNotFound."""
+    def _SetupScheduleSuiteMocks(self, mock_bug_id):
+        """Setup mocks needed for SuiteSchedulerBug testing.
+
+        @param mock_bug_id: An integer representing a bug id that should be
+                            returned by Reporter._create_bug_report
+                            None if _create_bug_report is supposed to
+                            fail.
+        """
         self.mox.StubOutWithMock(reporting.Reporter, '__init__')
         self.mox.StubOutWithMock(reporting.Reporter, '_create_bug_report')
         self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
+        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
         self.scheduler._file_bug = True
         # Lab is UP!
@@ -244,6 +251,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                           name__endswith='control.'+self._SUITE).AndReturn([])
         message = 'Control file not found.'
         exception = error.ControlFileNotFound(message)
+        site_utils.get_sheriffs(lab_only=True).AndReturn(['deputy1', 'deputy2'])
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
@@ -255,37 +263,32 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndRaise(exception)
-        site_utils.get_sheriffs(
-                lab_only=True).AndReturn(['dummy@chromium.org'])
-        # mox does not raise an AttributeError when a nonexistent attribute
-        # is accessed. Doing this odd mocking out allows us to both have a
-        # real Bug instance (so AttributeError is raised) while also letting
-        # check for the arguments being passed into _create_bug_report work.
-        title = ('Exception "%s" occurs when scheduling %s on '
-                 '%s against %s (pool: %s)' %
-                 (exception.__class__.__name__,
-                  self._SUITE, self._BUILD, self._BOARD, self._POOL))
-        bug = reporting.Bug(title=title,
-                            summary='IGNORED',
-                            cc=['dummy@chromium.org'],
-                            labels=['Hardware-lab'])
-        self.mox.StubOutWithMock(reporting, 'Bug')
-        reporting.Bug(title=title,
-                      summary=mox.IgnoreArg(),
-                      cc=['dummy@chromium.org'],
-                      labels=['Hardware-lab']).AndReturn(bug)
-
         reporting.Reporter.__init__()
         reporting.Reporter._check_tracker().AndReturn(True)
-        reporting.Reporter._create_bug_report(bug, {}, []).AndReturn(1158)
+        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(None)
+        reporting.Reporter._create_bug_report(
+                mox.IgnoreArg(), {}, []).AndReturn(mock_bug_id)
+
+
+    def testScheduleReportsBugSuccess(self):
+        """Test that the scheduler file a bug."""
+        self._SetupScheduleSuiteMocks(1158)
         self.mox.ReplayAll()
-        self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
-                                                     self._BOARD,
-                                                     self._BUILD,
-                                                     self._POOL,
-                                                     self._NUM,
-                                                     self._PRIORITY,
-                                                     self._TIMEOUT))
+        self.assertFalse(self.scheduler.ScheduleSuite(
+                    self._SUITE, self._BOARD, self._BUILD, self._POOL,
+                    self._NUM, self._PRIORITY, self._TIMEOUT))
+        self.mox.VerifyAll()
+
+
+    def testScheduleReportsBugFalse(self):
+        """Test that the scheduler failed to file a bug."""
+        self._SetupScheduleSuiteMocks(None)
+        self.mox.ReplayAll()
+        self.assertRaises(
+                deduping_scheduler.ScheduleException,
+                self.scheduler.ScheduleSuite,
+                self._SUITE, self._BOARD, self._BUILD, self._POOL,
+                self._NUM, self._PRIORITY, self._TIMEOUT)
         self.mox.VerifyAll()
 
 
