@@ -122,6 +122,8 @@ class audio_CrasSanity(test.test):
         tab.Navigate(url)
         tab.ExecuteJavaScript(
                 "document.getElementsByTagName('video')[0].loop=true")
+        tab.ExecuteJavaScript(
+                "document.getElementsByTagName('video')[0].volume=0.1")
         time.sleep(1) # Adding a delay so cras can update the active count.
 
 
