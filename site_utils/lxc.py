@@ -305,6 +305,35 @@ def download_extract(url, target, extract_dir):
     run('tar -xvf %s -C %s' % (target, extract_dir))
 
 
+@timer.decorate
+def install_package(package):
+    """Install the given package inside container.
+
+    @param package: Name of the package to install.
+
+    @raise error.CmdError: If the package doesn't exist or failed to install.
+    """
+    if not is_in_container():
+        raise error.ContainerError('Package installation is only supported '
+                                   'when test is running inside container.')
+    # Always run apt-get update before installing any container. The base
+    # container may have outdated cache.
+    run('apt-get update')
+    run('apt-get install %s -y' % package)
+
+
+@timer.decorate
+def install_python_package(package):
+    """Install the given python package inside container using pip.
+
+    @param package: Name of the python package to install.
+
+    @raise error.CmdError: If the package doesn't exist or failed to install.
+    """
+    install_package('python-pip')
+    run('pip install %s' % package)
+
+
 class Container(object):
     """A wrapper class of an LXC container.
 

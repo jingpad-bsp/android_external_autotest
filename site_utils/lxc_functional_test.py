@@ -178,6 +178,16 @@ def test_autoserv(container):
         raise Exception('Failed to read status.log in container.')
 
 
+def test_package_install(container):
+    """Test installing package in container.
+
+    @param container: The test container.
+    """
+    container.attach_run('sudo apt-get update -y')
+    container.attach_run('sudo apt-get install python-pip -y')
+    container.attach_run('sudo pip install selenium')
+
+
 def parse_options():
     """Parse command line inputs.
     """
@@ -213,6 +223,7 @@ def main(options):
     container = setup_test(bucket, container_test_name, options.skip_cleanup)
     test_share(container)
     test_autoserv(container)
+    test_package_install(container)
     logging.info('All tests passed.')
 
 
