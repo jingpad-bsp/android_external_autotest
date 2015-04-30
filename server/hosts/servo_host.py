@@ -392,13 +392,15 @@ class ServoHost(ssh_host.SSHHost):
     def _update_image(self):
         """Update the image on the servo host, if needed.
 
-        This method does nothing for servo hosts that are not running chromeos.
-        If the host is running chromeos, and a newer image is available on the
-        devserver, trigger a download and apply it in the background. If an
-        update has already been downloaded and applied, reboot the servo host
-        into the new image. If update_engine_client is in the process of
-        applying an update that was triggered on a previous invocation, do
-        nothing.
+        This method recognizes the following cases:
+          * If the Host is not running Chrome OS, do nothing.
+          * If a previously triggered update is now complete, reboot
+            to the new version.
+          * If the host is processing a previously triggered update,
+            do nothing.
+          * If the host is running a version of Chrome OS different
+            from the default for servo Hosts, trigger an update, but
+            don't wait for it to complete.
 
         @raises dev_server.DevServerException: If all the devservers are down.
         @raises site_utils.ParseBuildNameException: If the devserver returns
@@ -407,6 +409,7 @@ class ServoHost(ssh_host.SSHHost):
             checking update engine client status or applying an update.
         @raises AutoservRunError: If the update_engine_client isn't present on
             the host, and the host is a cros_host.
+
         """
         #TODO(beeps): Remove this check once all servo hosts are using chromeos.
         if not self._is_cros_host():
@@ -415,24 +418,17 @@ class ServoHost(ssh_host.SSHHost):
                          'the host.', self.hostname)
             return
 
-        update_branch = global_config.global_config.get_config_value(
-                'CROS', 'servo_builder')
+        board = global_config.global_config.get_config_value(
+                'CROS', 'servo_board')
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        target_version = afe.run('get_stable_version', board=board)
+        build_pattern = global_config.global_config.get_config_value(
+                'CROS', 'stable_build_pattern')
+        target_build = build_pattern % (board, target_version)
+        target_build_number = server_site_utils.ParseBuildName(
+                target_build)[3]
         ds = dev_server.ImageServer.resolve(self.hostname)
-        latest_build = ds.get_latest_build_in_server(target=update_branch)
-
-        # We might have just purged all the beaglebone builds on the devserver
-        # after having triggered a download the last time we verified this
-        # beaglebone, so we still need to reboot if necessary.
-        if latest_build is None:
-            logging.debug('Could not find any builds for %s on %s',
-                          update_branch, ds.url())
-            url = ds.url()
-            latest_build_number = None
-        else:
-            latest_build = '%s/%s' % (update_branch, latest_build)
-            latest_build_number = server_site_utils.ParseBuildName(
-                    latest_build)[3]
-            url = ds.get_update_url(latest_build)
+        url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
         current_build_number = self.get_release_version()
@@ -468,23 +464,29 @@ class ServoHost(ssh_host.SSHHost):
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
                          'engine client status=%s', self.hostname, status)
-        elif (latest_build_number and
-              current_build_number != latest_build_number):
+        elif current_build_number != target_build_number:
             logging.info('Using devserver url: %s to trigger update on '
                          'servo host %s, from %s to %s', url, self.hostname,
-                         current_build_number, latest_build_number)
+                         current_build_number, target_build_number)
             try:
-                updater.trigger_update()
-            except autoupdater.RootFSUpdateError as e:
-                trigger_download_status = 'failed with %s' % str(e)
-                autotest_stats.Counter('servo_host.RootFSUpdateError'
-                                       ).increment()
+                ds.stage_artifacts(target_build,
+                                   artifacts=['full_payload'])
+            except Exception as e:
+                logging.error('Staging artifacts failed: %s', str(e))
+                logging.error('Abandoning update for this cycle.')
             else:
-                trigger_download_status = 'passed'
-            logging.info('Triggered download and update %s for %s, '
-                         'update engine currently in status %s',
-                         trigger_download_status, self.hostname,
-                         updater.check_update_status())
+                try:
+                    updater.trigger_update()
+                except autoupdater.RootFSUpdateError as e:
+                    trigger_download_status = 'failed with %s' % str(e)
+                    autotest_stats.Counter(
+                            'servo_host.RootFSUpdateError').increment()
+                else:
+                    trigger_download_status = 'passed'
+                logging.info('Triggered download and update %s for %s, '
+                             'update engine currently in status %s',
+                             trigger_download_status, self.hostname,
+                             updater.check_update_status())
         else:
             logging.info('servo host %s does not require an update.',
                          self.hostname)

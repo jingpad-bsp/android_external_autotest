@@ -396,25 +396,6 @@ class ImageServer(DevServer):
         return _get_dev_server_list()
 
 
-    @classmethod
-    def devserver_url_for_servo(cls, board):
-        """Returns the devserver url for use with servo recovery.
-
-        @param board: The board (e.g. 'x86-mario').
-        """
-        # Ideally, for load balancing we'd select the server based
-        # on the board.  For now, to simplify manual steps on the
-        # server side, we ignore the board type and hard-code the
-        # server as first in the list.
-        #
-        # TODO(jrbarnette) Once we have automated selection of the
-        # build for recovery, we should revisit this.
-        url_pattern = CONFIG.get_config_value('CROS',
-                                              'servo_url_pattern',
-                                              type=str)
-        return url_pattern % (cls.servers()[0], board)
-
-
     class ArtifactUrls(object):
         """A container for URLs of staged artifacts.
 
@@ -873,30 +854,6 @@ class ImageServer(DevServer):
         call = self.build_call('controlfiles',
                                build=build, control_path=DEPENDENCIES_FILE)
         return urllib2.urlopen(call).read()
-
-
-    @remote_devserver_call()
-    def get_latest_build_in_server(self, target, milestone=''):
-        """Ask the devserver for the latest build for a given target.
-
-        @param target: The build target, typically a combination of the board
-                       and the type of build e.g. x86-mario-release.
-        @param milestone:  For latest build set to '', for builds only in a
-                           specific milestone set to a str of format Rxx
-                           (e.g. R16). Default: ''. Since we are dealing with a
-                           webserver sending an empty string, '', ensures that
-                           the variable in the URL is ignored as if it was set
-                           to None.
-        @return A string of the returned build e.g. R20-2226.0.0. Return None
-            if no build is found in the devserver for given target and
-            milestone.
-        """
-        call = self.build_call('latestbuild', target=target,
-                                milestone=milestone)
-        try:
-            return urllib2.urlopen(call).read()
-        except urllib2.HTTPError:
-            return None
 
 
     @remote_devserver_call()
