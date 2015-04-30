@@ -1,3 +1,5 @@
+/bin/ping
+/bin/ping6
 /opt/google/chrome/chrome-sandbox
 /sbin/unix_chkpwd
 /usr/bin/fusermount
