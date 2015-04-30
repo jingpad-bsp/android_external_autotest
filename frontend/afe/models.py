@@ -22,6 +22,7 @@ from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib import control_data, priorities, decorators
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
+from autotest_lib.server import utils as server_utils
 
 # job options and user preferences
 DEFAULT_REBOOT_BEFORE = model_attributes.RebootBefore.IF_DIRTY
@@ -1597,7 +1598,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
     def tag(self):
         """Returns a string tag for this job."""
-        return '%s-%s' % (self.id, self.owner)
+        return server_utils.get_job_tag(self.id, self.owner)
 
 
     def keyval_dict(self):
@@ -1770,7 +1771,8 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
         """
         Path to this entry's results (relative to the base results directory).
         """
-        return os.path.join(self.job.tag(), self.execution_subdir)
+        return server_utils.get_hqe_exec_path(self.job.tag(),
+                                              self.execution_subdir)
 
 
     def host_or_metahost_name(self):
@@ -1994,63 +1996,17 @@ class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
 
 
     def execution_path(self):
-        """Get the execution path of the SpecialTask.
-
-        This method returns different paths depending on where a
-        the task ran:
-            * Master: hosts/hostname/task_id-task_type
-            * Shard: Master_path/time_created
-        This is to work around the fact that a shard can fail independent
-        of the master, and be replaced by another shard that has the same
-        hosts. Without the time_created stamp the logs of the tasks running
-        on the second shard will clobber the logs from the first in google
-        storage, because task ids are not globally unique.
-
-        @return: An execution path for the task.
-        """
-        results_path = 'hosts/%s/%s-%s' % (self.host.hostname, self.id,
-                                           self.task.lower())
-
-        # If we do this on the master it will break backward compatibility,
-        # as there are tasks that currently don't have timestamps. If a host
-        # or job has been sent to a shard, the rpc for that host/job will
-        # be redirected to the shard, so this global_config check will happen
-        # on the shard the logs are on.
-        is_shard = global_config.global_config.get_config_value(
-                'SHARD', 'shard_hostname', type=str, default='')
-        if not is_shard:
-            return results_path
-
-        # Generate a uid to disambiguate special task result directories
-        # in case this shard fails. The simplest uid is the job_id, however
-        # in rare cases tasks do not have jobs associated with them (eg:
-        # frontend verify), so just use the creation timestamp. The clocks
-        # between a shard and master should always be in sync. Any discrepancies
-        # will be brought to our attention in the form of job timeouts.
-        uid = self.time_requested.strftime('%Y%d%m%H%M%S')
-
-        # TODO: This is a hack, however it is the easiest way to achieve
-        # correctness. There is currently some debate over the future of
-        # tasks in our infrastructure and refactoring everything right
-        # now isn't worth the time.
-        return '%s/%s' % (results_path, uid)
+        """Returns the execution path for a special task."""
+        return server_utils.get_special_task_exec_path(
+                self.host.hostname, self.id, self.task, self.time_requested)
 
 
     # property to emulate HostQueueEntry.status
     @property
     def status(self):
-        """
-        Return a host queue entry status appropriate for this task.  Although
-        SpecialTasks are not HostQueueEntries, it is helpful to the user to
-        present similar statuses.
-        """
-        if self.is_complete:
-            if self.success:
-                return HostQueueEntry.Status.COMPLETED
-            return HostQueueEntry.Status.FAILED
-        if self.is_active:
-            return HostQueueEntry.Status.RUNNING
-        return HostQueueEntry.Status.QUEUED
+        """Returns a host queue entry status appropriate for a speical task."""
+        return server_utils.get_special_task_status(
+                self.is_complete, self.success, self.is_active)
 
 
     # property to emulate HostQueueEntry.started_on

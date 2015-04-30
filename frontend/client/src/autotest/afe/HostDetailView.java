@@ -31,6 +31,7 @@ import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
+import com.google.gwt.json.client.JSONNumber;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
@@ -111,7 +112,8 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
             }
 
             hostFilter.clear();
-            hostFilter.setParameter("host_id", new JSONString(hostId));
+            hostFilter.setParameter("host",
+                                    new JSONNumber(Double.parseDouble(hostId)));
             if (startTime != null && startTime != "")
                 hostFilter.setParameter("start_time", new JSONString(startTime));
             if (endTime != null && endTime != "")

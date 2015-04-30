@@ -308,7 +308,7 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_get_host_queue_entries_and_special_tasks(self):
         self._setup_special_tasks()
 
-        host = self.hosts[0]
+        host = self.hosts[0].id
         entries_and_tasks = (
                 rpc_interface.get_host_queue_entries_and_special_tasks(host))
 
@@ -349,10 +349,10 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals(1, len(data))
 
         count = rpc_interface.get_num_host_queue_entries_and_special_tasks(
-                host_id=host)
+                host=host.id)
         self.assertEquals(1, count)
         data = rpc_interface.get_host_queue_entries_and_special_tasks(
-                host_id=host)
+                host=host.id)
         self.assertEquals(1, len(data))
 
 

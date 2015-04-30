@@ -11,19 +11,26 @@ import time
 # This format is used to parse datetime value in MySQL database and should not
 # be modified.
 TIME_FMT = '%Y-%m-%d %H:%M:%S'
+TIME_FMT_MICRO = '%Y-%m-%d %H:%M:%S.%f'
 
 def time_string_to_datetime(time_string, handle_type_error=False):
     """Convert a string of time to a datetime object.
 
-    The format of date string must match '%Y-%m-%d %H:%M:%S'.
+    The format of date string must match '%Y-%m-%d %H:%M:%S' or
+    '%Y-%m-%d %H:%M:%S.%f'.
 
     @param time_string: String of date, e.g., 2014-12-05 15:32:45
-    @param handle_type_error: Set to True to prevent the method raise TypeError
-            if given time_string is corrupted. Default is False.
+    @param handle_type_error: Set to True to prevent the method raise
+            TypeError if given time_string is corrupted. Default is False.
+
     @return: A datetime object with time of the given date string.
+
     """
     try:
-        return datetime.datetime.strptime(time_string, TIME_FMT)
+        try:
+            return datetime.datetime.strptime(time_string, TIME_FMT)
+        except ValueError:
+            return datetime.datetime.strptime(time_string, TIME_FMT_MICRO)
     except TypeError:
         if handle_type_error:
             return None

@@ -16,6 +16,7 @@ import common
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 
@@ -436,3 +437,90 @@ def is_shard():
     hostname = global_config.global_config.get_config_value(
             'SHARD', 'shard_hostname', default=None)
     return bool(hostname)
+
+
+def get_special_task_status(is_complete, success, is_active):
+    """Get the status of a special task.
+
+    Emulate a host queue entry status for a special task
+    Although SpecialTasks are not HostQueueEntries, it is helpful to
+    the user to present similar statuses.
+
+    @param is_complete    Boolean if the task is completed.
+    @param success        Boolean if the task succeeded.
+    @param is_active      Boolean if the task is active.
+
+    @return The status of a special task.
+    """
+    if is_complete:
+        if success:
+            return host_queue_entry_states.Status.COMPLETED
+        return host_queue_entry_states.Status.FAILED
+    if is_active:
+        return host_queue_entry_states.Status.RUNNING
+    return host_queue_entry_states.Status.QUEUED
+
+
+def get_special_task_exec_path(hostname, task_id, task_name, time_requested):
+    """Get the execution path of the SpecialTask.
+
+    This method returns different paths depending on where a
+    the task ran:
+        * Master: hosts/hostname/task_id-task_type
+        * Shard: Master_path/time_created
+    This is to work around the fact that a shard can fail independent
+    of the master, and be replaced by another shard that has the same
+    hosts. Without the time_created stamp the logs of the tasks running
+    on the second shard will clobber the logs from the first in google
+    storage, because task ids are not globally unique.
+
+    @param hostname        Hostname
+    @param task_id         Special task id
+    @param task_name       Special task name (e.g., Verify, Repair, etc)
+    @param time_requested  Special task requested time.
+
+    @return An execution path for the task.
+    """
+    results_path = 'hosts/%s/%s-%s' % (hostname, task_id, task_name.lower())
+
+    # If we do this on the master it will break backward compatibility,
+    # as there are tasks that currently don't have timestamps. If a host
+    # or job has been sent to a shard, the rpc for that host/job will
+    # be redirected to the shard, so this global_config check will happen
+    # on the shard the logs are on.
+    if not is_shard():
+        return results_path
+
+    # Generate a uid to disambiguate special task result directories
+    # in case this shard fails. The simplest uid is the job_id, however
+    # in rare cases tasks do not have jobs associated with them (eg:
+    # frontend verify), so just use the creation timestamp. The clocks
+    # between a shard and master should always be in sync. Any discrepancies
+    # will be brought to our attention in the form of job timeouts.
+    uid = time_requested.strftime('%Y%d%m%H%M%S')
+
+    # TODO: This is a hack, however it is the easiest way to achieve
+    # correctness. There is currently some debate over the future of
+    # tasks in our infrastructure and refactoring everything right
+    # now isn't worth the time.
+    return '%s/%s' % (results_path, uid)
+
+
+def get_job_tag(id, owner):
+    """Returns a string tag for a job.
+
+    @param id    Job id
+    @param owner Job owner
+
+    """
+    return '%s-%s' % (id, owner)
+
+
+def get_hqe_exec_path(tag, execution_subdir):
+    """Returns a execution path to a HQE's results.
+
+    @param tag               Tag string for a job associated with a HQE.
+    @param execution_subdir  Execution sub-directory string of a HQE.
+
+    """
+    return os.path.join(tag, execution_subdir)
