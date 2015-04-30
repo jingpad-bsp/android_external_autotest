@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NAME = "BootPerfServer"
+NAME = "BootPerfServerCrosPerf"
 AUTHOR = "Chrome OS Team"
-SUITE = "kernel_per-build_benchmarks"
+SUITE = "performance"
 TIME = "SHORT"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "platform"
@@ -17,6 +17,7 @@ to collect boot performance metrics.
 
 def run_bootperf(machine):
     host = hosts.create_host(machine)
-    job.run_test("platform_BootPerfServer", host=host, iterations=10)
+    job.run_test("platform_BootPerfServer", host=host,
+                 iterations=10, upload_perf=True)
 
 parallel_simple(run_bootperf, machines)
