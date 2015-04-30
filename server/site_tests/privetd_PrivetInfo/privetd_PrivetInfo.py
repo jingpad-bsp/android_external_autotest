@@ -55,9 +55,11 @@ class privetd_PrivetInfo(test.test):
         if info['version'] != '3.0':
             raise error.TestFail('Expected privet version 3.0')
 
-        _assert_equal({'crypto': ['p224_spake2'],
-                       'mode': ['anonymous', 'pairing'],
-                       'pairing': ['pinCode']}, info['authentication'])
+        authentication = info['authentication']
+        _assert_not_empty(authentication, 'anonymousMaxScope')
+        _assert_equal(['p224_spake2'], authentication['crypto'])
+        _assert_equal(['anonymous', 'pairing'], authentication['mode'])
+        _assert_equal(['pinCode'], authentication['pairing'])
 
         _assert_not_empty(info, 'name')
         _assert_not_empty(info, 'id')
@@ -69,5 +71,5 @@ class privetd_PrivetInfo(test.test):
         _assert_not_empty(manifest, 'modelName')
         _assert_not_empty(manifest, 'oemName')
         _assert_not_empty(manifest, 'uiDeviceKind')
-        
+
         _assert_equal({'id': '', 'status': 'unconfigured'}, info['gcd'])
