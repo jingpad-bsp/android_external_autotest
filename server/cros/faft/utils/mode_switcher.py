@@ -33,42 +33,59 @@ class ModeSwitcher(object):
                 # Only resume to normal/dev mode after test, not recovery.
                 self._backup_mode = 'dev' if mode == 'normal' else 'normal'
             self.reboot_to_mode(mode)
-            if mode == 'dev':
-                self.faft_framework.wait_dev_screen_and_ctrl_d()
 
 
     def restore_mode(self):
         """Restores original dev mode status if it has changed."""
         if self._backup_mode is not None:
             self.reboot_to_mode(self._backup_mode)
-            if self._backup_mode == 'dev':
-                self.faft_framework.wait_dev_screen_and_ctrl_d()
 
 
-    def reboot_to_mode(self, to_mode, from_mode=None):
+    def reboot_to_mode(self, to_mode, from_mode=None, wait_for_dut_up=True):
         """Reboot and execute the mode switching sequence.
-
-        This method does not wait DUT online. May need additional
-        operations to pass the firmware screen, e.g. pressing Ctrl-D.
 
         @param to_mode: The target mode, one of 'normal', 'dev', or 'rec'.
         @param from_mode: The original mode, optional, one of 'normal, 'dev',
                           or 'rec'.
+        @param wait_for_dut_up: True to wait DUT online again. False to do the
+                                reboot and mode switching sequence only and may
+                                need more operations to pass the firmware
+                                screen.
         """
-        logging.info('-[ModeSwitcher]-[ start reboot_to_mode(%r, %r) ]-',
-                     to_mode, from_mode)
+        logging.info('-[ModeSwitcher]-[ start reboot_to_mode(%r, %r, %r) ]-',
+                     to_mode, from_mode, wait_for_dut_up)
         if to_mode == 'rec':
             self._enable_rec_mode_and_reboot(usb_state='dut')
+            if wait_for_dut_up:
+                # In the keyboard controlled recovery mode design, it doesn't
+                # require users to remove and insert the USB.
+                #
+                # In the old design, it checks:
+                #   if dev_mode ON, directly boot to USB stick if presented;
+                #   if dev_mode OFF,
+                #     the old models need users to remove and insert the USB;
+                #     the new models directly boot to the USB.
+                if not self.faft_config.keyboard_dev and from_mode == 'normal':
+                    self.faft_framework.wait_fw_screen_and_plug_usb()
+                self.faft_framework.wait_for_client(install_deps=True)
+
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
+            if wait_for_dut_up:
+                self.faft_framework.wait_dev_screen_and_ctrl_d()
+                self.faft_framework.wait_for_client()
+
         elif to_mode == 'normal':
             self._enable_normal_mode_and_reboot()
+            if wait_for_dut_up:
+                self.faft_framework.wait_for_client()
+
         else:
             raise NotImplementedError(
                     'Not supported mode switching from %s to %s' %
                      (str(from_mode), to_mode))
-        logging.info('-[ModeSwitcher]-[ end reboot_to_mode(%r, %r) ]-',
-                     to_mode, from_mode)
+        logging.info('-[ModeSwitcher]-[ end reboot_to_mode(%r, %r, %r) ]-',
+                     to_mode, from_mode, wait_for_dut_up)
 
 
     def _enable_rec_mode_and_reboot(self, usb_state=None):

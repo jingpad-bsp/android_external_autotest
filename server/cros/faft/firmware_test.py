@@ -320,7 +320,7 @@ class FirmwareTest(FAFTBase):
         @raise TestError: if failed to boot the USB image.
         """
         logging.info('Try boot into USB image...')
-        self.switcher.reboot_to_mode(to_mode='rec')
+        self.switcher.reboot_to_mode(to_mode='rec', wait_for_dut_up=False)
         self.servo.switch_usbkey('host')
         self.wait_fw_screen_and_plug_usb()
         try:
@@ -1113,7 +1113,7 @@ class FirmwareTest(FAFTBase):
         # Unplug USB first to avoid the complicated USB autoboot cases.
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
-            self.switcher.reboot_to_mode(to_mode='dev')
+            self.switcher.reboot_to_mode(to_mode='dev', wait_for_dut_up=False)
         self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_fw_screen_and_plug_usb()
         time.sleep(self.faft_config.install_shim_done)

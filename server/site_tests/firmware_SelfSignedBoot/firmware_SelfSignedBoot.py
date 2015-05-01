@@ -105,7 +105,6 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.check_state((self.checkers.dev_boot_usb_checker, False,
                           'Not internal disk boot, dev_boot_usb misbehaved'))
         self.switcher.reboot_to_mode(to_mode='rec')
-        self.wait_for_client(install_deps=True)
 
         logging.info("Expected recovery boot and reboot.")
         self.check_state((self.checkers.crossystem_checker, {

@@ -45,18 +45,8 @@ class firmware_RecoveryButton(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                     }))
-        self.switcher.reboot_to_mode(to_mode='rec')
-        # In the keyboard controlled recovery mode design, it doesn't
-        # require users to remove and insert the USB.
-        #
-        # In the old design, it checks:
-        #   if dev_mode ON, directly boot to USB stick if presented;
-        #   if dev_mode OFF,
-        #     the old models need users to remove and insert the USB;
-        #     the new models directly boot to the USB.
-        if not (self.faft_config.keyboard_dev or dev_mode):
-            self.wait_fw_screen_and_plug_usb()
-        self.wait_for_client(install_deps=True)
+        self.switcher.reboot_to_mode(to_mode='rec',
+                                     from_mode='dev' if dev_mode else 'normal')
 
         logging.info("Expected recovery boot and reboot.")
         self.check_state((self.checkers.crossystem_checker, {

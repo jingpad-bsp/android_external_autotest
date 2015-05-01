@@ -115,7 +115,6 @@ class firmware_FwScreenPressPower(FirmwareTest):
                               'mainfw_type': 'developer',
                               }))
         self.switcher.reboot_to_mode(to_mode='normal')
-        self.wait_for_client()
 
         logging.info("Expected normal mode and request recovery boot. "
                      "Because an USB stick is inserted, a RECOVERY REMOVE "

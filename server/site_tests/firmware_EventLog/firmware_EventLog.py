@@ -68,8 +68,6 @@ class firmware_EventLog(FirmwareTest):
 
         logging.debug('Transitioning to dev mode for next test')
         self.switcher.reboot_to_mode(to_mode='dev')
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
 
         logging.info('Verifying eventlog behavior on developer mode boot')
         self._cutoff_time = self._now()
@@ -87,11 +85,10 @@ class firmware_EventLog(FirmwareTest):
 
         logging.debug('Transitioning back to normal mode for final tests')
         self.switcher.reboot_to_mode(to_mode='normal')
-        self.wait_for_client()
 
         logging.info('Verifying eventlog behavior in recovery mode')
         self._cutoff_time = self._now()
-        self.switcher.reboot_to_mode(to_mode='rec')
+        self.switcher.reboot_to_mode(to_mode='rec', wait_for_dut_up=False)
         self.wait_for_client_offline()
         time.sleep(self.faft_config.firmware_screen)
         self.reboot_warm(sync_before_boot=False)

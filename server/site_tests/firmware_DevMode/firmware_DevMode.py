@@ -26,8 +26,6 @@ class firmware_DevMode(FirmwareTest):
                               'mainfw_type': 'normal',
                               }))
         self.switcher.reboot_to_mode(to_mode='dev')
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
 
         logging.info("Expected developer mode boot and enable normal mode.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -35,7 +33,6 @@ class firmware_DevMode(FirmwareTest):
                               'mainfw_type': 'developer',
                               }))
         self.switcher.reboot_to_mode(to_mode='normal')
-        self.wait_for_client()
 
         logging.info("Expected normal mode boot, done.")
         self.check_state((self.checkers.crossystem_checker, {

@@ -169,7 +169,7 @@ class firmware_FAFTSetup(FirmwareTest):
         logging.info("Check test image is on USB stick and run recovery boot")
         self.assert_test_image_in_usb_disk()
         self.switcher.reboot_to_mode(to_mode='rec')
-        self.wait_fw_screen_and_plug_usb()
+
         self.check_state((self.checkers.crossystem_checker,
                           {'mainfw_type': 'recovery'}))
 

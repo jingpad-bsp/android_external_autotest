@@ -46,7 +46,6 @@ class firmware_TPMExtend(FirmwareTest):
 
         logging.info('Verifying bootmode digest in PCR0 in recovery mode')
         self.switcher.reboot_to_mode(to_mode='rec')
-        self.wait_for_client(install_deps=True)
         self.check_state((self.checkers.crossystem_checker, {
                             'devsw_boot': '0',
                             'mainfw_type': 'recovery'
@@ -57,8 +56,6 @@ class firmware_TPMExtend(FirmwareTest):
 
         logging.info('Transitioning to dev mode for next test')
         self.switcher.reboot_to_mode(to_mode='dev')
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
 
         logging.info('Verifying bootmode digest in PCR0 in developer mode')
         self.check_state((self.checkers.crossystem_checker, {
@@ -71,7 +68,6 @@ class firmware_TPMExtend(FirmwareTest):
 
         logging.info('Verifying bootmode digest in PCR0 in dev-recovery mode')
         self.switcher.reboot_to_mode(to_mode='rec')
-        self.wait_for_client(install_deps=True)
         self.check_state((self.checkers.crossystem_checker, {
                             'devsw_boot': '1',
                             'mainfw_type': 'recovery'
@@ -82,4 +78,3 @@ class firmware_TPMExtend(FirmwareTest):
 
         logging.info('All done, returning to normal mode')
         self.switcher.reboot_to_mode(to_mode='normal')
-        self.wait_for_client()
