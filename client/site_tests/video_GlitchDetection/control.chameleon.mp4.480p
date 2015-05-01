@@ -17,7 +17,7 @@ DEPENDENCIES = "board:peach_pi, video_glitch_detection, chameleon"
 BUG_TEMPLATE = {
     'owner': 'avkodipelli@chromium.org',
     'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
-    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome']
+    'labels': ['VideoTestFailure', 'OS-Chrome']
 }
 
 DOC = """

@@ -19,7 +19,7 @@ TEST_TYPE = 'client'
 # Reboot in the lab after the test ends.
 DEPENDENCIES = 'cleanup-reboot, hw_video_acc_vp8, hw_video_acc_enc_vp8'
 BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Video'],
+    'labels': ['OS-Chrome', 'VideoTestFailure'],
 }
 
 DOC = """

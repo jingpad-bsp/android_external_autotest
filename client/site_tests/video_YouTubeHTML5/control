@@ -16,7 +16,7 @@ TEST_TYPE = "client"
 JOB_RETRIES = 2
 DEPENDENCIES='cleanup-reboot'
 BUG_TEMPLATE = {
-    'labels': ['Cr-OS-Kernel-Video', 'OS-Chrome'],
+    'labels': ['VideoTestFailure', 'OS-Chrome'],
 }
 
 DOC = """
