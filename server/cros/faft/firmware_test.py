@@ -164,7 +164,7 @@ class FirmwareTest(FAFTBase):
 
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
-        self.checkers = FAFTCheckers(self, self.faft_client)
+        self.checkers = FAFTCheckers(self)
         self.switcher = ModeSwitcher(self)
 
         if self.faft_config.chrome_ec:
@@ -198,7 +198,7 @@ class FirmwareTest(FAFTBase):
             # Remote is not responding. Revive DUT so that subsequent tests
             # don't fail.
             self._restore_routine_from_timeout()
-        self._restore_dev_mode()
+        self.switcher.restore_mode()
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
         self._start_service('update-engine')
@@ -906,44 +906,6 @@ class FirmwareTest(FAFTBase):
     def power_cycle(self):
         """Power cycle DUT AC power."""
         self._client.power_cycle(self.power_control)
-
-    def setup_dev_mode(self, dev_mode):
-        """Setup for development mode.
-
-        It makes sure the system in the requested normal/dev mode. If not, it
-        tries to do so.
-
-        @param dev_mode: True if requested in dev mode; False if normal mode.
-        """
-        if dev_mode:
-            if (not self.faft_config.keyboard_dev and
-                not self.checkers.crossystem_checker({'devsw_cur': '1'})):
-                logging.info('Dev switch is not on. Now switch it on.')
-                self.switcher.reboot_to_mode(to_mode='dev')
-            if not self.checkers.crossystem_checker({'devsw_boot': '1',
-                    'mainfw_type': 'developer'}):
-                logging.info('System is not in dev mode. Reboot into it.')
-                if self._backup_dev_mode is None:
-                    self._backup_dev_mode = False
-                self.switcher.reboot_to_mode(to_mode='dev')
-                self.wait_dev_screen_and_ctrl_d()
-        else:
-            if (not self.faft_config.keyboard_dev and
-                not self.checkers.crossystem_checker({'devsw_cur': '0'})):
-                logging.info('Dev switch is not off. Now switch it off.')
-                self.switcher.reboot_to_mode(to_mode='normal')
-            if not self.checkers.crossystem_checker({'devsw_boot': '0',
-                    'mainfw_type': 'normal'}):
-                logging.info('System is not in normal mode. Reboot into it.')
-                if self._backup_dev_mode is None:
-                    self._backup_dev_mode = True
-                self.switcher.reboot_to_mode(to_mode='normal')
-
-    def _restore_dev_mode(self):
-        """Restores original dev mode status if it has changed."""
-        if self._backup_dev_mode is not None:
-            self.setup_dev_mode(self._backup_dev_mode)
-            self._backup_dev_mode = None
 
     def setup_rw_boot(self, section='a'):
         """Make sure firmware is in RW-boot mode.

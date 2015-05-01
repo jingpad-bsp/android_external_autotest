@@ -38,7 +38,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         super(firmware_FwScreenCloseLid, self).initialize(host, cmdline_args)
         if self.faft_config.has_lid:
             self.assert_test_image_in_usb_disk()
-            self.setup_dev_mode(dev_mode=True)
+            self.switcher.setup_mode('dev')
             self.servo.switch_usbkey('host')
             usb_dev = self.servo.probe_host_usb_dev()
             # Corrupt the kernel of USB stick. It is needed for triggering a

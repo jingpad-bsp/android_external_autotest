@@ -19,7 +19,7 @@ class firmware_SoftwareSync(FirmwareTest):
         super(firmware_SoftwareSync, self).initialize(host, cmdline_args,
                                                       ec_wp=False)
         self.backup_firmware()
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.setup_usbkey(usbkey=False)
         self.setup_rw_boot()
         self.dev_mode = dev_mode

@@ -23,7 +23,7 @@ class firmware_LegacyRecovery(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_LegacyRecovery, self).initialize(host, cmdline_args)
         self.setup_usbkey(usbkey=True, host=False)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
 
     def cleanup(self):
         super(firmware_LegacyRecovery, self).cleanup()

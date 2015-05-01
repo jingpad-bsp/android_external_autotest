@@ -16,7 +16,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_TPMKernelVersion, self).initialize(host, cmdline_args)
-        self.setup_dev_mode(True)  # Dev mode
+        self.switcher.setup_mode('dev')
         self.setup_usbkey(usbkey=True, host=False)
         self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()
         logging.info('Original dev_boot_usb value: %s',

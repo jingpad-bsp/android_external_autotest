@@ -30,9 +30,9 @@ class firmware_CorruptBothFwBodyAB(FirmwareTest):
         if (self.faft_client.bios.get_preamble_flags('a') &
                 vboot.PREAMBLE_USE_RO_NORMAL):
             self.use_ro = True
-            self.setup_dev_mode(dev_mode)
+            self.switcher.setup_mode('dev' if dev_mode else 'normal')
         else:
-            self.setup_dev_mode(dev_mode)
+            self.switcher.setup_mode('dev' if dev_mode else 'normal')
             self.setup_usbkey(usbkey=True, host=False)
 
     def cleanup(self):

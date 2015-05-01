@@ -27,7 +27,7 @@ class firmware_ECKeyboardReboot(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECKeyboardReboot, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
         self.host = host
 
     def confirm_dut_off(self):

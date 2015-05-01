@@ -40,7 +40,7 @@ class firmware_ECLidSwitch(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECLidSwitch, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     def _open_lid(self):
         """Open lid by servo."""

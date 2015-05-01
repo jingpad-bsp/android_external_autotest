@@ -72,7 +72,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
             self.wait_for_client()
 
         self.setup_usbkey(usbkey=True, host=True, install_shim=True)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         self._fwid = self.faft_client.updater.get_fwid()
 
         actual_ver = self.faft_client.bios.get_datakey_version('a')

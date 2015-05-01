@@ -57,9 +57,9 @@ class firmware_FWupdate(FirmwareTest):
         if 'mode' in dict_args:
           self.mode = dict_args['mode']
           if self.mode == 'recovery':
-            self.setup_dev_mode(False)  # Set device to normal mode
+            self.switcher.setup_mode('normal')  # Set device to normal mode
           elif self.mode == 'factory':
-            self.setup_dev_mode(True)   # Set device to dev mode
+            self.switcher.setup_mode('dev')   # Set device to dev mode
           else:
             raise error.TestError('Unknown mode:%s' % self.mode)
 

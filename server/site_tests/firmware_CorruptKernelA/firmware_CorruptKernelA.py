@@ -20,7 +20,7 @@ class firmware_CorruptKernelA(FirmwareTest):
         super(firmware_CorruptKernelA, self).initialize(host, cmdline_args)
         self.backup_kernel()
         self.backup_cgpt_attributes()
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 

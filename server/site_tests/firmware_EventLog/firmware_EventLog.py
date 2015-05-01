@@ -18,7 +18,7 @@ class firmware_EventLog(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_EventLog, self).initialize(host, cmdline_args)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
 
     def _has_event(self, pattern):
         return bool(filter(re.compile(pattern).search, self._events))

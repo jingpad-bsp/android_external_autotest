@@ -21,7 +21,7 @@ class firmware_ECKeyboard(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECKeyboard, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     def switch_tty2(self):
         """Switch to tty2 console."""

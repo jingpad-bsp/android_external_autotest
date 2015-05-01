@@ -27,7 +27,7 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args)
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.setup_usbkey(usbkey=False)
 
     def shutdown_power_on(self):

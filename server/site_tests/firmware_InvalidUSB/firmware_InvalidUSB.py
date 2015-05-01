@@ -33,7 +33,7 @@ class firmware_InvalidUSB(FirmwareTest):
         usb_dev = self.servo.probe_host_usb_dev()
         self.assert_test_image_in_usb_disk(usb_dev)
         self.corrupt_usb_kernel(usb_dev)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         self.servo.switch_usbkey('dut')
 
     def cleanup(self):

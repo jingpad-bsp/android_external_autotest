@@ -35,7 +35,7 @@ class firmware_ECPowerButton(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECPowerButton, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     def kill_powerd(self):
         """Stop powerd on client."""

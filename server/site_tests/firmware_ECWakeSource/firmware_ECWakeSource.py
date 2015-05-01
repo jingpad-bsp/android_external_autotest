@@ -40,7 +40,7 @@ class firmware_ECWakeSource(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECWakeSource, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     @delayed(WAKE_DELAY)
     def wake_by_power_button(self):

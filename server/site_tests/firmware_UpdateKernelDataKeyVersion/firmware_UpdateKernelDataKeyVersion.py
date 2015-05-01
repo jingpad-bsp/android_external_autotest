@@ -64,7 +64,7 @@ class firmware_UpdateKernelDataKeyVersion(FirmwareTest):
         super(firmware_UpdateKernelDataKeyVersion, self).initialize(host,
                                                                 cmdline_args)
 
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
 
         actual_ver = self.faft_client.kernel.get_datakey_version('b')
         logging.info('Original Kernel Version of KERN-B is %s', actual_ver)

@@ -34,7 +34,7 @@ class firmware_ECWriteProtect(FirmwareTest):
         super(firmware_ECWriteProtect, self).initialize(host, cmdline_args,
                                                         ec_wp=False)
         self.backup_firmware()
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.ec.send_command("chan 0")
 
     def cleanup(self):

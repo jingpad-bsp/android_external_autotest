@@ -25,7 +25,7 @@ class firmware_ECWatchdog(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECWatchdog, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
 
     def reboot_by_watchdog(self):

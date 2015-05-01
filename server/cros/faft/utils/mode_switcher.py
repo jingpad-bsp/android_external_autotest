@@ -14,6 +14,35 @@ class ModeSwitcher(object):
         self.faft_client = faft_framework.faft_client
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
+        self.checkers = faft_framework.checkers
+        self._backup_mode = None
+
+
+    def setup_mode(self, mode):
+        """Setup for the requested mode.
+
+        It makes sure the system in the requested mode. If not, it tries to
+        do so.
+
+        @param mode: A string of mode, one of 'normal', 'dev', or 'rec'.
+        """
+        if not self.checkers.mode_checker(mode):
+            logging.info('System not in expected %s mode. Reboot into it.',
+                         mode)
+            if self._backup_mode is None:
+                # Only resume to normal/dev mode after test, not recovery.
+                self._backup_mode = 'dev' if mode == 'normal' else 'normal'
+            self.reboot_to_mode(mode)
+            if mode == 'dev':
+                self.faft_framework.wait_dev_screen_and_ctrl_d()
+
+
+    def restore_mode(self):
+        """Restores original dev mode status if it has changed."""
+        if self._backup_mode is not None:
+            self.reboot_to_mode(self._backup_mode)
+            if self._backup_mode == 'dev':
+                self.faft_framework.wait_dev_screen_and_ctrl_d()
 
 
     def reboot_to_mode(self, to_mode, from_mode=None):

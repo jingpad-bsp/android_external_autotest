@@ -18,7 +18,7 @@ class firmware_ECSharedMem(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECSharedMem, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
         self.ec.send_command("chan 0")
 
     def cleanup(self):

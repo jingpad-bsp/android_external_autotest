@@ -44,7 +44,7 @@ class firmware_CgptState(FirmwareTest):
         super(firmware_CgptState, self).initialize(host, cmdline_args)
         self.host = host
         self.backup_cgpt_attributes()
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         self.setup_usbkey(usbkey=False)
         self.setup_kernel('a')
 

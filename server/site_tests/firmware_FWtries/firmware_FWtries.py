@@ -48,7 +48,7 @@ class firmware_FWtries(FirmwareTest):
         dict_args = utils.args_to_dict(cmdline_args)
         super(firmware_FWtries, self).initialize(host, cmdline_args)
         # Set device in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     def run_once(self, host):
         self.check_state((self.checkers.fw_tries_checker, ('A', True, 0)))

@@ -16,12 +16,8 @@ class firmware_DevMode(FirmwareTest):
     def initialize(self, host, cmdline_args, ec_wp=None):
         super(firmware_DevMode, self).initialize(host, cmdline_args,
                                                  ec_wp=ec_wp)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         self.setup_usbkey(usbkey=False)
-
-    def cleanup(self):
-        self.setup_dev_mode(dev_mode=False)
-        super(firmware_DevMode, self).cleanup()
 
     def run_once(self):
         logging.info("Enable dev mode.")

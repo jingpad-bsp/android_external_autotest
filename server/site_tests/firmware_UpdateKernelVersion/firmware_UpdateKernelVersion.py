@@ -43,7 +43,7 @@ class firmware_UpdateKernelVersion(FirmwareTest):
     def initialize(self, host, cmdline_args, dev_mode=True):
         super(firmware_UpdateKernelVersion, self).initialize(host, cmdline_args)
 
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
 
         actual_ver = self.faft_client.kernel.get_version('b')
         logging.info('Original Kernel Version of KERN-B is %s', actual_ver)

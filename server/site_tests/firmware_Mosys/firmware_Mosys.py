@@ -30,7 +30,7 @@ class firmware_Mosys(FirmwareTest):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         super(firmware_Mosys, self).initialize(host, cmdline_args)
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         # a list contain failed execution.
         self.failed_command = []
         # Get a list of available mosys commands.

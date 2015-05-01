@@ -13,9 +13,10 @@ class FAFTCheckers(object):
     """Class that contains FAFT checkers."""
     version = 1
 
-    def __init__(self, faftsequence, faft_client):
-        self.faftsequence = faftsequence
-        self.faft_client = faft_client
+    def __init__(self, faft_framework):
+        self.faft_framework = faft_framework
+        self.faft_client = faft_framework.faft_client
+        self.faft_config = faft_framework.faft_config
         self.fw_vboot2 = self.faft_client.system.get_fw_vboot2()
 
     def _parse_crossystem_output(self, lines):
@@ -100,6 +101,34 @@ class FAFTCheckers(object):
                 succeed = False
         return succeed
 
+    def mode_checker(self, mode):
+        """Check the current system in the given mode.
+
+        @param mode: A string of mode, one of 'normal', 'dev', or 'rec'.
+        @return: True if the system in the given mode; otherwise, False.
+        """
+        if mode == 'normal':
+            if self.faft_config.keyboard_dev:
+                return self.crossystem_checker(
+                        {'devsw_boot': '0',
+                         'mainfw_type': 'normal'})
+            else:
+                return self.crossystem_checker(
+                        {'devsw_cur': '0'})
+        elif mode == 'dev':
+            if self.faft_config.keyboard_dev:
+                return self.crossystem_checker(
+                        {'devsw_boot': '1',
+                         'mainfw_type': 'developer'})
+            else:
+                return self.crossystem_checker(
+                        {'devsw_cur': '1'})
+        elif mode == 'rec':
+            return self.crossystem_checker(
+                    {'mainfw_type': 'recovery'})
+        else:
+            raise NotImplementedError('The given mode %s not supported' % mode)
+
     def fw_tries_checker(self,
                          expected_mainfw_act,
                          expected_fw_tried=True,
@@ -177,7 +206,7 @@ class FAFTCheckers(object):
             succeed = False
         if not self.crossystem_checker(crossystem_dict):
             succeed = False
-        if self.faftsequence.check_ec_capability(suppress_warning=True):
+        if self.faft_framework.check_ec_capability(suppress_warning=True):
             expected_ec = ('RW' if twostop else 'RO')
             if not self.ec_act_copy_checker(expected_ec):
                 succeed = False
@@ -202,9 +231,9 @@ class FAFTCheckers(object):
                  otherwise, False.
         """
         part = self.faft_client.system.get_root_part()[-1]
-        if self.faftsequence.ROOTFS_MAP[expected_part] != part:
+        if self.faft_framework.ROOTFS_MAP[expected_part] != part:
             logging.info("Expected root part %s but got %s",
-                         self.faftsequence.ROOTFS_MAP[expected_part], part)
+                         self.faft_framework.ROOTFS_MAP[expected_part], part)
             return False
         return True
 

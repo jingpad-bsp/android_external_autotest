@@ -81,7 +81,7 @@ class firmware_DevScreenTimeout(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_DevScreenTimeout, self).initialize(host, cmdline_args)
         # This test is run on developer mode only.
-        self.setup_dev_mode(dev_mode=True)
+        self.switcher.setup_mode('dev')
         self.setup_usbkey(usbkey=False)
 
     def run_once(self):

@@ -26,7 +26,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
     def initialize(self, host, cmdline_args, ec_wp=None):
         super(firmware_SelfSignedBoot, self).initialize(host, cmdline_args,
                                                         ec_wp=ec_wp)
-        self.setup_dev_mode(dev_mode=True)
+        self.switcher.setup_mode('dev')
         self.setup_usbkey(usbkey=True, host=False)
 
         self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()

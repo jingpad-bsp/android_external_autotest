@@ -17,7 +17,7 @@ class firmware_ECBootTime(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECBootTime, self).initialize(host, cmdline_args)
         # Only run in normal mode
-        self.setup_dev_mode(False)
+        self.switcher.setup_mode('normal')
 
     def check_boot_time(self):
         """Check EC and AP boot times"""

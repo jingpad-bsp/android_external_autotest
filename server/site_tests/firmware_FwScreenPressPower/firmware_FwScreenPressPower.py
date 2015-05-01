@@ -36,7 +36,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_FwScreenPressPower, self).initialize(host, cmdline_args)
         self.assert_test_image_in_usb_disk()
-        self.setup_dev_mode(dev_mode=True)
+        self.switcher.setup_mode('dev')
         self.servo.switch_usbkey('host')
         usb_dev = self.servo.probe_host_usb_dev()
         # Corrupt the kernel of USB stick. It is needed for triggering a

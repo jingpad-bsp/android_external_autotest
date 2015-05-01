@@ -26,7 +26,7 @@ class firmware_RONormalBoot(FirmwareTest):
         super(firmware_RONormalBoot, self).initialize(host, cmdline_args,
                                                       ec_wp=ec_wp)
         self.backup_firmware()
-        self.setup_dev_mode(dev_mode)
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
         self.setup_usbkey(usbkey=False)
 
     def cleanup(self):

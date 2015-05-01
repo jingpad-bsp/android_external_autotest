@@ -24,7 +24,7 @@ class firmware_ECHash(FirmwareTest):
     def initialize(self, host, cmdline_args):
         super(firmware_ECHash, self).initialize(host, cmdline_args)
         self.backup_firmware()
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         self.setup_usbkey(usbkey=False)
         self.setup_rw_boot()
 

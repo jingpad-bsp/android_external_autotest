@@ -42,7 +42,7 @@ class firmware_ShellBall(FirmwareTest):
                        self._shellball_name)
         self.faft_client.system.run_shell_command('chmod +x %s' %
                                                   self._shellball_name)
-        self.setup_dev_mode(dev_mode=False)
+        self.switcher.setup_mode('normal')
         # Get crossystem fwid.
         [self._current_fwid] = (
             self.faft_client.system.run_shell_command_get_output(
