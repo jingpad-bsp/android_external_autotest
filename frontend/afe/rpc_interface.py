@@ -1154,15 +1154,37 @@ def get_host_special_tasks(host_id, **filter_data):
 
 
 def get_status_task(host_id, end_time):
-    """Get the special task identifying a host's status.
+    """Get the "status task" for a host from the local shard.
 
-    Returns information for a single special task for a host
-    identifying whether the host was working or broken at the given
-    `end_time`.  A successful task indicates a working host; a
-    failed task indicates a broken host.
+    Returns a single special task representing the given host's
+    "status task".  The status task is a completed special task that
+    identifies whether the corresponding host was working or broken
+    when it completed.  A successful task indicates a working host;
+    a failed task indicates broken.
 
-    If the host is managed by a shard, this call forwards the
-    request.
+    This call will not be forward to a shard; the receiving server
+    must be the shard that owns the host.
+
+    @param host_id      Id in the database of the target host.
+    @param end_time     Time reference for the host's status.
+
+    @return A single task; its status (successful or not)
+            corresponds to the status of the host (working or
+            broken) at the given time.  If no task is found, return
+            `None`.
+
+    """
+    tasklist = rpc_utils.prepare_rows_as_nested_dicts(
+            status_history.get_status_task(host_id, end_time),
+            ('host', 'queue_entry'))
+    return tasklist[0] if tasklist else None
+
+
+def get_host_status_task(host_id, end_time):
+    """Get the "status task" for a host from its owning shard.
+
+    Finds the given host's owning shard, and forwards to it a call
+    to `get_status_task()` (see above).
 
     @param host_id      Id in the database of the target host.
     @param end_time     Time reference for the host's status.
@@ -1175,13 +1197,7 @@ def get_status_task(host_id, end_time):
     """
     host = models.Host.smart_get(host_id)
     if not host.shard:
-        tasklist = rpc_utils.prepare_rows_as_nested_dicts(
-                status_history.get_status_task(host_id, end_time),
-                ('host', 'queue_entry'))
-        if tasklist:
-            return tasklist[0]
-        else:
-            return None
+        return get_status_task(host_id, end_time)
     else:
         # The return values from AFE methods are post-processed
         # objects that aren't JSON-serializable.  So, we have to
