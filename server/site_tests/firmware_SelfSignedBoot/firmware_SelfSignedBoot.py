@@ -104,7 +104,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         logging.info("Expected internal disk boot, switch to recovery mode.")
         self.check_state((self.checkers.dev_boot_usb_checker, False,
                           'Not internal disk boot, dev_boot_usb misbehaved'))
-        self.enable_rec_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_for_client(install_deps=True)
 
         logging.info("Expected recovery boot and reboot.")

@@ -45,7 +45,7 @@ class firmware_TPMExtend(FirmwareTest):
             error.TestFail('PCR0 was not extended with bootmode 0|0|1!')
 
         logging.info('Verifying bootmode digest in PCR0 in recovery mode')
-        self.enable_rec_mode_and_reboot(usb_state='dut')
+        self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_for_client(install_deps=True)
         self.check_state((self.checkers.crossystem_checker, {
                             'devsw_boot': '0',
@@ -56,7 +56,7 @@ class firmware_TPMExtend(FirmwareTest):
             error.TestFail('PCR0 was not extended with bootmode 0|1|0!')
 
         logging.info('Transitioning to dev mode for next test')
-        self.enable_dev_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='dev')
         self.wait_dev_screen_and_ctrl_d()
         self.wait_for_client()
 
@@ -70,7 +70,7 @@ class firmware_TPMExtend(FirmwareTest):
             error.TestFail('PCR0 was not extended with bootmode 1|0|1!')
 
         logging.info('Verifying bootmode digest in PCR0 in dev-recovery mode')
-        self.enable_rec_mode_and_reboot(usb_state='dut')
+        self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_for_client(install_deps=True)
         self.check_state((self.checkers.crossystem_checker, {
                             'devsw_boot': '1',
@@ -81,5 +81,5 @@ class firmware_TPMExtend(FirmwareTest):
             error.TestFail('PCR0 was not extended with bootmode 1|1|0!')
 
         logging.info('All done, returning to normal mode')
-        self.enable_normal_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='normal')
         self.wait_for_client()

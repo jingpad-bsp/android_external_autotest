@@ -67,7 +67,7 @@ class firmware_EventLog(FirmwareTest):
             raise error.TestError('Incorrect event logged on normal boot.')
 
         logging.debug('Transitioning to dev mode for next test')
-        self.enable_dev_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='dev')
         self.wait_dev_screen_and_ctrl_d()
         self.wait_for_client()
 
@@ -86,12 +86,12 @@ class firmware_EventLog(FirmwareTest):
             raise error.TestError('Incorrect event logged on dev mode boot.')
 
         logging.debug('Transitioning back to normal mode for final tests')
-        self.enable_normal_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='normal')
         self.wait_for_client()
 
         logging.info('Verifying eventlog behavior in recovery mode')
         self._cutoff_time = self._now()
-        self.enable_rec_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_for_client_offline()
         time.sleep(self.faft_config.firmware_screen)
         self.reboot_warm(sync_before_boot=False)

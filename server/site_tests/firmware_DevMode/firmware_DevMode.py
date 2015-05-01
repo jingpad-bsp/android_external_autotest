@@ -29,7 +29,7 @@ class firmware_DevMode(FirmwareTest):
                               'devsw_boot': '0',
                               'mainfw_type': 'normal',
                               }))
-        self.enable_dev_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='dev')
         self.wait_dev_screen_and_ctrl_d()
         self.wait_for_client()
 
@@ -38,7 +38,7 @@ class firmware_DevMode(FirmwareTest):
                               'devsw_boot': '1',
                               'mainfw_type': 'developer',
                               }))
-        self.enable_normal_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='normal')
         self.wait_for_client()
 
         logging.info("Expected normal mode boot, done.")

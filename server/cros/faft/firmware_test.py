@@ -18,6 +18,7 @@ from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
+from autotest_lib.server.cros.faft.utils.mode_switcher import ModeSwitcher
 from autotest_lib.server.cros.servo import chrome_ec
 
 
@@ -164,6 +165,7 @@ class FirmwareTest(FAFTBase):
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self, self.faft_client)
+        self.switcher = ModeSwitcher(self)
 
         if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)
@@ -318,7 +320,8 @@ class FirmwareTest(FAFTBase):
         @raise TestError: if failed to boot the USB image.
         """
         logging.info('Try boot into USB image...')
-        self.enable_rec_mode_and_reboot('host')
+        self.switcher.reboot_to_mode(to_mode='rec')
+        self.servo.switch_usbkey('host')
         self.wait_fw_screen_and_plug_usb()
         try:
             self.wait_for_client(install_deps=True)
@@ -904,85 +907,6 @@ class FirmwareTest(FAFTBase):
         """Power cycle DUT AC power."""
         self._client.power_cycle(self.power_control)
 
-    def enable_rec_mode_and_reboot(self, usb_state=None):
-        """Switch to rec mode and reboot.
-
-        This method emulates the behavior of the old physical recovery switch,
-        i.e. switch ON + reboot + switch OFF, and the new keyboard controlled
-        recovery mode, i.e. just press Power + Esc + Refresh.
-        """
-        self.blocking_sync()
-        psc = self.servo.get_power_state_controller()
-        psc.power_off()
-        if usb_state:
-            self.servo.switch_usbkey(usb_state)
-        psc.power_on(psc.REC_ON)
-
-    def enable_dev_mode_and_reboot(self):
-        """Switch to developer mode and reboot."""
-        if self.faft_config.keyboard_dev:
-            self.enable_keyboard_dev_mode()
-        else:
-            self.servo.enable_development_mode()
-            self.faft_client.system.run_shell_command(
-                    'chromeos-firmwareupdate --mode todev && reboot')
-
-    def enable_normal_mode_and_reboot(self):
-        """Switch to normal mode and reboot."""
-        if self.faft_config.keyboard_dev:
-            self.disable_keyboard_dev_mode()
-        else:
-            self.servo.disable_development_mode()
-            self.faft_client.system.run_shell_command(
-                    'chromeos-firmwareupdate --mode tonormal && reboot')
-
-    def wait_fw_screen_and_switch_keyboard_dev_mode(self, dev):
-        """Wait for firmware screen and then switch into or out of dev mode.
-
-        @param dev: True if switching into dev mode. Otherwise, False.
-        """
-        time.sleep(self.faft_config.firmware_screen)
-        if dev:
-            self.servo.ctrl_d()
-            time.sleep(self.faft_config.confirm_screen)
-            if self.faft_config.rec_button_dev_switch:
-                logging.info('RECOVERY button pressed to switch to dev mode')
-                self.servo.set('rec_mode', 'on')
-                time.sleep(self.faft_config.hold_cold_reset)
-                self.servo.set('rec_mode', 'off')
-            else:
-                logging.info('ENTER pressed to switch to dev mode')
-                self.servo.enter_key()
-        else:
-            self.servo.enter_key()
-            time.sleep(self.faft_config.confirm_screen)
-            self.servo.enter_key()
-
-    def enable_keyboard_dev_mode(self):
-        """Enable keyboard controlled developer mode"""
-        logging.info("Enabling keyboard controlled developer mode")
-        # Rebooting EC with rec mode on. Should power on AP.
-        # Plug out USB disk for preventing recovery boot without warning
-        self.enable_rec_mode_and_reboot(usb_state='host')
-        self.wait_for_client_offline()
-        self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
-
-        # TODO (crosbug.com/p/16231) remove this conditional completely if/when
-        # issue is resolved.
-        if self.faft_config.platform == 'Parrot':
-            self.wait_for_client_offline()
-            self.reboot_cold_trigger()
-
-    def disable_keyboard_dev_mode(self):
-        """Disable keyboard controlled developer mode"""
-        logging.info("Disabling keyboard controlled developer mode")
-        if (not self.faft_config.chrome_ec and
-            not self.faft_config.broken_rec_mode):
-            self.servo.disable_recovery_mode()
-        self.sync_and_cold_reboot()
-        self.wait_for_client_offline()
-        self.wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
-
     def setup_dev_mode(self, dev_mode):
         """Setup for development mode.
 
@@ -995,31 +919,25 @@ class FirmwareTest(FAFTBase):
             if (not self.faft_config.keyboard_dev and
                 not self.checkers.crossystem_checker({'devsw_cur': '1'})):
                 logging.info('Dev switch is not on. Now switch it on.')
-                self.servo.enable_development_mode()
+                self.switcher.reboot_to_mode(to_mode='dev')
             if not self.checkers.crossystem_checker({'devsw_boot': '1',
                     'mainfw_type': 'developer'}):
                 logging.info('System is not in dev mode. Reboot into it.')
                 if self._backup_dev_mode is None:
                     self._backup_dev_mode = False
-                if self.faft_config.keyboard_dev:
-                    self.faft_client.system.run_shell_command(
-                             'chromeos-firmwareupdate --mode todev && reboot')
-                    self.do_reboot_action(self.enable_keyboard_dev_mode)
-                    self.wait_dev_screen_and_ctrl_d()
+                self.switcher.reboot_to_mode(to_mode='dev')
+                self.wait_dev_screen_and_ctrl_d()
         else:
             if (not self.faft_config.keyboard_dev and
                 not self.checkers.crossystem_checker({'devsw_cur': '0'})):
                 logging.info('Dev switch is not off. Now switch it off.')
-                self.servo.disable_development_mode()
+                self.switcher.reboot_to_mode(to_mode='normal')
             if not self.checkers.crossystem_checker({'devsw_boot': '0',
                     'mainfw_type': 'normal'}):
                 logging.info('System is not in normal mode. Reboot into it.')
                 if self._backup_dev_mode is None:
                     self._backup_dev_mode = True
-                if self.faft_config.keyboard_dev:
-                    self.faft_client.system.run_shell_command(
-                        'chromeos-firmwareupdate --mode tonormal && reboot')
-                    self.do_reboot_action(self.disable_keyboard_dev_mode)
+                self.switcher.reboot_to_mode(to_mode='normal')
 
     def _restore_dev_mode(self):
         """Restores original dev mode status if it has changed."""
@@ -1233,8 +1151,8 @@ class FirmwareTest(FAFTBase):
         # Unplug USB first to avoid the complicated USB autoboot cases.
         is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
         if not is_dev:
-            self.enable_dev_mode_and_reboot()
-        self.enable_rec_mode_and_reboot(usb_state='host')
+            self.switcher.reboot_to_mode(to_mode='dev')
+        self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_fw_screen_and_plug_usb()
         time.sleep(self.faft_config.install_shim_done)
         self.reboot_warm_trigger()

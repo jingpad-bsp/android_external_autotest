@@ -40,17 +40,6 @@ class firmware_UserRequestRecovery(FirmwareTest):
         self.ensure_normal_boot()
         super(firmware_UserRequestRecovery, self).cleanup()
 
-    def try_dev_switching_and_plug_usb(self, dev_mode):
-        """Try pressing Ctrl-D and enter to check its firmware behavior."""
-        # Pressing Ctrl-D + Enter / Enter + Enter should not trigger
-        # dev / normal mode switching.
-        if self.faft_config.keyboard_dev:
-            self.wait_fw_screen_and_switch_keyboard_dev_mode(not dev_mode)
-            if not dev_mode:
-                self.wait_fw_screen_and_ctrl_d()
-
-        self.wait_fw_screen_and_plug_usb()
-
     def run_once(self, dev_mode=False):
         logging.info("Request recovery boot.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -58,7 +47,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
                            }))
         self.faft_client.system.request_recovery_boot()
         self.reboot_warm(wait_for_dut_up=False)
-        self.try_dev_switching_and_plug_usb(dev_mode)
+        self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=True)
 
         logging.info("Expected recovery boot, request recovery again.")

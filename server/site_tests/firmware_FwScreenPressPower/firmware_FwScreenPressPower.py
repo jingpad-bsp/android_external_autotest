@@ -114,7 +114,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                               'devsw_boot': '1',
                               'mainfw_type': 'developer',
                               }))
-        self.enable_normal_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='normal')
         self.wait_for_client()
 
         logging.info("Expected normal mode and request recovery boot. "

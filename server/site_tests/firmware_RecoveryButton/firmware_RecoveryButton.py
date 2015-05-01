@@ -45,7 +45,7 @@ class firmware_RecoveryButton(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
                     }))
-        self.enable_rec_mode_and_reboot()
+        self.switcher.reboot_to_mode(to_mode='rec')
         # In the keyboard controlled recovery mode design, it doesn't
         # require users to remove and insert the USB.
         #
