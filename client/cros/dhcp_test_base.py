@@ -175,7 +175,7 @@ class DhcpTestBase(test.test):
                 raise error.TestFail('Could not start DHCP test server.')
             self._subnet_mask = self._ethernet_pair.interface_subnet_mask
             self.test_body()
-        except error.TestFail:
+        except (error.TestFail, error.TestNAError):
             # Pass these through without modification.
             raise
         except Exception as e:
