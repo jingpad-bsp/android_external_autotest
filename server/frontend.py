@@ -321,8 +321,8 @@ class AFE(RpcClient):
         return [SpecialTask(self, t) for t in tasks]
 
 
-    def get_status_task(self, host_id, end_time):
-        task = self.run('get_status_task',
+    def get_host_status_task(self, host_id, end_time):
+        task = self.run('get_host_status_task',
                          host_id=host_id, end_time=end_time)
         return SpecialTask(self, task) if task else None
 

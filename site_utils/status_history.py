@@ -179,7 +179,7 @@ class _SpecialTaskEvent(_JobEvent):
                 or `None` if no task was found.
 
         """
-        task = afe.get_status_task(host_id, end_time)
+        task = afe.get_host_status_task(host_id, end_time)
         return cls(afe.server, task) if task else None
 
 
