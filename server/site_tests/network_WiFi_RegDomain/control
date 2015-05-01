@@ -109,7 +109,48 @@ DEVTYPE_TO_REGION_INFOS = {
               # (It seems to differ from the documentation for the part.)
               {'chnum': 120, 'expect': 'no-connect'},
               {'chnum': 149, 'expect': 'connect'},
-              {'chnum': 165, 'expect': 'connect'}]}]}
+              {'chnum': 165, 'expect': 'connect'}]}],
+    'intel_wp2':
+    # TODO(quiche): Add wp2 expectations for channels 52 and 120. If
+    # those expectations match the (to-be-added) expectations for
+    # ath9k, then collapse both configs into a 'cfg80211' config.
+        [
+         {'region_name': '',
+          'country_code': '00',
+          'channel_infos': [
+              {'chnum': 13, 'expect': 'passive-scan'},
+              {'chnum': 36, 'expect': 'passive-scan'},
+              {'chnum': 149, 'expect': 'passive-scan'}]},
+         # Many of the 'passive-scan' expectations seem to follow from
+         # the initial world rules above. (Or, at least, not all of
+         # the passive scanning expectations can be attributed to
+         # country-speific data in wireless-regdb. We haven't
+         # investigated if the 'passive-scan' expectations are due to
+         # rules in the driver.)
+         {'region_name': 'ar',
+          'country_code': 'AR',
+          'channel_infos': [
+              {'chnum': 13, 'expect': 'passive-scan'},
+              {'chnum': 36, 'expect': 'passive-scan'},
+              {'chnum': 149, 'expect': 'passive-scan'}]},
+         {'region_name': 'id',
+          'country_code': 'ID',
+          'channel_infos': [
+              {'chnum': 13, 'expect': 'passive-scan'},
+              {'chnum': 36, 'expect': 'no-connect'},
+              {'chnum': 149, 'expect': 'passive-scan'}]},
+         {'region_name': 'ru',
+          'country_code': 'RU',
+          'channel_infos': [
+              {'chnum': 13, 'expect': 'passive-scan'},
+              {'chnum': 36, 'expect': 'passive-scan'},
+              {'chnum': 149, 'expect': 'passive-scan'}]},
+         {'region_name': 'us',
+          'country_code': 'US',
+          'channel_infos': [
+              {'chnum': 13, 'expect': 'no-connect'},
+              {'chnum': 36, 'expect': 'passive-scan'},
+              {'chnum': 149, 'expect': 'passive-scan'}]}]}
 WLAN_DEV = 'wlan0'
 
 
@@ -127,6 +168,10 @@ def run(machine):
         interface.NAME_BROADCOM_BCM4354_SDIO,
         interface.NAME_BROADCOM_BCM4356_PCIE):
             devtype = 'bcm435x'
+    elif wlan_info.name in (
+        interface.NAME_INTEL_7260,
+        interface.NAME_INTEL_7265):
+            devtype = 'intel_wp2'
     else:
         raise error.TestNAError(
             'Unrecognized WiFi chip |%s|.' % wlan_info.name)

@@ -89,14 +89,13 @@ class network_WiFi_RegDomain(test.test):
 
 
     @classmethod
-    def assert_dut_has_expected_phy_config(
-            cls, dut_host, expected_channel_configs):
+    def count_mismatched_phy_configs(cls, dut_host, expected_channel_configs):
         """Verifies that phys on the DUT place the expected restrictions on
         channels.
 
-        Compares the restrictions reported by the running system to the
-        restrictions in |expected_channel_configs|. Fails the test if
-        the restrictions do not match.
+        Compares the restrictions reported by the running system to
+        the restrictions in |expected_channel_configs|. Returns a
+        count of the number of mismatches.
 
         Note that this method deliberately ignores channels that are
         reported by the running system, but not mentioned in
@@ -106,16 +105,22 @@ class network_WiFi_RegDomain(test.test):
 
         @param dut_host The host object for the DUT.
         @param expected_channel_configs A channel_infos list.
-        @raise error.TestFail If actual restrictions do not match expectations.
+        @return int count of mismatches
 
         """
         actual_channel_expectations = cls.phy_list_to_channel_expectations(
             iw_runner.IwRunner(dut_host).list_phys())
+        mismatches = 0
         for expected_config in expected_channel_configs:
-            cls.assert_equal(
-                'phy config for channel %d' % expected_config['chnum'],
-                actual_channel_expectations[expected_config['chnum']],
-                expected_config['expect'])
+            channel = expected_config['chnum']
+            expected = expected_config['expect']
+            actual = actual_channel_expectations[channel]
+            if actual != expected:
+                logging.error(
+                    'Expected phy config for channel %d of |%s|, but got |%s|.',
+                    channel, expected, actual)
+                mismatches += 1
+        return mismatches
 
 
     @classmethod
@@ -254,8 +259,12 @@ class network_WiFi_RegDomain(test.test):
               'country code',
               iw_runner.IwRunner(self.host).get_regulatory_domain(),
               self.expected_country_code)
-            self.assert_dut_has_expected_phy_config(
+            num_mismatches = self.count_mismatched_phy_configs(
                 self.host, self.channel_infos)
+            if num_mismatches:
+                raise error.TestFail(
+                    '%d phy configs were not as expected (see below)' %
+                    num_mismatches)
             wifi_context = wifi_test_context_manager.WiFiTestContextManager(
                 self.__class__.__name__,
                 self.host,
