@@ -13,6 +13,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Platform"
 TEST_TYPE = "client"
+JOB_RETRIES = 2
 SUITE = "bvt-inline"
 
 DOC = """

@@ -13,6 +13,7 @@ SUITE = "bvt-cq"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "kernel"
 TEST_TYPE = "client"
+JOB_RETRIES = 2
 
 DOC = """
 This test tries to create a cgroup hierarchy and verifies division of CPU within

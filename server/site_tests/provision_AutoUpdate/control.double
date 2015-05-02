@@ -12,7 +12,7 @@ TEST_CLASS = 'provision'
 TEST_TYPE = 'Server'
 SUITE = 'push_to_prod, bvt-inline'
 # This test is expensive, just retry once
-JOB_RETRIES = 1
+JOB_RETRIES = 2
 
 DOC = """
 This test is to ensure that we can provision out of a given build.
