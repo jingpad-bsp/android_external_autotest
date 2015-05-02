@@ -21,9 +21,9 @@ import urllib2
 
 import common
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 try:
