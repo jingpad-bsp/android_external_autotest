@@ -79,7 +79,7 @@ class audio_AudioBasicExternalMicrophone(test.test):
         # Removes the beginning of recorded data. This is to avoid artifact
         # caused by Cros device codec initialization in the beginning of
         # recording.
-        recorder.remove_head(1.0)
+        recorder.remove_head(1.5)
 
         # Removes noise by a lowpass filter.
         recorder.lowpass_filter(1500)
