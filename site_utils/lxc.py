@@ -22,6 +22,7 @@ container, e.g.,
 import argparse
 import logging
 import os
+import re
 import socket
 import sys
 import time
@@ -89,8 +90,8 @@ IS_VM = utils.is_vm()
 # TODO(dshi): If we are adding more logic in how lxc should interact with
 # different systems, we should consider code refactoring to use a setting-style
 # object to store following flags mapping to different systems.
-# moblab is on an old kernel, which does not support either overlayfs or aufs.
-# Snapshot clone is disabled for moblab until its kernel is updated.
+# TODO(crbug.com/464834): Snapshot clone is disabled until Moblab can
+# support overlayfs or aufs, which requires a newer kernel.
 SUPPORT_SNAPSHOT_CLONE = not IS_MOBLAB
 # overlayfs is the default clone backend storage. However it is not supported
 # in Ganeti yet. Use aufs as the alternative.
@@ -103,6 +104,7 @@ NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
 # Type string for container related metadata.
 CONTAINER_CREATE_METADB_TYPE = 'container_create'
+CONTAINER_CREATE_RETRY_METADB_TYPE = 'container_create_retry'
 CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 
 STATS_KEY = 'lxc.%s' % socket.gethostname().replace('.', '_')
@@ -320,7 +322,9 @@ class Container(object):
                                  container.
         """
         self.container_path = os.path.realpath(container_path)
-
+        # Path to the rootfs of the container. This will be initialized when
+        # property rootfs is retrieved.
+        self._rootfs = None
         for attribute, value in attribute_values.iteritems():
             setattr(self, attribute, value)
 
@@ -336,6 +340,49 @@ class Container(object):
         attribute_values = containers[0]
         for attribute, value in attribute_values.iteritems():
             setattr(self, attribute, value)
+
+
+    @property
+    def rootfs(self):
+        """Path to the rootfs of the container.
+
+        This property returns the path to the rootfs of the container, that is,
+        the folder where the container stores its local files. It reads the
+        attribute lxc.rootfs from the config file of the container, e.g.,
+            lxc.rootfs = /usr/local/autotest/containers/t4/rootfs
+        If the container is created with snapshot, the rootfs is a chain of
+        folders, separated by `:` and ordered by how the snapshot is created,
+        e.g.,
+            lxc.rootfs = overlayfs:/usr/local/autotest/containers/base/rootfs:
+            /usr/local/autotest/containers/t4_s/delta0
+        This function returns the last folder in the chain, in above example,
+        that is `/usr/local/autotest/containers/t4_s/delta0`
+
+        Files in the rootfs will be accessible directly within container. For
+        example, a folder in host "[rootfs]/usr/local/file1", can be accessed
+        inside container by path "/usr/local/file1". Note that symlink in the
+        host can not across host/container boundary, instead, directory mount
+        should be used, refer to function mount_dir.
+
+        @return: Path to the rootfs of the container.
+        """
+        if not self._rootfs:
+            cmd = ('sudo lxc-info -P %s -n %s -c lxc.rootfs' %
+                   (self.container_path, self.name))
+            lxc_rootfs_config = utils.run(cmd).stdout.strip()
+            match = re.match('lxc.rootfs = (.*)', lxc_rootfs_config)
+            if not match:
+                raise error.ContainerError(
+                        'Failed to locate rootfs for container %s. lxc.rootfs '
+                        'in the container config file is %s' %
+                        (self.name, lxc_rootfs_config))
+            lxc_rootfs = match.group(1)
+            self.clone_from_snapshot = ':' in lxc_rootfs
+            if self.clone_from_snapshot:
+                self._rootfs = lxc_rootfs.split(':')[-1]
+            else:
+                self._rootfs = lxc_rootfs
+        return self._rootfs
 
 
     def attach_run(self, command, bash=True):
@@ -442,14 +489,8 @@ class Container(object):
         """
         # Destination path in container must be relative.
         destination = destination.lstrip('/')
-        # Path to the rootfs directory of the container. If the container is
-        # created from base container by snapshot, base_dir should be set to
-        # the path to the delta0 folder.
-        base_dir = os.path.join(self.container_path, self.name, 'delta0')
-        if not lxc_utils.path_exists(base_dir):
-            base_dir = os.path.join(self.container_path, self.name, 'rootfs')
         # Create directory in container for mount.
-        utils.run('sudo mkdir -p %s' % os.path.join(base_dir, destination))
+        utils.run('sudo mkdir -p %s' % os.path.join(self.rootfs, destination))
         config_file = os.path.join(self.container_path, self.name, 'config')
         mount = MOUNT_FMT % {'source': source,
                              'destination': destination,
@@ -545,33 +586,61 @@ class ContainerBucket(object):
 
 
     @timer.decorate
-    def create_from_base(self, name):
+    def create_from_base(self, name, disable_snapshot_clone=False,
+                         force_cleanup=False):
         """Create a container from the base container.
 
         @param name: Name of the container.
+        @param disable_snapshot_clone: Set to True to force to clone without
+                using snapshot clone even if the host supports that.
+        @param force_cleanup: Force to cleanup existing container.
 
         @return: A Container object for the created container.
 
         @raise ContainerError: If the container already exist.
         @raise error.CmdError: If lxc-clone call failed for any reason.
         """
-        if self.exist(name):
+        if self.exist(name) and not force_cleanup:
             raise error.ContainerError('Container %s already exists.' % name)
-        # TODO(crbug.com/464834): Snapshot clone is disabled until Moblab can
-        # support overlayfs, which requires a newer kernel.
-        snapshot = '-s' if SUPPORT_SNAPSHOT_CLONE else ''
-        aufs = '-B aufs' if SNAPSHOT_CLONE_REQUIRE_AUFS else ''
+
+        # Cleanup existing container with the given name.
+        container_folder = os.path.join(self.container_path, name)
+        if lxc_utils.path_exists(container_folder) and force_cleanup:
+            container = Container(self.container_path, {'name': name})
+            try:
+                container.destroy()
+            except error.CmdError as e:
+                # The container could be created in a incompleted state. Delete
+                # the container folder instead.
+                logging.warn('Failed to destroy container %s, error: %s',
+                             name, e)
+                utils.run('sudo rm -rf "%s"' % container_folder)
+
+        use_snapshot = SUPPORT_SNAPSHOT_CLONE and not disable_snapshot_clone
+        snapshot = '-s' if  use_snapshot else ''
+        aufs = '-B aufs' if SNAPSHOT_CLONE_REQUIRE_AUFS and use_snapshot else ''
         cmd = ('sudo lxc-clone -p %s -P %s %s' %
                (self.container_path, self.container_path,
                 ' '.join([BASE, name, snapshot, aufs])))
-        utils.run(cmd)
-        container = self.get(name)
-        # base_dir is the path (in host) mapping to / inside container. Files
-        # copied to that folder are visible inside container.
-        container.base_dir = os.path.join(
-                self.container_path, name,
-                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0')
-        return container
+        try:
+            utils.run(cmd)
+            return self.get(name)
+        except error.CmdError:
+            if not use_snapshot:
+                raise
+            else:
+                # Snapshot clone failed, retry clone without snapshot. The retry
+                # won't hit the code here and cause an infinite loop as
+                # disable_snapshot_clone is set to True.
+                container = self.create_from_base(
+                        name, disable_snapshot_clone=True, force_cleanup=True)
+                # Report metadata about retry success.
+                autotest_es.post(use_http=True,
+                                 type_str=CONTAINER_CREATE_RETRY_METADB_TYPE,
+                                 metadata={'drone': socket.gethostname(),
+                                           'name': name,
+                                           'success': True})
+                return container
 
 
     @cleanup_if_fail()
@@ -672,10 +741,7 @@ class ContainerBucket(object):
         container = self.create_from_base(name)
 
         # Deploy server side package
-        usr_local_path = os.path.join(
-                self.container_path, name,
-                'rootfs' if not SUPPORT_SNAPSHOT_CLONE else 'delta0',
-                'usr', 'local')
+        usr_local_path = os.path.join(container.rootfs, 'usr', 'local')
         autotest_pkg_path = os.path.join(usr_local_path,
                                          'autotest_server_package.tar.bz2')
         autotest_path = os.path.join(usr_local_path, 'autotest')

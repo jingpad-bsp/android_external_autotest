@@ -145,7 +145,7 @@ class DeployConfigManager(object):
         with open(config_file) as f:
             deploy_configs = json.load(f)
         self.deploy_configs = [self.validate(c) for c in deploy_configs]
-        self.tmp_append = os.path.join(self.container.base_dir, APPEND_FOLDER)
+        self.tmp_append = os.path.join(self.container.rootfs, APPEND_FOLDER)
         if lxc_utils.path_exists(self.tmp_append):
             utils.run('sudo rm -rf "%s"' % self.tmp_append)
         utils.run('sudo mkdir -p "%s"' % self.tmp_append)
@@ -168,7 +168,7 @@ class DeployConfigManager(object):
             target = os.path.join(self.tmp_append,
                                   os.path.basename(deploy_config.target))
         else:
-            target = os.path.join(self.container.base_dir,
+            target = os.path.join(self.container.rootfs,
                                   deploy_config.target[1:])
         # Recursively copy files/folder to the target. `-L` to always follow
         # symbolic links in source.
