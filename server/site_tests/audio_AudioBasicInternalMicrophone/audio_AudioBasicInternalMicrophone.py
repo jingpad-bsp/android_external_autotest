@@ -26,6 +26,7 @@ class audio_AudioBasicInternalMicrophone(test.test):
     version = 1
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 9
+    DELAY_AFTER_BINDING = 0.5
 
     def run_once(self, host):
         golden_file = audio_test_data.SIMPLE_FREQUENCY_TEST_FILE
@@ -48,6 +49,15 @@ class audio_AudioBasicInternalMicrophone(test.test):
             chameleon_audio_ids.CrosIds.INTERNAL_MIC)
 
         with chameleon_audio_helper.bind_widgets(binder):
+            # Checks the node selected by cras is correct.
+            time.sleep(self.DELAY_AFTER_BINDING)
+            audio_facade = factory.create_audio_facade()
+            _, input_node = audio_facade.get_selected_node_types()
+            if input_node != 'INTERNAL_MIC':
+                raise error.TestError(
+                        '%s rather than internal mic is selected on Cros '
+                        'device' % input_node)
+
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by chameleon codec initialization
             # in the beginning of playback.

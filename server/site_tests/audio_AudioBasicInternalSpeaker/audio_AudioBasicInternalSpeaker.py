@@ -45,6 +45,14 @@ class audio_AudioBasicInternalSpeaker(test.test):
             chameleon_audio_ids.ChameleonIds.MIC)
 
         audio_facade = factory.create_audio_facade()
+
+        # Checks the node selected by cras is correct.
+        output_node, _ = audio_facade.get_selected_node_types()
+        if output_node != 'INTERNAL_SPEAKER':
+            raise error.TestError(
+                    '%s rather than internal speaker is selected on Cros '
+                    'device' % output_node)
+
         audio_facade.set_selected_output_volume(80)
 
         # Starts playing, waits for some time, and then starts recording.
