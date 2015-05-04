@@ -7,5 +7,4 @@
 
 class Values(object):
     """FAFT config values for Butterfly."""
-    broken_warm_reset = True
     dark_resume_capable = True

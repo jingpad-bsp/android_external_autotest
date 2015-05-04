@@ -13,7 +13,6 @@ class Values(object):
 
     # Parrot takes slightly longer to get to dev screen.
     dev_screen = 8
-    broken_warm_reset = True
     dark_resume_capable = True
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
