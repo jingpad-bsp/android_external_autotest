@@ -148,7 +148,9 @@ def inject_vars(vars, control_file_in):
             control_file += "%s=%s\n" % (key, repr(value))
         else:
             control_file += "%s=%r\n" % (key, value)
-    return control_file + control_file_in
+
+    args_dict_str = "%s=%s\n" % ('args_dict', repr(vars))
+    return control_file + args_dict_str + control_file_in
 
 
 def is_usable(host):
