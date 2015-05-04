@@ -12,6 +12,7 @@ import tempfile
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.audio import sox_utils
+from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
 
@@ -73,6 +74,7 @@ class AudioInputWidget(AudioWidget):
         self._rec_binary = None
         self._rec_format = None
         self._channel_map = None
+        self._init_channel_map_without_link()
 
 
     def start_recording(self):
@@ -140,6 +142,20 @@ class AudioInputWidget(AudioWidget):
 
         """
         self._channel_map = copy.deepcopy(new_channel_map)
+
+
+    def _init_channel_map_without_link(self):
+        """Initializes channel map without WidgetLink.
+
+        WidgetLink sets channel map to a sink widget when the link combines
+        a source widget to a sink widget. For simple cases like internal
+        microphone on Cros device, or Mic port on Chameleon, the audio signal
+        is over the air, so we do not use link to combine the source to
+        the sink. We just set a default channel map in this case.
+
+        """
+        if self.port_id in [ids.ChameleonIds.MIC, ids.CrosIds.INTERNAL_MIC]:
+            self._channel_map = [0]
 
 
     @property

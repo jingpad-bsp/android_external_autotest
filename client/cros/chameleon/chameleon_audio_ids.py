@@ -15,8 +15,9 @@ class ChameleonIds(object):
     HDMI = 'Chameleon HDMI'
     LINEIN = 'Chameleon LineIn'
     LINEOUT = 'Chameleon LineOut'
+    MIC = 'Chameleon Mic'
 
-    SINK_PORTS = [HDMI, LINEIN]
+    SINK_PORTS = [HDMI, LINEIN, MIC]
     SOURCE_PORTS = [LINEOUT]
 
 
