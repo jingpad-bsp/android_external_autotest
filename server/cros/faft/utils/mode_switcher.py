@@ -134,12 +134,6 @@ class ModeSwitcher(object):
         self.faft_framework.wait_for_client_offline()
         self._wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
 
-        # TODO (crosbug.com/p/16231) remove this conditional completely if/when
-        # issue is resolved.
-        if self.faft_config.platform == 'Parrot':
-            self.faft_framework.wait_for_client_offline()
-            self.faft_framwork.reboot_cold_trigger()
-
 
     def _disable_keyboard_dev_mode(self):
         """Disable keyboard controlled developer mode"""
