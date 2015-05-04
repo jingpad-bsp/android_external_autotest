@@ -41,30 +41,26 @@ class audio_AudioBasicInternalSpeaker(test.test):
         source = widget_factory.create_widget(
             chameleon_audio_ids.CrosIds.SPEAKER)
 
-        receiver = widget_factory.create_widget(
-            chameleon_audio_ids.PeripheralIds.MIC)
         recorder = widget_factory.create_widget(
-            chameleon_audio_ids.ChameleonIds.LINEIN)
-        binder = widget_factory.create_binder(receiver, recorder)
+            chameleon_audio_ids.ChameleonIds.MIC)
 
         audio_facade = factory.create_audio_facade()
         audio_facade.set_selected_output_volume(80)
 
-        with chameleon_audio_helper.bind_widgets(binder):
-            # Starts playing, waits for some time, and then starts recording.
-            # This is to avoid artifact caused by codec initialization.
-            logging.info('Start playing %s on Cros device',
-                         golden_file.path)
-            source.start_playback(golden_file)
+        # Starts playing, waits for some time, and then starts recording.
+        # This is to avoid artifact caused by codec initialization.
+        logging.info('Start playing %s on Cros device',
+                     golden_file.path)
+        source.start_playback(golden_file)
 
-            time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
-            logging.info('Start recording from Chameleon.')
-            recorder.start_recording()
+        time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
+        logging.info('Start recording from Chameleon.')
+        recorder.start_recording()
 
-            time.sleep(self.RECORD_SECONDS)
+        time.sleep(self.RECORD_SECONDS)
 
-            recorder.stop_recording()
-            logging.info('Stopped recording from Chameleon.')
+        recorder.stop_recording()
+        logging.info('Stopped recording from Chameleon.')
 
         recorded_file = os.path.join(self.resultsdir, "recorded.raw")
         logging.info('Saving recorded data to %s', recorded_file)
