@@ -28,7 +28,7 @@ class chromedriver(object):
 
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
                  extension_paths=[], is_component=True, username=None,
-                 password=None, *args, **kwargs):
+                 password=None, server_port=None, *args, **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -38,7 +38,9 @@ class chromedriver(object):
                                 that paths to crx files won't work.
         @param is_component: True if the manifest.json has a key.
         @param username: Log in using this username instead of the default.
-        @param username: Log in using this password instead of the default.
+        @param password: Log in using this password instead of the default.
+        @param server_port: Port number for the chromedriver server. If None,
+                            an available port is chosen at random.
         """
         assert os.geteuid() == 0, 'Need superuser privileges'
 
@@ -54,7 +56,8 @@ class chromedriver(object):
         self._browser.tabs[0].Close()
 
         # Start ChromeDriver server
-        self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH)
+        self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH,
+                                           port=server_port)
 
         # Open a new tab using Chrome remote debugging. ChromeDriver expects
         # a tab opened for remote to work. Tabs opened using Telemetry will be
@@ -113,18 +116,20 @@ class chromedriver_server(object):
     src/chrome/test/chromedriver/server/server.py
     """
 
-    def __init__(self, exe_path):
+    def __init__(self, exe_path, port=None):
         """Starts the ChromeDriver server and waits for it to be ready.
 
         Args:
             exe_path: path to the ChromeDriver executable
+            port: server port. If None, an available port is chosen at random.
         Raises:
             RuntimeError if ChromeDriver fails to start
         """
         if not os.path.exists(exe_path):
             raise RuntimeError('ChromeDriver exe not found at: ' + exe_path)
 
-        port = utils.get_unused_port()
+        if not port:
+            port = utils.get_unused_port()
         chromedriver_args = [exe_path, '--port=%d' % port]
 
         # Chromedriver will look for an X server running on the display
