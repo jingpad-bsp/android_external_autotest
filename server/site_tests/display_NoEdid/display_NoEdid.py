@@ -54,7 +54,7 @@ class display_NoEdid(test.test):
 
                 resolution = display_facade.get_external_resolution()
                 if resolution not in self.STANDARD_MODE_RESOLUTIONS:
-                    error_message = ('Switched to a non-standard mode: %dx%d' %
+                    error_message = ('Switched to a non-standard mode: %r' %
                                      resolution)
                     logging.error(error_message)
                     errors.append(error_message)

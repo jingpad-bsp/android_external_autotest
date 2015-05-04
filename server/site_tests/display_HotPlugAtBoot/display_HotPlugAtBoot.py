@@ -53,8 +53,8 @@ class display_HotPlugAtBoot(test.test):
             # Keep the original connector name, for later comparison.
             expected_connector = display_facade.get_external_connector_name()
             resolution = display_facade.get_external_resolution()
-            logging.info('See the display on DUT: %s (%dx%d)',
-                    expected_connector, *resolution)
+            logging.info('See the display on DUT: %s %r',
+                    expected_connector, resolution)
 
             for plugged_before_boot, plugged_after_boot in self.PLUG_CONFIGS:
                 logging.info('TESTING THE CASE: %s > reboot > %s',

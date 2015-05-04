@@ -47,8 +47,8 @@ class ExactMatchResolutionComparer(object):
         if expected_resolution != cros_resolution or (
                 chameleon_resolution != cros_resolution):
             message = ('Detected mis-matched resolutions: '
-                       'CrOS %dx%d; Chameleon %dx%d; Expected %dx%d.' %
-                       (cros_resolution + chameleon_resolution +
+                       'CrOS %r; Chameleon %r; Expected %r.' %
+                       (cros_resolution, chameleon_resolution,
                         expected_resolution))
             # Note: In mirrored mode, the device may be in hardware mirror
             # (as opposed to software mirror). If so, the actual resolution
@@ -105,8 +105,8 @@ class VgaResolutionComparer(object):
                 chameleon_resolution[0] < cros_resolution[0] or
                 chameleon_resolution[1] < cros_resolution[1]):
             message = ('Detected mis-matched VGA resolutions: '
-                       'CrOS %dx%d; Chameleon %dx%d; Expected %dx%d.' %
-                       (cros_resolution + chameleon_resolution +
+                       'CrOS %r; Chameleon %r; Expected %r.' %
+                       (cros_resolution, chameleon_resolution,
                         expected_resolution))
             logging.error(message)
             return message

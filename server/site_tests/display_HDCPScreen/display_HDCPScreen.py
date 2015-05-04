@@ -62,7 +62,7 @@ class display_HDCPScreen(test.test):
             display_facade.set_mirrored(test_mirrored)
 
             resolution = display_facade.get_external_resolution()
-            logging.info('Detected resolution on CrOS: %dx%d', *resolution)
+            logging.info('Detected resolution on CrOS: %r', resolution)
 
             original_cros_state = display_facade.get_content_protection()
             was_chameleon_enabled = (

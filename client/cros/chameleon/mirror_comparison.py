@@ -55,8 +55,8 @@ class MirrorComparer(object):
 
         if internal_resolution != external_resolution:
             logging.info('Sofware-based mirroring, skip the screen comparison. '
-                         'Resolutions: Internal %dx%d; External %dx%d.',
-                         *(internal_resolution + external_resolution))
+                         'Resolutions: Internal %r; External %r',
+                         internal_resolution, external_resolution)
             return None
         else:
             logging.info('Resolutions across all CrOS screens match: %dx%d',
