@@ -85,6 +85,7 @@ class MediaTestFactory(object):
         self.test_constants_filename = 'test_constants.conf'
         self.video_info_filename = 'video_spec.conf'
         self.channel_spec_filename = 'channel_spec.conf'
+        self.golden_checksum_filename = 'golden_checksums.txt'
 
         # HTML file specs
         self.html_filename = ('vimeo.html' if video_name == 'vimeo' else
@@ -286,6 +287,11 @@ class MediaTestFactory(object):
         self.video_frame_count = self.parser.getint(self.channel,
                                                     'video_frame_count')
 
+        self.missing_frames_eps = self.parser.getint(self.channel,
+                                                     'missing_frames_eps')
+        self.frame_count_deviation = self.parser.getint(self.channel,
+                                                        'frame_count_deviation')
+
 
     @property
     def golden_images_remote_dir(self):
@@ -366,7 +372,7 @@ class MediaTestFactory(object):
                 facade,
                 self.test_working_dir,
                 self.timeout_video_input_s,
-                box)
+                box=None)
 
 
     @method_logger.log
@@ -386,13 +392,8 @@ class MediaTestFactory(object):
                 chameleon_board,
                 facade)
 
-        # TODO: mussa There is a banner that displays a warning that we are
-        # ignoring certificates. Right now just crop it out, need to figure out
-        # what to do about the banner, crop it out permanently or dig inside
-        # chrome flags to figure out how to disable it
-
-        box = (0, self.top_pixels_to_crop, self.video_width,
-               self.top_pixels_to_crop + self.video_height)
+        # We are going Full Screen now
+        box = (0, 0, self.video_width, self.video_height + 10)
 
         return chameleon_video_capturer.ChameleonVideoCapturer(
                 chameleon_port=finder.find_port(

@@ -28,6 +28,7 @@ class ChameleonVideoCapturer(object):
         self.timeout_input_stable_s = timeout_input_stable_s
         self.timeout_get_all_frames_s = timeout_get_all_frames_s
         self.box = box
+        self._checksums = []
 
         self.was_plugged = None
 
@@ -38,23 +39,41 @@ class ChameleonVideoCapturer(object):
         if not self.was_plugged:
             self.chameleon_port.plug()
             self.chameleon_port.wait_video_input_stable(
-                   self.timeout_input_stable_s)
-
-        self.display_facade.set_mirrored(True)
+                    self.timeout_input_stable_s)
 
         return self
 
 
     def capture(self, player, max_frame_count, box=None):
         """
+        Captures frames upto max_frame_count, saves the image with filename
+        same as the index of the frame in the frame buffer.
+
+        @param player: object, VimeoPlayer or NativeHTML5Player
+        @param max_frame_count: int, maximum total number of frames to capture.
+        @param box: int tuple, left, upper, right, lower pixel coordinates.
+                    Defines the rectangular boundary within which to compare.
+        @return: list of paths of captured images.
+
+        """
+
+        self.capture_only(player, max_frame_count, box)
+        # each checksum should be saved with a filename that is its index
+        ind_paths = {i : str(i) for i in self.checksums}
+        return self.write_images(ind_paths)
+
+
+    def capture_only(self, player, max_frame_count, box=None):
+        """
         Asynchronously begins capturing video frames. Stops capturing when the
-        number of frames captured is equal or more than max_frame_count.
+        number of frames captured is equal or more than max_frame_count. Does
+        save the images, gets only the checksums.
 
         @param player: VimeoPlayer or NativeHTML5Player.
         @param max_frame_count: int, the maximum number of frames we want.
         @param box: int tuple, left, upper, right, lower pixel coordinates.
                     Defines the rectangular boundary within which to compare.
-        @return: list of paths to images captured.
+        @return: list of checksums
 
         """
 
@@ -69,44 +88,52 @@ class ChameleonVideoCapturer(object):
 
         utils.poll_for_condition(
                 lambda: self.chameleon_port.get_captured_frame_count() >=
-                max_frame_count,
+                        max_frame_count,
                 error.TestError(error_msg),
                 self.timeout_get_all_frames_s)
 
         self.chameleon_port.stop_capturing_video()
 
-        first_index = 0
+        self.checksums = self.chameleon_port.get_captured_checksums()
         count = self.chameleon_port.get_captured_frame_count()
 
-        checksums = self.chameleon_port.get_captured_checksums(0, count)
-
+        # Find the first frame that is different from previous ones. This
+        # represents the start of 'interesting' frames
+        first_index = 0
         for i in xrange(1, count):
-            if checksums[0] != checksums[i]:
+            if self.checksums[0] != self.checksums[i]:
                 first_index = i
                 break
 
+        self.checksums = self.checksums[first_index:]
+        return self.checksums
+
+
+
+    def write_images(self, frame_indices):
+        """
+        Saves frames of given indices to disk. The filename of the frame will be
+        index in the list.
+        @param frame_indices: list of frame indices to save.
+        @return: list of file paths
+        """
+        if type(frame_indices) is not list:
+            frame_indices = [frame_indices]
+
         test_images = []
-        prev_img = None
-
-        for i in xrange(first_index, count):
-            adj_index = i - first_index
-            logging.debug("Reading Frame %d", adj_index)
-
-            fullpath = os.path.join(self.dest_dir, str(adj_index) + '.' +
-                                    self.image_format)
-
-            if i > 0 and checksums[i] == checksums[i-1]:
-                logging.debug("Image the same as previous image, copying it...")
-
-                prev_img.save(fullpath)
-
-                logging.debug("Copied image and skipping iteration.")
-            else: # current image is previous image for the next iteration
-                prev_img = self.chameleon_port.read_captured_frame(i)
-                prev_img.save(fullpath)
-
-            test_images.append(fullpath)
-
+        curr_checksum = None
+        for i, frame_index in enumerate(frame_indices):
+            path = os.path.join(self.dest_dir, str(i) + '.' + self.image_format)
+            # previous is what was current in the previous iteration
+            prev_checksum = curr_checksum
+            curr_checksum = self.checksums[frame_index]
+            if curr_checksum == prev_checksum:
+                logging.debug("Image the same as previous image, copy it.")
+            else:
+                logging.debug("Read frame %d, store as %s.", i, path)
+                curr_img = self.chameleon_port.read_captured_frame(frame_index)
+            curr_img.save(path)
+            test_images.append(path)
         return test_images
 
 

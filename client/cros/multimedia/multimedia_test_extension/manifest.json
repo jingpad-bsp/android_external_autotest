@@ -11,6 +11,10 @@
     {
       "matches": ["file://*/*.svg"],
       "js": ["move_and_set_fullscreen.js"]
+    },
+    {
+      "matches": ["http://*/*.html"],
+      "js": ["move_and_set_fullscreen.js"]
     }
   ],
   "permissions": [
