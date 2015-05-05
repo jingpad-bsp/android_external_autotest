@@ -265,6 +265,12 @@ class ChameleonWidgetHandler(WidgetHandler):
         _port: A ChameleonPort object to control port on Chameleon.
 
     """
+    # The mic port on chameleon has a small gain. We need to scale
+    # the recorded value up, otherwise, the recorded value will be
+    # too small and will be falsely judged as not meaningful in the
+    # processing, even when the recorded audio is clear.
+    _DEFAULT_MIC_SCALE = 300.0
+
     def __init__(self, chameleon_board, interface):
         """Initializes a ChameleonWidgetHandler.
 
@@ -277,6 +283,7 @@ class ChameleonWidgetHandler(WidgetHandler):
         self._chameleon_board = chameleon_board
         self._port = self._find_port(interface)
         self.scale = None
+        self._init_scale_without_link()
 
 
     @abc.abstractmethod
@@ -293,6 +300,18 @@ class ChameleonWidgetHandler(WidgetHandler):
     def unplug(self):
         """Unplugs this widget."""
         self._port.unplug()
+
+
+    def _init_scale_without_link(self):
+        """Initializes scale for widget handler not used with link.
+
+        Audio widget link sets scale when it connects two audio widgets.
+        For audio widget not used with link, e.g. Mic on Chameleon, we set
+        a default scale here.
+
+        """
+        if self.interface == 'Mic':
+            self.scale = self._DEFAULT_MIC_SCALE
 
 
 class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
