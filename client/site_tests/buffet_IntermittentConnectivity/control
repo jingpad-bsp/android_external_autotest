@@ -6,7 +6,7 @@ AUTHOR = 'zeuthen, wiley, avakulenko'
 NAME = 'buffet_IntermittentConnectivity'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-SUITE = 'tendo_experimental, smoke'
+SUITE = 'tendo_experimental'
 
 DOC = """
 Test that buffet reconnects if it loses connectivity.
