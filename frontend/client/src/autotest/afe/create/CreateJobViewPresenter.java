@@ -694,6 +694,13 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 if (!imageUrlString.equals("")) {
                     args.put("image", new JSONString(imageUrlString));
                 }
+                else if (display.getHostless().getValue() &&
+                         testSuiteSelected()) {
+                    display.getSubmitJobButton().setEnabled(true);
+                    NotifyManager.getInstance().showError("Please specify an image to use.");
+                    return;
+                }
+
 
                 String argsString = display.getArgs().getText().trim();
                 if (!argsString.equals("")) {
@@ -808,6 +815,26 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     public void onTestSelectionChanged() {
         generateControlFile(false);
         setInputsEnabled();
+
+        // Set hostless selection to true if the test name contains test_suites
+        display.getHostless().setValue(false);
+        hostSelector.setEnabled(true);
+
+        if (testSuiteSelected()) {
+            display.getHostless().setValue(true);
+            hostSelector.setEnabled(false);
+        }
+    }
+
+    private boolean testSuiteSelected() {
+        for (JSONObject test : testSelector.getSelectedTests()) {
+            if (Utils.jsonToString(test.get("name")).toLowerCase().contains("test_suites:"))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void setRebootSelectorDefault(RadioChooser chooser, String name) {

@@ -60,12 +60,14 @@ public class TestSelectorDisplay extends Composite implements TestSelector.Displ
         mainPanel.setSize("100%", "30em");
         mainPanel.setSplitPosition("30%");
         mainPanel.addStyleName("test-selector");
+        mainPanel.addStyleName("noborder");
 
         Panel container = new VerticalPanel();
         container.add(testTypePanel);
         container.add(testFilterPanel);
         container.add(mainPanel);
-        container.setWidth("100%");
+        container.addStyleName("panel-boundedwidth");
+        container.addStyleName("data-table-outlined-gray");
 
         initWidget(container);
     }

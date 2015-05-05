@@ -20,6 +20,7 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
 
 public class HostSelectorDisplay extends Composite implements HostSelector.Display {
+    private Label hostSelectorTitle = new Label("Select Hosts for Running Tests:");
     private TextArea hostnameInput = new TextArea();
     private Button addByHostnameButton = new Button();
     private CheckBox allowOneTimeHostsBox = new CheckBox();
@@ -32,6 +33,9 @@ public class HostSelectorDisplay extends Composite implements HostSelector.Displ
     private boolean haveTables = false;
 
     public HostSelectorDisplay() {
+        // Set title label style
+        hostSelectorTitle.setStyleName("field-name");
+
         // available host table
         availableTablePanel = new SimplePanel();
         tabPanel.add(availableTablePanel, "By browsing hosts");
@@ -69,13 +73,15 @@ public class HostSelectorDisplay extends Composite implements HostSelector.Displ
         // the tabbed selector is displayed alongside the list of selected hosts
         selectedTablePanel = new VerticalPanel();
         selectedTablePanel.addStyleName("data-table");
-        selectedTablePanel.addStyleName("data-table data-table-outlined");
         Label selectedTitle = new Label("Selected hosts:");
         selectedTitle.addStyleName("field-name");
         selectedTablePanel.add(selectedTitle);
         Panel outerPanel = new VerticalPanel();
+        outerPanel.add(hostSelectorTitle);
         outerPanel.add(tabPanel);
         outerPanel.add(selectedTablePanel);
+        outerPanel.addStyleName("panel-boundedwidth");
+        outerPanel.addStyleName("data-table-outlined-gray");
         initWidget(outerPanel);
     }
 

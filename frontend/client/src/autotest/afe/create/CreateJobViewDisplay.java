@@ -29,7 +29,9 @@ import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.DisclosurePanel;
+import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.HTMLPanel;
+import com.google.gwt.user.client.ui.HTMLTable;
 import com.google.gwt.user.client.ui.HasText;
 import com.google.gwt.user.client.ui.HasValue;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -139,13 +141,17 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private Button createTemplateJobButton = new Button("Create Template Job");
     private Button resetButton = new Button("Reset");
     private Label viewLink = new Label("");
+    private DisclosurePanel advancedOptionsPanel = new DisclosurePanel("");
 
     public void initialize(HTMLPanel panel) {
+        jobName.addStyleName("jobname-image-boundedwidth");
+        image_url.addStyleName("jobname-image-boundedwidth");
+
         Panel profilerControls = new VerticalPanel();
         profilerControls.add(profilersPanel);
         profilerControls.add(runNonProfiledIteration);
 
-        controlFile.setSize("50em", "30em");
+        controlFile.setSize("100%", "30em");
 
         HorizontalPanel controlOptionsPanel = new HorizontalPanel();
         controlOptionsPanel.setVerticalAlignment(HorizontalPanel.ALIGN_BOTTOM);
@@ -160,6 +166,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         Panel controlEditPanel = new VerticalPanel();
         controlEditPanel.add(controlOptionsPanel);
         controlEditPanel.add(controlFile);
+        controlEditPanel.setWidth("100%");
 
         Panel controlHeaderPanel = new HorizontalPanel();
         controlHeaderPanel.add(controlFilePanel.getHeader());
@@ -168,50 +175,139 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
         controlFilePanel.setHeader(controlHeaderPanel);
         controlFilePanel.add(controlEditPanel);
+        controlFilePanel.addStyleName("panel-boundedwidth");
 
+        // Setup the Advanced options panel
+        advancedOptionsPanel.getHeaderTextAccessor().setText("Advanced Options");
+
+        FlexTable advancedOptionsLayout = new FlexTable();
+
+        Panel priorityPanel = new HorizontalPanel();
+        priorityPanel.add(priorityList);
+        priorityPanel.add(priorityListToolTip);
+        advancedOptionsLayout.setWidget(0, 0, new Label("Priority:"));
+        advancedOptionsLayout.setWidget(0, 1, priorityPanel);
+
+        Panel kernelPanel = new HorizontalPanel();
+        kernelPanel.add(kernel);
+        kernelPanel.add(kernelToolTip);
+        advancedOptionsLayout.setWidget(1, 0, new Label("Kernel(s): (optional)"));
+        advancedOptionsLayout.setWidget(1, 1, kernelPanel);
+
+        advancedOptionsLayout.setWidget(2, 0, new Label("Kernel 'cmd': (optional)"));
+        advancedOptionsLayout.setWidget(2, 1, kernel_cmdline);
+
+        Panel timeoutPanel = new HorizontalPanel();
+        timeoutPanel.add(timeout);
+        timeoutPanel.add(timeoutToolTip);
+        advancedOptionsLayout.setWidget(3, 0, new Label("Timeout (minutes):"));
+        advancedOptionsLayout.setWidget(3, 1, timeoutPanel);
+
+        Panel maxRuntimePanel = new HorizontalPanel();
+        maxRuntimePanel.add(maxRuntime);
+        maxRuntimePanel.add(maxRuntimeToolTip);
+        advancedOptionsLayout.setWidget(4, 0, new Label("Max runtime (minutes):"));
+        advancedOptionsLayout.setWidget(4, 1, maxRuntimePanel);
+
+        Panel testRetryPanel = new HorizontalPanel();
+        testRetryPanel.add(testRetry);
+        testRetryPanel.add(testRetryToolTip);
+        advancedOptionsLayout.setWidget(5, 0, new Label("Test Retries: (optional)"));
+        advancedOptionsLayout.setWidget(5, 1, testRetryPanel);
+
+        Panel emailListPanel = new HorizontalPanel();
+        emailListPanel.add(emailList);
+        emailListPanel.add(emailListToolTip);
+        advancedOptionsLayout.setWidget(6, 0, new Label("Email List: (optional)"));
+        advancedOptionsLayout.setWidget(6, 1, emailListPanel);
+
+        Panel skipVerifyPanel = new HorizontalPanel();
+        skipVerifyPanel.add(skipVerify);
+        skipVerifyPanel.add(skipVerifyToolTip);
+        advancedOptionsLayout.setWidget(7, 0, new Label("Skip verify:"));
+        advancedOptionsLayout.setWidget(7, 1, skipVerifyPanel);
+
+        Panel skipResetPanel = new HorizontalPanel();
+        skipResetPanel.add(skipReset);
+        skipResetPanel.add(skipResetToolTip);
+        advancedOptionsLayout.setWidget(8, 0, new Label("Skip reset:"));
+        advancedOptionsLayout.setWidget(8, 1, skipResetPanel);
+
+        Panel rebootBeforePanel = new HorizontalPanel();
+        rebootBeforePanel.add(rebootBefore);
+        rebootBeforePanel.add(rebootBeforeToolTip);
+        advancedOptionsLayout.setWidget(9, 0, new Label("Reboot before:"));
+        advancedOptionsLayout.setWidget(9, 1, rebootBeforePanel);
+
+        Panel rebootAfterPanel = new HorizontalPanel();
+        rebootAfterPanel.add(rebootAfter);
+        rebootAfterPanel.add(rebootAfterToolTip);
+        advancedOptionsLayout.setWidget(10, 0, new Label("Reboot after:"));
+        advancedOptionsLayout.setWidget(10, 1, rebootAfterPanel);
+
+        Panel parseFailedRepairPanel = new HorizontalPanel();
+        parseFailedRepairPanel.add(parseFailedRepair);
+        parseFailedRepairPanel.add(parseFailedRepairToolTip);
+        advancedOptionsLayout.setWidget(11, 0, new Label("Include failed repair results:"));
+        advancedOptionsLayout.setWidget(11, 1, parseFailedRepairPanel);
+
+        Panel hostlessPanel = new HorizontalPanel();
+        hostlessPanel.add(hostless);
+        hostlessPanel.add(hostlessToolTip);
+        advancedOptionsLayout.setWidget(12, 0, new Label("Hostless (Suite Job):"));
+        advancedOptionsLayout.setWidget(12, 1, hostlessPanel);
+
+        Panel require_sspPanel = new HorizontalPanel();
+        require_sspPanel.add(require_ssp);
+        require_sspPanel.add(require_sspToolTip);
+        advancedOptionsLayout.setWidget(13, 0, new Label("Require server-side packaging:"));
+        advancedOptionsLayout.setWidget(13, 1, require_sspPanel);
+
+        Panel poolPanel = new HorizontalPanel();
+        poolPanel.add(pool);
+        poolPanel.add(poolToolTip);
+        advancedOptionsLayout.setWidget(14, 0, new Label("Pool: (optional)"));
+        advancedOptionsLayout.setWidget(14, 1, poolPanel);
+
+        Panel argsPanel = new HorizontalPanel();
+        argsPanel.add(args);
+        argsPanel.add(argsToolTip);
+        advancedOptionsLayout.setWidget(15, 0, new Label("Args: (optional)"));
+        advancedOptionsLayout.setWidget(15, 1, argsPanel);
+
+        advancedOptionsLayout.setWidget(16, 0, new Label("Profilers: (optional)"));
+        advancedOptionsLayout.setWidget(16, 1, profilerControls);
+
+        HTMLTable.RowFormatter advOptLayoutFormatter = advancedOptionsLayout.getRowFormatter();
+        for (int row = 0; row < advancedOptionsLayout.getRowCount(); ++row)
+        {
+          if (row % 2 == 0) {
+              advOptLayoutFormatter.addStyleName(row, "data-row");
+          }
+          else {
+              advOptLayoutFormatter.addStyleName(row, "data-row-alternate");
+          }
+
+        }
+
+        advancedOptionsLayout.setWidth("100%");
+        advancedOptionsPanel.addStyleName("panel-boundedwidth");
+        advancedOptionsPanel.add(advancedOptionsLayout);
+
+        // Add the remaining widgets to the main panel
         panel.add(jobName, "create_job_name");
         panel.add(jobNameToolTip, "create_job_name");
-        panel.add(kernel, "create_kernel");
-        panel.add(kernelToolTip, "create_kernel");
-        panel.add(kernel_cmdline, "create_kernel_cmdline");
         panel.add(image_url, "create_image_url");
         panel.add(image_urlToolTip, "create_image_url");
-        panel.add(timeout, "create_timeout");
-        panel.add(timeoutToolTip, "create_timeout");
-        panel.add(maxRuntime, "create_max_runtime");
-        panel.add(maxRuntimeToolTip, "create_max_runtime");
-        panel.add(testRetry, "create_test_retry");
-        panel.add(testRetryToolTip, "create_test_retry");
-        panel.add(emailList, "create_email_list");
-        panel.add(emailListToolTip, "create_email_list");
-        panel.add(priorityList, "create_priority");
-        panel.add(priorityListToolTip, "create_priority");
-        panel.add(skipVerify, "create_skip_verify");
-        panel.add(skipVerifyToolTip, "create_skip_verify");
-        panel.add(skipReset, "create_skip_reset");
-        panel.add(skipResetToolTip, "create_skip_reset");
-        panel.add(rebootBefore, "create_reboot_before");
-        panel.add(rebootBeforeToolTip, "create_reboot_before");
-        panel.add(rebootAfter, "create_reboot_after");
-        panel.add(rebootAfterToolTip, "create_reboot_after");
-        panel.add(parseFailedRepair, "create_parse_failed_repair");
-        panel.add(parseFailedRepairToolTip, "create_parse_failed_repair");
-        panel.add(hostless, "create_hostless");
-        panel.add(hostlessToolTip, "create_hostless");
-        panel.add(require_ssp, "create_require_ssp");
-        panel.add(require_sspToolTip, "create_require_ssp");
-        panel.add(pool, "create_pool");
-        panel.add(poolToolTip, "create_pool");
-        panel.add(args, "create_args");
-        panel.add(argsToolTip, "create_args");
         panel.add(testSelector, "create_tests");
-        panel.add(profilerControls, "create_profilers");
         panel.add(controlFilePanel, "create_edit_control");
         panel.add(hostSelector, "create_host_selector");
         panel.add(submitJobButton, "create_submit");
         panel.add(createTemplateJobButton, "create_template_job");
         panel.add(resetButton, "create_reset");
         panel.add(droneSet, "create_drone_set");
+
+        panel.add(advancedOptionsPanel, "create_advanced_options");
     }
 
     public CheckBoxPanel.Display getCheckBoxPanelDisplay() {

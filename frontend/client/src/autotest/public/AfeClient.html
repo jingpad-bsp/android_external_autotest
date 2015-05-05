@@ -174,87 +174,16 @@
         </div>
       </div>
 
+
       <div id="create_job"  title="Create Job">
-        <table class="data-table data-table-outlined">
+        <table class="data-table data-table-outlined-gray panel-boundedwidth">
           <tr class="data-row">
             <td class="field-name">Job name:</td>
             <td class="has-tooltip" id="create_job_name"></td>
           </tr>
           <tr class="data-row data-row-alternate">
-            <td class="field-name">Priority:</td>
-            <td class="has-tooltip" id="create_priority"></td>
-          </tr>
-          <tr class="data-row">
-            <td>Kernel(s): (optional)</td>
-            <td class="has-tooltip" id="create_kernel"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td>Kernel "cmd": (optional)</td>
-            <td class="has-tooltip" id="create_kernel_cmdline"></td></tr>
-          <tr class="data-row">
-            <td>Image URL/Build: (optional)</td>
+            <td class="field-name">Image URL/Build: (optional)</td>
             <td class="has-tooltip" id="create_image_url"></td></tr>
-          <tr class="data-row data-row-alternate">
-            <td class="field-name">Timeout (minutes):</td>
-            <td class="has-tooltip" id="create_timeout"></td>
-          </tr>
-          <tr class="data-row">
-            <td class="field-name">Max runtime (minutes):</td>
-            <td class="has-tooltip" id="create_max_runtime"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td>Test retries: (optional)</td>
-            <td class="has-tooltip" id="create_test_retry"></td>
-          </tr>
-          <tr class="data-row">
-            <td>Email List: (optional)</td>
-            <td class="has-tooltip" id="create_email_list"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td class="field-name">Skip verify:</td>
-            <td class="has-tooltip" id="create_skip_verify"></td>
-          </tr>
-          <tr class="data-row">
-            <td class="field-name">Skip reset:</td>
-            <td class="has-tooltip" id="create_skip_reset"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td class="field-name">Reboot before:</td>
-            <td class="has-tooltip" id="create_reboot_before"></td>
-          </tr>
-          <tr class="data-row">
-            <td class="field-name">Reboot after:</td>
-            <td class="has-tooltip" id="create_reboot_after"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td class="field-name">Include failed repair results:</td>
-            <td class="has-tooltip" id="create_parse_failed_repair"></td>
-          </tr>
-          <tr class="data-row">
-            <td class="field-name">Hostless (Suite Job):</td>
-            <td class="has-tooltip" id="create_hostless"></td>
-          </tr>
-          <tr class="data-row">
-            <td class="field-name">Require server-side packaging:</td>
-            <td class="has-tooltip" id="create_require_ssp"></td>
-          </tr>
-          <tr class="data-row data-row-alternate">
-            <td>Pool: (optional)</td>
-            <td class="has-tooltip" id="create_pool"></td>
-          </tr>
-          <tr class="data-row">
-            <td>Args: (optional)</td>
-            <td class="has-tooltip" id="create_args"></td></tr>
-
-          <tr class="data-row data-row-alternate">
-            <td>Profilers: (optional)</td>
-            <td id="create_profilers"></td>
-          </tr>
-
-          <tr id="create_drone_set_wrapper" class="data-row data-row-alternate">
-            <td class="field-name">Drone set:</td>
-            <td id="create_drone_set"></td>
-          </tr>
         </table>
         <br>
 
@@ -262,11 +191,13 @@
         <span id="create_tests"></span>
         <br>
 
+        <div id="create_advanced_options"></div>
+        <br>
+
         <span class="field-name">Control File:</span>
         <div id="create_edit_control"></div>
         <br>
 
-        <span class="field-name">Select Hosts for Running Tests:</span>
         <span id="create_host_selector"></span>
         <br>
 
@@ -275,6 +206,15 @@
           <span id="create_template_job"></span>
           <span id="create_reset"></span>
         </span>
+
+        <table>
+          <tr id="create_drone_set_wrapper" class="data-row data-row-alternate">
+            <td class="field-name">Drone set:</td>
+            <td id="create_drone_set"></td>
+          </tr>
+        </table>
+        <br>
+
       </div>
 
       <div id="hosts" title="Host List">

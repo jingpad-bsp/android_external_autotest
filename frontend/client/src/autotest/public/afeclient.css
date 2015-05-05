@@ -146,6 +146,10 @@ table .custom-tab-top {
   border: 1px solid #eee;
 }
 
+.data-table-outlined-gray {
+  border: 1px solid gray;
+}
+
 .data-table td {
   margin: 0;
   padding: 4px 12px;
@@ -363,4 +367,18 @@ td .has-tooltip * {
 
 .nowrap {
   white-space: nowrap;
+}
+
+.panel-boundedwidth {
+  width: 75%;
+  max-width: 1024px;
+}
+
+.jobname-image-boundedwidth {
+  width: 35em;
+  max-width: 90%;
+}
+
+.noborder {
+  border: none;
 }
