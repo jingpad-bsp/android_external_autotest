@@ -66,9 +66,7 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
         if updater_path:
             self.set_hardware_write_protect(enable=False)
             self.faft_client.updater.run_factory_install()
-            self.sync_and_warm_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            self.switcher.mode_aware_reboot()
 
         self._fwid = self.faft_client.updater.get_fwid()
 

@@ -88,6 +88,49 @@ class ModeSwitcher(object):
                      to_mode, from_mode, wait_for_dut_up)
 
 
+    def mode_aware_reboot(self, reboot_type=None, reboot_method=None,
+                          sync_before_boot=True, wait_for_dut_up=True,
+                          install_deps=False):
+        """Uses a mode-aware way to reboot DUT.
+
+        For example, if DUT is in dev mode, it requires pressing Ctrl-D to
+        bypass the developer screen.
+
+        @param reboot_type: A string of reboot type, one of 'warm', 'cold', or
+                            'custom'. Default is a warm reboot.
+        @param reboot_method: A custom method to do the reboot. Only use it if
+                              reboot_type='custom'.
+        @param sync_before_boot: True to sync to disk before booting.
+        @param wait_for_dut_up: True to wait DUT online again. False to do the
+                                reboot only.
+        @param install_deps: True to install deps after boot.
+        """
+        if reboot_type is None or reboot_type == 'warm':
+            reboot_method = self.servo.get_power_state_controller().warm_reset
+        elif reboot_type == 'cold':
+            reboot_method = self.servo.get_power_state_controller().reset
+        elif reboot_type != 'custom':
+            raise NotImplementedError('Not supported reboot_type: %s',
+                                      reboot_type)
+
+        logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, ...) ]-",
+                     reboot_type)
+        is_dev = False
+        if sync_before_boot:
+            if wait_for_dut_up:
+                is_dev = self.checkers.mode_checker('dev')
+            boot_id = self.faft_framework.get_bootid()
+            self.faft_framework.blocking_sync()
+        reboot_method()
+        if sync_before_boot:
+            self.faft_framework.wait_for_client_offline(orig_boot_id=boot_id)
+        if wait_for_dut_up:
+            if is_dev:
+                self.faft_framework.wait_dev_screen_and_ctrl_d()
+            self.faft_framework.wait_for_kernel_up(install_deps)
+        logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, ...) ]-",
+                     reboot_type)
+
     def _enable_rec_mode_and_reboot(self, usb_state=None):
         """Switch to rec mode and reboot.
 
@@ -141,8 +184,7 @@ class ModeSwitcher(object):
         if (not self.faft_config.chrome_ec and
             not self.faft_config.broken_rec_mode):
             self.servo.disable_recovery_mode()
-        self.faft_framework.sync_and_cold_reboot()
-        self.faft_framework.wait_for_client_offline()
+        self.mode_aware_reboot(reboot_type='cold', wait_for_dut_up=False)
         self._wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
 

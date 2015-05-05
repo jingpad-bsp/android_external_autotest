@@ -67,9 +67,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
         if updater_path:
             self.set_hardware_write_protect(enable=False)
             self.faft_client.updater.run_factory_install()
-            self.sync_and_warm_reboot()
-            self.wait_for_client_offline()
-            self.wait_for_client()
+            self.switcher.mode_aware_reboot()
 
         self.setup_usbkey(usbkey=True, host=True, install_shim=True)
         self.switcher.setup_mode('normal')
@@ -110,8 +108,7 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
         logging.info("Check firmware and TPM version, then recovery.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.check_version_and_run_recovery()
-        self.do_reboot_action(self.reboot_with_factory_install_shim)
-        self.wait_for_kernel_up()
+        self.reboot_with_factory_install_shim()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {

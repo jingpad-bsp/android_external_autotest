@@ -263,7 +263,9 @@ class FirmwareTest(FAFTBase):
         """
         # DUT may halt on a firmware screen. Try cold reboot.
         logging.info('Try cold reboot...')
-        self.reboot_cold_trigger()
+        self.switcher.mode_aware_reboot(reboot_type='cold',
+                                        sync_before_boot=False,
+                                        wait_for_dut_up=False)
         self.wait_for_client_offline()
         self.wait_dev_screen_and_ctrl_d()
         try:
@@ -303,7 +305,7 @@ class FirmwareTest(FAFTBase):
         self._ensure_client_in_recovery()
         logging.info('Try restore the OS image...')
         self.faft_client.system.run_shell_command('chromeos-install --yes')
-        self.sync_and_warm_reboot()
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_for_client_offline()
         self.wait_dev_screen_and_ctrl_d()
         try:
@@ -507,9 +509,7 @@ class FirmwareTest(FAFTBase):
         self.faft_client.bios.reload()
         # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
         if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
-            self.sync_and_warm_reboot()
-            self.wait_dev_screen_and_ctrl_d()
-            self.wait_for_kernel_up()
+            self.switcher.mode_aware_reboot()
 
     def clear_set_gbb_flags(self, clear_mask, set_mask):
         """Clear and set the GBB flags in the current flashrom.
@@ -643,7 +643,7 @@ class FirmwareTest(FAFTBase):
             self.set_chrome_ec_write_protect_and_reboot(enable)
         else:
             self.faft_client.ec.set_write_protect(enable)
-            self.sync_and_warm_reboot()
+            self.switcher.mode_aware_reboot()
 
     def set_chrome_ec_write_protect_and_reboot(self, enable):
         """Set Chrome EC write protect status and reboot to take effect.
@@ -1069,22 +1069,6 @@ class FirmwareTest(FAFTBase):
         """
         self.servo.get_power_state_controller().reset()
 
-    def sync_and_warm_reboot(self):
-        """Request the client sync and do a warm reboot.
-
-        This is the default reboot action on FAFT.
-        """
-        self.blocking_sync()
-        self.reboot_warm_trigger()
-
-    def sync_and_cold_reboot(self):
-        """Request the client sync and do a cold reboot.
-
-        This reboot action is used to reset EC for recovery mode.
-        """
-        self.blocking_sync()
-        self.reboot_cold_trigger()
-
     def sync_and_ec_reboot(self, flags=''):
         """Request the client sync and do a EC triggered reboot.
 
@@ -1112,7 +1096,7 @@ class FirmwareTest(FAFTBase):
         self.switcher.reboot_to_mode(to_mode='rec')
         self.wait_fw_screen_and_plug_usb()
         time.sleep(self.faft_config.install_shim_done)
-        self.reboot_warm_trigger()
+        self.switcher.mode_aware_reboot()
 
     def full_power_off_and_on(self):
         """Shutdown the device by pressing power button and power on again."""
@@ -1386,11 +1370,7 @@ class FirmwareTest(FAFTBase):
 
         self.faft_client.bios.write_whole(
             os.path.join(remote_temp_dir, 'bios'))
-        self.sync_and_warm_reboot()
-        self.wait_for_client_offline()
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
-
+        self.switcher.mode_aware_reboot()
         logging.info('Successfully restore firmware.')
 
     def setup_firmwareupdate_shellball(self, shellball=None):
@@ -1484,11 +1464,7 @@ class FirmwareTest(FAFTBase):
                     remote_path)
             self.faft_client.kernel.write(p, remote_path)
 
-        self.sync_and_warm_reboot()
-        self.wait_for_client_offline()
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
-
+        self.switcher.mode_aware_reboot()
         logging.info('Successfully restored kernel.')
 
     def backup_cgpt_attributes(self):
@@ -1505,11 +1481,7 @@ class FirmwareTest(FAFTBase):
                      current_table)
         self.faft_client.cgpt.set_attributes(self._backup_cgpt_attr)
 
-        self.sync_and_warm_reboot()
-        self.wait_for_client_offline()
-        self.wait_dev_screen_and_ctrl_d()
-        self.wait_for_client()
-
+        self.switcher.mode_aware_reboot()
         logging.info('Successfully restored CGPT table.')
 
     def try_fwb(self, count=0):
