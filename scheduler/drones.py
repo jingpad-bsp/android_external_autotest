@@ -127,6 +127,7 @@ class _BaseAbstractDrone(object):
     def queue_call(self, method, *args, **kwargs):
         self._calls.append(drone_utility.call(method, *args, **kwargs))
 
+
     def clear_call_queue(self):
         self._calls = []
 

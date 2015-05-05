@@ -249,8 +249,7 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     def _cleanup(self):
         logging.info('Running 24 hour clean up')
         self._check_for_uncleanable_db_inconsistencies()
-        # TODO(dshi): crbug.com/484039, after the bug is fixed, re-enable this.
-        #self._cleanup_orphaned_containers()
+        self._cleanup_orphaned_containers()
 
 
     @timer.decorate

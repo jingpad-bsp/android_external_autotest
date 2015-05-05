@@ -302,6 +302,10 @@ class BaseDispatcher(object):
     def initialize(self, recover_hosts=True):
         self._periodic_cleanup.initialize()
         self._24hr_upkeep.initialize()
+        # Execute all actions queued in the cleanup tasks. Scheduler tick will
+        # run a refresh task first. If there is any action in the queue, refresh
+        # will raise an exception.
+        _drone_manager.execute_actions()
 
         # always recover processes
         self._recover_processes()
@@ -331,8 +335,6 @@ class BaseDispatcher(object):
         self._garbage_collection()
         self._log_tick_msg('Calling _drone_manager.trigger_refresh().')
         _drone_manager.trigger_refresh()
-        self._log_tick_msg('Calling _run_cleanup().')
-        self._run_cleanup()
         self._log_tick_msg('Calling _process_recurring_runs().')
         self._process_recurring_runs()
         self._log_tick_msg('Calling _schedule_delay_tasks().')
@@ -345,6 +347,14 @@ class BaseDispatcher(object):
         self._schedule_new_jobs()
         self._log_tick_msg('Calling _drone_manager.sync_refresh().')
         _drone_manager.sync_refresh()
+        # _run_cleanup must be called between drone_manager.sync_refresh, and
+        # drone_manager.execute_actions, as sync_refresh will clear the calls
+        # queued in drones. Therefore, any action that calls drone.queue_call
+        # to add calls to the drone._calls, should be after drone refresh is
+        # completed and before drone_manager.execute_actions at the end of the
+        # tick.
+        self._log_tick_msg('Calling _run_cleanup().')
+        self._run_cleanup()
         self._log_tick_msg('Calling _find_aborting().')
         self._find_aborting()
         self._log_tick_msg('Calling _find_aborted_special_tasks().')
