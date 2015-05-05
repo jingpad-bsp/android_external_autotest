@@ -751,15 +751,15 @@ def get_one_channel_stat(data, data_format):
             binary=None, channel=1,
             sample_format=data_format['sample_format'])
     raw_data.copy_channel_data([data])
-    raw_data_path = '/tmp/one_channel.raw'
-    raw_data.write_to_file(raw_data_path)
+    with tempfile.NamedTemporaryFile() as raw_data_file:
+        raw_data_path = raw_data_file.name
+        raw_data.write_to_file(raw_data_path)
 
-    bits = 8 * (audio_data.SAMPLE_FORMATS[
-                data_format['sample_format']]['size_bytes'])
-    stat = sox_utils.get_stat(raw_data_path, channels=1, bits=bits,
-                              rate=data_format['rate'])
-    os.unlink(raw_data_path)
-    return stat
+        bits = 8 * (audio_data.SAMPLE_FORMATS[
+                    data_format['sample_format']]['size_bytes'])
+        stat = sox_utils.get_stat(raw_data_path, channels=1, bits=bits,
+                                  rate=data_format['rate'])
+        return stat
 
 
 def compare_one_channel_frequency(test_data, test_data_format,
