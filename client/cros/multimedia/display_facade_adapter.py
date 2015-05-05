@@ -8,6 +8,7 @@ import logging
 import tempfile
 from PIL import Image
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.multimedia.display_info import DisplayInfo
@@ -77,8 +78,10 @@ class DisplayFacadeLocalAdapter(object):
         """Sets mirrored mode.
 
         @param is_mirrored: True or False to indicate mirrored state.
+        @throws error.TestError when the call fails.
         """
-        return self._display_component.set_mirrored(is_mirrored)
+        if not self._display_component.set_mirrored(is_mirrored):
+            raise error.TestError('Failed to set_mirrored(%s)' % is_mirrored)
 
 
     def is_display_primary(self, internal=True):
