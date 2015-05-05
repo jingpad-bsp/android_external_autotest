@@ -20,6 +20,7 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
     PING_INTERVAL_SECONDS = 0.1
     LATENCY_MARGIN_MS = 150
     THRESHOLD_BASELINE_LATENCY_MS = 100
+    WIFI_FREQUENCY = 2437
 
 
     def run_once(self):
@@ -27,7 +28,7 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
         caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
                 hostap_config.HostapConfig.N_CAPABILITY_HT40]
         get_ap_config = lambda use_obss: hostap_config.HostapConfig(
-                frequency=2437,
+                frequency=self.WIFI_FREQUENCY,
                 mode=hostap_config.HostapConfig.MODE_11N_PURE,
                 n_capabilities=caps,
                 obss_interval=10 if use_obss else None)
@@ -55,12 +56,15 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
 
         # Re-configure the AP for OBSS and repeat the ping test.
         self.context.configure(get_ap_config(True))
+        self.context.router.start_capture(self.WIFI_FREQUENCY)
+
         self.context.assert_connect_wifi(get_assoc_params())
         logging.info('Pinging router with OBSS scans for %d seconds.',
                      self.OBSS_SCAN_SAMPLE_PERIOD_SECONDS)
         result_obss_scan = self.context.client.ping(
                 get_ping_config(self.OBSS_SCAN_SAMPLE_PERIOD_SECONDS))
         logging.info('Ping statistics with OBSS scans: %r', result_obss_scan)
+        self.context.router.stop_capture()
 
         if not self.context.router.detect_client_coexistence_report(
                 self.context.client.wifi_mac):
