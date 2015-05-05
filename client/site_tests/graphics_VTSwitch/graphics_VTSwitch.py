@@ -53,6 +53,11 @@ class graphics_VTSwitch(test.test):
                  num_iterations=2,
                  similarity_percent_threshold=95,
                  difference_percent_threshold=5):
+        # TODO(ihf): Remove this once VTSwitch works on freon.
+        if utils.is_freon():
+            raise error.TestNAError(
+                    'Test needs work on Freon. See crbug.com/413088.')
+
         self._num_errors = 0
         keyvals = {}
 

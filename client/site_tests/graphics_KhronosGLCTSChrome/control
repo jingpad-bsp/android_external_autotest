@@ -8,7 +8,7 @@ PURPOSE = 'Run the Khronos GL-CTS test suite on the Chrome GPU command buffer'
 CRITERIA = """
 All of the individual GL-CTS tests must pass.
 """
-SUITE = 'graphics'
+SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'

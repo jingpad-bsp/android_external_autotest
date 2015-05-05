@@ -4,6 +4,7 @@
 
 import os.path
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -32,6 +33,11 @@ class graphics_GLES2ConformChrome(chrome_binary_test.ChromeBinaryTest):
             self.write_perf_keyval(keyvals)
 
     def run_once(self):
+        # TODO(ihf): Remove this once GLES2ConformChrome works on freon.
+        if utils.is_freon():
+            raise error.TestNAError(
+                   'Test needs work on Freon. See crbug.com/484463.')
+
         if not os.path.exists(self.get_chrome_binary_path(self.BINARY)):
             raise error.TestFail('%s not found. Use internal Chrome sources!' %
                                  self.BINARY)
