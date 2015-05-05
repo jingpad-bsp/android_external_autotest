@@ -74,6 +74,11 @@ class audio_AudioBasicInternalSpeaker(test.test):
         logging.info('Saving recorded data to %s', recorded_file)
         recorder.save_file(recorded_file)
 
+        # Removes the beginning of recorded data. This is to avoid artifact
+        # caused by Chameleon codec initialization in the beginning of
+        # recording.
+        recorder.remove_head(0.5)
+
         # Removes noise by a lowpass filter.
         recorder.lowpass_filter(1000)
         recorded_file = os.path.join(self.resultsdir, "recorded_filtered.raw")
