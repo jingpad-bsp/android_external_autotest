@@ -58,7 +58,7 @@ TEST_TONES_PATH = 'test_tones'
 _MINIMUM_NORM = 0.001
 _CORRELATION_INDEX_THRESHOLD = 0.999
 # The minimum difference of estimated frequencies between two sine waves.
-_FREQUENCY_DIFF_THRESHOLD = 10
+_FREQUENCY_DIFF_THRESHOLD = 20
 # The minimum RMS value of meaningful audio data.
 _MEANINGFUL_RMS_THRESHOLD = 0.001
 

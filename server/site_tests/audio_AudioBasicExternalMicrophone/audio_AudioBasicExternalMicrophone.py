@@ -82,7 +82,7 @@ class audio_AudioBasicExternalMicrophone(test.test):
         recorder.remove_head(1.5)
 
         # Removes noise by a lowpass filter.
-        recorder.lowpass_filter(1500)
+        recorder.lowpass_filter(2000)
         recorded_file = os.path.join(self.resultsdir, "recorded_filtered.raw")
         logging.info('Saving filtered data to %s', recorded_file)
         recorder.save_file(recorded_file)
