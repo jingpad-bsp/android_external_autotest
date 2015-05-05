@@ -31,15 +31,16 @@ _HOST_LABEL_TYPE = 'host_labels'
 _HOST_LABEL_TIME_INDEX_TYPE = 'host_labels_time_index'
 
 
-def get_all_boards():
+def get_all_boards(labels=None):
     """Get a list of boards from host labels.
 
     Scan through all labels of all duts and get all possible boards based on
     label of name board:*
 
+    @param labels: A list of labels to filter hosts.
     @return: A list of board names, e.g., ['peppy', 'daisy']
     """
-    host_labels = get_host_labels()
+    host_labels = get_host_labels(labels=labels)
     board_labels = [[label[6:] for label in labels
                      if label.startswith('board:')]
                     for labels in host_labels.values()]

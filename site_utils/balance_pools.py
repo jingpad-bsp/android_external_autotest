@@ -64,6 +64,7 @@ import time
 
 import common
 from autotest_lib.server import frontend
+from autotest_lib.site_utils import host_label_utils
 from autotest_lib.site_utils import status_history
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -538,14 +539,25 @@ def _parse_command(argv):
                              'there is a bug that is bricking devices in the '
                              'lab.')
 
+    parser.add_argument('--all-boards', action='store_true',
+                        help='Rebalance all boards.')
+
     parser.add_argument('pool',
                         metavar='POOL',
-                        help='Name of the pool to balance')
-    parser.add_argument('boards', nargs='+',
+                        help='Name of the pool to balance.')
+    parser.add_argument('boards', nargs='*',
                         metavar='BOARD',
-                        help='Names of boards to balance')
+                        help='Names of boards to balance.')
 
     arguments = parser.parse_args(argv[1:])
+
+    # Error-check arguments.
+    if not arguments.boards and not arguments.all_boards:
+        parser.error('No boards specified. To balance all boards, use '
+                     '--all-boards')
+    if arguments.boards and arguments.all_boards:
+        parser.error('Cannot specify boards with --all-boards.')
+
     return arguments
 
 
@@ -569,7 +581,11 @@ def main(argv):
     end_time = time.time()
     start_time = end_time - 24 * 60 * 60
     afe = frontend.AFE(server=None)
-    board_args = list(enumerate(arguments.boards))
+    boards = arguments.boards
+    if arguments.all_boards:
+        boards = host_label_utils.get_all_boards(
+            labels=[_POOL_PREFIX + arguments.pool])
+    board_args = list(enumerate(boards))
     try:
         parallel.RunTasksInProcessPool(balancer, board_args, processes=8)
     except KeyboardInterrupt:
