@@ -25,7 +25,8 @@ StationInstance = collections.namedtuple('StationInstance',
 HostapdInstance = collections.namedtuple('HostapdInstance',
                                          ['ssid', 'conf_file', 'log_file',
                                           'interface', 'config_dict',
-                                          'stderr_log_file'])
+                                          'stderr_log_file',
+                                          'scenario_name'])
 
 # Send magic packets here, so they can wake up the system but are otherwise
 # dropped.
@@ -258,7 +259,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 log_file,
                 interface,
                 hostapd_conf_dict.copy(),
-                stderr_log_file))
+                stderr_log_file,
+                configuration.scenario_name))
 
         # Wait for confirmation that the router came up.
         logging.info('Waiting for hostapd to startup.')
@@ -345,12 +347,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                 instance=instance.conf_file,
                 timeout_seconds=30,
                 ignore_timeouts=True)
-        files_to_copy = [(instance.log_file, 'debug/hostapd_router_%d_%s.log'  %
-                         (self._total_hostapd_instances, instance.interface)),
+        if instance.scenario_name:
+            log_identifier = instance.scenario_name
+        else:
+            log_identifier = '%d_%s' % (
+                self._total_hostapd_instances, instance.interface)
+        files_to_copy = [(instance.log_file,
+                          'debug/hostapd_router_%s.log' % log_identifier),
                          (instance.stderr_log_file,
-                          'debug/hostapd_router_%d_%s.stderr.log'  %
-                         (self._total_hostapd_instances, instance.interface))
-                        ]
+                          'debug/hostapd_router_%s.stderr.log' %
+                          log_identifier)]
         for remote_file, local_file in files_to_copy:
             if self.host.run('ls %s >/dev/null 2>&1' % remote_file,
                              ignore_status=True).exit_status:

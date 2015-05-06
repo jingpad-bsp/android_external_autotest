@@ -23,15 +23,29 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
     WIFI_FREQUENCY = 2437
 
 
+    @classmethod
+    def get_ap_config(cls, scenario_name, use_obss):
+        """Returns a HostapConfig object based on the given parameters.
+
+        @param scenario_name: string describing a portion of this test.
+        @param use_obss: bool indicating if the AP should ask clients to
+            perform OBSS scans.
+        @return HostapConfig which incorporates the given parameters.
+
+        """
+        return hostap_config.HostapConfig(
+            frequency=cls.WIFI_FREQUENCY,
+            mode=hostap_config.HostapConfig.MODE_11N_PURE,
+            n_capabilities=[
+                hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
+                hostap_config.HostapConfig.N_CAPABILITY_HT40
+            ],
+            obss_interval=10 if use_obss else None,
+            scenario_name=scenario_name)
+
+
     def run_once(self):
         """Body of the test."""
-        caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
-                hostap_config.HostapConfig.N_CAPABILITY_HT40]
-        get_ap_config = lambda use_obss: hostap_config.HostapConfig(
-                frequency=self.WIFI_FREQUENCY,
-                mode=hostap_config.HostapConfig.MODE_11N_PURE,
-                n_capabilities=caps,
-                obss_interval=10 if use_obss else None)
         get_assoc_params = lambda: xmlrpc_datatypes.AssociationParameters(
                 ssid=self.context.router.get_ssid())
         get_ping_config = lambda period: ping_runner.PingConfig(
@@ -39,7 +53,7 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
                 interval=self.PING_INTERVAL_SECONDS,
                 count=int(period / self.PING_INTERVAL_SECONDS))
         # Gather some statistics about ping latencies without scanning going on.
-        self.context.configure(get_ap_config(False))
+        self.context.configure(self.get_ap_config('obss_disabled', False))
         self.context.assert_connect_wifi(get_assoc_params())
         logging.info('Pinging router without OBSS scans for %d seconds.',
                      self.NO_OBSS_SCAN_SAMPLE_PERIOD_SECONDS)
@@ -55,8 +69,9 @@ class network_WiFi_OverlappingBSSScan(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.shill.disconnect(self.context.router.get_ssid())
 
         # Re-configure the AP for OBSS and repeat the ping test.
-        self.context.configure(get_ap_config(True))
-        self.context.router.start_capture(self.WIFI_FREQUENCY)
+        self.context.configure(self.get_ap_config('obss_enabled', True))
+        self.context.router.start_capture(
+          self.WIFI_FREQUENCY, filename='obss_enabled.pcap')
 
         self.context.assert_connect_wifi(get_assoc_params())
         logging.info('Pinging router with OBSS scans for %d seconds.',

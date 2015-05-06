@@ -435,6 +435,12 @@ class HostapConfig(object):
         return self._beacon_footer
 
 
+    @property
+    def scenario_name(self):
+        """@return string _scenario_name value, or None."""
+        return self._scenario_name
+
+
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
@@ -444,7 +450,8 @@ class HostapConfig(object):
                  vht_channel_width=None,
                  vht_center_channel=None,
                  ac_capabilities=[],
-                 beacon_footer=''):
+                 beacon_footer='',
+                 scenario_name=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -473,6 +480,8 @@ class HostapConfig(object):
         @param ac_capabilities list of AC_CAPABILITY_x defined above.
         @param beacon_footer string containing (unvalidated) IE data to be
             placed at the end of the beacon.
+        @param scenario_name string to be included in file names, instead
+            of the interface name.
 
         """
         super(HostapConfig, self).__init__()
@@ -539,6 +548,7 @@ class HostapConfig(object):
         self._vht_oper_centr_freq_seg0_idx = vht_center_channel
         self._ac_capabilities = set(ac_capabilities)
         self._beacon_footer = beacon_footer
+        self._scenario_name = scenario_name
 
 
     def __repr__(self):
