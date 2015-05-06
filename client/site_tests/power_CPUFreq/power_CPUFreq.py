@@ -7,6 +7,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
 
 SYSFS_CPUQUIET_ENABLE = '/sys/devices/system/cpu/cpuquiet/tegra_cpuquiet/enable'
+SYSFS_INTEL_PSTATE_PATH = '/sys/devices/system/cpu/intel_pstate'
 
 class power_CPUFreq(test.test):
     version = 1
@@ -18,6 +19,11 @@ class power_CPUFreq(test.test):
             utils.write_one_line(SYSFS_CPUQUIET_ENABLE, '0')
 
     def run_once(self):
+        # TODO(crbug.com/485276) Revisit this exception once we've refactored
+        # test to account for intel_pstate cpufreq driver
+        if os.path.exists(SYSFS_INTEL_PSTATE_PATH):
+            raise error.TestNAError('Test does NOT support intel_pstate driver')
+
         cpufreq_path = '/sys/devices/system/cpu/cpu*/cpufreq'
 
         dirs  = glob.glob(cpufreq_path)
