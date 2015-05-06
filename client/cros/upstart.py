@@ -6,13 +6,15 @@
 
 import os
 
+from autotest_lib.client.common_lib import utils
+
 def ensure_running(service_name):
     """Fails if |service_name| is not running.
 
     @param service_name: name of the service.
     """
     cmd = 'initctl status %s | grep start/running' % service_name
-    os.system(cmd)
+    utils.system(cmd)
 
 
 def has_service(service_name):
