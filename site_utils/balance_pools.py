@@ -67,6 +67,8 @@ from autotest_lib.server import frontend
 from autotest_lib.site_utils import status_history
 from autotest_lib.site_utils.suite_scheduler import constants
 
+from chromite.lib import parallel
+
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
 _BOARD_PREFIX = constants.Labels.BOARD_PREFIX
@@ -568,18 +570,23 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
 
     """
+    def balancer(i, board):
+      """Balance the specified board.
+
+      @param i The index of the board.
+      @param board The board name.
+      """
+      if i > 0:
+          _log_message('')
+      _balance_board(arguments, afe, board, start_time, end_time)
+
     arguments = _parse_command(argv)
     end_time = time.time()
     start_time = end_time - 24 * 60 * 60
-
-    first_time = True
+    afe = frontend.AFE(server=None)
+    board_args = list(enumerate(arguments.boards))
     try:
-        afe = frontend.AFE(server=None)
-        for board in arguments.boards:
-            if not first_time:
-                _log_message('')
-            _balance_board(arguments, afe, board, start_time, end_time)
-            first_time = False
+        parallel.RunTasksInProcessPool(balancer, board_args, processes=8)
     except KeyboardInterrupt:
         pass
 
