@@ -550,7 +550,7 @@ def get_boards_from_chromite(hwtest_enabled_only=False):
     @return list of boards name strings.
     """
     boards = set()
-    for config in cbuildbot_config.config.itervalues():
+    for config in cbuildbot_config.GetConfig().itervalues():
         if hwtest_enabled_only and not config.get('hw_tests'):
             continue
         boards.update(config.get('boards'))
