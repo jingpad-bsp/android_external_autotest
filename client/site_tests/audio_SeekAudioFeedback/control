@@ -8,6 +8,7 @@ PURPOSE = "Verifies audio output for seeking forward and back"
 CRITERIA = """
 This test will fail if audio file sound is not audible after seek.
 """
+ATTRIBUTES = "suite:audio"
 SUITE = "audio"
 TIME = "SHORT"
 TEST_CATEGORY = "General"

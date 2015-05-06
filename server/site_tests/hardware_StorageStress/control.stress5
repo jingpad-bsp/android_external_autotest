@@ -5,6 +5,7 @@
 NAME = 'hardware_StorageStress.stress'
 AUTHOR = 'mohsinally'
 PURPOSE = 'Run various storage stress tests'
+ATTRIBUTES = "suite:stress5"
 SUITE = "stress5"
 TIME = 'LONG'
 TEST_CLASS = 'stress'

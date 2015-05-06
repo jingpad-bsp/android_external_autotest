@@ -8,6 +8,7 @@ PURPOSE = "Collects settings page images as data to examine default icons"
 CRITERIA = """
 
 """
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"

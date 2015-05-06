@@ -8,6 +8,7 @@ PURPOSE = 'Verify that the backlight can be adjusted in software.'
 CRITERIA = """
 If backlight_tool fails to adjust the backlight brightness this test will fail.
 """
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

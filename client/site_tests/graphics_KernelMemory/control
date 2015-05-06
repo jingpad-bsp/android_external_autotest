@@ -17,6 +17,7 @@ TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
 
+ATTRIBUTES = "suite:bvt-cq, suite:graphics, suite:graphics_per-day, suite:graphics_system"
 SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],

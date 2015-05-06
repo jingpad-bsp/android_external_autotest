@@ -4,7 +4,6 @@
 
 NAME = "platform_KernelErrorPaths.ALL"
 AUTHOR = "Chrome OS Team"
-SUITE = ""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"

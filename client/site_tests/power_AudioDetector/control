@@ -15,6 +15,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = "bvt-perbuild"
 
 DOC = """

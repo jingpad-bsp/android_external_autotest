@@ -12,6 +12,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform, kernel"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:kernel_usb"
 SUITE = "kernel_usb"
 DEPENDENCIES = "servo"
 

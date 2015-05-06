@@ -4,6 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power, truty"
 NAME = "power_SuspendStress.audio"
+ATTRIBUTES = "suite:jailed_build"
 SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume while rendering audio."
 TIME = "MEDIUM"

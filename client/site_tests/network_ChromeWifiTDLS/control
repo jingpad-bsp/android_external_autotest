@@ -8,6 +8,7 @@ PURPOSE = "Verify that chrome.networkingPrivate recognizes TDLS enable call."
 CRITERIA = """
   This test will fail if the Shill fails to respond to a TDLS configure call.
 """
+ATTRIBUTES = "suite:network_ui"
 SUITE = "network_ui"
 TIME = "FAST"
 TEST_CATEGORY = "Functional"

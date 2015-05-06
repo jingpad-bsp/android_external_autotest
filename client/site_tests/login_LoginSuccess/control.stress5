@@ -4,6 +4,7 @@
 
 AUTHOR = "mohsinally"
 NAME = "login_LoginSuccess"
+ATTRIBUTES = "suite:stress5"
 SUITE = "stress5"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"

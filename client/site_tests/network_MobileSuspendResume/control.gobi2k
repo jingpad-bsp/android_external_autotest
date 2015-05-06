@@ -11,6 +11,7 @@ CRITERIA = """
     Verify that if autoconnect is turned on that the modem autoconnects
     after resuming.
 """
+ATTRIBUTES = "suite:network3g_tmobile, suite:network3g_verizon"
 SUITE = "network3g_tmobile, network3g_verizon"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

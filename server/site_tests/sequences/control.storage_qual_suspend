@@ -4,6 +4,7 @@
 
 AUTHOR = "gwendal"
 NAME = "StorageQualSuspend"
+ATTRIBUTES = "suite:storage_qual"
 SUITE = "storage_qual"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"

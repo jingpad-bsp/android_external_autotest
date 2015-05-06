@@ -8,6 +8,7 @@ PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
 """
+ATTRIBUTES = "suite:network3g_tmobile, suite:network3g_verizon"
 SUITE = "network3g_tmobile, network3g_verizon"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

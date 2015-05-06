@@ -6,6 +6,7 @@ AUTHOR = 'The Chromium OS Authors'
 NAME = 'hardware_DiskSize.hwqual'
 PURPOSE = 'Ensure the hard disk is large enough.'
 CRITERIA = 'Fails if the main disk is less than gb_main_disk_size.'
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME='SHORT'
 TEST_CATEGORY = 'Functional'

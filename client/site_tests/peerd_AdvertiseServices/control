@@ -6,6 +6,7 @@ AUTHOR = 'wiley, avakulenko, keybuk'
 NAME = 'peerd_AdvertiseServices'
 TIME = 'FAST'
 TEST_TYPE = 'client'
+ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
 SUITE = 'tendo_experimental, smoke'
 
 DOC = """

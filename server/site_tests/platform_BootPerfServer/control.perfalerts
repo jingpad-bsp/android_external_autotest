@@ -4,6 +4,7 @@
 
 AUTHOR = "Chrome OS Perf/jrbarnette"
 NAME = "BootPerf"
+ATTRIBUTES = "suite:link_perf, suite:perfalerts"
 SUITE = "perfalerts,link_perf"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"

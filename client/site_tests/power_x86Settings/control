@@ -4,6 +4,8 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_x86Settings"
+ATTRIBUTES = "suite:power_build"
+ATTRIBUTES = "suite:power_build"
 SUITE = "power_build"
 PURPOSE = "Verify that power realted settings are set correctly."
 CRITERIA = """

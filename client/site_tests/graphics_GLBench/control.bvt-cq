@@ -20,6 +20,7 @@ the unknown image and older versions in ../../deps/glbench-images/.
 Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
+ATTRIBUTES = "suite:bvt-cq, suite:graphics, suite:graphics_per-day, suite:graphics_system"
 SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'
 TIME='FAST'
 TEST_CATEGORY = 'Performance'

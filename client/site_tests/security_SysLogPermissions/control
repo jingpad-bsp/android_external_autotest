@@ -12,6 +12,7 @@ PURPOSE = "Check for regressions of syslog permissions."
 CRITERIA = """
 Fail if system logfiles have the wrong permissions.
 """
+ATTRIBUTES = "suite:bvt-inline, suite:smoke"
 SUITE = "bvt-inline, smoke"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"

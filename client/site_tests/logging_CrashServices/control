@@ -10,6 +10,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
 JOB_RETRIES = 0
+ATTRIBUTES = "suite:jailed_build"
 SUITE = "jailed_build"
 
 DOC = """

@@ -6,6 +6,7 @@ AUTHOR = 'wiley'
 NAME = 'leaderd_Election'
 TIME = 'FAST'
 TEST_TYPE = 'client'
+ATTRIBUTES = "suite:tendo_experimental"
 SUITE = 'tendo_experimental'
 
 DOC = """

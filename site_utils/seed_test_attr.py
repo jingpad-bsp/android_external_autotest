@@ -115,7 +115,8 @@ def SeedAttributes(path_controlfile):
 
   attr_items = set(
       'suite:' + x.strip() for x in suite.split(',') if x.strip())
-
+  attr_items = list(attr_items)
+  attr_items.sort(key = str.lower)
   attr_line = ', '.join(attr_items)
   attr_line = 'ATTRIBUTES = \"' + attr_line + '\"\n'
 

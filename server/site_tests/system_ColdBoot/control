@@ -7,6 +7,7 @@ from autotest_lib.server import utils
 AUTHOR = "cernekee"
 NAME = "system_ColdBoot"
 PURPOSE = "Shut down DUT, then initiate a cold boot."
+ATTRIBUTES = "suite:experimental"
 SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

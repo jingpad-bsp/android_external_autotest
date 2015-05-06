@@ -9,6 +9,7 @@ NAME = 'network_WiFi_WoWLAN'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell, servo, board:samus'
+ATTRIBUTES = "suite:wifi_correctness_cros_core, suite:wifi_matfunc, suite:wifi_release"
 SUITE = 'wifi_matfunc, wifi_correctness_cros_core, wifi_release'
 
 DOC = """

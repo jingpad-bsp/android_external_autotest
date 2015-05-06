@@ -10,6 +10,7 @@ Screen resolutions supported:
   - 1280x800
   - 1366x768
 """
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

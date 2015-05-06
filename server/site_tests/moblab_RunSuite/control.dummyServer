@@ -5,6 +5,7 @@
 AUTHOR = "chromeos-moblab@google.com"
 NAME = "moblab_DummyServerSuite"
 PURPOSE = "Test that Moblab can run the Dummy Server suite."
+ATTRIBUTES = "suite:moblab_quick"
 SUITE = "moblab_quick"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"

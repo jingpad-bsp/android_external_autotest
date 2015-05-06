@@ -10,6 +10,7 @@ Fails if any of the following conditions occur:
   - crash log messages are incorrect
   - crash is sent without user consent
 """
+ATTRIBUTES = "suite:bvt-inline, suite:partners, suite:smoke"
 SUITE = "bvt-inline, smoke, partners"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

@@ -4,6 +4,7 @@
 
 NAME = "BootDevice"
 AUTHOR = "Chrome OS Team"
+ATTRIBUTES = "suite:stress4"
 SUITE = "stress4"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"

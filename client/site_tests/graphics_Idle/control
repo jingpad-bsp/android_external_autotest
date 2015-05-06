@@ -4,6 +4,7 @@
 
 AUTHOR = 'chromeos-gfx'
 NAME = "graphics_Idle"
+ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
 SUITE = 'graphics_per-day, graphics, graphics_system'
 PURPOSE = "Verify that graphics behaves as expected on idle."
 CRITERIA = """

@@ -9,6 +9,7 @@ TIME="SHORT"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:bvt-inline, suite:smoke"
 SUITE = "bvt-inline, smoke"
 JOB_RETRIES = 2
 

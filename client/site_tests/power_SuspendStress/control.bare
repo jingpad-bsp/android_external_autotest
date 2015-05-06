@@ -4,6 +4,7 @@
 
 AUTHOR = "jwerner, chromeos-power"
 NAME = "power_SuspendStress.bare"
+ATTRIBUTES = "suite:jailed_build"
 SUITE = "jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "MEDIUM"

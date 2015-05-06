@@ -6,6 +6,7 @@
 
 AUTHOR = 'chromeos-gfx'
 NAME = 'telemetry_GpuTests.gpu_process'
+ATTRIBUTES = "suite:graphics, suite:graphics_browser, suite:graphics_per-day"
 SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = 'LONG'
 TEST_CATEGORY = 'Functional'

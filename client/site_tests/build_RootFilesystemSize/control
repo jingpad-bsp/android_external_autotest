@@ -8,6 +8,7 @@ PURPOSE = "Report the production size of the rootfs."
 CRITERIA = """
 This test will fail if the size of the rootfs size cannot be obtained.
 """
+ATTRIBUTES = "suite:bvt-inline, suite:crosbolt_perf_perbuild"
 SUITE = "bvt-inline,crosbolt_perf_perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

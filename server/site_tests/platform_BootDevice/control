@@ -4,6 +4,7 @@
 
 NAME = "BootDevice"
 AUTHOR = "Chrome OS Team"
+ATTRIBUTES = "suite:kernel_daily_regression"
 SUITE = "kernel_daily_regression"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"

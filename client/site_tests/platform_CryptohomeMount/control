@@ -4,6 +4,7 @@
 
 AUTHOR = "wad, dkrahn"
 NAME = "platform_CryptohomeMount"
+ATTRIBUTES = "suite:experimental"
 SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

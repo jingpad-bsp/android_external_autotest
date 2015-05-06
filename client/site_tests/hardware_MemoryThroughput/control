@@ -6,6 +6,7 @@ NAME = 'hardware_MemoryThroughput'
 AUTHOR = 'sonnyrao@chromium.org'
 PURPOSE = 'Benchmark sequential throughput for read, write, and copy'
 CRITERIA = 'This test is a benchmark.'
+ATTRIBUTES = "suite:hwqual, suite:kernel_daily_benchmarks"
 SUITE = "kernel_daily_benchmarks, hwqual"
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'

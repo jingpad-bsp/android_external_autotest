@@ -6,6 +6,7 @@ NAME = 'hardware_StorageFio.hwqual'
 AUTHOR = 'The Chromium OS Authors'
 PURPOSE = 'Benchmark storage performance using an unmounted root partition.'
 CRITERIA = 'This test is a benchmark.'
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME = 'MEDIUM'
 TEST_CLASS = "hardware"

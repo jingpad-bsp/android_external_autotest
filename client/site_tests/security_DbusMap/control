@@ -18,6 +18,7 @@ any extra, test fails.
 TEST_CLASS = "security"
 TEST_CATEGORY = "Security"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:manual"
 SUITE = "manual"
 
 job.run_test("security_DbusMap")

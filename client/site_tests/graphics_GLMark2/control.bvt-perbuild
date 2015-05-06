@@ -5,6 +5,7 @@
 NAME = 'graphics_GLMark2.bvt-perbuild'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = 'bvt-perbuild'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'

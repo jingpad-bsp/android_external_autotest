@@ -15,6 +15,7 @@ is enforced.
 CRITERIA = """
 Fails if CONFIG_CFS_BANDWIDTH components do not exist or behave incorrectly.
 """
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

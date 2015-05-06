@@ -14,6 +14,7 @@ This test will fail if:
   - If GL extensions don't include needed extensions
   - If X extensions don't include DAMAGE and Composite
 """
+ATTRIBUTES = "suite:bvt-cq, suite:graphics, suite:graphics_per-day, suite:graphics_system, suite:hwqual"
 SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system, hwqual'
 TIME='SHORT'
 TEST_CATEGORY = 'Performance'

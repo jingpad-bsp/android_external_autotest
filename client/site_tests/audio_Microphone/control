@@ -14,6 +14,7 @@ TIME='MEDIUM'
 TEST_CATEGORY = 'Microphone'
 TEST_CLASS = 'audio'
 TEST_TYPE = 'client'
+ATTRIBUTES = "suite:bvt-perbuild, suite:partners"
 SUITE = 'bvt-perbuild, partners'
 
 DOC = """

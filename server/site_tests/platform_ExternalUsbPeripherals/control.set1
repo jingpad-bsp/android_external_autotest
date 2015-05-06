@@ -12,6 +12,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:kernel_usb_set1"
 SUITE = "kernel_usb_set1"
 DEPENDENCIES = "servo"
 

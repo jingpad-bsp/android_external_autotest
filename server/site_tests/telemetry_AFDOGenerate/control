@@ -7,6 +7,7 @@ from autotest_lib.client.common_lib import utils
 AUTHOR = "llozano@chromium.org c-compiler-chrome@google.com"
 NAME = "telemetry_AFDOGenerate"
 PURPOSE = "Produce profile (AFDO format) of normal browsing for optimization."
+ATTRIBUTES = "suite:AFDO_record"
 SUITE = "AFDO_record"
 TIME = "LONG"
 TEST_CATEGORY = "Benchmark"

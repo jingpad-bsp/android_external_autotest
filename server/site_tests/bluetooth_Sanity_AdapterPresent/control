@@ -4,6 +4,7 @@
 
 AUTHOR = 'keybuk@chromium.org'
 NAME = 'bluetooth_Sanity_AdapterPresent'
+ATTRIBUTES = "suite:bluetooth, suite:bluetooth_sanity"
 SUITE = 'bluetooth,bluetooth_sanity'
 TIME = 'SHORT'
 TEST_CLASS = 'bluetooth'

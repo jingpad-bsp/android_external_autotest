@@ -8,6 +8,7 @@ TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:security_weekly"
 SUITE = "security_weekly"
 
 DOC = """

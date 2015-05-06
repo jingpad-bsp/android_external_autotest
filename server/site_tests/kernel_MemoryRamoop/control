@@ -8,6 +8,7 @@ PURPOSE = 'Check that kernel log preserve correctly in RAM'
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_TYPE = 'server'
+ATTRIBUTES = "suite:experimental"
 SUITE = 'experimental'
 
 DOC = """

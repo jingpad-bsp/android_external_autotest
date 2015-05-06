@@ -4,6 +4,7 @@
 
 AUTHOR = 'pstew, quiche, wiley'
 NAME = 'network_CheckCriticalProcesses'
+ATTRIBUTES = "suite:bvt-cq, suite:network_nightly"
 SUITE = 'bvt-cq, network_nightly'
 TIME = 'SHORT'
 TEST_TYPE = 'client'

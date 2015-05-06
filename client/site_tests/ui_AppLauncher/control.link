@@ -8,6 +8,7 @@ PURPOSE = "Collects screenshots of the default apps in App Launcher."
 CRITERIA = """
 
 """
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"

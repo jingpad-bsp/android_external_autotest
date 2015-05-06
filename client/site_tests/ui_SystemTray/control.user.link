@@ -8,6 +8,7 @@ PURPOSE = "Collects system tray images to look for unwanted changes to the ui"
 CRITERIA = """
 
 """
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"

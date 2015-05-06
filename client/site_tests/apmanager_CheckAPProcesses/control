@@ -6,6 +6,7 @@ AUTHOR = 'zqiu, wiley, pstew'
 NAME = 'apmanager_CheckAPProcesses'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
+ATTRIBUTES = "suite:tendo_experimental"
 SUITE = 'tendo_experimental'
 
 DOC = """

@@ -4,6 +4,7 @@
 
 AUTHOR = "cmasone, mnissler"
 NAME = "login_OwnershipNotRetaken"
+ATTRIBUTES = "suite:bvt-inline, suite:smoke"
 SUITE = "bvt-inline, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

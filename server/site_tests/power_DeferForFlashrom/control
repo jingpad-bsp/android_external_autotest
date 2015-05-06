@@ -6,6 +6,7 @@ AUTHOR = "derat@chromium.org, chromeos-power"
 NAME = "power_DeferForFlashrom"
 TIME = "SHORT"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:power_build"
 SUITE = "power_build"
 
 DOC = """

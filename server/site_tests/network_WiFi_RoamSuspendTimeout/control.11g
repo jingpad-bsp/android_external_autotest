@@ -6,6 +6,7 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_RoamSuspendTimeout.11g'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
+ATTRIBUTES = "suite:wifi_flaky"
 SUITE = 'wifi_flaky'
 DEPENDENCIES = 'wificell'
 

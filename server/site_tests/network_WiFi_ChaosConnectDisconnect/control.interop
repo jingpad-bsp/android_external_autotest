@@ -5,6 +5,7 @@
 AUTHOR = 'krisr, wiley, jabele'
 NAME = 'network_WiFi_ChaosConnectDisconnect.interop'
 TIME = 'LONG'
+ATTRIBUTES = "suite:wifi_interop"
 SUITE = 'wifi_interop'
 TEST_TYPE = 'server'
 DEPENDENCIES = 'chaos_dut'

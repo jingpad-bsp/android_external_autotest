@@ -8,6 +8,7 @@ PURPOSE = "Test camera using LMI lib."
 CRITERIA = """
 Fail if any of the measurement fail.
 """
+ATTRIBUTES = "suite:hwqual"
 SUITE = "hwqual"
 TIME = "LONG"
 TEST_CATEGORY = "GTalk"

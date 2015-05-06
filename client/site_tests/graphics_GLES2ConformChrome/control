@@ -8,6 +8,7 @@ PURPOSE = 'Run the GLES2 Conformance test suite on the Chrome command buffer'
 CRITERIA = """
 All of the individual Khronos tests must pass.
 """
+ATTRIBUTES = "suite:graphics, suite:graphics_browser, suite:graphics_per-day"
 SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'

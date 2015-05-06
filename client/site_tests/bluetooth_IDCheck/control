@@ -8,6 +8,7 @@ PURPOSE = "Check whether the chromebook is using a Google Bluetooth ID."
 CRITERIA = """
 This test will fail if the Bluetooth ID does not match the expected format.
 """
+ATTRIBUTES = "suite:bvt-perbuild"
 SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

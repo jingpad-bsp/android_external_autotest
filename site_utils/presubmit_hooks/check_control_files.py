@@ -106,6 +106,42 @@ def CheckSuites(ctrl_data, test_name):
         raise ControlFileCheckerError('No ebuild entry for %s' % test_name)
 
 
+def CheckSuitesAttrMatch(ctrl_data, whitelist, test_name):
+    """
+    Check whether ATTRIBUTES match to SUITE and also in the whitelist.
+
+    Throw a ControlFileCheckerError if ATTRIBUTES doesn't match to SUITE. This
+    check is needed until SUITE is eliminated from control files.
+
+    @param ctrl_data: The control_data object for a test.
+    @param whitelist: whitelist set parsed from the attribute_whitelist file.
+    @param test_name: A string with the name of the test.
+
+    @returns: None
+    """
+    # unmatch case 1: attributes not in the whitelist.
+    if not (whitelist >= ctrl_data.attributes):
+        attribute_diff = ctrl_data.attributes - whitelist
+        raise ControlFileCheckerError(
+            'Attribute(s): %s not in the whitelist in control file for test'
+            'named %s.' % (attribute_diff, test_name))
+    # unmatch case 2: ctrl_data has suite, but not match to attributes.
+    if hasattr(ctrl_data, 'suite'):
+        target_attrs = set(
+            'suite:' + x.strip() for x in ctrl_data.suite.split(',')
+            if x.strip())
+        if target_attrs != ctrl_data.attributes:
+            raise ControlFileCheckerError(
+                'ATTRIBUTES = %s does not match to SUITE = %s in the control '
+                'file for %s.' % (ctrl_data.attributes, ctrl_data.suite,
+                                  test_name))
+    # unmatch case 3: ctrl_data doesn't have suite, and attributes is not empty.
+    elif ctrl_data.attributes:
+        raise ControlFileCheckerError(
+            'SUITE does not exist in the control file %s, ATTRIBUTES = %s'
+            'should be empty.' % (test_name, ctrl_data.attributes))
+
+
 def CheckRetry(ctrl_data, test_name):
     """
     Check that any test in SUITES_NEED_RETRY has turned on retry.
@@ -134,6 +170,12 @@ def main():
         raise ControlFileCheckerError('Expected a list of presubmit files in '
             'the PRESUBMIT_FILES environment variable.')
 
+    # Parse the whitelist set from file, hardcode the filepath to the whitelist.
+    path_whitelist = os.path.join(common.autotest_dir,
+                                  'site_utils/attribute_whitelist.txt')
+    with open(path_whitelist, 'r') as f:
+        whitelist = {line.strip() for line in f.readlines() if line.strip()}
+
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
         if control_file:
@@ -148,6 +190,7 @@ def main():
                 pass
 
             CheckSuites(ctrl_data, test_name)
+            CheckSuitesAttrMatch(ctrl_data, whitelist, test_name)
             CheckRetry(ctrl_data, test_name)
 
 

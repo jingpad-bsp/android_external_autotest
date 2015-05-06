@@ -8,6 +8,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
+ATTRIBUTES = "suite:experimental"
 SUITE = "experimental"
 
 DOC = """

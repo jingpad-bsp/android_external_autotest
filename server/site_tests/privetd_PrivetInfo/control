@@ -6,6 +6,7 @@ AUTHOR = 'avakulenko, wiley, keybuk'
 NAME = 'privetd_PrivetInfo'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
+ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
 SUITE='tendo_experimental, smoke'
 
 DOC = """

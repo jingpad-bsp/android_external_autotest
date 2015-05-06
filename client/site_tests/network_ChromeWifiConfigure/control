@@ -9,6 +9,7 @@ CRITERIA = """
   The test will fail if the Chrome fails to configure the wifi network, or if
   the getProperties fails to retreive the correct properties once configured.
 """
+ATTRIBUTES = "suite:network_ui"
 SUITE = "network_ui"
 TIME = "FAST"
 TEST_CATEGORY = "Functional"

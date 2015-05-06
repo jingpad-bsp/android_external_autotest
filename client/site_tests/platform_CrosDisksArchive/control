@@ -8,6 +8,7 @@ PURPOSE = "Verify that cros-disks can mount supported archive files correctly"
 
 CRITERIA = """
 """
+ATTRIBUTES = "suite:regression"
 SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

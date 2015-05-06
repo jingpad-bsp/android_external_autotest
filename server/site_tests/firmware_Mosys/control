@@ -10,6 +10,7 @@ PURPOSE = "Execute firmware Mosys commands and check return value."
 CRITERIA = """
 This test will fail if mosys return unexpected output or incorrect value.
 """
+ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_normal"
 SUITE = "faft,faft_normal,faft_bios"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

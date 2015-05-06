@@ -10,6 +10,7 @@ This test will fail if any of the security-related CPU registers aren't set
 to expected values.
 """
 TIME = "SHORT"
+ATTRIBUTES = "suite:security"
 SUITE = "security"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"

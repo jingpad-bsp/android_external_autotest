@@ -13,6 +13,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 
+ATTRIBUTES = "suite:kernel_daily_regression"
 SUITE = "kernel_daily_regression"
 
 DOC = """
