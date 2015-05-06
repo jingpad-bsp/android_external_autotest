@@ -292,6 +292,14 @@ class _LabInventory(dict):
 
 
     def __init__(self, histories):
+        # N.B. The query that finds our hosts is restricted to those
+        # with a valid pool: label, but doesn't check for a valid
+        # board: label.  In some (insufficiently) rare cases, the
+        # AFE hosts table has been known to (incorrectly) have DUTs
+        # with a pool: but no board: label.  We explicitly exclude
+        # those here.
+        histories = [h for h in histories
+                     if h.host_board is not None]
         boards = set([h.host_board for h in histories])
         initval = { board: _BoardCounts() for board in boards }
         super(_LabInventory, self).__init__(initval)

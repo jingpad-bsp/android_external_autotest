@@ -367,9 +367,9 @@ class HostJobHistory(object):
 
 
     def _extract_prefixed_label(self, prefix):
-        label = [l for l in self._host.labels
-                    if l.startswith(prefix)][0]
-        return label[len(prefix) : ]
+        labels = [l for l in self._host.labels
+                    if l.startswith(prefix)]
+        return labels[0][len(prefix) : ] if labels else None
 
 
     @property

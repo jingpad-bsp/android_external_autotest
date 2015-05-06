@@ -286,6 +286,7 @@ class _InventoryTests(unittest.TestCase):
 
         """
         histories = []
+        self.num_duts = 0
         status_choices = (_WORKING, _BROKEN)
         pools = (self._CRITICAL_POOL, self._SPARE_POOL)
         for board, counts in data.items():
@@ -296,7 +297,8 @@ class _InventoryTests(unittest.TestCase):
                                                    pools[i],
                                                    status_choices[j])
                         histories.append(history)
-        self.num_duts = len(histories)
+                        if board is not None:
+                            self.num_duts += 1
         self.inventory = lab_inventory._LabInventory(histories)
 
 
@@ -312,7 +314,7 @@ class LabInventoryTests(_InventoryTests):
 
     """
 
-    # BOARD_LIST - A list of sample board names for use in testing.
+    # _BOARD_LIST - A list of sample board names for use in testing.
 
     _BOARD_LIST = [
         'lion',
@@ -340,7 +342,6 @@ class LabInventoryTests(_InventoryTests):
 
         @param data Inventory data as for `self.create_inventory()`.
         """
-        self.create_inventory(data)
         for b in self.inventory:
             c = self.inventory[b]
             calculated_counts = (
@@ -359,6 +360,13 @@ class LabInventoryTests(_InventoryTests):
 
     def test_empty(self):
         """Test counts when there are no DUTs recorded."""
+        self.create_inventory({})
+        self._check_inventory({})
+
+
+    def test_missing_board(self):
+        """Test handling when the board is `None`."""
+        self.create_inventory({None: ((1, 1), (1, 1))})
         self._check_inventory({})
 
 
@@ -370,6 +378,7 @@ class LabInventoryTests(_InventoryTests):
             inventory_data = {
                 board: counts for board in slice
             }
+            self.create_inventory(inventory_data)
             self._check_inventory(inventory_data)
 
 
@@ -383,6 +392,7 @@ class LabInventoryTests(_InventoryTests):
         ]
         for counts in testcounts:
             inventory_data = { self._BOARD_LIST[0]: counts }
+            self.create_inventory(inventory_data)
             self._check_inventory(inventory_data)
 
 
