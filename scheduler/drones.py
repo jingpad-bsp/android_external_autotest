@@ -162,7 +162,12 @@ class _BaseAbstractDrone(object):
                 self._host.run('which lxc-start')
                 # Test if base container is setup.
                 base_container = os.path.join(DEFAULT_CONTAINER_PATH, 'base')
-                self._host.run('sudo ls "%s"' %  base_container)
+                # SSP uses privileged containers, sudo access is required. If
+                # the process can't run sudo command without password, SSP can't
+                # work properly. sudo command option -n will avoid user input.
+                # If password is required, the command will fail and raise
+                # AutoservRunError exception.
+                self._host.run('sudo -n ls "%s"' %  base_container)
                 self._support_ssp = True
             except (error.AutoservRunError, error.AutotestHostRunError):
                 # Local drone raises AutotestHostRunError, while remote drone

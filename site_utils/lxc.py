@@ -86,19 +86,12 @@ MOBLAB_SITE_PACKAGES_CONTAINER = '/usr/local/lib/python2.7/dist-packages/'
 # different behavior in Moblab.
 IS_MOBLAB = utils.is_moblab()
 
-# Flag to indicate it's running in a VM(Ganeti instance). Due to t/16003207,
-# lxc-clone does not support snapshot in Ganeti instance.
-IS_VM = utils.is_vm()
-
 # TODO(dshi): If we are adding more logic in how lxc should interact with
 # different systems, we should consider code refactoring to use a setting-style
 # object to store following flags mapping to different systems.
 # TODO(crbug.com/464834): Snapshot clone is disabled until Moblab can
 # support overlayfs or aufs, which requires a newer kernel.
 SUPPORT_SNAPSHOT_CLONE = not IS_MOBLAB
-# overlayfs is the default clone backend storage. However it is not supported
-# in Ganeti yet. Use aufs as the alternative.
-SNAPSHOT_CLONE_REQUIRE_AUFS = IS_VM
 
 # Number of seconds to wait for network to be up in a container.
 NETWORK_INIT_TIMEOUT = 120
@@ -662,7 +655,9 @@ class ContainerBucket(object):
 
         use_snapshot = SUPPORT_SNAPSHOT_CLONE and not disable_snapshot_clone
         snapshot = '-s' if  use_snapshot else ''
-        aufs = '-B aufs' if SNAPSHOT_CLONE_REQUIRE_AUFS and use_snapshot else ''
+        # overlayfs is the default clone backend storage. However it is not
+        # supported in Ganeti yet. Use aufs as the alternative.
+        aufs = '-B aufs' if utils.is_vm() and use_snapshot else ''
         cmd = ('sudo lxc-clone -p %s -P %s %s' %
                (self.container_path, self.container_path,
                 ' '.join([BASE, name, snapshot, aufs])))
@@ -874,6 +869,14 @@ def parse_options():
 
 def main():
     """main script."""
+    # Force to run the setup as superuser.
+    # TODO(dshi): crbug.com/459344 Set remove this enforcement when test
+    # container can be unprivileged container.
+    if utils.sudo_require_password():
+        logging.warn('SSP requires root privilege to run commands, please '
+                     'grant root access to this process.')
+        utils.run('sudo true')
+
     options = parse_options()
     bucket = ContainerBucket(container_path=options.path)
     if options.setup:

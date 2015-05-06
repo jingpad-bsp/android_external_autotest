@@ -230,8 +230,10 @@ def main(options):
     # Force to run the test as superuser.
     # TODO(dshi): crbug.com/459344 Set remove this enforcement when test
     # container can be unprivileged container.
-    if os.geteuid() != 0:
-        raise EnvironmentError('Need to be root.')
+    if utils.sudo_require_password():
+        logging.warn('SSP requires root privilege to run commands, please '
+                     'grant root access to this process.')
+        utils.run('sudo true')
 
     setup_logging(log_level=(logging.DEBUG if options.verbose
                              else logging.INFO))

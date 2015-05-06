@@ -1071,7 +1071,7 @@ def is_vm():
              return False.
     """
     try:
-        virt = utils.run('sudo virt-what').stdout.strip()
+        virt = utils.run('sudo -n virt-what').stdout.strip()
         logging.debug('virt-what output: %s', virt)
         return bool(virt)
     except error.CmdError:

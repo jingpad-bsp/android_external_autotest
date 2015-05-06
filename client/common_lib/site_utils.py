@@ -528,3 +528,17 @@ def get_real_user():
     if not user:
         user = os.environ.get('USER')
     return user
+
+
+def sudo_require_password():
+    """Test if the process can run sudo command without using password.
+
+    @return: True if the process needs password to run sudo command.
+
+    """
+    try:
+        base_utils.run('sudo -n true')
+        return False
+    except error.CmdError:
+        logging.warn('sudo command requires password.')
+        return True

@@ -538,7 +538,6 @@ def main():
             os.makedirs(log_dir)
     else:
         log_dir = results
-        correct_results_folder_permission(results)
 
     logging_manager.configure_logging(
             server_logging_config.ServerLoggingConfig(),
