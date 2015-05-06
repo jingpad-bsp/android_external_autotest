@@ -533,7 +533,7 @@ def main():
     use_ssp = (not parser.options.warn_no_ssp and parser.options.require_ssp
                and ssp_url)
     if use_ssp:
-        log_dir = os.path.join(results, 'wrapper') if results else None
+        log_dir = os.path.join(results, 'ssp_logs') if results else None
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
     else:
