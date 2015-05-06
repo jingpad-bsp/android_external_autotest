@@ -58,4 +58,4 @@ class firmware_CgptState(FirmwareTest):
             logging.info('======== Running CgptState test step %d ========',
                          self.faft_client.cgpt.get_test_step() + 1)
             self.run_test_step()
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()

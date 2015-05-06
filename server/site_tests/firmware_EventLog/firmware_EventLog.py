@@ -54,7 +54,7 @@ class firmware_EventLog(FirmwareTest):
 
         logging.info('Verifying eventlog behavior on normal mode boot')
         self._cutoff_time = self._now()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '0',
                               'mainfw_type': 'normal',
@@ -71,7 +71,7 @@ class firmware_EventLog(FirmwareTest):
 
         logging.info('Verifying eventlog behavior on developer mode boot')
         self._cutoff_time = self._now()
-        self.reboot_warm(ctrl_d=True)
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '1',
                               'mainfw_type': 'developer',
@@ -91,7 +91,7 @@ class firmware_EventLog(FirmwareTest):
         self.switcher.reboot_to_mode(to_mode='rec', wait_for_dut_up=False)
         self.wait_for_client_offline()
         time.sleep(self.faft_config.firmware_screen)
-        self.reboot_warm(sync_before_boot=False)
+        self.switcher.mode_aware_reboot(sync_before_boot=False)
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '0',
                               'mainfw_type': 'normal',

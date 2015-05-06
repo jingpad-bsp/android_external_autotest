@@ -75,7 +75,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
                               'mainfw_type': 'normal',
                               }))
         self.servo.enable_development_mode()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_client()
 
@@ -97,7 +97,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
                      'recovery_reason' : vboot.RECOVERY_REASON['RW_DEV_SCREEN'],
                      }))
         self.servo.disable_development_mode()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected values based on platforms (see above), "
                      "and run 'chromeos-firmwareupdate --mode tonormal && "

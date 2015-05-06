@@ -36,12 +36,12 @@ class firmware_CorruptFwBodyB(FirmwareTest):
         logging.info("Corrupt firmware body B.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.corrupt_body('b')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected firmware A boot and set try_fwb flag.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.try_fwb(1)
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("If RO enabled, expected firmware B boot; otherwise, "
                      "still A boot since B is corrupted. Restore B later.")
@@ -50,7 +50,7 @@ class firmware_CorruptFwBodyB(FirmwareTest):
         else:
             self.check_state((self.checkers.fw_tries_checker, ('A', False)))
         self.faft_client.bios.restore_body('b')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Final check and done.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))

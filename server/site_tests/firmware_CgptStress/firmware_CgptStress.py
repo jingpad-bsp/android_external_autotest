@@ -36,12 +36,12 @@ class firmware_CgptStress(FirmwareTest):
             logging.info("Expected kernel A boot and prioritize kernel B.")
             self.check_state((self.checkers.root_part_checker, 'a'))
             self.reset_and_prioritize_kernel('b')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
             logging.info("Expected kernel B boot and prioritize kernel A.")
             self.check_state((self.checkers.root_part_checker, 'b'))
             self.reset_and_prioritize_kernel('a')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
             logging.info("Expected kernel A boot, done.")
             self.check_state((self.checkers.root_part_checker, 'a'))

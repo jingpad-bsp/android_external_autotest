@@ -70,7 +70,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           'devsw_boot': '1',
                           'mainfw_type': 'developer',
                           }))
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_fw_screen_and_close_lid,
                                   self.servo.lid_open,
                                   self.wait_fw_screen_and_ctrl_d)
@@ -84,7 +84,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           'devsw_boot': '1',
                           'mainfw_type': 'developer',
                           }))
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_second_screen_and_close_lid,
                                   self.servo.lid_open,
                                   self.wait_fw_screen_and_ctrl_d,
@@ -98,7 +98,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           'mainfw_type': 'developer',
                           }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
                                   self.servo.lid_open,
                                   self.wait_fw_screen_and_ctrl_d,
@@ -113,7 +113,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           'mainfw_type': 'developer',
                           }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_yuck_screen_and_close_lid,
                                   self.servo.lid_open,
                                   self.wait_fw_screen_and_ctrl_d,
@@ -135,7 +135,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           'mainfw_type': 'normal',
                           }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
                                   self.servo.lid_open,
                                   None,

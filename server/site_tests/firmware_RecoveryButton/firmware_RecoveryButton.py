@@ -28,7 +28,7 @@ class firmware_RecoveryButton(FirmwareTest):
         if not self.checkers.crossystem_checker(
                 {'mainfw_type': ('normal', 'developer')}):
             self.servo.disable_recovery_mode()
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
     def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
         super(firmware_RecoveryButton, self).initialize(host, cmdline_args,
@@ -53,7 +53,7 @@ class firmware_RecoveryButton(FirmwareTest):
                     'mainfw_type': 'recovery',
                     'recovery_reason': vboot.RECOVERY_REASON['RO_MANUAL'],
                     }))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected normal boot.")
         self.check_state((self.checkers.crossystem_checker, {

@@ -101,7 +101,7 @@ class firmware_UpdateECBin(FirmwareTest):
         logging.info("Expected EC RO boot, update EC and disable RO flag.")
         self.check_state((self.checkers.ro_normal_checker, 'A'))
         self.do_ronormal_update()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if dev_mode:
             self.software_sync_and_ctrl_d()
         self.wait_for_kernel_up()
@@ -114,7 +114,7 @@ class firmware_UpdateECBin(FirmwareTest):
         #   will need to get the EC into RO first. It does this by
         #   telling the EC to wait for the AP to shut down, reboot
         #   into RO, then power on the AP automatically.
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if dev_mode:
             self.software_sync_and_ctrl_d()
         self.wait_for_kernel_up()
@@ -122,7 +122,7 @@ class firmware_UpdateECBin(FirmwareTest):
         logging.info("Expected different EC and RW boot, enable RO flag.")
         self.check_state((self.ec_checker, False))
         self.faft_client.bios.set_preamble_flags(('a', flags))
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected EC RO boot, done.")
         self.check_state((self.checkers.ro_normal_checker, 'A'))

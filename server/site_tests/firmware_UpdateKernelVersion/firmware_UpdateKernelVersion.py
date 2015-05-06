@@ -60,17 +60,17 @@ class firmware_UpdateKernelVersion(FirmwareTest):
         logging.info("Update Kernel Version.")
         self.check_state((self.check_root_part_on_non_recovery, 'a'))
         self.modify_kernel_b_and_set_cgpt_priority(1, 'b')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check kernel version and rollback.")
         self.check_state((self.check_root_part_on_non_recovery, 'b'))
         self.modify_kernel_b_and_set_cgpt_priority(-1, 'b')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Boot with rollback kernel and change boot priority.")
         self.check_state((self.check_root_part_on_non_recovery, 'b'))
         self.modify_kernel_b_and_set_cgpt_priority(0, 'a')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check rollback version.")
         self.check_state((self.check_root_part_on_non_recovery, 'a'))

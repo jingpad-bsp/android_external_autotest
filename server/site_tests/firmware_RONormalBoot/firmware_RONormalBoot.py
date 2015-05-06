@@ -43,11 +43,11 @@ class firmware_RONormalBoot(FirmwareTest):
         self.check_state((self.checkers.ro_normal_checker, 'A'))
         self.faft_client.bios.set_preamble_flags(('a',
                                       flags ^ vboot.PREAMBLE_USE_RO_NORMAL))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected TwoStop boot, restore the original flags.")
         self.check_state((lambda: self.checkers.ro_normal_checker('A',
                                                                   twostop=True)))
         self.faft_client.bios.set_preamble_flags('a', flags)
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.ro_normal_checker, 'A'))

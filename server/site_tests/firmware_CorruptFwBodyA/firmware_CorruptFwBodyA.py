@@ -39,7 +39,7 @@ class firmware_CorruptFwBodyA(FirmwareTest):
             logging.info("Corrupt firmware body A.")
             self.check_state((self.checkers.fw_tries_checker, 'A'))
             self.faft_client.bios.corrupt_body('a')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
             logging.info("Still expected firmware A boot and restore.")
             self.check_state((self.checkers.fw_tries_checker, 'A'))
@@ -49,12 +49,12 @@ class firmware_CorruptFwBodyA(FirmwareTest):
             logging.info("Corrupt firmware body A.")
             self.check_state((self.checkers.fw_tries_checker, 'A'))
             self.faft_client.bios.corrupt_body('a')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
             logging.info("Expected firmware B boot and restore firmware A.")
             self.check_state((self.checkers.fw_tries_checker, ('B', False)))
             self.faft_client.bios.restore_body('a')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
             expected_slot = 'B' if self.fw_vboot2 else 'A'
             logging.info("Expected firmware " + expected_slot + " boot, done.")

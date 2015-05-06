@@ -58,7 +58,7 @@ class firmware_ECWriteProtect(FirmwareTest):
         self.check_state([(self.checkers.ro_normal_checker, 'A'),
                           self.write_protect_checker])
         self.faft_client.bios.set_preamble_flags('a', 0)
-        self.reboot_cold()
+        self.switcher.mode_aware_reboot(reboot_type='cold')
 
         logging.info("Expected EC RW boot, write protected. Reboot EC by "
                      "ectool.")

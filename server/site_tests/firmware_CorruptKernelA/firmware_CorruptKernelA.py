@@ -33,12 +33,12 @@ class firmware_CorruptKernelA(FirmwareTest):
         logging.info("Corrupt kernel A.")
         self.check_state((self.checkers.root_part_checker, 'a'))
         self.faft_client.kernel.corrupt_sig('a')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel B boot and restore kernel A.")
         self.check_state((self.checkers.root_part_checker, 'b'))
         self.faft_client.kernel.restore_sig('a')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel A boot.")
         self.check_state((self.checkers.root_part_checker, 'a'))

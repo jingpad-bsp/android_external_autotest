@@ -32,7 +32,7 @@ class firmware_CorruptBothKernelAB(FirmwareTest):
         if not self.check_root_part_on_non_recovery(part):
             logging.info('Recover the disk OS by running chromeos-install...')
             self.faft_client.system.run_shell_command('chromeos-install --yes')
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_CorruptBothKernelAB, self).initialize(host, cmdline_args)
@@ -61,7 +61,7 @@ class firmware_CorruptBothKernelAB(FirmwareTest):
         logging.info("Corrupt kernel A and B.")
         self.check_state((self.check_root_part_on_non_recovery, 'a'))
         self.faft_client.kernel.corrupt_sig(('a', 'b'))
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         # Kernel is verified after firmware screen.
         # Should press Ctrl-D to skip the screen on dev_mode.
         if dev_mode:
@@ -76,7 +76,7 @@ class firmware_CorruptBothKernelAB(FirmwareTest):
                               'recovery_reason': recovery_reason,
                               }))
         self.faft_client.kernel.restore_sig(('a', 'b'))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel A normal/dev boot.")
         self.check_state((self.check_root_part_on_non_recovery, 'a'))

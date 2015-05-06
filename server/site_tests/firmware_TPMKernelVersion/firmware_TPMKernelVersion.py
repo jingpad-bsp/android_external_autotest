@@ -39,7 +39,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         if self.faft_client.system.is_removable_device_boot():
           logging.info('Reboot into internal disk...')
           self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-          self.reboot_warm(wait_for_dut_up=False)
+          self.switcher.mode_aware_reboot(wait_for_dut_up=False)
           self.wait_fw_screen_and_ctrl_d()
           self.wait_for_client()
         super(firmware_TPMKernelVersion, self).cleanup()
@@ -54,7 +54,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         self.dut_run_cmd('crossystem kernkey_vfy dev_boot_usb')
         # Boot CrOS from USB
         self.faft_client.system.set_dev_boot_usb(1)
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_u()
         self.wait_for_client(install_deps=True)
 

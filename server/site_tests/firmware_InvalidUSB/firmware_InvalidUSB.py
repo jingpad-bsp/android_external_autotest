@@ -49,7 +49,7 @@ class firmware_InvalidUSB(FirmwareTest):
                           'mainfw_type': 'normal',
                           }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_plug_usb()
         logging.info('Wait to ensure the USB image is unable to boot...')
         try:
@@ -68,7 +68,7 @@ class firmware_InvalidUSB(FirmwareTest):
                           'mainfw_type': 'recovery',
                           'recovery_reason': vboot.RECOVERY_REASON['US_TEST'],
                           }))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected to normal boot and done.")
         self.check_state((self.checkers.crossystem_checker, {

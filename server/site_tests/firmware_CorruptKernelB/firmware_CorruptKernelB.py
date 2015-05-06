@@ -34,22 +34,22 @@ class firmware_CorruptKernelB(FirmwareTest):
         logging.info("Prioritize kernel B.")
         self.check_state((self.checkers.root_part_checker, 'a'))
         self.reset_and_prioritize_kernel('b')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel B boot and corrupt kernel B.")
         self.check_state((self.checkers.root_part_checker, 'b'))
         self.faft_client.kernel.corrupt_sig('b')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel A boot and restore kernel B.")
         self.check_state((self.checkers.root_part_checker, 'a'))
         self.faft_client.kernel.restore_sig('b')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel B boot and prioritize kerenl A.")
         self.check_state((self.checkers.root_part_checker, 'b'))
         self.reset_and_prioritize_kernel('a')
-        self.reboot_warm(ctrl_d=dev_mode)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected kernel A boot.")
         self.check_state((self.checkers.root_part_checker, 'a'))

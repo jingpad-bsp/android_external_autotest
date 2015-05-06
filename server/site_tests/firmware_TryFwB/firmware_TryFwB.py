@@ -27,11 +27,11 @@ class firmware_TryFwB(FirmwareTest):
         logging.info("Set fwb_tries flag")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.try_fwb()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected firmware B boot, reboot")
         self.check_state((self.checkers.fw_tries_checker, 'B'))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         expected_slot = 'B' if self.fw_vboot2 else 'A'
         logging.info("Expected firmware " + expected_slot + " boot, done.")

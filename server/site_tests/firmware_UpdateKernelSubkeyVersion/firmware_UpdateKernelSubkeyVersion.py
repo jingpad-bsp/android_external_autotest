@@ -93,12 +93,12 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
                           }))
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.updater.run_autoupdate('test')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check firmware data key version and Rollback.")
         self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.run_bootok_and_recovery()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {

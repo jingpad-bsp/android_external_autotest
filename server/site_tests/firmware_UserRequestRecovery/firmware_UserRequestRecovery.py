@@ -28,7 +28,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
         """
         if not self.checkers.crossystem_checker(
                 {'mainfw_type': ('normal', 'developer')}):
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
     def initialize(self, host, cmdline_args, dev_mode=False, ec_wp=None):
         super(firmware_UserRequestRecovery, self).initialize(host, cmdline_args,
@@ -46,7 +46,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
                            'mainfw_type': 'developer' if dev_mode else 'normal',
                            }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=True)
 
@@ -56,7 +56,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
                            'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                            }))
         self.faft_client.system.request_recovery_boot()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
             self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=True)
@@ -66,7 +66,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
                            'mainfw_type': 'recovery',
                            'recovery_reason' : vboot.RECOVERY_REASON['US_TEST'],
                            }))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected normal boot.")
         self.check_state((self.checkers.crossystem_checker, {

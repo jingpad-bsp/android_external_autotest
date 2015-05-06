@@ -164,7 +164,7 @@ class firmware_FAFTSetup(FirmwareTest):
     def run_once(self):
         logging.info("Check EC console is available and test warm reboot")
         self.console_checker()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check test image is on USB stick and run recovery boot")
         self.assert_test_image_in_usb_disk()
@@ -174,7 +174,7 @@ class firmware_FAFTSetup(FirmwareTest):
                           {'mainfw_type': 'recovery'}))
 
         logging.info("Check cold boot")
-        self.reboot_cold()
+        self.switcher.mode_aware_reboot(reboot_type='cold')
 
         logging.info("Check keyboard simulation")
         self.check_state(self.keyboard_checker)

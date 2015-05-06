@@ -81,12 +81,12 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
                           }))
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.updater.run_autoupdate('test')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Copy firmware form B to A.")
         self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.faft_client.updater.run_bootok('test')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check firmware and TPM version, then recovery.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))

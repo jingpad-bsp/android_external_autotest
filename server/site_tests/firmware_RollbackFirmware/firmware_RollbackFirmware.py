@@ -33,12 +33,12 @@ class firmware_RollbackFirmware(FirmwareTest):
         logging.info("Rollback firmware A.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.faft_client.bios.move_version_backward('a')
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected firmware B boot and rollback firmware B.")
         self.check_state((self.checkers.fw_tries_checker, ('B', False)))
         self.faft_client.bios.move_version_backward('b')
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
             self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=True)
@@ -51,7 +51,7 @@ class firmware_RollbackFirmware(FirmwareTest):
                                 vboot.RECOVERY_REASON['RW_FW_ROLLBACK']),
                            }))
         self.faft_client.bios.move_version_forward(('a', 'b'))
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         expected_slot = 'B' if self.fw_vboot2 else 'A'
         logging.info("Expected firmware " + expected_slot + " boot, done.")

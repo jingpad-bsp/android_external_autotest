@@ -52,7 +52,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         """
         if self.faft_client.system.is_removable_device_boot():
             logging.info('Reboot into internal disk...')
-            self.reboot_warm(wait_for_dut_up=False)
+            self.switcher.mode_aware_reboot(wait_for_dut_up=False)
             self.wait_fw_screen_and_ctrl_d()
             self.wait_for_client()
 
@@ -97,7 +97,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                      "dev_boot_signed_only to 1.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))
         self.enable_crossystem_selfsigned()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.try_ctrl_u_and_ctrl_d()
         self.wait_for_client(install_deps=True)
 
@@ -111,7 +111,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                    'mainfw_type': 'recovery',
                    'recovery_reason': vboot.RECOVERY_REASON['RO_MANUAL'],
                    }))
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_client(install_deps=True)
 
@@ -119,14 +119,14 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.check_state((self.checkers.dev_boot_usb_checker, False,
                           'Not internal disk boot, dev_boot_usb misbehaved'))
         self.resignimage_ssdkeys()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_u()
         self.wait_for_client(install_deps=True)
 
         logging.info("Expected USB boot.")
         self.check_state((self.checkers.dev_boot_usb_checker, True,
                           'Not USB boot, Ctrl-U not work'))
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_client()
 

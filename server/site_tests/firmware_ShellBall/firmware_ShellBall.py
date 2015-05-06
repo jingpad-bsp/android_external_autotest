@@ -65,7 +65,7 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'dev_boot_usb': '0'}))
         self.update_firmware('todev')
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_kernel_up()
 
@@ -73,7 +73,7 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'mainfw_type': 'developer'}))
         self.update_firmware('autoupdate')
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_kernel_up()
 
@@ -81,7 +81,7 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._shellball_fwid}))
         self.install_original_firmware()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_kernel_up()
 
@@ -89,7 +89,7 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._current_fwid}))
         self.update_firmware('factory_install')
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_kernel_up()
 
@@ -97,7 +97,7 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._shellball_fwid}))
         self.install_original_firmware()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_d()
         self.wait_for_kernel_up()
 

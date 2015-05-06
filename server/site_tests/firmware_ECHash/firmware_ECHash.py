@@ -70,7 +70,7 @@ class firmware_ECHash(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
         logging.info("Save the EC hash, invalidate it, and warm reboot.")
         self.save_echash_and_invalidate()
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Compare the recomputed EC hash with the original one.")
         self.check_state(self.compare_echashes)

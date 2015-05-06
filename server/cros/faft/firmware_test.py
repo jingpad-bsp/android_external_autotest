@@ -179,7 +179,7 @@ class FirmwareTest(FAFTBase):
             self.faft_client.system.set_fw_try_next('A')
             if self.faft_client.system.get_crossystem_value('mainfw_act') == 'B':
                 logging.info('mainfw_act is B. rebooting to set it A')
-                self.reboot_warm()
+                self.switcher.mode_aware_reboot()
         self._setup_gbb_flags()
         self._stop_service('update-engine')
         self._create_faft_lockfile()
@@ -919,7 +919,7 @@ class FirmwareTest(FAFTBase):
         if flags & vboot.PREAMBLE_USE_RO_NORMAL:
             flags = flags ^ vboot.PREAMBLE_USE_RO_NORMAL
             self.faft_client.bios.set_preamble_flags(section, flags)
-            self.reboot_warm()
+            self.switcher.mode_aware_reboot()
 
     def setup_kernel(self, part):
         """Setup for kernel test.
@@ -980,48 +980,6 @@ class FirmwareTest(FAFTBase):
     ################################################
     # Reboot APIs
 
-    def reboot_warm(self, sync_before_boot=True,
-                    wait_for_dut_up=True, ctrl_d=False):
-        """
-        Perform a warm reboot.
-
-        This is the highest level function that most users will need.
-        It performs a sync, triggers a reboot and waits for kernel to boot.
-
-        @param sync_before_boot: bool, sync to disk before booting.
-        @param wait_for_dut_up: bool, wait for dut to boot before returning.
-        @param ctrl_d: bool, press ctrl-D at dev screen.
-        """
-        if sync_before_boot:
-            self.blocking_sync()
-        self.reboot_warm_trigger()
-        if ctrl_d:
-            self.wait_dev_screen_and_ctrl_d()
-        if wait_for_dut_up:
-            self.wait_for_client_offline()
-            self.wait_for_kernel_up()
-
-    def reboot_cold(self, sync_before_boot=True,
-                    wait_for_dut_up=True, ctrl_d=False):
-        """
-        Perform a cold reboot.
-
-        This is the highest level function that most users will need.
-        It performs a sync, triggers a reboot and waits for kernel to boot.
-
-        @param sync_before_boot: bool, sync to disk before booting.
-        @param wait_for_dut_up: bool, wait for dut to boot before returning.
-        @param ctrl_d: bool, press ctrl-D at dev screen.
-        """
-        if sync_before_boot:
-            self.blocking_sync()
-        self.reboot_cold_trigger()
-        if ctrl_d:
-            self.wait_dev_screen_and_ctrl_d()
-        if wait_for_dut_up:
-            self.wait_for_client_offline()
-            self.wait_for_kernel_up()
-
     def do_reboot_action(self, func):
         """
         Helper function that wraps the reboot function so that we check if the
@@ -1054,20 +1012,6 @@ class FirmwareTest(FAFTBase):
             logging.error('wait_for_client() timed out.')
             self._restore_routine_from_timeout()
         logging.info("-[FAFT]-[ end wait_for_kernel_up ]-----")
-
-    def reboot_warm_trigger(self):
-        """Request a warm reboot.
-
-        A wrapper for underlying servo warm reset.
-        """
-        self.servo.get_power_state_controller().warm_reset()
-
-    def reboot_cold_trigger(self):
-        """Request a cold reboot.
-
-        A wrapper for underlying servo cold reset.
-        """
-        self.servo.get_power_state_controller().reset()
 
     def sync_and_ec_reboot(self, flags=''):
         """Request the client sync and do a EC triggered reboot.

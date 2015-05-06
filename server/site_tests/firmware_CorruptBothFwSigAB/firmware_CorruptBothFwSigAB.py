@@ -36,7 +36,7 @@ class firmware_CorruptBothFwSigAB(FirmwareTest):
                           'mainfw_type': 'developer' if dev_mode else 'normal',
                           }))
         self.faft_client.bios.corrupt_sig(('a', 'b'),)
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
             self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=True)
@@ -49,7 +49,7 @@ class firmware_CorruptBothFwSigAB(FirmwareTest):
                               vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                           }))
         self.faft_client.system.set_try_fw_b()
-        self.reboot_warm(wait_for_dut_up=False)
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
             self.wait_fw_screen_and_plug_usb()
         self.wait_for_client(install_deps=False)
@@ -62,7 +62,7 @@ class firmware_CorruptBothFwSigAB(FirmwareTest):
                               vboot.RECOVERY_REASON['RW_VERIFY_KEYBLOCK']),
                           }))
         self.faft_client.bios.restore_sig(('a', 'b'),)
-        self.reboot_warm()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected normal boot, done.")
         self.check_state((self.checkers.crossystem_checker, {
