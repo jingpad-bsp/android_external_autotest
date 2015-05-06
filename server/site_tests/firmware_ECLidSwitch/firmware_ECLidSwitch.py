@@ -185,12 +185,14 @@ class firmware_ECLidSwitch(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
 
         logging.info("Shutdown and long delayed wake.")
-        self.do_reboot_action((self.shutdown_and_wake,
-                               self.long_delayed_wake))
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(self.long_delayed_wake))
 
         logging.info("Shutdown and short delayed wake.")
-        self.do_reboot_action((self.shutdown_and_wake,
-                               self.short_delayed_wake))
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(self.short_delayed_wake))
 
         logging.info("Check keycode and backlight.")
         self.check_state(self.check_keycode_and_backlight)

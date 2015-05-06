@@ -78,9 +78,9 @@ class firmware_DevModeStress(FirmwareTest):
                                 'devsw_boot': '1',
                                 'mainfw_type': 'developer',
                                 }))
-            self.do_reboot_action((self.suspend_as_reboot,
-                                   self.wake_by_power_button))
-            self.wait_for_client()
+            self.switcher.mode_aware_reboot(
+                    'custom',
+                    lambda:self.suspend_as_reboot(self.wake_by_power_button))
 
         logging.info("Complete, final check for dev mode.")
         self.check_state((self.checkers.crossystem_checker, {

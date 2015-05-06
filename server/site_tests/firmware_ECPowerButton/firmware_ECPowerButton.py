@@ -78,34 +78,38 @@ class firmware_ECPowerButton(FirmwareTest):
 
         if self.servo.is_localhost():
             self.check_state(self.debounce_power_button)
-        self.do_reboot_action((self.shutdown_and_wake,
-                               (self.POWER_BUTTON_POWERD_DURATION,
-                                self.SHORT_WAKE_DELAY,
-                                self.POWER_BUTTON_SHORT_POWER_ON_DURATION)))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(
+                        self.POWER_BUTTON_POWERD_DURATION,
+                        self.SHORT_WAKE_DELAY,
+                        self.POWER_BUTTON_SHORT_POWER_ON_DURATION))
 
         logging.info("Shutdown when powerd is stopped and wake from G3 "
                           "with short power button press.")
         self.kill_powerd()
-        self.do_reboot_action((self.shutdown_and_wake,
-                               (self.POWER_BUTTON_NO_POWERD_DURATION,
-                                self.LONG_WAKE_DELAY,
-                                self.POWER_BUTTON_SHORT_POWER_ON_DURATION)))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(
+                        self.POWER_BUTTON_NO_POWERD_DURATION,
+                        self.LONG_WAKE_DELAY,
+                        self.POWER_BUTTON_SHORT_POWER_ON_DURATION))
 
         logging.info("Shutdown when powerd is still running and wake from G3 "
                      "with long power button press.")
-        self.do_reboot_action((self.shutdown_and_wake,
-                               (self.POWER_BUTTON_POWERD_DURATION,
-                                self.LONG_WAKE_DELAY,
-                                self.POWER_BUTTON_LONG_POWER_ON_DURATION)))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(
+                        self.POWER_BUTTON_POWERD_DURATION,
+                        self.LONG_WAKE_DELAY,
+                        self.POWER_BUTTON_LONG_POWER_ON_DURATION))
 
         logging.info("Shutdown when powerd is stopped and wake from S5 "
                      "with long power button press.")
         self.kill_powerd()
-        self.do_reboot_action((self.shutdown_and_wake,
-                               (self.POWER_BUTTON_NO_POWERD_DURATION,
-                                self.SHORT_WAKE_DELAY,
-                                self.POWER_BUTTON_LONG_POWER_ON_DURATION)))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.shutdown_and_wake(
+                        self.POWER_BUTTON_NO_POWERD_DURATION,
+                        self.SHORT_WAKE_DELAY,
+                        self.POWER_BUTTON_LONG_POWER_ON_DURATION))

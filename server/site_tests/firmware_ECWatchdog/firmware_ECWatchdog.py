@@ -43,5 +43,4 @@ class firmware_ECWatchdog(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
 
         logging.info("Trigger a watchdog reset and power on system again.")
-        self.do_reboot_action(self.reboot_by_watchdog)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot('custom', self.reboot_by_watchdog)

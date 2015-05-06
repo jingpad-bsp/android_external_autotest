@@ -113,8 +113,8 @@ class ModeSwitcher(object):
             raise NotImplementedError('Not supported reboot_type: %s',
                                       reboot_type)
 
-        logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, ...) ]-",
-                     reboot_type)
+        logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, %s, ..) ]-",
+                     reboot_type, reboot_method.__name__)
         is_dev = False
         if sync_before_boot:
             if wait_for_dut_up:
@@ -128,8 +128,8 @@ class ModeSwitcher(object):
             if is_dev:
                 self.faft_framework.wait_dev_screen_and_ctrl_d()
             self.faft_framework.wait_for_kernel_up(install_deps)
-        logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, ...) ]-",
-                     reboot_type)
+        logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
+                     reboot_type, reboot_method.__name__)
 
     def _enable_rec_mode_and_reboot(self, usb_state=None):
         """Switch to rec mode and reboot.

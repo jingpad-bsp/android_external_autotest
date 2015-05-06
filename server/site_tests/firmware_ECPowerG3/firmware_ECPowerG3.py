@@ -64,8 +64,7 @@ class firmware_ECPowerG3(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
 
         logging.info("Power off and check if system drop into G3 correctly.")
-        self.do_reboot_action(self.check_G3)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot('custom', self.check_G3)
 
         logging.info("Check if failure occurred.")
         self.check_state(self.check_failure)

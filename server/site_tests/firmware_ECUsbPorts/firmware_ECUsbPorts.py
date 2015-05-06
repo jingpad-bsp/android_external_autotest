@@ -140,12 +140,11 @@ class firmware_ECUsbPorts(FirmwareTest):
         self._port_count = self.get_port_count()
 
         logging.info("Turn off all USB ports and then turn them on again.")
-        self.do_reboot_action(self.fake_reboot_by_usb_mode_change)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom', self.fake_reboot_by_usb_mode_change)
 
         logging.info("Check USB ports are disabled when powered off.")
-        self.do_reboot_action(self.check_power_off_mode)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot('custom', self.check_power_off_mode)
 
         logging.info("Check if failure occurred.")
         self.check_state(self.check_failure)

@@ -68,10 +68,7 @@ class firmware_ECBootTime(FirmwareTest):
         self._veyron = self.is_veyron_board()
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})
         logging.info("Reboot and check EC cold boot time and host boot time.")
-        self.do_reboot_action(self.check_boot_time)
-        if dev_mode:
-            self.wait_fw_screen_and_ctrl_d()
-        self.switcher.mode_aware_reboot()
+        self.switcher.mode_aware_reboot('custom', self.check_boot_time)
 
     def cleanup(self):
         # Restore the ec_uart_regexp to None

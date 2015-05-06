@@ -50,5 +50,4 @@ class firmware_ECKeyboard(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
 
         logging.info("Use key press simulation to issue reboot command.")
-        self.do_reboot_action(self.reboot_by_keyboard)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot('custom', self.reboot_by_keyboard)

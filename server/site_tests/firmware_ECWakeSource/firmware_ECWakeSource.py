@@ -83,15 +83,16 @@ class firmware_ECWakeSource(FirmwareTest):
             raise error.TestNAError("Nothing needs to be tested on this device")
 
         logging.info("Suspend and wake by power button.")
-        self.do_reboot_action((self.suspend_as_reboot,
-                               self.wake_by_power_button))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                 lambda:self.suspend_as_reboot(self.wake_by_power_button))
 
         logging.info("Suspend and wake by lid switch.")
-        self.do_reboot_action((self.suspend_as_reboot,
-                               self.wake_by_lid_switch))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.suspend_as_reboot(self.wake_by_lid_switch))
 
         logging.info("EC hibernate and wake by power button.")
-        self.do_reboot_action(self.hibernate_and_wake_by_power_button)
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom',
+                lambda:self.hibernate_and_wake_by_power_button)

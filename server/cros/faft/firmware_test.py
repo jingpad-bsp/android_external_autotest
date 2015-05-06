@@ -676,8 +676,9 @@ class FirmwareTest(FAFTBase):
         if ec_wp != self._old_ec_wp:
             logging.info('The test required EC is %swrite-protected. Reboot '
                          'and flip the state.', '' if ec_wp else 'not ')
-            self.do_reboot_action((self.set_ec_write_protect_and_reboot, ec_wp))
-            self.wait_dev_screen_and_ctrl_d()
+            self.switcher.mode_aware_reboot(
+                    'custom',
+                     lambda:self.set_ec_write_protect_and_reboot(ec_wp))
 
     def _restore_ec_write_protect(self):
         """Restore the original EC write-protection."""
@@ -686,9 +687,10 @@ class FirmwareTest(FAFTBase):
         if not self.checkers.crossystem_checker(
                 {'wpsw_boot': '1' if self._old_ec_wp else '0'}):
             logging.info('Restore original EC write protection and reboot.')
-            self.do_reboot_action((self.set_ec_write_protect_and_reboot,
-                                   self._old_ec_wp))
-            self.wait_dev_screen_and_ctrl_d()
+            self.switcher.mode_aware_reboot(
+                    'custom',
+                    lambda:self.set_ec_write_protect_and_reboot(
+                            self._old_ec_wp))
 
     def wait_dev_screen_and_ctrl_d(self):
         """Wait for firmware warning screen and press Ctrl-D."""
@@ -976,22 +978,6 @@ class FirmwareTest(FAFTBase):
                                                       root_dev)
         else:
             self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
-
-    ################################################
-    # Reboot APIs
-
-    def do_reboot_action(self, func):
-        """
-        Helper function that wraps the reboot function so that we check if the
-        DUT went down.
-
-        @param func: function to trigger the reboot.
-        """
-        logging.info("-[FAFT]-[ start do_reboot_action ]----------")
-        boot_id = self.get_bootid()
-        self._call_action(func)
-        self.wait_for_client_offline(orig_boot_id=boot_id)
-        logging.info("-[FAFT]-[ end do_reboot_action ]------------")
 
     def wait_for_kernel_up(self, install_deps=False):
         """

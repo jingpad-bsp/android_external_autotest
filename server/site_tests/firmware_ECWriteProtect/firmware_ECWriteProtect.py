@@ -50,8 +50,8 @@ class firmware_ECWriteProtect(FirmwareTest):
 
         logging.info("Expected EC RO boot, enable WP and reboot EC.")
         self.check_state((self.checkers.ro_normal_checker, 'A'))
-        self.do_reboot_action((self.set_ec_write_protect_and_reboot, True))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom', lambda:self.set_ec_write_protect_and_reboot(True))
 
         logging.info("Expected EC RO boot, write protected. Disable RO flag "
                      "and reboot EC.")
@@ -64,8 +64,8 @@ class firmware_ECWriteProtect(FirmwareTest):
                      "ectool.")
         self.check_state((self.checkers.ro_normal_checker, ('A', True)))
         self.check_state(self.write_protect_checker)
-        self.do_reboot_action((self.sync_and_ec_reboot, 'hard'))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom', lambda:self.sync_and_ec_reboot('hard'))
 
         logging.info("Expected EC RW boot, write protected. Restore RO "
                      "normal flag and deactivate write protect.")
@@ -73,8 +73,8 @@ class firmware_ECWriteProtect(FirmwareTest):
         self.check_state(self.write_protect_checker)
         self.faft_client.bios.set_preamble_flags(('a',
                                                   vboot.PREAMBLE_USE_RO_NORMAL))
-        self.do_reboot_action((self.set_ec_write_protect_and_reboot, False))
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot(
+                'custom', lambda:self.set_ec_write_protect_and_reboot(False))
 
         logging.info("Expected EC RO boot.")
         self.check_state((self.checkers.ro_normal_checker, 'A'))
