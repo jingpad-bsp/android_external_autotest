@@ -10,6 +10,7 @@ import urllib2
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import installable_object, autoserv_parser
+from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_REPO_URL
 
@@ -83,7 +84,9 @@ class SiteAutotest(installable_object.InstallableObject):
                 devserver_url = dev_server.ImageServer.resolve(image_opt).url()
                 repo_url = tools.get_package_url(devserver_url, image_opt)
                 repos.append(repo_url)
-        else:
+        elif not server_utils.is_inside_chroot():
+            # Only try to get fetch location from host attribute if the test
+            # is not running inside chroot.
             # No --image option was specified, look for the repo url via
             # the host attribute. If we are not running with a full AFE
             # autoserv will fall back to serving packages itself from whatever

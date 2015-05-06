@@ -20,6 +20,14 @@ from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 
+try:
+    from chromite.lib import cros_build_lib
+except ImportError:
+    logging.warn('Unable to import chromite.')
+    # Init the module variable to None. Access to this module can check if it
+    # is not None before making calls.
+    cros_build_lib = None
+
 
 _SHERIFF_JS = global_config.global_config.get_config_value(
     'NOTIFICATIONS', 'sheriffs', default='')
@@ -524,3 +532,16 @@ def get_hqe_exec_path(tag, execution_subdir):
 
     """
     return os.path.join(tag, execution_subdir)
+
+
+def is_inside_chroot():
+    """Check if the process is running inside chroot.
+
+    This is a wrapper around chromite.lib.cros_build_lib.IsInsideChroot(). The
+    method checks if cros_build_lib can be imported first.
+
+    @return: True if the process is running inside chroot or cros_build_lib
+             cannot be imported.
+
+    """
+    return not cros_build_lib or cros_build_lib.IsInsideChroot()
