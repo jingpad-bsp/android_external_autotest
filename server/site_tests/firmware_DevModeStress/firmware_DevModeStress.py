@@ -69,9 +69,7 @@ class firmware_DevModeStress(FirmwareTest):
                                 'devsw_boot': '1',
                                 'mainfw_type': 'developer',
                                 }))
-            self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-            self.wait_dev_screen_and_ctrl_d()
-            self.wait_for_client()
+            self.switcher.mode_aware_reboot()
 
             logging.info("Verify dev mode after soft reboot.")
             self.check_state((self.checkers.crossystem_checker, {

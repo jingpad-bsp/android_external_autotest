@@ -52,9 +52,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         """
         if self.faft_client.system.is_removable_device_boot():
             logging.info('Reboot into internal disk...')
-            self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-            self.wait_fw_screen_and_ctrl_d()
-            self.wait_for_client()
+            self.switcher.mode_aware_reboot()
 
     def try_ctrl_u_and_ctrl_d(self):
         """Try to press Ctrl-U first and then press Ctrl-D"""
@@ -111,9 +109,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                    'mainfw_type': 'recovery',
                    'recovery_reason': vboot.RECOVERY_REASON['RO_MANUAL'],
                    }))
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_client(install_deps=True)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected internal disk boot, resign with SSD keys.")
         self.check_state((self.checkers.dev_boot_usb_checker, False,
@@ -126,9 +122,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         logging.info("Expected USB boot.")
         self.check_state((self.checkers.dev_boot_usb_checker, True,
                           'Not USB boot, Ctrl-U not work'))
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check and done.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))

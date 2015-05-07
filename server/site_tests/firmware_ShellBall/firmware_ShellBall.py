@@ -65,41 +65,31 @@ class firmware_ShellBall(FirmwareTest):
         self.check_state((self.checkers.crossystem_checker,
                           {'dev_boot_usb': '0'}))
         self.update_firmware('todev')
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_kernel_up()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Check mainfw_type and run autoupdate.")
         self.check_state((self.checkers.crossystem_checker,
                           {'mainfw_type': 'developer'}))
         self.update_firmware('autoupdate')
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_kernel_up()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Verify fwid and install system firmware.")
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._shellball_fwid}))
         self.install_original_firmware()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_kernel_up()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Verify the old firmware id and test factory_install.")
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._current_fwid}))
         self.update_firmware('factory_install')
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_kernel_up()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Verify fwid and install original firmware.")
         self.check_state((self.checkers.crossystem_checker,
                           {'fwid': self._shellball_fwid}))
         self.install_original_firmware()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_d()
-        self.wait_for_kernel_up()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Verify old fwid.")
         self.check_state((self.checkers.crossystem_checker,

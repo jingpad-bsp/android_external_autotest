@@ -39,9 +39,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         if self.faft_client.system.is_removable_device_boot():
           logging.info('Reboot into internal disk...')
           self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
-          self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-          self.wait_fw_screen_and_ctrl_d()
-          self.wait_for_client()
+          self.switcher.mode_aware_reboot()
         super(firmware_TPMKernelVersion, self).cleanup()
 
     def run_once(self):
