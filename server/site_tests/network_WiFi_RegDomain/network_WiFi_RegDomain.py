@@ -88,6 +88,44 @@ class network_WiFi_RegDomain(test.test):
         return channel_to_expectation
 
 
+    @staticmethod
+    def test_connect(wifi_context, frequency, expect_connect, hide_ssid):
+        """Verifies that a DUT does/does not connect on a particular frequency.
+
+        @param wifi_context: A WiFiTestContextManager.
+        @param frequency: int frequency to test.
+        @param expect_connect: bool whether or not connection should succeed.
+        @param hide_ssid: bool whether or not the AP should hide its SSID.
+        @raise error.TestFail if behavior does not match expectation.
+
+        """
+        try:
+            router_ssid = None
+            if hide_ssid:
+                pcap_name = '%d_connect_hidden.pcap' % frequency
+                test_description = 'hidden'
+            else:
+                pcap_name = '%d_connect_visible.pcap' % frequency
+                test_description = 'visible'
+            wifi_context.router.start_capture(frequency, filename=pcap_name)
+            wifi_context.router.hostap_configure(
+                hostap_config.HostapConfig(
+                    frequency=frequency,
+                    hide_ssid=hide_ssid,
+                    mode=hostap_config.HostapConfig.MODE_11N_MIXED))
+            router_ssid = wifi_context.router.get_ssid()
+            client_conf = xmlrpc_datatypes.AssociationParameters(
+                ssid=router_ssid,
+                is_hidden=hide_ssid,
+                expect_failure=not expect_connect
+                )
+            wifi_context.assert_connect_wifi(client_conf, test_description)
+        finally:
+            if router_ssid:
+                wifi_context.client.shill.delete_entries_for_ssid(router_ssid)
+            wifi_context.router.stop_capture()
+
+
     @classmethod
     def count_mismatched_phy_configs(cls, dut_host, expected_channel_configs):
         """Verifies that phys on the DUT place the expected restrictions on
@@ -206,8 +244,12 @@ class network_WiFi_RegDomain(test.test):
 
 
     def test_channel(self, wifi_context, channel_config):
-        """Verifies that a DUT does/does not connect on a particular channel,
-        per expectation.
+        """Verifies that a DUT's behavior on a channel is per expectations.
+
+        - Verifies that scanning behavior is per expectations.
+        - Verifies that connect behavior is per expectations.
+        - Verifies that connect behavior is the same for hidden networks,
+          as it is for visible networks.
 
         @param wifi_context: A WiFiTestContextManager.
         @param channel_config: A dict with 'chnum' and 'expect' keys.
@@ -215,7 +257,6 @@ class network_WiFi_RegDomain(test.test):
         """
         router_freq = hostap_config.HostapConfig.get_frequency_for_channel(
             channel_config['chnum'])
-        router_ssid = None
 
         # Test scanning behavior, as appropriate. To ensure that,
         # e.g., AP beacons don't affect the DUT's behavior, this is
@@ -226,24 +267,13 @@ class network_WiFi_RegDomain(test.test):
         elif channel_config['expect'] == 'no-connect':
             self.assert_scanning_fails(wifi_context.client, router_freq)
 
-        try:
-            # Now, start the AP and test whether or not connection succeeds.
-            wifi_context.router.start_capture(
-                router_freq, filename='%d_connect.pcap' % router_freq)
-            wifi_context.router.hostap_configure(
-                hostap_config.HostapConfig(
-                    frequency=router_freq,
-                    mode=hostap_config.HostapConfig.MODE_11N_MIXED))
-            router_ssid = wifi_context.router.get_ssid()
-            client_conf = xmlrpc_datatypes.AssociationParameters(
-                ssid = router_ssid,
-                expect_failure = channel_config['expect'] not in (
-                    'connect', 'passive-scan'))
-            wifi_context.assert_connect_wifi(client_conf)
-        finally:
-            if router_ssid:
-                wifi_context.client.shill.delete_entries_for_ssid(router_ssid)
-            wifi_context.router.stop_capture()
+        for hide_ssid in (False, True):  # Simple case first.
+            self.test_connect(
+                wifi_context,
+                router_freq,
+                expect_connect=channel_config['expect'] in (
+                    'connect', 'passive-scan'),
+                hide_ssid=hide_ssid)
 
 
     def run_once(self):

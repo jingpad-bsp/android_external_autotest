@@ -187,42 +187,48 @@ class WiFiTestContextManager(object):
                 system.close()
 
 
-    def assert_connect_wifi(self, wifi_params):
+    def assert_connect_wifi(self, wifi_params, description=None):
         """Connect to a WiFi network and check for success.
 
         Connect a DUT to a WiFi network and check that we connect successfully.
 
         @param wifi_params AssociationParameters describing network to connect.
+        @param description string Additional text for logging messages.
 
         @returns AssociationResult if successful; None if wifi_params
                  contains expect_failure; asserts otherwise.
 
         """
-        logging.info('Connecting to %s.', wifi_params.ssid)
+        if description:
+            connect_name = '%s (%s)' % (wifi_params.ssid, description)
+        else:
+            connect_name = '%s' % wifi_params.ssid
+        logging.info('Connecting to %s.', connect_name)
         assoc_result = xmlrpc_datatypes.deserialize(
                 self.client.shill.connect_wifi(wifi_params))
         logging.info('Finished connection attempt to %s with times: '
                      'discovery=%.2f, association=%.2f, configuration=%.2f.',
-                     wifi_params.ssid,
+                     connect_name,
                      assoc_result.discovery_time,
                      assoc_result.association_time,
                      assoc_result.configuration_time)
 
         if assoc_result.success and wifi_params.expect_failure:
             raise error.TestFail(
-                    'Expected connect to fail, but it was successful.')
+                'Expected connection to %s to fail, but it was successful.' %
+                connect_name)
 
         if not assoc_result.success and not wifi_params.expect_failure:
-            raise error.TestFail('Expected connect to succeed, but it failed '
-                                 'with reason: %s.' %
-                                 assoc_result.failure_reason)
+            raise error.TestFail(
+                'Expected connection to %s to succeed, '
+                'but it failed with reason: %s.' % connect_name)
 
         if wifi_params.expect_failure:
-            logging.info('Unable to connect to %s (as intended).',
-                         wifi_params.ssid)
+            logging.info('Unable to connect to %s, as intended.',
+                         connect_name)
             return None
 
-        logging.info('Connected successfully to %s.', wifi_params.ssid)
+        logging.info('Connected successfully to %s.', connect_name)
         return assoc_result
 
 
