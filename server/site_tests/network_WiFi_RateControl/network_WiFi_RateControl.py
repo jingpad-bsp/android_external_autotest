@@ -119,12 +119,10 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
         """Test body."""
         # Just abort the test if we're in the lab and not on a machine known
         # to be conducted.  This test assumes a really great RF environment.
-        hostname = self.context.client.host.hostname
-        if utils.host_is_in_lab_zone(hostname):
-            in_grover_cell = hostname.startswith('chromeos1-grover-')
-            if not self.context.client.conductive and not in_grover_cell:
-                raise error.TestNAError(
-                        'This test requires a great RF environment.')
+        if (utils.host_is_in_lab_zone(self.context.client.host.hostname) and
+                not self.context.client.conductive):
+            raise error.TestNAError(
+                    'This test requires a great RF environment.')
 
         caps = [hostap_config.HostapConfig.N_CAPABILITY_GREENFIELD,
                 hostap_config.HostapConfig.N_CAPABILITY_HT40]

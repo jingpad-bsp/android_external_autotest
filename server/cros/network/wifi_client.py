@@ -71,7 +71,7 @@ def get_xmlrpc_proxy(host):
 
 def _is_conductive(hostname):
     if utils.host_is_in_lab_zone(hostname):
-        conductive = site_utils.get_label_from_afe(hostname,
+        conductive = site_utils.get_label_from_afe(hostname.split('.')[0],
                                                   'conductive:',
                                                    frontend.AFE())
         if conductive and conductive.lower() == 'true':
