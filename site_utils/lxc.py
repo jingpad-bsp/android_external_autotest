@@ -34,6 +34,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import lxc_config
 from autotest_lib.site_utils import lxc_utils
 
@@ -58,6 +59,8 @@ ATTRIBUTES = ['name', 'state']
 # readonly is a binding flag for readonly mount, its value should be `,ro`.
 MOUNT_FMT = ('lxc.mount.entry = %(source)s %(destination)s none '
              'bind%(readonly)s 0 0')
+SSP_ENABLED = config.get_config_value('AUTOSERV', 'enable_ssp_container',
+                                      type=bool, default=True)
 # url to the base container.
 CONTAINER_BASE_URL = config.get_config_value('AUTOSERV', 'container_base')
 # Default directory used to store LXC containers.
@@ -261,14 +264,46 @@ def download_extract(url, target, extract_dir):
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
+def install_package_precheck(package):
+    """If SSP is not enabled or the test is running in chroot (using test_that),
+    package installation should be skipped.
+
+    The check does not raise exception so tests started by test_that or running
+    in an Autotest setup with SSP disabled can continue. That assume the running
+    environment, chroot or a machine, has the desired packages installed
+    already.
+
+    @param package: Name of the package to install.
+
+    @return: True if package installation can continue. False if it should be
+             skipped.
+
+    """
+    if not SSP_ENABLED:
+        logging.info('Server-side packaging is not enabled. Install package %s '
+                     'is skipped.', package)
+        return
+
+    if server_utils.is_inside_chroot():
+        logging.info('Test is running inside chroot. Install package %s is '
+                     'skipped.', package)
+        return
+
+
 @timer.decorate
 def install_package(package):
     """Install the given package inside container.
 
     @param package: Name of the package to install.
 
+    @raise error.ContainerError: If package is attempted to be installed outside
+                                 a container.
     @raise error.CmdError: If the package doesn't exist or failed to install.
+
     """
+    if not install_package_precheck(package):
+        return
+
     if not lxc_utils.is_in_container():
         raise error.ContainerError('Package installation is only supported '
                                    'when test is running inside container.')
@@ -286,6 +321,9 @@ def install_python_package(package):
 
     @raise error.CmdError: If the package doesn't exist or failed to install.
     """
+    if not install_package_precheck(package):
+        return
+
     install_package('python-pip')
     utils.run('sudo pip install %s' % package)
 
