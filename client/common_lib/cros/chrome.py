@@ -4,6 +4,7 @@
 
 import logging, os
 
+from autotest_lib.client.cros import constants
 from telemetry.core import browser_finder, browser_options, exceptions
 from telemetry.core import extension_to_load, util
 
@@ -94,6 +95,10 @@ class Chrome(object):
         self.password = b_options.password if password is None else password
         b_options.username = self.username
         b_options.password = self.password
+
+        # Turn on collection of Chrome coredumps via creation of a magic file.
+        # (Without this, Chrome coredumps are trashed.)
+        open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
 
         for i in range(num_tries):
             try:
