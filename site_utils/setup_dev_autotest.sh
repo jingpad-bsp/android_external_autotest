@@ -310,5 +310,9 @@ chmod o+x "${AT_DIR}"/tko/*.cgi
 # restart server
 sudo /etc/init.d/apache2 restart
 
+# Setup lxc and base container for server-side packaging support.
+sudo apt-get install lxc -y
+sudo python "${AT_DIR}"/site_utils/lxc.py -s
+
 echo "Browse to http://localhost to see if Autotest is working."
 echo "For further necessary set up steps, see https://sites.google.com/a/chromium.org/dev/chromium-os/testing/autotest-developer-faq/setup-autotest-server?pli=1"
