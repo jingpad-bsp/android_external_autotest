@@ -71,6 +71,7 @@ privetd:!:262:chronos,leaderd,privetd
 buffet:!:264:chronos,buffet,privetd,power
 leaderd:!:265:chronos,leaderd
 webservd:!:266:leaderd,privetd,webservd
+dnsmasq:!:268:dnsmasq
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
