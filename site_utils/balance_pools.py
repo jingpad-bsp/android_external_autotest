@@ -160,15 +160,14 @@ class _DUTPool(object):
                                   this pool of DUTs.
     @property pool                Name of the pool associated with
                                   this pool of DUTs.
-    @property _working_hosts      The list of this pool's working
+    @property working_hosts       The list of this pool's working
                                   DUTs.
-    @property _broken_hosts       The list of this pool's broken
+    @property broken_hosts        The list of this pool's broken
                                   DUTs.
-    @property _ineligible__hosts  The list of this pool's ineligible
-                                  DUTs.
-    @property _labels             A list of labels that identify a DUT
+    @property ineligible_hosts    The list of this pool's ineligible DUTs.
+    @property labels              A list of labels that identify a DUT
                                   as part of this pool.
-    @property _total_hosts        The total number of hosts in pool.
+    @property total_hosts         The total number of hosts in pool.
 
     """
 
@@ -234,14 +233,14 @@ class _DUTPool(object):
                  use_freon=False):
         self.board = board
         self.pool = pool
-        self._working_hosts = []
-        self._broken_hosts = []
-        self._ineligible_hosts = []
-        self._total_hosts = self._get_hosts(
+        self.working_hosts = []
+        self.broken_hosts = []
+        self.ineligible_hosts = []
+        self.total_hosts = self._get_hosts(
                 afe, start_time, end_time, use_freon)
-        self._labels = set([_BOARD_PREFIX + self.board,
-                            self._get_platform_label(self.board),
-                            _POOL_PREFIX + self.pool])
+        self.labels = set([_BOARD_PREFIX + self.board,
+                           self._get_platform_label(self.board),
+                           _POOL_PREFIX + self.pool])
 
 
     def _get_hosts(self, afe, start_time, end_time, use_freon):
@@ -263,14 +262,14 @@ class _DUTPool(object):
             host_pools = [l for l in host.labels
                           if l.startswith(_POOL_PREFIX)]
             if len(host_pools) != 1:
-                self._ineligible_hosts.append(host)
+                self.ineligible_hosts.append(host)
             else:
                 diag = h.last_diagnosis()[0]
                 if (diag == status_history.WORKING and
                         not host.locked):
-                    self._working_hosts.append(host)
+                    self.working_hosts.append(host)
                 else:
-                    self._broken_hosts.append(host)
+                    self.broken_hosts.append(host)
         return len(all_histories)
 
 
@@ -285,37 +284,13 @@ class _DUTPool(object):
                 or AFE.remove_labels().
 
         """
-        return self._labels
+        return self.labels
 
-
-    def calculate_inventory(self, dry_run):
-        """Calculate and log how many DUTs are in this pool.
-
-        Return the total number of DUTs in the pool across all three
-        categories (working, broken, and ineligible).  As a side
-        effect, log the totals.
-
-        @param dry_run Whether the logging is for a dry run or for
-                       actual execution.
-
-        @return The total number of DUTs in this pool.
-
-        """
-        _log_info(dry_run, 'Balancing %s %s pool:',
-                  self.board, self.pool)
-        _log_info(dry_run,
-                  'Total %d DUTs, %d working, %d broken, %d reserved.',
-                  self._total_hosts, len(self._working_hosts),
-                  len(self._broken_hosts), len(self._ineligible_hosts))
-        return self._total_hosts
-
-
-    def calculate_spares_needed(self, dry_run, target_total):
+    def calculate_spares_needed(self, target_total):
         """Calculate and log the spares needed to achieve a target.
 
         Return how many working spares are needed to achieve the
-        given `target_total` with all DUTs working.  Log the
-        adjustments entailed.
+        given `target_total` with all DUTs working.
 
         The spares count may be positive or negative.  Positive
         values indicate spares are needed to replace broken DUTs in
@@ -327,14 +302,12 @@ class _DUTPool(object):
         DUTs, an error is logged, and the target total is adjusted
         so that those DUTs are not exchanged.
 
-        @param dry_run       Whether the logging is for a dry run or
-                             for actual execution.
         @param target_total  The new target pool size.
 
         @return The number of spares needed.
 
         """
-        num_ineligible = len(self._ineligible_hosts)
+        num_ineligible = len(self.ineligible_hosts)
         if target_total < num_ineligible:
             _log_error('%s %s pool: Target of %d is below '
                        'minimum of %d DUTs.',
@@ -342,52 +315,15 @@ class _DUTPool(object):
                        target_total, num_ineligible)
             _log_error('Adjusting target to %d DUTs.', num_ineligible)
             target_total = num_ineligible
-        adjustment = target_total - self._total_hosts
-        if adjustment > 0:
-            add_msg = 'grow pool by %d DUTs' % adjustment
-        elif adjustment < 0:
-            add_msg = 'shrink pool by %d DUTs' % -adjustment
-        else:
-            add_msg = 'no change to pool size'
-        _log_info(dry_run, 'Target is %d working DUTs; %s.',
-                  target_total, add_msg)
-        return len(self._broken_hosts) + adjustment
+        adjustment = target_total - self.total_hosts
+        return len(self.broken_hosts) + adjustment
 
-
-    def allocate_working_spares(self, dry_run, num_requested):
-        """Allocate and log a list DUTs that can be used as spares.
-
-        Return a list of up to `num_requested` hosts from this
-        pool's list of working hosts.  Log details about this pool's
-        working spares.
-
-        If the requested number of DUTs exceeds the supply, log an
-        error, and return as many working devices as possible.
-
-        @param dry_run       Whether the logging is for a dry run or
-                             for actual execution.
-        @param num_requested Total number of DUTs to allocate from
-                             this pool's working DUTs.
-
-        @return A list of spare DUTs.
-
-        """
-        _log_info(dry_run,
-                  '%s %s pool has %d spares available.',
-                  self.board, self.pool, len(self._working_hosts))
-        if num_requested > len(self._working_hosts):
-            _log_error('Not enough spares: need %d, only have %d.',
-                       num_requested, len(self._working_hosts))
-        return self._working_hosts[:num_requested]
-
-
-    def allocate_surplus(self, dry_run, num_broken):
-        """Allocate and log a list DUTs that can returned as surplus.
+    def allocate_surplus(self, num_broken):
+        """Allocate a list DUTs that can returned as surplus.
 
         Return a list of devices that can be returned in order to
         reduce this pool's supply.  Broken DUTs will be preferred
-        over working ones.  Log information about the DUTs to be
-        returned.
+        over working ones.
 
         The `num_broken` parameter indicates the number of broken
         DUTs to be left in the pool.  If this number exceeds the
@@ -396,8 +332,6 @@ class _DUTPool(object):
         indicates a number of working DUTs to be returned in
         addition to all broken ones.
 
-        @param dry_run       Whether the logging is for a dry run or
-                             for actual execution.
         @param num_broken    Total number of broken DUTs to be left in
                              this pool.
 
@@ -405,31 +339,18 @@ class _DUTPool(object):
 
         """
         if num_broken >= 0:
-            surplus = self._broken_hosts[num_broken:]
-            _log_info(dry_run,
-                      '%s %s pool will return %d broken DUTs, '
-                      'leaving %d still in the pool.',
-                      self.board, self.pool,
-                      len(surplus),
-                      len(self._broken_hosts) - len(surplus))
+            surplus = self.broken_hosts[num_broken:]
             return surplus
         else:
-            _log_info(dry_run,
-                      '%s %s pool will return %d surplus DUTs, '
-                      'including %d working DUTs.',
-                      self.board, self.pool,
-                      len(self._broken_hosts) - num_broken,
-                      -num_broken)
-            return (self._broken_hosts +
-                    self._working_hosts[:-num_broken])
+            return (self.broken_hosts +
+                    self.working_hosts[:-num_broken])
 
 
 def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
     """Reassign a list of DUTs from one pool to another.
 
     For all the given hosts, remove all labels associated with
-    `spare_pool`, and add the labels for `target_pool`.  Log the
-    action.
+    `spare_pool`, and add the labels for `target_pool`.
 
     If `dry_run` is true, perform no changes, but log the `atest`
     commands needed to accomplish the necessary label changes.
@@ -483,7 +404,7 @@ def _balance_board(arguments, afe, board, start_time, end_time):
     main_pool = _DUTPool(afe, board, arguments.pool,
                          start_time, end_time)
 
-    target_total = main_pool.calculate_inventory(arguments.dry_run)
+    target_total = main_pool.total_hosts
     if arguments.total is not None:
         target_total = arguments.total
     elif arguments.grow:
@@ -491,20 +412,60 @@ def _balance_board(arguments, afe, board, start_time, end_time):
     elif arguments.shrink:
         target_total -= arguments.shrink
 
-    spares_needed = main_pool.calculate_spares_needed(
-            arguments.dry_run, target_total)
+    spares_needed = main_pool.calculate_spares_needed(target_total)
     if spares_needed > 0:
-        spare_duts = spare_pool.allocate_working_spares(
-                arguments.dry_run, spares_needed)
+        spare_duts = spare_pool.working_hosts[:spares_needed]
         shortfall = spares_needed - len(spare_duts)
     else:
         spare_duts = []
         shortfall = spares_needed
 
-    surplus_duts = main_pool.allocate_surplus(
-            arguments.dry_run, shortfall)
+    surplus_duts = main_pool.allocate_surplus(shortfall)
+
+    if spares_needed or surplus_duts or arguments.verbose:
+        dry_run = arguments.dry_run
+        _log_message('')
+
+        _log_info(dry_run, 'Balancing %s %s pool:', board, main_pool.pool)
+        _log_info(dry_run,
+                  'Total %d DUTs, %d working, %d broken, %d reserved.',
+                  main_pool.total_hosts, len(main_pool.working_hosts),
+                  len(main_pool.broken_hosts), len(main_pool.ineligible_hosts))
+
+        if spares_needed > 0:
+            add_msg = 'grow pool by %d DUTs' % spares_needed
+        elif spares_needed < 0:
+            add_msg = 'shrink pool by %d DUTs' % -spares_needed
+        else:
+            add_msg = 'no change to pool size'
+        _log_info(dry_run, 'Target is %d working DUTs; %s.',
+                  target_total, add_msg)
+
+        _log_info(dry_run,
+                  '%s %s pool has %d spares available.',
+                  board, main_pool.pool, len(spare_pool.working_hosts))
+
+        if spares_needed > len(spare_duts):
+            _log_error('Not enough spares: need %d, only have %d.',
+                       spares_needed, len(spare_duts))
+        elif shortfall >= 0:
+            _log_info(dry_run,
+                      '%s %s pool will return %d broken DUTs, '
+                      'leaving %d still in the pool.',
+                      board, main_pool.pool,
+                      len(surplus_duts),
+                      len(main_pool.broken_hosts) - len(surplus_duts))
+        else:
+            _log_info(dry_run,
+                      '%s %s pool will return %d surplus DUTs, '
+                      'including %d working DUTs.',
+                      board, main_pool.pool,
+                      len(main_pool.broken_hosts) - shortfall,
+                      -shortfall)
+
     if not spare_duts and not surplus_duts:
-        _log_info(arguments.dry_run, 'No exchange required.')
+        if arguments.verbose:
+            _log_info(arguments.dry_run, 'No exchange required.')
         return
 
     _exchange_labels(arguments.dry_run, surplus_duts,
@@ -552,6 +513,9 @@ def _parse_command(argv):
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Report actions to take in the form of '
                              'shell commands')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Print more detail about calculations for debug '
+                             'purposes.')
 
     parser.add_argument('pool',
                         metavar='POOL',
