@@ -28,12 +28,11 @@ import common
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
-
 dynamic_suite.reimage_and_run(
     build=build, board=board, name='partners', job=job, pool=pool,
     check_hosts=check_hosts, add_experimental=True, num=num,
     file_bugs=False, priority=priority, timeout_mins=480,
-    bug_template=_BUG_TEMPLATE, devserver_url=devserver_url,
+    devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX,
     wait_for_results=wait_for_results, job_retry=job_retry,
     max_retries=max_retries)
