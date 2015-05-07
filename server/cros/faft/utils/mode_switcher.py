@@ -115,17 +115,26 @@ class ModeSwitcher(object):
 
         logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
-        is_dev = False
+        is_normal = False
         if sync_before_boot:
             if wait_for_dut_up:
-                is_dev = self.checkers.mode_checker('dev')
+                is_normal = self.checkers.mode_checker('normal')
             boot_id = self.faft_framework.get_bootid()
             self.faft_framework.blocking_sync()
         reboot_method()
         if sync_before_boot:
             self.faft_framework.wait_for_client_offline(orig_boot_id=boot_id)
         if wait_for_dut_up:
-            if is_dev:
+            # For encapsulating the behavior of skipping firmware screen,
+            # e.g. requiring unplug and plug USB, the variants are not
+            # hard coded in tests. We keep this logic in this
+            # mode_aware_reboot method.
+            if is_normal:
+                # In the normal boot flow, plugging USB does not affect the
+                # boot flow. But when something goes wrong, like firmware
+                # corrupted, it automatically leads to a recovery USB boot.
+                self.faft_framework.wait_fw_screen_and_plug_usb()
+            else:
                 self.faft_framework.wait_dev_screen_and_ctrl_d()
             self.faft_framework.wait_for_kernel_up(install_deps)
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
