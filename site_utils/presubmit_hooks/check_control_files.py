@@ -66,7 +66,20 @@ def GetEqueryWrappers():
     return ['equery'] + wrappers
 
 
-def CheckSuites(ctrl_data, test_name):
+def GetUseFlags():
+    """Get the set of all use flags from autotest packages."""
+    useflags = set()
+    for equery in GetEqueryWrappers():
+        cmd_args = (CommandPrefix() + [equery, '-qC', 'uses'] +
+                    GetAutotestTestPackages())
+        child = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+        if child.returncode == 0:
+            useflags = useflags.union(child.communicate()[0].splitlines())
+    return useflags
+
+
+def CheckSuites(ctrl_data, test_name, useflags):
     """
     Check that any test in a SUITE is also in an ebuild.
 
@@ -77,6 +90,7 @@ def CheckSuites(ctrl_data, test_name):
 
     @param ctrl_data: The control_data object for a test.
     @param test_name: A string with the name of the test.
+    @param useflags: Set of all use flags from autotest packages.
 
     @returns: None
     """
@@ -90,19 +104,11 @@ def CheckSuites(ctrl_data, test_name):
         # developer who has never run setup_board, and has no
         # wrappers, is making a quick edit to some existing control
         # file already enabled in the stable ebuild.
-        for equery in GetEqueryWrappers():
-            cmd_args = (CommandPrefix() + [equery, '-qC', 'uses'] +
-                        GetAutotestTestPackages())
-            child = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-            useflags = child.communicate()[0].splitlines()
-            if child.returncode != 0:
-                continue
-            for flag in useflags:
-                if flag.startswith('-') or flag.startswith('+'):
-                    flag = flag[1:]
-                if flag == 'tests_%s' % test_name:
-                    return
+        for flag in useflags:
+            if flag.startswith('-') or flag.startswith('+'):
+                flag = flag[1:]
+            if flag == 'tests_%s' % test_name:
+                return
         raise ControlFileCheckerError('No ebuild entry for %s' % test_name)
 
 
@@ -176,6 +182,8 @@ def main():
     with open(path_whitelist, 'r') as f:
         whitelist = {line.strip() for line in f.readlines() if line.strip()}
 
+    # get the useflags
+    useflags = GetUseFlags()
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
         if control_file:
@@ -189,7 +197,7 @@ def main():
                 # The control file may not have bug template defined.
                 pass
 
-            CheckSuites(ctrl_data, test_name)
+            CheckSuites(ctrl_data, test_name, useflags)
             CheckSuitesAttrMatch(ctrl_data, whitelist, test_name)
             CheckRetry(ctrl_data, test_name)
 
