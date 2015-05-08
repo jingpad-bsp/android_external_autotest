@@ -59,13 +59,14 @@ class FAFTCheckers(object):
             parsed_list[name] = value
         return parsed_list
 
-    def crossystem_checker(self, expected_dict):
+    def crossystem_checker(self, expected_dict, suppress_logging=False):
         """Check the crossystem values matched.
 
         Given an expect_dict which describes the expected crossystem values,
         this function check the current crossystem values are matched or not.
 
         @param expected_dict: A dict which contains the expected values.
+        @param suppress_logging: True to suppress any logging messages.
         @return: True if the crossystem value matched; otherwise, False.
         """
         succeed = True
@@ -74,31 +75,34 @@ class FAFTCheckers(object):
         got_dict = self._parse_crossystem_output(lines)
         for key in expected_dict:
             if key not in got_dict:
-                logging.info('Expected key "%s" not in crossystem result', key)
+                logging.warn('Expected key %r not in crossystem result', key)
                 succeed = False
                 continue
             if isinstance(expected_dict[key], str):
                 if got_dict[key] != expected_dict[key]:
-                    logging.info("Expected '%s' value '%s' but got '%s'",
-                                 key, expected_dict[key], got_dict[key])
+                    message = ('Expected %r value %r but got %r' % (
+                               key, expected_dict[key], got_dict[key]))
                     succeed = False
                 else:
-                    logging.info("Expected '%s' value '%s' == real value '%s'",
-                                 key, expected_dict[key], got_dict[key])
+                    message = ('Expected %r value %r == real value %r' % (
+                               key, expected_dict[key], got_dict[key]))
 
             elif isinstance(expected_dict[key], tuple):
                 # Expected value is a tuple of possible actual values.
                 if got_dict[key] not in expected_dict[key]:
-                    logging.info("Expected '%s' values %s but got '%s'",
-                                 key, str(expected_dict[key]), got_dict[key])
+                    message = ('Expected %r values %r but got %r' % (
+                               key, expected_dict[key], got_dict[key]))
                     succeed = False
                 else:
-                    logging.info("Expected '%s' values %s == real value '%s'",
-                                 key, str(expected_dict[key]), got_dict[key])
+                    message = ('Expected %r values %r == real value %r' % (
+                               key, expected_dict[key], got_dict[key]))
             else:
-                logging.info("The expected value of %s is neither a str nor a "
-                             "dict: %s", key, str(expected_dict[key]))
+                logging.warn('The expected value of %r is neither a str nor a '
+                             'dict: %r', key, expected_dict[key])
                 succeed = False
+                continue
+            if not suppress_logging:
+                logging.info(message)
         return succeed
 
     def mode_checker(self, mode):
@@ -111,21 +115,26 @@ class FAFTCheckers(object):
             if self.faft_config.keyboard_dev:
                 return self.crossystem_checker(
                         {'devsw_boot': '0',
-                         'mainfw_type': 'normal'})
+                         'mainfw_type': 'normal'},
+                        suppress_logging=True)
             else:
                 return self.crossystem_checker(
-                        {'devsw_cur': '0'})
+                        {'devsw_cur': '0'},
+                        suppress_logging=True)
         elif mode == 'dev':
             if self.faft_config.keyboard_dev:
                 return self.crossystem_checker(
                         {'devsw_boot': '1',
-                         'mainfw_type': 'developer'})
+                         'mainfw_type': 'developer'},
+                        suppress_logging=True)
             else:
                 return self.crossystem_checker(
-                        {'devsw_cur': '1'})
+                        {'devsw_cur': '1'},
+                        suppress_logging=True)
         elif mode == 'rec':
             return self.crossystem_checker(
-                    {'mainfw_type': 'recovery'})
+                    {'mainfw_type': 'recovery'},
+                    suppress_logging=True)
         else:
             raise NotImplementedError('The given mode %s not supported' % mode)
 

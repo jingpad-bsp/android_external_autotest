@@ -113,10 +113,11 @@ class ModeSwitcher(object):
 
         logging.info("-[ModeSwitcher]-[ start mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
-        is_normal = False
+        is_normal = is_dev = False
         if sync_before_boot:
             if wait_for_dut_up:
                 is_normal = self.checkers.mode_checker('normal')
+                is_dev = self.checkers.mode_checker('dev')
             boot_id = self.faft_framework.get_bootid()
             self.faft_framework.blocking_sync()
         reboot_method()
@@ -127,13 +128,16 @@ class ModeSwitcher(object):
             # e.g. requiring unplug and plug USB, the variants are not
             # hard coded in tests. We keep this logic in this
             # mode_aware_reboot method.
-            if is_normal:
-                # In the normal boot flow, plugging USB does not affect the
-                # boot flow. But when something goes wrong, like firmware
-                # corrupted, it automatically leads to a recovery USB boot.
-                self.faft_framework.wait_fw_screen_and_plug_usb()
-            else:
+            if not is_dev:
+                # In the normal/recovery boot flow, replugging USB does not
+                # affect the boot flow. But when something goes wrong, like
+                # firmware corrupted, it automatically leads to a recovery USB
+                # boot.
+                self.servo.switch_usbkey('host')
+            if not is_normal:
                 self.faft_framework.wait_dev_screen_and_ctrl_d()
+            if not is_dev:
+                self.faft_framework.wait_fw_screen_and_plug_usb()
             self.faft_framework.wait_for_kernel_up()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
