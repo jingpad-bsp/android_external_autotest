@@ -67,7 +67,7 @@ class firmware_DevBootUSB(FirmwareTest):
         # Falls back to Ctrl-D internal disk boot.
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.try_ctrl_u_and_ctrl_d()
-        self.wait_for_client(install_deps=True)
+        self.wait_for_client()
 
         logging.info("Expected internal disk boot, set dev_boot_usb to 1.")
         self.check_state((self.checkers.dev_boot_usb_checker,
@@ -76,7 +76,7 @@ class firmware_DevBootUSB(FirmwareTest):
         self.faft_client.system.set_dev_boot_usb(1)
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_u()
-        self.wait_for_client(install_deps=True)
+        self.wait_for_client()
 
         logging.info("Expected USB boot, set dev_boot_usb to the original.")
         self.check_state((self.checkers.dev_boot_usb_checker,

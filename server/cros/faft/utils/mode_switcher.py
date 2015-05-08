@@ -67,7 +67,7 @@ class ModeSwitcher(object):
                 #     the new models directly boot to the USB.
                 if not self.faft_config.keyboard_dev and from_mode == 'normal':
                     self.faft_framework.wait_fw_screen_and_plug_usb()
-                self.faft_framework.wait_for_client(install_deps=True)
+                self.faft_framework.wait_for_client()
 
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
@@ -89,8 +89,7 @@ class ModeSwitcher(object):
 
 
     def mode_aware_reboot(self, reboot_type=None, reboot_method=None,
-                          sync_before_boot=True, wait_for_dut_up=True,
-                          install_deps=False):
+                          sync_before_boot=True, wait_for_dut_up=True):
         """Uses a mode-aware way to reboot DUT.
 
         For example, if DUT is in dev mode, it requires pressing Ctrl-D to
@@ -103,7 +102,6 @@ class ModeSwitcher(object):
         @param sync_before_boot: True to sync to disk before booting.
         @param wait_for_dut_up: True to wait DUT online again. False to do the
                                 reboot only.
-        @param install_deps: True to install deps after boot.
         """
         if reboot_type is None or reboot_type == 'warm':
             reboot_method = self.servo.get_power_state_controller().warm_reset
@@ -136,7 +134,7 @@ class ModeSwitcher(object):
                 self.faft_framework.wait_fw_screen_and_plug_usb()
             else:
                 self.faft_framework.wait_dev_screen_and_ctrl_d()
-            self.faft_framework.wait_for_kernel_up(install_deps)
+            self.faft_framework.wait_for_kernel_up()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
 

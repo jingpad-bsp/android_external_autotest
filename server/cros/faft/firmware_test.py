@@ -12,7 +12,6 @@ import uuid
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
@@ -40,25 +39,20 @@ class FAFTBase(test.test):
         self.servo = host.servo
         self.servo.initialize_dut()
         self._client = host
-        self._autotest_client = autotest.Autotest(self._client)
-        self._autotest_client.install()
         self.faft_client = RPCProxy(host)
         self.lockfile = '/var/tmp/faft/lock'
 
-    def wait_for_client(self, install_deps=False, timeout=100):
+    def wait_for_client(self, timeout=100):
         """Wait for the client to come back online.
 
         New remote processes will be launched if their used flags are enabled.
 
-        @param install_deps: If True, install Autotest dependency when ready.
         @param timeout: Time in seconds to wait for the client SSH daemon to
                         come up.
         @raise ConnectionError: Failed to connect DUT.
         """
         if not self._client.wait_up(timeout):
             raise ConnectionError()
-        if install_deps:
-            self._autotest_client.install()
         # Check the FAFT client is avaiable.
         self.faft_client.system.is_available()
 
@@ -242,7 +236,7 @@ class FirmwareTest(FAFTBase):
             self.servo.switch_usbkey('dut')
 
         try:
-            self.wait_for_client(install_deps=True)
+            self.wait_for_client()
             lines = self.faft_client.system.run_shell_command_get_output(
                         'crossystem recovery_reason')
             recovery_reason = int(lines[0])
@@ -309,7 +303,7 @@ class FirmwareTest(FAFTBase):
         self.wait_for_client_offline()
         self.wait_dev_screen_and_ctrl_d()
         try:
-            self.wait_for_client(install_deps=True)
+            self.wait_for_client()
             logging.info('Successfully restore OS image.')
             return
         except ConnectionError:
@@ -326,7 +320,7 @@ class FirmwareTest(FAFTBase):
         self.servo.switch_usbkey('host')
         self.wait_fw_screen_and_plug_usb()
         try:
-            self.wait_for_client(install_deps=True)
+            self.wait_for_client()
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
 
@@ -979,19 +973,16 @@ class FirmwareTest(FAFTBase):
         else:
             self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
 
-    def wait_for_kernel_up(self, install_deps=False):
+    def wait_for_kernel_up(self):
         """
         Helper function that waits for the device to boot up to kernel.
-
-        @param install_deps: bool, install deps after boot.
         """
         logging.info("-[FAFT]-[ start wait_for_kernel_up ]---")
         # Wait for the system to respond to ping before attempting ssh
         if not self._client.ping_wait_up(90):
             logging.warning("-[FAFT]-[ system did not respond to ping ]")
         try:
-            logging.info("Installing deps after boot : %s", install_deps)
-            self.wait_for_client(install_deps=install_deps)
+            self.wait_for_client()
             # Stop update-engine as it may change firmware/kernel.
             self._stop_service('update-engine')
         except ConnectionError:

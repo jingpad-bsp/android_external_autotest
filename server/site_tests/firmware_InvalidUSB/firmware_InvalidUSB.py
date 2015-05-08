@@ -61,7 +61,7 @@ class firmware_InvalidUSB(FirmwareTest):
 
         self.restore_usb()
         self.servo.switch_usbkey('dut')
-        self.wait_for_kernel_up(install_deps=True)
+        self.wait_for_kernel_up()
 
         logging.info("Expected to boot the restored USB image and reboot.")
         self.check_state((self.checkers.crossystem_checker, {

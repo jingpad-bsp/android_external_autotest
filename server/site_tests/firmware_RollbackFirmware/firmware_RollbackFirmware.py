@@ -38,7 +38,7 @@ class firmware_RollbackFirmware(FirmwareTest):
         logging.info("Expected firmware B boot and rollback firmware B.")
         self.check_state((self.checkers.fw_tries_checker, ('B', False)))
         self.faft_client.bios.move_version_backward('b')
-        self.switcher.mode_aware_reboot(install_deps=True)
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected recovery boot and restores firmware A and B.")
         self.check_state((self.checkers.crossystem_checker, {

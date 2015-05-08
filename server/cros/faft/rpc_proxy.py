@@ -8,6 +8,7 @@ import time
 import xmlrpclib
 
 from autotest_lib.client.cros.faft.config import Config as ClientConfig
+from autotest_lib.server import autotest
 
 
 class _Method:
@@ -80,6 +81,8 @@ class RPCProxy(object):
 
     def connect(self):
         """Connect the RPC server."""
+        # Make sure Autotest dependency is there.
+        autotest.Autotest(self._client).install()
         self._faft_client = self._client.xmlrpc_connect(
                 self._client_config.rpc_command,
                 self._client_config.rpc_port,

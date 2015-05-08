@@ -97,7 +97,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.enable_crossystem_selfsigned()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.try_ctrl_u_and_ctrl_d()
-        self.wait_for_client(install_deps=True)
+        self.wait_for_client()
 
         logging.info("Expected internal disk boot, switch to recovery mode.")
         self.check_state((self.checkers.dev_boot_usb_checker, False,
@@ -117,7 +117,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.resignimage_ssdkeys()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_ctrl_u()
-        self.wait_for_client(install_deps=True)
+        self.wait_for_client()
 
         logging.info("Expected USB boot.")
         self.check_state((self.checkers.dev_boot_usb_checker, True,

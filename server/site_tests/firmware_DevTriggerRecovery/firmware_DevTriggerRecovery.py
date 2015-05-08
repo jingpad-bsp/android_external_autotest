@@ -88,7 +88,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         # Ignore the default reboot_action here because the
         # userspace_action (firmware updater) will reboot the system.
         self.wait_fw_screen_and_trigger_recovery(self.need_dev_transition)
-        self.wait_for_client(install_deps=True)
+        self.wait_for_client()
 
         logging.info("Expected recovery boot and disable dev switch.")
         self.check_state((self.checkers.crossystem_checker, {

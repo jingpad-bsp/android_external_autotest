@@ -39,7 +39,7 @@ class firmware_LegacyRecovery(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_fw_screen_and_plug_usb()
         try:
-            self.wait_for_client(install_deps=True)
+            self.wait_for_client()
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
         self.faft_client.system.run_shell_command(
