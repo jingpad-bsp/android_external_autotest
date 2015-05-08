@@ -111,7 +111,7 @@ def do_suspend(suspend_seconds, delay_seconds=0):
 
     """
     alarm, wakeup_count = prepare_wakeup(suspend_seconds)
-    upstart.ensure_running(['powerd'])
+    upstart.ensure_running('powerd')
     command = ('/usr/bin/powerd_dbus_suspend --delay=%d --timeout=30 '
                '--wakeup_count=%d') % (delay_seconds, wakeup_count)
     logging.info("Running '%s'", command)
@@ -132,7 +132,7 @@ def suspend_bg_for_dark_resume(delay_seconds=0):
     @param delay_seconds: Number of seconds wait before suspending the DUT.
 
     """
-    upstart.ensure_running(['powerd'])
+    upstart.ensure_running('powerd')
     command = ('/usr/bin/powerd_dbus_suspend --delay=%d '
                '--timeout=30') % delay_seconds
     logging.info("Running '%s'", command)
