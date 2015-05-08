@@ -71,6 +71,7 @@ from autotest_lib.scheduler import rdb_utils
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.site_utils import job_overhead
+from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
 
 _db_manager = None
@@ -475,6 +476,9 @@ def main():
 
         initialize(options.testing)
 
+        # Start the thread to report metadata.
+        metadata_reporter.start()
+
         host_scheduler = HostScheduler()
         minimum_tick_sec = global_config.global_config.get_config_value(
                 'SCHEDULER', 'minimum_tick_sec', type=float)
@@ -494,6 +498,7 @@ def main():
         email_manager.manager.send_queued_emails()
         if _db_manager:
             _db_manager.disconnect()
+        metadata_reporter.abort()
 
 
 if __name__ == '__main__':

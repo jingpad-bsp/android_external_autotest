@@ -70,8 +70,12 @@ import time
 
 try:
     import elasticsearch
+    from elasticsearch import helpers as elasticsearch_helpers
 except ImportError:
+    logging.error('Failed to import elasticsearch. Mock classes will be used '
+                  'and calls to Elasticsearch server will be no-op.')
     import elasticsearch_mock as elasticsearch
+    elasticsearch_helpers = elasticsearch.Elasticsearch()
 
 
 DEFAULT_TIMEOUT = 3
@@ -179,6 +183,32 @@ class ESMetadata(object):
                 self._send_data_http(type_str, metadata)
             else:
                 self._send_data_udp(type_str, metadata)
+        except elasticsearch.ElasticsearchException as e:
+            logging.error(e)
+
+
+    def bulk_post(self, data_list, log_time_recorded=True, **kwargs):
+        """Wraps call of send_data, inserts entry into elasticsearch.
+
+        @param data_list: A list of dictionary objects containing metadata.
+        @param log_time_recorded: Whether to automatically record the time
+                                  this metadata is recorded. Default is True.
+        @param kwargs: Additional metadata fields
+        """
+        if not data_list:
+            return
+
+        actions = []
+        for metadata in data_list:
+            metadata = metadata.copy()
+            metadata.update(kwargs)
+            if log_time_recorded:
+                metadata['time_recorded'] = time.time()
+            metadata['_index'] = self.index
+            actions.append(metadata)
+
+        try:
+            elasticsearch_helpers.bulk(self.es, actions)
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
 

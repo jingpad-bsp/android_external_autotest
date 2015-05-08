@@ -33,7 +33,9 @@ from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import utils as server_utils
+from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
+
 
 BABYSITTER_PID_FILE_PREFIX = 'monitor_db_babysitter'
 PID_FILE_PREFIX = 'monitor_db'
@@ -162,6 +164,9 @@ def main_without_exception_handling():
     server = status_server.StatusServer()
     server.start()
 
+    # Start the thread to report metadata.
+    metadata_reporter.start()
+
     try:
         initialize()
         dispatcher = Dispatcher()
@@ -181,6 +186,7 @@ def main_without_exception_handling():
         email_manager.manager.log_stacktrace(
             "Uncaught exception; terminating monitor_db")
 
+    metadata_reporter.abort()
     email_manager.manager.send_queued_emails()
     server.shutdown()
     _drone_manager.shutdown()

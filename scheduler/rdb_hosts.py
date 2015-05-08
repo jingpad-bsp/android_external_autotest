@@ -20,11 +20,11 @@ import logging
 from django.core import exceptions as django_exceptions
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
+from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils.suite_scheduler import constants
 
 
@@ -222,9 +222,10 @@ class RDBClientHostWrapper(RDBHost):
             'hostname': self.hostname,
             'board': self.board,
             'pools': self.pools,
+            '_type': type_str,
         }
         metadata.update(self.metadata)
-        autotest_es.post(type_str=type_str, metadata=metadata)
+        metadata_reporter.queue(metadata)
 
 
     def set_status(self, status):
