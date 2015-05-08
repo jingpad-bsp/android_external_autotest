@@ -34,4 +34,4 @@ shards_base_port = 8003
 # Hostname of the vm host (generally your desktop).
 vm_host_name = 'localhost'
 # Boards for which to create shards.
-shards = ['board:lumpy']
+shards = ['board:stumpy']

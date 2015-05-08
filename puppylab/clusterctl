@@ -122,8 +122,8 @@ class ClusterManager(object):
         actually in control of all the shards in the cluster and can address
         them by name.
 
-        Consider a shard, shard1, assigned to board lumpy:
-            * You will be able to ssh into it with 'vagrant ssh lumpyshard'.
+        Consider a shard, shard1, assigned to board stumpy:
+            * You will be able to ssh into it with 'vagrant ssh stumpyshard'.
             * The afe for the shard will be running on a incrementally
               designated port starting from shards_base_port.
             * The afe port of the shard is piped through to the shadow_config.
@@ -200,7 +200,7 @@ class ClusterManager(object):
         """Execute cmd against vm_name.
 
         @param cmd: The command to execute.
-        @param vm_name: The name of the vm, eg: lumpyshard.
+        @param vm_name: The name of the vm, eg: stumpyshard.
         """
         return self.provisioner.vagrant_cmd(
                 "ssh %s -- '%s'" % (vm_name, cmd)).rstrip('\n')

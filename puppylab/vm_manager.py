@@ -172,7 +172,7 @@ class VagrantProvisioner(object):
 
         @param kwargs: The kwargs to pass to the VagrantFile.
             Eg: {
-                'shard1': 'lumpyshard',
+                'shard1': 'stumpyshard',
                 'shard1_port': 8002,
                 'shard1_shadow_config_hostname': 'localhost:8002',
             }
@@ -212,5 +212,3 @@ class VirtualBox(VagrantProvisioner):
     """A VirtualBoxProvisioner."""
 
     _template = os.path.join(VAGRANT_DIR, 'ClusterTemplate')
-
-

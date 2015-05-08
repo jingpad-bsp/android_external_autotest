@@ -502,11 +502,14 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
     def assign_to_shard(cls, shard, known_ids):
         """Assigns hosts to a shard.
 
-        For all labels that have been assigned to this shard, all hosts that
-        have this label, are assigned to this shard.
-
+        For all labels that have been assigned to a shard, all hosts that
+        have at least one of the shard's labels are assigned to the shard.
         Hosts that are assigned to the shard but aren't already present on the
         shard are returned.
+
+        Board to shard mapping is many-to-one. Many different boards can be
+        hosted in a shard. However, DUTs of a single board cannot be distributed
+        into more than one shard.
 
         @param shard: The shard object to assign labels/hosts for.
         @param known_ids: List of all host-ids the shard already knows.
@@ -534,8 +537,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         #   hosts for the shard, this is overhead
         # - SELECT and then UPDATE only selected without requerying afterwards:
         #   returns the old state of the records.
-        host_ids = list(Host.objects.filter(
-            labels=shard.labels.all(),
+        host_ids = set(Host.objects.filter(
+            labels__in=shard.labels.all(),
             leased=False
             ).exclude(
             id__in=known_ids,
@@ -1509,7 +1512,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
         query = Job.objects.filter(
-                dependency_labels=shard.labels.all(),
+                dependency_labels__in=shard.labels.all(),
                 # If an HQE associated with a job is removed in some reasons,
                 # such jobs should be excluded. Refer crbug.com/479766
                 hostqueueentry__isnull=False
@@ -1521,7 +1524,7 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         query = Job.objects.filter(
                 hostqueueentry__meta_host__isnull=True,
                 hostqueueentry__host__isnull=False,
-                hostqueueentry__host__labels=shard.labels.all()
+                hostqueueentry__host__labels__in=shard.labels.all()
                 )
         query = cls._add_filters_for_shard_assignment(query, known_ids)
         job_ids |= set(query.distinct().values_list('pk', flat=True))
