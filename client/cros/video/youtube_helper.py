@@ -6,6 +6,7 @@ import logging, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 PLAYBACK_TEST_TIME_S = 10
@@ -148,6 +149,8 @@ class YouTubeHelper(object):
             raise error.TestError(
                     'Player failed to return available video qualities.')
         video_qualities.reverse()
+        width, height = graphics_utils.get_internal_resolution()
+        logging.info('checking resolution: %d width  %d height', width, height)
         for quality in video_qualities:
             logging.info('Playing video in %s quality.', quality)
             self.set_playback_quality(quality)
@@ -156,6 +159,10 @@ class YouTubeHelper(object):
             current_quality = self.get_playback_quality()
             if (quality not in ['auto', 'tiny', 'small'] and
                     quality != current_quality):
+                if current_quality in ['hd720', 'hd1080'] and width == 2560:
+                      logging.info('HD devices starts playing YouTube video in '
+                                   'HD so skipping 480p test.')
+                      continue
                 raise error.TestError(
                         'Expected video quality: %s. Current video quality: %s'
                         % (quality, current_quality))
