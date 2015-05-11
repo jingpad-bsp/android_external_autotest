@@ -147,7 +147,7 @@ class firmware_FAFTSetup(FirmwareTest):
 
         def keypress():
             self.servo.ctrl_d()
-            self.servo.enter()
+            self.servo.enter_key()
 
         keys = self.faft_config.key_checker
 
