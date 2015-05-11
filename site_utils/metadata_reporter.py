@@ -15,6 +15,7 @@ import threading
 
 import common
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 # Number of seconds to wait before checking queue again for uploading data.
@@ -64,9 +65,13 @@ def _run():
                 data_list.append(metadata_queue.get_nowait())
             if data_list:
                 autotest_es.bulk_post(data_list=data_list)
+                time_used = time.time() - start_time
                 logging.info('%d entries of metadata uploaded in %s '
-                             'seconds.', len(data_list),
-                             time.time()-start_time)
+                             'seconds.', len(data_list), time_used)
+                autotest_stats.Timer('metadata_reporter').send(
+                        'time_used', time_used)
+                autotest_stats.Counter('metadata_reporter').send(
+                        'entries_uploaded', len(data_list))
             sleep_time = _REPORT_INTERVAL_SECONDS - time.time() + start_time
             if sleep_time < 0:
                 sleep_time = 0.5

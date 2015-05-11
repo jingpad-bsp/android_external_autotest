@@ -103,12 +103,14 @@ def collect_info():
     # converted to int to make search faster.
     time_index = int(time.time())
     hosts = models.Host.objects.filter(invalid=False)
+    data_list = []
     for host in hosts:
-        info = {'hostname': host.hostname,
+        info = {'_type': _HOST_LABEL_TYPE,
+                'hostname': host.hostname,
                 'labels': [label.name for label in host.labels.all()],
                 'time_index': time_index}
-        autotest_es.post(use_http=True, type_str=_HOST_LABEL_TYPE,
-                         metadata=info, log_time_recorded=False)
+        data_list.append(info)
+    autotest_es.bulk_post(data_list, log_time_recorded=False)
 
     # After all host label information is logged, save the time stamp.
     autotest_es.post(use_http=True, type_str=_HOST_LABEL_TIME_INDEX_TYPE,

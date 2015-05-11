@@ -106,7 +106,7 @@ def post(use_http=ES_USE_HTTP, host=METADATA_ES_SERVER, port=ES_PORT,
 
 
 def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
-              timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA):
+              timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA, *args, **kwargs):
     """This function takes a series of arguments which are passed to the
     es_utils.ESMetadata constructor, and a list of metadata, then upload to
     Elasticsearch server using Elasticsearch bulk API. This can greatly nhance
@@ -116,7 +116,7 @@ def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
     esmd = es_utils.ESMetadata(use_http=True, host=host, port=port,
                                timeout=timeout, index=index,
                                udp_port=ES_UDP_PORT)
-    esmd.bulk_post(data_list)
+    esmd.bulk_post(data_list, *args, **kwargs)
 
 
 def execute_query(host=METADATA_ES_SERVER, port=ES_PORT,
