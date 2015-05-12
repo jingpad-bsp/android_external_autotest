@@ -13,7 +13,7 @@ lab and has a chrome device connect to each in series. This test must be
 performed in the AP compatibility lab.
 """
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
 
 def run_chaos_wpapsk(machine):

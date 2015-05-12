@@ -14,7 +14,7 @@ performed in the AP compatibility lab. This test holds the connection with
 AP and performs a netperf UDP_MAERTS during the connection.
 """
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
 from autotest_lib.server.cros.network import connection_worker
 from autotest_lib.server.cros.network import netperf_runner

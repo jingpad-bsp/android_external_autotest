@@ -14,7 +14,7 @@ performed in the AP compatibility lab. This test would hold the connection with
 AP and performs some work during the connection.
 """
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
 from autotest_lib.server.cros.network import connection_worker
 

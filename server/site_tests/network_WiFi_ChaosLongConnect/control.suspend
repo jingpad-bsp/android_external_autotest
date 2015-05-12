@@ -15,7 +15,7 @@ AP and performs performs a suspend resume cycle and check the liveliness of the
 connection to the AP.
 """
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
 from autotest_lib.server.cros.network import connection_worker
 

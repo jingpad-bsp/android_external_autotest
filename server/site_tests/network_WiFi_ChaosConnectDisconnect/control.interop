@@ -17,7 +17,7 @@ must be performed in the AP compatibility lab and is intended to be run via
 suite_scheduler.
 """
 
-from autotest_lib.server.cros.chaos_ap_configurators import ap_spec
+from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.chaos_lib import chaos_runner
 
 def run_chaos_interop(machine):
