@@ -221,7 +221,8 @@ class WiFiTestContextManager(object):
         if not assoc_result.success and not wifi_params.expect_failure:
             raise error.TestFail(
                 'Expected connection to %s to succeed, '
-                'but it failed with reason: %s.' % connect_name)
+                'but it failed with reason: %s.' % (
+                    connect_name, assoc_result.failure_reason))
 
         if wifi_params.expect_failure:
             logging.info('Unable to connect to %s, as intended.',
