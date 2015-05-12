@@ -52,7 +52,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         @attribute lock_time: a string, fake timestamp.
         """
 
-        def _host_modifier(self, hosts, operation):
+        def _host_modifier(self, hosts, operation, lock_reason=''):
             """Overwrites original _host_modifier().
 
             Add hosts to self.locked_hosts for LOCK and remove hosts from
@@ -60,8 +60,10 @@ class HostLockManagerTest(mox.MoxTestBase):
 
             @param a set of strings, host names.
             @param operation: a string, LOCK or UNLOCK.
+            @param lock_reason: a string, a reason for locking the hosts
             """
             if operation == self.LOCK:
+                assert lock_reason
                 self.locked_hosts = self.locked_hosts.union(hosts)
             elif operation == self.UNLOCK:
                 self.locked_hosts = self.locked_hosts.difference(hosts)
@@ -124,7 +126,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         hosts = [self.HOST2]
         manager = self.MockHostLockManager(self.afe)
         manager.locked_hosts = set([self.HOST1])
-        manager.lock(hosts)
+        manager.lock(hosts, lock_reason='Locking for test')
         self.assertEquals(set([self.HOST1, self.HOST2]), manager.locked_hosts)
 
 
@@ -133,7 +135,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         hosts = [self.HOST1, self.HOST2]
         manager = self.MockHostLockManager(self.afe)
         manager.locked_hosts = set([self.HOST1, self.HOST3])
-        manager.lock(hosts)
+        manager.lock(hosts, lock_reason='Locking for test')
         self.assertEquals(set([self.HOST1, self.HOST2, self.HOST3]),
                           manager.locked_hosts)
 
@@ -181,9 +183,10 @@ class HostLockManagerTest(mox.MoxTestBase):
                                  self.manager.LOCK).AndReturn(self.HOST1)
         self.afe.run('modify_hosts',
                      host_filter_data={'hostname__in': [self.HOST1]},
-                     update_data={'locked': True})
+                     update_data={'locked': True, 'lock_reason': 'Test'})
         self.mox.ReplayAll()
-        self.manager._host_modifier(hosts, self.manager.LOCK)
+        self.manager._host_modifier(hosts, self.manager.LOCK,
+                                    lock_reason='Test')
         self.assertEquals(set([self.HOST1, self.HOST2]),
                           self.manager.locked_hosts)
 
@@ -202,3 +205,18 @@ class HostLockManagerTest(mox.MoxTestBase):
         self.manager._host_modifier(hosts, self.manager.UNLOCK)
         self.assertEquals(set([self.HOST2]), self.manager.locked_hosts)
 
+
+    def testHostModifier_WithoutLockReason(self):
+        """Test host locking without providing a lock reason."""
+        hosts = set([self.HOST1])
+        self.manager.locked_hosts = set([self.HOST2])
+        self.mox.StubOutWithMock(self.manager, '_check_host')
+        self.manager._check_host(self.HOST1,
+                                 self.manager.LOCK).AndReturn(self.HOST1)
+        self.afe.run('modify_hosts',
+                     host_filter_data={'hostname__in': [self.HOST1]},
+                     update_data={'locked': True,
+                                  'lock_reason': None})
+        self.mox.ReplayAll()
+        self.manager._host_modifier(hosts, self.manager.LOCK)
+        self.assertEquals(set([self.HOST2]), self.manager.locked_hosts)

@@ -98,10 +98,12 @@ class HostLockManager(object):
         return mod_host
 
 
-    def lock(self, hosts):
+    def lock(self, hosts, lock_reason='Locked by HostLockManager'):
         """Attempt to lock hosts in AFE.
 
         @param hosts: a list of strings, host names.
+        @param lock_reason: a string, a reason for locking the hosts.
+
         @returns a boolean, True == at least one host from hosts is locked.
         """
         # Filter out hosts that we may have already locked
@@ -110,7 +112,7 @@ class HostLockManager(object):
         if not new_hosts:
             return False
 
-        return self._host_modifier(new_hosts, self.LOCK)
+        return self._host_modifier(new_hosts, self.LOCK, lock_reason=lock_reason)
 
 
     def unlock(self, hosts=None):
@@ -136,11 +138,13 @@ class HostLockManager(object):
         return self._host_modifier(updated_hosts, self.UNLOCK)
 
 
-    def _host_modifier(self, hosts, operation):
+    def _host_modifier(self, hosts, operation, lock_reason=None):
         """Helper that runs the modify_hosts() RPC with specified args.
 
         @param: hosts, a set of strings, host names.
         @param operation: a string, LOCK or UNLOCK.
+        @param lock_reason: a string, a reason must be provided when locking.
+
         @returns a boolean, if operation succeeded on at least one host in
                  hosts.
         """
@@ -156,11 +160,13 @@ class HostLockManager(object):
             return False
 
         kwargs = {'locked': True if operation == self.LOCK else False}
+        if operation == self.LOCK:
+          kwargs['lock_reason'] = lock_reason
         self._afe.run('modify_hosts',
                       host_filter_data={'hostname__in': list(updated_hosts)},
                       update_data=kwargs)
 
-        if operation == self.LOCK:
+        if operation == self.LOCK and lock_reason:
             self._locked_hosts = self._locked_hosts.union(updated_hosts)
         elif operation == self.UNLOCK:
             self._locked_hosts = self._locked_hosts.difference(updated_hosts)
