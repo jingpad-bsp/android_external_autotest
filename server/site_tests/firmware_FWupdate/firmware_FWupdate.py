@@ -115,66 +115,36 @@ class firmware_FWupdate(FirmwareTest):
 
         @param hostname: hostname of DUT.
         """
-        shellball = '/usr/sbin/chromeos-firmwareupdate'
-        # Copy DUT shellball to local.
-        shellball_dir = tempfile.mkdtemp(prefix='update')
-        logging.info('Tmpdir shellball_dir: %s', shellball_dir)
+        shellball_org = '/usr/sbin/chromeos-firmwareupdate'
+        shellball_copy = '/home/root/chromeos-firmwareupdate'
+        extract_dir = tempfile.mkdtemp(prefix='extract', dir='/tmp')
+
+        self.dut_run_cmd('mkdir %s' % extract_dir)
+        self.dut_run_cmd('cp %s %s' % (shellball_org, shellball_copy))
+        self.dut_run_cmd('%s --sb_extract %s' % (shellball_copy, extract_dir))
 
         dut_access = remote_access.RemoteDevice(hostname, username='root')
-        dut_access.CopyFromDevice(shellball, shellball_dir, mode='scp')
-
-        # Run shellball extract.
-        extract_dir = tempfile.mkdtemp(prefix='extract')
-        logging.info('Tmpdir extract_dir: %s', extract_dir)
-        command = '%s/chromeos-firmwareupdate --sb_extract %s' % (
-                   shellball_dir, extract_dir)
-        self.local_run_cmd(command)
+        self.dut_run_cmd('cp %s %s' % (shellball_org, shellball_copy))
 
         # Replace bin files.
-        if(not os.path.isfile(os.path.join(extract_dir, 'ec.bin')) or
-           not os.path.isfile(os.path.join(extract_dir, 'bios.bin'))):
-          raise error.TestError('Cannot locate ec.bin or bios.bin in unpack'
-                                ' dir %s', extract_dir)
-        command = 'cp %s %s/ec.bin' % (self.new_ec, extract_dir)
-        self.local_run_cmd(command)
-        command = 'cp %s %s/bios.bin' % (self.new_bios, extract_dir)
-        self.local_run_cmd(command)
-        if self.new_pd:
-          if not os.path.isfile(os.path.join(extract_dir, 'pd.bin')):
-            raise error.TestError('Cannot locate pd.bin in unpack dir %s',
-                                  extract_dir)
-          command = 'cp %s %s/pd.bin' % (self.new_pd, extract_dir)
-          self.local_run_cmd(command)
+        target_file = '%s/%s' % (extract_dir, 'ec.bin')
+        dut_access.CopyToDevice(self.new_ec, target_file, mode='scp')
+        target_file = '%s/%s' % (extract_dir, 'bios.bin')
+        dut_access.CopyToDevice(self.new_bios, target_file,  mode='scp')
 
-        # Repack shellball with new bin files.
-        command = '%s/chromeos-firmwareupdate --sb_repack %s' % (
-                   shellball_dir, extract_dir)
-        self.local_run_cmd(command)
+        if self.new_pd:
+          target_file = '%s/%s' % (extract_dir, 'pd.bin')
+          dut_access.CopyToDevice(self.new_pd, target_file,  mode='scp')
+
+        self.dut_run_cmd('%s --sb_repack %s' % (shellball_copy, extract_dir))
 
         # Call to "shar" in chromeos-firmwareupdate might fail and the repack
         # ignore failure and exit with 0 status (http://crosbug.com/p/33719).
         # Add additional check to ensure the repack is successful.
-        command = 'tail -1 %s/chromeos-firmwareupdate' % shellball_dir
-        output = self.local_run_cmd(command)
+        command = 'tail -1 %s' % shellball_copy
+        output = self.dut_run_cmd(command)
         if 'exit 0' not in output:
-          raise error.TestError('Failed to repack %s/chromeos-firmwareupdate' %
-                                shellball_dir)
-
-        # Save DUT shellball as .org if not already.
-        command = ('if test ! -f %s.org; then cp %s %s.org; fi' % (
-                    shellball, shellball, shellball))
-        self.dut_run_cmd(command)
-
-        # Copy local shellball to DUT.
-        dut_access.CopyToDevice('%s/chromeos-firmwareupdate' % shellball_dir,
-                                shellball, mode='scp')
-
-        # Cleanup.
-        logging.info('Cleanup %s %s', shellball_dir, extract_dir)
-        if shellball_dir and os.path.isdir(shellball_dir):
-          shutil.rmtree(shellball_dir)
-        if extract_dir and os.path.isdir(extract_dir):
-          shutil.rmtree(extract_dir)
+          raise error.TestError('Failed to repack %s' % shellball_copy)
 
     def get_fw_bin_version(self):
         """Get firmwware version from binary file.
@@ -189,17 +159,6 @@ class firmware_FWupdate(FirmwareTest):
             pd_version = self.local_run_cmd('strings %s|head -1' % self.new_pd)
         return (bios_version, ec_version, pd_version)
 
-    def make_rootfs_writable(self, hostname):
-        """Make root partition writable on 'hostname'.
-
-        @param hostname: DUT hostname.
-        """
-        logging.info('Disabling rootfs verification on device...')
-        command = ['/usr/share/vboot/bin/make_dev_ssd.sh',
-                   '--remove_rootfs_verification',
-                   '--force']
-        self.faft_client.system.run_shell_command(' '.join(command))
-
     def run_once(self, host):
         """Run chromeos-firmwareupdate with recovery or factory mode.
 
@@ -207,10 +166,6 @@ class firmware_FWupdate(FirmwareTest):
         """
         crossystem_before = self.get_system_setup()
         (bios_version, ec_version, pd_version) = self.get_fw_bin_version()
-
-        # Make rootfs writeable
-        self.make_rootfs_writable(host.hostname)
-        host.reboot()
 
         # Repack shellball with new ec and bios.
         self.repack_shellball(host.hostname)
