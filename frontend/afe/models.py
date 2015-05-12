@@ -174,8 +174,14 @@ class Shard(dbmodels.Model, model_logic.ModelExtensions):
         # afe links/redirection from the frontend (this happens through the
         # host), but for rpcs that are performed *on* the shard, they need to
         # use the address of the gateway.
-        hostname = self.hostname.split(':')[0]
-        if site_utils.is_localhost(hostname):
+        # In the virtual machine testing environment (i.e., puppylab), each
+        # shard VM has a hostname like localhost:<port>. In the real cluster
+        # environment, a shard node does not have 'localhost' for its hostname.
+        # The following hostname substitution is needed only for the VM
+        # in puppylab.
+        # The 'hostname' should not be replaced in the case of real cluster.
+        if site_utils.is_puppylab_vm(self.hostname):
+            hostname = self.hostname.split(':')[0]
             return self.hostname.replace(
                     hostname, site_utils.DEFAULT_VM_GATEWAY)
         return self.hostname
