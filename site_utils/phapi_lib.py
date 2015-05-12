@@ -96,8 +96,12 @@ class ProjectHostingApiClient():
                                              'Hosting api. Cannot file bugs.')
 
         http = credentials.authorize(httplib2.Http())
-        self._codesite_service = apiclient_build('projecthosting',
-                                                 'v2', http=http)
+        try:
+            self._codesite_service = apiclient_build('projecthosting',
+                                                     'v2', http=http)
+        except (apiclient_errors.Error, httplib2.HttpLib2Error,
+                httplib.BadStatusLine) as e:
+            raise ProjectHostingApiException(str(e))
         self._project_name = project_name
 
 
