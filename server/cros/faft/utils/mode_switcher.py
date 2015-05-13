@@ -222,9 +222,7 @@ class ModeSwitcher(object):
             time.sleep(self.faft_config.confirm_screen)
             if self.faft_config.rec_button_dev_switch:
                 logging.info('RECOVERY button pressed to switch to dev mode')
-                self.servo.set('rec_mode', 'on')
-                time.sleep(self.faft_config.hold_cold_reset)
-                self.servo.set('rec_mode', 'off')
+                self.servo.toggle_recovery_switch()
             else:
                 logging.info('ENTER pressed to switch to dev mode')
                 self.servo.enter_key()

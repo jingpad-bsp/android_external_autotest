@@ -142,6 +142,9 @@ class Servo(object):
     # keyboard events.
     SERVO_KEY_PRESS_DELAY = 0.1
 
+    # Time to toggle recovery switch on and off.
+    REC_TOGGLE_DELAY = 0.1
+
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
     # Time to keep USB power off before and after USB mux direction is changed
@@ -339,6 +342,13 @@ class Servo(object):
         @param press_secs : Str. Time to press key.
         """
         self._server.imaginary_key(press_secs)
+
+
+    def toggle_recovery_switch(self):
+        """Toggle recovery switch on and off."""
+        self.enable_recovery_mode()
+        time.sleep(self.REC_TOGGLE_DELAY)
+        self.disable_recovery_mode()
 
 
     def enable_recovery_mode(self):
