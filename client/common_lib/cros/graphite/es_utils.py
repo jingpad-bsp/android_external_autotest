@@ -166,9 +166,12 @@ class ESMetadata(object):
         @param log_time_recorded: Whether to automatically record the time
                                   this metadata is recorded. Default is True.
         @param kwargs: Additional metadata fields
+
+        @return: True if post action succeeded. Otherwise return False.
+
         """
         if not metadata:
-            return
+            return True
 
         metadata = metadata.copy()
         metadata.update(kwargs)
@@ -183,8 +186,10 @@ class ESMetadata(object):
                 self._send_data_http(type_str, metadata)
             else:
                 self._send_data_udp(type_str, metadata)
+            return True
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
+            return False
 
 
     def bulk_post(self, data_list, log_time_recorded=True, **kwargs):
@@ -194,9 +199,12 @@ class ESMetadata(object):
         @param log_time_recorded: Whether to automatically record the time
                                   this metadata is recorded. Default is True.
         @param kwargs: Additional metadata fields
+
+        @return: True if post action succeeded. Otherwise return False.
+
         """
         if not data_list:
-            return
+            return True
 
         actions = []
         for metadata in data_list:
@@ -209,8 +217,10 @@ class ESMetadata(object):
 
         try:
             elasticsearch_helpers.bulk(self.es, actions)
+            return True
         except elasticsearch.ElasticsearchException as e:
             logging.error(e)
+            return False
 
 
     def _compose_query(self, equality_constraints=[], fields_returned=None,

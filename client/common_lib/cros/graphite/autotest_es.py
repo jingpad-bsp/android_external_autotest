@@ -116,7 +116,7 @@ def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
     esmd = es_utils.ESMetadata(use_http=True, host=host, port=port,
                                timeout=timeout, index=index,
                                udp_port=ES_UDP_PORT)
-    esmd.bulk_post(data_list, *args, **kwargs)
+    return esmd.bulk_post(data_list, *args, **kwargs)
 
 
 def execute_query(host=METADATA_ES_SERVER, port=ES_PORT,
