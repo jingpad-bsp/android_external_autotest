@@ -7,7 +7,6 @@
 
 class Values():
     """FAFT config values for Stout."""
-    broken_rec_mode = True
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],
                    [0x32, 'release'],

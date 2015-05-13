@@ -14,7 +14,6 @@ class Values(object):
     defaults, but very helpful for platform overrides.
     """
 
-    broken_rec_mode = False
     chrome_ec = False
     dark_resume_capable = False
     has_lid = True

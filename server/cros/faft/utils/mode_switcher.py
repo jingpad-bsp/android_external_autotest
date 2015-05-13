@@ -162,6 +162,17 @@ class ModeSwitcher(object):
         psc.power_on(psc.REC_ON)
 
 
+    def _disable_rec_mode_and_reboot(self, usb_state=None):
+        """Disable the rec mode and reboot.
+
+        It is achieved by calling power state controller to do a normal
+        power on.
+        """
+        psc = self.servo.get_power_state_controller()
+        psc.power_off()
+        psc.power_on(psc.REC_OFF)
+
+
     def _enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
         if self.faft_config.keyboard_dev:
@@ -195,10 +206,8 @@ class ModeSwitcher(object):
     def _disable_keyboard_dev_mode(self):
         """Disable keyboard controlled developer mode"""
         logging.info("Disabling keyboard controlled developer mode")
-        if (not self.faft_config.chrome_ec and
-            not self.faft_config.broken_rec_mode):
-            self.servo.disable_recovery_mode()
-        self.mode_aware_reboot(reboot_type='cold', wait_for_dut_up=False)
+        self._disable_rec_mode_and_reboot()
+        self.faft_framework.wait_for_client_offline()
         self._wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
 
 
