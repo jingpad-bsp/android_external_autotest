@@ -22,16 +22,26 @@ class firmware_FwScreenCloseLid(FirmwareTest):
 
     SHORT_SHUTDOWN_CONFIRMATION_PERIOD = 0.1
 
+    def wait_fw_screen_and_close_lid(self):
+        """Wait for firmware warning screen and close lid."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.lid_close()
+
+    def wait_longer_fw_screen_and_close_lid(self):
+        """Wait for firmware screen without timeout and close lid."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.wait_fw_screen_and_close_lid()
+
     def wait_second_screen_and_close_lid(self):
         """Wait and trigger TO_NORM or RECOVERY INSERT screen and close lid."""
-        self.wait_fw_screen_and_trigger_recovery()
+        self.switcher.trigger_dev_to_rec()
         self.wait_longer_fw_screen_and_close_lid()
 
     def wait_yuck_screen_and_close_lid(self):
         """Wait and trigger yuck screen and clod lid."""
         # Insert a corrupted USB stick. A yuck screen is expected.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.faft_config.load_usb)
+        time.sleep(self.faft_config.usb_plug)
         self.wait_longer_fw_screen_and_close_lid()
 
     def initialize(self, host, cmdline_args):
@@ -73,7 +83,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_fw_screen_and_close_lid,
                                   self.servo.lid_open,
-                                  self.wait_fw_screen_and_ctrl_d)
+                                  self.switcher.bypass_dev_mode)
         self.wait_for_kernel_up()
 
         logging.info("Reboot. When the developer screen shown, press "
@@ -87,7 +97,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_second_screen_and_close_lid,
                                   self.servo.lid_open,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_kernel_up()
 
@@ -101,7 +111,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
                                   self.servo.lid_open,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_kernel_up()
 
@@ -116,7 +126,7 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_yuck_screen_and_close_lid,
                                   self.servo.lid_open,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_kernel_up()
 

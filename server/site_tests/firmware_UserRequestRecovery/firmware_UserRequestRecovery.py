@@ -47,7 +47,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
                            }))
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         self.wait_for_client()
 
         logging.info("Expected recovery boot, request recovery again.")
@@ -58,7 +58,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
-            self.wait_fw_screen_and_plug_usb()
+            self.switcher.bypass_rec_mode()
         self.wait_for_client()
 
         logging.info("Expected recovery boot.")

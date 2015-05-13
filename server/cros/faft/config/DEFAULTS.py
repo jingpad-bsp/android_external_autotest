@@ -48,9 +48,6 @@ class Values(object):
     # Delay between power-on and firmware screen
     firmware_screen = 10
 
-    # Delay between power-on and dev screen
-    dev_screen = 7
-
     # Delay between keypresses in firmware screen
     confirm_screen = 3
 
@@ -66,11 +63,8 @@ class Values(object):
     # Delay for waiting beep done
     beep = 1
 
-    # Delay of loading the USB kernel
-    load_usb = 10
-
-    # Delay between USB plug-out and plug-in
-    between_usb_plug = 10
+    # Delay between power-on and plug USB
+    usb_plug = 10
 
     # Delay for waiting client to shutdown
     shutdown = 30

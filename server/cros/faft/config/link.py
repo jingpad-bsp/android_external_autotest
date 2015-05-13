@@ -8,7 +8,6 @@
 class Values(object):
     """FAFT config values for Link."""
     firmware_screen = 7
-    dev_screen = 4
     chrome_ec = True
     long_rec_combo = True
     use_u_boot = True

@@ -21,16 +21,29 @@ class firmware_FwScreenPressPower(FirmwareTest):
 
     SHORT_SHUTDOWN_CONFIRMATION_PERIOD = 0.1
 
+    def wait_fw_screen_and_press_power(self):
+        """Wait for firmware warning screen and press power button."""
+        time.sleep(self.faft_config.firmware_screen)
+        # While the firmware screen, the power button probing loop sleeps
+        # 0.25 second on every scan. Use the normal delay (1.2 second) for
+        # power press.
+        self.servo.power_normal_press()
+
+    def wait_longer_fw_screen_and_press_power(self):
+        """Wait for firmware screen without timeout and press power button."""
+        time.sleep(self.faft_config.dev_screen_timeout)
+        self.wait_fw_screen_and_press_power()
+
     def wait_second_screen_and_press_power(self):
         """Wait and trigger a second screen and press power button."""
-        self.wait_fw_screen_and_trigger_recovery()
+        self.switcher.trigger_dev_to_rec()
         self.wait_longer_fw_screen_and_press_power()
 
     def wait_yuck_screen_and_press_power(self):
         """Insert corrupted USB for yuck screen and press power button."""
         # This USB stick will be removed in cleanup phase.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.faft_config.load_usb)
+        time.sleep(self.faft_config.usb_plug)
         self.wait_longer_fw_screen_and_press_power()
 
     def initialize(self, host, cmdline_args):
@@ -61,7 +74,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_fw_screen_and_press_power,
                                   None,
-                                  self.wait_fw_screen_and_ctrl_d)
+                                  self.switcher.bypass_dev_mode)
         self.wait_for_client()
 
         logging.info("Reboot. When the developer screen shown, press "
@@ -75,7 +88,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_second_screen_and_press_power,
                                   None,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_client()
 
@@ -89,7 +102,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_press_power,
                                   None,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_client()
 
@@ -105,7 +118,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_yuck_screen_and_press_power,
                                   None,
-                                  self.wait_fw_screen_and_ctrl_d,
+                                  self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.wait_for_client()
 

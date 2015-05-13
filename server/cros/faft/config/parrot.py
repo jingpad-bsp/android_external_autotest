@@ -11,8 +11,6 @@ class Values(object):
     # clear rec_mode, devices needs to be sufficiently booted.
     ec_boot_to_console = 4
 
-    # Parrot takes slightly longer to get to dev screen.
-    dev_screen = 8
     dark_resume_capable = True
     key_checker = [[0x29, 'press'],
                    [0x32, 'press'],

@@ -56,7 +56,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
 
     def try_ctrl_u_and_ctrl_d(self):
         """Try to press Ctrl-U first and then press Ctrl-D"""
-        self.wait_fw_screen_and_ctrl_u()
+        self.switcher.bypass_dev_boot_usb()
         # If the above Ctrl-U doesn't work, the firmware beeps twice.
         # Should wait the beep done before pressing Ctrl-D.
         time.sleep(self.faft_config.beep)
@@ -116,7 +116,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                           'Not internal disk boot, dev_boot_usb misbehaved'))
         self.resignimage_ssdkeys()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_u()
+        self.switcher.bypass_dev_boot_usb()
         self.wait_for_client()
 
         logging.info("Expected USB boot.")

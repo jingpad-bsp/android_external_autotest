@@ -6,6 +6,69 @@ import logging
 import time
 
 
+class _FwBypasser(object):
+    """Class that controls bypass logic for firmware screens."""
+
+    def __init__(self, servo, faft_config):
+        self.servo = servo
+        self.faft_config = faft_config
+
+
+    def bypass_dev_mode(self):
+        """Bypass the dev mode firmware logic to boot internal image."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.ctrl_d()
+
+
+    def bypass_dev_boot_usb(self):
+        """Bypass the dev mode firmware logic to boot USB."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.ctrl_u()
+
+
+    def bypass_rec_mode(self):
+        """Bypass the rec mode firmware logic to boot USB."""
+        self.servo.switch_usbkey('host')
+        time.sleep(self.faft_config.usb_plug)
+        self.servo.switch_usbkey('dut')
+
+
+    def trigger_dev_to_rec(self):
+        """Trigger to the rec mode from the dev screen."""
+        time.sleep(self.faft_config.firmware_screen)
+
+        # Pressing Enter for too long triggers a second key press.
+        # Let's press it without delay
+        self.servo.enter_key(press_secs=0)
+
+        # For Alex/ZGB, there is a dev warning screen in text mode.
+        # Skip it by pressing Ctrl-D.
+        if self.faft_config.need_dev_transition:
+            time.sleep(self.faft_config.legacy_text_screen)
+            self.servo.ctrl_d()
+
+
+    def trigger_rec_to_dev(self):
+        """Trigger to the dev mode from the rec screen."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.ctrl_d()
+        time.sleep(self.faft_config.confirm_screen)
+        if self.faft_config.rec_button_dev_switch:
+            logging.info('RECOVERY button pressed to switch to dev mode')
+            self.servo.toggle_recovery_switch()
+        else:
+            logging.info('ENTER pressed to switch to dev mode')
+            self.servo.enter_key()
+
+
+    def trigger_dev_to_normal(self):
+        """Trigger to the normal mode from the dev screen."""
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.enter_key()
+        time.sleep(self.faft_config.confirm_screen)
+        self.servo.enter_key()
+
+
 class ModeSwitcher(object):
     """Class that controls firmware mode switching."""
 
@@ -15,6 +78,7 @@ class ModeSwitcher(object):
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
         self.checkers = faft_framework.checkers
+        self.bypasser = _FwBypasser(self.servo, self.faft_config)
         self._backup_mode = None
 
 
@@ -70,13 +134,13 @@ class ModeSwitcher(object):
                 #     the old models need users to remove and insert the USB;
                 #     the new models directly boot to the USB.
                 if not self.faft_config.keyboard_dev and from_mode == 'normal':
-                    self.faft_framework.wait_fw_screen_and_plug_usb()
+                    self.bypasser.bypass_rec_mode()
                 self.faft_framework.wait_for_client()
 
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
             if wait_for_dut_up:
-                self.faft_framework.wait_dev_screen_and_ctrl_d()
+                self.bypasser.bypass_dev_mode()
                 self.faft_framework.wait_for_client()
 
         elif to_mode == 'normal':
@@ -139,9 +203,9 @@ class ModeSwitcher(object):
                 # boot.
                 self.servo.switch_usbkey('host')
             if not is_normal:
-                self.faft_framework.wait_dev_screen_and_ctrl_d()
+                self.bypasser.bypass_dev_mode()
             if not is_dev:
-                self.faft_framework.wait_fw_screen_and_plug_usb()
+                self.bypasser.bypass_rec_mode()
             self.faft_framework.wait_for_kernel_up()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
@@ -200,7 +264,7 @@ class ModeSwitcher(object):
         # Plug out USB disk for preventing recovery boot without warning
         self._enable_rec_mode_and_reboot(usb_state='host')
         self.faft_framework.wait_for_client_offline()
-        self._wait_fw_screen_and_switch_keyboard_dev_mode(dev=True)
+        self.bypasser.trigger_rec_to_dev()
 
 
     def _disable_keyboard_dev_mode(self):
@@ -208,25 +272,35 @@ class ModeSwitcher(object):
         logging.info("Disabling keyboard controlled developer mode")
         self._disable_rec_mode_and_reboot()
         self.faft_framework.wait_for_client_offline()
-        self._wait_fw_screen_and_switch_keyboard_dev_mode(dev=False)
+        self.bypasser.trigger_dev_to_normal()
 
 
-    def _wait_fw_screen_and_switch_keyboard_dev_mode(self, dev):
-        """Wait for firmware screen and then switch into or out of dev mode.
+    # Redirects the following methods to FwBypasser
+    def bypass_dev_mode(self):
+        """Bypass the dev mode firmware logic to boot internal image."""
+        self.bypasser.bypass_dev_mode()
 
-        @param dev: True if switching into dev mode. Otherwise, False.
-        """
-        time.sleep(self.faft_config.firmware_screen)
-        if dev:
-            self.servo.ctrl_d()
-            time.sleep(self.faft_config.confirm_screen)
-            if self.faft_config.rec_button_dev_switch:
-                logging.info('RECOVERY button pressed to switch to dev mode')
-                self.servo.toggle_recovery_switch()
-            else:
-                logging.info('ENTER pressed to switch to dev mode')
-                self.servo.enter_key()
-        else:
-            self.servo.enter_key()
-            time.sleep(self.faft_config.confirm_screen)
-            self.servo.enter_key()
+
+    def bypass_dev_boot_usb(self):
+        """Bypass the dev mode firmware logic to boot USB."""
+        self.bypasser.bypass_dev_boot_usb()
+
+
+    def bypass_rec_mode(self):
+        """Bypass the rec mode firmware logic to boot USB."""
+        self.bypasser.bypass_rec_mode()
+
+
+    def trigger_dev_to_rec(self):
+        """Trigger to the rec mode from the dev screen."""
+        self.bypasser.trigger_dev_to_rec()
+
+
+    def trigger_rec_to_dev(self):
+        """Trigger to the dev mode from the rec screen."""
+        self.bypasser.trigger_rec_to_dev()
+
+
+    def trigger_dev_to_normal(self):
+        """Trigger to the normal mode from the dev screen."""
+        self.bypasser.trigger_dev_to_normal()

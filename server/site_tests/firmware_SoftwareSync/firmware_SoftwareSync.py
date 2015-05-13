@@ -46,7 +46,7 @@ class firmware_SoftwareSync(FirmwareTest):
         """Wait for software sync to update EC."""
         if self.dev_mode:
             time.sleep(self.faft_config.software_sync_update +
-                       self.faft_config.dev_screen)
+                       self.faft_config.firmware_screen)
             self.servo.ctrl_d()
         else:
             time.sleep(self.faft_config.software_sync_update)

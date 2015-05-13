@@ -85,9 +85,9 @@ class firmware_UpdateECBin(FirmwareTest):
             sha_checker = (sha_now != self.new_ec_sha)
         return (ro_normal_checker and sha_checker)
 
-    def software_sync_and_ctrl_d(self):
+    def software_sync_and_bypass_dev_mode(self):
         time.sleep(self.faft_config.software_sync)
-        self.wait_dev_screen_and_ctrl_d()
+        self.switcher.bypass_dev_mode()
 
     def run_once(self, dev_mode=False):
         if not self.check_ec_capability():
@@ -103,7 +103,7 @@ class firmware_UpdateECBin(FirmwareTest):
         self.do_ronormal_update()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if dev_mode:
-            self.software_sync_and_ctrl_d()
+            self.software_sync_and_bypass_dev_mode()
         self.wait_for_kernel_up()
 
         logging.info("Expected new EC and RW boot, restore the original BIOS.")
@@ -116,7 +116,7 @@ class firmware_UpdateECBin(FirmwareTest):
         #   into RO, then power on the AP automatically.
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if dev_mode:
-            self.software_sync_and_ctrl_d()
+            self.software_sync_and_bypass_dev_mode()
         self.wait_for_kernel_up()
 
         logging.info("Expected different EC and RW boot, enable RO flag.")

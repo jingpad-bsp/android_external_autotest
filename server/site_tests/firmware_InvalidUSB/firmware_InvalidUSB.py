@@ -50,7 +50,7 @@ class firmware_InvalidUSB(FirmwareTest):
                           }))
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         logging.info('Wait to ensure the USB image is unable to boot...')
         try:
             self.wait_for_client()

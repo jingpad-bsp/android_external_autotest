@@ -231,7 +231,7 @@ class FirmwareTest(FAFTBase):
         recovery_reason = 0
         logging.info('Try to retrieve recovery reason...')
         if self.servo.get_usbkey_direction() == 'dut':
-            self.wait_fw_screen_and_plug_usb()
+            self.switcher.bypass_rec_mode()
         else:
             self.servo.switch_usbkey('dut')
 
@@ -261,7 +261,7 @@ class FirmwareTest(FAFTBase):
                                         sync_before_boot=False,
                                         wait_for_dut_up=False)
         self.wait_for_client_offline()
-        self.wait_dev_screen_and_ctrl_d()
+        self.switcher.bypass_dev_mode()
         try:
             self.wait_for_client()
             return
@@ -301,7 +301,7 @@ class FirmwareTest(FAFTBase):
         self.faft_client.system.run_shell_command('chromeos-install --yes')
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.wait_for_client_offline()
-        self.wait_dev_screen_and_ctrl_d()
+        self.switcher.bypass_dev_mode()
         try:
             self.wait_for_client()
             logging.info('Successfully restore OS image.')
@@ -319,7 +319,7 @@ class FirmwareTest(FAFTBase):
         self.switcher.reboot_to_mode(to_mode='rec', sync_before_boot=False,
                                      wait_for_dut_up=False)
         self.servo.switch_usbkey('host')
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         try:
             self.wait_for_client()
         except ConnectionError:
@@ -687,69 +687,6 @@ class FirmwareTest(FAFTBase):
                     lambda:self.set_ec_write_protect_and_reboot(
                             self._old_ec_wp))
 
-    def wait_dev_screen_and_ctrl_d(self):
-        """Wait for firmware warning screen and press Ctrl-D."""
-        time.sleep(self.faft_config.dev_screen)
-        self.servo.ctrl_d()
-
-    def wait_fw_screen_and_ctrl_d(self):
-        """Wait for firmware warning screen and press Ctrl-D."""
-        time.sleep(self.faft_config.firmware_screen)
-        self.servo.ctrl_d()
-
-    def wait_fw_screen_and_ctrl_u(self):
-        """Wait for firmware warning screen and press Ctrl-U."""
-        time.sleep(self.faft_config.firmware_screen)
-        self.servo.ctrl_u()
-
-    def wait_fw_screen_and_trigger_recovery(self):
-        """Wait for firmware warning screen and trigger recovery boot."""
-        time.sleep(self.faft_config.firmware_screen)
-
-        # Pressing Enter for too long triggers a second key press.
-        # Let's press it without delay
-        self.servo.enter_key(press_secs=0)
-
-        # For Alex/ZGB, there is a dev warning screen in text mode.
-        # Skip it by pressing Ctrl-D.
-        if self.faft_config.need_dev_transition:
-            time.sleep(self.faft_config.legacy_text_screen)
-            self.servo.ctrl_d()
-
-    def wait_fw_screen_and_unplug_usb(self):
-        """Wait for firmware warning screen and then unplug the servo USB."""
-        time.sleep(self.faft_config.load_usb)
-        self.servo.switch_usbkey('host')
-        time.sleep(self.faft_config.between_usb_plug)
-
-    def wait_fw_screen_and_plug_usb(self):
-        """Wait for firmware warning screen and then unplug and plug the USB."""
-        self.wait_fw_screen_and_unplug_usb()
-        self.servo.switch_usbkey('dut')
-
-    def wait_fw_screen_and_press_power(self):
-        """Wait for firmware warning screen and press power button."""
-        time.sleep(self.faft_config.firmware_screen)
-        # While the firmware screen, the power button probing loop sleeps
-        # 0.25 second on every scan. Use the normal delay (1.2 second) for
-        # power press.
-        self.servo.power_normal_press()
-
-    def wait_longer_fw_screen_and_press_power(self):
-        """Wait for firmware screen without timeout and press power button."""
-        time.sleep(self.faft_config.dev_screen_timeout)
-        self.wait_fw_screen_and_press_power()
-
-    def wait_fw_screen_and_close_lid(self):
-        """Wait for firmware warning screen and close lid."""
-        time.sleep(self.faft_config.firmware_screen)
-        self.servo.lid_close()
-
-    def wait_longer_fw_screen_and_close_lid(self):
-        """Wait for firmware screen without timeout and close lid."""
-        time.sleep(self.faft_config.firmware_screen)
-        self.wait_fw_screen_and_close_lid()
-
     def _setup_uart_capture(self):
         """Setup the CPU/EC/PD UART capture."""
         self.cpu_uart_file = os.path.join(self.resultsdir, 'cpu_uart.txt')
@@ -1012,7 +949,7 @@ class FirmwareTest(FAFTBase):
         if not is_dev:
             self.switcher.reboot_to_mode(to_mode='dev', wait_for_dut_up=False)
         self.switcher.reboot_to_mode(to_mode='rec', sync_before_boot=False)
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         time.sleep(self.faft_config.install_shim_done)
         self.switcher.mode_aware_reboot()
 

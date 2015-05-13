@@ -11,7 +11,6 @@ class Values(object):
     chrome_ec = True
     ec_capability = ['battery', 'charging', 'keyboard', 'arm', 'lid']
     ec_boot_to_console = 0.2
-    dev_screen = 4
     firmware_screen = 4
     wp_voltage = 'off'
     has_eventlog = False        # Shipped without RTC support in firmware

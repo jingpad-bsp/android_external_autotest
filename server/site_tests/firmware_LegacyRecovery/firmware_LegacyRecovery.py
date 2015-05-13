@@ -37,7 +37,7 @@ class firmware_LegacyRecovery(FirmwareTest):
                            }))
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         try:
             self.wait_for_client()
         except ConnectionError:
@@ -58,7 +58,7 @@ class firmware_LegacyRecovery(FirmwareTest):
             raise error.TestFail('Unexpected USB boot at Remove Screen.')
         except ConnectionError:
             logging.info('Done, Waited till timeout and no USB boot occured.')
-        self.wait_fw_screen_and_plug_usb()
+        self.switcher.bypass_rec_mode()
         self.wait_for_client()
 
         logging.info("Expected to boot the restored USB image and reboot.")

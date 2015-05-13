@@ -53,7 +53,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         # Boot CrOS from USB
         self.faft_client.system.set_dev_boot_usb(1)
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_fw_screen_and_ctrl_u()
+        self.switcher.bypass_dev_boot_usb()
         self.wait_for_client()
 
         # Check that DUT is booted from USB.

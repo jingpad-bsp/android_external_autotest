@@ -8,7 +8,6 @@
 class Values(object):
     """FAFT config values for Rambi."""
     chrome_ec = True
-    dev_screen = 7
     ec_boot_to_console = 0.3
     ec_capability = ['battery', 'charging', 'keyboard', 'lid', 'x86',
                      'usb', 'smart_usb_charge']
