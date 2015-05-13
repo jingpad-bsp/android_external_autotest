@@ -56,16 +56,16 @@ class display_LidCloseOpen(test.test):
 
 
     def close_lid(self):
-        """Close lid through servo and raise exception if all attempts fail"""
+        """Close lid through servo"""
         logging.debug('Closing lid')
-        self.host.servo.set('lid_open', 'no')
+        self.host.servo.lid_close()
         time.sleep(self.WAIT_TIME_LID_TRANSITION)
 
 
     def open_lid(self):
-        """Open lid through servo and raise exception if all attempts fail"""
+        """Open lid through servo"""
         logging.debug('Opening lid')
-        self.host.servo.set('lid_open', 'yes')
+        self.host.servo.lid_open()
         time.sleep(self.WAIT_TIME_LID_TRANSITION)
 
 

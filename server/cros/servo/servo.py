@@ -255,16 +255,16 @@ class Servo(object):
 
 
     def lid_open(self):
-        """Simulate opening the lid."""
-        self.set_nocheck('lid_open', 'yes')
+        """Simulate opening the lid and raise exception if all attempts fail"""
+        self.set('lid_open', 'yes')
 
 
     def lid_close(self):
-        """Simulate closing the lid.
+        """Simulate closing the lid and raise exception if all attempts fail
 
         Waits 6 seconds to ensure the device is fully asleep before returning.
         """
-        self.set_nocheck('lid_open', 'no')
+        self.set('lid_open', 'no')
         time.sleep(Servo.SLEEP_DELAY)
 
 
