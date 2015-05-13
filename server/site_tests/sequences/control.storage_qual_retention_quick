@@ -15,24 +15,28 @@ DOC = """
 Sequence for testing the Storage Qual running from the fixed devices.
 This tests check retentions.
 """
-HOUR_IN_SECS=60*60
-DAY_IN_SECS=24*HOUR_IN_SECS
+from autotest_lib.server import sequence
+
 
 # tag is specified twice, because it is popped in _build_tagged_test_name().
-SERVER_TESTS= [
-    ('hardware_StorageQualBase', {
-        'tag': 'before', 'client_tag': 'before', 'crypto_runtime': 30}),
-    ('hardware_StorageStress', {'duration': HOUR_IN_SECS, 'tag': 'soak',
-        'power_command': 'nothing', 'storage_test_command': 'full_write'}),
-    ('hardware_StorageStress', {'duration': HOUR_IN_SECS, 'tag': 'suspend',
-        'power_command': 'suspend', 'suspend_duration': 120}),
-    ('hardware_StorageQualBase', {
-        'tag': 'after', 'client_tag': 'after', 'crypto_runtime': 30}),
+SERVER_SEQUENCES = [
+    sequence.SequenceJob(
+            'hardware_StorageQualBase',
+            { 'tag': 'before', 'client_tag': 'before'}),
+    sequence.SequenceJob(
+            'hardware_StorageStress',
+            {'tag': 'soak', 'power_command': 'nothing',
+             'storage_test_command': 'full_write'},
+            iteration=2, duration=sequence.HOUR_IN_SECS / 2),
+    sequence.SequenceJob(
+            'hardware_StorageStress',
+            {'tag': 'suspend', 'power_command': 'suspend',
+             'suspend_duration': 120},
+            duration=sequence.HOUR_IN_SECS / 2),
+    sequence.SequenceJob(
+            'hardware_StorageQualBase',
+            { 'tag': 'after', 'client_tag': 'after'}),
 ]
 
-def run_server_tests(machine):
-    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
-    for test, argv in SERVER_TESTS:
-        job.run_test(test, client_ip=machine, **argv)
+sequence.sequence_schedule(job, machines, SERVER_SEQUENCES)
 
-parallel_simple(run_server_tests, machines)
