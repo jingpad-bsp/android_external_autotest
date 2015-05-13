@@ -494,6 +494,9 @@ def get_stable_version(board=stable_version_utils.DEFAULT):
              of CROS.stable_cros_version if stable_versinos table does not have
              entry of board DEFAULT.
     """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        return rpc_utils.route_rpc_to_master('get_stable_version', board=board)
     return stable_version_utils.get(board)
 
 
@@ -502,6 +505,9 @@ def get_all_stable_versions():
 
     @return: A dictionary of board:version.
     """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        return rpc_utils.route_rpc_to_master('get_all_stable_versions')
     return stable_version_utils.get_all()
 
 
@@ -511,6 +517,10 @@ def set_stable_version(version, board=stable_version_utils.DEFAULT):
     @param version: The new value of stable version for given board.
     @param board: Name of the board, default to value `DEFAULT`.
     """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        return rpc_utils.route_rpc_to_master('set_stable_version',
+                                             version=version, board=board)
     stable_version_utils.set(version=version, board=board)
 
 
@@ -522,4 +532,8 @@ def delete_stable_version(board):
 
     @param board: Name of the board.
     """
+    # This RPC call should be accepted only by master.
+    if utils.is_shard():
+        return rpc_utils.route_rpc_to_master('delete_stable_version',
+                                             board=board)
     stable_version_utils.delete(board=board)
