@@ -150,8 +150,23 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
             range_constraints=[('time_recorded', t_epoch, t_end_epoch)],
             sort_specs=[{'time_recorded': 'asc'}])
 
-    locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
-                                                 lock_history_entries)
+    # Validate lock history. If an unlock event failed to be recorded in metadb,
+    # lock history will show the dut being locked while host still has status
+    # changed over the time. This check tries to remove the lock event in lock
+    # history if:
+    # 1. There is only one entry in lock_history_entries (it's a good enough
+    #    assumption to avoid the code being over complicated.
+    # 2. The host status has changes after the lock history starts as locked.
+    if (len(lock_history_entries.hits) == 1 and t_lock_val and
+        len(intervals) >1):
+        locked_intervals = None
+        print ('Lock history of dut %s is ignored, the dut may have missing '
+               'data in lock history in metadb. Try to lock and unlock the dut '
+               'in AFE will force the lock history to be updated in metadb.'
+               % hostname)
+    else:
+        locked_intervals = lock_history_to_intervals(t_lock_val, t, t_end,
+                                                     lock_history_entries)
     num_entries_found = len(intervals)
     t_prev = t_start
     status_prev = status_first
@@ -462,10 +477,12 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
                    'metadata': metadata}
     locked_info = {'status': 'Locked',
                    'metadata': {}}
-    if int_status != 'Ready' or not locked_intervals:
+    if not locked_intervals:
         statuses[(t_start, t_end)] = status_info
         return statuses
     for lock_start, lock_end in locked_intervals:
+        if prev_interval_end >= t_end:
+            break
         if lock_start > t_end:
             # optimization to break early
             # case 0
@@ -483,15 +500,15 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
             #                    lock_start lock_end
             # Lock happened in the middle, while the host stays in the same
             # status, consider the lock has no effect on host history.
-            statuses[(prev_interval_end, lock_end)] = locked_info
+            statuses[(prev_interval_end, lock_end)] = status_info
             prev_interval_end = lock_end
         elif lock_end > prev_interval_end and lock_start < prev_interval_end:
             # case 3
             #             prev_interval_end          t_end
-            # lock_start                    lock_end
+            # lock_start                    lock_end        (or lock_end)
             # If the host status changed in the middle of being locked, consider
             # the new status change as part of the host history.
-            statuses[(prev_interval_end, lock_end)] = locked_info
+            statuses[(prev_interval_end, min(lock_end, t_end))] = locked_info
             prev_interval_end = lock_end
         elif lock_start < t_end and lock_end > t_end:
             # case 4
@@ -502,7 +519,6 @@ def calculate_status_times(t_start, t_end, int_status, metadata,
             statuses[(prev_interval_end, t_end)] = status_info
             statuses[(lock_start, t_end)] = locked_info
             prev_interval_end = t_end
-            break
         # Otherwise we are in the case where lock_end < t_start OR
         # lock_start > t_end, which means the lock doesn't apply.
     if t_end > prev_interval_end:
