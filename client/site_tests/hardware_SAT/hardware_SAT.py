@@ -7,8 +7,9 @@ import logging, re, struct, sys, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
-def memory_channel_args_sandybridge(channel_modules):
+def memory_channel_args_snb_bdw(channel_modules):
     """Add arguments for memory testing.
+    Works on sandybridge, ivybridge, broadwell. Maybe others?
 
     @param channel_modules: channel names.
     """
@@ -109,9 +110,14 @@ class hardware_SAT(test.test):
             args += ' -f sat.diskthread.b'
 
         if utils.get_board() == 'link':
-            args += memory_channel_args_sandybridge([
+            args += memory_channel_args_snb_bdw([
                     ['U1', 'U2', 'U3', 'U4'],
                     ['U6', 'U5', 'U7', 'U8']])  # yes, U6 is actually before U5
+
+        if utils.get_board() == 'samus':
+            args += memory_channel_args_snb_bdw([
+                    ['U11', 'U12'],
+                    ['U13', 'U14']])
 
         # 'stressapptest' is provided by dev-util/stressapptest, pre-installed
         # in test images.
