@@ -14,6 +14,7 @@ import urlparse
 from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import autotest, hosts, test
 from autotest_lib.server.cros.dynamic_suite import tools
 
@@ -1407,6 +1408,12 @@ class autoupdate_EndToEndTest(test.test):
                 test_conf['target_payload_uri'])
         devserver_hostname = urlparse.urlparse(
                 autotest_devserver.url()).hostname
+        counter_key = dev_server.ImageServer.create_stats_str(
+                'paygen', devserver_hostname, artifacts=None)
+        metadata = {'devserver': devserver_hostname,
+                    '_type': 'devserver_paygen'}
+        metadata.update(test_conf)
+        autotest_stats.Counter(counter_key, metadata=metadata).increment()
 
         # Stage source images and update payloads onto a devserver.
         staged_urls = self.stage_artifacts_onto_devserver(
