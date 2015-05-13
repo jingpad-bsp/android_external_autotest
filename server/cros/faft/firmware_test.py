@@ -702,12 +702,8 @@ class FirmwareTest(FAFTBase):
         time.sleep(self.faft_config.firmware_screen)
         self.servo.ctrl_u()
 
-    def wait_fw_screen_and_trigger_recovery(self, need_dev_transition=False):
-        """Wait for firmware warning screen and trigger recovery boot.
-
-        @param need_dev_transition: True when needs dev mode transition, only
-                                    for Alex/ZGB.
-        """
+    def wait_fw_screen_and_trigger_recovery(self):
+        """Wait for firmware warning screen and trigger recovery boot."""
         time.sleep(self.faft_config.firmware_screen)
 
         # Pressing Enter for too long triggers a second key press.
@@ -716,7 +712,7 @@ class FirmwareTest(FAFTBase):
 
         # For Alex/ZGB, there is a dev warning screen in text mode.
         # Skip it by pressing Ctrl-D.
-        if need_dev_transition:
+        if self.faft_config.need_dev_transition:
             time.sleep(self.faft_config.legacy_text_screen)
             self.servo.ctrl_d()
 
