@@ -41,12 +41,14 @@ class ModeSwitcher(object):
             self.reboot_to_mode(self._backup_mode)
 
 
-    def reboot_to_mode(self, to_mode, from_mode=None, wait_for_dut_up=True):
+    def reboot_to_mode(self, to_mode, from_mode=None, sync_before_boot=True,
+                       wait_for_dut_up=True):
         """Reboot and execute the mode switching sequence.
 
         @param to_mode: The target mode, one of 'normal', 'dev', or 'rec'.
         @param from_mode: The original mode, optional, one of 'normal, 'dev',
                           or 'rec'.
+        @param sync_before_boot: True to sync to disk before booting.
         @param wait_for_dut_up: True to wait DUT online again. False to do the
                                 reboot and mode switching sequence only and may
                                 need more operations to pass the firmware
@@ -54,6 +56,8 @@ class ModeSwitcher(object):
         """
         logging.info('-[ModeSwitcher]-[ start reboot_to_mode(%r, %r, %r) ]-',
                      to_mode, from_mode, wait_for_dut_up)
+        if sync_before_boot:
+            self.faft_framework.blocking_sync()
         if to_mode == 'rec':
             self._enable_rec_mode_and_reboot(usb_state='dut')
             if wait_for_dut_up:
@@ -151,7 +155,6 @@ class ModeSwitcher(object):
 
         @param usb_state: A string, one of 'dut', 'host', or 'off'.
         """
-        self.faft_framework.blocking_sync()
         psc = self.servo.get_power_state_controller()
         psc.power_off()
         if usb_state:
