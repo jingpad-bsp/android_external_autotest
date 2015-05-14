@@ -7,6 +7,7 @@
 __author__ = 'cmasone@chromium.org (Chris Masone)'
 
 import common
+import ConfigParser
 import datetime
 import logging
 import os
@@ -251,14 +252,22 @@ def update_config_handler(config_values):
 
     @param config_values: See get_moblab_settings().
     """
+    original_config = global_config.global_config_class()
+    original_config.set_config_files(shadow_file='')
+    new_shadow = ConfigParser.RawConfigParser()
     for section, config_value_list in config_values.iteritems():
         for key, value in config_value_list:
-            _CONFIG.override_config_value(section, key, value)
+            if original_config.get_config_value(section, key,
+                                                default='',
+                                                allow_blank=True) != value:
+                if not new_shadow.has_section(section):
+                    new_shadow.add_section(section)
+                new_shadow.set(section, key, value)
     if not _CONFIG.shadow_file or not os.path.exists(_CONFIG.shadow_file):
         raise error.RPCException('Shadow config file does not exist.')
 
     with open(_CONFIG.shadow_file, 'w') as config_file:
-        _CONFIG.config.write(config_file)
+        new_shadow.write(config_file)
     # TODO (sbasi) crbug.com/403916 - Remove the reboot command and
     # instead restart the services that rely on the config values.
     os.system('sudo reboot')

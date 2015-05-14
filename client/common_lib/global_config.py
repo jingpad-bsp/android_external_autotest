@@ -70,7 +70,7 @@ else:
     DEFAULT_SHADOW_FILE = None
     RUNNING_STAND_ALONE_CLIENT = True
 
-class global_config(object):
+class global_config_class(object):
     """Object to access config values."""
     _NO_DEFAULT_SPECIFIED = object()
 
@@ -310,4 +310,4 @@ class global_config(object):
 
 # insure the class is a singleton.  Now the symbol global_config
 # will point to the one and only one instace of the class
-global_config = global_config()
+global_config = global_config_class()

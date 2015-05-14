@@ -8,13 +8,10 @@
 
 
 import __builtin__
-import ConfigParser
 import datetime
 import mox
 import StringIO
 import unittest
-
-from django.core import exceptions as django_exceptions
 
 import common
 
@@ -23,6 +20,7 @@ from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, model_logic, rpc_utils
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import rpc_interface, site_rpc_interface
@@ -359,39 +357,62 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         site_rpc_interface.get_config_values()
 
 
+    def _mockReadFile(self, path, lines=[]):
+        """Mock out reading a file line by line.
+
+        @param path: Path of the file we are mock reading.
+        @param lines: lines of the mock file that will be returned when
+                      readLine() is called.
+        """
+        mockFile = self.mox.CreateMockAnything()
+        for line in lines:
+            mockFile.readline().AndReturn(line)
+        mockFile.readline()
+        mockFile.close()
+        open(path).AndReturn(mockFile)
+
+
     def testUpdateConfig(self):
         """Ensure that updating the config works as expected."""
         self.setIsMoblab(True)
-        # Reset the config.
-        site_rpc_interface._CONFIG = global_config.global_config
-        site_rpc_interface._CONFIG.shadow_file = 'fake_shadow'
-        site_rpc_interface._CONFIG.config = ConfigParser.ConfigParser()
-        site_rpc_interface._CONFIG.config.add_section('section1')
-        site_rpc_interface._CONFIG.config.add_section('section2')
+        site_rpc_interface.os = self.mox.CreateMockAnything()
+
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        self._mockReadFile(global_config.DEFAULT_CONFIG_FILE)
+
+        self.mox.StubOutWithMock(lsbrelease_utils, 'is_moblab')
+        lsbrelease_utils.is_moblab().AndReturn(True)
+
+        self._mockReadFile(global_config.DEFAULT_MOBLAB_FILE,
+                           ['[section1]', 'item1: value1'])
+
         site_rpc_interface.os = self.mox.CreateMockAnything()
         site_rpc_interface.os.path = self.mox.CreateMockAnything()
         site_rpc_interface.os.path.exists(
                 site_rpc_interface._CONFIG.shadow_file).AndReturn(
                 True)
-
-        self.mox.StubOutWithMock(__builtin__, 'open')
-        mockFile = self.mox.CreateMockAnything()
-        file_contents = StringIO.StringIO()
-        mockFile.__enter__().AndReturn(file_contents)
-        mockFile.__exit__(mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
-        open(site_rpc_interface._CONFIG.shadow_file, 'w').AndReturn(mockFile)
-
+        mockShadowFile = self.mox.CreateMockAnything()
+        mockShadowFileContents = StringIO.StringIO()
+        mockShadowFile.__enter__().AndReturn(mockShadowFileContents)
+        mockShadowFile.__exit__(mox.IgnoreArg(), mox.IgnoreArg(),
+                                mox.IgnoreArg())
+        open(site_rpc_interface._CONFIG.shadow_file,
+             'w').AndReturn(mockShadowFile)
         site_rpc_interface.os.system('sudo reboot')
+
         self.mox.ReplayAll()
         site_rpc_interface.update_config_handler(
                 {'section1' : [('item1', 'value1'),
                                ('item2', 'value2')],
                  'section2' : [('item3', 'value3'),
                                ('item4', 'value4')]})
+
+        # item1 should not be in the new shadow config as its updated value
+        # matches the original config's value.
         self.assertEquals(
-                file_contents.getvalue(),
-                '[section1]\nitem1 = value1\nitem2 = value2\n\n'
-                '[section2]\nitem3 = value3\nitem4 = value4\n\n')
+                mockShadowFileContents.getvalue(),
+                '[section2]\nitem3 = value3\nitem4 = value4\n\n'
+                '[section1]\nitem2 = value2\n\n')
 
 
     def testResetConfig(self):
