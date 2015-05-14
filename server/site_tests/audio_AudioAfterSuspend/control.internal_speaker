@@ -25,9 +25,10 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("audio_AudioAfterReboot", host=host,
-                 golden_data=(audio_test_data.FREQUENCY_TEST_FILE, 1000),
+    job.run_test("audio_AudioAfterSuspend", host=host,
+                 golden_data=(audio_test_data.SIMPLE_FREQUENCY_TEST_FILE, 1000),
                  recorder=chameleon_audio_ids.ChameleonIds.MIC,
-                 source=chameleon_audio_ids.CrosIds.SPEAKER)
+                 source=chameleon_audio_ids.CrosIds.SPEAKER,
+                 is_internal=True)
 
 parallel_simple(run, machines)

@@ -25,7 +25,7 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("audio_AudioAfterReboot", host=host,
+    job.run_test("audio_AudioAfterSuspend", host=host,
                  golden_data=(audio_test_data.SIMPLE_FREQUENCY_TEST_FILE, 2000),
                  bind_from=chameleon_audio_ids.ChameleonIds.LINEOUT,
                  bind_to=chameleon_audio_ids.CrosIds.EXTERNAL_MIC)
