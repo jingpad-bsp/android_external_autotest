@@ -11,6 +11,7 @@ from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import backchannel
+# pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path  # Needed for flimflam
 from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import power_rapl, power_status, power_utils
@@ -36,7 +37,6 @@ class power_Consumption(test.test):
         # cleanup() masking a real error that caused the test to fail during
         # initialize() before those variables were assigned.
         self._backlight = None
-        self._chrome = None
 
         self._services = service_stopper.ServiceStopper(
             service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
@@ -70,13 +70,6 @@ class power_Consumption(test.test):
 
         self._test_server.run()
 
-        # Log in.
-        self._chrome = chrome.Chrome()
-        # Wait for login to finish and any extra windows to appear.
-        time.sleep(10)
-        graphics_utils.screen_disable_energy_saving()
-        # Most of the tests will be running in this tab.
-        self._tab = self._chrome.browser.tabs[0]
         logging.info('initialize() finished')
 
 
@@ -191,7 +184,7 @@ class power_Consumption(test.test):
         tab_title = bg_tab.EvaluateJavaScript('document.title')
         logging.info('App name: %s Tab title: %s.', name, tab_title)
         # Open a new empty tab to cover the one with test payload.
-        fg_tab = self._chrome.browser.tabs.New()
+        fg_tab = self._browser.tabs.New()
         fg_tab.Activate()
         self._run_sleep(name, duration)
         fg_tab.Close()
@@ -311,7 +304,10 @@ class power_Consumption(test.test):
         # The video files are run from a file:// url. In order to work properly
         # from an http:// url, some careful web server configuration is needed
         def full_url(filename):
-            """Create a file:// url for the media file and verify it exists."""
+            """Create a file:// url for the media file and verify it exists.
+
+            @param filename: string
+            """
             p = os.path.join(self._media_dir, filename)
             if not os.path.isfile(p):
                 raise error.TestError('Media file %s is missing.', p)
@@ -339,7 +335,7 @@ class power_Consumption(test.test):
             logging.info('Playing video in background tab %s', url)
             self._tab.Navigate(full_url(url))
             self._tab.ExecuteJavaScript(js_loop_enable)
-            fg_tab = self._chrome.browser.tabs.New()
+            fg_tab = self._browser.tabs.New()
             self._run_sleep(name, self._duration_secs)
             fg_tab.Close()
             self._tab.Activate()
@@ -469,21 +465,27 @@ class power_Consumption(test.test):
         self._plog = power_status.PowerLogger(measurements)
         self._plog.start()
 
-        # Verify that we have a functioning browser and local web server.
-        self._tab.Activate()
-        self._web_echo("Sanity_test")
-        if self._tab.EvaluateJavaScript('document.title') != 'Test page':
-            raise error.TestError('Could not load local test page')
+        # Log in.
+        with chrome.Chrome() as cr:
+            self._browser = cr.browser
+            graphics_utils.screen_disable_energy_saving()
+            # Most of the tests will be running in this tab.
+            self._tab = cr.browser.tabs[0]
 
-        # Video test must have the data from download test
-        if ('video' in test_groups):
-            iv = test_groups.index('video')
-            if 'download' not in test_groups[:iv]:
-                msg = '"download" test must run before "video".'
-                raise error.TestError(msg)
+            # Verify that we have a functioning browser and local web server.
+            self._tab.Activate()
+            self._web_echo("Sanity_test")
+            self._tab.WaitForDocumentReadyStateToBeComplete()
 
-        # Run all the test groups
-        self._run_test_groups(test_groups)
+            # Video test must have the data from download test
+            if ('video' in test_groups):
+                iv = test_groups.index('video')
+                if 'download' not in test_groups[:iv]:
+                    msg = '"download" test must run before "video".'
+                    raise error.TestError(msg)
+
+            # Run all the test groups
+            self._run_test_groups(test_groups)
 
         # Wrap up
         keyvals = self._plog.calc()
@@ -522,8 +524,6 @@ class power_Consumption(test.test):
         except AttributeError:
             logging.debug('test_server could not be stopped in cleanup')
 
-        if self._chrome:
-            self._chrome.__exit__()
         if self._backlight:
             self._backlight.restore()
         if self._services:
