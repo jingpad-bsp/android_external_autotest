@@ -10,18 +10,18 @@ TEST_CLASS = "KERNEL"
 TEST_TYPE = "CLIENT"
 DOC = """
 Convenience control file for running one kernel test.
-Pass the -a arg to run_remote_tests as follows:
+Pass the --args to test_that as follows:
 
-./run_remote_tests.sh --remote=w.x.y.z --use_emerged \
-     -a "test_names=cros_unittest_sample,cros_sample_getcwd02" \
-     client/site_tests/kernel_LTP/control.select_tests
+test_that ${MACHINE_IP} 
+     -args "test_names=cros_unittest_sample,cros_sample_getcwd02" \
+     'f:.*control.select_tests'
 """
 
 kwargs = utils.args_to_dict(args)
 test_names = kwargs.get('test_names', None)
 if not test_names:
     raise error.TestFail('You are required to supply '
-                         '-a "test_names=xxxx" when calling '
-                         'run_remote_tests.sh with control.select_tests')
+                         '--args "test_names=xxxx" when calling '
+                         'test_that with control.select_tests')
 
 job.run_test('kernel_LTP', select_tests=test_names)
