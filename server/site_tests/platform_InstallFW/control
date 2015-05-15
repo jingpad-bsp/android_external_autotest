@@ -14,19 +14,19 @@ This test install the BIOS/EC on a specified device.
 This is useful for testing firmware.
 Here is the command to install a given firmware, which is either a raw binary
 or a shellball:
-  run_remote_tests --args='fw_path=<PATH_TO_FW_FILE>
-                           fw_name=<NAME_OF_THE_FILE>'
-                           fw_type=<TYPE_OF_FW>
-                   --remote=<IP addres>
-                   --board=<board name>
-                   platform_InstallFW
+  test_that --args='fw_path=<PATH_TO_FW_FILE>
+                    fw_name=<NAME_OF_THE_FILE>'
+                    fw_type=<TYPE_OF_FW>
+            --board=<board name>
+            <IP addres>
+            platform_InstallFW
 or install the local shellball (/usr/sbin/chromeos-firmwareupdate) in the
 current client image:
-  run_remote_tests --args='fw_path=local'
-                   --fw_type=<bios/ec>
-                   --remote=<IP addres>
-                   --board=<board name>
-                   platform_InstallFW
+  test_that --args='fw_path=local
+                    fw_type=<bios/ec>'
+            --board=<board name>
+            <IP addres>
+            platform_InstallFW
 """
 
 import os

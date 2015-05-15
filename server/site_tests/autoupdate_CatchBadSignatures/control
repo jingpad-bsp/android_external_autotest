@@ -42,10 +42,8 @@ and then start devserver.py outside the chroot:
 
 With this in place, you can now run the test:
 
-  $ ./run_remote_tests.sh --fast                         \
-                          --board=${BOARD}               \
-                          --remote=<DUT_IP>              \
-                          autoupdate_CatchBadSignatures
+  $ test_that --fast -b ${BOARD} <DUT_IP>    \
+                autoupdate_CatchBadSignatures
 
 """
 

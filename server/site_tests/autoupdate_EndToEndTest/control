@@ -33,12 +33,7 @@ below) or instantiated inline as local varibles.
 
 To invoke this test locally with an attached servo board:
 
-  run_remote_tests.sh \
-          --args="<ARGLIST>" \
-          --remote=<DUT-IPADDR \
-          --ssh_connect_timeout 2 \       # Make the test run faster
-          --ssh_connection_attempts 2 \   # when not using test
-          autoupdate_EndToEndTest
+  test_that --args="<ARGLIST>" <DUT-IPADDR> autoupdate_EndToEndTest
 
 where ARGLIST is a whitespace separated list of the following key=value pairs.
 Values pertaining to the test case include:
@@ -146,7 +141,7 @@ if use_servo:
     servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 # Create test configuration based on command-line arguments (higher precedence,
-# for run_remote_tests.sh invocation) and local variables (lower precedence,
+# for test_that invocation) and local variables (lower precedence,
 # for Autotest front-end invocation).
 test_conf = {}
 for key in TEST_CONF_KEYS:

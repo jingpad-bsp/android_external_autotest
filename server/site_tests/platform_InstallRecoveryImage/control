@@ -16,10 +16,10 @@ This test installs a specified recovery image onto a servo-connected DUT.
 This is useful for testing the recovery process and imaging servo-connected
 Devices under Test (DUTs).
 Here is the command to install a recovery image;
-run_remote_tests --args='image=<recovery_image_path_on_host>'
-                 --remote=<IP addres>
-                 --board=<board name>
-                 platform_InstallRecoveryImage
+test_that --args='image=<recovery_image_path_on_host>'
+          --board=<board name>
+          <IP addres>
+          platform_InstallRecoveryImage
 """
 
 args_dict = utils.args_to_dict(args)

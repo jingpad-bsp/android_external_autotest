@@ -27,7 +27,7 @@ class firmware_UpdateECBin(FirmwareTest):
     version string has the "_shift" suffix.
 
     The new EC image should be specified by the new_ec argument, like:
-      run_remote_tests.sh --args "new_ec=ec_autest_image.bin" ...
+      test_that --args "new_ec=ec_autest_image.bin" ...
 
     The test covers RONORMAL->TWOSTOP, TWOSTOP->TWOSTOP, and
     TWOSTOP->RONORMAL updates.
@@ -40,7 +40,7 @@ class firmware_UpdateECBin(FirmwareTest):
         if 'new_ec' not in dict_args or not os.path.isfile(dict_args['new_ec']):
             raise error.TestError(
                     'Should specify a valid new_ec image for update, like: '
-                    'run_remote_tests.sh --args "new_ec=/path/to/'
+                    'test_that --args "new_ec=/path/to/'
                     'ec_autest_image.bin". The ec_autest_image.bin file is '
                     'included in the firmware_from_source.tar.bz2.')
         self.arg_new_ec = dict_args['new_ec']

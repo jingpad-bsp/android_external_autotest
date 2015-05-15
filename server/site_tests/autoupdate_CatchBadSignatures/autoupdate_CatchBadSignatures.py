@@ -91,9 +91,8 @@ class autoupdate_CatchBadSignatures(test.test):
     8. Now run the test and ensure that it passes
 
       $ cd ~/trunk/src/scripts
-      $ ./run_remote_tests.sh --board=${BOARD} --fast       \
-                              --remote=<DUT_IP>             \
-                              autoupdate_CatchBadSignatures
+      $ test_that -b ${BOARD} --fast <DUT_IP> autoupdate_CatchBadSignatures
+
     """
     version = 1
 
