@@ -90,7 +90,7 @@ class graphics_GpuReset(test.test):
     if not results:
       f.close()
       raise error.TestFail('No output from test. Check /tmp/' +
-                           'run_remote_tests.../graphics_GpuReset/summary.txt' +
+                           'test_that_latest/graphics_GpuReset/summary.txt' +
                            ' for details.')
     # Analyze summary and count number of passes.
     pass_count = 0

@@ -180,7 +180,7 @@ class graphics_GLBench(test.test):
     if not results:
       f.close()
       raise error.TestFail('No output from test. Check /tmp/' +
-                           'run_remote_tests.../graphics_GLBench/summary.txt' +
+                           'test_that_latest/graphics_GLBench/summary.txt' +
                            ' for details.')
 
     # The good images, the silenced and the zombie/recurring failures.
@@ -275,7 +275,7 @@ class graphics_GLBench(test.test):
                    'and if so copy them to the reference directory.')
       raise error.TestFail('Some images are not matching their '
                            'references. Check /tmp/'
-                           'run_remote_tests.../graphics_GLBench/summary.txt'
+                           'test_that_latest/graphics_GLBench/summary.txt'
                            ' for details.')
 
     if not test_ended_normal:
