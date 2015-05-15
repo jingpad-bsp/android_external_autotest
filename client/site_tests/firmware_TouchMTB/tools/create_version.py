@@ -49,7 +49,7 @@ def _run_git_cmd(cmd):
     """Run git command.
 
     When a server test is invoked, the present working directory may look
-    like "/tmp/run_remote_tests.xxxx/..."  To be able to run git commands
+    like "/tmp/test_that.xxxx/..."  To be able to run git commands
     against the autotest repo, it is required to pushd to autotest project
     temporarily.
     """

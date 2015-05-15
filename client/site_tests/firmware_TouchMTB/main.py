@@ -161,9 +161,9 @@ class firmware_TouchMTB:
                        'Perform the following steps in chroot to install '
                        'the test suite correctly:\n'
                        'Step 1: (cr) $ cd ~/trunk/src/scripts\n'
-                       'Step 2: (cr) $ ./run_remote_tests.sh --autotest_dir '
+                       'Step 2: (cr) $ test_that --autotest_dir '
                        '~/trunk/src/third_party/autotest/files '
-                       '--remote=$MACHINE_IP firmware_TouchMTBSetup\n')
+                       '$MACHINE_IP firmware_TouchMTBSetup\n')
             print err_msg % conf.version_filename
             sys.exit(1)
 
