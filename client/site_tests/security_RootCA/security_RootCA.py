@@ -140,9 +140,11 @@ class security_RootCA(test.test):
 
 
     def run_once(self, opts=None):
-        """Entry point for command line (run_remote_test) use. Accepts 2
-           optional args, e.g. run_remote_test --args="relaxed baseline=foo".
-           Parses the args array and invokes the main test method.
+        """Test entry point.
+        
+            Accepts 2 optional args, e.g. test_that --args="relaxed
+            baseline=foo".  Parses the args array and invokes the main test
+            method.
 
            @param opts: string containing command line arguments.
         """

@@ -711,7 +711,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 will be used instead.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
-        @param local_devserver: Used by run_remote_test to allow people to
+        @param local_devserver: Used by test_that to allow people to
                 use their local devserver. Default: False
         @param repair: Forces update to repair image. Implies force_update.
         @param force_full_update: If True, do not attempt to run stateful
