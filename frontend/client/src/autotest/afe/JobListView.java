@@ -43,7 +43,7 @@ public class JobListView extends TabView implements TableActionsListener {
                                                          "finished"};
     private static final String[] typeHistoryTokens = {"suite", "sub", "standalone",
                                                        "all"};
-    private static final String[] typeRadioButtonLabels = {"Suite Jobs", "Sub Jobs",
+    private static final String[] typeRadioButtonLabels = {"Parent Jobs", "Child Jobs",
                                                             "Standalone Jobs",
                                                             "All Jobs"};
     private static final String[] typeFilterStrings = {"suite", "sub", "standalone"};
