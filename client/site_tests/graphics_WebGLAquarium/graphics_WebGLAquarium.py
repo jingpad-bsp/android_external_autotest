@@ -13,6 +13,20 @@ import sampler
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros import power_status, power_utils
+from autotest_lib.client.cros import service_stopper
+
+
+# Minimum battery charge percentage to run the test
+BATTERY_INITIAL_CHARGED_MIN = 10
+
+# Measurement duration in seconds.
+MEASUREMENT_DURATION = 30
+
+POWER_DESCRIPTION = 'avg_energy_rate_1000_fishes'
+
+# Time to exclude from calculation after playing a webgl demo [seconds].
+STABILIZATION_DURATION = 10
 
 
 class graphics_WebGLAquarium(test.test):
@@ -26,6 +40,9 @@ class graphics_WebGLAquarium(test.test):
         utils.extract_tarball_to_dir(tarball_path, self.srcdir)
 
     def initialize(self):
+        self._test_power = False
+        self._backlight = None
+        self._service_stopper = None
         self.GSC = graphics_utils.GraphicsStateChecker()
         self.test_settings = {
                 50: ('setSetting2', 2),
@@ -50,20 +67,25 @@ class graphics_WebGLAquarium(test.test):
             self.kernel_sampler = None
 
     def cleanup(self):
+        if self._backlight:
+            self._backlight.restore()
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
-            for key, val in keyvals.iteritems():
-                self.output_perf_value(description=key, value=val,
-                                       units='bytes', higher_is_better=False)
+            if not self._test_power:
+                for key, val in keyvals.iteritems():
+                    self.output_perf_value(description=key, value=val,
+                                           units='bytes',
+                                           higher_is_better=False)
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
-    def run_fish_test(self, browser, test_url, num_fishes):
+    def run_fish_test(self, browser, test_url, num_fishes, perf_log=True):
         """Run the test with the given number of fishes.
 
         @param browser: The Browser object to run the test with.
         @param test_url: The URL to the aquarium test site.
         @param num_fishes: The number of fishes to run the test with.
+        @param perf_log: Report perf data only if it's set to True.
         """
         # Create tab and load page. Set the number of fishes when page is fully
         # loaded.
@@ -93,23 +115,64 @@ class graphics_WebGLAquarium(test.test):
                     'flip_stats_%d' % num_fishes)
             self.flip_stats = {}
 
-        # Get average FPS and rendering time, then close the tab.
-        avg_fps = tab.EvaluateJavaScript('g_crosFpsCounter.getAvgFps();')
-        avg_render_time = tab.EvaluateJavaScript(
-                'g_crosFpsCounter.getAvgRenderTime();')
-        self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
-        self.perf_keyval['avg_render_time_%04d_fishes' % num_fishes] = (
-                avg_render_time)
-        self.output_perf_value(description='avg_fps_%04d_fishes' % num_fishes,
-                               value=avg_fps, units='fps',
-                               higher_is_better=True)
-        logging.info('%d fish(es): Average FPS = %f, average render time = %f',
-                     num_fishes, avg_fps, avg_render_time)
+        if perf_log:
+            # Get average FPS and rendering time, then close the tab.
+            avg_fps = tab.EvaluateJavaScript('g_crosFpsCounter.getAvgFps();')
+            avg_render_time = tab.EvaluateJavaScript(
+                    'g_crosFpsCounter.getAvgRenderTime();')
+            self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
+            self.perf_keyval['avg_render_time_%04d_fishes' % num_fishes] = (
+                    avg_render_time)
+            self.output_perf_value(description='avg_fps_%04d_fishes' %
+                                   num_fishes, value=avg_fps, units='fps',
+                                   higher_is_better=True)
+            logging.info('%d fish(es): Average FPS = %f, '
+                         'average render time = %f',
+                         num_fishes, avg_fps, avg_render_time)
 
-        # Do not close the tab when the sampler_callback is doing his work.
-        with self.sampler_lock:
-            tab.Close()
-            self.active_tab = None
+    def run_power_test(self, browser, test_url):
+        """
+        Runs the webgl power consumption test and reports the perf results.
+
+        @param browser: The Browser object to run the test with.
+        @param test_url: The URL to the aquarium test site.
+        """
+
+        self._backlight = power_utils.Backlight()
+        self._backlight.set_default()
+
+        self._service_stopper = service_stopper.ServiceStopper(
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+        self._service_stopper.stop_services()
+
+        self._power_status = power_status.get_status()
+        # Verify that we are running on battery and the battery is sufficiently
+        # charged.
+        self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
+
+        measurements = [power_status.SystemPower(
+                self._power_status.battery_path)]
+
+        def get_power():
+            power_logger = power_status.PowerLogger(measurements)
+            power_logger.start()
+            time.sleep(STABILIZATION_DURATION)
+            start_time = time.time()
+            time.sleep(MEASUREMENT_DURATION)
+            power_logger.checkpoint('result', start_time)
+            keyval = power_logger.calc()
+            logging.info('Power output %s', keyval)
+            return keyval['result_' + measurements[0].domain + '_pwr']
+
+        self.run_fish_test(browser, test_url, 1000, perf_log=False)
+        energy_rate = get_power()
+        # This is a power specific test so we are not capturing
+        # avg_fps and avg_render_time in this test.
+        self.perf_keyval[POWER_DESCRIPTION] = energy_rate
+        self.output_perf_value(description=POWER_DESCRIPTION,
+                               value=energy_rate, units='W',
+                               higher_is_better=False)
+
 
     def exynos_sampler_callback(self, sampler_obj):
         """Sampler callback function for ExynosSampler.
@@ -170,7 +233,7 @@ class graphics_WebGLAquarium(test.test):
                                                stats['flipped'][1]))
 
     def run_once(self, test_duration_secs=30,
-                 test_setting_num_fishes=(50, 1000)):
+                 test_setting_num_fishes=(50, 1000), power_test=False):
         """Find a brower with telemetry, and run the test.
 
         @param test_duration_secs: The duration in seconds to run each scenario
@@ -185,7 +248,20 @@ class graphics_WebGLAquarium(test.test):
             cr.browser.SetHTTPServerDirectories(self.srcdir)
             test_url = cr.browser.http_server.UrlOf(
                 os.path.join(self.srcdir, 'aquarium.html'))
-            for n in self.test_setting_num_fishes:
-                self.run_fish_test(cr.browser, test_url, n)
-
+            if not utils.wait_for_cool_machine():
+                raise error.TestFail('Could not get cold machine.')
+            if power_test:
+                self._test_power = True
+                self.run_power_test(cr.browser, test_url)
+                with self.sampler_lock:
+                    self.active_tab.Close()
+                    self.active_tab = None
+            else:
+                for n in self.test_setting_num_fishes:
+                    self.run_fish_test(cr.browser, test_url, n)
+                    # Do not close the tab when the sampler_callback is doing
+                    # his work.
+                    with self.sampler_lock:
+                        self.active_tab.Close()
+                        self.active_tab = None
         self.write_perf_keyval(self.perf_keyval)
