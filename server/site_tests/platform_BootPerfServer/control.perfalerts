@@ -21,7 +21,7 @@ Ideally these are run for each build in order to make blame easier.
 
 To invoke this from the command line use syntax from the following examples:
   --To modify the iteration count:
-    run_remote_tests.sh -a 'iterations=10' control.perfalerts
+    test_that -b ${BOARD} --iterations=10 'f:.*control.perfalerts'
 """
 
 from autotest_lib.client.common_lib import utils
