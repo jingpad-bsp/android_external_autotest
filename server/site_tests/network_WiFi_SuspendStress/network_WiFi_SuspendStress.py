@@ -13,6 +13,7 @@ from autotest_lib.server.cros.network import wifi_cell_test_base
 
 _DELAY = 10
 _CLIENT_TERMINATION_FILE_PATH = '/tmp/simple_login_exit'
+_START_TIMEOUT_SECONDS = 20
 
 
 class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
@@ -96,7 +97,9 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
             autotest_client = autotest.Autotest(self._host)
             stressor = stress.CountedStressor(self.stress_wifi_suspend,
                                               on_exit=self.exit_client)
-            stressor.start(suspends, start_condition=self.logged_in)
+            stressor.start(suspends,
+                           start_condition=self.logged_in,
+                           start_timeout_secs=_START_TIMEOUT_SECONDS)
             autotest_client.run_test('desktopui_SimpleLogin')
             stressor.wait()
 
