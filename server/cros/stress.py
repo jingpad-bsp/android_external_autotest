@@ -6,6 +6,7 @@ import logging
 import sys
 import threading
 import time
+from autotest_lib.client.common_lib import error
 
 
 class BaseStressor(threading.Thread):
@@ -31,7 +32,7 @@ class BaseStressor(threading.Thread):
         self._exc_info = None
 
 
-    def start(self, start_condition=None):
+    def start(self, start_condition=None, start_timeout_secs=None):
         """
         Creates a new thread which will call the run() method.
 
@@ -40,30 +41,52 @@ class BaseStressor(threading.Thread):
 
         @param start_condition: the new thread will wait until this optional
             callable returns True before running the stressor.
+        @param start_timeout_secs: how long to wait for |start_condition| to
+            become True, or None to wait forever.
         """
         self._start_condition = start_condition
+        self._start_timeout_secs = start_timeout_secs
         super(BaseStressor, self).start()
 
 
     def run(self):
         """
-        Introduce a delay then start the stressor loop.
+        Wait for |_start_condition|, and then start the stressor loop.
 
         Overloaded from threading.Thread. This is run in a separate thread when
         start() is called.
         """
-        if self._start_condition:
-            while not self._start_condition():
-                time.sleep(1)
         try:
+            self._wait_for_start_condition()
             self._loop_stressor()
         except Exception as e:
             if self._escalate_exceptions:
                 self._exc_info = sys.exc_info()
-            raise
+            raise  # Terminates this thread. Caller continues to run.
         finally:
             if self.on_exit:
               self.on_exit()
+
+
+    def _wait_for_start_condition(self):
+        """
+        Loop until _start_condition() returns True, or _start_timeout_secs
+        have elapsed.
+
+        @raise error.TestFail if we time out waiting for the start condition
+        """
+        if self._start_condition is None:
+            return
+
+        elapsed_secs = 0
+        while not self._start_condition():
+            if (self._start_timeout_secs and
+                    elapsed_secs >= self._start_timeout_secs):
+                raise error.TestFail('start condition did not become true '
+                                     'within %d seconds' %
+                                     self._start_timeout_secs)
+            time.sleep(1)
+            elapsed_secs += 1
 
 
     def _loop_stressor(self):
@@ -100,7 +123,7 @@ class ControlledStressor(BaseStressor):
         @param stressor: callable which performs a single stress event.
         @param on_exit: callable which will be called when the thread finishes.
         @param escalate_exceptions: whether to escalate exceptions to the parent
-            thread; defaults to True.
+            thread when stop() is called; defaults to True.
         """
         self._complete = threading.Event()
         super(ControlledStressor, self).__init__(stressor, on_exit,
@@ -112,20 +135,23 @@ class ControlledStressor(BaseStressor):
         iteration_num = 0
         while not self._complete.is_set():
             iteration_num += 1
-            logging.info('Stressor iteration: %d' % iteration_num)
+            logging.info('Stressor iteration: %d', iteration_num)
             self.stressor()
 
 
-    def start(self, start_condition=None):
+    def start(self, start_condition=None, start_timeout_secs=None):
         """Start applying the stressor.
 
         Overloaded from parent.
 
         @param start_condition: the new thread will wait to until this optional
             callable returns True before running the stressor.
+        @param start_timeout_secs: how long to wait for |start_condition| to
+            become True, or None to wait forever.
         """
         self._complete.clear()
-        super(ControlledStressor, self).start(start_condition)
+        super(ControlledStressor, self).start(start_condition,
+                                              start_timeout_secs)
 
 
     def stop(self, timeout=45):
@@ -145,17 +171,19 @@ class CountedStressor(BaseStressor):
     Run a stressor in a loop on a separate thread a given number of times.
 
     Creates a new thread and calls |stressor| in a loop |iterations| times. The
-    calling thread can use wait() to block until the loop completes.
+    calling thread can use wait() to block until the loop completes. If the
+    stressor thread terminates with an exception, wait() will propagate that
+    exception to the thread that called wait().
     """
     def _loop_stressor(self):
         """Overloaded from parent."""
         for iteration_num in xrange(1, self._iterations + 1):
-            logging.info('Stressor iteration: %d of %d' % (iteration_num,
-                                                           self._iterations))
+            logging.info('Stressor iteration: %d of %d',
+                         iteration_num, self._iterations)
             self.stressor()
 
 
-    def start(self, iterations, start_condition=None):
+    def start(self, iterations, start_condition=None, start_timeout_secs=None):
         """
         Apply the stressor a given number of times.
 
@@ -164,9 +192,11 @@ class CountedStressor(BaseStressor):
         @param iterations: number of times to apply the stressor.
         @param start_condition: the new thread will wait to until this optional
             callable returns True before running the stressor.
+        @param start_timeout_secs: how long to wait for |start_condition| to
+            become True, or None to wait forever.
         """
         self._iterations = iterations
-        super(CountedStressor, self).start(start_condition)
+        super(CountedStressor, self).start(start_condition, start_timeout_secs)
 
 
     def wait(self, timeout=None):
