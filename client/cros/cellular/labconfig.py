@@ -71,7 +71,7 @@ class Configuration(object):
         if not name:
             raise LabConfigError(
                 'Could not find --cell argument.  ' +
-                'To specify a cell, pass --args=--cell=foo to run_remote_tests')
+                'To specify a cell, pass --args=--cell=foo to test_that')
 
         if name not in labconfig_data.CELLS:
             raise LabConfigError(

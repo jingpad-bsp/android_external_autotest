@@ -1,3 +1,0 @@
-
-
-../../../../../../scripts/run_remote_tests.sh --board=x86-alex --remote=172.22.50.133 '--args=--cell=mtv --technology=HSDPA' cellular_Smoke --use_emerged

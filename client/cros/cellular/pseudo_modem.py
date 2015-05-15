@@ -640,7 +640,7 @@ DBUS interfaces.  This can be used for the following:
   - to test shill on a virtual machine without a physical modem
   - to test that Chrome property displays SMS messages
 
-To use on a test image you use run_remote_tests to run
+To use on a test image you use test_that to run
 network_3GModemControl which will cause pseudo_modem.py to be
 installed in /usr/local/autotests/cros/cellular.  Then stop
 modemmanager and start the pseudo modem with the commands:
