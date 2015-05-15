@@ -33,7 +33,6 @@ class documentscan_AppTestWithFakeLorgnette(
 
     # Description of the fake mouse we add to the system.
     _MOUSE_DESCRIPTION = 'amazon_mouse.prop'
-    _MOUSE_NAME = 'Amazon Test Mouse'
 
     # This input file was created as follows:
     #  - Insert USB mouse (in this case the Amazon mouse)
@@ -142,15 +141,11 @@ class documentscan_AppTestWithFakeLorgnette(
                                       (index, calls[index].method, method_name))
 
 
-    def warmup(self):
-        """Setup an emulated mouse by overriding the supercrlass method."""
-        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
-        super(documentscan_AppTestWithFakeLorgnette, self).warmup(
-                mouse_props=mouse_file, mouse_name=self._MOUSE_NAME)
-
-
     def run_once(self):
         """Entry point of this test."""
+        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
+        self._emulate_mouse(property_file=mouse_file)
+
         self._extension_path = os.path.join(os.path.dirname(__file__),
                                             'document_scan_test_app')
 

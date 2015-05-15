@@ -35,7 +35,7 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         @raises: TestError if it cannot interpret file contents.
 
         """
-        node = self._nodes[input_type]
+        node = self.player.nodes[input_type]
         node_num = re.search('event([0-9]+)', node).group(1)
 
         filename = self._NODE_FILE % node_num

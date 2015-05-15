@@ -76,16 +76,11 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
                                  'slow! (%s).  %d vs. %d.' %
                                   (direction, slow_delta, fast_delta))
 
-    def warmup(self):
-
-        # Initiate super with property file for emulation.
-        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
-        super(touch_MouseScroll, self).warmup(
-                mouse_props=mouse_file, mouse_name=self._MOUSE_NAME)
-
     def run_once(self):
         """Entry point of this test."""
-        # Raise error if no mouse detected.
+        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
+        self._emulate_mouse(property_file=mouse_file)
+
         if not self._has_mouse:
             raise error.TestError('No USB mouse found on this device.')
 
@@ -109,7 +104,3 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
             for direction in ['down', 'up']:
                 self._verify_single_tick(direction)
                 self._verify_fast_vs_slow(direction)
-
-    def cleanup(self):
-        # Call parent cleanup to close mouse emulation
-        super(touch_MouseScroll, self).cleanup()
