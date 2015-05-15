@@ -368,11 +368,7 @@ size=409600 n=100 4.84 4. timer avg= 4.52 stdv= 0.27 0.0885 MiB/s 22.15 IOPs/sec
         parser.add_option('--nop', dest='want_nop_tests',
                           action='store_true', default=False,
                           help='Do nothing.')
-        # Preprocess the args to remove quotes before/after each one if they
-        # exist.  This is necessary because arguments passed via
-        # run_remote_tests.sh may be individually quoted, and those quotes must
-        # be stripped before they are parsed.
-        return parser.parse_args(map(lambda arg: arg.strip('\'\"'), args))
+        return parser.parse_args(args)
 
 
     def run_once(self, args=[]):
