@@ -17,29 +17,36 @@ class bluetooth_IDCheck(bluetooth_semiauto_helper.BluetoothSemiAutoHelper):
     # Boards which do not have Bluetooth or do not ship.
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'lumpy', 'rambi']
 
+    # Boards which only support bluetooth version 3 and below
+    _BLUETOOTH_3_BOARDS = ['x86-mario', 'x86-zgb']
+
     def warmup(self):
         """Overwrite parent warmup; no need to log in."""
         pass
 
     def _check_id(self):
-      """Fail if the Bluetooth ID is not in the correct format."""
-      adapter_info = self._get_adapter_info()
-      modalias = adapter_info['Modalias']
-      logging.info('Saw Bluetooth ID of: %s', modalias)
+        """Fail if the Bluetooth ID is not in the correct format."""
+        adapter_info = self._get_adapter_info()
+        modalias = adapter_info['Modalias']
+        logging.info('Saw Bluetooth ID of: %s', modalias)
 
-      if not re.match('bluetooth:v00E0p24..d0400', modalias):
-          raise error.TestError('%s does not match expected format!' % modalias)
+        if self._device in self._BLUETOOTH_3_BOARDS:
+            bt_format = 'bluetooth:v00E0p24..d0300'
+        else:
+            bt_format = 'bluetooth:v00E0p24..d0400'
 
+        if not re.match(bt_format, modalias):
+            raise error.TestError('%s does not match expected format: %s '
+                                 % (modalias, bt_format))
 
     def run_once(self):
         """Entry point of this test."""
 
         # Abort test for invalid boards.
-        device = utils.get_board()
-        if device in self._INVALID_BOARDS:
-            logging.info('Aborting test; %s does not have Bluetooth.', device)
+        self._device = utils.get_board()
+        if self._device in self._INVALID_BOARDS:
+            logging.info('Aborting test; %s does not have Bluetooth.',
+                         self._device)
             return
 
         self._check_id()
-
-
