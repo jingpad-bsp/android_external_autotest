@@ -229,7 +229,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         a subset that represent standard arguments needed to construct
         a test-assistant object (chameleon or servo) for a host. The
         intent is to provide standard argument processing from
-        run_remote_tests for tests that require a test-assistant board
+        CrosHost for tests that require a test-assistant board
         to operate.
 
         @param args_dict Dictionary from which to extract the arguments.
