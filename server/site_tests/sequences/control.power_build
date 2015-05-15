@@ -63,7 +63,7 @@ def _run_client_test(machine):
     client = hosts.create_host(machine)
     if not client.has_power():
         # Because this is a control file these test errors do not
-        # get printed...logging ensures run_remote_tests users can see it.
+        # get printed...logging ensures test_that users can see it.
         msg = 'This test requires RPM support.'
         logging.info('********************%s', msg)
         raise error.TestError(msg)

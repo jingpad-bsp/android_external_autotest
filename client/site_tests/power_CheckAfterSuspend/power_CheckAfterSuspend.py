@@ -18,8 +18,8 @@ class power_CheckAfterSuspend(test.test):
     This can easily run multiple iterations with the built in Autotest
     iterations parameter to run_test():
 
-      ./run_remote_tests.sh --board=<board> -a "iterations=3" --remote=w.x.y.z \
-                            client/site_tests/power_CheckAfterSuspend/control
+      test_that -b <board> --iterations=3 ${MACHINE_IP} \
+          f:client/site_tests/power_CheckAfterSuspend/control
     """
     version = 1
 
