@@ -466,32 +466,6 @@ def generate_test_list(args):
     return test_list
 
 
-def run_test_local(test, env, remote):
-    """Run an end-to-end update test locally.
-
-    @param test: the test configuration
-    @param env: environment arguments for the test
-    @param remote: remote DUT address
-
-    """
-    cmd = ['run_remote_tests.sh',
-           '--args=%s%s' % (test.get_cmdline_args(), env.get_cmdline_args()),
-           '--remote=%s' % remote,
-           '--use_emerged',
-           test_control.get_test_name()]
-
-    # Only set servo arguments if servo is in the environment.
-    if env.is_var_set('servo_host'):
-        cmd.extend(['--servo', '--allow_offline_remote'])
-
-    logging.debug('executing: %s', ' '.join(cmd))
-    try:
-        subprocess.check_call(cmd)
-    except subprocess.CalledProcessError, e:
-        raise FullReleaseTestError(
-                'command execution failed: %s' % e)
-
-
 def run_test_afe(test, env, control_code, afe, dry_run):
     """Run an end-to-end update test via AFE.
 
@@ -591,8 +565,6 @@ def parse_args(argv):
                       'If not set, localhost is used.')
     parser.add_option('--mp_images', dest='use_mp_images', action='store_true',
                       help='use MP-signed images')
-    parser.add_option('--remote', metavar='ADDR',
-                      help='run test on given DUT via run_remote_tests')
     parser.add_option('-n', '--dry_run', action='store_true',
                       help='do not invoke actual test runs')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
@@ -635,9 +607,6 @@ def parse_args(argv):
         parser.error('invalid log level (%s)' % opts.log_level)
 
     if opts.dump:
-        if opts.remote:
-            parser.error("--remote doesn't make sense with --dump")
-
         opts.dry_run = True
 
     # Process list of specific source releases.
@@ -671,48 +640,39 @@ def main(argv):
         # Construct environment argument, used for all tests.
         env = test_params.TestEnv(args)
 
-        # Local or AFE invocation?
-        if args.remote:
-            # Running autoserv locally.
-            for i, test in enumerate(test_list):
-                logging.info('running test %d/%d:\n%r', i + 1, len(test_list),
-                             test)
-                if not args.dry_run:
-                    run_test_local(test, env, args.remote)
-        else:
-            # Obtain the test control file content.
-            with open(test_control.get_control_file_name()) as f:
-                control_code = f.read()
+        # Obtain the test control file content.
+        with open(test_control.get_control_file_name()) as f:
+            control_code = f.read()
 
-            # Dump control file(s) to be staged later, or schedule upfront?
-            if args.dump:
-                # Populate and dump test-specific control files.
-                for test in test_list:
-                    # Control files for the same board are all in the same
-                    # sub-dir.
-                    directory = os.path.join(args.dump_dir, test.board)
-                    test_control_file = test_control.dump_autotest_control_file(
-                            test, env, control_code, directory)
-                    logging.info('dumped control file for test %s to %s',
-                                 test, test_control_file)
-            else:
-                # Schedule jobs via AFE.
-                afe = frontend.AFE(debug=(args.log_level == _log_debug))
-                for test in test_list:
-                    logging.info('scheduling test %s', test)
-                    try:
-                        job_id = run_test_afe(test, env, control_code,
-                                              afe, args.dry_run)
-                        if job_id:
-                            # Explicitly print as this is what a caller looks
-                            # for.
-                            print get_job_url(afe.server, job_id)
-                    except Exception:
-                        # Note we don't print the exception here as the afe
-                        # will print it out already.
-                        logging.error('Failed to schedule test %s. '
-                                      'Please check exception and re-run this '
-                                      'board manually if needed.', test)
+        # Dump control file(s) to be staged later, or schedule upfront?
+        if args.dump:
+            # Populate and dump test-specific control files.
+            for test in test_list:
+                # Control files for the same board are all in the same
+                # sub-dir.
+                directory = os.path.join(args.dump_dir, test.board)
+                test_control_file = test_control.dump_autotest_control_file(
+                        test, env, control_code, directory)
+                logging.info('dumped control file for test %s to %s',
+                             test, test_control_file)
+        else:
+            # Schedule jobs via AFE.
+            afe = frontend.AFE(debug=(args.log_level == _log_debug))
+            for test in test_list:
+                logging.info('scheduling test %s', test)
+                try:
+                    job_id = run_test_afe(test, env, control_code,
+                                          afe, args.dry_run)
+                    if job_id:
+                        # Explicitly print as this is what a caller looks
+                        # for.
+                        print get_job_url(afe.server, job_id)
+                except Exception:
+                    # Note we don't print the exception here as the afe
+                    # will print it out already.
+                    logging.error('Failed to schedule test %s. '
+                                  'Please check exception and re-run this '
+                                  'board manually if needed.', test)
 
 
     except FullReleaseTestError, e:
