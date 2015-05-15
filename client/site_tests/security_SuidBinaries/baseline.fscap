@@ -1,3 +1,4 @@
+/bin/arping = cap_net_raw+ep
 /bin/ping = cap_net_raw+ep
 /bin/ping6 = cap_net_raw+ep
 /usr/sbin/hostapd = cap_net_admin,cap_net_raw+ei
