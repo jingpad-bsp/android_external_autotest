@@ -6,6 +6,7 @@ import logging
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.cellular import test_environment
 from autotest_lib.client.cros.ui import ui_test_base
 from autotest_lib.client.common_lib import error
 
@@ -61,14 +62,23 @@ class ui_SettingsPage(ui_test_base.ui_TestBase):
             image_util.WritePngFile(screenshot, filepath)
 
     def run_once(self, mask_points):
-        self.mask_points = mask_points
+        # Emulate a modem on the device.
+        test_env = test_environment.CellularPseudoMMTestEnvironment(
+                pseudomm_args=({'family': '3GPP'},),
+                use_backchannel=False,
+                shutdown_other_devices=False)
 
-        # Check if we should find mobile data in settings
-        modem_status = utils.system_output('modem status')
-        if modem_status:
-            logging.info('Modem found')
-            logging.info(modem_status)
-            self.tagged_testname += '.mobile'
-        else:
-            logging.info('Modem not found')
-        self.run_screenshot_comparison_test()
+        with test_env:
+            self.mask_points = mask_points
+
+            # Check if we should find mobile data in settings
+            # This should always return true now, since the modem is software
+            # emulated.
+            modem_status = utils.system_output('modem status')
+            if modem_status:
+                logging.info('Modem found')
+                logging.info(modem_status)
+                self.tagged_testname += '.mobile'
+            else:
+                logging.info('Modem not found')
+            self.run_screenshot_comparison_test()
