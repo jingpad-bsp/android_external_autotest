@@ -223,15 +223,9 @@ class BuffetTester(object):
                 self._bus.get_object(buffet_config.SERVICE_NAME,
                                      buffet_config.MANAGER_OBJECT_PATH),
                 dbus_interface=buffet_config.MANAGER_INTERFACE)
-        registration_params = dbus.Dictionary(signature='sv')
-        registration_params.update({
-                'ticket_id': ticket['id'],
-                'name': TEST_NAME,
-                'description': TEST_DESCRIPTION,
-                'location': TEST_LOCATION,
-        })
+        manager_proxy.UpdateDeviceInfo(dbus.String(TEST_NAME), dbus.String(TEST_DESCRIPTION), dbus.String(TEST_LOCATION))
         device_id = dbus_util.dbus2primitive(
-                manager_proxy.RegisterDevice(registration_params))
+                manager_proxy.RegisterDevice(dbus.String(ticket['id'])))
         # Confirm that registration has populated some fields.
         device_resource = self._device_client.get_device(device_id)
         logging.debug('Got device resource=%r', device_resource)
