@@ -15,6 +15,7 @@ from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server.cros import provision
 from autotest_lib.server import frontend
 from autotest_lib.server import utils as server_utils
@@ -1043,7 +1044,9 @@ def retrieve_shard(shard_hostname):
 
     @returns: Shard object
     """
-    return models.Shard.smart_get(shard_hostname)
+    timer = autotest_stats.Timer('shard_heartbeat.retrieve_shard')
+    with timer:
+        return models.Shard.smart_get(shard_hostname)
 
 
 def find_records_for_shard(shard, known_job_ids, known_host_ids):
@@ -1056,11 +1059,15 @@ def find_records_for_shard(shard, known_job_ids, known_host_ids):
     @returns: Tuple of three lists for hosts, jobs, and suite job keyvals:
               (hosts, jobs, suite_job_keyvals).
     """
-    hosts = models.Host.assign_to_shard(shard, known_host_ids)
-    jobs = models.Job.assign_to_shard(shard, known_job_ids)
-    parent_job_ids = [job.parent_job_id for job in jobs]
-    suite_job_keyvals = models.JobKeyval.objects.filter(
-        job_id__in=parent_job_ids)
+    timer = autotest_stats.Timer('shard_heartbeat')
+    with timer.get_client('find_hosts'):
+        hosts = models.Host.assign_to_shard(shard, known_host_ids)
+    with timer.get_client('find_jobs'):
+        jobs = models.Job.assign_to_shard(shard, known_job_ids)
+    with timer.get_client('find_suite_job_keyvals'):
+        parent_job_ids = [job.parent_job_id for job in jobs]
+        suite_job_keyvals = models.JobKeyval.objects.filter(
+                job_id__in=parent_job_ids)
     return hosts, jobs, suite_job_keyvals
 
 
@@ -1118,11 +1125,14 @@ def persist_records_sent_from_shard(shard, jobs, hqes):
 
     @raises error.UnallowedRecordsSentToMaster if any of the sanity checks fail.
     """
-    job_ids_sent = _persist_records_with_type_sent_from_shard(
-        shard, jobs, models.Job)
+    timer = autotest_stats.Timer('shard_heartbeat')
+    with timer.get_client('persist_jobs'):
+        job_ids_sent = _persist_records_with_type_sent_from_shard(
+                shard, jobs, models.Job)
 
-    _persist_records_with_type_sent_from_shard(
-        shard, hqes, models.HostQueueEntry, job_ids_sent=job_ids_sent)
+    with timer.get_client('persist_hqes'):
+        _persist_records_with_type_sent_from_shard(
+                shard, hqes, models.HostQueueEntry, job_ids_sent=job_ids_sent)
 
 
 def forward_single_host_rpc_to_shard(func):
