@@ -53,6 +53,9 @@ class power_BatteryCharge(test.test):
         else:
             self.charge_capacity = self.charge_full
 
+        if self.charge_capacity == 0:
+            raise error.TestError('Failed to determine charge capacity')
+
         self.initial_charge = self.status.battery[0].charge_now
         percent_initial_charge = self.initial_charge * 100 / \
                                  self.charge_capacity

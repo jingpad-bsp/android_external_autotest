@@ -278,6 +278,9 @@ class BatteryStat(DevStat):
         else:
             voltage_nominal = self.voltage_now
 
+        if voltage_nominal == 0:
+            raise error.TestError('Failed to determine battery voltage')
+
         # Since charge data is present, calculate parameters based upon
         # reported charge data.
         if battery_type == BatteryDataReportType.CHARGE:
