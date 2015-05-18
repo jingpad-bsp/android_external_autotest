@@ -352,38 +352,40 @@ def get_cpu_soc_family():
     """Like get_cpu_arch, but for ARM, returns the SoC family name"""
     family = get_cpu_arch()
     if family == 'arm':
-       family = get_arm_soc_family()
+        family = get_arm_soc_family()
     return family
 
 
 INTEL_UARCH_TABLE = {
-    '06_36': 'Atom',
-    '06_26': 'Atom',
     '06_1C': 'Atom',
+    '06_26': 'Atom',
+    '06_36': 'Atom',
+    '06_4C': 'Braswell',
     '06_3D': 'Broadwell',
-    '06_3F': 'Haswell',
-    '06_3C': 'Haswell',
-    '06_46': 'Haswell',
-    '06_45': 'Haswell',
-    '06_3E': 'IvyBridge',
-    '06_3A': 'IvyBridge',
-    '06_2D': 'SandyBridge',
-    '06_2A': 'SandyBridge',
-    '06_2F': 'Westmere',
-    '06_2C': 'Westmere',
-    '06_25': 'Westmere',
-    '06_2E': 'Nehalem',
-    '06_1F': 'Nehalem',
-    '06_1E': 'Nehalem',
-    '06_1D': 'Nehalem',
-    '06_1A': 'Nehalem',
-    '06_17': 'Nehalem',
-    '06_16': 'Merom',
-    '06_0F': 'Merom',
-    '0F_06': 'Presler',
-    '0F_04': 'Prescott',
-    '0F_03': 'Prescott',
     '06_0D': 'Dothan',
+    '06_3A': 'IvyBridge',
+    '06_3E': 'IvyBridge',
+    '06_3C': 'Haswell',
+    '06_3F': 'Haswell',
+    '06_45': 'Haswell',
+    '06_46': 'Haswell',
+    '06_0F': 'Merom',
+    '06_16': 'Merom',
+    '06_17': 'Nehalem',
+    '06_1A': 'Nehalem',
+    '06_1D': 'Nehalem',
+    '06_1E': 'Nehalem',
+    '06_1F': 'Nehalem',
+    '06_2E': 'Nehalem',
+    '06_2A': 'SandyBridge',
+    '06_2D': 'SandyBridge',
+    '06_4E': 'Skylake',
+    '0F_03': 'Prescott',
+    '0F_04': 'Prescott',
+    '0F_06': 'Presler',
+    '06_25': 'Westmere',
+    '06_2C': 'Westmere',
+    '06_2F': 'Westmere',
 }
 
 
@@ -422,9 +424,9 @@ def get_file_arch(filename):
 def count_cpus():
     """number of CPUs in the local machine according to /proc/cpuinfo"""
     try:
-      return multiprocessing.cpu_count()
+       return multiprocessing.cpu_count()
     except Exception as e:
-      logging.exception('can not get cpu count from'
+       logging.exception('can not get cpu count from'
                         ' multiprocessing.cpu_count()')
     cpuinfo = get_cpuinfo()
     # Returns at least one cpu. Check comment #1 in crosbug.com/p/9582.
@@ -438,7 +440,7 @@ def cpu_online_map():
     cpuinfo = get_cpuinfo()
     cpus = []
     for cpu in cpuinfo:
-      cpus.append(cpu['processor'])  # grab cpu number
+        cpus.append(cpu['processor'])  # grab cpu number
     return cpus
 
 
