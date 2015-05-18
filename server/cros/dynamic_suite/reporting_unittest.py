@@ -344,6 +344,33 @@ class LabelUpdateTests(mox.MoxTestBase):
         self.assertEqual(count, expected_count)
 
 
+    def testProjectLabelExtraction(self):
+        """Test that the project label is correctly extracted from the title."""
+        TITLE_EMPTY = ''
+        TITLE_NO_PROJ = '[stress] platformDevice Failure on release/47-75.0.0'
+        TITLE_PROJ = '[stress] p_Device Failure on rikku-release/R44-7075.0.0'
+        TITLE_PROJ2 = '[stress] p_Device Failure on ' \
+                      'rikku-freon-release/R44-7075.0.0'
+        TITLE_PROJ_SUBBOARD = '[stress] p_Device Failure on ' \
+                              'veyron_rikku-release/R44-7075.0.0'
+
+        client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                   mox.IgnoreArg())
+        self.mox.ReplayAll()
+
+        reporter = reporting.Reporter()
+        self.assertEqual(reporter._get_project_label_from_title(TITLE_EMPTY),
+                '')
+        self.assertEqual(reporter._get_project_label_from_title(
+                TITLE_NO_PROJ), '')
+        self.assertEqual(reporter._get_project_label_from_title(TITLE_PROJ),
+                'Proj-rikku')
+        self.assertEqual(reporter._get_project_label_from_title(TITLE_PROJ2),
+                'Proj-rikku')
+        self.assertEqual(reporter._get_project_label_from_title(
+                TITLE_PROJ_SUBBOARD), 'Proj-rikku')
+
+
     def testCountLabelIncrement(self):
         """Test that incrementing an autofiled-count label should work."""
         n = 3

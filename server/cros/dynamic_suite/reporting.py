@@ -753,6 +753,39 @@ class Reporter(object):
         return label_updates, new_count
 
 
+    @classmethod
+    def _get_project_label_from_title(cls, title):
+        """Extract a project label for the device being tested from
+        provided bug title. If no project is found, return empty string.
+
+        E.g. For the following bug title:
+
+          [stress] platform_BootDevice Failure on rikku-release/R44-7075.0.0
+
+        we extract 'rikku' and return a string 'Proj-rikku'.
+
+        Note1: For certain boards, they contain the reference name as well:
+
+          veyron_minnie-release/R44-7075.0.0
+
+        in these cases, we only extract and use the subboard (minnie) and not
+        the whole string (veyron_minnie).
+
+        Note2: some builds have different names like tot-release,
+        freon-build, etc. This function needs to handle these cases as well.
+
+        @param title: A string of the bug title, from which to extract
+                      the project label for the device being tested.
+        @return       '' if no valid label is found, or a label of the
+                      form 'proj-samus' if found.
+        """
+        m = re.search('.* on (?:.*_)?(?P<proj>[^-]*)-[\S]+/.*', title)
+        if m and m.group('proj'):
+            return 'Proj-%s' % m.group('proj')
+        else:
+            return ''
+
+
     def report(self, bug, bug_template={}, ignore_duplicate=False):
         """Report an issue to the bug tracker.
 
@@ -779,6 +812,8 @@ class Reporter(object):
             logging.error("Can't file %s", bug.title())
             return None, 0
 
+        project_label = self._get_project_label_from_title(bug.title())
+
         issue = None
         try:
             issue = self._dedupe_issue(bug.search_marker())
@@ -800,9 +835,11 @@ class Reporter(object):
 
         if issue:
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
-            count_update, bug_count = (
+            label_update, bug_count = (
                     self._create_autofiled_count_update(issue))
-            self.modify_bug_report(issue.id, comment, count_update)
+            if project_label:
+                label_update.append(project_label)
+            self.modify_bug_report(issue.id, comment, label_update)
             return issue.id, bug_count
 
         sheriffs = []
@@ -819,6 +856,8 @@ class Reporter(object):
         except AttributeError:
             pass
 
+        if project_label:
+            bug_template.get('labels', []).append(project_label)
         bug_id = self._create_bug_report(bug, bug_template, sheriffs)
         bug_count = 1 if bug_id else 0
         return bug_id, bug_count
