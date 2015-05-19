@@ -125,16 +125,7 @@ class ModeSwitcher(object):
         if to_mode == 'rec':
             self._enable_rec_mode_and_reboot(usb_state='dut')
             if wait_for_dut_up:
-                # In the keyboard controlled recovery mode design, it doesn't
-                # require users to remove and insert the USB.
-                #
-                # In the old design, it checks:
-                #   if dev_mode ON, directly boot to USB stick if presented;
-                #   if dev_mode OFF,
-                #     the old models need users to remove and insert the USB;
-                #     the new models directly boot to the USB.
-                if not self.faft_config.keyboard_dev and from_mode == 'normal':
-                    self.bypasser.bypass_rec_mode()
+                self.bypasser.bypass_rec_mode()
                 self.faft_framework.wait_for_client()
 
         elif to_mode == 'dev':
