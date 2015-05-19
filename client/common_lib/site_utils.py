@@ -80,6 +80,22 @@ def host_is_in_lab_zone(hostname):
         return False
 
 
+def host_could_be_in_afe(hostname):
+    """Check if the host could be in Autotest Front End.
+
+    Report whether or not a host could be in AFE, without actually
+    consulting AFE. This method exists because some systems are in the
+    lab zone, but not actually managed by AFE.
+
+    @param hostname: The hostname to check.
+    @returns True if hostname is in lab zone, and does not match *-dev-*
+    """
+    # Do the 'dev' check first, so that we skip DNS lookup if the
+    # hostname matches. This should give us greater resilience to lab
+    # failures.
+    return (hostname.find('-dev-') == -1) and host_is_in_lab_zone(hostname)
+
+
 def get_chrome_version(job_views):
     """
     Retrieves the version of the chrome binary associated with a job.

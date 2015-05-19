@@ -31,7 +31,7 @@ class WiFiCellTestBase(test.test):
     """
 
     def initialize(self, host):
-        if utils.host_is_in_lab_zone(host.hostname):
+        if utils.host_could_be_in_afe(host.hostname):
             # There are some DUTs that have different types of wifi modules.
             # In order to generate separate performance graphs, a variant
             # name is needed.  Writing this key will generate results with
