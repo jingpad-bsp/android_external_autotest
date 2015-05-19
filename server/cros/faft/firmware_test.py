@@ -206,7 +206,7 @@ class FirmwareTest(FAFTBase):
     def _record_system_info(self):
         """Record some critical system info to the attr keyval.
 
-        This info is used by generate_test_report and local_dash later.
+        This info is used by generate_test_report later.
         """
         self.write_attr_keyval({
             'fw_version': self.faft_client.ec.get_version(),
