@@ -64,6 +64,7 @@ class _BaseProgrammer(object):
             logging.warn("Ignoring exception when verify required bins : %s",
                          ' '.join(req_list))
 
+
     def _set_servo_state(self):
         """Set servo for programming, while saving the current state."""
         logging.debug("Setting servo state for programming")
@@ -115,14 +116,22 @@ class FlashromProgrammer(_BaseProgrammer):
         try:
             vpd_sections = [('RW_VPD', self._rw_vpd), ('RO_VPD', self._ro_vpd)]
             gbb_section = [('GBB', self._gbb)]
-            ft2232_programmer = 'ft2232_spi:type=servo-v2'
-            if self._servo.servo_serial:
-                ft2232_programmer += ',serial=%s' % self._servo.servo_serial
-
+            servo_version = self._servo.get_servo_version()
+            servo_v2_programmer = 'ft2232_spi:type=servo-v2'
+            servo_v3_programmer = 'linux_spi'
+            if servo_version == 'servo_v2':
+                programmer = servo_v2_programmer
+                if self._servo.servo_serial:
+                    programmer += ',serial=%s' % self._servo.servo_serial
+            elif servo_version == 'servo_v3':
+                programmer = servo_v3_programmer
+            else:
+                raise Exception('Servo version %s is not supported.' %
+                                servo_version)
             # Save needed sections from current firmware
             for section in vpd_sections + gbb_section:
                 self._servo.system(' '.join([
-                    'flashrom', '-V', '-p', ft2232_programmer,
+                    'flashrom', '-V', '-p', programmer,
                     '-r', self._fw_main, '-i', '%s:%s' % section]))
 
             # Pack the saved VPD into new firmware
@@ -149,8 +158,8 @@ class FlashromProgrammer(_BaseProgrammer):
 
             # Flash the new firmware
             self._servo.system(' '.join([
-                'flashrom', '-V', '-p', ft2232_programmer,
-                '-w', self._fw_main]))
+                    'flashrom', '-V', '-p', programmer,
+                    '-w', self._fw_main]))
         finally:
             self._restore_servo_state()
 
@@ -181,18 +190,21 @@ class FlashECProgrammer(_BaseProgrammer):
         self._servo = servo
 
 
-    def prepare_programmer(self, image):
+    def prepare_programmer(self, image, board=None):
         """Prepare programmer for programming.
 
         @param image: string with the location of the image file
+        @param board: Name of the board used in EC image. Some board's name used
+                      by servod might be different from EC. Default to None.
         """
         # TODO: need to not have port be hardcoded
-        self._program_cmd = 'flash_ec --board=%s --image=%s --port=%s' % (
-            self._servo.get_board(), image, '9999')
+        self._program_cmd = ('flash_ec --board=%s --image=%s --port=%s' %
+                             (board or self._servo.get_board(), image, '9999'))
 
 
 class ProgrammerV2(object):
-    """Main programmer class which provides programmer for BIOS and EC."""
+    """Main programmer class which provides programmer for BIOS and EC with
+    servo V2."""
 
     def __init__(self, servo):
         self._servo = servo
@@ -310,6 +322,7 @@ class ProgrammerV2(object):
         self._bios_programmer.prepare_programmer(image)
         self._bios_programmer.program()
 
+
     def program_ec(self, image):
         """Programs the DUT with provide ec image.
 
@@ -317,4 +330,43 @@ class ProgrammerV2(object):
 
         """
         self._ec_programmer.prepare_programmer(image)
+        self._ec_programmer.program()
+
+
+class ProgrammerV3(object):
+    """Main programmer class which provides programmer for BIOS and EC with
+    servo V3.
+
+    Different from programmer for servo v2, programmer for servo v3 does not
+    try to validate if the board can use servo V3 to update firmware. As long as
+    the servod process running in beagblebone with given board, the program will
+    attempt to flash bios and ec.
+
+    """
+
+    def __init__(self, servo):
+        self._servo = servo
+        self._bios_programmer = FlashromProgrammer(servo)
+        self._ec_programmer = FlashECProgrammer(servo)
+
+
+    def program_bios(self, image):
+        """Programs the DUT with provide bios image.
+
+        @param image: (required) location of bios image file.
+
+        """
+        self._bios_programmer.prepare_programmer(image)
+        self._bios_programmer.program()
+
+
+    def program_ec(self, image, board=None):
+        """Programs the DUT with provide ec image.
+
+        @param image: (required) location of ec image file.
+        @param board: Name of the board used in EC image. Some board's name used
+                      by servod might be different from EC. Default to None.
+
+        """
+        self._ec_programmer.prepare_programmer(image, board)
         self._ec_programmer.program()

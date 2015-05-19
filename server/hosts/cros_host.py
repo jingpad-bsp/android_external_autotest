@@ -897,7 +897,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.servo.program_bios(os.path.join(tmpd.name, ap_image))
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
-            self._add_fw_version_label()
+            self._add_fw_version_label(build)
         finally:
             tmpd.clean()
 

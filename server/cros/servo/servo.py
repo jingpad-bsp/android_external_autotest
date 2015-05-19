@@ -10,6 +10,7 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.servo import firmware_programmer
 
 
@@ -620,13 +621,24 @@ class Servo(object):
                                     args=args).stdout.strip()
 
 
+    def get_servo_version(self):
+        """Get the version of the servo, e.g., servo_v2 or servo_v3.
+
+        @return: The version of the servo.
+
+        """
+        return self._server.get_version()
+
+
     def _initialize_programmer(self):
         if self._programmer:
             return
         # Initialize firmware programmer
-        servo_version = self._server.get_version()
+        servo_version = self.get_servo_version()
         if servo_version.startswith('servo_v2'):
             self._programmer = firmware_programmer.ProgrammerV2(self)
+        elif servo_version.startswith('servo_v3'):
+            self._programmer = firmware_programmer.ProgrammerV3(self)
         else:
             raise error.TestError(
                     'No firmware programmer for servo version: %s' %
@@ -646,6 +658,19 @@ class Servo(object):
         self._programmer.program_bios(image)
 
 
+    def _get_board_from_ec(self, image):
+        """Get the board name from the EC image file.
+
+        @param image: string with the location of the image file
+
+        @return: Board name used in the EC image file.
+
+        """
+        cmd = ('strings "%s" | grep -oP "[a-z\-_0-9]*(?=_v[0-9]\.[0-9]\.)" | '
+               'head -n 1' % image)
+        return utils.run(cmd).stdout.strip()
+
+
     def program_ec(self, image):
         """Program ec on DUT with given image.
 
@@ -654,9 +679,11 @@ class Servo(object):
 
         """
         self._initialize_programmer()
+        board = self._get_board_from_ec(image)
+        logging.info('board name from ec image file is "%s".', board)
         if not self.is_localhost():
             image = self._scp_image(image)
-        self._programmer.program_ec(image)
+        self._programmer.program_ec(image, board=board)
 
 
     def _switch_usbkey_power(self, power_state, detection_delay=False):
@@ -701,9 +728,9 @@ class Servo(object):
             return
 
         if usb_state == 'off':
-           self._switch_usbkey_power('off')
-           self._usb_state = usb_state
-           return
+            self._switch_usbkey_power('off')
+            self._usb_state = usb_state
+            return
         elif usb_state == 'host':
             mux_direction = 'servo_sees_usbkey'
         elif usb_state == 'dut':
