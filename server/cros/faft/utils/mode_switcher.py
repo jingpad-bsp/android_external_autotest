@@ -102,6 +102,52 @@ class _CtrlDBypasser(_BaseFwBypasser):
         self.servo.enter_key()
 
 
+class _JetstreamBypasser(_BaseFwBypasser):
+    """Controls bypass logic of Jetstream devices."""
+
+    def bypass_dev_mode(self):
+        """Bypass the dev mode firmware logic to boot internal image."""
+        # Jetstream does nothing to bypass.
+        pass
+
+
+    def bypass_dev_boot_usb(self):
+        """Bypass the dev mode firmware logic to boot USB."""
+        # TODO: Confirm if it is a proper way to trigger dev boot USB.
+        # We can't verify it this time due to a bug that always boots into
+        # USB on dev mode.
+        self.servo.enable_development_mode()
+        self.servo.switch_usbkey('dut')
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.toggle_development_switch()
+
+
+    def bypass_rec_mode(self):
+        """Bypass the rec mode firmware logic to boot USB."""
+        self.servo.switch_usbkey('host')
+        time.sleep(self.faft_config.usb_plug)
+        self.servo.switch_usbkey('dut')
+
+
+    def trigger_dev_to_rec(self):
+        """Trigger to the rec mode from the dev screen."""
+        # Jetstream does not have this triggering logic.
+        raise NotImplementedError
+
+
+    def trigger_rec_to_dev(self):
+        """Trigger to the dev mode from the rec screen."""
+        self.servo.disable_development_mode()
+        time.sleep(self.faft_config.firmware_screen)
+        self.servo.toggle_development_switch()
+
+
+    def trigger_dev_to_normal(self):
+        """Trigger to the normal mode from the dev screen."""
+        # Jetstream does not have this triggering logic.
+        raise NotImplementedError
+
+
 def _create_fw_bypasser(servo, faft_config):
     """Creates a proper firmware bypasser.
 
@@ -113,6 +159,9 @@ def _create_fw_bypasser(servo, faft_config):
     if bypasser_type == 'ctrl_d_bypasser':
         logging.info('Create a CtrlDBypasser')
         return _CtrlDBypasser(servo, faft_config)
+    if bypasser_type == 'jetstream_bypasser':
+        logging.info('Create a JetstreamBypasser')
+        return _JetstreamBypasser(servo, faft_config)
     else:
         raise NotImplementedError('Not supported fw_bypasser_type: %s',
                                   bypasser_type)
@@ -357,6 +406,26 @@ class _KeyboardDevSwitcher(_BaseModeSwitcher):
         self.bypasser.trigger_dev_to_normal()
 
 
+class _JetstreamSwitcher(_BaseModeSwitcher):
+    """Class that switches firmware mode in Jetstream devices."""
+
+    def _enable_dev_mode_and_reboot(self):
+        """Switch to developer mode and reboot."""
+        logging.info("Enabling Jetstream developer mode")
+        self._enable_rec_mode_and_reboot(usb_state='host')
+        self.faft_framework.wait_for_client_offline()
+        self.bypasser.trigger_rec_to_dev()
+
+
+    def _enable_normal_mode_and_reboot(self):
+        """Switch to normal mode and reboot."""
+        logging.info("Disabling Jetstream developer mode")
+        self.servo.disable_development_mode()
+        self._enable_rec_mode_and_reboot(usb_state='host')
+        time.sleep(self.faft_config.firmware_screen)
+        self._disable_rec_mode_and_reboot(usb_state='host')
+
+
 def create_mode_switcher(faft_framework):
     """Creates a proper mode switcher.
 
@@ -369,6 +438,9 @@ def create_mode_switcher(faft_framework):
     elif switcher_type == 'keyboard_dev_switcher':
         logging.info('Create a KeyboardDevSwitcher')
         return _KeyboardDevSwitcher(faft_framework)
+    elif switcher_type == 'jetstream_switcher':
+        logging.info('Create a JetstreamSwitcher')
+        return _JetstreamSwitcher(faft_framework)
     else:
         raise NotImplementedError('Not supported mode_switcher_type: %s',
                                   switcher_type)

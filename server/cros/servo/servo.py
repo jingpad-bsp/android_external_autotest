@@ -146,6 +146,9 @@ class Servo(object):
     # Time to toggle recovery switch on and off.
     REC_TOGGLE_DELAY = 0.1
 
+    # Time to toggle development switch on and off.
+    DEV_TOGGLE_DELAY = 0.1
+
     # Time between an usb disk plugged-in and detected in the system.
     USB_DETECTION_DELAY = 10
     # Time to keep USB power off before and after USB mux direction is changed
@@ -360,6 +363,13 @@ class Servo(object):
     def disable_recovery_mode(self):
         """Disable recovery mode on device."""
         self.set('rec_mode', 'off')
+
+
+    def toggle_development_switch(self):
+        """Toggle development switch on and off."""
+        self.enable_development_mode()
+        time.sleep(self.DEV_TOGGLE_DELAY)
+        self.disable_development_mode()
 
 
     def enable_development_mode(self):
