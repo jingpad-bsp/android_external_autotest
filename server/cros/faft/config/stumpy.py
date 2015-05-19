@@ -7,6 +7,7 @@
 
 class Values(object):
     """FAFT config values for Stumpy."""
+    mode_switcher_type = 'physical_button_switcher'
     has_lid = False
     has_keyboard = False
     keyboard_dev = False

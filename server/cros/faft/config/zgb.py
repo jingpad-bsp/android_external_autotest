@@ -7,6 +7,7 @@
 
 class Values(object):
     """FAFT config values for ZGB."""
+    mode_switcher_type = 'physical_button_switcher'
     keyboard_dev = False
     gbb_version = 1.0
     need_dev_transition = True

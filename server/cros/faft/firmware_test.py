@@ -16,8 +16,8 @@ from autotest_lib.server import test
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
+from autotest_lib.server.cros.faft.utils import mode_switcher
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
-from autotest_lib.server.cros.faft.utils.mode_switcher import ModeSwitcher
 from autotest_lib.server.cros.servo import chrome_ec
 
 
@@ -159,7 +159,7 @@ class FirmwareTest(FAFTBase):
         self.faft_config = FAFTConfig(
                 self.faft_client.system.get_platform_name())
         self.checkers = FAFTCheckers(self)
-        self.switcher = ModeSwitcher(self)
+        self.switcher = mode_switcher.create_mode_switcher(self)
 
         if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)

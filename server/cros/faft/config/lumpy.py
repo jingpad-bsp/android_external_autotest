@@ -7,5 +7,6 @@
 
 class Values(object):
     """FAFT config values for Lumpy."""
+    mode_switcher_type = 'physical_button_switcher'
     keyboard_dev = False
     has_eventlog = False

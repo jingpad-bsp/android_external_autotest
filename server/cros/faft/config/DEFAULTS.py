@@ -14,6 +14,9 @@ class Values(object):
     defaults, but very helpful for platform overrides.
     """
 
+    mode_switcher_type = 'keyboard_dev_switcher'
+    fw_bypasser_type = 'ctrl_d_bypasser'
+
     chrome_ec = False
     dark_resume_capable = False
     has_lid = True

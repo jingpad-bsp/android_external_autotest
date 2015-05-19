@@ -6,13 +6,46 @@ import logging
 import time
 
 
-class _FwBypasser(object):
-    """Class that controls bypass logic for firmware screens."""
+class _BaseFwBypasser(object):
+    """Base class that controls bypass logic for firmware screens."""
 
     def __init__(self, servo, faft_config):
         self.servo = servo
         self.faft_config = faft_config
 
+
+    def bypass_dev_mode(self):
+        """Bypass the dev mode firmware logic to boot internal image."""
+        raise NotImplementedError
+
+
+    def bypass_dev_boot_usb(self):
+        """Bypass the dev mode firmware logic to boot USB."""
+        raise NotImplementedError
+
+
+    def bypass_rec_mode(self):
+        """Bypass the rec mode firmware logic to boot USB."""
+        raise NotImplementedError
+
+
+    def trigger_dev_to_rec(self):
+        """Trigger to the rec mode from the dev screen."""
+        raise NotImplementedError
+
+
+    def trigger_rec_to_dev(self):
+        """Trigger to the dev mode from the rec screen."""
+        raise NotImplementedError
+
+
+    def trigger_dev_to_normal(self):
+        """Trigger to the normal mode from the dev screen."""
+        raise NotImplementedError
+
+
+class _CtrlDBypasser(_BaseFwBypasser):
+    """Controls bypass logic via Ctrl-D combo."""
 
     def bypass_dev_mode(self):
         """Bypass the dev mode firmware logic to boot internal image."""
@@ -69,8 +102,24 @@ class _FwBypasser(object):
         self.servo.enter_key()
 
 
-class ModeSwitcher(object):
-    """Class that controls firmware mode switching."""
+def _create_fw_bypasser(servo, faft_config):
+    """Creates a proper firmware bypasser.
+
+    @param servo: A servo object controlling the servo device.
+    @param faft_config: A FAFT config object, which describes the type of
+                        firmware bypasser.
+    """
+    bypasser_type = faft_config.fw_bypasser_type
+    if bypasser_type == 'ctrl_d_bypasser':
+        logging.info('Create a CtrlDBypasser')
+        return _CtrlDBypasser(servo, faft_config)
+    else:
+        raise NotImplementedError('Not supported fw_bypasser_type: %s',
+                                  bypasser_type)
+
+
+class _BaseModeSwitcher(object):
+    """Base class that controls firmware mode switching."""
 
     def __init__(self, faft_framework):
         self.faft_framework = faft_framework
@@ -78,7 +127,7 @@ class ModeSwitcher(object):
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
         self.checkers = faft_framework.checkers
-        self.bypasser = _FwBypasser(self.servo, self.faft_config)
+        self.bypasser = _create_fw_bypasser(self.servo, self.faft_config)
         self._backup_mode = None
 
 
@@ -201,6 +250,7 @@ class ModeSwitcher(object):
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
 
+
     def _enable_rec_mode_and_reboot(self, usb_state=None):
         """Switch to rec mode and reboot.
 
@@ -230,40 +280,12 @@ class ModeSwitcher(object):
 
     def _enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
-        if self.faft_config.keyboard_dev:
-            self._enable_keyboard_dev_mode()
-        else:
-            self.servo.enable_development_mode()
-            self.faft_client.system.run_shell_command(
-                    'chromeos-firmwareupdate --mode todev && reboot')
+        raise NotImplementedError
 
 
     def _enable_normal_mode_and_reboot(self):
         """Switch to normal mode and reboot."""
-        if self.faft_config.keyboard_dev:
-            self._disable_keyboard_dev_mode()
-        else:
-            self.servo.disable_development_mode()
-            self.faft_client.system.run_shell_command(
-                    'chromeos-firmwareupdate --mode tonormal && reboot')
-
-
-    def _enable_keyboard_dev_mode(self):
-        """Enable keyboard controlled developer mode"""
-        logging.info("Enabling keyboard controlled developer mode")
-        # Rebooting EC with rec mode on. Should power on AP.
-        # Plug out USB disk for preventing recovery boot without warning
-        self._enable_rec_mode_and_reboot(usb_state='host')
-        self.faft_framework.wait_for_client_offline()
-        self.bypasser.trigger_rec_to_dev()
-
-
-    def _disable_keyboard_dev_mode(self):
-        """Disable keyboard controlled developer mode"""
-        logging.info("Disabling keyboard controlled developer mode")
-        self._disable_rec_mode_and_reboot()
-        self.faft_framework.wait_for_client_offline()
-        self.bypasser.trigger_dev_to_normal()
+        raise NotImplementedError
 
 
     # Redirects the following methods to FwBypasser
@@ -295,3 +317,58 @@ class ModeSwitcher(object):
     def trigger_dev_to_normal(self):
         """Trigger to the normal mode from the dev screen."""
         self.bypasser.trigger_dev_to_normal()
+
+
+class _PhysicalButtonSwitcher(_BaseModeSwitcher):
+    """Class that switches firmware mode via physical button."""
+
+    def _enable_dev_mode_and_reboot(self):
+        """Switch to developer mode and reboot."""
+        self.servo.enable_development_mode()
+        self.faft_client.system.run_shell_command(
+                'chromeos-firmwareupdate --mode todev && reboot')
+
+
+    def _enable_normal_mode_and_reboot(self):
+        """Switch to normal mode and reboot."""
+        self.servo.disable_development_mode()
+        self.faft_client.system.run_shell_command(
+                'chromeos-firmwareupdate --mode tonormal && reboot')
+
+
+class _KeyboardDevSwitcher(_BaseModeSwitcher):
+    """Class that switches firmware mode via keyboard combo."""
+
+    def _enable_dev_mode_and_reboot(self):
+        """Switch to developer mode and reboot."""
+        logging.info("Enabling keyboard controlled developer mode")
+        # Rebooting EC with rec mode on. Should power on AP.
+        # Plug out USB disk for preventing recovery boot without warning
+        self._enable_rec_mode_and_reboot(usb_state='host')
+        self.faft_framework.wait_for_client_offline()
+        self.bypasser.trigger_rec_to_dev()
+
+
+    def _enable_normal_mode_and_reboot(self):
+        """Switch to normal mode and reboot."""
+        logging.info("Disabling keyboard controlled developer mode")
+        self._disable_rec_mode_and_reboot()
+        self.faft_framework.wait_for_client_offline()
+        self.bypasser.trigger_dev_to_normal()
+
+
+def create_mode_switcher(faft_framework):
+    """Creates a proper mode switcher.
+
+    @param faft_framework: The main FAFT framework object.
+    """
+    switcher_type = faft_framework.faft_config.mode_switcher_type
+    if switcher_type == 'physical_button_switcher':
+        logging.info('Create a PhysicalButtonSwitcher')
+        return _PhysicalButtonSwitcher(faft_framework)
+    elif switcher_type == 'keyboard_dev_switcher':
+        logging.info('Create a KeyboardDevSwitcher')
+        return _KeyboardDevSwitcher(faft_framework)
+    else:
+        raise NotImplementedError('Not supported mode_switcher_type: %s',
+                                  switcher_type)
