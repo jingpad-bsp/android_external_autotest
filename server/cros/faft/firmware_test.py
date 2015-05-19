@@ -445,7 +445,7 @@ class FirmwareTest(FAFTBase):
 
         # Make the dut able to see the USB disk.
         self.servo.switch_usbkey('dut')
-        time.sleep(self.faft_config.between_usb_plug)
+        time.sleep(self.faft_config.usb_plug)
         has_usb_set = set(
             self.faft_client.system.run_shell_command_get_output(cmd))
 
