@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import collections
 import copy
 import logging
 
@@ -212,13 +213,14 @@ class HostapConfig(object):
     @property
     def _get_default_config(self):
         """@return dict of default options for hostapd."""
-        return {'hw_mode': 'g',
-                'logger_syslog': '-1',
-                'logger_syslog_level': '0',
+        return collections.OrderedDict([
+                ('hw_mode', 'g'),
+                ('logger_syslog', '-1'),
+                ('logger_syslog_level', '0'),
                 # default RTS and frag threshold to ``off''
-                'rts_threshold': '2347',
-                'fragm_threshold': '2346',
-                'driver': self.DRIVER_NAME }
+                ('rts_threshold', '2347'),
+                ('fragm_threshold', '2346'),
+                ('driver', self.DRIVER_NAME)])
 
 
     @property
@@ -451,6 +453,7 @@ class HostapConfig(object):
                  vht_center_channel=None,
                  ac_capabilities=[],
                  beacon_footer='',
+                 spectrum_mgmt_required=None,
                  scenario_name=None):
         """Construct a HostapConfig.
 
@@ -480,6 +483,8 @@ class HostapConfig(object):
         @param ac_capabilities list of AC_CAPABILITY_x defined above.
         @param beacon_footer string containing (unvalidated) IE data to be
             placed at the end of the beacon.
+        @param spectrum_mgmt_required True if we require the DUT to support
+            spectrum management.
         @param scenario_name string to be included in file names, instead
             of the interface name.
 
@@ -548,6 +553,7 @@ class HostapConfig(object):
         self._vht_oper_centr_freq_seg0_idx = vht_center_channel
         self._ac_capabilities = set(ac_capabilities)
         self._beacon_footer = beacon_footer
+        self._spectrum_mgmt_required = spectrum_mgmt_required
         self._scenario_name = scenario_name
 
 
@@ -555,7 +561,8 @@ class HostapConfig(object):
         return ('%s(mode=%r, channel=%r, frequency=%r, '
                 'n_capabilities=%r, hide_ssid=%r, beacon_interval=%r, '
                 'dtim_period=%r, frag_threshold=%r, ssid=%r, bssid=%r, '
-                'wmm_enabled=%r, security_config=%r)' % (
+                'wmm_enabled=%r, security_config=%r, '
+                'spectrum_mgmt_required=%r)' % (
                         self.__class__.__name__,
                         self._mode,
                         self.channel,
@@ -568,7 +575,8 @@ class HostapConfig(object):
                         self._ssid,
                         self._bssid,
                         self._wmm_enabled,
-                        self._security_config))
+                        self._security_config,
+                        self._spectrum_mgmt_required))
 
 
     def supports_channel(self, value):
@@ -668,5 +676,14 @@ class HostapConfig(object):
             conf['obss_interval'] = self._obss_interval
         conf['interface'] = interface
         conf['ctrl_interface'] = control_interface
+        if self._spectrum_mgmt_required:
+            # To set spectrum_mgmt_required, we must first set
+            # local_pwr_constraint. And to set local_pwr_constraint,
+            # we must first set ieee80211d. And to set ieee80211d, ...
+            # Point being: order matters here.
+            conf['country_code'] = 'US'  # Required for local_pwr_constraint
+            conf['ieee80211d'] = 1  # Required for local_pwr_constraint
+            conf['local_pwr_constraint'] = 0  # No local constraint
+            conf['spectrum_mgmt_required'] = 1  # Requires local_pwr_constraint
         conf.update(self._security_config.get_hostapd_config())
         return conf

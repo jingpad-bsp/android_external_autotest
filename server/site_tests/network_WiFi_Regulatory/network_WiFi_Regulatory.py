@@ -32,6 +32,9 @@ class network_WiFi_Regulatory(wifi_cell_test_base.WiFiCellTestBase):
                   [site_linux_system.LinuxSystem.
                           CAPABILITY_SEND_MANAGEMENT_FRAME])
             self.context.configure(router_conf)
+            self.context.router.start_capture(
+                router_conf.frequency,
+                filename='chan%d.pcap' % router_conf.channel)
             assoc_params = xmlrpc_datatypes.AssociationParameters()
             assoc_params.ssid = self.context.router.get_ssid()
             self.context.assert_connect_wifi(assoc_params)

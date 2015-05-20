@@ -24,7 +24,9 @@ from autotest_lib.server.cros.network import hostap_config
 
 def run(machine):
     a_mode = hostap_config.HostapConfig.MODE_11A
-    configurations = [(hostap_config.HostapConfig(channel=64, mode=a_mode), 36)]
+    configurations = [
+	(hostap_config.HostapConfig(
+	    channel=64, mode=a_mode, spectrum_mgmt_required=True), 36)]
     host = hosts.create_host(machine)
     job.run_test('network_WiFi_Regulatory',
                  host=host,
