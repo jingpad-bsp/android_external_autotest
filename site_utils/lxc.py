@@ -240,11 +240,17 @@ def cleanup_if_fail():
                             func, 'job_id', args, kwargs)
                 except (KeyError, ValueError):
                     job_id = ''
+                metadata={'drone': socket.gethostname(),
+                          'job_id': job_id,
+                          'success': False}
+                # Record all args if job_id is not available.
+                if not job_id:
+                    metadata['args'] = str(args)
+                    if kwargs:
+                        metadata.update(kwargs)
                 autotest_es.post(use_http=True,
                                  type_str=CONTAINER_CREATE_METADB_TYPE,
-                                 metadata={'drone': socket.gethostname(),
-                                           'job_id': job_id,
-                                           'success': False})
+                                 metadata=metadata)
 
                 # Raise the cached exception with original backtrace.
                 raise exc_info[0], exc_info[1], exc_info[2]
