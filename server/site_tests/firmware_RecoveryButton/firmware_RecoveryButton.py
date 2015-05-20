@@ -41,6 +41,8 @@ class firmware_RecoveryButton(FirmwareTest):
         super(firmware_RecoveryButton, self).cleanup()
 
     def run_once(self, dev_mode=False):
+        is_jetstream = (self.faft_config.mode_switcher_type ==
+                        'jetstream_switcher')
         logging.info("Switch to recovery mode and reboot.")
         self.check_state((self.checkers.crossystem_checker, {
                     'mainfw_type': 'developer' if dev_mode else 'normal',
@@ -55,7 +57,8 @@ class firmware_RecoveryButton(FirmwareTest):
                     }))
         self.switcher.mode_aware_reboot()
 
-        logging.info("Expected normal boot.")
+        logging.info("Expected normal/dev boot.")
         self.check_state((self.checkers.crossystem_checker, {
-                    'mainfw_type': 'developer' if dev_mode else 'normal',
+                    'mainfw_type': 'developer' if dev_mode and not is_jetstream
+                                    else 'normal',
                     }))
