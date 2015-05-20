@@ -54,14 +54,6 @@ class firmware_SelfSignedBoot(FirmwareTest):
             logging.info('Reboot into internal disk...')
             self.switcher.mode_aware_reboot()
 
-    def try_ctrl_u_and_ctrl_d(self):
-        """Try to press Ctrl-U first and then press Ctrl-D"""
-        self.switcher.bypass_dev_boot_usb()
-        # If the above Ctrl-U doesn't work, the firmware beeps twice.
-        # Should wait the beep done before pressing Ctrl-D.
-        time.sleep(self.faft_config.beep)
-        self.servo.ctrl_d()
-
     def resignimage_ssdkeys(self):
         """Re-signing the USB image using the SSD keys."""
         self.faft_client.system.run_shell_command(
@@ -95,9 +87,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
                      "dev_boot_signed_only to 1.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))
         self.enable_crossystem_selfsigned()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.try_ctrl_u_and_ctrl_d()
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected internal disk boot, switch to recovery mode.")
         self.check_state((self.checkers.dev_boot_usb_checker, False,

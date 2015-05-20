@@ -35,14 +35,6 @@ class firmware_DevBootUSB(FirmwareTest):
         self.ensure_internal_device_boot()
         super(firmware_DevBootUSB, self).cleanup()
 
-    def try_ctrl_u_and_ctrl_d(self):
-        """Try to press Ctrl-U first and then press Ctrl-D"""
-        self.switcher.bypass_dev_boot_usb()
-        # If the above Ctrl-U doesn't work, the firmware beeps twice.
-        # Should wait the beep done before pressing Ctrl-D.
-        time.sleep(self.faft_config.beep)
-        self.servo.ctrl_d()
-
     def ensure_internal_device_boot(self):
         """Ensure internal device boot; if not, reboot into it.
 
@@ -63,11 +55,7 @@ class firmware_DevBootUSB(FirmwareTest):
         logging.info("Expected developer mode, set dev_boot_usb to 0.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))
         self.faft_client.system.set_dev_boot_usb(0)
-        # Ctrl-U doesn't take effect as dev_boot_usb=0.
-        # Falls back to Ctrl-D internal disk boot.
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.try_ctrl_u_and_ctrl_d()
-        self.wait_for_client()
+        self.switcher.mode_aware_reboot()
 
         logging.info("Expected internal disk boot, set dev_boot_usb to 1.")
         self.check_state((self.checkers.dev_boot_usb_checker,
