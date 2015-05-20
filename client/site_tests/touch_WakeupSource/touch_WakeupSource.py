@@ -4,7 +4,6 @@
 
 import logging
 import os
-import re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -18,11 +17,10 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
     # Devices whose touchpads should not be a wake source.
     _NO_TOUCHPAD_WAKE = ['clapper', 'glimmer', 'veyron_minnie']
 
-    # Devices with Synaptics touchpads that do not report wake source.
+    # Devices with Synaptics touchpads that do not report wake source,
+    # or reference platforms like Rambi which are broken but do not ship.
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
-                       'x86-mario', 'stout']
-
-    _NODE_FILE = '/sys/class/input/input%s/device/power/wakeup'
+                       'x86-mario', 'stout', 'rambi']
 
     def _is_wake_source(self, input_type):
         """Return True if the given device is a wake source, else False.
@@ -32,13 +30,14 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         @param input_type: e.g. 'touchpad' or 'mouse'. See parent class for
                 all options.
 
-        @raises: TestError if it cannot interpret file contents.
+        @raises: TestError if it cannot find and interpret file contents.
 
         """
-        node = self.player.nodes[input_type]
-        node_num = re.search('event([0-9]+)', node).group(1)
+        device_dir = self.player.device_dirs[input_type]
+        if not device_dir:
+            raise error.TestError('No device directory for %s!' % input_type)
 
-        filename = self._NODE_FILE % node_num
+        filename = os.path.join(device_dir, 'power', 'wakeup')
         if not os.path.isfile(filename):
             logging.info('%s not found for %s', filename, input_type)
             return False
@@ -50,12 +49,11 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         elif result == 'disabled':
             logging.info('Found that %s is not a wake source.', input_type)
             return False
-        error.TestError('wakeup file for %s on input%s said "%s".' %
-                        (input_type, node_num, result))
+        raise error.TestError('Wakeup file for %s said "%s".' %
+                              (input_type, result))
 
     def run_once(self):
         """Entry point of this test."""
-
         # Check that touchpad is a wake source for all but the excepted boards.
         if self._has_touchpad:
             device = utils.get_board()

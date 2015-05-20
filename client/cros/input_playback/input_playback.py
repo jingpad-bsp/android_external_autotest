@@ -30,8 +30,9 @@ class InputPlayback(object):
 
 
     def __init__(self):
-        self.nodes = {}
-        self.names = {}
+        self.nodes = {} # e.g. /dev/input/event4
+        self.device_dirs = {} # e.g. /sys/class/event4/device/device
+        self.names = {} # e.g. Atmel maXTouch Touchpad
         self._device_emulation_process = None
 
 
@@ -176,9 +177,16 @@ class InputPlayback(object):
                     if self.names[input_type] != name:
                         continue
 
+                # Find the devices folder containing power info
+                # e.g. /sys/class/event4/device/device
+                device_dir = os.path.join(class_folder, 'device', 'device')
+                if not os.path.exists(device_dir):
+                    device_dir = None
+
                 # Save this device information for later use.
                 self.nodes[input_type] = event
                 self.names[input_type] = name
+                self.device_dirs[input_type] = device_dir
 
 
     def playback(self, filepath, input_type='touchpad'):
