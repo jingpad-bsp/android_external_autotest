@@ -93,6 +93,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public IButton getSubmitJobButton();
         public HasClickHandlers getCreateTemplateJobButton();
         public HasClickHandlers getResetButton();
+        public HasClickHandlers getFetchImageTestsButton();
     }
 
     private static final String EDIT_CONTROL_STRING = "Edit control file";
@@ -574,6 +575,17 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             }
         });
 
+        display.getFetchImageTestsButton().addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                String imageUrl = display.getImageUrl().getText();
+                if (imageUrl == null || imageUrl.isEmpty()) {
+                    NotifyManager.getInstance().showMessage(
+                        "No build was specified for fetching tests.");
+                }
+                fetchImageTests();
+            }
+        });
+
         reset();
 
         if (staticData.getData("drone_sets_enabled").isBoolean().booleanValue()) {
@@ -623,6 +635,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         dependencies = new JSONArray();
         display.getPool().setText("");
         display.getArgs().setText("");
+        display.getImageUrl().setText("");
+        fetchImageTests();
     }
 
     private void submitJob(final boolean isTemplate) {
@@ -861,5 +875,35 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
     private boolean parameterizedJobsEnabled() {
         return staticData.getData("parameterized_jobs").isBoolean().booleanValue();
+    }
+
+    private void fetchImageTests() {
+        testSelector.setImageTests(new JSONArray());
+
+        String imageUrl = display.getImageUrl().getText();
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            testSelector.reset();
+            return;
+        }
+
+        JSONObject params = new JSONObject();
+        params.put("build", new JSONString(imageUrl));
+
+        rpcProxy.rpcCall("get_tests_by_build", params, new JsonRpcCallback() {
+            @Override
+            public void onSuccess(JSONValue result) {
+                JSONArray tests = result.isArray();
+                testSelector.setImageTests(tests);
+                testSelector.reset();
+            }
+
+            @Override
+            public void onError(JSONObject errorObject) {
+                super.onError(errorObject);
+                NotifyManager.getInstance().showError(
+                    "Failed to update tests for given build.");
+                testSelector.reset();
+            }
+        });
     }
 }

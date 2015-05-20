@@ -64,6 +64,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         "?",
         "Name of the test image to use. Example: \"x86-alex-release/R27-3837.0.0\". " +
         "If no image is specified, the latest ToT image is used.");
+    private Button fetchImageTestsButton = new Button("Fetch Tests from Build");
     private TextBox timeout = new TextBox();
     private ToolTip timeoutToolTip = new ToolTip(
         "?",
@@ -299,6 +300,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(jobNameToolTip, "create_job_name");
         panel.add(image_url, "create_image_url");
         panel.add(image_urlToolTip, "create_image_url");
+        panel.add(fetchImageTestsButton, "fetch_image_tests");
         panel.add(testSelector, "create_tests");
         panel.add(controlFilePanel, "create_edit_control");
         panel.add(hostSelector, "create_host_selector");
@@ -444,5 +446,9 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public void setControlFilePanelOpen(boolean isOpen) {
         controlFilePanel.setOpen(isOpen);
+    }
+
+    public HasClickHandlers getFetchImageTestsButton() {
+        return fetchImageTestsButton;
     }
 }

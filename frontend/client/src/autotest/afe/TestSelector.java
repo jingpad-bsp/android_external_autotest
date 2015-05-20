@@ -141,6 +141,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
     private TestSelectorListener listener;
     private StaticDataRepository staticData = StaticDataRepository.getRepository();
     private List<JSONObject> selectedTests = new ArrayList<JSONObject>();
+    private JSONArray imageTests = new JSONArray();
 
     private Display display;
 
@@ -165,12 +166,17 @@ public class TestSelector extends Composite implements DataTableListener, Change
         display.getTestTable().clear();
 
         JSONArray tests = staticData.getData("tests").isArray();
+
+        if (imageTests.size() > 0) {
+            tests = imageTests;
+        }
+
         for (JSONObject test : new JSONArrayList<JSONObject>(tests)) {
             if (!includeExperimentalTests()
                     && test.get("experimental").isBoolean().booleanValue()) {
                 continue;
             }
-            String testType = test.get("test_type").isString().stringValue();
+            String testType = test.get("test_type").isString().stringValue().toLowerCase();
             String testName = test.get("name").isString().stringValue().toLowerCase();
             if (testType.equals(getSelectedTestType()) &&
                 testName.contains(getTestNameFilterText())) {
@@ -201,7 +207,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
     }
 
     public String getSelectedTestType() {
-        return display.getTestTypeSelect().getSelectedName();
+        return display.getTestTypeSelect().getSelectedName().toLowerCase();
     }
 
     public String getTestNameFilterText() {
@@ -248,5 +254,9 @@ public class TestSelector extends Composite implements DataTableListener, Change
     public void onRemove(Collection<JSONObject> objects) {
         selectedTests.removeAll(objects);
         notifyListener();
+    }
+
+    public void setImageTests(JSONArray tests) {
+        imageTests = tests;
     }
 }

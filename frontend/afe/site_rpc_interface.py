@@ -14,6 +14,7 @@ import os
 import shutil
 
 from autotest_lib.frontend.afe import models
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
@@ -546,3 +547,72 @@ def delete_stable_version(board):
         return rpc_utils.route_rpc_to_master('delete_stable_version',
                                              board=board)
     stable_version_utils.delete(board=board)
+
+
+def get_tests_by_build(build):
+    """Get the tests that are available for the specified build.
+
+    @param build: unique name by which to refer to the image.
+
+    @return: A sorted list of all tests that are in the build specified.
+    """
+    # Stage the test artifacts.
+    try:
+        ds = dev_server.ImageServer.resolve(build)
+        build = ds.translate(build)
+    except dev_server.DevServerException as e:
+        raise ValueError('Could not resolve build %s: %s' % (build, e))
+
+    try:
+        ds.stage_artifacts(build, ['test_suites'])
+    except dev_server.DevServerException as e:
+        raise error.StageControlFileFailure(
+                'Failed to stage %s: %s' % (build, e))
+
+    # Collect the control files specified in this build
+    cfile_getter = control_file_getter.DevServerGetter.create(build, ds)
+    control_file_list = cfile_getter.get_control_file_list()
+
+    test_objects = []
+    _id = 0
+    for control_file_path in control_file_list:
+        # Read and parse the control file
+        control_file = cfile_getter.get_control_file_contents(
+                control_file_path)
+        control_obj = control_data.parse_control_string(control_file)
+
+        # Extract the values needed for the AFE from the control_obj.
+        # The keys list represents attributes in the control_obj that
+        # are required by the AFE
+        keys = ['author', 'doc', 'name', 'time', 'test_type', 'experimental',
+                'test_category', 'test_class', 'dependencies', 'run_verify',
+                'sync_count', 'job_retries', 'retries', 'path']
+
+        test_object = {}
+        for key in keys:
+            test_object[key] = getattr(control_obj, key) if hasattr(
+                    control_obj, key) else ''
+
+        # Unfortunately, the AFE expects different key-names for certain
+        # values, these must be corrected to avoid the risk of tests
+        # being omitted by the AFE.
+        # The 'id' is an additional value used in the AFE.
+        test_object['id'] = _id
+        test_object['description'] = test_object.get('doc', '')
+        test_object['test_time'] = test_object.get('time', 0)
+        test_object['test_retry'] = test_object.get('retries', 0)
+
+        # Fix the test name to be consistent with the current presentation
+        # of test names in the AFE.
+        testpath, subname = os.path.split(control_file_path)
+        testname = os.path.basename(testpath)
+        subname = subname.split('.')[1:]
+        if subname:
+            testname = '%s:%s' % (testname, ':'.join(subname))
+
+        test_object['name'] = testname
+
+        _id += 1
+        test_objects.append(test_object)
+
+    return rpc_utils.prepare_for_serialization(test_objects)
