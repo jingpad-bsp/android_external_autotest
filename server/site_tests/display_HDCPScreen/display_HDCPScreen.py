@@ -91,7 +91,6 @@ class display_HDCPScreen(test.test):
                                          state)
                         logging.error(error_message)
                         errors.append(error_message)
-                        continue
 
                     encrypted = chameleon_port.is_video_input_encrypted()
                     logging.info('Got Chameleon state: %r', encrypted)
@@ -101,7 +100,6 @@ class display_HDCPScreen(test.test):
                                          (expected_chameleon_state, encrypted))
                         logging.error(error_message)
                         errors.append(error_message)
-                        continue
 
                     logging.info('Test screen under HDCP %s...',
                                  'enabled' if encrypted else 'disabled')
