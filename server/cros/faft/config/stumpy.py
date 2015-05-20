@@ -10,5 +10,4 @@ class Values(object):
     mode_switcher_type = 'physical_button_switcher'
     has_lid = False
     has_keyboard = False
-    keyboard_dev = False
     has_eventlog = False

@@ -60,8 +60,8 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         self.setup_usbkey(usbkey=True, host=False)
 
     def run_once(self):
-        if self.faft_config.keyboard_dev:
-            raise error.TestNAError('This test is no longer valid in keyboard'
+        if self.faft_config.mode_switcher_type != 'physical_button_switcher':
+            raise error.TestNAError('This test is only valid in physical button'
                                     'controlled dev mode firmware.')
 
         logging.info("Enable dev mode.")

@@ -21,7 +21,6 @@ class Values(object):
     dark_resume_capable = False
     has_lid = True
     has_keyboard = True
-    keyboard_dev = True
     rec_button_dev_switch = False
     long_rec_combo = False
     use_u_boot = False

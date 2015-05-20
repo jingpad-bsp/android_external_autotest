@@ -12,5 +12,4 @@ class Values(rambi.Values):
     ec_capability = ['x86', 'usb', 'smart_usb_charge']
     has_lid = False
     has_keyboard = False
-    keyboard_dev = True
     rec_button_dev_switch = True
