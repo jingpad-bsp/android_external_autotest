@@ -46,6 +46,7 @@ class Suspender(object):
 
     # board-specific "time to suspend" values determined empirically
     # TODO: migrate to separate file with http://crosbug.com/38148
+    _DEFAULT_SUSPEND_DELAY = 5
     _SUSPEND_DELAY = {
         # TODO: Reevaluate this when http://crosbug.com/38460 is fixed
         'daisy': 6,
@@ -234,8 +235,8 @@ class Suspender(object):
             for b, e, s in sys_power.SpuriousWakeupError.S3_WHITELIST:
                 if (re.search(b, utils.get_board()) and
                         re.search(e, wake_elog) and re.search(s, wake_syslog)):
-                    logging.warning('Whitelisted spurious wake in S3: %s | %s'
-                            % (wake_elog, wake_syslog))
+                    logging.warning('Whitelisted spurious wake in S3: %s | %s',
+                                    wake_elog, wake_syslog)
                     return None
             raise sys_power.SpuriousWakeupError('Spurious wake in S3: %s | %s'
                     % (wake_elog, wake_syslog))
@@ -343,7 +344,7 @@ class Suspender(object):
                     if (re.search(b, utils.get_board()) and
                             re.search(w, wake_source)):
                         logging.warning('Whitelisted spurious wake before '
-                                'S3: %s | %s' % (wake_source, driver))
+                                        'S3: %s | %s', wake_source, driver)
                         return True
                 if "rtc" in driver:
                     raise sys_power.SuspendTimeout('System took too '
@@ -375,7 +376,8 @@ class Suspender(object):
             for _ in xrange(10):
                 self._reset_logs()
                 utils.system('sync')
-                board_delay = self._SUSPEND_DELAY.get(self._get_board(), 3)
+                board_delay = self._SUSPEND_DELAY.get(self._get_board(),
+                        self._DEFAULT_SUSPEND_DELAY)
                 try:
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.SpuriousWakeupError:
