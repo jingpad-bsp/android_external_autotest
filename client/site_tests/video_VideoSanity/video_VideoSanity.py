@@ -75,8 +75,9 @@ class video_VideoSanity(test.test):
                                        % container)
         # Waiting for test video to load.
         wait_time = 0 # seconds
-        while float(
-                self.tab.EvaluateJavaScript('videoCurTime.innerHTML')) < 1.0:
+        current_time_js = ("typeof videoCurTime != 'undefined' ? "
+                           "videoCurTime.innerHTML : 0")
+        while float(self.tab.EvaluateJavaScript(current_time_js)) < 1.0:
             time.sleep(1)
             wait_time = wait_time + 1
             if wait_time > WAIT_TIMEOUT_S:
