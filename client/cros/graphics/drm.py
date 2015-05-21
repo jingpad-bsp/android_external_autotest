@@ -62,7 +62,14 @@ class DrmModeResources(Structure):
         ("fbs", POINTER(c_uint)),
         ("count_crtcs", c_int),
         ("crtcs", POINTER(c_uint)),
-        # XXX incomplete struct!
+        ("count_connectors", c_int),
+        ("connectors", POINTER(c_uint)),
+        ("count_encoders", c_int),
+        ("encoders", POINTER(c_uint)),
+        ("min_width", c_int),
+        ("max_width", c_int),
+        ("min_height", c_int),
+        ("max_height", c_int),
     ]
 
     _fd = None
@@ -75,17 +82,25 @@ class DrmModeResources(Structure):
         if self._l:
             self._l.drmModeFreeResources(self)
 
+    def getValidCrtc(self):
+        for i in xrange(0, self.count_crtcs):
+            crtc_id = self.crtcs[i]
+            crtc = self._l.drmModeGetCrtc(self._fd, crtc_id).contents
+            if crtc.mode_valid:
+                return crtc
+        return None
+
     def getCrtc(self, crtc_id=None):
         """
         Obtain the CRTC at a given index.
 
         @param index: The CRTC to get.
         """
-
-        if not crtc_id:
-            crtc_id = self.crtcs[0]
-
-        crtc = self._l.drmModeGetCrtc(self._fd, crtc_id).contents
+        crtc = None
+        if crtc_id:
+            crtc = self._l.drmModeGetCrtc(self._fd, crtc_id).contents
+        else:
+            crtc = self.getValidCrtc()
         crtc._fd = self._fd
         crtc._l = self._l
         return crtc
@@ -99,6 +114,11 @@ class DrmModeCrtc(Structure):
     _fields_ = [
         ("crtc_id", c_uint),
         ("buffer_id", c_uint),
+        ("x", c_uint),
+        ("y", c_uint),
+        ("width", c_uint),
+        ("height", c_uint),
+        ("mode_valid", c_int),
         # XXX incomplete struct!
     ]
 
