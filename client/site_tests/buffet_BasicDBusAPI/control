@@ -7,7 +7,7 @@ NAME = 'buffet_BasicDBusAPI'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
-SUITE = 'tendo_experimental, smoke'
+SUITE = 'smoke, tendo_experimental'
 
 DOC = """
 Check that basic DBus API calls to the buffet daemon return expected responses.
