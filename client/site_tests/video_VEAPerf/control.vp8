@@ -8,8 +8,8 @@ PURPOSE = "Monitor the performance of the Chromium VEA."
 CRITERIA = """
 The test fails if the video_encode_accelerator_unittest fails or crashes.
 """
-# Temporarily disabled, crbug.com/481424.
-#SUITE = "performance"
+ATTRIBUTES = "suite:crosbolt_perf_nightly"
+SUITE = "crosbolt_perf_nightly"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
