@@ -68,6 +68,10 @@ class firmware_FwScreenCloseLid(FirmwareTest):
             logging.info('This test does nothing on devices without lid.')
             return
 
+        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+            raise error.TestNAError("This test is only valid on devices with "
+                                    "screens.")
+
         if self.faft_config.chrome_ec and not self.check_ec_capability(['lid']):
             raise error.TestNAError("TEST IT MANUALLY! ChromeEC can't control "
                                     "lid on the device %s" %

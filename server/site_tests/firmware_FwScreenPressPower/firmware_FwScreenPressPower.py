@@ -5,6 +5,7 @@
 import logging
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
@@ -64,6 +65,10 @@ class firmware_FwScreenPressPower(FirmwareTest):
         super(firmware_FwScreenPressPower, self).cleanup()
 
     def run_once(self):
+        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+            raise error.TestNAError("This test is only valid on devices with "
+                                    "screens.")
+
         logging.info("Expected dev mode and reboot. "
                      "When the next DEVELOPER SCREEN shown, press power button "
                      "to make DUT shutdown.")

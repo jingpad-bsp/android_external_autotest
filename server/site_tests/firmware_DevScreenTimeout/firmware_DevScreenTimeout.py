@@ -85,6 +85,10 @@ class firmware_DevScreenTimeout(FirmwareTest):
         self.setup_usbkey(usbkey=False)
 
     def run_once(self):
+        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+            raise error.TestNAError("This test is only valid on devices with "
+                                    "screens.")
+
         logging.info("Always expected developer mode firmware A boot.")
         self.check_state((self.checkers.crossystem_checker, {
                               'devsw_boot': '1',
