@@ -28,7 +28,8 @@ class chromedriver(object):
 
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
                  extension_paths=[], is_component=True, username=None,
-                 password=None, server_port=None, *args, **kwargs):
+                 password=None, server_port=None, skip_cleanup=False, *args,
+                 **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -41,7 +42,11 @@ class chromedriver(object):
         @param password: Log in using this password instead of the default.
         @param server_port: Port number for the chromedriver server. If None,
                             an available port is chosen at random.
+        @param skip_cleanup: If True, leave the server and browser running
+                             so that remote tests can run after this script
+                             ends. Default is False.
         """
+        self._cleanup = not skip_cleanup
         assert os.geteuid() == 0, 'Need superuser privileges'
 
         # Log in with telemetry
@@ -57,7 +62,8 @@ class chromedriver(object):
 
         # Start ChromeDriver server
         self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH,
-                                           port=server_port)
+                                           port=server_port,
+                                           skip_cleanup=skip_cleanup)
 
         # Open a new tab using Chrome remote debugging. ChromeDriver expects
         # a tab opened for remote to work. Tabs opened using Telemetry will be
@@ -90,13 +96,14 @@ class chromedriver(object):
             self.driver.close()
             del self.driver
 
-        if hasattr(self, '_server') and self._server:
-            self._server.close()
-            del self._server
+        if not hasattr(self, '_cleanup') or self._cleanup:
+            if hasattr(self, '_server') and self._server:
+                self._server.close()
+                del self._server
 
-        if hasattr(self, '_browser') and self._browser:
-            self._browser.Close()
-            del self._browser
+            if hasattr(self, '_browser') and self._browser:
+                self._browser.Close()
+                del self._browser
 
 
     def get_extension(self, extension_path):
@@ -116,21 +123,28 @@ class chromedriver_server(object):
     src/chrome/test/chromedriver/server/server.py
     """
 
-    def __init__(self, exe_path, port=None):
+    def __init__(self, exe_path, port=None, skip_cleanup=False):
         """Starts the ChromeDriver server and waits for it to be ready.
 
         Args:
             exe_path: path to the ChromeDriver executable
             port: server port. If None, an available port is chosen at random.
+            skip_cleanup: If True, leave the server running so that remote
+                          tests can run after this script ends. Default is
+                          False.
         Raises:
             RuntimeError if ChromeDriver fails to start
         """
         if not os.path.exists(exe_path):
             raise RuntimeError('ChromeDriver exe not found at: ' + exe_path)
 
-        if not port:
+        chromedriver_args = [exe_path]
+        if port:
+            # Allow remote connections if a port was specified
+            chromedriver_args.append('--whitelisted-ips')
+        else:
             port = utils.get_unused_port()
-        chromedriver_args = [exe_path, '--port=%d' % port]
+        chromedriver_args.append('--port=%d' % port)
 
         # Chromedriver will look for an X server running on the display
         # specified through the DISPLAY environment variable.
@@ -155,7 +169,8 @@ class chromedriver_server(object):
 
         logging.debug('Chrome Driver server is up and listening at port %d.',
                       port)
-        atexit.register(self.close)
+        if not skip_cleanup:
+            atexit.register(self.close)
 
 
     def is_running(self):
