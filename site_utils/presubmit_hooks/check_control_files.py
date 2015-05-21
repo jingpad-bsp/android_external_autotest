@@ -74,8 +74,9 @@ def GetUseFlags():
                     GetAutotestTestPackages())
         child = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
+        new_useflags = child.communicate()[0].splitlines()
         if child.returncode == 0:
-            useflags = useflags.union(child.communicate()[0].splitlines())
+            useflags = useflags.union(new_useflags)
     return useflags
 
 
