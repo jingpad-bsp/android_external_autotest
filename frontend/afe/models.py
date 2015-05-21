@@ -1,6 +1,6 @@
 # pylint: disable-msg=C0111
 
-import logging, os
+import logging
 from datetime import datetime
 import django.core
 try:
@@ -1245,6 +1245,63 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                                          'jobkeyval_set',
                                          'shard'])
 
+    # SQL for selecting jobs that should be sent to shard.
+    # We use raw sql as django filters were not optimized.
+    # The following jobs are excluded by the SQL.
+    #     - Non-aborted jobs known to shard as specified in |known_ids|.
+    #       Note for jobs aborted on master, even if already known to shard,
+    #       will be sent to shard again so that shard can abort them.
+    #     - Completed jobs
+    #     - Active jobs
+    #     - Jobs without host_queue_entries
+    NON_ABORTED_KNOWN_JOBS = '(t2.aborted = 0 AND t1.id IN (%(known_ids)s))'
+
+    SQL_SHARD_JOBS = (
+        'SELECT t1.id FROM afe_jobs t1 '
+        'INNER JOIN afe_host_queue_entries t2  ON '
+        '  (t1.id = t2.job_id '
+        '   AND t2.complete != 1 AND t2.active != 1 '
+        '   %(check_known_jobs)s) '
+        'INNER JOIN afe_jobs_dependency_labels t3 ON (t1.id = t3.job_id) '
+        'WHERE (t3.label_id IN  '
+        '  (SELECT label_id FROM afe_shards_labels '
+        '   WHERE shard_id = %(shard_id)s) '
+        '  AND t2.complete != 1)'
+        )
+
+    # Find frontend jobs that should be sent to shard.
+    # We are looking for:
+    #     - a job whose hqe's meta host is null
+    #     - a job whose hqe has a host
+    #     - one of the host's labels matches the shard's label.
+    # Non-aborted known jobs, completed jobs, active jobs, jobs
+    # without hqe are exluded as we do for non-frontend jobs.
+    SQL_SHARD_FRONTEND_JOBS = (
+        'SELECT t1.id FROM afe_jobs t1 '
+        'INNER JOIN afe_host_queue_entries t2 ON '
+        '  (t1.id = t2.job_id AND t2.complete != 1 AND t2.active != 1 '
+        '   AND t2.meta_host IS NULL AND t2.host_id IS NOT NULL '
+        '   %(check_known_jobs)s) '
+        'LEFT OUTER JOIN afe_hosts_labels t3 ON (t2.host_id = t3.host_id) '
+        'WHERE (t3.label_id IN '
+        '  (SELECT label_id FROM afe_shards_labels '
+        '   WHERE shard_id = %(shard_id)s))'
+        )
+    # Even if we had filters about complete, active and aborted
+    # bits in the above two sqls, there is a chance that
+    # the result may still contain a job with an hqe with 'complete=1'
+    # or 'active=1' or 'aborted=0 and afe_job.id in known jobs.'
+    # This happens when a job has two (or more) hqes and at least
+    # one hqe has different bits than others.
+    # We use a second sql to ensure we exclude all un-desired jobs.
+    SQL_JOBS_TO_EXCLUDE =(
+        'SELECT t1.id FROM afe_jobs t1 '
+        'INNER JOIN afe_host_queue_entries t2 ON '
+        '  (t1.id = t2.job_id) '
+        'WHERE (t1.id in (%(candidates)s) '
+        '  AND (t2.complete=1 OR t2.active=1 '
+        '  %(check_known_jobs)s))'
+        )
 
     def _deserialize_relation(self, link, data):
         if link in ['hostqueueentry_set', 'jobkeyval_set']:
@@ -1463,33 +1520,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
 
 
     @classmethod
-    def _add_filters_for_shard_assignment(cls, query, known_ids):
-        """Exclude jobs that should be not sent to shard.
-
-        This is a helper that filters out the following jobs:
-          - Non-aborted jobs known to shard as specified in |known_ids|.
-            Note for jobs aborted on master, even if already known to shard,
-            will be sent to shard again so that shard can abort them.
-          - Completed jobs
-          - Active jobs
-        @param query: A query that finds jobs for shards, to which the 'exclude'
-                      filters will be applied.
-        @param known_ids: List of all ids of incomplete jobs, the shard already
-                          knows about.
-
-        @returns: A django QuerySet after filtering out unnecessary jobs.
-
-        """
-        return query.exclude(
-                id__in=known_ids,
-                hostqueueentry__aborted=False
-                ).exclude(
-                hostqueueentry__complete=True
-                ).exclude(
-                hostqueueentry__active=True)
-
-
-    @classmethod
     def assign_to_shard(cls, shard, known_ids):
         """Assigns unassigned jobs to a shard.
 
@@ -1517,23 +1547,31 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         # If this changes or they are triggered manually, this applies:
         # Jobs may be returned more than once by concurrent calls of this
         # function, as there is a race condition between SELECT and UPDATE.
-        query = Job.objects.filter(
-                dependency_labels__in=shard.labels.all(),
-                # If an HQE associated with a job is removed in some reasons,
-                # such jobs should be excluded. Refer crbug.com/479766
-                hostqueueentry__isnull=False
-                )
-        query = cls._add_filters_for_shard_assignment(query, known_ids)
-        job_ids = set(query.distinct().values_list('pk', flat=True))
+        job_ids = set([])
+        check_known_jobs_exclude = ''
+        check_known_jobs_include = ''
 
-        # Combine frontend jobs in the heartbeat.
-        query = Job.objects.filter(
-                hostqueueentry__meta_host__isnull=True,
-                hostqueueentry__host__isnull=False,
-                hostqueueentry__host__labels__in=shard.labels.all()
-                )
-        query = cls._add_filters_for_shard_assignment(query, known_ids)
-        job_ids |= set(query.distinct().values_list('pk', flat=True))
+        if known_ids:
+            check_known_jobs = (
+                    cls.NON_ABORTED_KNOWN_JOBS %
+                    {'known_ids': ','.join([str(i) for i in known_ids])})
+            check_known_jobs_exclude = 'AND NOT ' + check_known_jobs
+            check_known_jobs_include = 'OR ' + check_known_jobs
+
+        for sql in [cls.SQL_SHARD_JOBS, cls.SQL_SHARD_FRONTEND_JOBS]:
+            query = Job.objects.raw(
+                    cls.SQL_SHARD_JOBS %
+                    {'check_known_jobs': check_known_jobs_exclude,
+                     'shard_id': shard.id})
+            job_ids |= set([j.id for j in query])
+
+        if job_ids:
+            query = Job.objects.raw(
+                    cls.SQL_JOBS_TO_EXCLUDE %
+                    {'check_known_jobs': check_known_jobs_include,
+                     'candidates': ','.join([str(i) for i in job_ids])})
+            job_ids -= set([j.id for j in query])
+
         if job_ids:
             Job.objects.filter(pk__in=job_ids).update(shard=shard)
             return list(Job.objects.filter(pk__in=job_ids).all())
