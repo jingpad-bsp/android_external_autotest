@@ -55,6 +55,7 @@ class AudioInputWidget(AudioWidget):
     action that is available on an input audio port.
 
     Properties:
+        _remote_rec_path: The path to the recorded file on the remote host.
         _rec_binary: The recorded binary data.
         _rec_format: The recorded data format. A dict containing
                      file_type: 'raw' or 'wav'.
@@ -71,6 +72,7 @@ class AudioInputWidget(AudioWidget):
     def __init__(self, *args, **kwargs):
         """Initializes an AudioInputWidget."""
         super(AudioInputWidget, self).__init__(*args, **kwargs)
+        self._remote_rec_path = None
         self._rec_binary = None
         self._rec_format = None
         self._channel_map = None
@@ -79,6 +81,7 @@ class AudioInputWidget(AudioWidget):
 
     def start_recording(self):
         """Starts recording."""
+        self._remote_rec_path = None
         self._rec_binary = None
         self._rec_format = None
         self.handler.start_recording()
@@ -86,7 +89,13 @@ class AudioInputWidget(AudioWidget):
 
     def stop_recording(self):
         """Stops recording."""
-        self._rec_binary, self._rec_format = self.handler.stop_recording()
+        self._remote_rec_path, self._rec_format = self.handler.stop_recording()
+
+
+    def read_recorded_binary(self):
+        """Gets recorded file from handler and fills _rec_binary."""
+        self._rec_binary = self.handler.get_recorded_binary(
+                self._remote_rec_path, self._rec_format)
 
 
     def save_file(self, file_path):
