@@ -115,8 +115,9 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         """
         # Play, wait for some time, and then start recording.
         # This is to avoid artifact caused by codec initialization.
+        source_widget.set_playback_data(self.golden_file)
         logging.debug('Start playing %s', self.golden_file.path)
-        source_widget.start_playback(self.golden_file)
+        source_widget.start_playback()
 
         time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
         logging.debug('Start recording.')
@@ -126,6 +127,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
 
         recorder_widget.stop_recording()
         logging.debug('Stopped recording.')
+        recorder_widget.read_recorded_binary()
 
 
     def save_and_check_data(self, recorder_widget):

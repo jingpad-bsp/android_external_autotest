@@ -58,12 +58,15 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
                         '%s rather than internal mic is selected on Cros '
                         'device' % input_nodes)
 
+            logging.info('Setting playback data on Chameleon')
+            source.set_playback_data(golden_file)
+
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by chameleon codec initialization
             # in the beginning of playback.
             logging.info('Start playing %s from Chameleon',
                          golden_file.path)
-            source.start_playback(golden_file)
+            source.start_playback()
 
             time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
             logging.info('Start recording from Cros device.')
@@ -74,6 +77,8 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
             recorder.stop_recording()
             logging.info('Stopped recording from Cros device.')
 
+            recorder.read_recorded_binary()
+            logging.info('Read recorded binary from Cros device.')
 
         recorded_file = os.path.join(self.resultsdir, "recorded.raw")
         logging.info('Saving recorded data to %s', recorded_file)

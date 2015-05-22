@@ -55,11 +55,14 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
 
         audio_facade.set_selected_output_volume(80)
 
+        logging.info('Setting playback data on Cros device')
+        source.set_playback_data(golden_file)
+
         # Starts playing, waits for some time, and then starts recording.
         # This is to avoid artifact caused by codec initialization.
         logging.info('Start playing %s on Cros device',
                      golden_file.path)
-        source.start_playback(golden_file)
+        source.start_playback()
 
         time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
         logging.info('Start recording from Chameleon.')
@@ -69,6 +72,9 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
 
         recorder.stop_recording()
         logging.info('Stopped recording from Chameleon.')
+
+        recorder.read_recorded_binary()
+        logging.info('Read recorded binary from Chameleon.')
 
         recorded_file = os.path.join(self.resultsdir, "recorded.raw")
         logging.info('Saving recorded data to %s', recorded_file)

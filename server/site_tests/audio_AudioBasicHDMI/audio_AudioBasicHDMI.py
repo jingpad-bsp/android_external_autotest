@@ -70,9 +70,10 @@ class audio_AudioBasicHDMI(test.test):
 
                 time.sleep(self.DELAY_BEFORE_PLAYBACK)
 
+                source.set_playback_data(golden_file)
                 logging.info('Start playing %s on Cros device',
                              golden_file.path)
-                source.start_playback(golden_file, blocking=True)
+                source.start_playback(blocking=True)
 
                 logging.info('Stopped playing %s on Cros device',
                              golden_file.path)
@@ -80,6 +81,7 @@ class audio_AudioBasicHDMI(test.test):
 
                 recorder.stop_recording()
                 logging.info('Stopped recording from Chameleon.')
+                recorder.read_recorded_binary()
 
             recorded_file = os.path.join(self.resultsdir, "recorded.raw")
             logging.info('Saving recorded data to %s', recorded_file)
