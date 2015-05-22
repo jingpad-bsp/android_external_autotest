@@ -134,7 +134,7 @@ class AudioLinkFactory(object):
         if not link_type:
             raise AudioLinkFactoryError(
                     'No supported link between %s and %s' % (
-                            source.pord_id, sink.port_id))
+                            source.port_id, sink.port_id))
 
         # There is only one dedicated HDMI cable, just use it.
         if link_type == audio_widget_link.HDMIWidgetLink:
