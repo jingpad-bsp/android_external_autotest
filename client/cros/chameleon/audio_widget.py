@@ -490,6 +490,10 @@ class CrosWidgetHandler(WidgetHandler):
         pass
 
 
+class CrosInputWidgetHandlerError(Exception):
+    """Error in CrosInputWidgetHandler."""
+
+
 class CrosInputWidgetHandler(CrosWidgetHandler):
     """
     This class abstracts a Cros device audio input widget handler.
@@ -509,8 +513,8 @@ class CrosInputWidgetHandler(CrosWidgetHandler):
         """Stops recording audio.
 
         @returns:
-            A tuple (data, format).
-                data: The recorded binary data.
+            A tuple (remote_path, format).
+                remote_path: The path to the recorded file on Cros device.
                 format: A dict containing:
                     file_type: 'raw'.
                     sample_format: 'S16_LE' for 16-bit signed integer in
@@ -519,9 +523,34 @@ class CrosInputWidgetHandler(CrosWidgetHandler):
                     rate: sampling rate.
 
         """
-        with tempfile.NamedTemporaryFile(prefix='recorded_', delete=False) as f:
-            self._audio_facade.stop_recording(f.name)
-            return open(f.name).read(), self._DEFAULT_DATA_FORMAT
+        return self._audio_facade.stop_recording(), self._DEFAULT_DATA_FORMAT
+
+
+    def get_recorded_binary(self, remote_path, record_format):
+        """Gets remote recorded file binary.
+
+        Gets and reads recorded file from Cros device.
+
+        @param remote_path: The path to the recorded file on Cros device.
+        @param record_format: The recorded data format. A dict containing
+                     file_type: 'raw' or 'wav'.
+                     sample_format: 'S32_LE' for 32-bit signed integer in
+                                    little-endian. Refer to aplay manpage for
+                                    other formats.
+                     channel: channel number.
+                     rate: sampling rate.
+
+        @returns: The recorded binary.
+
+        @raises: CrosInputWidgetHandlerError if record_format is not correct.
+        """
+        if record_format != self._DEFAULT_DATA_FORMAT:
+            raise CrosInputWidgetHandlerError(
+                    'Record format %r is not valid' % record_format)
+
+        with tempfile.NamedTemporaryFile(prefix='recorded_') as f:
+            self._audio_facade.get_recorded_file(remote_path, f.name)
+            return open(f.name).read()
 
 
 class CrosOutputWidgetHandlerError(Exception):
