@@ -5,7 +5,7 @@
 """An adapter to remotely access the audio facade on DUT."""
 
 import os
-import uuid
+import tempfile
 
 
 class AudioFacadeRemoteAdapter(object):
@@ -36,10 +36,10 @@ class AudioFacadeRemoteAdapter(object):
         return self._proxy.audio
 
 
-    def playback(self, file_path, data_format, blocking=False):
+    def playback(self, client_path, data_format, blocking=False):
         """Playback an audio file on DUT.
 
-        @param file_path: The path to the file.
+        @param client_path: The path to the file on DUT.
         @param data_format: A dict containing data format including
                             file_type, sample_format, channel, and rate.
                             file_type: file type e.g. 'raw' or 'wav'.
@@ -49,38 +49,26 @@ class AudioFacadeRemoteAdapter(object):
                             rate: sampling rate.
         @param blocking: Blocks this call until playback finishes.
 
-        @param returns: True
+        @returns: True
 
         """
-        client_path = self._copy_file_to_client(file_path)
         self._audio_proxy.playback(
                 client_path, data_format, blocking)
 
 
-    def _copy_file_to_client(self, path):
-        """Copy a file to client.
+    def set_playback_file(self, path):
+        """Copies a file to client.
 
         @param path: A path to the file.
 
         @returns: A new path to the file on client.
 
         """
-        _, ext = os.path.split(path)
-        client_file_path = self._generate_client_temp_file_path(ext)
+        _, ext = os.path.splitext(path)
+        _, client_file_path = tempfile.mkstemp(
+                prefix='playback_', suffix=ext)
         self._client.send_file(path, client_file_path)
         return client_file_path
-
-
-    def _generate_client_temp_file_path(self, ext):
-        """Generates a temporary file path on client.
-
-        @param ext: The extension of the file path.
-
-        @returns: A temporary file path on client.
-
-        """
-        return os.path.join(
-                '/tmp', 'audio_%s.%s' % (str(uuid.uuid4()), ext))
 
 
     def start_recording(self, data_format):
@@ -143,7 +131,8 @@ class AudioFacadeRemoteAdapter(object):
         @returns: True
 
         """
-        remote_path = self._generate_client_temp_file_path('txt')
+        _, remote_path = tempfile.mkstemp(
+                prefix='audio_dump_', suffix='.txt')
         self._audio_proxy.dump_diagnostics(remote_path)
         self._client.get_file(remote_path, file_path)
         return True

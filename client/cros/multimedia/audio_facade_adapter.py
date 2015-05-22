@@ -4,7 +4,14 @@
 
 """An adapter to access the local audio facade."""
 
+import os
+
 from autotest_lib.client.cros.multimedia import audio_facade_native
+
+
+class AudioFacadeLocalAdapterError(Exception):
+    """Error in AudioFacadeLocalAdapter."""
+    pass
 
 
 class AudioFacadeLocalAdapter(audio_facade_native.AudioFacadeNative):
@@ -15,4 +22,19 @@ class AudioFacadeLocalAdapter(audio_facade_native.AudioFacadeNative):
     """
     # TODO: Add methods to adapt the native ones once any non-native-type
     # methods are added.
-    pass
+    def set_playback_file(self, path):
+        """Set playback file.
+
+        This call is for consistency with audio_facade_adapter on server side.
+
+        @param path: A path to the file.
+
+        @returns: path itself.
+
+        @raises: AudioFacadeLocalAdapterError if path does not exist.
+
+        """
+        if not os.exists(path):
+            raise AudioFacadeLocalAdapter(
+                    'Path %s does not exist' % path)
+        return path
