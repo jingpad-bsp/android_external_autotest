@@ -80,6 +80,11 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
         logging.info('Saving recorded data to %s', recorded_file)
         recorder.save_file(recorded_file)
 
+        # Removes the beginning of recorded data. This is to avoid artifact
+        # caused by Chameleon codec initialization in the beginning of
+        # recording.
+        recorder.remove_head(0.5)
+
         # Compares data by frequency. Headphone audio signal has gone through
         # analog processing. This suffers from codec artifacts and noise on the
         # path. Comparing data by frequency is more robust than comparing by
