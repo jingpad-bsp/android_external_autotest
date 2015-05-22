@@ -6,7 +6,6 @@
 
 import logging
 import multiprocessing
-import shutil
 import tempfile
 
 from autotest_lib.client.cros.audio import audio_helper
@@ -107,17 +106,14 @@ class AudioFacadeNative(object):
         return True
 
 
-    def stop_recording(self, file_path):
-        """Stops recording an audio file and saves the content in file path.
+    def stop_recording(self):
+        """Stops recording an audio file.
 
-        @param file_path: The path to save the content.
-
-        @returns: True
+        @returns: The path to the recorded file.
 
         """
         self._recorder.stop()
-        shutil.copy(self._recorder.file_path, file_path)
-        return True
+        return self._recorder.file_path
 
 
     def set_selected_output_volume(self, volume):

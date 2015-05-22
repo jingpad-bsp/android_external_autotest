@@ -88,19 +88,23 @@ class AudioFacadeRemoteAdapter(object):
         return True
 
 
-    def stop_recording(self, file_path):
+    def stop_recording(self):
         """Stops recording on DUT.
 
-        @param file_path: The path to save the content.
-
-        @returns: True
+        @returns: the path to the recorded file on DUT.
 
         """
-        remote_path = self._generate_client_temp_file_path('raw')
-        self._audio_proxy.stop_recording(remote_path)
-        self._client.get_file(remote_path, file_path)
+        return self._audio_proxy.stop_recording()
 
-        return True
+
+    def get_recorded_file(self, remote_path, local_path):
+        """Gets a recorded file from DUT.
+
+        @param remote_path: The path to the file on DUT.
+        @param local_path: The local path for copy destination.
+
+        """
+        self._client.get_file(remote_path, local_path)
 
 
     def set_selected_output_volume(self, volume):

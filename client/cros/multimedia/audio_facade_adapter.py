@@ -5,6 +5,7 @@
 """An adapter to access the local audio facade."""
 
 import os
+import shutil
 
 from autotest_lib.client.cros.multimedia import audio_facade_native
 
@@ -38,3 +39,13 @@ class AudioFacadeLocalAdapter(audio_facade_native.AudioFacadeNative):
             raise AudioFacadeLocalAdapter(
                     'Path %s does not exist' % path)
         return path
+
+
+    def get_recorded_file(self, src_path, dst_path):
+        """Gets a recorded file.
+
+        @param src_path: The path to the recorded file.
+        @param dst_path: The local path for copy destination.
+
+        """
+        shutil.copy(src_path, dst_path)
