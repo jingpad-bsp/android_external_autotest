@@ -11,11 +11,11 @@ import threading
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
-from autotest_lib.server import test
+from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class audio_AudioAfterSuspend(test.test):
+class audio_AudioAfterSuspend(audio_test.AudioTest):
     """Server side audio test.
 
     This test talks to a Chameleon board and a Cros device to verify
