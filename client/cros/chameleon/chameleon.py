@@ -540,18 +540,17 @@ class ChameleonAudioOutput(ChameleonPort):
         self.port_id = chameleon_port.port_id
 
 
-    def start_playing_audio(self, data, data_format):
+    def start_playing_audio(self, path, data_format):
         """Starts playing audio.
 
-        @param data: The audio data to play.
+        @param path: The path to the file to play on Chameleon.
         @param data_format: A dict containing data format. Currently Chameleon
                             only accepts data format:
                             dict(file_type='raw', sample_format='S32_LE',
                                  channel=8, rate=48000).
 
         """
-        return self.chameleond_proxy.StartPlayingAudio(
-                self.port_id, xmlrpclib.Binary(data), data_format)
+        self.chameleond_proxy.StartPlayingAudio(self.port_id, path, data_format)
 
 
     def stop_playing_audio(self):

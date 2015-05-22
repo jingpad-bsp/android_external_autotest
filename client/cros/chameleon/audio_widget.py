@@ -378,10 +378,33 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
                                 channel=8,
                                 rate=48000)
 
-    def start_playback(self, test_data, blocking=False):
-        """Starts playback.
+    def set_playback_data(self, test_data):
+        """Sets data to play.
+
+        Handles scale if needed. Creates a path and sends the scaled data to
+        Chameleon at that path.
 
         @param test_data: An AudioTestData object.
+
+        @return: The remote data path on Chameleon.
+
+        """
+        converted_audio_test_data = test_data.convert(
+                self._DEFAULT_DATA_FORMAT, self.scale)
+
+        try:
+            with tempfile.NamedTemporaryFile(prefix='audio_') as f:
+                self._chameleon_board.host.send_file(
+                        converted_audio_test_data.path, f.name)
+            return f.name
+        finally:
+            converted_audio_test_data.delete()
+
+
+    def start_playback(self, path, blocking=False):
+        """Starts playback.
+
+        @param path: The path to the file to play on Chameleon.
         @param blocking: Blocks this call until playback finishes.
 
         """
@@ -389,14 +412,7 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
             raise NotImplementedError(
                     'Blocking playback on chameleon is not supported')
 
-        converted_audio_test_data = test_data.convert(
-                self._DEFAULT_DATA_FORMAT, self.scale)
-
-        self._port.start_playing_audio(
-                converted_audio_test_data.get_binary(),
-                self._DEFAULT_DATA_FORMAT)
-
-        converted_audio_test_data.delete()
+        self._port.start_playing_audio(path, self._DEFAULT_DATA_FORMAT)
 
 
     def stop_playback(self):
