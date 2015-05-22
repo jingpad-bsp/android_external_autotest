@@ -511,8 +511,8 @@ class ChameleonAudioInput(ChameleonPort):
         """Stops capturing audio.
 
         Returns:
-          A tuple (data, format).
-          data: The captured binary data.
+          A tuple (remote_path, format).
+          remote_path: The captured file path on Chameleon.
           format: A dict containing:
             file_type: 'raw' or 'wav'.
             sample_format: 'S32_LE' for 32-bit signed integer in little-endian.
@@ -520,9 +520,9 @@ class ChameleonAudioInput(ChameleonPort):
             channel: channel number.
             rate: sampling rate.
         """
-        rpc_data, data_format = self.chameleond_proxy.StopCapturingAudio(
+        remote_path, data_format = self.chameleond_proxy.StopCapturingAudio(
                 self.port_id)
-        return rpc_data.data, data_format
+        return remote_path, data_format
 
 
 class ChameleonAudioOutput(ChameleonPort):

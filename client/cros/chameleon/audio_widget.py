@@ -327,26 +327,43 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
     def stop_recording(self):
         """Stops recording.
 
-        Gets recorded binary and format from Chameleon. Also, handle scaling
-        if needed.
+        Gets remote recorded path and format from Chameleon. The format can
+        then be used in get_recorded_binary()
 
-        @returns: A tuple (data_binary, data_format) for recorded data.
+        @returns: A tuple (remote_path, data_format) for recorded data.
                   Refer to stop_capturing_audio call of ChameleonAudioInput.
 
         """
+        return self._port.stop_capturing_audio()
+
+
+    def get_recorded_binary(self, remote_path, record_format):
+        """Gets remote recorded file binary.
+
+        Reads file from Chameleon host and handles scale if needed.
+
+        @param remote_path: The path to the recorded file on Chameleon.
+        @param record_format: The recorded data format. A dict containing
+                     file_type: 'raw' or 'wav'.
+                     sample_format: 'S32_LE' for 32-bit signed integer in
+                                    little-endian. Refer to aplay manpage for
+                                    other formats.
+                     channel: channel number.
+                     rate: sampling rate.
+
+        @returns: The recorded binary.
+
+        """
         with tempfile.NamedTemporaryFile(prefix='recorded_') as f:
-            # Gets recorded data and format by Chameleon port.
-            rec_binary, rec_format = self._port.stop_capturing_audio()
+            self._chameleon_board.host.get_file(remote_path, f.name)
 
             # Handles scaling using audio_test_data.
-            open(f.name, 'w').write(rec_binary)
-            test_data = audio_test_data.AudioTestData(rec_format, f.name)
-            converted_test_data = test_data.convert(
-                    rec_format, self.scale)
-            scaled_binary = converted_test_data.get_binary()
-            converted_test_data.delete()
-
-            return scaled_binary, rec_format
+            test_data = audio_test_data.AudioTestData(record_format, f.name)
+            converted_test_data = test_data.convert(record_format, self.scale)
+            try:
+                return converted_test_data.get_binary()
+            finally:
+                converted_test_data.delete()
 
 
     def _find_port(self, interface):
