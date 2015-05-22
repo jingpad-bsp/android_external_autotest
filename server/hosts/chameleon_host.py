@@ -66,7 +66,7 @@ class ChameleonHost(ssh_host.SSHHost):
         """Create a ChameleonBoard object."""
         # TODO(waihong): Add verify and repair logic which are required while
         # deploying to Cros Lab.
-        return chameleon.ChameleonBoard(self._chameleon_connection)
+        return chameleon.ChameleonBoard(self._chameleon_connection, self)
 
 
 def create_chameleon_host(dut, chameleon_args):

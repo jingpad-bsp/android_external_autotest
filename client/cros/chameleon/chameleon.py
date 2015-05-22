@@ -76,13 +76,20 @@ class ChameleonBoard(object):
     A Chameleond RPC proxy is passed to the construction such that it can
     use this proxy to control the Chameleon board.
 
+    User can use host to access utilities that are not provided by
+    Chameleond XMLRPC server, e.g. send_file and get_file, which are provided by
+    ssh_host.SSHHost, which is the base class of ChameleonHost.
+
     """
 
-    def __init__(self, chameleon_connection):
+    def __init__(self, chameleon_connection, chameleon_host=None):
         """Construct a ChameleonBoard.
 
         @param chameleon_connection: ChameleonConnection object.
+        @param chameleon_host: ChameleonHost object. None if this ChameleonBoard
+                               is not created by a ChameleonHost.
         """
+        self.host = chameleon_host
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
         if self._chameleond_proxy.HasAudioBoard():
             self._audio_board = audio_board.AudioBoard(chameleon_connection)
