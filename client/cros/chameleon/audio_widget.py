@@ -222,13 +222,30 @@ class AudioOutputWidget(AudioWidget):
     action that is available on an output audio port.
 
     """
-    def start_playback(self, test_data, blocking=False):
-        """Starts playing audio.
+    def __init__(self, *args, **kwargs):
+        """Initializes an AudioOutputWidget."""
+        super(AudioOutputWidget, self).__init__(*args, **kwargs)
+        self._remote_playback_path = None
+
+
+    def set_playback_data(self, test_data):
+        """Sets data to play.
+
+        Sets the data to play in the handler and gets the remote file path.
 
         @param test_data: An AudioTestData object.
-        @param blocking: Blocks this call until playback finishes.
+
         """
-        self.handler.start_playback(test_data, blocking)
+        self._remote_playback_path = self.handler.set_playback_data(test_data)
+
+
+    def start_playback(self, blocking=False):
+        """Starts playing audio specified in previous set_playback_data call.
+
+        @param blocking: Blocks this call until playback finishes.
+
+        """
+        self.handler.start_playback(self._remote_playback_path, blocking)
 
 
     def stop_playback(self):
