@@ -539,11 +539,12 @@ class CrosOutputWidgetHandler(CrosWidgetHandler):
                                 channel=2,
                                 rate=48000)
 
-    def start_playback(self, test_data, blocking=False):
-        """Starts playing audio.
+    def set_playback_data(self, test_data):
+        """Sets data to play.
 
         @param test_data: An AudioTestData object.
-        @param blocking: Blocks this call until playback finishes.
+
+        @returns: The remote file path on Cros device.
 
         """
         # TODO(cychiang): Do format conversion on Cros device if this is
@@ -551,9 +552,17 @@ class CrosOutputWidgetHandler(CrosWidgetHandler):
         if test_data.data_format != self._DEFAULT_DATA_FORMAT:
             raise CrosOutputWidgetHandlerError(
                     'File format conversion for cros device is not supported.')
+        return self._audio_facade.set_playback_file(test_data.path)
 
-        return self._audio_facade.playback(test_data.path, test_data.data_format,
-                                           blocking)
+
+    def start_playback(self, path, blocking=False):
+        """Starts playing audio.
+
+        @param path: The path to the file to play on Cros device.
+        @param blocking: Blocks this call until playback finishes.
+
+        """
+        self._audio_facade.playback(path, self._DEFAULT_DATA_FORMAT, blocking)
 
 
     def stop_playback(self):
