@@ -239,6 +239,11 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 raise
 
         def bluez_stopped():
+            """Checks the bluetooth daemon status.
+
+            @returns: True if bluez is stopped. False otherwise.
+
+            """
             return not self._update_bluez()
 
         logging.debug('waiting for bluez stop')
@@ -606,7 +611,12 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
         def pair_error(error):
-            """Handler when pairing failed."""
+            """Handler when pairing failed.
+
+            @param error: one of errors defined in org.bluez.Error representing
+                          the error in pairing.
+
+            """
             try:
                 error_name = error.get_dbus_name()
                 if error_name == 'org.freedesktop.DBus.Error.NoReply':
