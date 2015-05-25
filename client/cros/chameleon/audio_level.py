@@ -43,6 +43,7 @@ _SOURCE_LEVEL_TABLE = {
         ids.CrosIds.HDMI: _AudioLevel.DIGITAL,
         ids.CrosIds.HEADPHONE: _AudioLevel.LINE_LEVEL,
         ids.CrosIds.SPEAKER: _AudioLevel.LINE_LEVEL,
+        ids.CrosIds.BLUETOOTH_HEADPHONE: _AudioLevel.DIGITAL,
         ids.PeripheralIds.MIC: _AudioLevel.MIC_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.LINE_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_TX: _AudioLevel.DIGITAL,
@@ -53,6 +54,7 @@ _SINK_LEVEL_TABLE = {
         ids.ChameleonIds.LINEIN: _AudioLevel.LINE_LEVEL,
         ids.CrosIds.EXTERNAL_MIC: _AudioLevel.MIC_LEVEL,
         ids.CrosIds.INTERNAL_MIC: _AudioLevel.MIC_LEVEL,
+        ids.CrosIds.BLUETOOTH_MIC: _AudioLevel.DIGITAL,
         ids.PeripheralIds.SPEAKER: _AudioLevel.LINE_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.DIGITAL,
         ids.PeripheralIds.BLUETOOTH_DATA_TX:

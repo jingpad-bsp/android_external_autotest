@@ -33,9 +33,11 @@ class CrosIds(object):
     EXTERNAL_MIC = 'Cros External Mic'
     SPEAKER = 'Cros Speaker'
     INTERNAL_MIC = 'Cros Internal Mic'
+    BLUETOOTH_HEADPHONE = 'Cros Bluetooth Headphone'
+    BLUETOOTH_MIC = 'Cros Bluetooth Mic'
 
-    SINK_PORTS = [EXTERNAL_MIC, INTERNAL_MIC]
-    SOURCE_PORTS = [HDMI, HEADPHONE, SPEAKER]
+    SINK_PORTS = [EXTERNAL_MIC, INTERNAL_MIC, BLUETOOTH_MIC]
+    SOURCE_PORTS = [HDMI, HEADPHONE, SPEAKER, BLUETOOTH_HEADPHONE]
 
 
 class PeripheralIds(object):
