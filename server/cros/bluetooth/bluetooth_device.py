@@ -233,6 +233,48 @@ class BluetoothDevice(object):
         return self._proxy.register_profile(path, uuid, options)
 
 
+    def pair_legacy_device(self, address, pin, timeout):
+        """Pairs a device with a given pin code.
+
+        Registers an agent who handles pin code request and
+        pairs a device with known pin code.
+
+        @param address: Address of the device to pair.
+        @param pin: The pin code of the device to pair.
+        @param timeout: The timeout in seconds for pairing.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self._proxy.pair_legacy_device(address, pin, timeout)
+
+
+    def connect_device(self, address):
+        """Connects a device.
+
+        Connects a device if it is not connected.
+
+        @param address: Address of the device to connect.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self._proxy.connect_device(address)
+
+
+    def disconnect_device(self, address):
+        """Disconnects a device.
+
+        Disconnects a device if it is connected.
+
+        @param address: Address of the device to disconnect.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self._proxy.disconnect_device(address)
+
+
     def close(self):
         """Tear down state associated with the client."""
         # Turn off the discoverable flag since it may affect future tests.
