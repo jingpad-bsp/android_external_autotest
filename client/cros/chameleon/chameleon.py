@@ -152,6 +152,14 @@ class ChameleonBoard(object):
         return self._audio_board
 
 
+    def get_mac_address(self):
+        """Gets the MAC address of Chameleon.
+
+        @return: A string for MAC address.
+        """
+        return self._chameleond_proxy.GetMacAddress()
+
+
 class ChameleonPort(object):
     """ChameleonPort is an abstraction of a general port of a Chameleon board.
 
