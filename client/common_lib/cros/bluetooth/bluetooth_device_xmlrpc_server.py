@@ -421,7 +421,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         objects = self._bluez.GetManagedObjects(
-                dbus_interface=self.BLUEZ_MANAGER_IFACE)
+                dbus_interface=self.BLUEZ_MANAGER_IFACE, byte_arrays=True)
         devices = []
         for path, ifaces in objects.iteritems():
             if self.BLUEZ_DEVICE_IFACE in ifaces:
