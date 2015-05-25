@@ -4,8 +4,10 @@
 
 """Facade to access the audio-related functionality."""
 
+import glob
 import logging
 import multiprocessing
+import os
 import tempfile
 
 from autotest_lib.client.cros.audio import audio_helper
@@ -34,6 +36,15 @@ class AudioFacadeNative(object):
         self._chrome = chrome
         self._browser = chrome.browser
         self._recorder = None
+
+
+    def cleanup(self):
+        """Clean up the temporary files."""
+        for path in glob.glob('/tmp/playback_*'):
+            os.unlink(path)
+
+        for path in glob.glob('/tmp/capture_*'):
+            os.unlink(path)
 
 
     def playback(self, file_path, data_format, blocking=False):
@@ -164,7 +175,7 @@ class Recorder(object):
     """
     def __init__(self):
         """Initializes a Recorder."""
-        _, self.file_path = tempfile.mkstemp(prefix='capture', suffix='.raw')
+        _, self.file_path = tempfile.mkstemp(prefix='capture_', suffix='.raw')
         self._capture_subprocess = None
 
 

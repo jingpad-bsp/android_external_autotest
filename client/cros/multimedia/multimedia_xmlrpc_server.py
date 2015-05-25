@@ -27,6 +27,12 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             'display': display_facade_native.DisplayFacadeNative(chromium)
         }
 
+
+    def __exit__(self, exception, value, traceback):
+        """Clean up the resources."""
+        self._facades['audio'].cleanup()
+
+
     def _dispatch(self, method, params):
         """Dispatches the method to the proper facade.
 
