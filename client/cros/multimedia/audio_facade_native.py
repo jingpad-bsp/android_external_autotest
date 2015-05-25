@@ -147,7 +147,7 @@ class AudioFacadeNative(object):
         return cras_utils.get_selected_node_types()
 
 
-    def dump_dignostics(self, file_path):
+    def dump_diagnostics(self, file_path):
         """Dumps audio diagnostics results to a file.
 
         @param file_path: The path to dump results.
