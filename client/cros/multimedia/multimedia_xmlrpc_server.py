@@ -11,6 +11,7 @@ import logging
 import xmlrpclib
 import traceback
 import common   # pylint: disable=unused-import
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.multimedia import audio_facade_native
@@ -81,6 +82,9 @@ if __name__ == '__main__':
         logging.debug('multimedia_xmlrpc_server main...')
 
         extra_browser_args = ['--enable-gpu-benchmarking']
+
+        # Restart Cras to clean up any audio activities.
+        utils.restart_job('cras')
 
         with chrome.Chrome(
                 extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
