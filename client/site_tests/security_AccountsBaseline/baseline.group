@@ -62,6 +62,7 @@ attestation:!:247:attestation
 goofy:!:248:goofy
 easy-unlock:!:249:
 trunks:!:251:trunks
+tpm_manager:!:252:tpm_manager
 scanner:!:255:saned
 volume:!:257:
 uinput:!:258:bluetooth,volume
