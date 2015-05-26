@@ -106,8 +106,6 @@ DEVTYPE_TO_REGION_INFOS = {
               {'chnum': 13, 'expect': 'no-connect'},
               {'chnum': 36, 'expect': 'connect'},
               {'chnum': 52, 'expect': 'passive-scan'},
-              # TODO(quiche): Check if ch 120 behavior is as intended.
-              # (It seems to differ from the documentation for the part.)
               {'chnum': 120, 'expect': 'no-connect'},
               {'chnum': 149, 'expect': 'connect'},
               {'chnum': 165, 'expect': 'connect'}]}],
