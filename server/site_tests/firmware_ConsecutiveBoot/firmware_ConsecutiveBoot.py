@@ -6,12 +6,13 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
 class firmware_ConsecutiveBoot(FirmwareTest):
     """
-    Servo based consecutive boot test via power button to turn on DUT and 
+    Servo based consecutive boot test via power button to turn on DUT and
     /sbin/shutdown command to turn off DUT.
 
     This test is intended to be run with many iterations to ensure that the DUT
@@ -28,6 +29,8 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args)
         self.switcher.setup_mode('dev' if dev_mode else 'normal')
+        if dev_mode:
+          self.clear_set_gbb_flags(0, vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY)
         self.setup_usbkey(usbkey=False)
 
     def shutdown_power_on(self):
