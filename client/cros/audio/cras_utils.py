@@ -91,6 +91,17 @@ def loopback_cmd(output_file, duration=10, channels=2, rate=48000):
     return args
 
 
+def get_cras_nodes_cmd():
+    """Gets a command to query the nodes from Cras.
+
+    @returns: The command to query nodes information from Cras using dbus-send.
+
+    """
+    return ('dbus-send --system --type=method_call --print-reply '
+            '--dest=org.chromium.cras /org/chromium/cras '
+            'org.chromium.cras.Control.GetNodes')
+
+
 def set_system_volume(volume):
     """Set the system volume.
 
@@ -183,67 +194,35 @@ def set_capture_mute(is_mute):
     cmd_utils.execute(args)
 
 
-def node_type_is_plugged(node_type, server_info=None):
+def node_type_is_plugged(node_type, nodes_info):
     """Determine if there is any node of node_type plugged.
 
-    Parses server info to get the plugged state of certain node type.
-    The server info of interest is in this format:
+    This method is used in has_loopback_dongle in cros_host, where
+    the call is executed on autotest server. Use get_cras_nodes instead if
+    the call can be executed on Cros device.
 
-    ...(other info)...
+    Since Cras only reports the plugged node in GetNodes, we can
+    parse the return value to see if there is any node with the given type.
+    For example, if INTERNAL_MIC is of intereset, the pattern we are
+    looking for is:
 
-     ID   Vol   Plugged  L/R swapped Time      Type       Name
-    3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
-    4:0     0   yes     no     1419323059   MIC        *Mic Jack
+    dict entry(
+       string "Type"
+       variant             string "INTERNAL_MIC"
+    )
 
-    ...(other info)...
-
-
-    @param node_type: A str representing node type. e.g. 'HEADPHONE' or
-                      'MIC'.
-    @param server_info: A str containing server info. None to call
-                        dump_server_info in this function.
+    @param node_type: A str representing node type defined in CRAS_NODE_TYPES.
+    @param nodes_info: A str containing output of command get_nodes_cmd.
 
     @returns: True if there is any node of node_type plugged. False otherwise.
 
-    @raises: ValueError: if cras server info format is not as expected.
-
     """
-    # The label line
-    # ID   Vol   Plugged  L/R swapped Time      Type       Name
-    _MIN_LEN_LABELS = 8
-    _INDEX_LABEL_PLUGGED = 2
-    _INDEX_LABEL_TYPE = 6
-
-    # The value line
-    # 3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
-    _MIN_LEN_VALUES = 7
-    _INDEX_VALUE_PLUGGED = 2
-    _INDEX_VALUE_TYPE = 5
-
-    if not server_info:
-        server_info = dump_server_info()
-    state = False
-    for line in server_info.splitlines():
-        line_split = line.split()
-        # Checks if a label line follows format.
-        if 'Plugged' in line_split and 'Type' in line_split:
-            if (len(line_split) < _MIN_LEN_LABELS or
-                line_split[_INDEX_LABEL_PLUGGED] != 'Plugged' or
-                line_split[_INDEX_LABEL_TYPE] != 'Type'):
-                raise ValueError('cras server info format is not as '
-                                 'expected')
-        if len(line_split) < _MIN_LEN_VALUES:
-            continue
-        # Checks a value line of interest.
-        # There might be other nodes of node_type, so keep searching if
-        # this node is not plugged.
-        if (line_split[_INDEX_VALUE_TYPE] == node_type and
-            line_split[_INDEX_VALUE_PLUGGED] == 'yes'):
-            state = True
-    return state
+    match = re.search(r'string "Type"\s+variant\s+string "%s"' % node_type,
+                      nodes_info)
+    return True if match else False
 
 
-# Cras node types reported from cras_test_client --dump_server_info.
+# Cras node types reported from Cras DBus control API.
 CRAS_OUTPUT_NODE_TYPES = ['HEADPHONE', 'INTERNAL_SPEAKER', 'HDMI', 'USB',
                           'BLUETOOTH']
 CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH']

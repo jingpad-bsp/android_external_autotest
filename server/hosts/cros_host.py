@@ -2549,10 +2549,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                  None                    when there is no audio loopback dongle
                                          plugged to this host.
         """
-        server_info = self.run(command='cras_test_client --dump_s',
-                               ignore_status=True).stdout
-        if (cras_utils.node_type_is_plugged('HEADPHONE', server_info) and
-            cras_utils.node_type_is_plugged('MIC', server_info)):
+        nodes_info = self.run(command=cras_utils.get_cras_nodes_cmd(),
+                              ignore_status=True).stdout
+        if (cras_utils.node_type_is_plugged('HEADPHONE', nodes_info) and
+            cras_utils.node_type_is_plugged('MIC', nodes_info)):
                 return 'audio_loopback_dongle'
         else:
                 return None
