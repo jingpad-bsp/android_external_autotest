@@ -47,11 +47,11 @@ class audio_AudioBasicInternalSpeaker(test.test):
         audio_facade = factory.create_audio_facade()
 
         # Checks the node selected by cras is correct.
-        output_node, _ = audio_facade.get_selected_node_types()
-        if output_node != 'INTERNAL_SPEAKER':
+        output_nodes, _ = audio_facade.get_selected_node_types()
+        if output_nodes != ['INTERNAL_SPEAKER']:
             raise error.TestError(
                     '%s rather than internal speaker is selected on Cros '
-                    'device' % output_node)
+                    'device' % output_nodes)
 
         audio_facade.set_selected_output_volume(80)
 

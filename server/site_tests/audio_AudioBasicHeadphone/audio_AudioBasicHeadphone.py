@@ -49,11 +49,11 @@ class audio_AudioBasicHeadphone(test.test):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
             audio_facade = factory.create_audio_facade()
-            output_node, _ = audio_facade.get_selected_node_types()
-            if output_node != 'HEADPHONE':
+            output_nodes, _ = audio_facade.get_selected_node_types()
+            if output_nodes != ['HEADPHONE']:
                 raise error.TestError(
                         '%s rather than headphone is selected on Cros '
-                        'device' % output_node)
+                        'device' % output_nodes)
 
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by codec initialization.

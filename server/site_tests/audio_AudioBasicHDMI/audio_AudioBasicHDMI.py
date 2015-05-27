@@ -59,11 +59,11 @@ class audio_AudioBasicHDMI(test.test):
             with chameleon_audio_helper.bind_widgets(binder):
                 time.sleep(self.DELAY_AFTER_BINDING)
                 audio_facade = factory.create_audio_facade()
-                output_node, _ = audio_facade.get_selected_node_types()
-                if output_node != 'HDMI':
+                output_nodes, _ = audio_facade.get_selected_node_types()
+                if output_nodes != ['HDMI']:
                     raise error.TestError(
                             '%s rather than HDMI is selected on Cros device' %
-                                    output_node)
+                                    output_nodes)
 
                 logging.info('Start recording from Chameleon.')
                 recorder.start_recording()

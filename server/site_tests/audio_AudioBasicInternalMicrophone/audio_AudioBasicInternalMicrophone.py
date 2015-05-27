@@ -52,11 +52,11 @@ class audio_AudioBasicInternalMicrophone(test.test):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
             audio_facade = factory.create_audio_facade()
-            _, input_node = audio_facade.get_selected_node_types()
-            if input_node != 'INTERNAL_MIC':
+            _, input_nodes = audio_facade.get_selected_node_types()
+            if input_nodes != ['INTERNAL_MIC']:
                 raise error.TestError(
                         '%s rather than internal mic is selected on Cros '
-                        'device' % input_node)
+                        'device' % input_nodes)
 
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by chameleon codec initialization
