@@ -127,8 +127,9 @@ class AudioFacadeRemoteAdapter(object):
     def get_selected_node_types(self):
         """Gets the selected output and input node types on DUT.
 
-        @returns: A tuple (output node type, input node type) where node types
-                  are defined in cras_utils.CRAS_NODE_TYPES.
+        @returns: A tuple (output_node_types, input_node_types) where each
+                  field is a list of selected node types defined in
+                  cras_utils.CRAS_NODE_TYPES.
 
         """
         return self._audio_proxy.get_selected_node_types()

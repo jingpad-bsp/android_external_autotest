@@ -132,13 +132,12 @@ class AudioFacadeNative(object):
     def get_selected_node_types(self):
         """Gets the selected output and input node types.
 
-        @returns: A tuple (output node type, input node type) where node types
-                  are defined in cras_utils.CRAS_NODE_TYPES.
+        @returns: A tuple (output_node_types, input_node_types) where each
+                  field is a list of selected node types defined in
+                  cras_utils.CRAS_NODE_TYPES.
 
         """
-        output_node, input_node = cras_utils.get_selected_nodes()
-        return (cras_utils.get_node_type(output_node),
-                cras_utils.get_node_type(input_node))
+        return cras_utils.get_selected_node_types()
 
 
     def dump_dignostics(self, file_path):
