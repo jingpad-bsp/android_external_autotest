@@ -12,12 +12,22 @@ from autotest_lib.client.cros.audio import cmd_utils
 _CRAS_TEST_CLIENT = '/usr/bin/cras_test_client'
 
 def playback(*args, **kargs):
-    """A helper function to execute the playback_cmd."""
+    """A helper function to execute the playback_cmd.
+
+    @param args: args passed to playback_cmd.
+    @param kargs: kargs passed to playback_cmd.
+
+    """
     cmd_utils.execute(playback_cmd(*args, **kargs))
 
 
 def capture(*args, **kargs):
-    """A helper function to execute the capture_cmd."""
+    """A helper function to execute the capture_cmd.
+
+    @param args: args passed to capture_cmd.
+    @param kargs: kargs passed to capture_cmd.
+
+    """
     cmd_utils.execute(capture_cmd(*args, **kargs))
 
 
@@ -29,7 +39,10 @@ def playback_cmd(playback_file, block_size=None, duration=None,
                           playback raw audio from the stdin.
     @param block_size: the number of frames per callback(dictates latency).
     @param duration: seconds to playback
+    @param channels: number of channels.
     @param rate: the sampling rate
+
+    @returns: The command args put in a list of strings.
 
     """
     args = [_CRAS_TEST_CLIENT]
@@ -52,7 +65,10 @@ def capture_cmd(
     @param duration: seconds to record. If it is None, duration is not set,
                      and command will keep capturing audio until it is
                      terminated.
+    @param channels: number of channels.
     @param rate: the sampling rate.
+
+    @returns: The command args put in a list of strings.
 
     """
     args = [_CRAS_TEST_CLIENT]
@@ -67,7 +83,13 @@ def capture_cmd(
 
 
 def loopback(*args, **kargs):
-    """A helper function to execute loopback_cmd."""
+    """A helper function to execute loopback_cmd.
+
+    @param args: args passed to loopback_cmd.
+    @param kargs: kargs passed to loopback_cmd.
+
+    """
+
     cmd_utils.execute(loopback_cmd(*args, **kargs))
 
 
@@ -78,6 +100,8 @@ def loopback_cmd(output_file, duration=10, channels=2, rate=48000):
     @param channels: The number of channels of the recorded audio.
     @param duration: seconds to record.
     @param rate: the sampling rate.
+
+    @returns: The command args put in a list of strings.
 
     """
     args = [_CRAS_TEST_CLIENT]
