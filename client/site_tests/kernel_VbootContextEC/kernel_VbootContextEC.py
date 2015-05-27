@@ -23,7 +23,7 @@ class kernel_VbootContextEC(test.test):
             return
 
         media = utils.read_file(self.dts_node_path).strip('\n\x00')
-        if media != 'mkbp':
+        if media != 'cros-ec':
             logging.info('Skip test: Vboot Context storage media is "%s"',
                     media)
             return
