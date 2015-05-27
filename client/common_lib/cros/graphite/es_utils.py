@@ -78,7 +78,7 @@ except ImportError:
     elasticsearch_helpers = elasticsearch.Elasticsearch()
 
 
-DEFAULT_TIMEOUT = 3
+DEFAULT_TIMEOUT = 30
 
 
 class EsUtilException(Exception):
@@ -327,12 +327,10 @@ class ESMetadata(object):
         batch_list = [{'terms': {k: v}} for k, v in batch_constraints if k]
         regex_list = [{'regexp': {k: v}} for k, v in regex_constraints if k]
         constraints = eq_list + batch_list + range_list + regex_list
-        num_constraints = len(constraints)
         query = {
             'query': {
                 'bool': {
-                    'should': constraints,
-                    'minimum_should_match': num_constraints,
+                    'must': constraints,
                 }
             },
         }
@@ -407,7 +405,8 @@ class ESMetadata(object):
             logging.error('Index (%s) does not exist on %s:%s',
                           self.index, self.host, self.port)
             return None
-        result = self.es.search(index=self.index, body=query)
+        result = self.es.search(index=self.index, body=query,
+                                timeout=DEFAULT_TIMEOUT)
         # Check if all matched records are returned. It could be the size is
         # set too small. Special case for size set to 1, as that means that
         # the query cares about the first matched entry.

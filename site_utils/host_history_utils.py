@@ -6,6 +6,7 @@
 
 import collections
 import copy
+import multiprocessing.pool
 from itertools import groupby
 
 import common
@@ -20,6 +21,8 @@ from autotest_lib.site_utils import job_history
 _HOST_HISTORY_TYPE = 'host_history'
 _LOCK_HISTORY_TYPE = 'lock_history'
 
+# The maximum number of days that the script will lookup for history.
+_MAX_DAYS_FOR_HISTORY = 90
 
 class NoHostFoundException(Exception):
     """Exception raised when no host is found to search for history.
@@ -95,12 +98,14 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     @param fields: list of fields we are interested in
     @returns: time, field_value of the latest entry.
     """
+    # History older than 90 days are ignored. This helps the ES query faster.
     t_epoch = time_utils.to_epoch_time(t)
     result = autotest_es.query(
             fields_returned=fields,
             equality_constraints=[('_type', type_str),
                                   ('hostname', hostname)],
-            range_constraints=[('time_recorded', None, t_epoch)],
+            range_constraints=[('time_recorded',
+                               t_epoch-3600*24*_MAX_DAYS_FOR_HISTORY, t_epoch)],
             size=1,
             sort_specs=[{'time_recorded': 'desc'}])
     if result.total > 0:
@@ -108,7 +113,7 @@ def find_most_recent_entry_before(t, type_str, hostname, fields):
     return {}
 
 
-def get_host_history_intervals(t_start, t_end, hostname, intervals):
+def get_host_history_intervals(input):
     """Gets stats for a host.
 
     This method uses intervals found in metaDB to build a full history of the
@@ -117,16 +122,21 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
     the first record logged in ES, we need to look back to the last record
     logged in ES before t_start.
 
-    @param t_start: beginning of time period we are interested in.
-    @param t_end: end of time period we are interested in.
-    @param hostname: hostname for the host we are interested in (string)
-    @param intervals: intervals from ES query.
+    @param input: A dictionary of input args, which including following args:
+            t_start: beginning of time period we are interested in.
+            t_end: end of time period we are interested in.
+            hostname: hostname for the host we are interested in (string)
+            intervals: intervals from ES query.
     @returns: dictionary, num_entries_found
         dictionary of status: time spent in that status
         num_entries_found: number of host history entries
                            found in [t_start, t_end]
 
     """
+    t_start = input['t_start']
+    t_end = input['t_end']
+    hostname = input['hostname']
+    intervals = input['intervals']
     lock_history_recent = find_most_recent_entry_before(
             t=t_start, type_str=_LOCK_HISTORY_TYPE, hostname=hostname,
             fields=['time_recorded', 'locked'])
@@ -187,7 +197,7 @@ def get_host_history_intervals(t_start, t_end, hostname, intervals):
     # Do final as well.
     intervals_of_statuses.update(calculate_status_times(
             t_prev, t_end, status_prev, metadata_prev, locked_intervals))
-    return intervals_of_statuses, num_entries_found
+    return hostname, intervals_of_statuses, num_entries_found
 
 
 def calculate_total_times(intervals_of_statuses):
@@ -372,9 +382,16 @@ def get_report(t_start, t_end, hosts=None, board=None, pool=None,
     hosts_intervals = get_intervals_for_hosts(t_start, t_end, hosts, board,
                                               pool)
     history = {}
+    pool = multiprocessing.pool.ThreadPool(processes=8)
+    args = []
     for hostname,intervals in hosts_intervals.items():
-        history[hostname] = get_host_history_intervals(t_start, t_end, hostname,
-                                                       intervals)
+        args.append({'t_start': t_start,
+                     't_end': t_end,
+                     'hostname': hostname,
+                     'intervals': intervals})
+    results = pool.imap_unordered(get_host_history_intervals, args)
+    for hostname, intervals, count in results:
+        history[hostname] = (intervals, count)
     report = []
     for hostname,intervals in history.items():
         total_times = calculate_total_times(intervals[0])
@@ -400,8 +417,11 @@ def get_report_for_host(t_start, t_end, hostname, print_each_interval):
     num_entries_found = len(intervals)
     # Update the status change intervals with status before the first entry and
     # host's lock history.
-    intervals_of_statuses = get_host_history_intervals(t_start, t_end, hostname,
-                                                       intervals)
+    _, intervals_of_statuses = get_host_history_intervals(
+            {'t_start': t_start,
+             't_end': t_end,
+             'hostname': hostname,
+             'intervals': intervals})
     total_times = calculate_total_times(intervals_of_statuses)
     return (get_stats_string(
                     t_start, t_end, total_times, intervals_of_statuses,
