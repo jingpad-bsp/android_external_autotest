@@ -5,6 +5,7 @@
 import dbus
 import json
 import logging
+import sets
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -98,3 +99,17 @@ class buffet_BasicDBusAPI(test.test):
         if actual_version != expected_version:
             raise error.TestFail('Expected firmwareVersion "%s", but got "%s"' %
                                  (expected_version, actual_version))
+
+        state_property = dbus_util.dbus2primitive(
+                properties.Get(dbus.String(BUFFET_MANAGER_INTERFACE),
+                               dbus.String('State')))
+        if state_property != raw_state:
+            raise error.TestFail('Expected state property "%s", but got "%s"' %
+                                 (raw_state, state_property))
+        expected_base_keys = sets.Set(
+              ['firmwareVersion', 'localDiscoveryEnabled',
+               'localAnonymousAccessMaxRole', 'localPairingEnabled'])
+        missing_base_keys = sets.Set(expected_base_keys).difference(
+              parsed_state['base'].keys())
+        if missing_base_keys:
+            raise error.TestFail('Missing base keys "%s"' %  missing_base_keys)
