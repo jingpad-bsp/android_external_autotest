@@ -23,7 +23,7 @@ if [ $# -eq 0 ]; then
     chromeos-lab-alerts@google.com
   )
   BOARD_INTEREST=(
-    skc-fireteam@google.com
+    englab-sys-cros@google.com
     chromeos-lab-alerts@google.com
   )
 else
