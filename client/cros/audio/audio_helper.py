@@ -555,10 +555,8 @@ def cras_rms_test_setup():
     """
     # TODO(owenlin): Now, the nodes are choosed by chrome.
     #                We should do it here.
-    output_node, _ = cras_utils.get_selected_nodes()
-
     cras_utils.set_system_volume(_DEFAULT_PLAYBACK_VOLUME)
-    cras_utils.set_node_volume(output_node, _DEFAULT_PLAYBACK_VOLUME)
+    cras_utils.set_selected_output_node_volume(_DEFAULT_PLAYBACK_VOLUME)
 
     cras_utils.set_capture_gain(_DEFAULT_CAPTURE_GAIN)
 

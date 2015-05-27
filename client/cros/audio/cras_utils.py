@@ -10,9 +10,6 @@ import re
 from autotest_lib.client.cros.audio import cmd_utils
 
 _CRAS_TEST_CLIENT = '/usr/bin/cras_test_client'
-_RE_SELECTED_OUTPUT_NODE = re.compile('Selected Output Node: (.*)')
-_RE_SELECTED_INPUT_NODE = re.compile('Selected Input Node: (.*)')
-_RE_NUM_ACTIVE_STREAM = re.compile('Num active streams: (.*)')
 
 def playback(*args, **kargs):
     """A helper function to execute the playback_cmd."""
@@ -108,9 +105,7 @@ def set_system_volume(volume):
     @param volume: the system output vlume to be set(0 - 100).
 
     """
-    args = [_CRAS_TEST_CLIENT]
-    args += ['--volume', str(volume)]
-    cmd_utils.execute(args)
+    get_cras_control_interface().SetOutputVolume(volume)
 
 
 def set_node_volume(node_id, volume):
@@ -120,9 +115,7 @@ def set_node_volume(node_id, volume):
     @param volume: the volume to be set(0-100).
 
     """
-    args = [_CRAS_TEST_CLIENT]
-    args += ['--set_node_volume', '%s:%d' % (node_id, volume)]
-    cmd_utils.execute(args)
+    get_cras_control_interface().SetOutputNodeVolume(node_id, volume)
 
 
 def set_capture_gain(gain):
@@ -131,27 +124,57 @@ def set_capture_gain(gain):
     @param gain the capture gain in db*100 (100 = 1dB)
 
     """
-    args = [_CRAS_TEST_CLIENT]
-    args += ['--capture_gain', str(gain)]
-    cmd_utils.execute(args)
+    get_cras_control_interface().SetInputGain(gain)
 
 
-def dump_server_info():
-    """Gets the CRAS's server information."""
-    args = [_CRAS_TEST_CLIENT, '--dump_server_info']
-    return cmd_utils.execute(args, stdout=cmd_utils.PIPE)
+def get_cras_control_interface():
+    """Gets Cras DBus control interface.
+
+    @returns: A dBus.Interface object with Cras Control interface.
+
+    @raises: ImportError if this is not called on Cros device.
+
+    """
+    try:
+        import dbus
+    except ImportError, e:
+        logging.exception(
+                'Can not import dbus: %s. This method should only be '
+                'called on Cros device.', e)
+        raise
+    bus = dbus.SystemBus()
+    cras_object = bus.get_object('org.chromium.cras', '/org/chromium/cras')
+    return dbus.Interface(cras_object, 'org.chromium.cras.Control')
+
+
+def get_cras_nodes():
+    """Gets nodes information from Cras.
+
+    @returns: A dict containing information of each node.
+
+    """
+    return get_cras_control_interface().GetNodes()
 
 
 def get_selected_nodes():
-    """Returns the pair of active output node and input node."""
-    server_info = dump_server_info()
-    output_match = _RE_SELECTED_OUTPUT_NODE.search(server_info)
-    input_match = _RE_SELECTED_INPUT_NODE.search(server_info)
-    if not output_match or not input_match:
-        logging.error(server_info)
-        raise RuntimeError('No match for the pattern')
+    """Gets selected output nodes and input nodes.
 
-    return (output_match.group(1).strip(), input_match.group(1).strip())
+    @returns: A tuple (output_nodes, input_nodes) where each
+              field is a list of selected node IDs returned from Cras DBus API.
+              Note that there may be multiple output/input nodes being selected
+              at the same time.
+
+    """
+    output_nodes = []
+    input_nodes = []
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active']:
+            if node['IsInput']:
+                input_nodes.append(node['Id'])
+            else:
+                output_nodes.append(node['Id'])
+    return (output_nodes, input_nodes)
 
 
 def set_selected_output_node_volume(volume):
@@ -160,18 +183,18 @@ def set_selected_output_node_volume(volume):
     @param volume: the volume to be set (0-100).
 
     """
-    selected_output_node_id, _ = get_selected_nodes()
-    set_node_volume(selected_output_node_id, volume)
+    selected_output_node_ids, _ = get_selected_nodes()
+    for node_id in selected_output_node_ids:
+        set_node_volume(node_id, volume)
 
 
 def get_active_stream_count():
-    """Gets the number of active streams."""
-    server_info = dump_server_info()
-    match = _RE_NUM_ACTIVE_STREAM.search(server_info)
-    if not match:
-        logging.error(server_info)
-        raise RuntimeError('Cannot find matched pattern')
-    return int(match.group(1))
+    """Gets the number of active streams.
+
+    @returns: The number of active streams.
+
+    """
+    return int(get_cras_control_interface().GetNumberOfActiveStreams())
 
 
 def set_system_mute(is_mute):
@@ -180,8 +203,7 @@ def set_system_mute(is_mute):
     @param is_mute: Set True to mute the system playback.
 
     """
-    args = [_CRAS_TEST_CLIENT, '--mute', '1' if is_mute else '0']
-    cmd_utils.execute(args)
+    get_cras_control_interface().SetOutputMute(is_mute)
 
 
 def set_capture_mute(is_mute):
@@ -190,8 +212,7 @@ def set_capture_mute(is_mute):
     @param is_mute: Set True to mute the capture.
 
     """
-    args = [_CRAS_TEST_CLIENT, '--capture_mute', '1' if is_mute else '0']
-    cmd_utils.execute(args)
+    get_cras_control_interface().SetInputMute(is_mute)
 
 
 def node_type_is_plugged(node_type, nodes_info):
@@ -229,34 +250,24 @@ CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH']
 CRAS_NODE_TYPES = CRAS_OUTPUT_NODE_TYPES + CRAS_INPUT_NODE_TYPES
 
 
-def get_node_type(node):
-    """Gets node type by node id.
+def get_selected_node_types():
+    """Returns the pair of active output node types and input node types.
 
-    @param node: A string for node id, e.g. 4:1.
-
-    @returns: The node type reported by cras. The types are:
-
-
-    @raises: RuntimeError if node type is invalid or can not be determined.
+    @returns: A tuple (output_node_types, input_node_types) where each
+              field is a list of selected node types defined in CRAS_NODE_TYPES.
 
     """
-    # From server info, find a line starting with node id and get its
-    # node type. E.g.:
-    # 3:0    75   yes     no     1419323058   HEADPHONE  *Headphone
-    _MIN_LENGTH = 7
-    _INDEX_NODE_ID = 0
-    _INDEX_NODE_TYPE = 5
-    server_info = dump_server_info()
-    for line in server_info.splitlines():
-        # '*' is the mark that a node is selected, replace it with ' ' so it
-        # will not break field spliting.
-        line_split = line.replace('*', ' ').split()
-        if len(line_split) < _MIN_LENGTH:
-            continue
-        if line_split[_INDEX_NODE_ID] != node:
-            continue
-        node_type = line_split[_INDEX_NODE_TYPE]
-        if node_type not in CRAS_NODE_TYPES:
-            raise RuntimeError('Node type %s is invalid' % node_type)
-        return node_type
-    raise RuntimeError('Can not find node type for node %s' % node)
+    output_node_types = []
+    input_node_types = []
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['Active']:
+            node_type = str(node['Type'])
+            if node_type not in CRAS_NODE_TYPES:
+                raise RuntimeError(
+                        'node type %s is not valid' % node_type)
+            if node['IsInput']:
+                input_node_types.append(node_type)
+            else:
+                output_node_types.append(node_type)
+    return (output_node_types, input_node_types)
