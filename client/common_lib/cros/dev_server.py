@@ -237,12 +237,17 @@ class DevServer(object):
 
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))
-            free_disk = result_dict['free_disk']
-            autotest_stats.Gauge(server_name).send('free_disk', free_disk)
+            for key, val in result_dict.iteritems():
+                try:
+                    autotest_stats.Gauge(server_name).send(key, float(val))
+                except ValueError:
+                    # Ignore all non-numerical health data.
+                    pass
 
             skip_devserver_health_check = CONFIG.get_config_value('CROS',
                                               'skip_devserver_health_check',
                                               type=bool)
+            free_disk = result_dict['free_disk']
             if skip_devserver_health_check:
                 logging.debug('devserver health check is skipped.')
             elif (free_disk < DevServer._MIN_FREE_DISK_SPACE_GB):
