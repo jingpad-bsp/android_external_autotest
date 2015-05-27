@@ -157,13 +157,15 @@ class firmware_ECLidSwitch(FirmwareTest):
 
     def check_keycode_and_backlight(self):
         """
-        Disable powerd to prevent DUT shutting down dutring test. Then check
+        Disable powerd to prevent DUT shutting down during test. Then check
         if lid switch event controls keycode and backlight as we expected.
         """
         ok = True
         logging.info("Stopping powerd")
         self.faft_client.system.run_shell_command('stop powerd')
-        self.check_keycode()
+        if not self.check_keycode():
+            logging.error("check_keycode failed.")
+            ok = False
         if not self.check_backlight():
             logging.error("check_backlight failed.")
             ok = False
