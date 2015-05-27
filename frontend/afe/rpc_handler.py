@@ -13,9 +13,10 @@ from autotest_lib.frontend.afe import rpcserver_logging
 
 LOGGING_REGEXPS = [r'.*add_.*',
                    r'delete_.*',
-                   r'.*_remove_.*',
+                   r'.*remove_.*',
                    r'modify_.*',
-                   r'create.*']
+                   r'create.*',
+                   r'set_.*']
 FULL_REGEXP = '(' + '|'.join(LOGGING_REGEXPS) + ')'
 COMPILED_REGEXP = re.compile(FULL_REGEXP)
 
