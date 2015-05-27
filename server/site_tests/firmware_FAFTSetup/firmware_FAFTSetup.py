@@ -2,14 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob
-from itertools import groupby
 import logging
 from threading import Timer
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
-from autotest_lib.client.bin.input.input_device import *
 
 
 class firmware_FAFTSetup(FirmwareTest):
@@ -76,8 +73,6 @@ class firmware_FAFTSetup(FirmwareTest):
             self.servo.ctrl_d()
             self.servo.enter_key()
 
-        keys = self.faft_config.key_checker
-
         return self.base_keyboard_checker(keypress)
 
     def run_once(self):
@@ -95,5 +90,8 @@ class firmware_FAFTSetup(FirmwareTest):
         logging.info("Check cold boot")
         self.switcher.mode_aware_reboot(reboot_type='cold')
 
-        logging.info("Check keyboard simulation")
-        self.check_state(self.keyboard_checker)
+        if self.faft_config.fw_bypasser_type == 'ctrl_d_bypasser':
+            logging.info("Check keyboard simulation")
+            self.check_state(self.keyboard_checker)
+        else:
+            logging.info("Skip keyboard simulation on an embedded device")
