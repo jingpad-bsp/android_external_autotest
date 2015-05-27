@@ -67,6 +67,10 @@ class InputPlayback(object):
                               with 'evemu-describe' command on test image.
 
         """
+        # Checks for any previous emulated device and kills the process
+        if self._device_emulation_process:
+            self.close()
+
         if not property_file:
             if input_type not in self._DEFAULT_PROPERTY_FILES:
                 raise error.TestError('Please supply a property file for input '
@@ -87,8 +91,7 @@ class InputPlayback(object):
 
         with open(property_file) as fh:
             name_line = fh.readline() #Format "N: NAMEOFDEVICE"
-            name = name_line[3:-1]
-            self.names[input_type] = name
+            self.names[input_type] = name_line[3:-1]
 
 
     def _find_device_properties(self, device):

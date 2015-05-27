@@ -138,34 +138,57 @@ class touch_playback_test_base(test.test):
         """
         self._autotest_ext = ext
 
-    def _set_default_scroll_position(self):
-        """Set scroll position of page to default.  Presuposes self._tab."""
-        self._tab.EvaluateJavaScript(
+    def _set_default_scroll_position(self, scroll_vertical=True):
+        """Set scroll position of page to default.  Presuposes self._tab.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+
+        """
+        if scroll_vertical:
+            self._tab.EvaluateJavaScript(
                 'document.body.scrollTop=%s' % self._DEFAULT_SCROLL)
+        else:
+            self._tab.EvaluateJavaScript(
+                'document.body.scrollLeft=%s' % self._DEFAULT_SCROLL)
 
-    def _get_scroll_position(self):
-        """Return current scroll position of page.  Presuposes self._tab."""
-        return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
+    def _get_scroll_position(self, scroll_vertical=True):
+        """Return current scroll position of page.  Presuposes self._tab.
 
-    def _wait_for_default_scroll_position(self):
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+
+        """
+        if scroll_vertical:
+            return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
+        else:
+            return int(self._tab.EvaluateJavaScript('document.body.scrollLeft'))
+
+    def _wait_for_default_scroll_position(self, scroll_vertical=True):
         """Wait for page to be at the default scroll position.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal scroll.
 
         @raise: TestError if page either does not move or does not stop moving.
 
         """
         utils.poll_for_condition(
-                lambda: self._get_scroll_position() == self._DEFAULT_SCROLL,
-                exception=error.TestError('Page not set to default scroll!'))
+            lambda: self._get_scroll_position(scroll_vertical) == self._DEFAULT_SCROLL,
+                    exception=error.TestError('Page not set to default scroll!'))
 
-    def _wait_for_scroll_position_to_settle(self):
+    def _wait_for_scroll_position_to_settle(self, scroll_vertical=True):
         """Wait for page to move and then stop moving.
+
+        @param scroll_vertical: True for Vertical scroll and
+                                False for horizontal scroll.
 
         @raise: TestError if page either does not move or does not stop moving.
 
         """
         # Wait until page starts moving.
         utils.poll_for_condition(
-                lambda: self._get_scroll_position() != self._DEFAULT_SCROLL,
+            lambda: self._get_scroll_position(scroll_vertical) != self._DEFAULT_SCROLL,
                 exception=error.TestError('No scrolling occurred!'), timeout=30)
 
         # Wait until page has stopped moving.
