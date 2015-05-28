@@ -190,13 +190,13 @@ def run_provisioning_job(provision_label, host, autotest_path,
     # provision_AutoUpdate checks the current build of DUT by
     # retrieving build info from AFE. crosbug.com/295178
     results_directory = os.path.join(results_directory, 'results-provision')
-    provision_arg = '='.join(['--provision', provision_label])
     command = autoserv_utils.autoserv_run_job_command(
             os.path.join(autotest_path, 'server'),
             machines=host, job=None, verbose=autoserv_verbose,
             results_directory=results_directory,
             fast_mode=fast_mode, ssh_verbosity=ssh_verbosity,
-            ssh_options=ssh_options, extra_args=[provision_arg],
+            ssh_options=ssh_options,
+            extra_args=['--provision', '--job-labels', provision_label],
             no_console_prefix=True)
     if _run_autoserv(command, pretend) != 0:
         raise TestThatProvisioningError('Command returns non-zero code: %s ' %
