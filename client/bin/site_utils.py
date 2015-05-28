@@ -4,10 +4,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, platform, re, signal, tempfile, time, uuid
+import hashlib, logging, os, platform, re, signal, tempfile, time, uuid, urllib2
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_utils
+
+from contextlib import closing
 
 _UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
 
@@ -1078,3 +1081,36 @@ def is_vm():
         logging.warn('Package virt-what is not installed, default to assume '
                      'it is not a virtual machine.')
         return False
+
+
+def download_file(file_to_download, local_path, checksum=None):
+    """Downloads the file on DUT and verifies its checksum.
+
+    @param file_to_download: file to download.
+    @param local_path: local download location on the DUT
+    @param checksum: checksum to verify after downloading the file (optional)
+
+    @raises error.TestError if the file_to_download  url is not found or
+                            if checksum is not matching.
+    """
+    logging.info('File to download from: %s' % file_to_download)
+    logging.info('File to download to: %s' % local_path)
+    logging.info('Checksum to verified: %s' % checksum)
+    md5 = hashlib.md5()
+    try:
+        with closing(urllib2.urlopen(file_to_download)) as r, \
+                open(local_path, 'w') as w:
+            while True:
+                content = r.read(4096)
+                if not content: break
+                md5.update(content)
+                w.write(content)
+        md5sum = md5.hexdigest()
+    except urllib2.HTTPError as e:
+        logging.debug(e.code)
+        logging.debug(e.read())
+        raise error.TestError('Error occured while downloading %s.'
+                % file_to_download)
+
+    if checksum and md5sum != checksum:
+        raise error.TestError('Unmatched md5 sum: %s' % md5sum)
