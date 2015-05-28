@@ -17,7 +17,7 @@ cdrom:!:19:
 tape:!:26:root
 cdrw:!:80:
 usb:!:85:mtp,brltty
-users:!:100:games
+users:!:100:
 portage:!:250:portage
 utmp:!:406:
 nogroup:!:65533:
