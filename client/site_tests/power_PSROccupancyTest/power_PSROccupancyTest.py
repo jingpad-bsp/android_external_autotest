@@ -52,9 +52,9 @@ class power_PSROccupancyTest(test.test):
 
 
     def run_once(self):
-        if utils.get_board() != 'samus':
+        if utils.get_board() not in ['samus', 'gandof']:
             raise error.TestNAError(
-                    'Trying to run PSR tests on non-samus board.')
+                    'Trying to run PSR tests on unsupported board.')
         psr_enabled = self._is_psr_enabled()
         if (not psr_enabled and
             graphics_utils.call_xrandr('--output eDP1 --set psr on')):
