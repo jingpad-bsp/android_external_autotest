@@ -32,8 +32,9 @@ if profiler:
    job.profilers.add(profiler, p_args)
 
 def run_telemetry_Crosperf(machine):
+    dut = hosts.create_host(machine)
     job.run_test('telemetry_Crosperf', client_ip=machine,
-                  args=args_dict)
+                  args=args_dict, dut=dut)
 
 # run the test in multiple machines
 
