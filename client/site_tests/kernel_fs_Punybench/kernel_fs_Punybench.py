@@ -191,7 +191,7 @@ class kernel_fs_Punybench(test.test):
         size = 8 * 1024 * 1024 * 1024
         loops = 4
         iterations = 1
-        return ('-f %s -z %d -i %d -l %d -b12' %
+        return ('-d -f %s -z %d -i %d -l %d -b20' %
                (file, size, iterations, loops))
 
 
@@ -208,7 +208,7 @@ class kernel_fs_Punybench(test.test):
           size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
           size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
         """
-        args = '-f %s' % file
+        args = '-d -b20 -f %s' % file
         result = self._run('uread', args)
         r1 = re.search(r"[^\s]+ MiB/s.*$", result)
         r2 = re.search(re_float, r1.group(0))
@@ -222,7 +222,7 @@ class kernel_fs_Punybench(test.test):
         size = 8 * 1024 * 1024 * 1024
         loops = 4
         iterations = 100000
-        return ('-f %s -z %d -i %d -l %d -b12' %
+        return ('-d -f %s -z %d -i %d -l %d -b12' %
                (file, size, iterations, loops))
 
 
@@ -236,7 +236,7 @@ class kernel_fs_Punybench(test.test):
 size=8589934592 n=10000 4.7 3. timer avg= 4 stdv= 4.6 9.1 MiB/s 2326 IOPs/sec
 size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         """
-        args = '-f %s' % file
+        args = '-d -f %s' % file
         result = self._run('ureadrand', args)
         r1 = re.search(r"([^\s]+ IOPs/sec).*$", result)
         r2 = re.search(re_float, r1.group(0))
@@ -250,7 +250,7 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         size = 8 * 1024 * 1024 * 1024
         loops = 4
         iterations = 1
-        return ('-f %s -z %d -i %d -l %d -b12' %
+        return ('-d -f %s -z %d -i %d -l %d -b20' %
                (file, size, iterations, loops))
 
 
@@ -266,7 +266,7 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
           size=8589934592 n=1 55.5 3. timer avg= 55.5 stdv=0.0693 147.6 MiB/s
           size=8589934592 n=1 55.6 4. timer avg= 55.5 stdv=0.0817 147.5 MiB/s
         """
-        args = '-f %s' % file
+        args = '-d -b20 -f %s' % file
         result = self._run('uwrite', args)
         r1 = re.search(r"[^\s]+ MiB/s.*$", result)
         r2 = re.search(re_float, r1.group(0))
