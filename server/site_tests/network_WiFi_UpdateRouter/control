@@ -7,9 +7,8 @@ NAME = 'network_WiFi_UpdateRouter'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'
-# TODO: Re-activate when the suite exists
-# ATTRIBUTES = 'suite:wifi_update_router'
-# SUITE = 'wifi_update_router'
+ATTRIBUTES = 'suite:wifi_update_router'
+SUITE = 'wifi_update_router'
 
 DOC = """
 This test updates the router in a WiFi cell to the latest stable version.
