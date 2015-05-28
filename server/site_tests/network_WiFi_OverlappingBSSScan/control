@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'pstew, wiley, quiche'
-NAME = 'network_WiFi_OverlappingBSSScan.wifi_obss'
+NAME = 'network_WiFi_OverlappingBSSScan'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 ATTRIBUTES = "suite:wifi_matfunc, suite:wifi_matfunc_bcm4356, suite:wifi_matfunc_intel7265, suite:wifi_matfunc_marvell8897"
