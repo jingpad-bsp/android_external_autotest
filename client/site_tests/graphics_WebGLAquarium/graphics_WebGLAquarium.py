@@ -69,6 +69,8 @@ class graphics_WebGLAquarium(test.test):
     def cleanup(self):
         if self._backlight:
             self._backlight.restore()
+        if self._service_stopper:
+            self._service_stopper.restore_services()
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
             if not self._test_power:
