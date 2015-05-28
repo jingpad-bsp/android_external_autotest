@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import datetime, logging, os, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import base_utils, error, file_utils
@@ -123,6 +123,13 @@ class video_GlitchDetection(test.test):
                 self.host.hostname, self.chameleon_host_args)
         with self.video_capturer as c:
             self.player.load_video()
+            self.player.play()
+            utils.poll_for_condition(lambda : self.player.currentTime() > 0.0,
+                                     timeout=5,
+                                     exception=error.TestError(
+                                             "Expected current time to be > 0"))
+            self.player.pause()
+            self.player.seek_to(datetime.timedelta(seconds=0))
 
             logging.debug("Wait for fullscreen notifications to go away.")
             time.sleep(5)

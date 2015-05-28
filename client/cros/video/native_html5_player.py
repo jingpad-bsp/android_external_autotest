@@ -41,6 +41,22 @@ class NativeHtml5Player(video_player.VideoPlayer):
         self.tab.ExecuteJavaScript('play()')
 
 
+    def pause(self):
+        """
+        Pauses the video.
+
+        """
+        self.tab.ExecuteJavaScript('pause()')
+
+
+    def currentTime(self):
+        """
+        Returns the current time of the video element.
+
+        """
+        return self.tab.EvaluateJavaScript('currentTime()')
+
+
     def seek_to(self, t):
         """
         Seeks a vimeo video to a time stamp.

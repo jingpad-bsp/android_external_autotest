@@ -50,6 +50,7 @@ class VideoPlayer(object):
         self.tab.Navigate(self.full_url)
         self._wait_for_page_to_load()
         self.inject_source_file()
+        self.wait_for_video_ready()
 
 
     def inject_source_file(self):
