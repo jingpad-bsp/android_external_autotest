@@ -36,8 +36,9 @@ def discover_servers(afe, server_filter=set()):
                if (s['status'] != 'repair_required' and
                    (not server_filter or s['hostname'] in server_filter))]
 
-    # Do not update devservers (not YET supported).
-    servers = [s for s in servers if 'devserver' not in s['roles']]
+    # Do not update devserver or crash_server (not YET supported).
+    servers = [s for s in servers if 'devserver' not in s['roles'] and
+               'crash_server' not in s['roles']]
 
     def update_order(s):
         """Sort order for updating servers (lower first).
