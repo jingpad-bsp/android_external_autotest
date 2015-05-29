@@ -1153,7 +1153,8 @@ def forward_single_host_rpc_to_shard(func):
         # their keywords, so this is not a problem.
         host = models.Host.smart_get(kwargs['id'])
         if host.shard and not server_utils.is_shard():
-            run_rpc_on_multiple_hostnames(func.func_name, [host.shard.hostname],
+            run_rpc_on_multiple_hostnames(func.func_name,
+                                          [host.shard.rpc_hostname()],
                                           **kwargs)
         return func(**kwargs)
 

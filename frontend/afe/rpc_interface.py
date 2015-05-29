@@ -146,7 +146,6 @@ def label_add_hosts(id, hosts):
             raise ValueError('Label id (%s) does not exist. Please specify '
                              'the argument, id, as a string (label name).'
                              % id)
-    add_label_to_hosts(id, hosts)
 
     host_objs = models.Host.smart_get_bulk(hosts)
     # Make sure the label exists on the shard with the same id
@@ -164,6 +163,8 @@ def label_add_hosts(id, hosts):
             host_objs, 'add_label', name=label.name, id=label.id,
             include_hostnames=False, ignore_exception_if_exists=True)
     rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
+
+    add_label_to_hosts(id, hosts)
 
 
 def remove_label_from_hosts(id, hosts):
@@ -189,9 +190,10 @@ def label_remove_hosts(id, hosts):
         rpc_utils.route_rpc_to_master('label_remove_hosts', id=id, hosts=hosts)
         return
 
-    remove_label_from_hosts(id, hosts)
     host_objs = models.Host.smart_get_bulk(hosts)
     rpc_utils.fanout_rpc(host_objs, 'remove_label_from_hosts', id=id)
+
+    remove_label_from_hosts(id, hosts)
 
 
 def get_labels(exclude_filters=(), **filter_data):
@@ -352,14 +354,19 @@ def get_host_attribute(attribute, **host_filter_data):
 
 def set_host_attribute(attribute, value, **host_filter_data):
     """
-    @param attribute string name of attribute
-    @param value string, or None to delete an attribute
-    @param host_filter_data filter data to apply to Hosts to choose hosts to act
-    upon
+    @param attribute: string name of attribute
+    @param value: string, or None to delete an attribute
+    @param host_filter_data: filter data to apply to Hosts to choose hosts to
+                             act upon
     """
     assert host_filter_data # disallow accidental actions on all hosts
     hosts = models.Host.query_objects(host_filter_data)
     models.AclGroup.check_for_acl_violation_hosts(hosts)
+
+    # Master forwards this RPC to shards.
+    if not utils.is_shard():
+        rpc_utils.fanout_rpc(hosts, 'set_host_attribute', False,
+                attribute=attribute, value=value, **host_filter_data)
 
     for host in hosts:
         host.set_or_delete_attribute(attribute, value)
