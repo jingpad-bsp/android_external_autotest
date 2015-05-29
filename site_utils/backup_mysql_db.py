@@ -269,10 +269,13 @@ def main():
     options = parse_options()
     logging_manager.configure_logging(test_importer.TestImporterLoggingConfig(),
                                       verbose=options.verbose)
+    logging.debug('Start db backup: %s', options.type)
     archiver = MySqlArchiver(options.type, options.keep, options.gs_bucket)
     dump_file = archiver.dump()
+    logging.debug('Uploading backup: %s', options.type)
     archiver.upload_to_google_storage(dump_file)
     archiver.cleanup()
+    logging.debug('Db backup completed: %s', options.type)
 
 
 if __name__ == '__main__':
