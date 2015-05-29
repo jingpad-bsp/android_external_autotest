@@ -108,10 +108,12 @@ class kernel_ConfigVerify(test.test):
             ],
         },
         # Security; no surprise partition formats.
+        # MAC is for external drive formatted on Macintosh.
         {
             'regex': '.*_PARTITION$',
             'builtin': [
                 'EFI_PARTITION',
+                'MAC_PARTITION',
                 'MSDOS_PARTITION',
             ],
             'module': [
