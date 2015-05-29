@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "sivachandra@chromium.org snanda@chromium.org marcheu@chromium.org"
+AUTHOR = "ejcaruso@chromium.org snanda@chromium.org marcheu@chromium.org"
 NAME = "power_PSROccupancyTest"
 PURPOSE = "Test panel self refresh (PSR) occupancy when the display is static."
 TIME = "SHORT"
