@@ -302,7 +302,7 @@ class AudioWidgetFactory(object):
         return _create_audio_widget(audio_port, handler)
 
 
-    def create_binder(self, source, sink):
+    def _create_widget_binder(self, source, sink):
         """Creates a WidgetBinder for two AudioWidgets.
 
         @param source: An AudioWidget.
@@ -313,6 +313,26 @@ class AudioWidgetFactory(object):
         """
         return audio_widget_link.WidgetBinder(
                 source, self._link_factory.create_link(source, sink), sink)
+
+
+    def create_binder(self, *widgets):
+        """Creates a WidgetBinder or a WidgetChainBinder for AudioWidgets.
+
+        @param widgets: A list of widgets that should be linked in a chain.
+
+        @returns: A WidgetBinder for two widgets. A WidgetBinderChain object
+                  for three or more widgets.
+
+        """
+        if len(widgets) == 2:
+            return self._create_widget_binder(widgets[0], widgets[1])
+        binders = []
+        for index in xrange(len(widgets) - 1):
+            binders.append(
+                    self._create_widget_binder(
+                            widgets[index],  widgets[index + 1]))
+
+        return audio_widget_link.WidgetBinderChain(binders)
 
 
 def compare_recorded_result(golden_file, recorder, method):
@@ -344,7 +364,7 @@ def bind_widgets(binder):
     Connects widgets in the beginning. Disconnects widgets and releases binder
     in the end.
 
-    @param binder: A WidgetBinder object.
+    @param binder: A WidgetBinder object or a WidgetBinderChain object.
 
     E.g. with bind_widgets(binder):
              do something on widget.

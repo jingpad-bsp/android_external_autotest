@@ -477,3 +477,37 @@ class BluetoothMicWidgetLink(BluetoothWidgetLink):
         self.name = 'Peripheral bluetooth module to Cros bluetooth mic'
         self.channel_map = self._DEFAULT_CHANNEL_MAP
         logging.debug('Create an BluetoothMicWidgetLink: %s', self.name)
+
+
+class WidgetBinderChain(object):
+    """Abstracts a chain of binders.
+
+    This class supports connect, disconnect, release, just like WidgetBinder,
+    except that this class handles a chain of WidgetBinders.
+
+    """
+    def __init__(self, binders):
+        """Initializes a WidgetBinderChain.
+
+        @param binders: A list of WidgetBinder.
+
+        """
+        self._binders = binders
+
+
+    def connect(self):
+        """Asks all binders to connect."""
+        for binder in self._binders:
+            binder.connect()
+
+
+    def disconnect(self):
+        """Asks all binders to disconnect."""
+        for binder in self._binders:
+            binder.disconnect()
+
+
+    def release(self):
+        """Asks all binders to release."""
+        for binder in self._binders:
+            binder.release()
