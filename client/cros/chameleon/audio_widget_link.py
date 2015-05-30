@@ -4,11 +4,12 @@
 
 """This module provides the link between audio widgets."""
 
-import abc
 import logging
+import time
 
 from autotest_lib.client.cros.chameleon import audio_level
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
+from autotest_lib.client.cros.chameleon import chameleon_bluetooth_audio
 
 
 class WidgetBinderError(Exception):
@@ -66,8 +67,7 @@ class WidgetBinder(object):
 
         logging.info('Connecting %s to %s', self._source.audio_port,
                      self._sink.audio_port)
-        self._link.plug_input(self._source)
-        self._link.plug_output(self._sink)
+        self._link.connect(self._source, self._sink)
         self._connected = True
         # Sets channel map of link to the sink widget so
         # sink widget knows the channel map of recorded data.
@@ -80,10 +80,9 @@ class WidgetBinder(object):
         if not self._connected:
             return
 
-        logging.info('Disconnecting %s to %s', self._source.audio_port,
+        logging.info('Disconnecting %s from %s', self._source.audio_port,
                      self._sink.audio_port)
-        self._link.unplug_input(self._source)
-        self._link.unplug_output(self._sink)
+        self._link.disconnect(self._source, self._sink)
         self._connected = False
         self._level_controller.reset()
 
@@ -115,8 +114,6 @@ class WidgetLink(object):
                      of channel_map method of AudioInputWidget for details.
 
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self):
         self.name = 'Unknown'
         self.occupied = False
@@ -137,44 +134,26 @@ class WidgetLink(object):
                             self.name, port_id, widget.audio_port.port_id))
 
 
-    @abc.abstractmethod
-    def plug_input(self, widget):
-        """Plugs input of this link to the widget.
+    def connect(self, source, sink):
+        """Connects source widget to sink widget.
 
-        @param widget: An AudioWidget object.
-
-        """
-        pass
-
-
-    @abc.abstractmethod
-    def unplug_input(self, widget):
-        """Unplugs input of this link from the widget.
-
-        @param widget: An AudioWidget object.
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
 
         """
-        pass
+        self._plug_input(source)
+        self._plug_output(sink)
 
 
-    @abc.abstractmethod
-    def plug_output(self, widget):
-        """Plugs output of this link to the widget.
+    def disconnect(self, source, sink):
+        """Disconnects source widget from sink widget.
 
-        @param widget: An AudioWidget object.
-
-        """
-        pass
-
-
-    @abc.abstractmethod
-    def unplug_output(self, widget):
-        """Unplugs output of this link from the widget.
-
-        @param widget: An AudioWidget object.
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
 
         """
-        pass
+        self._unplug_input(source)
+        self._unplug_output(sink)
 
 
 class AudioBusLink(WidgetLink):
@@ -214,7 +193,7 @@ class AudioBusLink(WidgetLink):
                       audio_bus.bus_index)
 
 
-    def plug_input(self, widget):
+    def _plug_input(self, widget):
         """Plugs input of audio bus to the widget.
 
         @param widget: An AudioWidget object.
@@ -230,7 +209,7 @@ class AudioBusLink(WidgetLink):
                 self._audio_bus.bus_index, widget.audio_port)
 
 
-    def unplug_input(self, widget):
+    def _unplug_input(self, widget):
         """Unplugs input of audio bus from the widget.
 
         @param widget: An AudioWidget object.
@@ -246,7 +225,7 @@ class AudioBusLink(WidgetLink):
                 self._audio_bus.bus_index, widget.audio_port)
 
 
-    def plug_output(self, widget):
+    def _plug_output(self, widget):
         """Plugs output of audio bus to the widget.
 
         @param widget: An AudioWidget object.
@@ -262,7 +241,7 @@ class AudioBusLink(WidgetLink):
                 self._audio_bus.bus_index, widget.audio_port)
 
 
-    def unplug_output(self, widget):
+    def _unplug_output(self, widget):
         """Unplugs output of audio bus from the widget.
 
         @param widget: An AudioWidget object.
@@ -345,7 +324,7 @@ class HDMIWidgetLink(WidgetLink):
                 ' is dedicated')
 
 
-    def plug_input(self, widget):
+    def _plug_input(self, widget):
         """Plugs input of HDMI cable to the widget using widget handler.
 
         @param widget: An AudioWidget object.
@@ -357,7 +336,7 @@ class HDMIWidgetLink(WidgetLink):
                 'always be physically plugged to Cros device')
 
 
-    def unplug_input(self, widget):
+    def _unplug_input(self, widget):
         """Unplugs input of HDMI cable from the widget using widget handler.
 
         @param widget_handler: A WidgetHandler object.
@@ -369,7 +348,7 @@ class HDMIWidgetLink(WidgetLink):
                 'always be physically plugged to Cros device')
 
 
-    def plug_output(self, widget):
+    def _plug_output(self, widget):
         """Plugs output of HDMI cable to the widget using widget handler.
 
         @param widget: An AudioWidget object.
@@ -383,7 +362,7 @@ class HDMIWidgetLink(WidgetLink):
         widget.handler.plug()
 
 
-    def unplug_output(self, widget):
+    def _unplug_output(self, widget):
         """Unplugs output of HDMI cable from the widget using widget handler.
 
         @param widget: An AudioWidget object.
@@ -395,3 +374,106 @@ class HDMIWidgetLink(WidgetLink):
         logging.info(
                 'Unplug HDMI cable output. This is emulated on Chameleon port')
         widget.handler.unplug()
+
+
+class BluetoothWidgetLink(WidgetLink):
+    """The abstraction for bluetooth link between Cros device and bt module."""
+    # The delay after connection for cras to process the bluetooth connection
+    # event and enumerate the bluetooth nodes.
+    _DELAY_AFTER_CONNECT_SECONDS = 2
+
+    def __init__(self, bt_adapter, audio_board_bt_ctrl, mac_address):
+        """Initializes a BluetoothWidgetLink.
+
+        @param bt_adapter: A BluetoothDevice object to control bluetooth
+                           adapter on Cros device.
+        @param audio_board_bt_ctrl: A BlueoothController object to control
+                                    bluetooth module on audio board.
+        @param mac_address: The MAC address of bluetooth module on audio board.
+
+        """
+        super(BluetoothWidgetLink, self).__init__()
+        self._bt_adapter = bt_adapter
+        self._audio_board_bt_ctrl = audio_board_bt_ctrl
+        self._mac_address = mac_address
+
+
+    def connect(self, source, sink):
+        """Customizes the connecting sequence for bluetooth widget link.
+
+        We need to enable bluetooth module first, then start connecting
+        sequence from bluetooth adapter.
+        The arguments source and sink are not used because BluetoothWidgetLink
+        already has the access to bluetooth module on audio board and
+        bluetooth adapter on Cros device.
+
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
+
+        """
+        self._enable_bluetooth_module()
+        self._adapter_connect_sequence()
+        time.sleep(self._DELAY_AFTER_CONNECT_SECONDS)
+
+
+    def disconnect(self, source, sink):
+        """Customizes the disconnecting sequence for bluetooth widget link.
+
+        The arguments source and sink are not used because BluetoothWidgetLink
+        already has the access to bluetooth module on audio board and
+        bluetooth adapter on Cros device.
+
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
+
+        """
+        self._adapter_disconnect()
+        self._disable_bluetooth_module()
+
+
+    def _enable_bluetooth_module(self):
+        """Reset bluetooth module if it is not enabled."""
+        if not self._audio_board_bt_ctrl.is_enabled():
+            self._audio_board_bt_ctrl.reset()
+
+
+    def _disable_bluetooth_module(self):
+        """Disables bluetooth module if it is enabled."""
+        if self._audio_board_bt_ctrl.is_enabled():
+            self._audio_board_bt_ctrl.disable()
+
+
+    def _adapter_connect_sequence(self):
+        """Scans, pairs, and connects bluetooth module to bluetooth adapter."""
+        chameleon_bluetooth_audio.connect_bluetooth_module(
+                self._bt_adapter, self._mac_address)
+
+
+    def _adapter_disconnect(self):
+        """Turns off bluetooth adapter."""
+        self._bt_adapter.reset_off()
+
+
+class BluetoothHeadphoneWidgetLink(BluetoothWidgetLink):
+    """The abstraction for link from Cros device headphone to bt module Rx."""
+
+    def __init__(self, *args, **kwargs):
+        """Initializes a BluetoothHeadphoneWidgetLink."""
+        super(BluetoothHeadphoneWidgetLink, self).__init__(*args, **kwargs)
+        self.name = 'Cros bluetooth headphone to peripheral bluetooth module'
+        logging.debug('Create an BluetoothHeadphoneWidgetLink: %s', self.name)
+
+
+class BluetoothMicWidgetLink(BluetoothWidgetLink):
+    """The abstraction for link from bt module Tx to Cros device microphone."""
+
+    # This is the default channel map for 1-channel data recorded on
+    # Cros device using bluetooth microphone.
+    _DEFAULT_CHANNEL_MAP = [0]
+
+    def __init__(self, *args, **kwargs):
+        """Initializes a BluetoothMicWidgetLink."""
+        super(BluetoothMicWidgetLink, self).__init__(*args, **kwargs)
+        self.name = 'Peripheral bluetooth module to Cros bluetooth mic'
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
+        logging.debug('Create an BluetoothMicWidgetLink: %s', self.name)
