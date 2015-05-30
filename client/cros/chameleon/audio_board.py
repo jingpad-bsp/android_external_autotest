@@ -240,3 +240,12 @@ class BluetoothController(object):
         """Disables the bluetooth module."""
         self._chameleond_proxy.AudioBoardDisableBluetooth()
         logging.info('Disables bluetooth module on audio board.')
+
+
+    def is_enabled(self):
+        """Checks if the bluetooth module is enabled.
+
+        @returns: True if bluetooth module is enabled. False otherwise.
+
+        """
+        return self._chameleond_proxy.AudioBoardIsBluetoothEnabled()
