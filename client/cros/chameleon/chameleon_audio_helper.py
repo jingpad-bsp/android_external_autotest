@@ -165,6 +165,11 @@ class AudioLinkFactory(object):
         return link
 
 
+class AudioWidgetFactoryError(Exception):
+    """Error in AudioWidgetFactory."""
+    pass
+
+
 class AudioWidgetFactory(object):
     """
     This class provides methods to create widgets and binder of widgets.
@@ -250,10 +255,19 @@ class AudioWidgetFactory(object):
             @returns: An Audio(Input/Output)Widget depending on
                       role of audio_port.
 
+            @raises: AudioWidgetFactoryError if fail to create widget.
+
             """
-            if audio_port.role == 'sink':
-                return audio_widget.AudioInputWidget(audio_port, handler)
-            return audio_widget.AudioOutputWidget(audio_port, handler)
+            if audio_port.host in ['Chameleon', 'Cros']:
+                if audio_port.role == 'sink':
+                    return audio_widget.AudioInputWidget(audio_port, handler)
+                else:
+                    return audio_widget.AudioOutputWidget(audio_port, handler)
+            elif audio_port.host == 'Peripheral':
+                return audio_widget.PeripheralWidget(audio_port, handler)
+            else:
+                raise AudioWidgetFactoryError(
+                        'The host %s is not valid' % audio_port.host)
 
 
         audio_port = AudioPort(port_id)

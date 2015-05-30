@@ -633,3 +633,15 @@ class PeripheralWidgetHandler(object):
 
     """
     pass
+
+
+class PeripheralWidget(AudioWidget):
+    """
+    This class abstracts a peripheral widget which only acts passively like
+    peripheral speaker or microphone, or acts transparently like bluetooth
+    module on audio board which relays the audio siganl between Chameleon board
+    and Cros device. This widget does not provide playback/record function like
+    AudioOutputWidget or AudioInputWidget. The main purpose of this class is
+    an identifier to find the correct AudioWidgetLink to do the real work.
+    """
+    pass
