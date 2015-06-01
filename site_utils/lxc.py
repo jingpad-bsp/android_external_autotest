@@ -309,7 +309,7 @@ def install_package(package):
     # Always run apt-get update before installing any container. The base
     # container may have outdated cache.
     utils.run('sudo apt-get update')
-    utils.run('sudo apt-get install %s -y' % package)
+    utils.run('sudo apt-get install %s -y --force-yes' % package)
 
 
 @timer.decorate
@@ -324,7 +324,14 @@ def install_python_package(package):
         return
 
     install_package('python-pip')
-    utils.run('sudo pip install %s' % package)
+    target_setting = ''
+    # For containers running in Moblab, /usr/local/lib/python2.7/dist-packages/
+    # is a readonly mount from the host. Therefore, new python modules have to
+    # be installed in /usr/lib/python2.7/dist-packages/
+    # Containers created in Moblab does not have autotest/site-packages folder.
+    if not os.path.exists('/usr/local/autotest/site-packages'):
+        target_setting = '--target="/usr/lib/python2.7/dist-packages/"'
+    utils.run('sudo pip install %s %s' % (target_setting, package))
 
 
 class Container(object):
@@ -560,6 +567,37 @@ class Container(object):
             if int(result) < count:
                 raise error.ContainerError('%s is not properly set up.' %
                                            directory)
+
+
+    def modify_import_order(self):
+        """Swap the python import order of lib and local/lib.
+
+        In Moblab, the host's python modules located in
+        /usr/lib64/python2.7/site-packages is mounted to following folder inside
+        container: /usr/local/lib/python2.7/dist-packages/. The modules include
+        an old version of requests module, which is used in autotest
+        site-packages. For test, the module is only used in
+        dev_server/symbolicate_dump for requests.call and requests.codes.OK.
+        When pip is installed inside the container, it installs requests module
+        with version of 2.2.1 in /usr/lib/python2.7/dist-packages/. The version
+        is newer than the one used in autotest site-packages, but not the latest
+        either.
+        According to /usr/lib/python2.7/site.py, modules in /usr/local/lib are
+        imported before the ones in /usr/lib. That leads to pip to use the older
+        version of requests (0.11.2), and it will fail. On the other hand,
+        requests module 2.2.1 can't be installed in CrOS (refer to CL:265759),
+        and higher version of requests module can't work with pip.
+        The only fix to resolve this is to switch the import order, so modules
+        in /usr/lib can be imported before /usr/local/lib.
+        """
+        site_module = '/usr/lib/python2.7/site.py'
+        self.attach_run("sed -i ':a;N;$!ba;s/\"local\/lib\",\\n/"
+                        "\"lib_placeholder\",\\n/g' %s" % site_module)
+        self.attach_run("sed -i ':a;N;$!ba;s/\"lib\",\\n/"
+                        "\"local\/lib\",\\n/g' %s" % site_module)
+        self.attach_run('sed -i "s/lib_placeholder/lib/g" %s' %
+                        site_module)
+
 
 
 class ContainerBucket(object):
@@ -829,6 +867,8 @@ class ContainerBucket(object):
 
         container.start(name)
         deploy_config_manager.deploy_post_start()
+
+        container.modify_import_order()
 
         container.verify_autotest_setup(job_id)
 

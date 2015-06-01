@@ -185,8 +185,14 @@ def test_package_install(container):
     @param container: The test container.
     """
     container.attach_run('sudo apt-get update -y')
-    container.attach_run('sudo apt-get install python-pip -y')
-    container.attach_run('sudo pip install selenium')
+    container.attach_run('sudo apt-get install python-pip -y --force-yes')
+    target_setting = ''
+    # For containers running in Moblab, /usr/local/lib/python2.7/dist-packages/
+    # is a readonly mount from the host. Therefore, new python modules have to
+    # be installed in /usr/lib/python2.7/dist-packages/
+    if lxc.IS_MOBLAB:
+        target_setting = '--target="/usr/lib/python2.7/dist-packages/"'
+    container.attach_run('sudo pip install %s selenium' % target_setting)
 
 
 def test_ssh(container, remote):
