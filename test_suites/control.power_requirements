@@ -26,10 +26,9 @@ import common
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
-dynamic_suite.reimage_and_run(
-    build=build, board=board, name='power_requirements', job=job, pool=pool,
-    check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
-    devserver_url=devserver_url, version_prefix=provision.CROS_VERSION_PREFIX,
-    wait_for_results=wait_for_results, job_retry=job_retry,
-    max_retries=max_retries)
+args_dict['add_experimental'] = True
+args_dict['name'] = 'power_requirements'
+args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
+args_dict['job'] = job
+
+dynamic_suite.reimage_and_run(**args_dict)

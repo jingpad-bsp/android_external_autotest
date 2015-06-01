@@ -34,11 +34,10 @@ _BUG_TEMPLATE = {
     'cc': ['dbasehore@chromium.org', 'snanda@chromium.org', 'tbroch@chromium.org']
 }
 
-dynamic_suite.reimage_and_run(
-    build=build, board=board, name='power_daily', job=job, pool=pool,
-    check_hosts=check_hosts, add_experimental=True, num=num,
-    file_bugs=file_bugs, priority=priority, timeout_mins=timeout_mins,
-    bug_template=_BUG_TEMPLATE, devserver_url=devserver_url,
-    version_prefix=provision.CROS_VERSION_PREFIX,
-    wait_for_results=wait_for_results, job_retry=job_retry,
-    max_retries=max_retries)
+args_dict['add_experimental'] = True
+args_dict['bug_template'] = _BUG_TEMPLATE
+args_dict['name'] = 'power_daily'
+args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
+args_dict['job'] = job
+
+dynamic_suite.reimage_and_run(**args_dict)
