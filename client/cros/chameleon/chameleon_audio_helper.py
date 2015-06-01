@@ -95,17 +95,18 @@ class AudioLinkFactory(object):
         # TODO(cychiang): Add link for other widget pairs.
     }
 
-    def __init__(self, audio_board):
+    def __init__(self, cros_host):
         """Initializes an AudioLinkFactory.
 
-        @param audio_board: An AudioBoard object to access Chameleon
-                            audio board functionality.
+        @param cros_host: A CrosHost object to access Cros device.
 
         """
         # There are two audio buses on audio board. Initializes these links
         # to None. They may be changed to objects of AudioBusLink's subclass.
         self._audio_bus_links = {1: None, 2: None}
-        self._audio_board = audio_board
+        self._cros_host = cros_host
+        self._chameleon_board = cros_host.chameleon
+        self._audio_board = self._chameleon_board.get_audio_board()
 
 
     def _acquire_audio_bus_index(self):
@@ -185,20 +186,20 @@ class AudioWidgetFactory(object):
         _link_factory: An AudioLinkFactory that creates link for widgets.
 
     """
-    def __init__(self, chameleon_board, factory):
+    def __init__(self, factory, cros_host):
         """Initializes a AudioWidgetFactory
 
-        @param chameleon_board: A ChameleonBoard object to access Chameleon
-                                functionality.
         @param factory: A facade factory to access Cros device functionality.
                         Currently only audio facade is used, but we can access
                         other functionalities including display and video by
                         facades created by this facade factory.
+        @param cros_host: A CrosHost object to access Cros device.
 
         """
         self._audio_facade = factory.create_audio_facade()
-        self._chameleon_board = chameleon_board
-        self._link_factory = AudioLinkFactory(chameleon_board.get_audio_board())
+        self._cros_host = cros_host
+        self._chameleon_board = cros_host.chameleon
+        self._link_factory = AudioLinkFactory(cros_host)
 
 
     def create_widget(self, port_id):
