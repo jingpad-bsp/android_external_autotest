@@ -10,7 +10,9 @@ from contextlib import contextmanager
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.chameleon import audio_widget
 from autotest_lib.client.cros.chameleon import audio_widget_link
+from autotest_lib.server.cros.bluetooth import bluetooth_device
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
+from autotest_lib.client.cros.chameleon import chameleon_info
 
 
 class AudioPort(object):
@@ -92,6 +94,12 @@ class AudioLinkFactory(object):
         (ids.ChameleonIds.LINEOUT,
          ids.PeripheralIds.BLUETOOTH_DATA_TX):
                 audio_widget_link.AudioBusChameleonToPeripheralLink,
+        (ids.CrosIds.BLUETOOTH_HEADPHONE,
+         ids.PeripheralIds.BLUETOOTH_DATA_RX):
+                audio_widget_link.BluetoothHeadphoneWidgetLink,
+        (ids.PeripheralIds.BLUETOOTH_DATA_TX,
+         ids.CrosIds.BLUETOOTH_MIC):
+                audio_widget_link.BluetoothMicWidgetLink,
         # TODO(cychiang): Add link for other widget pairs.
     }
 
@@ -160,6 +168,18 @@ class AudioLinkFactory(object):
                     self._audio_board.get_audio_bus(bus_index),
                     self._audio_board.get_jack_plugger())
             self._audio_bus_links[bus_index] = link
+        elif issubclass(link_type, audio_widget_link.BluetoothWidgetLink):
+            # To connect bluetooth adapter on Cros device to bluetooth module on
+            # chameleon board, we need to access bluetooth adapter on Cros host
+            # using BluetoothDevice, and access bluetooth module on
+            # audio board using BluetoothController. Finally, the MAC address
+            # of bluetooth module is queried through chameleon_info because
+            # it is not probeable on Chameleon board.
+            link = link_type(
+                    bluetooth_device.BluetoothDevice(self._cros_host),
+                    self._audio_board.get_bluetooth_controller(),
+                    chameleon_info.get_bluetooth_mac_address(
+                            self._chameleon_board))
         else:
             raise NotImplementedError('Link %s is not implemented' % link_type)
 
