@@ -40,7 +40,7 @@ class audio_AudioBasicHDMI(test.test):
         chameleon_board.reset()
 
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
-                chameleon_board, factory)
+                factory, host)
 
         source = widget_factory.create_widget(
             chameleon_audio_ids.CrosIds.HDMI)

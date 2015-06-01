@@ -187,7 +187,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         factory = remote_facade_factory.RemoteFacadeFactory(self.host)
         chameleon_board.reset()
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
-                chameleon_board, factory)
+                factory, host)
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None
