@@ -95,4 +95,4 @@ class firmware_ECWakeSource(FirmwareTest):
         logging.info("EC hibernate and wake by power button.")
         self.switcher.mode_aware_reboot(
                 'custom',
-                lambda:self.hibernate_and_wake_by_power_button)
+                lambda:self.hibernate_and_wake_by_power_button())
