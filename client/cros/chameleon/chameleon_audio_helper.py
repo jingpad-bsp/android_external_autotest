@@ -86,6 +86,12 @@ class AudioLinkFactory(object):
                 audio_widget_link.AudioBusChameleonToPeripheralLink,
         (ids.PeripheralIds.MIC, ids.ChameleonIds.LINEIN):
                 audio_widget_link.AudioBusToChameleonLink,
+        (ids.PeripheralIds.BLUETOOTH_DATA_RX,
+         ids.ChameleonIds.LINEIN):
+                audio_widget_link.AudioBusToChameleonLink,
+        (ids.ChameleonIds.LINEOUT,
+         ids.PeripheralIds.BLUETOOTH_DATA_TX):
+                audio_widget_link.AudioBusChameleonToPeripheralLink,
         # TODO(cychiang): Add link for other widget pairs.
     }
 

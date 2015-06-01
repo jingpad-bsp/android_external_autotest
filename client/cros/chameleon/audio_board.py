@@ -89,7 +89,11 @@ class AudioBus(object):
             ids.CrosIds.HEADPHONE: 'Cros device headphone',
             ids.CrosIds.EXTERNAL_MIC: 'Cros device external microphone',
             ids.PeripheralIds.SPEAKER: 'Peripheral speaker',
-            ids.PeripheralIds.MIC: 'Peripheral microphone'}
+            ids.PeripheralIds.MIC: 'Peripheral microphone',
+            ids.PeripheralIds.BLUETOOTH_DATA_RX:
+                    'Bluetooth module output',
+            ids.PeripheralIds.BLUETOOTH_DATA_TX:
+                    'Bluetooth module input'}
 
     def __init__(self, bus_index, chameleon_connection):
         """Constructs an AudioBus.
