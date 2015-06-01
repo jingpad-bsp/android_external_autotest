@@ -137,20 +137,6 @@ class WidgetLink(object):
                             self.name, port_id, widget.audio_port.port_id))
 
 
-    def _check_widget_role(self, role, widget):
-        """Checks that the role of a widget is expected.
-
-        @param role: 'source' or 'sink'.
-        @param widget: An AudioWidget object.
-
-        @raises: WidgetLinkError if the role of widget is not expected.
-        """
-        if widget.audio_port.role != role:
-            raise WidgetLinkError(
-                    'Link %s expects a %s widget, but gets a %s widget' % (
-                            self.name, role, widget.audio_port.role))
-
-
     @abc.abstractmethod
     def plug_input(self, widget):
         """Plugs input of this link to the widget.
@@ -234,8 +220,6 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_role('source', widget)
-
         if widget.audio_port.host == 'Cros':
             self._jack_plugger.plug()
 
@@ -252,8 +236,6 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_role('source', widget)
-
         if widget.audio_port.host == 'Cros':
             self._jack_plugger.unplug()
 
@@ -270,8 +252,6 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_role('sink', widget)
-
         if widget.audio_port.host == 'Cros':
             self._jack_plugger.plug()
 
@@ -288,8 +268,6 @@ class AudioBusLink(WidgetLink):
         @param widget: An AudioWidget object.
 
         """
-        self._check_widget_role('sink', widget)
-
         if widget.audio_port.host == 'Cros':
             self._jack_plugger.unplug()
 
