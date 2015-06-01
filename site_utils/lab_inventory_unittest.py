@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import itertools
 import logging
 import os
 import unittest
@@ -36,6 +37,22 @@ class _FakeHostHistory(object):
     def last_diagnosis(self):
         """Return the recorded diagnosis."""
         return self._status, None
+
+
+class _FakeHostLocation(object):
+    """Class to mock `HostJobHistory` for location sorting."""
+
+    _HOSTNAME_FORMAT = 'chromeos%d-row%d-rack%d-host%d'
+
+
+    def __init__(self, location):
+        self.hostname = self._HOSTNAME_FORMAT % location
+
+
+    @property
+    def host(self):
+        """Return a fake host object with a hostname."""
+        return self
 
 
 # Status values that may be returned by `HostJobHistory`.
@@ -250,12 +267,181 @@ class BoardCountTests(unittest.TestCase):
             self._check_all_counts(working, broken)
 
 
+class LocationSortTests(unittest.TestCase):
+    """Unit tests for `_sort_by_location()`."""
+
+    def setUp(self):
+        super(LocationSortTests, self).setUp()
+
+
+    def _check_sorting(self, *locations):
+        """Test sorting a given list of locations.
+
+        The input is an already ordered list of lists of tuples with
+        row, rack, and host numbers.  The test converts the tuples
+        to hostnames, preserving the original ordering.  Then it
+        flattens and scrambles the input, runs it through
+        `_sort_by_location()`, and asserts that the result matches
+        the original.
+
+        """
+        lab = 0
+        expected = []
+        for tuples in locations:
+            lab += 1
+            expected.append(
+                    [_FakeHostLocation((lab,) + t) for t in tuples])
+        scrambled = [e for e in itertools.chain(*expected)]
+        scrambled = [e for e in reversed(scrambled)]
+        actual = lab_inventory._sort_by_location(scrambled)
+        # The ordering of the labs in the output isn't guaranteed,
+        # so we can't compare `expected` and `actual` directly.
+        # Instead, we create a dictionary keyed on the first host in
+        # each lab, and compare the dictionaries.
+        self.assertEqual({l[0]: l for l in expected},
+                         {l[0]: l for l in actual})
+
+
+    def test_separate_labs(self):
+        """Test that sorting distinguishes labs."""
+        self._check_sorting([(1, 1, 1)], [(1, 1, 1)], [(1, 1, 1)])
+
+
+    def test_separate_rows(self):
+        """Test for proper sorting when only rows are different."""
+        self._check_sorting([(1, 1, 1), (9, 1, 1), (10, 1, 1)])
+
+
+    def test_separate_racks(self):
+        """Test for proper sorting when only racks are different."""
+        self._check_sorting([(1, 1, 1), (1, 9, 1), (1, 10, 1)])
+
+
+    def test_separate_hosts(self):
+        """Test for proper sorting when only hosts are different."""
+        self._check_sorting([(1, 1, 1), (1, 1, 9), (1, 1, 10)])
+
+
+    def test_diagonal(self):
+        """Test for proper sorting when all parts are different."""
+        self._check_sorting([(1, 1, 2), (1, 2, 1), (2, 1, 1)])
+
+
+class InventoryScoringTests(unittest.TestCase):
+    """Unit tests for `_score_repair_set()`."""
+
+    def setUp(self):
+        super(InventoryScoringTests, self).setUp()
+
+
+    def _make_buffer_counts(self, *counts):
+        """Create a dictionary suitable as `buffer_counts`.
+
+        @param counts List of tuples with board count data.
+
+        """
+        self._buffer_counts = dict(counts)
+
+
+    def _make_history_list(self, repair_counts):
+        """Create a list suitable as `repair_list`.
+
+        @param repair_counts List of (board, count) tuples.
+
+        """
+        pool = lab_inventory._SPARE_POOL
+        histories = []
+        for board, count in repair_counts:
+            for i in range(0, count):
+                histories.append(
+                    _FakeHostHistory(board, pool, _BROKEN))
+        return histories
+
+
+    def _check_better(self, repair_a, repair_b):
+        """Test that repair set A scores better than B.
+
+        Contruct repair sets from `repair_a` and `repair_b`,
+        and score both of them using the pre-existing
+        `self._buffer_counts`.  Assert that the score for A is
+        better than the score for B.
+
+        @param repair_a Input data for repair set A
+        @param repair_b Input data for repair set B
+
+        """
+        score_a = lab_inventory._score_repair_set(
+                self._buffer_counts,
+                self._make_history_list(repair_a))
+        score_b = lab_inventory._score_repair_set(
+                self._buffer_counts,
+                self._make_history_list(repair_b))
+        self.assertGreater(score_a, score_b)
+
+
+    def _check_equal(self, repair_a, repair_b):
+        """Test that repair set A scores the same as B.
+
+        Contruct repair sets from `repair_a` and `repair_b`,
+        and score both of them using the pre-existing
+        `self._buffer_counts`.  Assert that the score for A is
+        equal to the score for B.
+
+        @param repair_a Input data for repair set A
+        @param repair_b Input data for repair set B
+
+        """
+        score_a = lab_inventory._score_repair_set(
+                self._buffer_counts,
+                self._make_history_list(repair_a))
+        score_b = lab_inventory._score_repair_set(
+                self._buffer_counts,
+                self._make_history_list(repair_b))
+        self.assertEqual(score_a, score_b)
+
+
+    def test_improve_worst_board(self):
+        """Test that improving the worst board improves scoring.
+
+        Construct a buffer counts dictionary with all boards having
+        different counts.  Assert that it is both necessary and
+        sufficient to improve the count of the worst board in order
+        to improve the score.
+
+        """
+        self._make_buffer_counts(('lion', 0),
+                                 ('tiger', 1),
+                                 ('bear', 2))
+        self._check_better([('lion', 1)], [('tiger', 1)])
+        self._check_better([('lion', 1)], [('bear', 1)])
+        self._check_better([('lion', 1)], [('tiger', 2)])
+        self._check_better([('lion', 1)], [('bear', 2)])
+        self._check_equal([('tiger', 1)], [('bear', 1)])
+
+
+    def test_improve_worst_case_count(self):
+        """Test that improving the number of worst cases improves the score.
+
+        Construct a buffer counts dictionary with all boards having
+        the same counts.  Assert that improving two boards is better
+        than improving one.  Assert that improving any one board is
+        as good as any other.
+
+        """
+        self._make_buffer_counts(('lion', 0),
+                                 ('tiger', 0),
+                                 ('bear', 0))
+        self._check_better([('lion', 1), ('tiger', 1)], [('bear', 2)])
+        self._check_equal([('lion', 2)], [('tiger', 1)])
+        self._check_equal([('tiger', 1)], [('bear', 1)])
+
+
 class _InventoryTests(unittest.TestCase):
     """Parent class for tests relating to full Lab inventory.
 
     This class provides a `create_inventory()` method that allows
     construction of a complete `_LabInventory` object from a
-    restricted input representation.  The input representation
+    simplified input representation.  The input representation
     is a dictionary mapping board names to tuples of this form:
         `((critgood, critbad), (sparegood, sparebad))`
     where:
@@ -328,6 +514,7 @@ class LabInventoryTests(_InventoryTests):
         'giraffe',
     ]
 
+
     def _check_inventory(self, data):
         """Create a test inventory, and confirm that it's correct.
 
@@ -342,7 +529,10 @@ class LabInventoryTests(_InventoryTests):
             `data`.
 
         @param data Inventory data as for `self.create_inventory()`.
+
         """
+        working_count = 0
+        broken_count = 0
         for b in self.inventory:
             c = self.inventory[b]
             calculated_counts = (
@@ -351,12 +541,18 @@ class LabInventoryTests(_InventoryTests):
                 (c.get_working(self._SPARE_POOL),
                  c.get_broken(self._SPARE_POOL)))
             self.assertEqual(data[b], calculated_counts)
+            working_count += data[b][0][0] + data[b][1][0]
+            broken_count += data[b][0][1] + data[b][1][1]
         self.assertEqual(set(self.inventory.keys()),
                          set(data.keys()))
         self.assertEqual(self.inventory.get_num_duts(),
                          self.num_duts)
         self.assertEqual(self.inventory.get_num_boards(),
                          len(data))
+        working_list = self.inventory.get_working_list()
+        broken_list = self.inventory.get_broken_list()
+        self.assertEqual(len(working_list), working_count)
+        self.assertEqual(len(broken_list), broken_count)
 
 
     def test_empty(self):

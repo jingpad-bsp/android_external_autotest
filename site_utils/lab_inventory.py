@@ -46,12 +46,15 @@ import argparse
 import logging
 import logging.handlers
 import os
+import re
 import sys
 import time
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import frontend
+from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils import status_history
 from autotest_lib.site_utils.suite_scheduler import constants
@@ -81,14 +84,12 @@ _CRITICAL_POOLS = ['bvt', 'cq']
 _SPARE_POOL = 'suites'
 _MANAGED_POOLS = _CRITICAL_POOLS + [_SPARE_POOL]
 
-
 # _DEFAULT_DURATION:
 #     Default value used for the --duration command line option.
 #     Specifies how far back in time to search in order to determine
 #     DUT status.
 
 _DEFAULT_DURATION = 24
-
 
 # _LOGDIR:
 #     Relative path used in the calculation of the default setting
@@ -105,32 +106,60 @@ _LOGDIR = os.path.join('logs', 'dut-data')
 _LOGFILE = 'lab-inventory.log'
 _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 
+# _DEFAULT_NUM_RECOMMEND:
+#     The default setting for the --recommend option.  That option
+#     determines how many DUTs will be listed in the output produced
+#     by `_generate_repair_recommendation()`.
+_DEFAULT_NUM_RECOMMEND = 10
+
+# Pattern describing location-based host names in the Chrome OS test
+# labs.  Each DUT hostname designates the DUT's location:
+#   * A lab (room) that's physically separated from other labs
+#     (i.e. there's a door).
+#   * A row (or aisle) of DUTs within the lab.
+#   * A vertical rack of shelves on the row.
+#   * A specific host on one shelf of the rack.
+
+_HOSTNAME_PATTERN = re.compile(
+        r'(chromeos\d+)-row(\d+)-rack(\d+)-host(\d+)')
+
 
 class _PoolCounts(object):
     """Maintains a set of `HostJobHistory` objects for a pool.
 
     The collected history objects are nominally all part of a single
-    scheduling pool of DUTs.  The collection maintains a count of
-    working DUTs, a count of broken DUTs, and a total count.
+    scheduling pool of DUTs.  The collection maintains a list of
+    working DUTs, a list of broken DUTs, and a list of all DUTs.
 
-    Performance note:  The methods `get_working()` and
-    `get_broken()` (but not `get_total()`) are potentially
-    expensive.  The first time they're called, they must make a
-    potentially expensive set of database queries.  The results of
-    the queries are cached in the individual `HostJobHistory`
-    objects, so only the first call actually pays the cost.
+    Performance note:  Certain methods in this class are potentially
+    expensive:
+      * `get_working()`
+      * `get_working_list()`
+      * `get_broken()`
+      * `get_broken_list()`
+    The first time any one of these methods is called, it causes
+    multiple RPC calls with a relatively expensive set of database
+    queries.  However, the results of the queries are cached in the
+    individual `HostJobHistory` objects, so only the first call
+    actually pays the full cost.
 
-    This class is deliberately constructed to delay that cost until
-    the accessor methods are called (rather than to query in
+    Additionally, `get_working_list()` and `get_broken_list()` both
+    cache their return values to avoid recalculating lists at every
+    call; this caching is separate from the caching of RPC results
+    described above.
+
+    This class is deliberately constructed to delay the RPC cost
+    until the accessor methods are called (rather than to query in
     `record_host()`) so that it's possible to construct a complete
     `_LabInventory` without making the expensive queries at creation
-    time.  `_populate_board_counts()`, below, relies on this
-    behavior.
+    time.  `_populate_board_counts()`, below, assumes this behavior.
 
     """
 
     def __init__(self):
         self._histories = []
+        self._working_list = None
+        self._broken_list = None
 
 
     def record_host(self, host_history):
@@ -140,23 +169,57 @@ class _PoolCounts(object):
                             remembered.
 
         """
+        self._working_list = None
+        self._broken_list = None
         self._histories.append(host_history)
 
 
+    def get_working_list(self):
+        """Return a list of all working DUTs in the pool.
+
+        Filter `self._histories` for histories where the last
+        diagnosis is `WORKING`.
+
+        Cache the result so that we only cacluate it once.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        if self._working_list is None:
+            self._working_list = [h for h in self._histories
+                    if h.last_diagnosis()[0] == status_history.WORKING]
+        return self._working_list
+
+
     def get_working(self):
-        """Return the number of working DUTs in the collection."""
-        return len([h for h in self._histories
-                        if h.last_diagnosis()[0] == status_history.WORKING])
+        """Return the number of working DUTs in the pool."""
+        return len(self.get_working_list())
+
+
+    def get_broken_list(self):
+        """Return a list of all broken DUTs in the pool.
+
+        Filter `self._histories` for histories where the last
+        diagnosis is not `WORKING`.
+
+        Cache the result so that we only cacluate it once.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        if self._broken_list is None:
+            self._broken_list = [h for h in self._histories
+                    if h.last_diagnosis()[0] != status_history.WORKING]
+        return self._broken_list
 
 
     def get_broken(self):
-        """Return the number of broken DUTs in the collection."""
-        return len([h for h in self._histories
-                        if h.last_diagnosis()[0] != status_history.WORKING])
+        """Return the number of broken DUTs in the pool."""
+        return len(self.get_broken_list())
 
 
     def get_total(self):
-        """Return the total number of DUTs in the collection."""
+        """Return the total number of DUTs in the pool."""
         return len(self._histories)
 
 
@@ -213,6 +276,21 @@ class _BoardCounts(object):
             return get_pool_count(self._pools[pool])
 
 
+    def get_working_list(self):
+        """Return a list of all working DUTs for the board.
+
+        Go through all HostJobHistory objects in the board's pools,
+        selecting the ones where the last diagnosis is `WORKING`.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        l = []
+        for p in self._pools.values():
+            l.extend(p.get_working_list())
+        return l
+
+
     def get_working(self, pool=None):
         """Return the number of working DUTs in a pool.
 
@@ -221,6 +299,22 @@ class _BoardCounts(object):
 
         """
         return self._count_pool(_PoolCounts.get_working, pool)
+
+
+    def get_broken_list(self):
+        """Return a list of all broken DUTs for the board.
+
+        Go through all HostJobHistory objects in the board's pools,
+        selecting the ones where the last diagnosis is not
+        `WORKING`.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        l = []
+        for p in self._pools.values():
+            l.extend(p.get_broken_list())
+        return l
 
 
     def get_broken(self, pool=None):
@@ -304,8 +398,80 @@ class _LabInventory(dict):
         initval = { board: _BoardCounts() for board in boards }
         super(_LabInventory, self).__init__(initval)
         self._dut_count = len(histories)
+        self._board_counts = None
         for h in histories:
             self[h.host_board].record_host(h)
+
+
+    def get_working_list(self):
+        """Return a list of all working DUTs in the inventory.
+
+        Go through all HostJobHistory objects in the inventory,
+        selecting the ones where the last diagnosis is `WORKING`.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        l = []
+        for counts in self.values():
+            l.extend(counts.get_working_list())
+        return l
+
+
+    def get_broken_list(self):
+        """Return a list of all broken DUTs in the inventory.
+
+        Go through all HostJobHistory objects in the inventory,
+        selecting the ones where the last diagnosis is not
+        `WORKING`.
+
+        @return A list of HostJobHistory objects.
+
+        """
+        l = []
+        for counts in self.values():
+            l.extend(counts.get_broken_list())
+        return l
+
+
+    def get_board_counts(self):
+        """Calculate a summary of board counts.
+
+        The summary is a list of tuples.  The tuple elements, in
+        order, are:
+          * board - The name of the board associated with the
+            counts.
+          * buffer - The buffer of working spares (the total number
+            of spares, less the number of broken DUTs).
+          * broken - The number of broken DUTs.
+          * working - The number of working DUTs.
+          * spares - The number of DUTs in the spares pool.
+          * total - The the total number of DUTs.
+
+        Boards with no DUTs in the spares pool or no DUTs in a
+        critical pool will be excluded from the listed counts.
+
+        The ordering of the boards is unspecified.
+
+        @param inventory The inventory to be summarized.
+        @return A list of tuples with board data.
+
+        """
+        if self._board_counts is None:
+            self._board_counts = []
+            for board, counts in self.items():
+                logging.debug('Counting inventory for %s', board)
+                spares = counts.get_total(_SPARE_POOL)
+                total = counts.get_total()
+                if spares == 0 or spares == total:
+                    continue
+                working = counts.get_working()
+                broken = counts.get_broken()
+                spare_buffer = spares - broken
+                element = (board, spare_buffer, broken, working,
+                           spares, total)
+                self._board_counts.append(element)
+        return self._board_counts
 
 
     def get_num_duts(self):
@@ -316,6 +482,164 @@ class _LabInventory(dict):
     def get_num_boards(self):
         """Return the total number of boards in the inventory."""
         return len(self)
+
+
+def _sort_by_location(inventory_list):
+    """Return a list of DUTs, organized by location.
+
+    Take the given list of `HostJobHistory` objects, separate it
+    into a list per lab, and sort each lab's list by location.  The
+    order of sorting within a lab is
+      * By row number within the lab,
+      * then by rack number within the row,
+      * then by host shelf number within the rack.
+
+    Return a list of the sorted lists.
+
+    Implementation note: host locations are sorted by converting
+    each location into a base 100 number.  If row, rack or
+    host numbers exceed the range [0..99], then sorting will
+    break down.
+
+    @return A list of sorted lists of DUTs.
+
+    """
+    BASE = 100
+    lab_lists = {}
+    for history in inventory_list:
+        location = _HOSTNAME_PATTERN.match(history.host.hostname)
+        if location:
+            lab = location.group(1)
+            key = 0
+            for idx in location.group(2, 3, 4):
+                key = BASE * key + int(idx)
+            lab_lists.setdefault(lab, []).append((key, history))
+    return_list = []
+    for dut_list in lab_lists.values():
+        dut_list.sort(key=lambda t: t[0])
+        return_list.append([t[1] for t in dut_list])
+    return return_list
+
+
+def _score_repair_set(buffer_counts, repair_list):
+    """Return a numeric score rating a set of DUTs to be repaired.
+
+    `buffer_counts` is a dictionary mapping board names to the
+    size of the board's spares buffer.
+
+    `repair_list` is a list of DUTs to be repaired.
+
+    This function calculates the new set of buffer counts that would
+    result from the proposed repairs, and scores the new set using
+    two numbers:
+      * Worst case buffer count for any board (higher is better).
+        This is the more siginficant number for comparison.
+      * Number of boards at the worst case (lower is better).  This
+        is the less significant number.
+
+    Implementation note:  The score could fail to reflect the
+    intended criteria if there are more than 1000 boards in the
+    inventory.
+
+    @param spare_counts A dictionary mapping boards to buffer counts.
+    @param repair_list  A list of boards to be repaired.
+    @return A numeric score.
+
+    """
+    # Go through `buffer_counts`, and create a list of new counts
+    # that records the buffer count for each board after repair.
+    # The new list of counts discards the board names, as they don't
+    # contribute to the final score.
+    _NBOARDS = 1000
+    repair_inventory = _LabInventory(repair_list)
+    new_counts = []
+    for b, c in buffer_counts.items():
+        if b in repair_inventory:
+            newcount = repair_inventory[b].get_total()
+        else:
+            newcount = 0
+        new_counts.append(c + newcount)
+    # Go through the new list of counts.  Find the worst available
+    # spares count, and count how many times that worst case occurs.
+    worst_count = new_counts[0]
+    num_worst = 1
+    for c in new_counts[1:]:
+        if c == worst_count:
+            num_worst += 1
+        elif c < worst_count:
+            worst_count = c
+            num_worst = 1
+    # Return the calculated score
+    return _NBOARDS * worst_count - num_worst
+
+
+def _generate_repair_recommendation(inventory, num_recommend):
+    """Return a summary of selected DUTs needing repair.
+
+    Returns a message recommending a list of broken DUTs to be
+    repaired.  The list of DUTs is selected based on these
+    criteria:
+      * No more than `num_recommend` DUTs will be listed.
+      * All DUTs must be in the same lab.
+      * DUTs should be selected for some degree of physical
+        proximity.
+      * DUTs for boards with a low spares buffer are more important
+        than DUTs with larger buffers.
+
+    The algorithm used will guarantee that at least one DUT from a
+    board with the smallest spares buffer will be recommended.  If
+    the worst spares buffer number is shared by more than one board,
+    the algorithm will tend to prefer repair sets that include more
+    of those boards over sets that cover fewer boards.
+
+    """
+    logging.debug('Creating DUT repair recommendations')
+    board_counts = inventory.get_board_counts()
+    # t[0] - board name
+    # t[1] - size of spares buffer
+    # t[2] - number of broken devices
+    board_buffer_counts = {t[0]: t[1] for t in board_counts
+                                    if t[2] != 0}
+    recommendation = None
+    best_score = None
+    # N.B. The logic of this loop may seem complicated, but
+    # simplification is hard:
+    #   * Calculating an initial recommendation outside of
+    #     the loop likely would make things more complicated,
+    #     not less.
+    #   * It's necessary to calculate an initial lab slice once per
+    #     lab _before_ the while loop, in case the number of broken
+    #     DUTs in a lab is less than `num_recommend`.
+    for lab_duts in _sort_by_location(inventory.get_broken_list()):
+        start = 0
+        end = num_recommend
+        lab_slice = lab_duts[start : end]
+        lab_score = _score_repair_set(board_buffer_counts,
+                                      lab_slice)
+        while end < len(lab_duts):
+            start += 1
+            end += 1
+            new_slice = lab_duts[start : end]
+            new_score = _score_repair_set(board_buffer_counts,
+                                          new_slice)
+            if new_score > lab_score:
+                lab_slice = new_slice
+                lab_score = new_score
+        if recommendation is None or lab_score > best_score:
+            recommendation = lab_slice
+            best_score = lab_score
+    message = ['%-30s %-16s %s' % (
+                       'Hostname', 'Board', 'Servo instructions')]
+    for h in recommendation:
+        servo_name = servo_host.make_servo_hostname(h.host.hostname)
+        if utils.host_is_in_lab_zone(servo_name):
+            servo_message = 'Repair servo first'
+        else:
+            servo_message = 'No servo present'
+        line = '%-30s %-16s %s' % (
+                h.host.hostname, h.host_board, servo_message)
+        message.append(line)
+    return '\n'.join(message)
 
 
 def _generate_board_inventory_message(inventory):
@@ -342,17 +666,7 @@ def _generate_board_inventory_message(inventory):
     message.append(
         '%-20s   %5s %5s %5s %5s %5s' % (
             'Board', 'Avail', 'Bad', 'Good', 'Spare', 'Total'))
-    data_list = []
-    for board, counts in inventory.items():
-        logging.debug('Counting inventory for %s', board)
-        spares = counts.get_total(_SPARE_POOL)
-        total = counts.get_total()
-        if spares == 0 or spares == total:
-            continue
-        working = counts.get_working()
-        broken = counts.get_broken()
-        buffer = spares - broken
-        data_list.append((board, buffer, broken, working, spares, total))
+    data_list = inventory.get_board_counts()
     data_list = sorted(sorted(data_list, key=lambda t: -t[2]),
                        key=lambda t: t[1])
     message.extend(
@@ -525,6 +839,15 @@ def _parse_command(argv):
                         default=[], metavar='ADDRESS',
                         help='Generate pool inventory message, '
                              'and send it to the given address(es)')
+    parser.add_argument('--recommend-notify', action='append',
+                        default=[], metavar='ADDRESS',
+                        help='Generate repair recommendations, '
+                             'and send it to the given address(es)')
+    parser.add_argument('-r', '--recommend', type=int,
+                        default=_DEFAULT_NUM_RECOMMEND,
+                        help=('Specify how many DUTs should be '
+                              'recommended for repair (default: %d)' %
+                                  _DEFAULT_NUM_RECOMMEND))
     parser.add_argument('--print', dest='print_', action='store_true',
                         help='Print e-mail messages on stdout '
                              'without sending them.')
@@ -556,19 +879,27 @@ def _configure_logging(arguments):
                       `ArgumentParser`
 
     """
+    root_logger = logging.getLogger()
     if arguments.print_:
-        logging.getLogger().setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter())
     else:
-        logging.getLogger().setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
         logfile = os.path.join(arguments.logdir, _LOGFILE)
         handler = logging.handlers.TimedRotatingFileHandler(
                 logfile, when='W4', backupCount=13)
         formatter = logging.Formatter(_LOG_FORMAT,
                                       time_utils.TIME_FMT)
         handler.setFormatter(formatter)
-    logging.getLogger().addHandler(handler)
+    # TODO(jrbarnette) This is gross.  Importing client.bin.utils
+    # implicitly imported logging_config, which calls
+    # logging.basicConfig() *at module level*.  That gives us an
+    # extra logging handler that we don't want.  So, clear out all
+    # the handlers here.
+    for h in root_logger.handlers:
+        root_logger.removeHandler(h)
+    root_logger.addHandler(handler)
 
 
 def _populate_board_counts(inventory):
@@ -588,6 +919,7 @@ def _populate_board_counts(inventory):
 
     """
     n = 0
+    total_broken = 0
     for counts in inventory.values():
         n += 1
         if n % 10 == 5:
@@ -601,8 +933,9 @@ def _populate_board_counts(inventory):
         # This next call is where all the time goes - it forces all
         # of a board's HostJobHistory objects to query the database
         # and cache their results.
-        counts.get_working()
+        total_broken += counts.get_broken()
     sys.stdout.write('\n')
+    sys.stdout.write('Found %d broken DUTs\n' % total_broken)
 
 
 def main(argv):
@@ -617,6 +950,8 @@ def main(argv):
         timestamp = time.strftime('%Y-%m-%d.%H',
                                   time.localtime(end_time))
         logging.debug('Starting lab inventory for %s', timestamp)
+        if arguments.recommend_notify:
+            logging.debug('Will include repair recommendations')
         if arguments.board_notify:
             logging.debug('Will include board inventory')
         if arguments.pool_notify:
@@ -631,6 +966,15 @@ def main(argv):
 
         if arguments.print_:
             _populate_board_counts(inventory)
+
+        if arguments.print_ or arguments.recommend_notify:
+            recommend_message = _generate_repair_recommendation(
+                    inventory, arguments.recommend)
+            _send_email(arguments,
+                        'recommend-%s.txt' % timestamp,
+                        'DUT repair recommendations %s' % timestamp,
+                        arguments.recommend_notify,
+                        recommend_message)
 
         if arguments.print_ or arguments.board_notify:
             _send_email(arguments,
