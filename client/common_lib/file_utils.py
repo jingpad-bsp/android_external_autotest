@@ -7,6 +7,7 @@ import os
 import shutil
 import urllib2
 
+from autotest_lib.client.common_lib import global_config
 
 def rm_dir_if_exists(dir_to_remove):
     """
@@ -127,6 +128,18 @@ def download_file(remote_path, local_path):
             debug information
 
     """
+    client_config = global_config.global_config.get_section_values('CLIENT')
+    proxies = {}
+
+    for name, value in client_config.items('CLIENT'):
+        if value and name.endswith('_proxy'):
+            proxies[name[:-6]] = value
+
+    if proxies:
+        proxy_handler = urllib2.ProxyHandler(proxies)
+        opener = urllib2.build_opener(proxy_handler)
+        urllib2.install_opener(opener)
+
     # Unlike urllib.urlopen urllib2.urlopen will immediately throw on error
     # If we could not find the file pointed by remote_path we will get an
     # exception, catch the exception to log useful information then re-raise
