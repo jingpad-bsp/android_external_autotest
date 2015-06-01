@@ -82,8 +82,49 @@ class PeripheralIds(object):
     # properties like level, channel_map, occupied to manipulate.
     # So, we set peripheral microphone to be a source to reflect the part related
     # to audio bus.
-    SOURCE_PORTS = [MIC]
-    SINK_PORTS = [SPEAKER]
+
+    BLUETOOTH_DATA_RX = ('Peripheral Bluetooth Signal Output and Data Receiver')
+    BLUETOOTH_DATA_TX = ('Peripheral Bluetooth Signal Input and Data '
+                         'Transmitter')
+
+    # Bluetooth module has both source and sink roles.
+    # When Cros device plays audio to bluetooth module data receiver through
+    # bluetooth connection, bluetooth module is a sink of audio signal.
+    # When we route audio signal from bluetooth signal output to Chameleon
+    # Line-In, bluetooth module is a signal source in terms of audio bus.
+    #
+    #                     Bluetooth module
+    #
+    #                    signal     data      (bluetooth)
+    #                    output    receiver <------------ Bluetooth Headphone
+    #                         ------                        ------
+    # Chameleon LineIn <----  |    |                        |    |
+    #                         ------                        ------
+    #                        Audio board                   Cros device
+    #
+    #
+    # When Cros device records audio from bluetooth module data transmitter
+    # through bluetooth connection, bluetooth module is a source of audio
+    # signal. When we route audio signal from Chameleon Line-Out to bluetooth
+    # signal input, bluetooth module is a signal sink in terms of audio bus.
+    #
+    #                     Bluetooth module
+    #
+    #                    signal     data      (bluetooth)
+    #                    input    transmitter -----------> Bluetooth Microphone
+    #                         ------                        ------
+    # Chameleon LineOut ----> |    |                        |    |
+    #                         ------                        ------
+    #                        Audio board                   Cros device
+    #
+    # From above diagram it is clear that "signal output" is connected to
+    # "data receiver", while "signal input" is connected to "data transmitter".
+    # To simplify the number of nodes, we group "signal output" and
+    # "data receiver" into one Id, and group "signal input" and
+    # "data transmitter" into one Id. Also, we let these two Ids be both source
+    # and sink.
+    SOURCE_PORTS = [MIC, BLUETOOTH_DATA_RX, BLUETOOTH_DATA_TX]
+    SINK_PORTS = [SPEAKER, BLUETOOTH_DATA_RX, BLUETOOTH_DATA_TX]
 
 
 SINK_PORTS = []
@@ -144,4 +185,6 @@ def get_role(port_id):
         return 'source'
     if port_id in SINK_PORTS:
         return 'sink'
+    if port_id in SOURCE_PORTS and port_id in SINK_PORTS:
+        return 'sink | source'
     raise ValueError('Not a valid port id: %r' % port_id)

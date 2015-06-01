@@ -25,69 +25,43 @@ class _AudioLevel(object):
     # 16 bit data format.
     # TODO(cychiang) Check if we need to do level scaling for digital signal.
     DIGITAL = 'Digital'
+    # The signal level of input of bluetooth module on the audio board is
+    # slightly higher than mic level.
+    BLUETOOTH_SIGNAL_INPUT_LEVEL = 'Bluetooth signal input level'
 
 
-_LEVEL_TABLE = {
-        # Chameleon audio ports.
-        ids.ChameleonIds.HDMI: _AudioLevel.DIGITAL,
-        ids.ChameleonIds.LINEIN: _AudioLevel.LINE_LEVEL,
+# The relative level of audio levels. This is used to compute scale between
+# two levels.
+_RELATIVE_LEVEL = {
+    _AudioLevel.LINE_LEVEL: 1.0,
+    _AudioLevel.MIC_LEVEL: 0.033,
+    _AudioLevel.BLUETOOTH_SIGNAL_INPUT_LEVEL: 0.05,
+}
+
+_SOURCE_LEVEL_TABLE = {
         ids.ChameleonIds.LINEOUT: _AudioLevel.LINE_LEVEL,
-        # Cros audio ports.
         ids.CrosIds.HDMI: _AudioLevel.DIGITAL,
         ids.CrosIds.HEADPHONE: _AudioLevel.LINE_LEVEL,
-        ids.CrosIds.EXTERNAL_MIC: _AudioLevel.MIC_LEVEL,
         ids.CrosIds.SPEAKER: _AudioLevel.LINE_LEVEL,
-        ids.CrosIds.INTERNAL_MIC: _AudioLevel.MIC_LEVEL,
-        # Peripheral audio ports.
-        ids.PeripheralIds.SPEAKER: _AudioLevel.LINE_LEVEL,
         ids.PeripheralIds.MIC: _AudioLevel.MIC_LEVEL,
+        ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.LINE_LEVEL,
+        ids.PeripheralIds.BLUETOOTH_DATA_TX: _AudioLevel.DIGITAL,
+}
+
+_SINK_LEVEL_TABLE = {
+        ids.ChameleonIds.HDMI: _AudioLevel.DIGITAL,
+        ids.ChameleonIds.LINEIN: _AudioLevel.LINE_LEVEL,
+        ids.CrosIds.EXTERNAL_MIC: _AudioLevel.MIC_LEVEL,
+        ids.CrosIds.INTERNAL_MIC: _AudioLevel.MIC_LEVEL,
+        ids.PeripheralIds.SPEAKER: _AudioLevel.LINE_LEVEL,
+        ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.DIGITAL,
+        ids.PeripheralIds.BLUETOOTH_DATA_TX:
+                _AudioLevel.BLUETOOTH_SIGNAL_INPUT_LEVEL,
 }
 
 
-class AudioLevelError(Exception):
-    """Error in _AudioLevel"""
-    pass
-
-
-def get_level(port_id):
-    """Gets audio level by port id.
-
-    @param port_id: An audio port id defined in ids.
-
-    @returns: An audio level defined in _AudioLevel.
-
-    """
-    if port_id not in _LEVEL_TABLE:
-        raise AudioLevelError('Level of port %s is not defined.' % port_id)
-    return _LEVEL_TABLE[port_id]
-
-
-class _AudioScale(object):
-    """Audio scales used by level controller.
-
-    The scales are determined by experiment.
-
-    """
-    DOWN_SCALE = 0.0033
-    UP_SCALE = 300.0
-    NO_SCALE = 1.0
-
-
-class LevelControllerError(Exception):
-    """Error in LevelController."""
-    pass
-
-
 class LevelController(object):
-    """The controller which sets scale between widgets of different levels.
-
-    Specifically, there are two cases:
-    1. ChameleonIds.LINEOUT -> CrosIds.EXTERNAL_MIC: Chameleon scales down
-       signal before playback.
-    2. PeripheralIds.MIC -> ChameleonIds.LINEIN: Chameleon scales up signal
-       after recording.
-
-    """
+    """The controller which sets scale between widgets of different levels."""
     def __init__(self, source, sink):
         """Initializes a LevelController.
 
@@ -102,62 +76,23 @@ class LevelController(object):
     def _get_needed_scale(self):
         """Gets the needed scale for _source and _sink to balance the level.
 
-        @returns: A scale defined in _AudioScale.
+        @returns: A number for scaling on source widget.
 
         """
-        source_level = get_level(self._source.port_id)
-        sink_level = get_level(self._sink.port_id)
-        if (source_level == _AudioLevel.LINE_LEVEL and
-            sink_level == _AudioLevel.MIC_LEVEL):
-            return _AudioScale.DOWN_SCALE
-        elif (source_level == _AudioLevel.MIC_LEVEL and
-              sink_level == _AudioLevel.LINE_LEVEL):
-            return _AudioScale.UP_SCALE
-        return _AudioScale.NO_SCALE
-
-
-    def _scale_source(self):
-        """Sets scale of _source widget."""
-        self._source.handler.scale = self._get_needed_scale()
-        self._sink.handler.scale = _AudioScale.NO_SCALE
-
-
-    def _scale_sink(self):
-        """Sets scale of _sink widget."""
-        self._source.handler.scale = _AudioScale.NO_SCALE
-        self._sink.handler.scale = self._get_needed_scale()
+        source_level = _SOURCE_LEVEL_TABLE[self._source.port_id]
+        sink_level = _SINK_LEVEL_TABLE[self._sink.port_id]
+        if source_level == sink_level:
+            return 1
+        else:
+            return _RELATIVE_LEVEL[sink_level] / _RELATIVE_LEVEL[source_level]
 
 
     def reset(self):
-        """Resets scale of both _source and _sink."""
-        self._source.handler.scale = _AudioScale.NO_SCALE
-        self._sink.handler.scale = _AudioScale.NO_SCALE
-
-
-    def _support_scale(self, widget):
-        """Checks if a widget supports scale.
-
-        @param widget: An AudioWidget.
-
-        @returns: True if the widget supports scale. False otherwise.
-
-        """
-        # Currently, only Chameleon supports scale.
-        return widget.audio_port.host == 'Chameleon'
+        """Resets scale of _source."""
+        self._source.handler.scale = 1
 
 
     def set_scale(self):
-        """Sets scale of either _source or _sink to balance the level.
-
-        @raises: LevelControllerError if neither _source nor _sink supports
-                 scale.
-
-        """
-        if self._support_scale(self._source):
-            self._scale_source()
-        elif self._support_scale(self._sink):
-            self._scale_sink()
-        elif self._get_needed_scale != _AudioScale.NO_SCALE:
-            raise LevelControllerError(
-                    'Widgets %s and %s do not support scale' % (
-                    self._source.audio_port, self._sink.audio_port))
+        """Sets scale of _source to balance the level."""
+        self._source.handler.scale = self._get_needed_scale()
+        self._sink.handler.scale = 1
