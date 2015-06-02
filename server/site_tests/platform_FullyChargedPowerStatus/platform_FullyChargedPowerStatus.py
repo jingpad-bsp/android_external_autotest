@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging, threading, time
 
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
-_LONG_TIMEOUT = 20
+_LONG_TIMEOUT = 200
 _WAIT_DELAY = 5
 _CHROME_PATH = '/opt/google/chrome/chrome'
 
@@ -15,11 +15,10 @@ class platform_FullyChargedPowerStatus(test.test):
     version = 1
 
     def cleanup(self):
-        """ Power on RPM and open lid on cleanup.
+        """ Power on RPM on cleanup.
 
         """
         self.host.power_on()
-        self.host.servo.lid_open()
 
 
     def get_power_supply_parameters(self):
@@ -73,33 +72,22 @@ class platform_FullyChargedPowerStatus(test.test):
                              ignore_status=True).exit_status == 0
 
 
-    def wait_to_disconnect(self):
-        """Wait for DUT to suspend.
+    def action_suspend(self):
+        """Suspend i.e. powerd_dbus_suspend and wait
 
-        @exception TestFail  if fail to disconnect in time
-
+        @returns boot_id for the following resume
         """
-        if not self.host.ping_wait_down(timeout=_LONG_TIMEOUT):
-            raise error.TestFail('The device did not suspend')
-
-
-    def wait_to_come_up(self):
-        """Wait for DUT to resume.
-
-        @exception TestFail  if fail to come_up in time
-
-        """
-        if not self.host.wait_up(timeout=_LONG_TIMEOUT):
-            raise error.TestFail('The device did not resume')
+        boot_id = self.host.get_boot_id()
+        thread = threading.Thread(target = self.host.suspend)
+        thread.start()
+        self.host.test_wait_for_sleep(_LONG_TIMEOUT)
+        logging.debug('--- Suspended')
+        return boot_id
 
 
     def run_once(self, host, power_status_sets):
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
-
-        # Check the servo object
-        if self.host.servo is None:
-            raise error.TestError('Invalid servo object found on the host.')
 
         if self.host.has_power():
             self.host.power_on()
@@ -122,11 +110,10 @@ class platform_FullyChargedPowerStatus(test.test):
             # Set power before suspend
             if not before_suspend:
                 self.host.power_off()
-                time.sleep(_WAIT_DELAY)
+            time.sleep(_WAIT_DELAY)
 
-            # Suspend DUT(closing lid)
-            self.host.servo.lid_close()
-            self.wait_to_disconnect()
+            # Suspend DUT(powerd_dbus_suspend)
+            boot_id = self.action_suspend()
             logging.info('DUT suspended')
 
             # Set power after suspend
@@ -145,14 +132,13 @@ class platform_FullyChargedPowerStatus(test.test):
                 time.sleep(_WAIT_DELAY)
             time.sleep(_WAIT_DELAY)
 
-            # Resume DUT(open lid)
-            self.host.servo.lid_open()
-            self.wait_to_come_up()
+            # Wait to resume DUT
+            self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
             logging.info('DUT resumed')
 
             # Set power to on after resume if needed
             if not before_resume:
                 self.host.power_on()
-                time.sleep(_WAIT_DELAY)
+            time.sleep(_WAIT_DELAY)
 
             self.check_power_charge_status(str(power_status_set))

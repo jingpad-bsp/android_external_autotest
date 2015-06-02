@@ -5,16 +5,15 @@
 from autotest_lib.server import utils
 
 AUTHOR = "helenzhang "
-NAME = "platform_FullyChargedPowerStatus"
+NAME = "platform_FullyChargedPowerStatus.stress"
 PURPOSE = "Check power status after suspend, unplug, plug and resumed"
 CRITERIA = "This test will fail if power status disply as no on AC, discharging as state & less than 95%."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:stress-experimental"
 SUITE = "stress-experimental"
-DEPENDENCIES = "servo, power:battery"
+DEPENDENCIES = "power:battery"
 
 DOC = """
 This test check fully charged power status after suspend and resume the device
@@ -27,11 +26,10 @@ The test fails if
 """
 
 args_dict = utils.args_to_dict(args)
-servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run(machine):
 
-    host = hosts.create_host(machine, servo_args=servo_args)
+    host = hosts.create_host(machine)
 
     power_status_sets = [(False, False, True),
                          (True, False, True),
