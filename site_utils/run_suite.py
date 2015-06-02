@@ -165,6 +165,10 @@ def parse_options():
                       help='Only enable gs_offloading for failed tests. '
                            'Successful tests will be deleted. Must pass "True"'
                            ' or "False" if used.')
+    parser.add_option('--use_suite_attr', dest='use_suite_attr',
+                      action='store_true', default=False,
+                      help='Advanced. Run the suite based on ATTRIBUTES of '
+                      'control files, rather than SUITE.')
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -212,9 +216,42 @@ def verify_options_and_args(options, args):
     if options.retry == 'False' and options.max_retries is not None:
         print 'max_retries can only be used with --retry=True'
         return False
+    if options.use_suite_attr and options.suite_args is not None:
+        print ('The new suite control file cannot parse the suite_args: %s.'
+               'Please not specify any suite_args here.' % options.suite_args)
+        return False
     if options.no_wait == 'True' and options.retry == 'True':
         print 'Test retry is not available when using --no_wait=True'
     return True
+
+
+def change_options_for_suite_attr(options):
+    """Change options to be prepared to run the suite_attr_wrapper.
+
+    If specify 'use_suite_attr' from the cmd line, it indicates to run the
+    new style suite control file, suite_attr_wrapper. Then, change the
+    options.suite_name to 'suite_attr_wrapper', change the options.suite_args to
+    include the arguments needed by suite_attr_wrapper.
+
+    @param options: The verified options.
+
+    @returns: The changed options.
+
+    """
+    # Convert the suite_name to attribute boolean expression.
+    if type(options.name) is str:
+        attr_filter_val = 'suite:%s' % options.name
+    else:
+        attr_filter_val = ' or '.join(['suite:%s' % x for x in options.name])
+
+    # change the suite_args to be a dict of arguments for suite_attr_wrapper
+    # if suite_args is not None, store the values in 'other_args' of the dict
+    args_dict = {}
+    args_dict['attr_filter'] = attr_filter_val
+    options.suite_args = str(args_dict)
+    options.name = 'suite_attr_wrapper'
+
+    return options
 
 
 def get_pretty_status(status):
@@ -1270,6 +1307,10 @@ def main_without_exception_handling():
     if not verify_options_and_args(options, args):
         parser.print_help()
         return RETURN_CODES.INVALID_OPTIONS
+
+    # If indicate to use the new style suite control file, convert the args
+    if options.use_suite_attr:
+        options = change_options_for_suite_attr(options)
 
     log_name = 'run_suite-default.log'
     if options.build:
