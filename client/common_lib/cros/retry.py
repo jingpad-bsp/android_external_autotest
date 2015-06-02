@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, random, signal, sys, time
+import logging, math, random, signal, sys, time
+
+from chromite.lib import retry_util
 
 from autotest_lib.client.common_lib import error
 
@@ -177,4 +179,84 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
 
 
         return func_retry  # true decorator
+    return deco_retry
+
+
+def retry_exponential(ExceptionToCheck, timeout_min=1.0, delay_sec=3,
+                      backoff_factor=2, blacklist=None):
+    """Retry calling the decorated function using an exponential backoff.
+
+    Present an interface consistent with the existing retry function, but
+    use instead the chromite retry_util functions to provide exponential
+    backoff.
+
+    @param ExceptionToCheck: See retry.
+    @param timeout_min: See retry.
+    @param delay_sec: See retry.
+    @param backoff_factor: The base used for exponential backoff. A simpler
+                           backoff method is used if backoff_factor is not
+                           greater than 1.
+    @param blacklist: See retry.
+    """
+    def deco_retry(func):
+        """The outer decorator.
+
+        @param func: The function we are decorating.
+        """
+        exception_tuple = () if blacklist is None else tuple(blacklist)
+
+        # Check the backoff_factor. If backoff is greater than 1,
+        # then we use exponential backoff, else, simple backoff.
+        backoff = backoff_factor if backoff_factor >= 1 else 1
+
+        # Chromite retry_util uses:
+        #   max_retry: The number of retry attempts to make.
+        #   sleep: The multiplier for how long to sleep between attempts.
+        total_sleep = timeout_min * 60.0
+        sleep = abs(delay_sec) if delay_sec != 0 else 1
+
+        # Estimate the max_retry in the case of simple backoff:
+        # => total_sleep = sleep*sum(1..max_retry)
+        # => total_sleep/sleep = max_retry(max_retry+1)/2
+        # => max_retry = -1/2 + sqrt(1+8K)/2 where K = total_sleep/sleep
+        max_retry = int(math.ceil(-1 + math.sqrt(
+                        1+8*math.ceil(total_sleep/sleep))/2.0))
+
+        # Estimate the max_retry in the case of exponential backoff:
+        # => total_sleep = sleep*sum(r=0..max_retry-1, backoff^r)
+        # => total_sleep = sleep( (1-backoff^max_retry) / (1-backoff) )
+        # => max_retry*ln(backoff) = ln(1-(total_sleep/sleep)*(1-backoff))
+        # => max_retry = ln(1-(total_sleep/sleep)*(1-backoff))/ln(backoff)
+        if backoff > 1:
+            numerator = math.log10(1-(total_sleep/sleep)*(1-backoff))
+            denominator = math.log10(backoff)
+            max_retry = int(math.ceil(numerator/denominator))
+
+        def handler(exc):
+            """Check if exc is an ExceptionToCheck or if it's blacklisted.
+
+            @param exc: An exception.
+
+            @return: True if exc is an ExceptionToCheck and is not
+                     blacklisted. False otherwise.
+            """
+            is_exc_to_check = isinstance(exc, ExceptionToCheck)
+            is_blacklisted = isinstance(exc, exception_tuple)
+            return is_exc_to_check and not is_blacklisted
+
+        def func_retry(*args, **kwargs):
+            """The actual function decorator.
+
+            @params args: The arguments to the function.
+            @params kwargs: The keyword arguments to the function.
+            """
+            # Set keyword arguments
+            kwargs['sleep'] = sleep
+            kwargs['backoff_factor'] = backoff
+
+            return retry_util.GenericRetry(handler, max_retry, func,
+                                            *args, **kwargs)
+
+        return func_retry
+
     return deco_retry

@@ -163,5 +163,130 @@ class RetryTest(mox.MoxTestBase):
         self.assertFalse(testFunc())
 
 
+    def testRetryExponentialDecoratorSucceedsSimpleBackoff(self):
+        """Test that a wrapped function succeeds without retrying."""
+        @retry.retry_exponential(Exception, backoff_factor=1)
+        def succeed():
+            return True
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.ReplayAll()
+        self.assertTrue(succeed())
+
+
+    def testRetryExponentialDecoratorFlakySucceedsSimpleBackoff(self):
+        """Tests that a wrapped function can retry and succeed."""
+        max_retry = 6
+        delay_sec = 5
+        @retry.retry_exponential(Exception, delay_sec=delay_sec,
+                                 backoff_factor=1)
+        def flaky_succeed():
+            if self._FLAKY_FLAG:
+                return True
+            self._FLAKY_FLAG = True
+            raise Exception()
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        time.sleep(mox.Func(lambda x: x < delay_sec*sum(range(max_retry))))
+        self.mox.ReplayAll()
+        self.assertTrue(flaky_succeed())
+
+
+    def testRetryExponentialDecoratorFailsSimpleBackoff(self):
+        """Tests that a wrapped function retries til the timeout then fails."""
+        max_retry = 6
+        delay_sec = 5
+        @retry.retry_exponential(Exception, delay_sec=delay_sec,
+                                 backoff_factor=1)
+        def fail():
+            raise Exception()
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        time.sleep(mox.Func(lambda x: x < delay_sec*sum(range(max_retry))))
+        self.mox.ReplayAll()
+        self.assertRaises(Exception, fail)
+
+
+    def testRetryExponentialDecoratorRaisesBlacklist(self):
+        """Tests that a blacklisted exception is raised."""
+        max_retry = 6
+        delay_sec = 5
+        @retry.retry_exponential(Exception, delay_sec=delay_sec,
+                                 blacklist=[ValueError])
+        def fail():
+            raise ValueError()
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.ReplayAll()
+        self.assertRaises(ValueError, fail)
+
+
+    def testRetryExponentialDecoratorSucceedsBeforeTimeout(self):
+        """Tests that a wrapped function succeeds before the timeout."""
+        @retry.retry_exponential(Exception, timeout_min=0.02, delay_sec=0.1)
+        def succeed():
+            time.sleep(0.1)
+            return True
+
+        self.mox.ReplayAll()
+        self.assertTrue(succeed())
+
+
+    def testRetryExponentialDecoratorSucceedBadBackoff(self):
+        """Test that the retry function corrects a bad backoff factor."""
+        @retry.retry_exponential(Exception, backoff_factor=0.001)
+        def succeed():
+            return True
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.ReplayAll()
+        self.assertTrue(succeed())
+
+
+    def testRetryExponentialDecoratorSucceedsExponentialBackoff(self):
+        """Test that a wrapped function succeeds without retrying."""
+        @retry.retry_exponential(Exception)
+        def succeed():
+            return True
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.ReplayAll()
+        self.assertTrue(succeed())
+
+
+    def testRetryExponentialDecoratorFlakySucceedsExponentialBackoff(self):
+        """Test that wrapped function succeeds with exponential backoff."""
+        delay_sec = 2
+        backoff_factor = 2
+        attempt = 2
+        @retry.retry_exponential(Exception, delay_sec=delay_sec,
+                                 backoff_factor=backoff_factor)
+        def flaky_succeed():
+            if self._FLAKY_FLAG:
+                return True
+            self._FLAKY_FLAG = True
+            raise Exception()
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        time.sleep(
+                mox.Func(lambda x: x < delay_sec*backoff_factor**(attempt-1)))
+        self.mox.ReplayAll()
+        self.assertTrue(flaky_succeed())
+
+
+    def testRetryExponentialDecoratorFailsSimpleBackoff(self):
+        """Tests that a wrapped function retries til the timeout then fails."""
+        max_retry = 6
+        delay_sec = 5
+        @retry.retry_exponential(Exception, delay_sec=delay_sec)
+        def fail():
+            raise Exception()
+
+        self.mox.StubOutWithMock(time, 'sleep')
+        time.sleep(mox.Func(lambda x: x < delay_sec*sum(range(max_retry))))
+        self.mox.ReplayAll()
+        self.assertRaises(Exception, fail)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -26,10 +26,10 @@ class RetryingAFE(frontend.AFE):
 
 
     def run(self, call, **dargs):
-        @retry.retry(Exception, timeout_min=self.timeout_min,
-                     delay_sec=self.delay_sec,
-                     blacklist=[ImportError, error.RPCException,
-                                proxy.ValidationError])
+        @retry.retry_exponential(Exception, timeout_min=self.timeout_min,
+                                 delay_sec=self.delay_sec,
+                                 blacklist=[ImportError, error.RPCException,
+                                            proxy.ValidationError])
         def _run(self, call, **dargs):
             return super(RetryingAFE, self).run(call, **dargs)
         return _run(self, call, **dargs)
