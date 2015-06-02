@@ -4,7 +4,7 @@
 
 AUTHOR = "chromeos-chameleon"
 NAME = "chameleon_audio"
-PURPOSE = "A Chameleon test suite for audio."
+PURPOSE = "A Chameleon audio test suite."
 CRITERIA = "All tests with SUITE=chameleon_audio must pass."
 
 TIME = "LENGTHY"
@@ -13,14 +13,13 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-Audio tests which require chameleon and audio boards connected .
-The Chameleon board can emulate a monitor such that the test can control
-its behaviors in order to test the Chrome OS audio stack.
-Audio board can record and play DUT’s audio signal from 3.5mm jack,
-SPKs/MICs and BT(A2DP). Details on go/audioboard.
+Audio tests which require chameleon and audio boards connected.
+The Audio and Chameleon boards can emulate audio jack audio activity
+in order to test the Chrome OS audio stack.
+
 Together with DUT and external peripherals they are bundled in
-audio-box environment for end-to-end testing. Details on
-go/audiobox, go/ab-care-and-feed, and go/chameleon-audio-conf
+audio-box environment for end-to-end testing. Details on go/audioboard
+go/audiobox, go/ab-care-and-feed, and go/chameleon-audio-conf.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
