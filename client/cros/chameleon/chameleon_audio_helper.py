@@ -115,6 +115,7 @@ class AudioLinkFactory(object):
         self._cros_host = cros_host
         self._chameleon_board = cros_host.chameleon
         self._audio_board = self._chameleon_board.get_audio_board()
+        self._bluetooth_device = None
 
 
     def _acquire_audio_bus_index(self):
@@ -175,8 +176,15 @@ class AudioLinkFactory(object):
             # audio board using BluetoothController. Finally, the MAC address
             # of bluetooth module is queried through chameleon_info because
             # it is not probeable on Chameleon board.
+
+            # Initializes a BluetoothDevice object if needed. And reuse this
+            # object for future bluetooth link usage.
+            if not self._bluetooth_device:
+                self._bluetooth_device = bluetooth_device.BluetoothDevice(
+                        self._cros_host)
+
             link = link_type(
-                    bluetooth_device.BluetoothDevice(self._cros_host),
+                    self._bluetooth_device,
                     self._audio_board.get_bluetooth_controller(),
                     chameleon_info.get_bluetooth_mac_address(
                             self._chameleon_board))
