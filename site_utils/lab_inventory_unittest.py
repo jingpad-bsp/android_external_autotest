@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import os
 import unittest
 
@@ -883,4 +884,7 @@ class CommandParsingTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # Some of the functions we test log messages.  Prevent those
+    # messages from showing up in test output.
+    logging.getLogger().setLevel(logging.CRITICAL)
     unittest.main()

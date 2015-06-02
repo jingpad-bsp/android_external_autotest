@@ -363,8 +363,8 @@ def _generate_board_inventory_message(inventory):
 _POOL_INVENTORY_HEADER = '''\
 Notice to Infrastructure deputy:  If there are shortages below,
 please take action to resolve them.  If it's safe, you should
-balance shortages by running `balance_pool` or `freon_swap` as
-necessary.  Detailed instructions can be found here:
+balance shortages by running `balance_pool`.  Detailed instructions
+can be found here:
     http://go/cros-manage-duts
 '''
 
