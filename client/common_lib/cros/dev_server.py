@@ -8,6 +8,7 @@ import HTMLParser
 import httplib
 import json
 import logging
+import multiprocessing
 import os
 import re
 import sys
@@ -46,7 +47,10 @@ _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
 # artifact. This allows us to continue to support old builds.
 _COMPATIBLE_ARTIFACTS = {'control_files': 'autotest',
                          'autotest_packages' : 'autotest'}
-
+SKIP_DEVSERVER_HEALTH_CHECK = CONFIG.get_config_value(
+        'CROS', 'skip_devserver_health_check', type=bool)
+# Number of seconds for the call to get devserver load to time out.
+TIMEOUT_GET_DEVSERVER_LOAD = 2.0
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -194,6 +198,16 @@ class DevServer(object):
     server = SubClassServer(host)
     """
     _MIN_FREE_DISK_SPACE_GB = 20
+    # Threshold for the CPU load percentage for a devserver to be selected.
+    MAX_CPU_LOAD = 80.0
+    # Threshold for the network IO, set to 80MB/s
+    MAX_NETWORK_IO = 1024 * 1024 * 80
+    DISK_IO = 'disk_total_bytes_per_second'
+    NETWORK_IO = 'network_total_bytes_per_second'
+    CPU_LOAD = 'cpu_percent'
+    FREE_DISK = 'free_disk'
+    STAGING_THREAD_COUNT = 'staging_thread_count'
+
 
     def __init__(self, devserver):
         self._devserver = devserver
@@ -217,12 +231,31 @@ class DevServer(object):
 
 
     @staticmethod
-    def devserver_healthy(devserver, timeout_min=0.1):
+    def get_devserver_load_wrapper(devserver, timeout_sec, output):
+        """A wrapper function to call get_devserver_load in parallel.
+
+        @param devserver: url of the devserver.
+        @param timeout_sec: Number of seconds before time out the devserver
+                            call.
+        @param output: An output queue to save results to.
+        """
+        load = DevServer.get_devserver_load(devserver,
+                                            timeout_min=timeout_sec/60.0)
+        if load:
+            load['devserver'] = devserver
+        output.put(load)
+
+
+    @staticmethod
+    def get_devserver_load(devserver, timeout_min=0.1):
         """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
         @param timeout_min: How long to wait in minutes before deciding the
                             the devserver is not up (float).
+
+        @return: A dictionary of the devserver's load.
+
         """
         server_name = DevServer.get_server_name(devserver)
         # statsd treats |.| as path separator.
@@ -232,8 +265,8 @@ class DevServer(object):
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
-            return utils.urlopen_socket_timeout(call,
-                timeout=timeout_min * 60).read()
+            return utils.urlopen_socket_timeout(
+                    call, timeout=timeout_min * 60).read()
 
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))
@@ -244,31 +277,62 @@ class DevServer(object):
                     # Ignore all non-numerical health data.
                     pass
 
-            skip_devserver_health_check = CONFIG.get_config_value('CROS',
-                                              'skip_devserver_health_check',
-                                              type=bool)
-            free_disk = result_dict['free_disk']
-            if skip_devserver_health_check:
-                logging.debug('devserver health check is skipped.')
-            elif (free_disk < DevServer._MIN_FREE_DISK_SPACE_GB):
-                logging.error('Devserver check_health failed. Free disk space '
-                              'is low. Only %dGB is available.', free_disk)
-                autotest_stats.Counter(server_name +
-                                       '.devserver_not_healthy').increment()
-                return False
-
-            # This counter indicates the load of a devserver. By comparing the
-            # value of this counter for all devservers, we can evaluate the
-            # load balancing across all devservers.
-            autotest_stats.Counter(server_name +
-                                   '.devserver_healthy').increment()
-            return True
+            return result_dict
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
                           ' Error: %s', call, timeout_min * 60, e)
+
+
+    @staticmethod
+    def is_free_disk_ok(load):
+        """Check if a devserver has enough free disk.
+
+        @param load: A dict of the load of the devserver.
+
+        @return: True if the devserver has enough free disk or disk check is
+                 skipped in global config.
+
+        """
+        if SKIP_DEVSERVER_HEALTH_CHECK:
+            logging.debug('devserver health check is skipped.')
+        elif load[DevServer.FREE_DISK] < DevServer._MIN_FREE_DISK_SPACE_GB:
+            return False
+
+        return True
+
+
+    @staticmethod
+    def devserver_healthy(devserver, timeout_min=0.1):
+        """Returns True if the |devserver| is healthy to stage build.
+
+        @param devserver: url of the devserver.
+        @param timeout_min: How long to wait in minutes before deciding the
+                            the devserver is not up (float).
+
+        @return: True if devserver is healthy. Return False otherwise.
+
+        """
+        server_name = DevServer.get_server_name(devserver)
+        # statsd treats |.| as path separator.
+        server_name = server_name.replace('.', '_')
+        load = DevServer.get_devserver_load(devserver, timeout_min=timeout_min)
+        if not load:
+            # Failed to get the load of devserver.
             autotest_stats.Counter(server_name +
                                    '.devserver_not_healthy').increment()
             return False
+
+        disk_ok = DevServer.is_free_disk_ok(load)
+        if not disk_ok:
+            logging.error('Devserver check_health failed. Free disk space is '
+                          'low. Only %dGB is available.',
+                          load[DevServer.FREE_DISK])
+        counter = '.devserver_healthy' if disk_ok else '.devserver_not_healthy'
+        # This counter indicates the load of a devserver. By comparing the
+        # value of this counter for all devservers, we can evaluate the
+        # load balancing across all devservers.
+        autotest_stats.Counter(server_name + counter).increment()
+        return disk_ok
 
 
     @staticmethod
@@ -918,3 +982,86 @@ class ImageServer(DevServer):
             latest_builds.append(urllib2.urlopen(call).read())
 
         return max(latest_builds, key=version.LooseVersion)
+
+
+def _is_load_healthy(load):
+    """Check if devserver's load meets the minimum threshold.
+
+    @param load: The devserver's load stats to check.
+
+    @return: True if the load meets the minimum threshold. Return False
+             otherwise.
+
+    """
+    # Threshold checks, including CPU load.
+    if load[DevServer.CPU_LOAD] > DevServer.MAX_CPU_LOAD:
+        logging.debug('CPU load of devserver %s is at %s%%, which is higher '
+                      'than the threshold of %s%%', load['devserver'],
+                      load[DevServer.CPU_LOAD], DevServer.MAX_CPU_LOAD)
+        return False
+    if load[DevServer.NETWORK_IO] > DevServer.MAX_NETWORK_IO:
+        logging.debug('Network IO of devserver %s is at %i Bps, which is '
+                      'higher than the threshold of %i bytes per second.',
+                      load['devserver'], load[DevServer.NETWORK_IO],
+                      DevServer.MAX_NETWORK_IO)
+        return False
+    return True
+
+
+def _compare_load(devserver1, devserver2):
+    """Comparator function to compare load between two devservers.
+
+    @param devserver1: A dictionary of devserver load stats to be compared.
+    @param devserver2: A dictionary of devserver load stats to be compared.
+
+    @return: Negative value if the load of `devserver1` is less than the load
+             of `devserver2`. Return positive value otherwise.
+
+    """
+    return int(devserver1[DevServer.DISK_IO] - devserver2[DevServer.DISK_IO])
+
+
+def get_least_loaded_devserver(devserver_type=ImageServer):
+    """Get the devserver with the least load.
+
+    Iterate through all devservers and get the one with least load.
+
+    TODO(crbug.com/486278): Devserver with required build already staged should
+    take higher priority. This will need check_health call to be able to verify
+    existence of a given build/artifact. Also, in case all devservers are
+    overloaded, the logic here should fall back to the old behavior that randomly
+    selects a devserver based on the hash of the image name/url.
+
+    @param devserver_type: Type of devserver to select from. Default is set to
+                           ImageServer.
+
+    @return: Name of the devserver with the least load.
+
+    """
+    # get_devserver_load call needs to be made in a new process to allow force
+    # timeout using signal.
+    output = multiprocessing.Queue()
+    processes = []
+    for devserver in devserver_type.servers():
+        processes.append(multiprocessing.Process(
+                target=DevServer.get_devserver_load_wrapper,
+                args=(devserver, TIMEOUT_GET_DEVSERVER_LOAD, output)))
+
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join()
+    loads = [output.get() for p in processes]
+    # Filter out any load failed to be retrieved or does not support load check.
+    loads = [load for load in loads if load and DevServer.CPU_LOAD in load and
+             DevServer.is_free_disk_ok(load)]
+    if not loads:
+        logging.debug('Failed to retrieve load stats from any devserver. No '
+                      'load balancing can be applied.')
+        return None
+    loads = [load for load in loads if _is_load_healthy(load)]
+    if not loads:
+        logging.error('No devserver has the capacity to be selected.')
+        return None
+    loads = sorted(loads, cmp=_compare_load)
+    return loads[0]['devserver']

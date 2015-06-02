@@ -10,6 +10,7 @@ import httplib
 import mox
 import StringIO
 import time
+import unittest
 import urllib2
 
 from autotest_lib.client.common_lib import error
@@ -482,3 +483,31 @@ class DevServerTest(mox.MoxTestBase):
                           self.dev_server.finish_download,
                           image='fake/image')
         self.mox.VerifyAll()
+
+
+    def test_compare_load(self):
+        """Test load comparison logic.
+        """
+        load_high_cpu = {'devserver': 'http://devserver_1:8082',
+                         dev_server.DevServer.CPU_LOAD: 100.0,
+                         dev_server.DevServer.NETWORK_IO: 1024*1024*1.0,
+                         dev_server.DevServer.DISK_IO: 1024*1024.0}
+        load_high_network = {'devserver': 'http://devserver_1:8082',
+                             dev_server.DevServer.CPU_LOAD: 1.0,
+                             dev_server.DevServer.NETWORK_IO: 1024*1024*100.0,
+                             dev_server.DevServer.DISK_IO: 1024*1024*1.0}
+        load_1 = {'devserver': 'http://devserver_1:8082',
+                  dev_server.DevServer.CPU_LOAD: 1.0,
+                  dev_server.DevServer.NETWORK_IO: 1024*1024*1.0,
+                  dev_server.DevServer.DISK_IO: 1024*1024*2.0}
+        load_2 = {'devserver': 'http://devserver_1:8082',
+                  dev_server.DevServer.CPU_LOAD: 1.0,
+                  dev_server.DevServer.NETWORK_IO: 1024*1024*1.0,
+                  dev_server.DevServer.DISK_IO: 1024*1024*1.0}
+        self.assertFalse(dev_server._is_load_healthy(load_high_cpu))
+        self.assertFalse(dev_server._is_load_healthy(load_high_network))
+        self.assertTrue(dev_server._compare_load(load_1, load_2) > 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
