@@ -138,7 +138,10 @@ class WifiStateMachineAnalyzer(object):
     PACKET_MATCH_WLAN_FRAME_RETRY_FLAG = "wlan.fc_retry"
     PACKET_MATCH_LLC_TYPE = "llc.type"
     PACKET_MATCH_EAP_TYPE = "eapol.type"
-    PACKET_MATCH_EAP_KEY_INFO = "eapol.keydes_key_info"
+    PACKET_MATCH_EAP_KEY_INFO_INSTALL = "eapol.keydes_key_info_install"
+    PACKET_MATCH_EAP_KEY_INFO_ACK = "eapol.keydes_key_info_key_ack"
+    PACKET_MATCH_EAP_KEY_INFO_MIC = "eapol.keydes_key_info_key_mic"
+    PACKET_MATCH_EAP_KEY_INFO_SECURE = "eapol.keydes_key_info_secure"
     PACKET_MATCH_IP_PROTOCOL_TYPE = "ip.proto"
     PACKET_MATCH_DHCP_MESSAGE_TYPE = "bootp.option_dhcp"
     PACKET_MATCH_RADIOTAP_DATA_RATE = "radiotap.datarate"
@@ -159,11 +162,6 @@ class WifiStateMachineAnalyzer(object):
     LLC_AUTH_TYPE = '0x888e'
 
     EAP_KEY_TYPE = '0x03'
-
-    EAP_MESSAGE_1_KEY_INFO = '0x008a'
-    EAP_MESSAGE_2_KEY_INFO = '0x010a'
-    EAP_MESSAGE_3_KEY_INFO = '0x13ca'
-    EAP_MESSAGE_4_KEY_INFO = '0x030a'
 
     IP_UDP_PROTOCOL_TYPE = '17'
 
@@ -216,29 +214,53 @@ class WifiStateMachineAnalyzer(object):
                                          DIR_AP_TO_DUT,
                                          { PACKET_MATCH_LLC_TYPE:
                                            LLC_AUTH_TYPE,
-                                           PACKET_MATCH_EAP_KEY_INFO:
-                                           EAP_MESSAGE_1_KEY_INFO },
+                                           PACKET_MATCH_EAP_KEY_INFO_INSTALL:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_ACK:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_MIC:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_SECURE:
+                                           '0' },
                                          STATE_KEY_MESSAGE_2)
     STATE_INFO_KEY_MESSAGE_2 = StateInfo("WPA KEY MESSAGE 2",
                                          DIR_DUT_TO_AP,
                                          { PACKET_MATCH_LLC_TYPE:
                                            LLC_AUTH_TYPE,
-                                           PACKET_MATCH_EAP_KEY_INFO:
-                                           EAP_MESSAGE_2_KEY_INFO },
+                                           PACKET_MATCH_EAP_KEY_INFO_INSTALL:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_ACK:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_MIC:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_SECURE:
+                                           '0' },
                                          STATE_KEY_MESSAGE_3)
     STATE_INFO_KEY_MESSAGE_3 = StateInfo("WPA KEY MESSAGE 3",
                                          DIR_AP_TO_DUT,
                                          { PACKET_MATCH_LLC_TYPE:
                                            LLC_AUTH_TYPE,
-                                           PACKET_MATCH_EAP_KEY_INFO:
-                                           EAP_MESSAGE_3_KEY_INFO },
+                                           PACKET_MATCH_EAP_KEY_INFO_INSTALL:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_ACK:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_MIC:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_SECURE:
+                                           '1' },
                                          STATE_KEY_MESSAGE_4)
     STATE_INFO_KEY_MESSAGE_4 = StateInfo("WPA KEY MESSAGE 4",
                                          DIR_DUT_TO_AP,
                                          { PACKET_MATCH_LLC_TYPE:
                                            LLC_AUTH_TYPE,
-                                           PACKET_MATCH_EAP_KEY_INFO:
-                                           EAP_MESSAGE_4_KEY_INFO },
+                                           PACKET_MATCH_EAP_KEY_INFO_INSTALL:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_ACK:
+                                           '0',
+                                           PACKET_MATCH_EAP_KEY_INFO_MIC:
+                                           '1',
+                                           PACKET_MATCH_EAP_KEY_INFO_SECURE:
+                                           '1' },
                                          STATE_DHCP_DISCOVER)
     STATE_INFO_DHCP_DISCOVER = StateInfo("DHCP DISCOVER",
                                          DIR_DUT_TO_AP,
@@ -396,9 +418,9 @@ class WifiStateMachineAnalyzer(object):
     def _check_for_error(self, packet):
         for error_state in self.ERROR_STATE_INFO_TUPLE:
             if self._does_packet_match_error_state(error_state, packet):
-                msg = "State Machine encountered error due to" + \
+                msg = "ERROR! State Machine encountered error due to " + \
                       error_state.name + \
-                      " , Packet number: " + str(packet.number)  + "!"
+                      ", Packet number: " + str(packet.number)  + "."
                 self._log.log_to_output_file(msg)
                 return True
         return False
@@ -470,8 +492,8 @@ class WifiStateMachineAnalyzer(object):
                 return True
             if self._check_for_error(packet):
                 return False
-        msg = "State Machine halted at " + self._current_state.name + \
-              " state!"
+        msg = "ERROR! State Machine halted at " + self._current_state.name + \
+              " state."
         self._log.log_to_output_file(msg)
         return False
 
