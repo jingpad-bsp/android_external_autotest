@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections, logging, numpy, os, time, urllib2
+import collections, logging, numpy, os, tempfile, time
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
@@ -29,6 +30,8 @@ class power_LoadTest(test.test):
     """test class"""
     version = 2
     _username = 'powerloadtest@gmail.com'
+    _pltp_url = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
+                '/testing/power-testing/pltp/pltp'
 
 
     def initialize(self, percent_initial_charge_min=None,
@@ -95,9 +98,9 @@ class power_LoadTest(test.test):
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
 
-        pltp = urllib2.urlopen(
-                'https://sites.google.com/a/chromium.org/dev/chromium-os/testing/power-testing/pltp/pltp')
-        self._password = pltp.read().rstrip()
+        with tempfile.NamedTemporaryFile() as pltp:
+            file_utils.download_file(self._pltp_url, pltp.name)
+            self._password = pltp.read().rstrip()
 
         if not ac_ok:
             self._power_status.assert_battery_state(percent_initial_charge_min)

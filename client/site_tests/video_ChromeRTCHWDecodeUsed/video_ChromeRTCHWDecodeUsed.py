@@ -5,9 +5,9 @@
 from contextlib import closing
 import logging
 import os
-import urllib2
 
 from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 
@@ -42,7 +42,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         # Download test video.
         url = DOWNLOAD_BASE + video_name
         local_path = os.path.join(self.bindir, video_name)
-        self.download_file(url, local_path)
+        file_utils.download_file(url, local_path)
 
         # Start chrome with test flags.
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
@@ -53,15 +53,3 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
             # Make sure decode is hardware accelerated.
             histogram_verifier.verify(cr, histogram_name, histogram_bucket_val)
-
-
-    def download_file(self, url, local_path):
-        """
-        Downloads a file from the specified URL.
-
-        @param url: URL of the file.
-        @param local_path: the path that the file will be saved to.
-        """
-        logging.info('Downloading "%s" to "%s"', url, local_path)
-        with closing(urllib2.urlopen(url)) as r, open(local_path, 'wb') as w:
-            w.write(r.read())

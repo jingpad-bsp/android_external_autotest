@@ -7,8 +7,8 @@
 import os
 import shutil
 import tempfile
-import urllib2
 
+from autotest_lib.client.common_lib import file_utils
 from common_util import simple_system
 
 
@@ -31,10 +31,8 @@ def download_and_install_gsutil():
         # Download the gsutil tarball to a temporary directory
         temp_dir = tempfile.mkdtemp()
         gsutil_temp_file = os.path.join(temp_dir, GSUTIL_TAR_NAME)
-        gsutil_url = urllib2.urlopen(GSUTIL_URI)
         print '  Downloading gsutil tarball: "%s".' % GSUTIL_URI
-        with open(gsutil_temp_file, 'w') as tarfile:
-            tarfile.write(gsutil_url.read())
+        file_utils.download_file(GSUTIL_URI, gsutil_temp_file)
 
         # Untar the gsutil tarball
         untar_cmd_str = 'tar xf %s -C %s'

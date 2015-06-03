@@ -9,12 +9,12 @@ import math
 import mmap
 import os
 import re
-import urllib2
 
 from contextlib import closing
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
 
 
@@ -174,17 +174,12 @@ class video_VEAPerf(chrome_binary_test.ChromeBinaryTest):
         url = '%s%s' % (DOWNLOAD_BASE, path_on_cloud)
         logging.info('download "%s" to "%s"', url, local_file)
 
-        md5 = hashlib.md5()
-        with closing(urllib2.urlopen(url)) as r, open(local_file, 'w') as w:
-            while True:
-                content = r.read(4096)
-                if not content:
-                    break
-                md5.update(content)
-                w.write(content)
-        md5sum = md5.hexdigest()
-        if md5sum not in path_on_cloud:
-            raise error.TestError('unmatched md5 sum: %s' % md5sum)
+        file_utils.download_file(url, local_file)
+
+        with open(local_file, 'r') as r:
+            md5sum = hashlib.md5(r.read()).hexdigest()
+            if md5sum not in path_on_cloud:
+                raise error.TestError('unmatched md5 sum: %s' % md5sum)
 
 
     def _get_result_filename(self, test_name, subtype, suffix):

@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import contextlib, hashlib, logging, os, pipes, re, sys, time, tempfile, urllib2
+import contextlib, hashlib, logging, os, pipes, re, sys, time, tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
@@ -161,14 +162,10 @@ class DownloadManager(object):
         tmp = tempfile.NamedTemporaryFile(delete=False, dir=self._tmpdir)
         logging.info('download "%s" to "%s"', url, tmp.name)
 
+        file_utils.download_file(url, tmp.name)
         md5 = hashlib.md5()
-        with contextlib.closing(urllib2.urlopen(url)) as r:
-            while True:
-                content = r.read(128 * 1024)
-                if not content: break
-                md5.update(content)
-                tmp.write(content)
-        tmp.close()
+        with open(tmp.name, 'r') as r:
+            md5.update(r.read())
 
         filename = os.path.basename(remote_path)
         m = RE_VERSIONING_FILE.match(filename)

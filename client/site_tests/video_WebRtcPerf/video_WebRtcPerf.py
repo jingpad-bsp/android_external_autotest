@@ -7,10 +7,10 @@ import logging
 import os
 import re
 import time
-import urllib2
 
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
@@ -181,7 +181,7 @@ class video_WebRtcPerf(test.test):
         # Download test video.
         url = DOWNLOAD_BASE + VIDEO_NAME
         local_path = os.path.join(self.bindir, VIDEO_NAME)
-        self.download_file(url, local_path)
+        file_utils.download_file(url, local_path)
 
         if decode_time_test:
             keyvals = self.test_decode_time(local_path)
@@ -375,19 +375,6 @@ class video_WebRtcPerf(test.test):
         if size % 2 != 0:
             return seq[size / 2]
         return (seq[size / 2] + seq[size / 2 - 1]) / 2.0
-
-
-    def download_file(self, url, local_path):
-        """
-        Downloads a file from the specified URL.
-
-        @param url: URL of the file.
-        @param local_path: the path that the file will be saved to.
-        """
-        logging.info('Downloading "%s" to "%s"', url, local_path)
-        with closing(urllib2.urlopen(url)) as r, open(local_path, 'wb') as w:
-            w.write(r.read())
-
 
     def log_result(self, keyvals, description, units):
         """

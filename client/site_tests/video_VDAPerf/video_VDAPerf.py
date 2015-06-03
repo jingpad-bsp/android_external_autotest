@@ -7,10 +7,10 @@ import hashlib
 import logging
 import os
 import re
-import urllib2
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
 
 from contextlib import closing
@@ -209,17 +209,12 @@ class video_VDAPerf(chrome_binary_test.ChromeBinaryTest):
         url = '%s%s' % (DOWNLOAD_BASE, download_path)
         logging.info('download "%s" to "%s"', url, local_file)
 
-        md5 = hashlib.md5()
-        with closing(urllib2.urlopen(url)) as r, open(local_file, 'w') as w:
-            while True:
-                content = r.read(4096)
-                if not content: break
-                md5.update(content)
-                w.write(content)
+        file_utils.download_file(url, local_file)
 
-        md5sum = md5.hexdigest()
-        if md5sum not in download_path:
-            raise error.TestError('unmatched md5 sum: %s' % md5sum)
+        with open(local_file, 'r') as r:
+            md5sum = hashlib.md5(r.read()).hexdigest()
+            if md5sum not in download_path:
+                raise error.TestError('unmatched md5 sum: %s' % md5sum)
 
 
     def _results_file(self, test_name, type_name, filename):

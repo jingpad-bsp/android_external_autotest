@@ -4,9 +4,9 @@
 
 import logging
 import os
-import urllib2
 
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import logging_manager
 
 
@@ -50,9 +50,7 @@ class platform_Crouton(test.test):
                                             % (self._repo, self._branch)
 
         logging.info('Downloading crouton tarball: "%s".', crouton_url)
-        crouton_down = urllib2.urlopen(crouton_url)
-        with open(crouton_temp_file, 'w') as tarfile:
-            tarfile.write(crouton_down.read())
+        file_utils.download_file(crouton_url, crouton_temp_file)
 
         os.chdir(self.tmpdir)
         utils.system('tar xvf %s --strip-components 1' % crouton_temp_file)

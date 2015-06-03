@@ -7,10 +7,10 @@ import logging
 import os
 import re
 import time
-import urllib2
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 
 
@@ -93,7 +93,7 @@ class video_ChromeRTCHWEncodeUsed(test.test):
         # Download test video.
         url = DOWNLOAD_BASE + VIDEO_NAME
         local_path = os.path.join(self.bindir, VIDEO_NAME)
-        self.download_file(url, local_path)
+        file_utils.download_file(url, local_path)
 
         # Start chrome with test flags.
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
@@ -104,15 +104,3 @@ class video_ChromeRTCHWEncodeUsed(test.test):
 
             # Make sure decode is hardware accelerated.
             self.assert_hardware_accelerated(cr)
-
-
-    def download_file(self, url, local_path):
-        """
-        Downloads a file from the specified URL.
-
-        @param url: URL of the file.
-        @param local_path: the path that the file will be saved to.
-        """
-        logging.info('Downloading "%s" to "%s"', url, local_path)
-        with closing(urllib2.urlopen(url)) as r, open(local_path, 'wb') as w:
-            w.write(r.read())

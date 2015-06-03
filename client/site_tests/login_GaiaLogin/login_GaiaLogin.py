@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import urllib2
+import tempfile
 from autotest_lib.client.bin import test
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 
 
@@ -17,11 +18,13 @@ class login_GaiaLogin(test.test):
     _USERNAME = 'powerloadtest@gmail.com'
     # TODO(achuith): Get rid of this when crbug.com/358427 is fixed.
     _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
+    _PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
+                '/testing/power-testing/pltp/pltp'
 
     def run_once(self):
-        pltp = urllib2.urlopen(
-                'https://sites.google.com/a/chromium.org/dev/chromium-os/testing/power-testing/pltp/pltp')
-        self._password = pltp.read().rstrip()
+        with tempfile.NamedTemporaryFile() as pltp:
+            file_utils.download_file(self._PLTP_URL, pltp.name)
+            self._password = pltp.read().rstrip()
 
         with chrome.Chrome(gaia_login=True, username=self._USERNAME,
                                             password=self._password) as cr:
