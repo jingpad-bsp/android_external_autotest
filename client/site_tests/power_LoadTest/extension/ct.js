@@ -4,7 +4,7 @@
 
 request = {action: "should_scroll"}
 
-chrome.extension.sendRequest(request, function(response) {
+chrome.runtime.sendMessage(request, function(response) {
   if (response.should_scroll) {
     window.focus();
     lastOffset = window.pageYOffset;

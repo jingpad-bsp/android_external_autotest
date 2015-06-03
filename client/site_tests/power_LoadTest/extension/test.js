@@ -162,7 +162,7 @@ function send_status() {
     post.push(name + "_failed_loads=" + cycle.failed_loads);
   }
 
-  chrome.extension.onRequest.removeListener(testListener);
+  chrome.runtime.onMessage.removeListener(testListener);
 
   var log_url = 'http://localhost:8001/status';
   var req = new XMLHttpRequest();
@@ -173,7 +173,7 @@ function send_status() {
 }
 
 function startTest() {
-  chrome.extension.onRequest.addListener(
+  chrome.runtime.onMessage.addListener(
     function paramsSetupListener(request, sender) {
       if (undefined != request._test_time_ms &&
           undefined != request._should_scroll &&
@@ -193,8 +193,8 @@ function startTest() {
         if (task_list.length != 0)
           tasks = task_list;
         time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
-        chrome.extension.onRequest.removeListener(paramsSetupListener);
-        chrome.extension.onRequest.addListener(testListener);
+        chrome.runtime.onMessage.removeListener(paramsSetupListener);
+        chrome.runtime.onMessage.addListener(testListener);
         setTimeout(setupTest, 1000);
       } else {
         console.log("Error. Test parameters not received.");
@@ -209,8 +209,8 @@ function initialize() {
   // Called when the user clicks on the browser action.
   chrome.browserAction.onClicked.addListener(function(tab) {
     // Start the test with default settings.
-    chrome.extension.onRequest.addListener(testListener);
-    setupTest();
+    chrome.runtime.onMessage.addListener(testListener);
+    setTimeout(setupTest, 1000);
   });
 }
 

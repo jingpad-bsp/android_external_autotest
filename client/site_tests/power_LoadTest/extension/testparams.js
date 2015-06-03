@@ -25,7 +25,7 @@ document.getElementById('myCustomEventDiv').addEventListener('myCustomEvent',
     scroll_by_pixels = document.getElementById('scroll_by_pixels').innerText;
     tasks = document.getElementById('tasks').innerText;
 
-    // pass to background page via sendRequest.
+    // pass to background page via sendMessage.
     var request = { _test_time_ms : test_time_ms,
                     _should_scroll : should_scroll,
                     _should_scroll_up : should_scroll_up,
@@ -34,7 +34,7 @@ document.getElementById('myCustomEventDiv').addEventListener('myCustomEvent',
                     _scroll_by_pixels : scroll_by_pixels,
                     _tasks : tasks
                   }
-    chrome.extension.sendRequest(request);
+    chrome.runtime.sendMessage(request);
   }
 );
 
