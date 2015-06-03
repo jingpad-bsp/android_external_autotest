@@ -13,7 +13,7 @@
     "http://*/", "https://*/", "tabs"
   ],
   "background": {
-    "persistent": false,
+    "persistent": true,
     "page": "bg.html"
   },
   "description": "GoogleTest",
