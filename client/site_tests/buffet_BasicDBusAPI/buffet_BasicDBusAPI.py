@@ -62,15 +62,6 @@ class buffet_BasicDBusAPI(test.test):
         assert_property_equal('B', 'Description')
         assert_property_equal('C', 'Location')
 
-        try:
-            dbus_util.dbus2primitive(
-                    manager_proxy.UpdateDeviceInfo(dbus.String(''),
-                                                   dbus.String('B'),
-                                                   dbus.String('C')))
-            raise error.TestFail('Exception expected')
-        except dbus.exceptions.DBusException:
-            pass
-
         # The test method better work.
         test_message = 'Hello world!'
         echoed_message = manager_proxy.TestMethod(test_message)
