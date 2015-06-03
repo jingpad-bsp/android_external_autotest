@@ -56,16 +56,18 @@ class IwRunnerTest(unittest.TestCase):
 
     HT20 = str('BSS aa:aa:aa:aa:aa:aa (on wlan0)\n'
         '    freq: 2412\n'
+        '    signal: -50.00 dBm\n'
         '    SSID: support_ht20\n'
         '    HT operation:\n'
         '         * secondary channel offset: no secondary\n')
 
     HT20_IW_BSS = iw_runner.IwBss('aa:aa:aa:aa:aa:aa', 2412,
                                   'support_ht20', iw_runner.SECURITY_OPEN,
-                                  iw_runner.HT20)
+                                  iw_runner.HT20, -50.00)
 
     HT20_2 = str('BSS 11:11:11:11:11:11 (on wlan0)\n'
         '     freq: 2462\n'
+        '     signal: -42.00 dBm\n'
         '     SSID: support_ht20\n'
         '     WPA:          * Version: 1\n'
         '     HT operation:\n'
@@ -73,10 +75,11 @@ class IwRunnerTest(unittest.TestCase):
 
     HT20_2_IW_BSS = iw_runner.IwBss('11:11:11:11:11:11', 2462,
                                     'support_ht20', iw_runner.SECURITY_WPA,
-                                    iw_runner.HT40_BELOW)
+                                    iw_runner.HT40_BELOW, -42.00)
 
     HT40_ABOVE = str('BSS bb:bb:bb:bb:bb:bb (on wlan0)\n'
         '    freq: 5180\n'
+        '    signal: -55.00 dBm\n'
         '    SSID: support_ht40_above\n'
         '    RSN:          * Version: 1\n'
         '    HT operation:\n'
@@ -85,10 +88,11 @@ class IwRunnerTest(unittest.TestCase):
     HT40_ABOVE_IW_BSS = iw_runner.IwBss('bb:bb:bb:bb:bb:bb', 5180,
                                         'support_ht40_above',
                                         iw_runner.SECURITY_WPA2,
-                                        iw_runner.HT40_ABOVE)
+                                        iw_runner.HT40_ABOVE, -55.00)
 
     HT40_BELOW = str('BSS cc:cc:cc:cc:cc:cc (on wlan0)\n'
         '    freq: 2462\n'
+        '    signal: -44.00 dBm\n'
         '    SSID: support_ht40_below\n'
         '    RSN:          * Version: 1\n'
         '    WPA:          * Version: 1\n'
@@ -98,25 +102,27 @@ class IwRunnerTest(unittest.TestCase):
     HT40_BELOW_IW_BSS = iw_runner.IwBss('cc:cc:cc:cc:cc:cc', 2462,
                                         'support_ht40_below',
                                         iw_runner.SECURITY_MIXED,
-                                        iw_runner.HT40_BELOW)
+                                        iw_runner.HT40_BELOW, -44.00)
 
     NO_HT = str('BSS dd:dd:dd:dd:dd:dd (on wlan0)\n'
         '    freq: 2412\n'
+        '    signal: -45.00 dBm\n'
         '    SSID: no_ht_support\n')
 
     NO_HT_IW_BSS = iw_runner.IwBss('dd:dd:dd:dd:dd:dd', 2412,
                                    'no_ht_support', iw_runner.SECURITY_OPEN,
-                                   None)
+                                   None, -45.00)
 
     HIDDEN_SSID = str('BSS ee:ee:ee:ee:ee:ee (on wlan0)\n'
         '    freq: 2462\n'
+        '    signal: -70.00 dBm\n'
         '    SSID: \n'
         '    HT operation:\n'
         '         * secondary channel offset: no secondary\n')
 
     HIDDEN_SSID_IW_BSS = iw_runner.IwBss('ee:ee:ee:ee:ee:ee', 2462,
                                          None, iw_runner.SECURITY_OPEN,
-                                         iw_runner.HT20)
+                                         iw_runner.HT20, -70.00)
 
 
     def verify_values(self, iw_bss_1, iw_bss_2):
@@ -131,6 +137,7 @@ class IwRunnerTest(unittest.TestCase):
         self.assertEquals(iw_bss_1.frequency, iw_bss_2[0].frequency)
         self.assertEquals(iw_bss_1.security, iw_bss_2[0].security)
         self.assertEquals(iw_bss_1.ht, iw_bss_2[0].ht)
+        self.assertEquals(iw_bss_1.signal, iw_bss_2[0].signal)
 
 
     def search_by_bss(self, scan_output, test_iw_bss):

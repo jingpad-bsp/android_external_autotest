@@ -38,7 +38,7 @@ HT_TABLE = {'no secondary': HT20,
 IwBand = collections.namedtuple(
     'Band', ['num', 'frequencies', 'frequency_flags', 'mcs_indices'])
 IwBss = collections.namedtuple('IwBss', ['bss', 'frequency', 'ssid', 'security',
-                                         'ht'])
+                                         'ht', 'signal'])
 IwNetDev = collections.namedtuple('IwNetDev', ['phy', 'if_name', 'if_type'])
 IwTimedScan = collections.namedtuple('IwTimedScan', ['time', 'bss_list'])
 
@@ -84,6 +84,28 @@ class IwRunner(object):
     def _parse_scan_results(self, output):
         """Parse the output of the 'scan' and 'scan dump' commands.
 
+        Here is an example of what a single network would look like for
+        the input parameter.  Some fields have been removed in this example:
+          BSS 00:11:22:33:44:55(on wlan0)
+          freq: 2447
+          beacon interval: 100 TUs
+          signal: -46.00 dBm
+          Information elements from Probe Response frame:
+          SSID: my_open_network
+          Extended supported rates: 24.0 36.0 48.0 54.0
+          HT capabilities:
+          Capabilities: 0x0c
+          HT20
+          HT operation:
+          * primary channel: 8
+          * secondary channel offset: no secondary
+          * STA channel width: 20 MHz
+          RSN: * Version: 1
+          * Group cipher: CCMP
+          * Pairwise ciphers: CCMP
+          * Authentication suites: PSK
+          * Capabilities: 1-PTKSA-RC 1-GTKSA-RC (0x0000)
+
         @param output: string command output.
 
         @returns a list of IwBss namedtuples; None if the scan fails
@@ -93,6 +115,7 @@ class IwRunner(object):
         frequency = None
         ssid = None
         ht = None
+        signal = None
         security = None
         supported_securities = []
         bss_list = []
@@ -102,13 +125,15 @@ class IwRunner(object):
             if bss_match:
                 if bss != None:
                     security = self.determine_security(supported_securities)
-                    iwbss = IwBss(bss, frequency, ssid, security, ht)
+                    iwbss = IwBss(bss, frequency, ssid, security, ht, signal)
                     bss_list.append(iwbss)
                     bss = frequency = ssid = security = ht = None
                     supported_securities = []
                 bss = bss_match.group(1)
             if line.startswith('freq:'):
                 frequency = int(line.split()[1])
+            if line.startswith('signal:'):
+                signal = float(line.split()[1])
             if line.startswith('SSID: '):
                 _, ssid = line.split(': ', 1)
             if line.startswith('* secondary channel offset'):
@@ -118,7 +143,7 @@ class IwRunner(object):
             if line.startswith('RSN'):
                supported_securities.append(SECURITY_WPA2)
         security = self.determine_security(supported_securities)
-        bss_list.append(IwBss(bss, frequency, ssid, security, ht))
+        bss_list.append(IwBss(bss, frequency, ssid, security, ht, signal))
         return bss_list
 
 
