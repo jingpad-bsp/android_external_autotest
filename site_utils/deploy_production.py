@@ -147,7 +147,7 @@ def main(args):
         else:
             extra_args = []
 
-        cmd = ('/usr/local/autotest/contrib/deploy_production_local.py ' +
+        cmd = ('/usr/local/autotest/site_utils/deploy_production_local.py ' +
                ' '.join(options.args + extra_args))
         print('%s: %s' % (server, cmd))
         if not options.dryrun:
