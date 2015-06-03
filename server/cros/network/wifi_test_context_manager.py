@@ -173,7 +173,11 @@ class WiFiTestContextManager(object):
             self._packet_capture_snaplen = int(
                     self._cmdline_args[self.CMDLINE_PACKET_CAPTURE_SNAPLEN])
         if self.CMDLINE_CONDUCTIVE_RIG in self._cmdline_args:
-            self.client.conductive = True
+            value = self._cmdline_args[self.CMDLINE_CONDUCTIVE_RIG].lower()
+            if value in ('1', 'true', 'yes', 'y'):
+                self.client.conductive = True
+            else:
+                self.client.conductive = False
         for system in (self.client, self.router):
             system.sync_host_times()
 

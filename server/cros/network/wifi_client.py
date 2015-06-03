@@ -190,6 +190,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
     @property
     def conductive(self):
         """@return True if the rig is conductive; False otherwise."""
+        if self._conductive is None:
+            self._conductive = _is_conductive(self._client_hostname)
         return self._conductive
 
 
@@ -285,7 +287,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._command_wpa_cli = 'wpa_cli'
         self._machine_id = None
         self._result_dir = result_dir
-        self._conductive = _is_conductive(client_host.hostname)
+        self._conductive = None
+        self._client_hostname = client_host.hostname
 
         if isinstance(self.host, adb_host.ADBHost):
             # Look up the WiFi device (and its MAC) on the client.
