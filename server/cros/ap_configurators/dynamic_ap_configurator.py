@@ -4,18 +4,20 @@
 
 import binascii
 import copy
-import datetime
 import logging
 import os
 import pprint
 import re
 import time
 import xmlrpclib
+import json
+import urllib2
+import time
 
 import ap_spec
-import download_chromium_prebuilt as prebuilt
 import web_driver_core_helpers
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
@@ -81,7 +83,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self._webdriver_port = 9515
 
         self.ap_spec = None
-
+        self.webdriver_hostname = None
 
     def __del__(self):
         """Cleanup webdriver connections"""
@@ -228,6 +230,37 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         """
         self._traceback = value
+
+
+    def check_webdriver_ready(self, webdriver_hostname, webdriver_port):
+        """Checks if webdriver binary is installed and running.
+
+        @param webdriver_hostname: locked webdriver instance
+        @param webdriver_port: port of the webdriver server
+
+        @returns a string: the address of webdriver running on port.
+
+        @raises TestError: Webdriver is not running.
+        """
+        address = webdriver_hostname + '.cros'
+        url = 'http://%s:%d/session' % (address, webdriver_port)
+        req = urllib2.Request(url, '{"desiredCapabilities":{}}')
+        try:
+            time.sleep(20)
+            response = urllib2.urlopen(req)
+            json_dict = json.loads(response.read())
+            if json_dict['status'] == 0:
+                # Connection was successful, close the session
+                session_url = os.path.join(url, json_dict['sessionId'])
+                req = urllib2.Request(session_url)
+                req.get_method = lambda: 'DELETE'
+                response = urllib2.urlopen(req)
+                logging.info('Webdriver connection established to server %s',
+                            address)
+                return webdriver_hostname
+        except:
+            err = 'Could not establish connection: %s', webdriver_hostname
+            raise error.TestError(err)
 
 
     @property
@@ -505,7 +538,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self._ssid = raw_ssid.replace(' ', '_').replace('.', '_')[:32]
         self.set_ssid(self._ssid)
         self.ap_spec = set_ap_spec
-
+        self.webdriver_hostname = set_ap_spec.webdriver_hostname
 
     def set_mode(self, mode, band=None):
         """
@@ -620,7 +653,11 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         if self.driver_connection_established:
             return
         # Load the Auth extension
-        webdriver_server = prebuilt.check_webdriver_ready(self._webdriver_port)
+
+        webdriver_hostname = self.ap_spec.webdriver_hostname
+        webdriver_ready = self.check_webdriver_ready(webdriver_hostname,
+                                                     self._webdriver_port)
+        webdriver_server = webdriver_ready + '.cros'
         if webdriver_server is None:
             raise RuntimeError('Unable to connect to webdriver locally or '
                                'via the lab service.')
@@ -633,12 +670,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         f.close()
         webdriver_url = ('http://%s:%d' % (webdriver_server,
                                            self._webdriver_port))
-        router_name = self.short_name.replace(' ', '_')
-        temp_dir = datetime.datetime.now().strftime('/tmp/chromedriver_' +
-                                                    router_name +
-                                                    '_' + '%H%M%S%m%d%Y')
-        capabilities = {'chromeOptions' : {'extensions' : base64_extensions,
-                        'args' : [str('--user-data-dir=%s' % temp_dir)]}}
+        capabilities = {'chromeOptions' : {'extensions' : base64_extensions}}
         self.driver = webdriver.Remote(webdriver_url, capabilities)
         self.driver_connection_established = True
 
@@ -648,7 +680,8 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         try:
             self.driver.close()
         except Exception, e:
-            logging.debug('Webdriver is crashed, should be respawned')
+            logging.debug('Webdriver is crashed, should be respawned %d',
+                          time.time())
         finally:
             self.driver_connection_established = False
 

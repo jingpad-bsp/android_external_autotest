@@ -242,7 +242,7 @@ class APConfiguratorFactory(object):
     HOSTNAMES = 'hostnames'
 
 
-    def __init__(self, ap_test_type):
+    def __init__(self, ap_test_type, spec=None):
         webdriver_ready = False
         self.ap_list = []
         self.test_type = ap_test_type
@@ -251,16 +251,6 @@ class APConfiguratorFactory(object):
                     self.CONFIGURATOR_MAP[ap.get_class()]
             module = __import__(module_name, fromlist=configurator_class)
             configurator = module.__dict__[configurator_class]
-            # NOTE: Using configurator.webdriver_port() existance to determine
-            #       if this configurator needs access to webdriver.  The goal
-            #       is to avoid 'import'ing webdriver if the available
-            #       configurators do not require it (ie. StaticAPConfigurator).
-            if not webdriver_ready and hasattr(configurator, 'webdriver_port'):
-                from autotest_lib.server.cros.ap_configurators import \
-                    download_chromium_prebuilt
-                download_chromium_prebuilt.check_webdriver_ready()
-                webdriver_ready = True
-
             self.ap_list.append(configurator(ap_config=ap))
 
 

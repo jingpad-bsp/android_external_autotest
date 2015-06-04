@@ -140,6 +140,7 @@ class APSpec(object):
         self._hostnames = hostnames
         self._configurator_type = configurator_type
         self._lab_ap = lab_ap
+        self._webdriver_hostname = None
 
         if not self._channel and (self._mode == MODE_N or not self._mode):
             if band == BAND_2GHZ or not band:
@@ -236,6 +237,22 @@ class APSpec(object):
     def lab_ap(self):
         """Returns if the AP should be in the lab or not."""
         return self._lab_ap
+
+
+    @property
+    def webdriver_hostname(self):
+        """Returns locked webdriver hostname."""
+        return self._webdriver_hostname
+
+
+    @webdriver_hostname.setter
+    def webdriver_hostname(self, value):
+        """Sets webdriver_hostname to locked instance.
+
+        @param value: locked webdriver hostname
+
+        """
+        self._webdriver_hostname = value
 
 
     def _validate_channel_and_mode(self):

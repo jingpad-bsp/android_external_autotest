@@ -37,6 +37,49 @@ def allocate_packet_capturer(lock_manager, hostname):
             afe, lock_manager, labels=['packet_capture']) + '.cros')
 
 
+def allocate_webdriver_instance(lock_manager):
+    """Allocates a machine to capture webdriver instance.
+
+    Locks the allocated machine if the machine was discovered via AFE
+    to prevent tests stomping on each other.
+
+    @param lock_manager HostLockManager object.
+
+    @return string hostname of locked webdriver instance
+    """
+    afe = frontend.AFE(debug=True)
+    webdriver_hostname = site_utils.lock_host_with_labels(afe, lock_manager,
+                                    labels=['webdriver'])
+    if webdriver_hostname is not None:
+        return webdriver_hostname
+    logging.error("Unable to allocate VM instance")
+    return None
+
+
+def power_on_VM(master, instance):
+    """Power on VM
+
+    @param master: chaosvmmaster SSHHost
+    @param instance: locked webdriver instance
+
+    """
+    logging.debug('Powering on %s VM', instance)
+    power_on_cmd = 'VBoxManage startvm %s' % instance
+    master.run(power_on_cmd)
+
+
+def power_off_VM(master, instance):
+    """Power off VM
+
+    @param master: chaosvmmaster SSHHost
+    @param instance: locked webdriver instance
+
+    """
+    logging.debug('Powering off %s VM', instance)
+    power_off_cmd = 'VBoxManage controlvm %s poweroff' % instance
+    master.run(power_off_cmd)
+
+
 def power_down_aps(aps, broken_pdus=[]):
      """Powers down a list of aps.
 

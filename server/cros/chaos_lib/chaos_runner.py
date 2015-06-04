@@ -9,6 +9,7 @@ import pprint
 import time
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
@@ -16,6 +17,9 @@ from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.ap_configurators import ap_batch_locker
 from autotest_lib.server.cros.network import chaos_clique_utils as utils
 from autotest_lib.server.cros.network import wifi_client
+
+# Webdriver master hostname
+MASTERNAME = 'chromeos3-chaosvmmaster.cros.corp.google.com'
 
 
 class ChaosRunner(object):
@@ -55,9 +59,12 @@ class ChaosRunner(object):
         @param work_client_hostname: a string or None, hostname of work client
         @param disabled_sysinfo: a bool, disable collection of logs from DUT.
 
+
+        @raises TestError: Issues locking VM webdriver instance
         """
 
         lock_manager = host_lock_manager.HostLockManager()
+        webdriver_master = hosts.SSHHost(MASTERNAME, user='chaosvmmaster')
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = utils.allocate_packet_capturer(
                     lock_manager, hostname=capturer_hostname)
@@ -67,6 +74,17 @@ class ChaosRunner(object):
                 work_client_machine = utils.allocate_packet_capturer(
                         lock_manager, hostname=work_client_hostname)
                 conn_worker.prepare_work_client(work_client_machine)
+
+            webdriver_instance = utils.allocate_webdriver_instance(lock_manager)
+            self._ap_spec._webdriver_hostname = webdriver_instance
+
+            try:
+                logging.info('Starting up VM %s', webdriver_instance)
+                utils.power_on_VM(webdriver_master, webdriver_instance)
+            except:
+                err = 'Is VM already on, or are all instances in use?'
+                raise error.TestError(err)
+
             batch_locker = ap_batch_locker.ApBatchLocker(
                     lock_manager, self._ap_spec,
                     ap_test_type=ap_constants.AP_TEST_TYPE_CHAOS)
@@ -178,6 +196,10 @@ class ChaosRunner(object):
 
                 batch_locker.unlock_aps()
             capturer.close()
+            logging.info('Powering off VM %s', webdriver_instance)
+            utils.power_off_VM(webdriver_master, webdriver_instance)
+            lock_manager.unlock(webdriver_instance)
+
             if self._broken_pdus:
                 logging.info('PDU is down!!!\nThe following PDUs are down:\n')
                 pprint.pprint(self._broken_pdus)
