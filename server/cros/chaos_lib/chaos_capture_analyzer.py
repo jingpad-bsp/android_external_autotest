@@ -36,6 +36,21 @@ class PacketCapture(object):
         capture.load_packets(timeout=self.LOAD_TIMEOUT)
         return capture
 
+    def get_packet_after(self, packet):
+        """
+        Gets the packet that appears next in the capture file.
+
+        @returns pyshark packet object or None.
+
+        """
+        display_filter = "frame.number == %d" % (int(packet.number) + 1)
+        capture = pyshark.FileCapture(self._file_name,
+                                      display_filter=display_filter)
+        capture.load_packets(timeout=self.LOAD_TIMEOUT)
+        if not capture:
+            return None
+        return capture[0]
+
     def count_packets_with_display_filter(self, display_filter):
         """
         Counts the number of packets which match the provided display filter.
@@ -160,6 +175,8 @@ class WifiStateMachineAnalyzer(object):
     WLAN_DISASSOC_REQ_FRAME_TYPE = '0x0a'
     WLAN_QOS_DATA_FRAME_TYPE = '0x28'
     WLAN_MANAGEMENT_STATUS_CODE_SUCCESS = '0x0000'
+    WLAN_BROADCAST_ADDRESS = 'ff:ff:ff:ff:ff:ff'
+    WLAN_FRAME_CONTROL_TYPE_MANAGEMENT = '0'
 
     WLAN_FRAME_RETRY = '1'
 
@@ -361,11 +378,12 @@ class WifiStateMachineAnalyzer(object):
     WARNING_INFO_TUPLE = (WARNING_INFO_AUTH_REJ, WARNING_INFO_ASSOC_REJ)
 
 
-    def __init__(self, ap_macs, dut_mac, filtered_packets, logger):
+    def __init__(self, ap_macs, dut_mac, filtered_packets, capture, logger):
         self._current_state = self._get_state(self.STATE_INIT)
         self._reached_states = []
         self._skipped_states = []
         self._packets = filtered_packets
+        self._capture = capture
         self._dut_mac = dut_mac
         self._ap_macs = ap_macs
         self._log = logger
@@ -445,23 +463,20 @@ class WifiStateMachineAnalyzer(object):
                    self.WLAN_FRAME_RETRY }
         return self._match_packet_fields(packet, fields)
 
-    def _check_for_ack(self, state, packet_iterator):
-        # We may need to step back if don't find an ACK, so
-        # make a copy of the iterator
-        copy_iterator = packet_iterator
-        try:
-            packet = copy_iterator.next()
-        except StopIteration:
-            return
-        else:
-            if not ((self._does_packet_match_ack_state(packet)) and
-                    (packet.wlan.addr == self._dut_mac)):
-                msg = "WARNING! Missing ACK for state: " + \
-                      state.name + "."
-                self._log.log_to_output_file(msg)
-            else:
-                packet_iterator = copy_iterator
-            return
+    def _check_for_ack(self, state, packet):
+        if (packet.wlan.da == self.WLAN_BROADCAST_ADDRESS and
+            packet.wlan.fc_type == self.WLAN_FRAME_CONTROL_TYPE_MANAGEMENT):
+            # Broadcast management frames are not ACKed.
+            return True
+        next_packet = self._capture.get_packet_after(packet)
+        if not next_packet or not (
+                (self._does_packet_match_ack_state(next_packet)) and
+                (next_packet.wlan.addr == packet.wlan.ta)):
+            msg = "WARNING! Missing ACK for state: " + \
+                  state.name + "."
+            self._log.log_to_output_file(msg)
+            return False
+        return True
 
     def _check_for_error(self, packet):
         for error_state in self.ERROR_STATE_INFO_TUPLE:
@@ -547,12 +562,7 @@ class WifiStateMachineAnalyzer(object):
             while next_state != self.STATE_INFO_END:
                 if self._does_packet_match_state(next_state, packet):
                     self._step(next_state, packet)
-                    # Check for ack packets whenever the packet is tx'ed from
-                    # DUT
-                    direction = next_state.direction
-                    if ((direction == self.DIR_FROM_DUT) or
-                        (direction == self.DIR_DUT_TO_AP)):
-                        self._check_for_ack(next_state, packet_iterator)
+                    self._check_for_ack(next_state, packet)
                     break
                 next_state = self._get_next_state(next_state)
             if self._current_state == self.STATE_INFO_END:
@@ -628,7 +638,7 @@ class ChaosCaptureAnalyzer(object):
         filtered_packets = capture.get_filtered_packets(
                bssids, dut_mac, False, decryption)
         wifi_state_machine = WifiStateMachineAnalyzer(
-               bssids, dut_mac, filtered_packets, self._log)
+               bssids, dut_mac, filtered_packets, capture, self._log)
         wifi_state_machine.analyze()
         self._log.log_start_section("Filtered Packet Capture Summary")
         filtered_packets = capture.get_filtered_packets(
