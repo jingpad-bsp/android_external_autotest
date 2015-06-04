@@ -22,13 +22,11 @@ class firmware_FWupdate(FirmwareTest):
 
     Test Steps:
     2. extract shellball and repack with new bios.bin and ec.bin
-    3. replace DUT shellball with the newly repacked version from #2.
-    4. Reboot DUT
-    5. run chromeos-firmwareupdate --mode=recovery
-    6. reboot
+    3. run --mode=recovery
+    4. reboot
 
     Verification Steps:
-    1. Step 5 should result into a success message
+    1. Step 3 should result into a success message
     2. Run crossystem and check fwid and ro_fwid should display the new bios
        firmware version string.
     4. Run ectool version to check ec version. The RO version and RW version
@@ -36,6 +34,9 @@ class firmware_FWupdate(FirmwareTest):
     """
 
     version = 1
+
+    SHELLBALL_ORG = '/usr/sbin/chromeos-firmwareupdate'
+    SHELLBALL_COPY = '/home/root/chromeos-firmwareupdate'
 
     def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
@@ -115,16 +116,15 @@ class firmware_FWupdate(FirmwareTest):
 
         @param hostname: hostname of DUT.
         """
-        shellball_org = '/usr/sbin/chromeos-firmwareupdate'
-        shellball_copy = '/home/root/chromeos-firmwareupdate'
         extract_dir = tempfile.mkdtemp(prefix='extract', dir='/tmp')
 
         self.dut_run_cmd('mkdir %s' % extract_dir)
-        self.dut_run_cmd('cp %s %s' % (shellball_org, shellball_copy))
-        self.dut_run_cmd('%s --sb_extract %s' % (shellball_copy, extract_dir))
+        self.dut_run_cmd('cp %s %s' % (self.SHELLBALL_ORG, self.SHELLBALL_COPY))
+        self.dut_run_cmd('%s --sb_extract %s' % (self.SHELLBALL_COPY,
+                                                 extract_dir))
 
         dut_access = remote_access.RemoteDevice(hostname, username='root')
-        self.dut_run_cmd('cp %s %s' % (shellball_org, shellball_copy))
+        self.dut_run_cmd('cp %s %s' % (self.SHELLBALL_ORG, self.SHELLBALL_COPY))
 
         # Replace bin files.
         target_file = '%s/%s' % (extract_dir, 'ec.bin')
@@ -136,15 +136,16 @@ class firmware_FWupdate(FirmwareTest):
           target_file = '%s/%s' % (extract_dir, 'pd.bin')
           dut_access.CopyToDevice(self.new_pd, target_file,  mode='scp')
 
-        self.dut_run_cmd('%s --sb_repack %s' % (shellball_copy, extract_dir))
+        self.dut_run_cmd('%s --sb_repack %s' % (self.SHELLBALL_COPY,
+                                                extract_dir))
 
         # Call to "shar" in chromeos-firmwareupdate might fail and the repack
         # ignore failure and exit with 0 status (http://crosbug.com/p/33719).
         # Add additional check to ensure the repack is successful.
-        command = 'tail -1 %s' % shellball_copy
+        command = 'tail -1 %s' % self.SHELLBALL_COPY
         output = self.dut_run_cmd(command)
         if 'exit 0' not in output:
-          raise error.TestError('Failed to repack %s' % shellball_copy)
+          raise error.TestError('Failed to repack %s' % self.SHELLBALL_COPY)
 
     def get_fw_bin_version(self):
         """Get firmwware version from binary file.
@@ -171,7 +172,7 @@ class firmware_FWupdate(FirmwareTest):
         self.repack_shellball(host.hostname)
 
         # Flash DUT with new bios/ec.
-        command = '/usr/sbin/chromeos-firmwareupdate --mode=%s' % self.mode
+        command = '%s --mode=%s' % (self.SHELLBALL_COPY, self.mode)
         self.dut_run_cmd(command)
         host.reboot()
 
