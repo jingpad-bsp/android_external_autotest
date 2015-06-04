@@ -94,7 +94,7 @@ class DrmModeResources(Structure):
         """
         Obtain the CRTC at a given index.
 
-        @param index: The CRTC to get.
+        @param crtc_id: The CRTC to get.
         """
         crtc = None
         if crtc_id:
@@ -325,20 +325,23 @@ class DRM(object):
         Obtain the modesetting resources.
         """
 
-        r = self._l.drmModeGetResources(self._fd).contents
-        r._fd = self._fd
-        r._l = self._l
-        return r
+        resources_ptr = self._l.drmModeGetResources(self._fd)
+        if resources_ptr:
+            r = resources_ptr.contents
+            r._fd = self._fd
+            r._l = self._l
+            return r
+
+        return None
 
 
-def drmFromMinor(minor):
+def drmFromPath(path):
     """
-    Given a DRM node number, open the corresponding node.
+    Given a DRM node path, open the corresponding node.
 
-    @param minor: The number of the minor node to open.
+    @param path: The path of the minor node to open.
     """
 
-    path = "/dev/dri/card%d" % minor
     handle = open(path)
     return DRM.fromHandle(handle)
 
@@ -377,15 +380,28 @@ def _screenshot(image, fb):
     return pixels
 
 
+_drm = None
+
 def crtcScreenshot(crtc_id=None):
     """
     Take a screenshot, returning an image object.
 
-    @param crtc: The CRTC to screenshot.
+    @param crtc_id: The CRTC to screenshot.
     """
-    d = drmFromMinor(0)
-    fb = d.resources().getCrtc(crtc_id).fb()
-    image = Image.new("RGB", (fb.width, fb.height))
-    pixels = _screenshot(image, fb)
 
-    return image
+    global _drm
+    if not _drm:
+        paths = ["/dev/dri/" + n for n in os.listdir("/dev/dri")]
+        for p in paths:
+            d = drmFromPath(p)
+            if d.resources():
+                _drm = d
+                break
+
+    if _drm:
+        fb = _drm.resources().getCrtc(crtc_id).fb()
+        image = Image.new("RGB", (fb.width, fb.height))
+        pixels = _screenshot(image, fb)
+        return image
+
+    raise RuntimeError("Couldn't screenshot with DRM devices")
