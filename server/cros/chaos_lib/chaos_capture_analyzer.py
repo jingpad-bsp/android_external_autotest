@@ -36,20 +36,37 @@ class PacketCapture(object):
         capture.load_packets(timeout=self.LOAD_TIMEOUT)
         return capture
 
-    def get_packet_after(self, packet):
+    def get_packet_number(self, index, summary):
         """
-        Gets the packet that appears next in the capture file.
+        Gets the packet that appears index |index| in the capture file.
+
+        @param index: Extract this index from the capture file.
+        @param summary: Flag to indicate whether to extract only the summary
+                        of the packet or not.
 
         @returns pyshark packet object or None.
 
         """
-        display_filter = "frame.number == %d" % (int(packet.number) + 1)
+        display_filter = "frame.number == %d" % index
         capture = pyshark.FileCapture(self._file_name,
-                                      display_filter=display_filter)
+                                      display_filter=display_filter,
+                                      only_summaries=summary)
         capture.load_packets(timeout=self.LOAD_TIMEOUT)
         if not capture:
             return None
         return capture[0]
+
+    def get_packet_after(self, packet):
+        """
+        Gets the packet that appears next in the capture file.
+
+        @param packet: Reference packet -- the packet after this one will
+                       be retrieved.
+
+        @returns pyshark packet object or None.
+
+        """
+        return self.get_packet_number(int(packet.number) + 1, summary=False)
 
     def count_packets_with_display_filter(self, display_filter):
         """
@@ -387,6 +404,11 @@ class WifiStateMachineAnalyzer(object):
         self._dut_mac = dut_mac
         self._ap_macs = ap_macs
         self._log = logger
+        self._acks = []
+
+    @property
+    def acks(self):
+        return self._acks
 
     def _get_state(self, state):
         return self.STATE_INFO_MAP[state]
@@ -476,6 +498,7 @@ class WifiStateMachineAnalyzer(object):
                   state.name + "."
             self._log.log_to_output_file(msg)
             return False
+        self._acks.append(int(next_packet.number))
         return True
 
     def _check_for_error(self, packet):
@@ -616,6 +639,18 @@ class ChaosCaptureAnalyzer(object):
                 "DUT packet count Tx: %d, Rx: %d." % (tx_count, rx_count))
         return True
 
+    def _ack_interleave(self, packets, capture, acks):
+        """Generator that interleaves packets with their associated ACKs."""
+        for packet in packets:
+            packet_number = int(packet.no)
+            while acks and acks[0] < packet_number:
+                # ACK packet does not appear in the filtered capture.
+                yield capture.get_packet_number(acks.pop(0), summary=True)
+            if acks and acks[0] == packet_number:
+                # ACK packet also appears in the capture.
+                acks.pop(0)
+            yield packet
+
     def analyze(self, trace):
         """
         Starts the analysis of the Chaos capture.
@@ -643,5 +678,6 @@ class ChaosCaptureAnalyzer(object):
         self._log.log_start_section("Filtered Packet Capture Summary")
         filtered_packets = capture.get_filtered_packets(
                bssids, dut_mac, True, decryption)
-        for packet in filtered_packets:
+        for packet in self._ack_interleave(
+               filtered_packets, capture, wifi_state_machine.acks):
             self._log.log_to_output_file("%s" % (packet))
