@@ -136,6 +136,9 @@ class WifiStateMachineAnalyzer(object):
 
     PACKET_MATCH_WLAN_FRAME_TYPE = "wlan.fc_type_subtype"
     PACKET_MATCH_WLAN_FRAME_RETRY_FLAG = "wlan.fc_retry"
+    PACKET_MATCH_WLAN_MANAGEMENT_REASON_CODE = "wlan_mgt.fixed_reason_code"
+    PACKET_MATCH_WLAN_MANAGEMENT_STATUS_CODE = "wlan_mgt.fixed_status_code"
+    PACKET_MATCH_WLAN_TRANSMITTER = "wlan.ta"
     PACKET_MATCH_LLC_TYPE = "llc.type"
     PACKET_MATCH_EAP_TYPE = "eapol.type"
     PACKET_MATCH_EAP_KEY_INFO_INSTALL = "eapol.keydes_key_info_install"
@@ -156,6 +159,7 @@ class WifiStateMachineAnalyzer(object):
     WLAN_DEAUTH_REQ_FRAME_TYPE = '0x0c'
     WLAN_DISASSOC_REQ_FRAME_TYPE = '0x0a'
     WLAN_QOS_DATA_FRAME_TYPE = '0x28'
+    WLAN_MANAGEMENT_STATUS_CODE_SUCCESS = '0x0000'
 
     WLAN_FRAME_RETRY = '1'
 
@@ -195,21 +199,25 @@ class WifiStateMachineAnalyzer(object):
                                     { PACKET_MATCH_WLAN_FRAME_TYPE:
                                       WLAN_AUTH_REQ_FRAME_TYPE },
                                     STATE_AUTH_RESP)
-    STATE_INFO_AUTH_RESP = StateInfo("WLAN AUTH RESPONSE",
-                                     DIR_AP_TO_DUT,
-                                     { PACKET_MATCH_WLAN_FRAME_TYPE:
-                                       WLAN_AUTH_REQ_FRAME_TYPE },
-                                     STATE_ASSOC_REQ)
+    STATE_INFO_AUTH_RESP = StateInfo(
+            "WLAN AUTH RESPONSE",
+            DIR_AP_TO_DUT,
+            { PACKET_MATCH_WLAN_FRAME_TYPE: WLAN_AUTH_REQ_FRAME_TYPE,
+              PACKET_MATCH_WLAN_MANAGEMENT_STATUS_CODE:
+              WLAN_MANAGEMENT_STATUS_CODE_SUCCESS },
+            STATE_ASSOC_REQ)
     STATE_INFO_ASSOC_REQ = StateInfo("WLAN ASSOC REQUEST",
                                      DIR_DUT_TO_AP,
                                      { PACKET_MATCH_WLAN_FRAME_TYPE:
                                        WLAN_ASSOC_REQ_FRAME_TYPE },
                                      STATE_ASSOC_RESP)
-    STATE_INFO_ASSOC_RESP = StateInfo("WLAN ASSOC RESPONSE",
-                                      DIR_AP_TO_DUT,
-                                      { PACKET_MATCH_WLAN_FRAME_TYPE:
-                                        WLAN_ASSOC_RESP_FRAME_TYPE },
-                                      STATE_KEY_MESSAGE_1)
+    STATE_INFO_ASSOC_RESP = StateInfo(
+              "WLAN ASSOC RESPONSE",
+              DIR_AP_TO_DUT,
+              { PACKET_MATCH_WLAN_FRAME_TYPE: WLAN_ASSOC_RESP_FRAME_TYPE,
+                PACKET_MATCH_WLAN_MANAGEMENT_STATUS_CODE:
+                WLAN_MANAGEMENT_STATUS_CODE_SUCCESS },
+              STATE_KEY_MESSAGE_1)
     STATE_INFO_KEY_MESSAGE_1 = StateInfo("WPA KEY MESSAGE 1",
                                          DIR_AP_TO_DUT,
                                          { PACKET_MATCH_LLC_TYPE:
@@ -309,22 +317,54 @@ class WifiStateMachineAnalyzer(object):
                       STATE_DHCP_REQ_ACK: STATE_INFO_DHCP_REQ_ACK,
                       STATE_END:          STATE_INFO_END}
 
+    # Packet Details Tuples (User friendly name, Field name)
+    PacketDetail = collections.namedtuple(
+            "PacketDetail", ["friendly_name", "field_name"])
+    PACKET_DETAIL_REASON_CODE = PacketDetail(
+            "Reason Code",
+            PACKET_MATCH_WLAN_MANAGEMENT_REASON_CODE)
+    PACKET_DETAIL_STATUS_CODE = PacketDetail(
+            "Status Code",
+            PACKET_MATCH_WLAN_MANAGEMENT_STATUS_CODE)
+    PACKET_DETAIL_SENDER = PacketDetail(
+            "Sender", PACKET_MATCH_WLAN_TRANSMITTER)
+
     # Error State Info Tuples (Name, Match fields)
     ErrorStateInfo = collections.namedtuple(
-            'ErrorStateInfo', ['name', 'match_fields'])
+            'ErrorStateInfo', ['name', 'match_fields', 'details'])
     ERROR_STATE_INFO_DEAUTH = ErrorStateInfo("WLAN DEAUTH REQUEST",
                                              { PACKET_MATCH_WLAN_FRAME_TYPE:
-                                               WLAN_DEAUTH_REQ_FRAME_TYPE })
+                                               WLAN_DEAUTH_REQ_FRAME_TYPE },
+                                             [ PACKET_DETAIL_SENDER,
+                                               PACKET_DETAIL_REASON_CODE ])
     ERROR_STATE_INFO_DEASSOC = ErrorStateInfo("WLAN DISASSOC REQUEST",
                                             { PACKET_MATCH_WLAN_FRAME_TYPE:
-                                              WLAN_DISASSOC_REQ_FRAME_TYPE })
+                                              WLAN_DISASSOC_REQ_FRAME_TYPE },
+                                            [ PACKET_DETAIL_SENDER,
+                                              PACKET_DETAIL_REASON_CODE ])
     # Master State Table Tuple of Error State Infos
     ERROR_STATE_INFO_TUPLE = (ERROR_STATE_INFO_DEAUTH, ERROR_STATE_INFO_DEASSOC)
+
+    # These warnings actually match successful states, but since the we
+    # check forwards and backwards through the state machine for the successful
+    # version of these packets, they can only match a failure.
+    WARNING_INFO_AUTH_REJ = ErrorStateInfo(
+            "WLAN AUTH REJECTED",
+            { PACKET_MATCH_WLAN_FRAME_TYPE: WLAN_AUTH_REQ_FRAME_TYPE },
+            [ PACKET_DETAIL_STATUS_CODE ])
+    WARNING_INFO_ASSOC_REJ = ErrorStateInfo(
+            "WLAN ASSOC REJECTED",
+            { PACKET_MATCH_WLAN_FRAME_TYPE: WLAN_ASSOC_RESP_FRAME_TYPE },
+            [ PACKET_DETAIL_STATUS_CODE ])
+
+    # Master Table Tuple of warning information.
+    WARNING_INFO_TUPLE = (WARNING_INFO_AUTH_REJ, WARNING_INFO_ASSOC_REJ)
 
 
     def __init__(self, ap_macs, dut_mac, filtered_packets, logger):
         self._current_state = self._get_state(self.STATE_INIT)
         self._reached_states = []
+        self._skipped_states = []
         self._packets = filtered_packets
         self._dut_mac = dut_mac
         self._ap_macs = ap_macs
@@ -388,6 +428,14 @@ class WifiStateMachineAnalyzer(object):
         fields = state.match_fields
         return self._match_packet_fields(packet, fields)
 
+    def _get_packet_detail(self, details, packet):
+        attributes = []
+        attributes.append("Packet number: %s" % packet.number)
+        for detail in details:
+            value = self._fetch_packet_field_value(packet, detail.field_name)
+            attributes.append("%s: %s" % (detail.friendly_name, value))
+        return attributes
+
     def _does_packet_match_ack_state(self, packet):
         fields = { self.PACKET_MATCH_WLAN_FRAME_TYPE: self.WLAN_ACK_FRAME_TYPE }
         return self._match_packet_fields(packet, fields)
@@ -418,9 +466,22 @@ class WifiStateMachineAnalyzer(object):
     def _check_for_error(self, packet):
         for error_state in self.ERROR_STATE_INFO_TUPLE:
             if self._does_packet_match_error_state(error_state, packet):
+                error_attributes = self._get_packet_detail(error_state.details,
+                                                           packet)
                 msg = "ERROR! State Machine encountered error due to " + \
-                      error_state.name + \
-                      ", Packet number: " + str(packet.number)  + "."
+                      error_state.name + ", " + \
+                      ", ".join(error_attributes) + "."
+                self._log.log_to_output_file(msg)
+                return True
+        return False
+
+    def _check_for_warning(self, packet):
+        for warning in self.WARNING_INFO_TUPLE:
+            if self._does_packet_match_error_state(warning, packet):
+                error_attributes = self._get_packet_detail(warning.details,
+                                                           packet)
+                msg = "WARNING! " + warning.name + " found, " + \
+                      ", ".join(error_attributes) + "."
                 self._log.log_to_output_file(msg)
                 return True
         return False
@@ -437,6 +498,12 @@ class WifiStateMachineAnalyzer(object):
                     msg +=  "."
                 self._log.log_to_output_file(msg)
 
+    def _is_from_previous_state(self, packet):
+        for state in self._reached_states + self._skipped_states:
+            if self._does_packet_match_state(state, packet):
+                return True
+        return False
+
     def _step(self, reached_state, packet):
         # We missed a few packets in between
         if self._current_state != reached_state:
@@ -444,6 +511,7 @@ class WifiStateMachineAnalyzer(object):
             skipped_state = self._current_state
             while skipped_state != reached_state:
                 msg += skipped_state.name + ", "
+                self._skipped_states.append(skipped_state)
                 skipped_state = self._get_next_state(skipped_state)
             msg = msg[:-2]
             msg += "."
@@ -492,6 +560,8 @@ class WifiStateMachineAnalyzer(object):
                 return True
             if self._check_for_error(packet):
                 return False
+            if not self._is_from_previous_state(packet):
+                self._check_for_warning(packet)
         msg = "ERROR! State Machine halted at " + self._current_state.name + \
               " state."
         self._log.log_to_output_file(msg)
