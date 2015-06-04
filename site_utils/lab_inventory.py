@@ -675,10 +675,11 @@ def _generate_board_inventory_message(inventory):
 
 
 _POOL_INVENTORY_HEADER = '''\
-Notice to Infrastructure deputy:  If there are shortages below,
-please take action to resolve them.  If it's safe, you should
-balance shortages by running `balance_pool`.  Detailed instructions
-can be found here:
+Notice to Infrastructure deputies:  If any boards are shown at
+less than full strength, please take action to resolve the issues.
+Once you're satisified that failures won't recur, failed DUTs can
+be replaced with spares by running `balance_pool`.  Detailed
+instructions can be found here:
     http://go/cros-manage-duts
 '''
 
