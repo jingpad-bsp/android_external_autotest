@@ -65,6 +65,12 @@ class platform_FilePerms(test.test):
         '/sys/fs/cgroup/cpu': {
             'type': 'cgroup',
             'options': standard_rw_options},
+        '/sys/fs/cgroup/cpuacct': {
+            'type': 'cgroup',
+            'options': standard_rw_options},
+        '/sys/fs/cgroup/devices': {
+            'type': 'cgroup',
+            'options': standard_rw_options},
         '/sys/fs/cgroup/freezer': {
             'type': 'cgroup',
             'options': standard_rw_options},
