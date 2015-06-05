@@ -42,6 +42,7 @@ INTERFACE_DOWN_WAIT_TIME_SECONDS = 10
 ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
+XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
 
 def get_xmlrpc_proxy(host):
     """Get a shill XMLRPC proxy for |host|.
@@ -65,7 +66,9 @@ def get_xmlrpc_proxy(host):
             constants.SHILL_XMLRPC_SERVER_PORT,
             command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
             ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
-            timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS)
+            timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS,
+            logfile=XMLRPC_LOG_PATH
+      )
     return proxy
 
 
