@@ -6,8 +6,8 @@ AUTHOR = 'wiley, avakulenko'
 NAME = 'leaderd_BasicDBusAPI'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
-SUITE = 'tendo_experimental, smoke'
+ATTRIBUTES = "suite:tendo_experimental"
+SUITE = 'tendo_experimental'
 
 DOC = """
 Check that basic DBus API calls to the leaderd daemon return expected responses.
