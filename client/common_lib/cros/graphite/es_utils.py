@@ -210,7 +210,7 @@ class ESMetadata(object):
         for metadata in data_list:
             metadata = metadata.copy()
             metadata.update(kwargs)
-            if log_time_recorded:
+            if log_time_recorded and not 'time_recorded' in metadata:
                 metadata['time_recorded'] = time.time()
             metadata['_index'] = self.index
             actions.append(metadata)

@@ -21,7 +21,8 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 # Number of seconds to wait before checking queue again for uploading data.
 _REPORT_INTERVAL_SECONDS = 5
 
-_MAX_METADATA_QUEUE_SIZE = 100000
+_MAX_METADATA_QUEUE_SIZE = 1000000
+_MAX_UPLOAD_SIZE = 50000
 # Queue to buffer metadata to be reported.
 metadata_queue = Queue.Queue(_MAX_METADATA_QUEUE_SIZE)
 
@@ -61,7 +62,7 @@ def _run():
             start_time = time.time()
             data_list = []
             while (not metadata_queue.empty() and
-                   len(data_list) < _MAX_METADATA_QUEUE_SIZE):
+                   len(data_list) < _MAX_UPLOAD_SIZE):
                 data_list.append(metadata_queue.get_nowait())
             if data_list:
                 if autotest_es.bulk_post(data_list=data_list):

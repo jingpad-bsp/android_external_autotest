@@ -17,6 +17,7 @@ back to the rdb.
 """
 
 import logging
+import time
 from django.core import exceptions as django_exceptions
 
 import common
@@ -222,7 +223,9 @@ class RDBClientHostWrapper(RDBHost):
             'hostname': self.hostname,
             'board': self.board,
             'pools': self.pools,
+            'dbg_str': self.dbg_str,
             '_type': type_str,
+            'time_recorded': time.time(),
         }
         metadata.update(self.metadata)
         metadata_reporter.queue(metadata)
