@@ -4,9 +4,13 @@
 
 import logging, math, random, signal, sys, time
 
-from chromite.lib import retry_util
-
 from autotest_lib.client.common_lib import error
+
+try:
+    from chromite.lib import retry_util
+except ImportError:
+    logging.warn('Unable to import chromite for retry_util.')
+    retry_util = None
 
 
 def handler(signum, frame):
@@ -254,6 +258,9 @@ def retry_exponential(ExceptionToCheck, timeout_min=1.0, delay_sec=3,
             kwargs['sleep'] = sleep
             kwargs['backoff_factor'] = backoff
 
+            if retry_util is None:
+                logging.warn('Failed to decorate with retry_exponential.')
+                return func
             return retry_util.GenericRetry(handler, max_retry, func,
                                             *args, **kwargs)
 
