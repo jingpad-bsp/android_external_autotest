@@ -25,7 +25,7 @@ Runs 1000 iterations in dev mode.
 args_dict = utils.args_to_dict(args)
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
-args.append('faft_iterations=100')
+args.append('faft_iterations=1000')
 
 def run_consecutive_boot(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
