@@ -70,7 +70,7 @@ class audio_PlaybackPower(test.test):
         energy_rate = get_power()
         perf_keyval = {}
         perf_keyval[POWER_DESCRIPTION + audio_type] = energy_rate
-        self.output_perf_value(description=POWER_DESCRIPTION,
+        self.output_perf_value(description=POWER_DESCRIPTION + audio_type,
                                value=energy_rate, units='W',
                                higher_is_better=False)
         self.write_perf_keyval(perf_keyval)
