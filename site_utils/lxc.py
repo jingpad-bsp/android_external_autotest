@@ -281,12 +281,14 @@ def install_package_precheck(package):
     if not SSP_ENABLED:
         logging.info('Server-side packaging is not enabled. Install package %s '
                      'is skipped.', package)
-        return
+        return False
 
     if server_utils.is_inside_chroot():
         logging.info('Test is running inside chroot. Install package %s is '
                      'skipped.', package)
-        return
+        return False
+
+    return True
 
 
 @timer.decorate
