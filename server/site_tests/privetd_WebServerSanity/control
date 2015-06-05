@@ -6,8 +6,8 @@ AUTHOR = 'avakulenko, wiley, keybuk'
 NAME = 'privetd_WebServerSanity'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
-ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
-SUITE='tendo_experimental, smoke'
+ATTRIBUTES = "suite:tendo_experimental"
+SUITE='tendo_experimental'
 
 DOC = """
 This test verifies that the web server running on the device responds to simple
