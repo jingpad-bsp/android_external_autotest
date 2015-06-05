@@ -356,7 +356,7 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     def enable_ui(self):
         """@return True iff the UI was successfully started."""
-        return cros_ui.start(allow_fail=True) == 0
+        return cros_ui.start(allow_fail=True, wait_for_login_prompt=False) == 0
 
 
     def sync_time_to(self, epoch_seconds):
