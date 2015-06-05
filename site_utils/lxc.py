@@ -310,6 +310,7 @@ def install_package(package):
     # container may have outdated cache.
     utils.run('sudo apt-get update')
     utils.run('sudo apt-get install %s -y --force-yes' % package)
+    logging.debug('Package %s is installed.', package)
 
 
 @timer.decorate
@@ -332,6 +333,7 @@ def install_python_package(package):
     if not os.path.exists('/usr/local/autotest/site-packages'):
         target_setting = '--target="/usr/lib/python2.7/dist-packages/"'
     utils.run('sudo pip install %s %s' % (target_setting, package))
+    logging.debug('Python package %s is installed.', package)
 
 
 class Container(object):
