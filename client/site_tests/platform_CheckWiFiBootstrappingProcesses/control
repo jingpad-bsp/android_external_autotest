@@ -18,9 +18,9 @@ It fails if any of these are not running at the time of the test.
 WIFI_BOOTSTRAPPING_PROCESSES = [
     'apmanager',
     'avahi-daemon',
+    'buffet',
     'dbus-daemon',
     'peerd',
-    'privetd',
     'shill',
     ]
 

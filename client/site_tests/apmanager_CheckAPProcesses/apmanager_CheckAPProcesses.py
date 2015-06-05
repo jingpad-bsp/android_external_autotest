@@ -20,9 +20,9 @@ class apmanager_CheckAPProcesses(test.test):
 
     POLLING_INTERVAL_SECONDS = 0.2
     # These services interact with the apmanager in undesirable ways.
-    # For instance, privetd has a bad habit of starting up APs, which
+    # For instance, buffet has a bad habit of starting up APs, which
     # prevents the test from doing likewise.
-    RELATED_SERVICES = ['privetd']
+    RELATED_SERVICES = ['buffet']
 
 
     def _verify_process(self,
