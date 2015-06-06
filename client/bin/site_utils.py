@@ -953,6 +953,7 @@ def get_gpu_family():
         0x1616: 'broadwell',
         0x22b0: 'braswell',
         0x22b1: 'braswell',
+        0x1916: 'skylake',
         0x191e: 'skylake',
     }
 
