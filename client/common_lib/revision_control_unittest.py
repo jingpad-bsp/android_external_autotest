@@ -32,6 +32,7 @@ class GitRepoManager(object):
                                         self.repodir,
                                         self.repodir,
                                         abs_work_tree=self.repodir)
+            self._setup_git_environment()
             # Create an initial commit. We really care about the common case
             # where there exists a commit in the upstream repo.
             self._edit('initial_commit_file', 'is_non_empty')
@@ -44,6 +45,13 @@ class GitRepoManager(object):
                                       master_repo.repodir,
                                       abs_work_tree=self.repodir)
             self.git_repo_manager.clone()
+            self._setup_git_environment()
+
+
+    def _setup_git_environment(self):
+        """
+        Mock out basic git environment to keep tests deterministic.
+        """
         # Set user and email for the test git checkout.
         self.git_repo_manager.gitcmd('config user.name Unittests')
         self.git_repo_manager.gitcmd('config user.email utests@chromium.org')
@@ -74,7 +82,7 @@ class GitRepoManager(object):
         rv = utils.run(gitcmd)
         if rv.exit_status != 0:
             logging.error(rv.stderr)
-            raise revision_control.revision_control.GitError(gitcmd+' failed')
+            raise revision_control.revision_control.GitError(gitcmd + 'failed')
 
 
     def add(self):
