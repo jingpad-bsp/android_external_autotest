@@ -66,7 +66,7 @@ class graphics_GLAPICheck(test.test):
                 self.__check_extensions(info, extensions2))
 
     def __check_gl(self, result):
-        version = re.findall(r'GL_VERSION = ([0-9]+).([0-9]+).+', result)
+        version = re.findall(r'GL_VERSION = ([0-9]+).([0-9]+)', result)
         if version:
             version_major = int(version[0][0])
             version_minor = int(version[0][1])
@@ -140,7 +140,7 @@ class graphics_GLAPICheck(test.test):
                                       ignore_status=False)
         # OpenGL version string: OpenGL ES 3.0 Mesa 10.5.0-devel
         version = re.findall(r'OpenGL version string: '
-                             r'OpenGL ES ([0-9]+).([0-9]+).+', wflinfo)
+                             r'OpenGL ES ([0-9]+).([0-9]+)', wflinfo)
         if version:
             # GLES version has to be 2.0 or above.
             version_major = int(version[0][0])
@@ -155,7 +155,7 @@ class graphics_GLAPICheck(test.test):
             eglinfo = utils.system_output(cmd, retain_output=True,
                                           ignore_status=False)
             # EGL version string: 1.4 (DRI2)
-            version = re.findall(r'EGL version string: ([0-9]+).([0-9]+).+',
+            version = re.findall(r'EGL version string: ([0-9]+).([0-9]+)',
                                  eglinfo)
             # EGL version has to be 1.3 or above.
             if version:
