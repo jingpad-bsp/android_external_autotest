@@ -8,8 +8,6 @@ PURPOSE = "Verify if CMT driver is loaded on system."
 CRITERIA = """
 If CMT is not loaded for any of the detected trackpad this test will fail.
 """
-ATTRIBUTES = "suite:bvt-cq"
-SUITE = "bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Hardware"
