@@ -1521,7 +1521,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # should live inside cros_ui, too.  However that would seem
         # to imply interface changes to the existing start()/restart()
         # functions, which is a bridge too far (for now).
-        prompt = cros_ui.get_login_prompt_state(self)
+        prompt = cros_ui.get_chrome_session_ident(self)
         self.run('stop ui; start ui')
         cros_ui.wait_for_chrome_ready(prompt, self)
 
