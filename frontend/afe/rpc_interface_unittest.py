@@ -54,7 +54,8 @@ class RpcInterfaceTest(unittest.TestCase,
                           rpc_interface. label_add_hosts, id='platform2',
                           hosts=['host1', 'host2'])
         self.assertRaises(model_logic.ValidationError,
-                          rpc_interface.host_add_labels, 'host1', ['platform2'])
+                          rpc_interface.host_add_labels,
+                          id='host1', labels=['platform2'])
         # make sure the platform didn't get added
         platforms = rpc_interface.get_labels(
             host__hostname__in=['host1', 'host2'], platform=True)

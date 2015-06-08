@@ -116,6 +116,7 @@ def add_label_to_hosts(id, hosts):
     label.host_set.add(*host_objs)
 
 
+@rpc_utils.route_rpc_to_master
 def label_add_hosts(id, hosts):
     """Adds a label with the given id to the given hosts.
 
@@ -129,11 +130,6 @@ def label_add_hosts(id, hosts):
     @raises ValueError: If the id specified is an int/long (label id)
                         while the label does not exist.
     """
-    # This RPC call should be accepted only by master.
-    if utils.is_shard():
-        rpc_utils.route_rpc_to_master('label_add_hosts', id=id, hosts=hosts)
-        return
-
     try:
         label = models.Label.smart_get(id)
     except models.Label.DoesNotExist:
@@ -177,6 +173,7 @@ def remove_label_from_hosts(id, hosts):
     models.Label.smart_get(id).host_set.remove(*host_objs)
 
 
+@rpc_utils.route_rpc_to_master
 def label_remove_hosts(id, hosts):
     """Removes a label of the given id from the given hosts.
 
@@ -185,11 +182,6 @@ def label_remove_hosts(id, hosts):
     @param id: id or name of a label.
     @param hosts: A list of hostnames or ids. More often hostnames.
     """
-    # This RPC call should be accepted only by master.
-    if utils.is_shard():
-        rpc_utils.route_rpc_to_master('label_remove_hosts', id=id, hosts=hosts)
-        return
-
     host_objs = models.Host.smart_get_bulk(hosts)
     rpc_utils.fanout_rpc(host_objs, 'remove_label_from_hosts', id=id)
 
@@ -315,23 +307,62 @@ def modify_hosts(host_filter_data, update_data):
         host.update_object(update_data)
 
 
-def host_add_labels(id, labels):
-    labels = models.Label.smart_get_bulk(labels)
-    host = models.Host.smart_get(id)
+def add_labels_to_host(id, labels):
+    """Adds labels to a given host only in local DB.
 
-    platforms = [label.name for label in labels if label.platform]
+    @param id: id or hostname for a host.
+    @param labels: ids or names for labels.
+    """
+    label_objs = models.Label.smart_get_bulk(labels)
+    models.Host.smart_get(id).labels.add(*label_objs)
+
+
+@rpc_utils.route_rpc_to_master
+def host_add_labels(id, labels):
+    """Adds labels to a given host.
+
+    @param id: id or hostname for a host.
+    @param labels: ids or names for labels.
+
+    @raises ValidationError: If adding more than one platform label.
+    """
+    label_objs = models.Label.smart_get_bulk(labels)
+    platforms = [label.name for label in label_objs if label.platform]
     if len(platforms) > 1:
         raise model_logic.ValidationError(
             {'labels': 'Adding more than one platform label: %s' %
                        ', '.join(platforms)})
+
+    host_obj = models.Host.smart_get(id)
     if len(platforms) == 1:
-        models.Host.check_no_platform([host])
-    host.labels.add(*labels)
+        models.Host.check_no_platform([host_obj])
+
+    rpc_utils.fanout_rpc([host_obj], 'add_labels_to_host', False,
+                         id=id, labels=labels)
+    add_labels_to_host(id, labels)
 
 
+def remove_labels_from_host(id, labels):
+    """Removes labels from a given host only in local DB.
+
+    @param id: id or hostname for a host.
+    @param labels: ids or names for labels.
+    """
+    label_objs = models.Label.smart_get_bulk(labels)
+    models.Host.smart_get(id).labels.remove(*label_objs)
+
+
+@rpc_utils.route_rpc_to_master
 def host_remove_labels(id, labels):
-    labels = models.Label.smart_get_bulk(labels)
-    models.Host.smart_get(id).labels.remove(*labels)
+    """Removes labels from a given host.
+
+    @param id: id or hostname for a host.
+    @param labels: ids or names for labels.
+    """
+    host_obj = models.Host.smart_get(id)
+    rpc_utils.fanout_rpc([host_obj], 'remove_labels_from_host', False,
+                         id=id, labels=labels)
+    remove_labels_from_host(id, labels)
 
 
 def get_host_attribute(attribute, **host_filter_data):

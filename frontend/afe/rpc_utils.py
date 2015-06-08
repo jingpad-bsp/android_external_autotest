@@ -7,6 +7,7 @@ only RPC interface functions go into that file.
 __author__ = 'showard@google.com (Steve Howard)'
 
 import datetime
+from functools import wraps
 import inspect
 import os
 import sys
@@ -1259,12 +1260,17 @@ def get_global_afe_hostname():
             'SHARD', 'global_afe_hostname')
 
 
-def route_rpc_to_master(rpc_name, **kwargs):
+def route_rpc_to_master(func):
     """Route RPC to master AFE.
 
-    @param rpc_name: The name of the rpc.
-    @param **kwargs: The kwargs for the rpc.
+    @param func: The function to decorate
 
+    @returns: The function to replace func with.
     """
-    master_afe = frontend.AFE(server=get_global_afe_hostname())
-    return master_afe.run(rpc_name, **kwargs)
+    @wraps(func)
+    def replacement(**kwargs):
+        if server_utils.is_shard():
+            master_afe = frontend.AFE(server=get_global_afe_hostname())
+            return master_afe.run(func.func_name, **kwargs)
+        return func(**kwargs)
+    return replacement

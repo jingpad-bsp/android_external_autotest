@@ -242,8 +242,8 @@ True
 3
 
 # add hosts to labels
->>> rpc_interface.host_add_labels('host1', ['label1'])
->>> rpc_interface.host_add_labels('host2', ['label1', 'label2'])
+>>> rpc_interface.host_add_labels(id='host1', labels=['label1'])
+>>> rpc_interface.host_add_labels(id='host2', labels=['label1', 'label2'])
 
 # check labels for hosts
 >>> data = rpc_interface.get_hosts(hostname='host1')
@@ -265,7 +265,7 @@ u'label2'
 [u'host2']
 
 # remove a host from a label
->>> rpc_interface.host_remove_labels('host2', ['label2'])
+>>> rpc_interface.host_remove_labels(id='host2', labels=['label2'])
 >>> data = rpc_interface.get_hosts(hostname='host1')
 >>> data[0]['labels']
 [u'label1']
@@ -273,8 +273,8 @@ u'label2'
 []
 
 # Cleanup
->>> rpc_interface.host_remove_labels('host2', ['label1'])
->>> rpc_interface.host_remove_labels('host1', ['label1'])
+>>> rpc_interface.host_remove_labels(id='host2', labels=['label1'])
+>>> rpc_interface.host_remove_labels(id='host1', labels=['label1'])
 
 
 # Other interface for new CLI
