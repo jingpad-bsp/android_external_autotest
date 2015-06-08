@@ -1402,10 +1402,17 @@ class autoupdate_EndToEndTest(test.test):
         # Verify that our arguments are sane.
         self._verify_preconditions()
 
-        # Find a devserver to use. We use the payload URI as argument for the
-        # lab's devserver load-balancing mechanism.
-        autotest_devserver = dev_server.ImageServer.resolve(
-                test_conf['target_payload_uri'])
+        # Find a devserver to use. We first try to pick a devserver with the
+        # least load. In case all devservers' load are higher than threshold,
+        # fall back to the old behavior by picking a devserver based on the
+        # payload URI, with which ImageServer.resolve will return a random
+        # devserver based on the hash of the URI.
+        autotest_devserver = dev_server.get_least_loaded_devserver()
+        if not autotest_devserver:
+            logging.warning('No devserver meets the maximum load requirement. '
+                            'Pick a random devserver to use.')
+            autotest_devserver = dev_server.ImageServer.resolve(
+                    test_conf['target_payload_uri'])
         devserver_hostname = urlparse.urlparse(
                 autotest_devserver.url()).hostname
         counter_key = dev_server.ImageServer.create_stats_str(
