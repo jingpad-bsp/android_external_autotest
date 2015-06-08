@@ -123,14 +123,12 @@ def _get_linear_regression_slope(x, y):
     sxx = sum(v * v for v in x)
     syy = sum(v * v for v in y)
     sxy = sum(u * v for u, v in zip(x, y))
-    beta = (n * sxy - sx * sy) / (n * sxx - sx * sx)
-    alpha = (sy - beta * sx) / n
+    beta = float(n * sxy - sx * sy) / (n * sxx - sx * sx)
+    alpha = float(sy - beta * sx) / n
     stderr2 = (n * syy - sy * sy -
                beta * beta * (n * sxx - sx * sx)) / (n * (n - 2))
     std_beta = sqrt((n * stderr2) / (n * sxx - sx * sx))
-    t_095 = T_095[n - 2]
-    delta_beta = t_095 * std_beta
-    return (beta, t_095 * std_beta)
+    return (beta, T_095[n - 2] * std_beta)
 
 
 def _assert_no_memory_leak(name, mem_usage, threshold = MEMORY_LEAK_THRESHOLD):
