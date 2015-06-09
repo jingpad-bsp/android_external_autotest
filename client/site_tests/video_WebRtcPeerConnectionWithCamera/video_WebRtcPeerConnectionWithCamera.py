@@ -4,6 +4,8 @@
 
 import logging
 import os
+import re
+
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -17,6 +19,9 @@ TEST_PROGRESS = 'testProgress'
 
 # Polling timeout
 TIMEOUT = 90
+
+RES_720P = [1280, 720]
+RES_VGA = [640, 480]
 
 
 class video_WebRtcPeerConnectionWithCamera(test.test):
@@ -34,6 +39,8 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         self.tab.Navigate(cr.browser.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
+        self.tab.EvaluateJavaScript("testCamera(%s)" %
+                                    self.chosen_resolution)
 
 
     def is_test_completed(self):
@@ -45,7 +52,7 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         def test_done():
           """Check the testProgress variable in HTML page."""
 
-          # Wait for test completion on web page
+          # Wait for test completion on web page.
           test_progress = self.tab.EvaluateJavaScript(TEST_PROGRESS)
           return test_progress == 1
 
@@ -60,13 +67,44 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
             return True
 
 
+    def supports_720p(self):
+        """Checks if 720p capture supported.
+
+        @returns: True if 720p supported, false if VGA is supported.
+        @raises: TestError if neither 720p nor VGA are supported.
+        """
+        cmd = 'lsusb -v'
+        # Get usb devices and make output a string with no newline marker.
+        usb_devices = utils.system_output(cmd, ignore_status=True).splitlines()
+        usb_devices = ''.join(usb_devices)
+
+        # Check if 720p resolution supported.
+        if re.search(r'\s+wWidth\s+1280\s+wHeight\s+720', usb_devices):
+          return True
+        # The device should support at least VGA.
+        # Otherwise the cam must be broken.
+        if re.search(r'\s+wWidth\s+640\s+wHeight\s+480', usb_devices):
+          return False
+        # This should not happen.
+        raise error.TestFail(
+            'Could not find any cameras reporting '
+            'either VGA or 720p in lsusb output: %s' % usb_devices)
+
+
     def run_once(self):
         """Runs the video_WebRtcPeerConnectionWithCamera test."""
+        # Check webcamera resolution capabilities.
+        # Some laptops have low resolution capture.
+        if self.supports_720p():
+          self.chosen_resolution = RES_720P
+        else:
+          self.chosen_resolution =  RES_VGA
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
             if not self.check_loopback_result():
-                raise error.TestFail('Failed 720p local peer connection test')
+                raise error.TestFail('Failed %s local peer connection test' %
+                                     self.chosen_resolution)
 
 
     def check_loopback_result(self):
@@ -108,6 +146,7 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
                           results['frameStats']['numFrozenFrames'])
             return False
         if results['frameStats']['numFrames'] == 0:
-            logging.error('%s Frames were found', results['frameStats']['numFrames'])
+            logging.error('%s Frames were found',
+                          results['frameStats']['numFrames'])
             return False
         return True
