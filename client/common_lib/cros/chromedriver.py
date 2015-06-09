@@ -146,9 +146,9 @@ class chromedriver_server(object):
             port = utils.get_unused_port()
         chromedriver_args.append('--port=%d' % port)
 
+        # TODO(ihf): Remove references to X after M45.
         # Chromedriver will look for an X server running on the display
         # specified through the DISPLAY environment variable.
-        utils.assert_has_X_server()
         os.environ['DISPLAY'] = X_SERVER_DISPLAY
         os.environ['XAUTHORITY'] = X_AUTHORITY
 
