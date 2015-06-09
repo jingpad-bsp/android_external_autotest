@@ -21,7 +21,7 @@ class network_WiFi_ChaosConfigSniffer(test.test):
         for ssid in ssids:
             logging.info('Scanning for SSID: %s', ssid)
             networks = wifi_client.iw_runner.wait_for_scan_result(
-                wifi_client._wifi_if, ssid=ssid, timeout_seconds=60)
+                wifi_client._wifi_if, ssids=[ssid], timeout_seconds=60)
             if networks == None:
                 missing_ssids.append(ssid)
             else:

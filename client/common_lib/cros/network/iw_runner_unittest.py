@@ -150,7 +150,7 @@ class IwRunnerTest(unittest.TestCase):
         """
         host = self.host(scan_output)
         runner = iw_runner.IwRunner(remote_host=host)
-        network = runner.wait_for_scan_result('wlan0', bss=test_iw_bss.bss)
+        network = runner.wait_for_scan_result('wlan0', bsses=[test_iw_bss.bss])
         self.verify_values(test_iw_bss, network)
 
 
@@ -203,7 +203,7 @@ class IwRunnerTest(unittest.TestCase):
         host = self.host(scan_output)
         runner = iw_runner.IwRunner(remote_host=host)
         networks = runner.wait_for_scan_result('wlan 0',
-                                               ssid=self.HT20_2_IW_BSS.ssid)
+                                               ssids=[self.HT20_2_IW_BSS.ssid])
         for iw_bss_1, iw_bss_2 in zip([self.HT20_IW_BSS, self.HT20_2_IW_BSS],
                                       networks):
             self.verify_values(iw_bss_1, iw_bss_2)

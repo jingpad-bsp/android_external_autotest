@@ -121,7 +121,7 @@ def is_dut_healthy(client, ap):
     # The SSID doesn't matter, all that needs to be verified is that iw
     # works.
     networks = client.iw_runner.wait_for_scan_result(
-            client.wifi_if, ssid=ap.ssid)
+            client.wifi_if, ssids=[ap.ssid])
     if networks == None:
         return False
     return True
@@ -255,7 +255,7 @@ def scan_for_networks(ssid, capturer, ap_spec):
     capturer.host.run('%s link set %s up' % (capturer.cmd_ip, wifi_if))
     # We have some APs that need a while to come on-line
     networks = capturer.iw_runner.wait_for_scan_result(
-            wifi_if, ssid=ssid, timeout_seconds=300)
+            wifi_if, ssids=[ssid], timeout_seconds=300)
     capturer.remove_interface(wifi_if)
     return networks
 

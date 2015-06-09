@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import collections
+import copy
 import logging
 import re
 import time
@@ -606,14 +607,21 @@ class IwRunner(object):
         return m.group(1)
 
 
-    def wait_for_scan_result(self, interface, bss=None, ssid=None,
-                             timeout_seconds=30):
-        """Returns a IWBSS object for a network with the given bssed or ssid.
+    def wait_for_scan_result(self, interface, bsses=(), ssids=(),
+                             timeout_seconds=30, wait_for_all=False):
+        """Returns a list of IWBSS objects for given list of bsses or ssids.
+
+        This method will scan for a given timeout and return all of the networks
+        that have a matching ssid or bss.  If wait_for_all is true and all
+        networks are not found within the given timeout an empty list will
+        be returned.
 
         @param interface: which interface to run iw against
-        @param bss: BSS as a string
-        @param ssid: ssid as a string
+        @param bsses: a list of BSS strings
+        @param ssids: a list of ssid strings
         @param timeout_seconds: the amount of time to wait in seconds
+        @param wait_for_all: True to wait for all listed bsses or ssids; False
+                             to return if any of the networks were found
 
         @returns a list of IwBss collections that contain the given bss or ssid;
             if the scan is empty or returns an error code None is returned.
@@ -623,6 +631,8 @@ class IwRunner(object):
         scan_failure_attempts = 0
         logging.info('Performing a scan with a max timeout of %d seconds.',
                      timeout_seconds)
+        remaining_bsses = copy.copy(bsses)
+        remaining_ssids = copy.copy(ssids)
         while time.time() - start_time < timeout_seconds:
             scan_results = self.scan(interface)
             if scan_results is None or len(scan_results) == 0:
@@ -638,15 +648,21 @@ class IwRunner(object):
                     return None
                 continue
             scan_failure_attempts = 0
-            matching_bsses = list()
+            matching_iwbsses = set()
             for iwbss in scan_results:
-                if bss is not None and iwbss.bss != bss:
-                    continue
-                if ssid is not None and iwbss.ssid != ssid:
-                    continue
-                matching_bsses.append(iwbss)
-            if len(matching_bsses) > 0:
-                return matching_bsses
+                if iwbss.bss in bsses:
+                    remaining_bsses.remove(iwbss.bss)
+                    matching_iwbsses.add(iwbss)
+                if iwbss.ssid in ssids:
+                    remaining_ssids.remove(iwbss.ssid)
+                    matching_iwbsses.add(iwbss)
+            if wait_for_all:
+                if len(remaining_bsses) == 0 and len(remaining_ssids) == 0:
+                    return list(matching_iwbsses)
+            else:
+                if len(matching_iwbsses) > 0:
+                    return list(matching_iwbsses)
+
 
         if scan_failure_attempts > 0:
             return None
