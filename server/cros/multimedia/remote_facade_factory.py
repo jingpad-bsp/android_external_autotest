@@ -167,6 +167,11 @@ class RemoteFacadeFactory(object):
         self._proxy = RemoteFacadeProxy(self._client)
 
 
+    def ready(self):
+        """Returns the proxy ready status"""
+        return self._proxy.ready()
+
+
     def create_audio_facade(self):
         """Creates an audio facade object."""
         return audio_facade_adapter.AudioFacadeRemoteAdapter(
