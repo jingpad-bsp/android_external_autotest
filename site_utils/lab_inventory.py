@@ -628,7 +628,8 @@ def _generate_repair_recommendation(inventory, num_recommend):
         if recommendation is None or lab_score > best_score:
             recommendation = lab_slice
             best_score = lab_score
-    message = ['%-30s %-16s %s' % (
+    message = ['Repair recommendations:\n',
+               '%-30s %-16s %s' % (
                        'Hostname', 'Board', 'Servo instructions')]
     for h in recommendation:
         servo_name = servo_host.make_servo_hostname(h.host.hostname)
@@ -662,15 +663,15 @@ def _generate_board_inventory_message(inventory):
 
     """
     logging.debug('Creating board inventory')
-    message = []
-    message.append(
-        '%-20s   %5s %5s %5s %5s %5s' % (
-            'Board', 'Avail', 'Bad', 'Good', 'Spare', 'Total'))
+    message = ['Full board inventory:\n',
+               '%-22s %5s %5s %5s %5s %5s' % (
+                       'Board', 'Avail', 'Bad', 'Good',
+                       'Spare', 'Total')]
     data_list = inventory.get_board_counts()
     data_list = sorted(sorted(data_list, key=lambda t: -t[2]),
                        key=lambda t: t[1])
     message.extend(
-            ['%-20s   %5d %5d %5d %5d %5d' % t for t in data_list])
+            ['%-22s %5d %5d %5d %5d %5d' % t for t in data_list])
     return '\n'.join(message)
 
 
@@ -840,10 +841,6 @@ def _parse_command(argv):
                         default=[], metavar='ADDRESS',
                         help='Generate pool inventory message, '
                              'and send it to the given address(es)')
-    parser.add_argument('--recommend-notify', action='append',
-                        default=[], metavar='ADDRESS',
-                        help='Generate repair recommendations, '
-                             'and send it to the given address(es)')
     parser.add_argument('-r', '--recommend', type=int,
                         default=_DEFAULT_NUM_RECOMMEND,
                         help=('Specify how many DUTs should be '
@@ -951,8 +948,6 @@ def main(argv):
         timestamp = time.strftime('%Y-%m-%d.%H',
                                   time.localtime(end_time))
         logging.debug('Starting lab inventory for %s', timestamp)
-        if arguments.recommend_notify:
-            logging.debug('Will include repair recommendations')
         if arguments.board_notify:
             logging.debug('Will include board inventory')
         if arguments.pool_notify:
@@ -968,21 +963,18 @@ def main(argv):
         if arguments.print_:
             _populate_board_counts(inventory)
 
-        if arguments.print_ or arguments.recommend_notify:
+        if arguments.print_ or arguments.board_notify:
             recommend_message = _generate_repair_recommendation(
                     inventory, arguments.recommend)
-            _send_email(arguments,
-                        'recommend-%s.txt' % timestamp,
-                        'DUT repair recommendations %s' % timestamp,
-                        arguments.recommend_notify,
-                        recommend_message)
-
-        if arguments.print_ or arguments.board_notify:
+            board_message = _generate_board_inventory_message(
+                    inventory)
+            full_message = (recommend_message + '\n\n\n' +
+                            board_message)
             _send_email(arguments,
                         'boards-%s.txt' % timestamp,
                         'DUT board inventory %s' % timestamp,
                         arguments.board_notify,
-                        _generate_board_inventory_message(inventory))
+                        full_message)
 
         if arguments.print_ or arguments.pool_notify:
             _send_email(arguments,
