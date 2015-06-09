@@ -15,6 +15,7 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.server import frontend
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -451,10 +452,11 @@ class RpcInterfaceTest(unittest.TestCase,
 
         if host_on_shard and not on_shard:
             mock_afe = self.god.create_mock_class_obj(
-                frontend.AFE, 'MockAFE')
-            self.god.stub_with(frontend, 'AFE', mock_afe)
+                    frontend_wrappers.RetryingAFE, 'MockAFE')
+            self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
-            mock_afe2 = frontend.AFE.expect_new(server=shard_hostname)
+            mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
+                    server=shard_hostname)
             mock_afe2.run.expect_call('modify_host', id=host.id, locked=True,
                                       lock_reason='_modify_host_helper lock')
 
@@ -497,23 +499,23 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertFalse(host1.locked)
         self.assertFalse(host2.locked)
 
-        mock_afe = self.god.create_mock_class_obj(frontend.AFE,
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
                                                  'MockAFE')
-        self.god.stub_with(frontend, 'AFE', mock_afe)
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
         # The statuses of one host might differ on master and shard.
         # Filters are always applied on the master. So the host on the shard
         # will be affected no matter what his status is.
         filters_to_use = {'status': 'Ready'}
 
-        mock_afe2 = frontend.AFE.expect_new(server='shard2')
+        mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(server='shard2')
         mock_afe2.run.expect_call(
             'modify_hosts',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
                          'lock_reason': 'Testing forward to shard'})
 
-        mock_afe1 = frontend.AFE.expect_new(server='shard1')
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(server='shard1')
         mock_afe1.run.expect_call(
             'modify_hosts',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
@@ -540,11 +542,11 @@ class RpcInterfaceTest(unittest.TestCase,
         host1.save()
         host1_id = host1.id
 
-        mock_afe = self.god.create_mock_class_obj(frontend.AFE,
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
                                                  'MockAFE')
-        self.god.stub_with(frontend, 'AFE', mock_afe)
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
-        mock_afe1 = frontend.AFE.expect_new(server='shard1')
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(server='shard1')
         mock_afe1.run.expect_call('delete_host', id=host1.id)
 
         rpc_interface.delete_host(id=host1.id)

@@ -17,9 +17,9 @@ from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.server.cros import provision
-from autotest_lib.server import frontend
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros import provision
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
@@ -1235,7 +1235,7 @@ def run_rpc_on_multiple_hostnames(rpc_call, shard_hostnames, **kwargs):
     @param **kwargs: Keyword arguments to pass in the rpcs.
     """
     for shard_hostname in shard_hostnames:
-        afe = frontend.AFE(server=shard_hostname)
+        afe = frontend_wrappers.RetryingAFE(server=shard_hostname)
         afe.run(rpc_call, **kwargs)
 
 
@@ -1270,7 +1270,8 @@ def route_rpc_to_master(func):
     @wraps(func)
     def replacement(**kwargs):
         if server_utils.is_shard():
-            master_afe = frontend.AFE(server=get_global_afe_hostname())
-            return master_afe.run(func.func_name, **kwargs)
+            afe = frontend_wrappers.RetryingAFE(
+                    server=get_global_afe_hostname())
+            return afe.run(func.func_name, **kwargs)
         return func(**kwargs)
     return replacement
