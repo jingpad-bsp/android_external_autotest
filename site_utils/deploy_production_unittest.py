@@ -21,35 +21,35 @@ class TestDeployProduction(unittest.TestCase):
         results = deploy_production.parse_arguments([])
         self.assertEqual(
                 {'afe': 'cautotest', 'servers': [], 'args': [],
-                 'cont': False, 'dryrun': False},
+                 'cont': False, 'dryrun': False, 'verbose': False},
                 vars(results))
 
         # Dryrun, continue
         results = deploy_production.parse_arguments(['--dryrun', '--continue'])
         self.assertDictContainsSubset(
                 {'afe': 'cautotest', 'servers': [], 'args': [],
-                 'cont': True, 'dryrun': True},
+                 'cont': True, 'dryrun': True, 'verbose': False},
                 vars(results))
 
         # List custom AFE server.
         results = deploy_production.parse_arguments(['--afe', 'foo'])
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': [], 'args': [],
-                 'cont': False, 'dryrun': False},
+                 'cont': False, 'dryrun': False, 'verbose': False},
                 vars(results))
 
         # List some servers
         results = deploy_production.parse_arguments(['foo', 'bar'])
         self.assertDictContainsSubset(
                 {'afe': 'cautotest', 'servers': ['foo', 'bar'], 'args': [],
-                 'cont': False, 'dryrun': False},
+                 'cont': False, 'dryrun': False, 'verbose': False},
                 vars(results))
 
         # List some local args
         results = deploy_production.parse_arguments(['--', 'foo', 'bar'])
         self.assertDictContainsSubset(
                 {'afe': 'cautotest', 'servers': [], 'args': ['foo', 'bar'],
-                 'cont': False, 'dryrun': False},
+                 'cont': False, 'dryrun': False, 'verbose': False},
                 vars(results))
 
         # List everything.
@@ -59,7 +59,7 @@ class TestDeployProduction(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': ['foo', 'bar'],
                  'args': ['--actions-only', '--dryrun'],
-                 'cont': True, 'dryrun': True},
+                 'cont': True, 'dryrun': True, 'verbose': False},
                 vars(results))
 
 
