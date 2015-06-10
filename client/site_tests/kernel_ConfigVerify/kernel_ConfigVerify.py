@@ -126,6 +126,12 @@ class kernel_ConfigVerify(test.test):
         },
     ]
 
+    def is_arm_family(self, arch):
+      return arch in ['armv7l', 'aarch64']
+
+    def is_x86_family(self, arch):
+      return arch in ['i386', 'x86_64']
+
     def run_once(self):
         # Cache the architecture to avoid redundant execs to "uname".
         arch = utils.get_arch()
@@ -163,33 +169,33 @@ class kernel_ConfigVerify(test.test):
         # Upstream kernel recommends 64k, which should be large enough to
         # catch nearly all dereferenced structures.
         wanted = '65536'
-        if arch.startswith('arm'):
+        if self.is_arm_family(arch):
             # ... except on ARM where it shouldn't be larger than 32k due
             # to historical ELF load location.
             wanted = '32768'
         config.has_value('DEFAULT_MMAP_MIN_ADDR', [wanted])
 
         # Security; make sure NX page table bits are usable.
-        if not arch.startswith('arm'):
+        if self.is_x86_family(arch):
             if arch == "i386":
                 config.has_builtin('X86_PAE')
             else:
                 config.has_builtin('X86_64')
 
         # Security; marks data segments as RO/NX, text as RO.
-        if arch.startswith('arm'):
-            if utils.compare_versions(kernel_ver, "3.8") >= 0:
-                config.has_builtin('DEBUG_RODATA')
-                config.has_builtin('DEBUG_SET_MODULE_RONX')
-            else:
-                config.is_missing('DEBUG_RODATA')
-                config.is_missing('DEBUG_SET_MODULE_RONX')
+        if (arch == 'armv7l' and
+            utils.compare_versions(kernel_ver, "3.8") < 0):
+            config.is_missing('DEBUG_RODATA')
+            config.is_missing('DEBUG_SET_MODULE_RONX')
         else:
             config.has_builtin('DEBUG_RODATA')
             config.has_builtin('DEBUG_SET_MODULE_RONX')
 
+            if arch == 'aarch64':
+                config.has_builtin('DEBUG_ALIGN_RODATA')
+
         # Kernel: make sure port 0xED is the one used for I/O delay
-        if not arch.startswith('arm'):
+        if self.is_x86_family(arch):
             config.has_builtin('IO_DELAY_0XED')
             needed = config.get('CONFIG_IO_DELAY_TYPE_0XED', None)
             config.has_value('DEFAULT_IO_DELAY_TYPE', [needed])
