@@ -10,7 +10,7 @@ from autotest_lib.client.common_lib import utils
 
 PYSHARK_LOAD_TIMEOUT = 2
 FRAME_FIELD_RADIOTAP_DATARATE = "radiotap.datarate"
-FRAME_FIELD_RADIOTAP_MCS = "radiotap.mcs"
+FRAME_FIELD_RADIOTAP_MCS_INDEX = "radiotap.mcs_index"
 FRAME_FIELD_WLAN_FRAME_TYPE = "wlan.fc_type_subtype"
 FRAME_FIELD_WLAN_MGMT_SSID = "wlan_mgt.ssid"
 WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
@@ -142,7 +142,7 @@ def get_frames(local_pcap_path, display_filter):
 
         frametime = frame.sniff_time
 
-        mcs_index = _fetch_frame_field_value(frame, FRAME_FIELD_RADIOTAP_MCS)
+        mcs_index = _fetch_frame_field_value(frame, FRAME_FIELD_RADIOTAP_MCS_INDEX)
         if mcs_index:
             mcs_index = int(mcs_index)
 
