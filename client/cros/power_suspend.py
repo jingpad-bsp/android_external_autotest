@@ -148,6 +148,11 @@ class Suspender(object):
             logging.info('Device resume times set to %s', bool(on))
 
 
+    def _get_board(self):
+        """Remove _freon from get_board if found."""
+	return (utils.get_board().replace("_freon", ""))
+
+
     def _reset_logs(self):
         """Throw away cached log lines and reset log pointer to current end."""
         if self._log_file:
@@ -234,7 +239,7 @@ class Suspender(object):
                     return None
             raise sys_power.SpuriousWakeupError('Spurious wake in S3: %s | %s'
                     % (wake_elog, wake_syslog))
-        if utils.get_board() in ['lumpy', 'stumpy', 'kiev']:
+        if self._get_board() in ['lumpy', 'stumpy', 'kiev']:
             logging.debug('RTC read failure (crosbug/36004), dumping nvram:\n' +
                     utils.system_output('mosys nvram dump', ignore_status=True))
             return None
@@ -370,7 +375,7 @@ class Suspender(object):
             for _ in xrange(10):
                 self._reset_logs()
                 utils.system('sync')
-                board_delay = self._SUSPEND_DELAY.get(utils.get_board(), 3)
+                board_delay = self._SUSPEND_DELAY.get(self._get_board(), 3)
                 try:
                     alarm = self._suspend(duration + board_delay)
                 except sys_power.SpuriousWakeupError:
