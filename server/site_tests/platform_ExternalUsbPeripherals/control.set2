@@ -57,7 +57,9 @@ def run(machine):
                 "Microsoft Corp.",
                 "Huawei Technologies Co., Ltd. Modem/Networkcard",
                 "Realtek Semiconductor Corp.",
-                "LG Electronics, Inc.",]
+                # Commenting out due to crbug.com/488667.
+                #"LG Electronics, Inc.",
+               ]
     usb_checks = {
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "

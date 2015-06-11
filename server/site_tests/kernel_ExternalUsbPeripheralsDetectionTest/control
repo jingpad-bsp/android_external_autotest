@@ -48,9 +48,9 @@ def run(machine):
         # Huawei 3G USB modem/dongle
         str("lsusb -v -d 12d1:1506") :
             ["idVendor\s+0x12d1\s+Huawei", "idProduct\s+0x1506\s+Modem"],
-        # LG Android phone
-        str("lsusb -v -d 1004:61fa") :
-            ["idVendor\s+0x1004\s+LG\s+Elect", "iProduct.*LGE\s+Android"],
+        # LG Android phone (commenting out due to crbug.com/488667)
+        #str("lsusb -v -d 1004:61fa") :
+        #    ["idVendor\s+0x1004\s+LG\s+Elect", "iProduct.*LGE\s+Android"],
         # Webcam
         str("lsusb -v -d 058f:3832") :
             ["idVendor\s+0x058f\s+Alcor", "iProduct.*TeckNet"],
@@ -64,7 +64,8 @@ def run(machine):
 
     vendor_id_dict_control_file = {'045e': 'Microsoft Headphone',
                                    '12d1': 'Huawei 3G modem/dongle',
-                                   '1004': 'LG Android phone',
+                                   #commenting out due to crbug.com/488667
+                                   #'1004': 'LG Android phone',
                                    '058f': 'Webcam',
                                    '04f2': 'Mouse',
                                    '0bda': 'Card Reader',
