@@ -236,7 +236,8 @@ class base_test(object):
         """
         This is how we expect test writers to register an after_iteration_hook.
         This adds the method to the list of hooks which are executed
-        after each iteration.
+        after each iteration. Hooks are executed starting with the most-
+        recently registered, in stack fashion.
 
         @param iteration_hook: Method to run after each iteration. A valid
                                hook accepts a single argument which is the
@@ -315,7 +316,7 @@ class base_test(object):
             self.postprocess_iteration()
             self.analyze_perf_constraints(constraints)
         finally:
-            for hook in self.after_iteration_hooks:
+            for hook in reversed(self.after_iteration_hooks):
                 hook(self)
 
 
