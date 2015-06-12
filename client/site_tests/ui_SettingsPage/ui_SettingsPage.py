@@ -8,7 +8,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.ui import ui_test_base
 from autotest_lib.client.common_lib import error
-from telemetry.util import image_util
+from telemetry.image_processing import image_util
 
 class ui_SettingsPage(ui_test_base.ui_TestBase):
     """
