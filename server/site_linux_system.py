@@ -37,6 +37,7 @@ class LinuxSystem(object):
     CAPABILITY_TDLS = 'tdls'
     CAPABILITY_VHT = 'vht'
     BRIDGE_INTERFACE_NAME = 'br0'
+    MIN_SPATIAL_STREAMS = 2
 
 
     @property
@@ -104,6 +105,15 @@ class LinuxSystem(object):
         if self._phy_list is None:
             self._phy_list = self.iw_runner.list_phys()
         return self._phy_list
+
+
+    def _phy_by_name(self, phy_name):
+        """@return IwPhy for PHY with name |phy_name|, or None."""
+        for phy in self._phy_list:
+            if phy.name == phy_name:
+                return phy
+        else:
+            return None
 
 
     def _get_phy_info(self):
@@ -293,7 +303,17 @@ class LinuxSystem(object):
         @return string name of phy to use.
 
         """
-        phys = self.phys_for_frequency[frequency]
+        phys = []
+        for phy in self.phys_for_frequency[frequency]:
+            phy_obj = self._phy_by_name(phy)
+            spatial_streams = min(phy_obj.avail_rx_antennas,
+                                  phy_obj.avail_tx_antennas)
+            if spatial_streams >= self.MIN_SPATIAL_STREAMS:
+                phys.append(phy)
+            else:
+                logging.debug(
+                    'Filtered out PHY due to spatial stream limit: %s (%d)',
+                    phy, spatial_streams)
 
         busy_phys = set(net_dev.phy for net_dev in self._wlanifs_in_use)
         idle_phys = [phy for phy in phys if phy not in busy_phys]
