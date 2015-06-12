@@ -19,6 +19,7 @@ from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.site_utils import lxc_utils
 from autotest_lib.tko import db
 
 
@@ -61,6 +62,8 @@ class RpcClient(object):
             print_log: pring a logging message to stdout on every operation
             debug: print out all RPC traffic
         """
+        if not user and lxc_utils.is_in_container():
+            user = GLOBAL_CONFIG.get_config_value('SSP', 'user', default=None)
         if not user:
             user = getpass.getuser()
         if not server:
