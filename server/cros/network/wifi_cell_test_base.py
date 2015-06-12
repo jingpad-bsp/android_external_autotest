@@ -112,8 +112,16 @@ class WiFiCellTestBase(test.test):
         self._wifi_context.setup()
         self.parse_additional_arguments(cmdline_args, additional_params)
 
+        start_message = ('======= WiFi autotest setup complete. Starting '
+                         'test... =======')
+        logging.info(start_message)
+        self._wifi_context.client.shill_debug_log(start_message)
+
 
     def cleanup(self):
+        end_message = '======= WiFi autotest complete. Cleaning up... ======='
+        logging.info(end_message)
+        self._wifi_context.client.shill_debug_log(end_message)
         # If we fail during initialization, we might not have a context.
         if hasattr(self, '_wifi_context'):
             self._wifi_context.teardown()

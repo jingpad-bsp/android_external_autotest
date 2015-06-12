@@ -1120,6 +1120,18 @@ class WiFiClient(site_linux_system.LinuxSystem):
         logging.info('Wake on WiFi was throttled on the last dark resume.')
 
 
+    def shill_debug_log(self, message):
+        """Logs a message to the shill log (i.e. /var/log/net.log). This
+           message will be logged at the DEBUG level.
+
+        @param message: the message to be logged.
+
+        """
+        logger_command = '/usr/bin/logger --tag shill --priority daemon.debug'
+        cmd = ('%s \"%s\"' % (logger_command, message))
+        self.host.run(cmd)
+
+
 class TemporaryDBusProperty:
     """Utility class to temporarily change a dbus property for the WiFi device.
 
