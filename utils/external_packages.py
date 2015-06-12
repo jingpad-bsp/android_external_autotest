@@ -182,7 +182,7 @@ class ExternalPackage(object):
             if not any(os.path.exists(file_name) for file_name in file_names):
                 failed = True
                 logging.error('Can\'t find %s, %s probably needs it.',
-                              file_names.join(" or "), self.name)
+                              ' or '.join(file_names), self.name)
                 logging.error('Perhaps you need to install something similar '
                               'to the %s package for OS first.', package_name)
         if failed:
