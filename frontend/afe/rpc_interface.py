@@ -64,11 +64,34 @@ def get_parameterized_autoupdate_image_url(job):
 # labels
 
 def modify_label(id, **data):
-    models.Label.smart_get(id).update_object(data)
+    """Modify a label.
+
+    @param id: id or name of a label. More often a label name.
+    @param data: New data for a label.
+    """
+    label_model = models.Label.smart_get(id)
+
+    # Master forwards the RPC to shards
+    if not utils.is_shard():
+        rpc_utils.fanout_rpc(label_model.host_set.all(), 'modify_label', False,
+                             id=id, **data)
+
+    label_model.update_object(data)
 
 
 def delete_label(id):
-    models.Label.smart_get(id).delete()
+    """Delete a label.
+
+    @param id: id or name of a label. More often a label name.
+    """
+    label_model = models.Label.smart_get(id)
+
+    # Master forwards the RPC to shards
+    if not utils.is_shard():
+        rpc_utils.fanout_rpc(label_model.host_set.all(), 'delete_label', False,
+                             id=id)
+
+    label_model.delete()
 
 
 def add_label(name, ignore_exception_if_exists=False, **kwargs):
