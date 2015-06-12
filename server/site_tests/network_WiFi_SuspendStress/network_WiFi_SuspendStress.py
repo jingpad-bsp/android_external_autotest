@@ -78,6 +78,9 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
     def run_once(self, suspends=5):
         self._host = self.context.client.host
 
+        if not self._host.servo:
+            raise error.TestNAError('Does the cell have a servo?')
+
         # If the DUT is up and cold_reset is set to on, that means the DUT does
         # not support cold_reset.  We can't run the test, because it may get
         # in a bad state and we won't be able to recover.
@@ -117,5 +120,5 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
 
     def cleanup(self):
         """Cold reboot the device so the WiFi card is back in a good state."""
-        if self._host.servo.get('cold_reset') == 'off':
+        if self._host.servo and self._host.servo.get('cold_reset') == 'off':
             self._host.servo.get_power_state_controller().reset()
