@@ -17,7 +17,9 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     """Toggles tap-to-click and tap dragging settings to ensure correctness."""
     version = 1
 
-    _test_timeout = 3 # Number of seconds the test will wait for a click.
+    _test_timeout = 1 # Number of seconds the test will wait for a click.
+    _MOUSE_DESCRIPTION = 'apple_mouse.prop'
+
 
     def _check_for_click(self, expected):
         """Playback and check whether tap-to-click occurred.  Fail if needed.
@@ -36,6 +38,19 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
                                  % (expected_count, actual_count))
 
 
+    def _center_cursor(self):
+        """Playback and check whether cursor moved as recorded. Fail if needed.
+
+        @raises: TestError if cursor movement is not recorded in test_page.html.
+
+        """
+        self._reload_page()
+        self._blocking_playback(self._center_cursor_file, touch_type='mouse')
+        cursorOnPage = bool(self._tab.EvaluateJavaScript('cursorOnPage'))
+        if not cursorOnPage:
+            raise error.TestError('Test page did not see cursor.')
+
+
     def _check_for_drag(self, expected):
         """Playback and check whether tap dragging occurred.  Fail if needed.
 
@@ -44,8 +59,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._reload_page()
-        self._playback(filepath=self._drag_filepath)
-        time.sleep(self._test_timeout)
+        self._blocking_playback(filepath=self._drag_filepath)
         actual = self._tab.EvaluateJavaScript('movementOccurred')
         if actual is not expected:
             raise error.TestFail('Tap dragging movement was %s; expected %s.'
@@ -60,6 +74,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         gest_dir = os.path.join(self.bindir, 'gestures')
         tap_click_file = '%s_tap_click' % device
         tap_drag_file = '%s_tap_drag' % device
+        self._center_cursor_file = os.path.join(gest_dir, 'center_cursor')
         self._click_filepath = os.path.join(gest_dir, tap_click_file)
         self._drag_filepath = os.path.join(gest_dir, tap_drag_file)
         if not (os.path.exists(self._click_filepath) and
@@ -71,17 +86,24 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         if not self._has_touchpad:
             raise error.TestFail('No touchpad found on this %d' % device)
 
+        # Emulate a USB test mouse and raise error if no mouse found.
+        mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
+        self._emulate_mouse(property_file=mouse_file)
+        if not self._has_mouse:
+            raise error.TestError('Emulated mouse not found on device.')
+
         # Log in and start test.
         with chrome.Chrome(autotest_ext=True) as cr:
             # Pass in the autotest extension.
             self._set_autotest_ext(cr.autotest_ext)
 
-            # Open test page.
+            # Open test page and position the cursor to the center of the page.
             cr.browser.SetHTTPServerDirectories(self.bindir)
             self._tab = cr.browser.tabs[0]
             self._tab.Navigate(cr.browser.http_server.UrlOf(
                     os.path.join(self.bindir, 'test_page.html')))
             self._tab.WaitForDocumentReadyStateToBeComplete()
+            self._center_cursor()
 
             # Check default setting values.
             logging.info('Checking for default setting values.')
