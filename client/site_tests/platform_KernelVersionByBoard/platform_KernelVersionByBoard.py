@@ -51,6 +51,6 @@ class platform_KernelVersionByBoard(test.test):
         actual = self._actual_kernel(board)
         expected = self._expected_kernel(board)
         if not actual.startswith(expected):
-            raise error.TestError('%s: Expected kernel version %s; Found %s'
-                                  % (board, expected, actual))
+            raise error.TestFail('%s: Expected kernel version %s; Found %s'
+                                 % (board, expected, actual))
 
