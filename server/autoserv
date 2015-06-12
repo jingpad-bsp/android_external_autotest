@@ -562,7 +562,7 @@ def main():
 
         # wait until now to perform this check, so it get properly logged
         if (parser.options.use_existing_results and not resultdir_exists and
-            not lxc_utils.is_in_container()):
+            not utils.is_in_container()):
             logging.error("No existing results directory found: %s", results)
             sys.exit(1)
 

@@ -12,18 +12,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 
-def is_in_container():
-    """Check if the process is running inside a container.
-
-    @return: True if the process is running inside a container, otherwise False.
-    """
-    try:
-        utils.run('cat /proc/1/cgroup | grep "/lxc/" || false')
-        return True
-    except error.CmdError:
-        return False
-
-
 def path_exists(path):
     """Check if path exists.
 

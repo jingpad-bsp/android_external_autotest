@@ -8,7 +8,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 from autotest_lib.site_utils import lxc
-from autotest_lib.site_utils import lxc_utils
 
 
 class ssp_PackageInstall(test.test):
@@ -49,7 +48,7 @@ class ssp_PackageInstall(test.test):
                 any of the given packages failed to be installed.
 
         """
-        if not lxc_utils.is_in_container():
+        if not utils.is_in_container():
             raise error.TestError('Install OS package is only supported in '
                                   'server-side packaging.')
         # Test OS package can be used.

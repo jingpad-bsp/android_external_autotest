@@ -542,3 +542,15 @@ def sudo_require_password():
     except error.CmdError:
         logging.warn('sudo command requires password.')
         return True
+
+
+def is_in_container():
+    """Check if the process is running inside a container.
+
+    @return: True if the process is running inside a container, otherwise False.
+    """
+    try:
+        base_utils.run('cat /proc/1/cgroup | grep "/lxc/" || false')
+        return True
+    except error.CmdError:
+        return False

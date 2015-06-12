@@ -61,6 +61,8 @@ class RpcClient(object):
             print_log: pring a logging message to stdout on every operation
             debug: print out all RPC traffic
         """
+        if not user and utils.is_in_container():
+            user = GLOBAL_CONFIG.get_config_value('SSP', 'user', default=None)
         if not user:
             user = getpass.getuser()
         if not server:

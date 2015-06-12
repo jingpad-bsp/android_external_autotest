@@ -305,7 +305,7 @@ def install_package(package):
     if not install_package_precheck(package):
         return
 
-    if not lxc_utils.is_in_container():
+    if not utils.is_in_container():
         raise error.ContainerError('Package installation is only supported '
                                    'when test is running inside container.')
     # Always run apt-get update before installing any container. The base
