@@ -30,9 +30,13 @@ args_dict = utils.args_to_dict(args)
 chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
+# Plugged status (before_close, after_close, before_open)
+plug_status=[(True, True, True)]
+
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args,
                              servo_args=servo_args)
-    job.run_test("display_LidCloseOpen", host=host, tag="extended")
+    job.run_test("display_LidCloseOpen", host=host, plug_status=plug_status,
+                 tag="extended")
 
 parallel_simple(run, machines)

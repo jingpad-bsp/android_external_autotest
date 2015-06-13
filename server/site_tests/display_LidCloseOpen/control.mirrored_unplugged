@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "chromeos-chameleon"
-NAME = "display_LidCloseOpen.mirrored"
+NAME = "display_LidCloseOpen.mirrored_unplugged"
 PURPOSE = "Remotely controlled close and open lid test."
 CRITERIA = "This test will fail if checks mentioned below fail."
 ATTRIBUTES = "suite:chameleon_dp, suite:chameleon_hdmi"
@@ -31,12 +31,15 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 # Plugged status (before_close, after_close, before_open)
-plug_status=[(True, True, True)]
+plug_status=[(True, False, False),
+             (True, False, True),
+             (False, True, True),
+             (False, True, False)]
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args,
                              servo_args=servo_args)
     job.run_test("display_LidCloseOpen", host=host, plug_status=plug_status,
-                 test_mirrored=True, tag="mirrored")
+                 test_mirrored=True, tag="mirrored_unplugged")
 
 parallel_simple(run, machines)

@@ -26,12 +26,6 @@ class display_LidCloseOpen(test.test):
     WAIT_TIME_LID_TRANSITION = 5
     # Time to allow display port plug transition to take effect
     WAIT_TIME_PLUG_TRANSITION = 5
-    # Plugged status (before_close, after_close, before_open)
-    PLUG_CONFIGS = [(True, True, True),
-                    (True, False, False),
-                    (True, False, True),
-                    (False, True, True),
-                    (False, True, False)]
 
     def wait_to_suspend(self):
         """Wait for DUT to suspend.
@@ -121,7 +115,7 @@ class display_LidCloseOpen(test.test):
                     resolution, self.test_mirrored, self.errors)
 
 
-    def run_once(self, host, test_mirrored=False):
+    def run_once(self, host, plug_status, test_mirrored=False):
         self.host = host
         self.test_mirrored = test_mirrored
         self.errors = list()
@@ -138,14 +132,16 @@ class display_LidCloseOpen(test.test):
         finder = chameleon_port_finder.ChameleonVideoInputFinder(
                 chameleon_board, display_facade)
         for chameleon_port in finder.iterate_all_ports():
-            self.run_test_on_port(chameleon_port, display_facade)
+            self.run_test_on_port(chameleon_port, display_facade, plug_status)
 
 
-    def run_test_on_port(self, chameleon_port, display_facade):
+    def run_test_on_port(self, chameleon_port, display_facade, plug_status):
         """Run the test on the given Chameleon port.
 
         @param chameleon_port: a ChameleonPorts object.
         @param display_facade: a display facade object.
+        @param plug_status: the plugged status before_close, after_close,
+           and before_open
         """
         self.chameleon_port = chameleon_port
         self.display_facade = display_facade
@@ -159,7 +155,7 @@ class display_LidCloseOpen(test.test):
 
         for (plugged_before_close,
              plugged_after_close,
-             plugged_before_open) in self.PLUG_CONFIGS:
+             plugged_before_open) in plug_status:
             is_suspended = False
 
             # Plug before close
