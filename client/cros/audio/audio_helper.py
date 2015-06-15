@@ -7,9 +7,7 @@
 import logging
 import numpy
 import os
-import pipes
 import re
-import shlex
 import tempfile
 import threading
 import time
@@ -18,7 +16,6 @@ from glob import glob
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros.audio import alsa_utils
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
@@ -63,12 +60,11 @@ _FREQUENCY_DIFF_THRESHOLD = 20
 _MEANINGFUL_RMS_THRESHOLD = 0.001
 
 def set_mixer_controls(mixer_settings={}, card='0'):
-    '''
-    Sets all mixer controls listed in the mixer settings on card.
+    """Sets all mixer controls listed in the mixer settings on card.
 
     @param mixer_settings: Mixer settings to set.
     @param card: Index of audio card to set mixer settings for.
-    '''
+    """
     logging.info('Setting mixer control values on %s', card)
     for item in mixer_settings:
         logging.info('Setting %s to %s on card %s',
@@ -83,12 +79,11 @@ def set_mixer_controls(mixer_settings={}, card='0'):
             logging.info('amixer command failed: %s', cmd)
 
 def set_volume_levels(volume, capture):
-    '''
-    Sets the volume and capture gain through cras_test_client
+    """Sets the volume and capture gain through cras_test_client.
 
     @param volume: The playback volume to set.
     @param capture: The capture gain to set.
-    '''
+    """
     logging.info('Setting volume level to %d', volume)
     utils.system('/usr/bin/cras_test_client --volume %d' % volume)
     logging.info('Setting capture gain to %d', capture)
@@ -98,14 +93,13 @@ def set_volume_levels(volume, capture):
     utils.system('amixer -c 0 contents')
 
 def loopback_latency_check(**args):
-    '''
-    Checks loopback latency.
+    """Checks loopback latency.
 
     @param args: additional arguments for loopback_latency.
 
     @return A tuple containing measured and reported latency in uS.
         Return None if no audio detected.
-    '''
+    """
     noise_threshold = str(args['n']) if args.has_key('n') else '400'
 
     cmd = '%s -n %s' % (LOOPBACK_LATENCY_PATH, noise_threshold)
@@ -136,14 +130,13 @@ def loopback_latency_check(**args):
         return None
 
 def get_mixer_jack_status(jack_reg_exp):
-    '''
-    Gets the mixer jack status.
+    """Gets the mixer jack status.
 
     @param jack_reg_exp: The regular expression to match jack control name.
 
     @return None if the control does not exist, return True if jack control
         is detected plugged, return False otherwise.
-    '''
+    """
     output = utils.system_output('amixer -c0 controls', retain_output=True)
     numid = None
     for line in output.split('\n'):
@@ -163,7 +156,7 @@ def get_mixer_jack_status(jack_reg_exp):
         return None
 
 def get_hp_jack_status():
-    '''Gets the status of headphone jack'''
+    """Gets the status of headphone jack."""
     status = get_mixer_jack_status(_HP_JACK_CONTROL_RE)
     if status is not None:
         return status
@@ -181,7 +174,7 @@ def get_hp_jack_status():
         return None
 
 def get_mic_jack_status():
-    '''Gets the status of mic jack'''
+    """Gets the status of mic jack."""
     status = get_mixer_jack_status(_MIC_JACK_CONTROL_RE)
     if status is not None:
         return status
@@ -195,9 +188,7 @@ def get_mic_jack_status():
         return None
 
 def log_loopback_dongle_status():
-    '''
-    Log the status of the loopback dongle to make sure it is equipped correctly.
-    '''
+    """Log the status of the loopback dongle to make sure it is equipped."""
     dongle_status_ok = True
 
     # Check Mic Jack
@@ -226,15 +217,14 @@ def log_loopback_dongle_status():
 
 # Functions to test audio palyback.
 def play_sound(duration_seconds=None, audio_file_path=None):
-    '''
-    Plays a sound file found at |audio_file_path| for |duration_seconds|.
+    """Plays a sound file found at |audio_file_path| for |duration_seconds|.
 
     If |audio_file_path|=None, plays a default audio file.
     If |duration_seconds|=None, plays audio file in its entirety.
 
     @param duration_seconds: Duration to play sound.
     @param audio_file_path: Path to the audio file.
-    '''
+    """
     if not audio_file_path:
         audio_file_path = '/usr/local/autotest/cros/audio/sine440.wav'
     duration_arg = ('-d %d' % duration_seconds) if duration_seconds else ''
@@ -242,14 +232,14 @@ def play_sound(duration_seconds=None, audio_file_path=None):
 
 def get_play_sine_args(channel, odev='default', freq=1000, duration=10,
                        sample_size=16):
-    '''Gets the command args to generate a sine wav to play to odev.
+    """Gets the command args to generate a sine wav to play to odev.
 
     @param channel: 0 for left, 1 for right; otherwize, mono.
     @param odev: alsa output device.
     @param freq: frequency of the generated sine tone.
     @param duration: duration of the generated sine tone.
     @param sample_size: output audio sample size. Default to 16.
-    '''
+    """
     cmdargs = [SOX_PATH, '-b', str(sample_size), '-n', '-t', 'alsa',
                odev, 'synth', str(duration)]
     if channel == 0:
@@ -263,14 +253,14 @@ def get_play_sine_args(channel, odev='default', freq=1000, duration=10,
 
 def play_sine(channel, odev='default', freq=1000, duration=10,
               sample_size=16):
-    '''Generates a sine wave and plays to odev.
+    """Generates a sine wave and plays to odev.
 
     @param channel: 0 for left, 1 for right; otherwize, mono.
     @param odev: alsa output device.
     @param freq: frequency of the generated sine tone.
     @param duration: duration of the generated sine tone.
     @param sample_size: output audio sample size. Default to 16.
-    '''
+    """
     cmdargs = get_play_sine_args(channel, odev, freq, duration, sample_size)
     utils.system(' '.join(cmdargs))
 
@@ -279,13 +269,13 @@ def play_sine(channel, odev='default', freq=1000, duration=10,
 def get_sox_mixer_cmd(infile, channel,
                       num_channels=_DEFAULT_NUM_CHANNELS,
                       sox_format=_DEFAULT_SOX_FORMAT):
-    '''Gets sox mixer command to reduce channel.
+    """Gets sox mixer command to reduce channel.
 
     @param infile: Input file name.
     @param channel: The selected channel to take effect.
     @param num_channels: The number of total channels to test.
     @param sox_format: Format to generate sox command.
-    '''
+    """
     # Build up a pan value string for the sox command.
     if channel == 0:
         pan_values = '1'
@@ -303,7 +293,7 @@ def get_sox_mixer_cmd(infile, channel,
 def sox_stat_output(infile, channel,
                     num_channels=_DEFAULT_NUM_CHANNELS,
                     sox_format=_DEFAULT_SOX_FORMAT):
-    '''Executes sox stat command.
+    """Executes sox stat command.
 
     @param infile: Input file name.
     @param channel: The selected channel.
@@ -311,7 +301,7 @@ def sox_stat_output(infile, channel,
     @param sox_format: Format to generate sox command.
 
     @return The output of sox stat command
-    '''
+    """
     sox_mixer_cmd = get_sox_mixer_cmd(infile, channel,
                                       num_channels, sox_format)
     stat_cmd = '%s -c 1 %s - -n stat 2>&1' % (SOX_PATH, sox_format)
@@ -319,24 +309,24 @@ def sox_stat_output(infile, channel,
     return utils.system_output(sox_cmd, retain_output=True)
 
 def get_audio_rms(sox_output):
-    '''Gets the audio RMS value from sox stat output
+    """Gets the audio RMS value from sox stat output
 
     @param sox_output: Output of sox stat command.
 
     @return The RMS value parsed from sox stat output.
-    '''
+    """
     for rms_line in sox_output.split('\n'):
         m = _SOX_RMS_AMPLITUDE_RE.match(rms_line)
         if m is not None:
             return float(m.group(1))
 
 def get_rough_freq(sox_output):
-    '''Gets the rough audio frequency from sox stat output
+    """Gets the rough audio frequency from sox stat output
 
     @param sox_output: Output of sox stat command.
 
     @return The rough frequency value parsed from sox stat output.
-    '''
+    """
     for rms_line in sox_output.split('\n'):
         m = _SOX_ROUGH_FREQ_RE.match(rms_line)
         if m is not None:
@@ -368,15 +358,17 @@ def check_audio_rms(sox_output, sox_threshold=_DEFAULT_SOX_RMS_THRESHOLD):
 
 def noise_reduce_file(in_file, noise_file, out_file,
                       sox_format=_DEFAULT_SOX_FORMAT):
-    '''Runs the sox command to noise-reduce in_file using
-       the noise profile from noise_file.
+    """Runs the sox command to reduce noise.
+
+    Runs the sox command to noise-reduce in_file using the noise
+    profile from noise_file.
 
     @param in_file: The file to noise reduce.
     @param noise_file: The file containing the noise profile.
         This can be created by recording silence.
     @param out_file: The file contains the noise reduced sound.
     @param sox_format: The  sox format to generate sox command.
-    '''
+    """
     prof_cmd = '%s -c 2 %s %s -n noiseprof' % (SOX_PATH,
                sox_format, noise_file)
     reduce_cmd = ('%s -c 2 %s %s -c 2 %s %s noisered' %
@@ -384,25 +376,30 @@ def noise_reduce_file(in_file, noise_file, out_file,
     utils.system('%s | %s' % (prof_cmd, reduce_cmd))
 
 def record_sample(tmpfile, record_command=_DEFAULT_REC_COMMAND):
-    '''Records a sample from the default input device.
+    """Records a sample from the default input device.
 
     @param tmpfile: The file to record to.
     @param record_command: The command to record audio.
-    '''
+    """
     utils.system('%s %s' % (record_command, tmpfile))
 
 def create_wav_file(wav_dir, prefix=""):
-    '''Creates a unique name for wav file.
+    """Creates a unique name for wav file.
 
     The created file name will be preserved in autotest result directory
     for future analysis.
 
+    @param wav_dir: The directory of created wav file.
     @param prefix: specified file name prefix.
-    '''
+    """
     filename = "%s-%s.wav" % (prefix, time.time())
     return os.path.join(wav_dir, filename)
 
 def run_in_parallel(*funs):
+    """Runs methods in parallel.
+
+    @param funs: methods to run.
+    """
     threads = []
     for f in funs:
         t = threading.Thread(target=f)
@@ -419,15 +416,18 @@ def loopback_test_channels(noise_file_name, wav_dir,
                            num_channels = _DEFAULT_NUM_CHANNELS,
                            record_callback=record_sample,
                            mix_callback=None):
-    '''Tests loopback on all channels.
+    """Tests loopback on all channels.
 
     @param noise_file_name: Name of the file contains pre-recorded noise.
+    @param wav_dir: The directory of created wav file.
     @param playback_callback: The callback to do the playback for
         one channel.
     @param record_callback: The callback to do the recording.
     @param check_recorded_callback: The callback to check recorded file.
     @param preserve_test_file: Retain the recorded files for future debugging.
-    '''
+    @param num_channels: The number of total channels to test.
+    @param mix_callback: The callback to do on the one-channel file.
+    """
     for channel in xrange(num_channels):
         record_file_name = create_wav_file(wav_dir,
                                            "record-%d" % channel)
@@ -541,7 +541,10 @@ def reduce_noise_and_get_rms(
 
 
 def skip_devices_to_test(*boards):
-    """Devices to skip due to hardware or test compatibility issues."""
+    """Devices to skip due to hardware or test compatibility issues.
+
+    @param boards: the boards to skip testing.
+    """
     # TODO(scottz): Remove this when crbug.com/220147 is fixed.
     dut_board = utils.get_current_board()
     if dut_board in boards:
@@ -549,7 +552,7 @@ def skip_devices_to_test(*boards):
 
 
 def cras_rms_test_setup():
-    """ Setups for the cras_rms_tests.
+    """Setups for the cras_rms_tests.
 
     To make sure the line_out-to-mic_in path is all green.
     """
@@ -565,6 +568,7 @@ def cras_rms_test_setup():
 
 
 def generate_rms_postmortem():
+    """Generates postmortem for rms tests."""
     try:
         logging.info('audio postmortem report')
         log_loopback_dongle_status()
@@ -893,7 +897,7 @@ def compare_data(golden_data_binary, golden_data_format,
 
 
 class _base_rms_test(test.test):
-    """ Base class for all rms_test """
+    """Base class for all rms_test """
 
     def postprocess(self):
         super(_base_rms_test, self).postprocess()
@@ -904,7 +908,7 @@ class _base_rms_test(test.test):
 
 
 class chrome_rms_test(_base_rms_test):
-    """ Base test class for audio RMS test with Chrome.
+    """Base test class for audio RMS test with Chrome.
 
     The chrome instance can be accessed by self.chrome.
     """
@@ -934,7 +938,7 @@ class chrome_rms_test(_base_rms_test):
             super(chrome_rms_test, self).cleanup()
 
 class cras_rms_test(_base_rms_test):
-    """ Base test class for CRAS audio RMS test."""
+    """Base test class for CRAS audio RMS test."""
 
     def warmup(self):
         skip_devices_to_test('x86-mario')
@@ -943,7 +947,7 @@ class cras_rms_test(_base_rms_test):
 
 
 class alsa_rms_test(_base_rms_test):
-    """ Base test class for ALSA audio RMS test."""
+    """Base test class for ALSA audio RMS test."""
 
     def warmup(self):
         skip_devices_to_test('x86-mario')
