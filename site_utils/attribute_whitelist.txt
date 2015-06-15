@@ -12,6 +12,7 @@ suite:bvt-perbuild
 suite:cell_emulator
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
+suite:chameleon_audio
 suite:chameleon_dp
 suite:chameleon_dp_weekly
 suite:chameleon_hdmi
