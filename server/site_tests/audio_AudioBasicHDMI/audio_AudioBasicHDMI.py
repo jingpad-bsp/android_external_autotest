@@ -13,11 +13,11 @@ from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
-from autotest_lib.server import test
+from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class audio_AudioBasicHDMI(test.test):
+class audio_AudioBasicHDMI(audio_test.AudioTest):
     """Server side HDMI audio test.
 
     This test talks to a Chameleon board and a Cros device to verify
