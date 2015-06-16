@@ -313,6 +313,9 @@ class graphics_dEQP(test.test):
 
     def run_once(self, opts=[]):
         options = dict(filter='',
+                       test_names='',  # e.g., dEQP-GLES3.info.version,
+                                       # dEQP-GLES2.functional,
+                                       # dEQP-GLES3.accuracy.texture, etc.
                        timeout=self._timeout,
                        subset_to_run='Pass',  # Pass, Fail, Timeout etc.
                        hasty='False',
@@ -323,9 +326,11 @@ class graphics_dEQP(test.test):
 
         self._hasty = (options['hasty'] == 'True')
         self._timeout = int(options['timeout'])
-        self._filter = options['filter']
-        if not self._filter:
-            raise error.TestError('No dEQP test filter specified')
+        self._test_names = options['test_names']
+        if not self._test_names:
+            self._filter = options['filter']
+            if not self._filter:
+                raise error.TestError('No dEQP test filter specified')
 
         # Some information to help postprocess logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
@@ -333,10 +338,16 @@ class graphics_dEQP(test.test):
         logging.info('ChromeOS GPU family = %s', self._gpu_type)
         logging.info('dEQP test filter = %s', self._filter)
 
-        # Determine module from filter.
-        test_prefix, test_group = self._filter.split('.')
+        # Determine module from test_names or filter.
+        if self._test_names:
+            test_prefix = self._test_names.split('.')[0]
+            self._filter = '%s.filter_args' % test_prefix
+        elif self._filter:
+            test_prefix, test_group = self._filter.split('.')
         if test_prefix in self.DEQP_MODULES:
             module = self.DEQP_MODULES[test_prefix]
+        elif self._test_names:
+            raise error.TestError('Invalid test names: %s' % self._test_names)
         else:
             raise error.TestError('Invalid test filter: %s' % self._filter)
 
@@ -348,8 +359,14 @@ class graphics_dEQP(test.test):
         # Must be in the executable directory when running for it to find it's
         # test data files!
         os.chdir(executable_path)
-        test_cases = self._get_test_cases(executable, self._filter,
-                                          options['subset_to_run'])
+        if self._test_names:
+            test_cases = []
+            for name in self._test_names.split(','):
+                test_cases.extend(self._get_test_cases(executable, name,
+                                                       'Pass'))
+        else:
+            test_cases = self._get_test_cases(executable, self._filter,
+                                              options['subset_to_run'])
 
         test_results = {}
         if self._hasty:
