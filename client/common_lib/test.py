@@ -315,6 +315,9 @@ class base_test(object):
 
             self.postprocess_iteration()
             self.analyze_perf_constraints(constraints)
+        # Catch and re-raise to let after_iteration_hooks see the exception.
+        except:
+            raise
         finally:
             for hook in reversed(self.after_iteration_hooks):
                 hook(self)
