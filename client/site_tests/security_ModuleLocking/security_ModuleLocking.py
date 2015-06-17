@@ -5,6 +5,7 @@
 import logging, os
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+import tempfile
 
 class security_ModuleLocking(test.test):
     """
@@ -137,6 +138,34 @@ class security_ModuleLocking(test.test):
             return True
         return False
 
+    def module_loads_after_bind_umount(self, module):
+        """
+        Makes sure modules can still load after a bind mount of the
+        filesystem is umounted.
+
+        @param module: name of module to test
+        """
+
+        # Start from a clean slate.
+        self.rmmod(module)
+
+        # Make sure we can load with standard mechanisms.
+        self.modprobe(module)
+        self.rmmod(module)
+
+        # Create and umount a bind mount of the root filesystem.
+        bind = tempfile.mkdtemp(prefix=module)
+        rc = utils.system("mount -o bind / %s && umount %s" % (bind, bind))
+        utils.system("rmdir %s" % (bind))
+
+        # Attempt to load again.
+        self.modprobe(module)
+        self.rmmod(module)
+
+        if rc == 0:
+            return True
+        return False
+
     def run_once(self):
         """
         Check that the fd-based module loading syscall is enforcing the
@@ -161,6 +190,10 @@ class security_ModuleLocking(test.test):
         # Check old API fails when enforcement enabled.
         loaded = self.module_loads_old_api(module)
         self.check(loaded == False, "cannot load %s with old API" % (module))
+
+        # Make sure the bind umount bug is not present.
+        loaded = self.module_loads_after_bind_umount(module)
+        self.check(loaded == True, "can load %s after bind umount" % (module))
 
         # If the sysctl exists, verify that it will disable the restriction.
         if os.path.exists(sysctl):
