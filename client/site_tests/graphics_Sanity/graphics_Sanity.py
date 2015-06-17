@@ -50,7 +50,7 @@ class graphics_Sanity(test.test):
         Draws a texture with a soft ellipse twice and captures each image.
         Compares the output fuzzily against reference images.
         """
-        if graphics_utils.get_display_resolution() is None:
+        if utils.is_freon() and graphics_utils.get_display_resolution() is None:
             logging.warning('Skipping test because there is no screen')
             return
 
