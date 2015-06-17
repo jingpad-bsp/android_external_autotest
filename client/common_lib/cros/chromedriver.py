@@ -6,6 +6,7 @@ import atexit
 import logging
 import os
 import urllib2
+import urlparse
 
 try:
     from selenium import webdriver
@@ -28,8 +29,8 @@ class chromedriver(object):
 
     def __init__(self, extra_chrome_flags=[], subtract_extra_chrome_flags=[],
                  extension_paths=[], is_component=True, username=None,
-                 password=None, server_port=None, skip_cleanup=False, *args,
-                 **kwargs):
+                 password=None, server_port=None, skip_cleanup=False,
+                 url_base=None, extra_chromedriver_args=None, *args, **kwargs):
         """Initialize.
 
         @param extra_chrome_flags: Extra chrome flags to pass to chrome, if any.
@@ -45,6 +46,9 @@ class chromedriver(object):
         @param skip_cleanup: If True, leave the server and browser running
                              so that remote tests can run after this script
                              ends. Default is False.
+        @param url_base: Optional base url for chromedriver.
+        @param extra_chromedriver_args: List of extra arguments to forward to
+                                        the chromedriver binary, if any.
         """
         self._cleanup = not skip_cleanup
         assert os.geteuid() == 0, 'Need superuser privileges'
@@ -63,7 +67,9 @@ class chromedriver(object):
         # Start ChromeDriver server
         self._server = chromedriver_server(CHROMEDRIVER_EXE_PATH,
                                            port=server_port,
-                                           skip_cleanup=skip_cleanup)
+                                           skip_cleanup=skip_cleanup,
+                                           url_base=url_base,
+                                           extra_args=extra_chromedriver_args)
 
         # Open a new tab using Chrome remote debugging. ChromeDriver expects
         # a tab opened for remote to work. Tabs opened using Telemetry will be
@@ -123,7 +129,8 @@ class chromedriver_server(object):
     src/chrome/test/chromedriver/server/server.py
     """
 
-    def __init__(self, exe_path, port=None, skip_cleanup=False):
+    def __init__(self, exe_path, port=None, skip_cleanup=False,
+                 url_base=None, extra_args=None):
         """Starts the ChromeDriver server and waits for it to be ready.
 
         Args:
@@ -132,6 +139,9 @@ class chromedriver_server(object):
             skip_cleanup: If True, leave the server running so that remote
                           tests can run after this script ends. Default is
                           False.
+            url_base: Optional base url for chromedriver.
+            extra_args: List of extra arguments to forward to the chromedriver
+                        binary, if any.
         Raises:
             RuntimeError if ChromeDriver fails to start
         """
@@ -146,6 +156,14 @@ class chromedriver_server(object):
             port = utils.get_unused_port()
         chromedriver_args.append('--port=%d' % port)
 
+        self.url = 'http://localhost:%d' % port
+        if url_base:
+            chromedriver_args.append('--url-base=%s' % url_base)
+            self.url = urlparse.urljoin(self.url, url_base)
+
+        if extra_args:
+            chromedriver_args.extend(extra_args)
+
         # TODO(ihf): Remove references to X after M45.
         # Chromedriver will look for an X server running on the display
         # specified through the DISPLAY environment variable.
@@ -153,7 +171,6 @@ class chromedriver_server(object):
         os.environ['XAUTHORITY'] = X_AUTHORITY
 
         self.bg_job = utils.BgJob(chromedriver_args, stderr_level=logging.DEBUG)
-        self.url = 'http://localhost:%d' % port
         if self.bg_job is None:
             raise RuntimeError('ChromeDriver server cannot be started')
 
