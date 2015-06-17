@@ -7,6 +7,7 @@ import copy
 import logging
 import random
 import string
+import tempfile
 import time
 
 from autotest_lib.client.common_lib import error
@@ -104,6 +105,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
     STATION_PID_FILE_PATTERN = '/tmp/wpa-supplicant-test-%s.pid'
 
     MGMT_FRAME_SENDER_LOG_FILE = '/tmp/send_management_frame-test.log'
+
+    PROBE_RESPONSE_FOOTER_FILE = '/tmp/autotest-probe_response_footer'
 
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
@@ -818,6 +821,22 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                         (self.cmd_hostapd_cli, control_if, client_mac))
 
 
+    def _prep_probe_response_footer(self, footer):
+        """Write probe response footer temporarily to a local file and copy
+        over to test router.
+
+        @param footer string containing bytes for the probe response footer.
+        @raises AutoservRunError: If footer file copy fails.
+
+        """
+        with tempfile.TemporaryFile() as fp:
+            fp.write(footer)
+            try:
+                self.host.send_file(fp, self.PROBE_RESPONSE_FOOTER_FILE)
+            except error.AutoservRunError:
+                logging.error('failed to copy footer file to AP')
+                raise
+
     def send_management_frame_on_ap(self, frame_type, channel, instance=0):
         """Injects a management frame into an active hostapd session.
 
@@ -854,7 +873,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def send_management_frame(self, interface, frame_type, channel,
                               ssid_prefix=None, num_bss=None,
-                              frame_count=None, delay=None):
+                              frame_count=None, delay=None,
+                              dest_addr=None, probe_resp_footer=None):
         """
         Injects management frames on specify channel |frequency|.
 
@@ -868,6 +888,8 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @param num_bss int number of BSS.
         @param frame_count int number of frames to send.
         @param delay int milliseconds delay between frames.
+        @param dest_addr string destination address (DA) MAC address.
+        @param probe_resp_footer string footer for probe response.
 
         @return int PID of the newly created process.
 
@@ -882,6 +904,11 @@ class LinuxRouter(site_linux_system.LinuxSystem):
             command += ' -n %d' % (frame_count)
         if delay is not None:
             command += ' -d %d' % (delay)
+        if dest_addr is not None:
+            command += ' -a %s' % (dest_addr)
+        if probe_resp_footer is not None:
+            self._prep_probe_response_footer(footer=probe_resp_footer)
+            command += ' -f %s' % (self.PROBE_RESPONSE_FOOTER_FILE)
         command += ' > %s 2>&1 & echo $!' % (self.MGMT_FRAME_SENDER_LOG_FILE)
         pid = int(self.router.run(command).stdout)
         return pid

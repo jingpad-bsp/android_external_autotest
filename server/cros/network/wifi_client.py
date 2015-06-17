@@ -992,6 +992,17 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self.assert_disconnect_count(0)
 
 
+    def get_num_card_resets(self):
+        """Get card reset count."""
+        reset_msg = 'mwifiex_sdio_card_reset'
+        result = self.host.run('grep -c %s /var/log/messages' % reset_msg,
+                               ignore_status=True)
+        if result.exit_status == 1:
+            return 0
+        count = int(result.stdout.strip())
+        return count
+
+
     def release_wifi_if(self):
         """Release the control over the wifi interface back to normal operation.
 

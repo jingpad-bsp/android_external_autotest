@@ -6,7 +6,8 @@ class FrameSender(object):
     """Context manager for sending management frames."""
 
     def __init__(self, router, frame_type, channel, ssid_prefix=None,
-                 num_bss=None, frame_count=None, delay=None):
+                 num_bss=None, frame_count=None, delay=None, dest_addr=None,
+                 probe_resp_footer=None):
         """
         @param router: LinuxRouter object router to send frames from.
         @param frame_type: int management frame type.
@@ -16,6 +17,8 @@ class FrameSender(object):
         @param frame_count: int number of frames to send, frame_count of 0
                 implies infinite number of frames.
         @param delay: int delay in between frames in milliseconds.
+        @param dest_addr: MAC address of the destination address (DA).
+        @param probe_resp_footer: footer bytes for probe responses.
         """
         self._router = router
         self._channel = channel
@@ -24,6 +27,8 @@ class FrameSender(object):
         self._num_bss = num_bss
         self._frame_count = frame_count
         self._delay = delay
+        self._dest_addr = dest_addr
+        self._probe_resp_footer = probe_resp_footer
         self._interface = None
         self._pid = None
 
@@ -33,7 +38,8 @@ class FrameSender(object):
         self._pid = self._router.send_management_frame(self._interface,
                 self._frame_type, self._channel, ssid_prefix=self._ssid_prefix,
                 num_bss=self._num_bss, frame_count=self._frame_count,
-                delay=self._delay)
+                delay=self._delay, dest_addr=self._dest_addr,
+                probe_resp_footer=self._probe_resp_footer)
         return self
 
 
