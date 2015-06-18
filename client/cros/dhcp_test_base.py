@@ -319,7 +319,8 @@ class DhcpTestBase(test.test):
 
         expected_dns_servers = dhcp_options.get(dhcp_packet.OPTION_DNS_SERVERS)
         configured_dns_servers = dhcp_config.get(DHCPCD_KEY_NAMESERVERS)
-        if expected_dns_servers != configured_dns_servers:
+        if (expected_dns_servers is not None and
+            expected_dns_servers != configured_dns_servers):
             raise error.TestFail('Expected to be configured with DNS server '
                                  'list %s, but was configured with %s '
                                  'instead.' % (expected_dns_servers,
@@ -327,14 +328,16 @@ class DhcpTestBase(test.test):
 
         expected_domain_name = dhcp_options.get(dhcp_packet.OPTION_DOMAIN_NAME)
         configured_domain_name = dhcp_config.get(DHCPCD_KEY_DOMAIN_NAME)
-        if expected_domain_name != configured_domain_name:
+        if (expected_domain_name is not None and
+            expected_domain_name != configured_domain_name):
             raise error.TestFail('Expected to be configured with domain '
                                  'name %s, but got %s instead.' %
                                  (expected_domain_name, configured_domain_name))
 
         expected_host_name = dhcp_options.get(dhcp_packet.OPTION_HOST_NAME)
         configured_host_name = dhcp_config.get(DHCPCD_KEY_ACCEPTED_HOSTNAME)
-        if expected_host_name and expected_host_name != configured_host_name:
+        if (expected_host_name is not None and
+            expected_host_name != configured_host_name):
             raise error.TestFail('Expected to be configured with host '
                                  'name %s, but got %s instead.' %
                                  (expected_host_name, configured_host_name))
@@ -342,7 +345,8 @@ class DhcpTestBase(test.test):
         expected_search_list = dhcp_options.get(
                 dhcp_packet.OPTION_DNS_DOMAIN_SEARCH_LIST)
         configured_search_list = dhcp_config.get(DHCPCD_KEY_SEARCH_DOMAIN_LIST)
-        if expected_search_list != configured_search_list:
+        if (expected_search_list is not None and
+            expected_search_list != configured_search_list):
             raise error.TestFail('Expected to be configured with domain '
                                  'search list %s, but got %s instead.' %
                                  (expected_search_list, configured_search_list))
