@@ -64,7 +64,7 @@ class kernel_fs_Punybench(test.test):
         @param dir: directory where encrypted file system was stored
         @param mnt: mount point for encrypted file system
         """
-        utils.system_output('umount ' + dir)
+        utils.system_output('umount ' + mnt)
         utils.system_output('rm -R ' + dir)
         utils.system_output('rm -R ' + mnt)
 
