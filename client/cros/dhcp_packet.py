@@ -345,6 +345,7 @@ OPTION_VENDOR_ID = RawOption("vendor_id", 60)
 OPTION_CLIENT_ID = RawOption("client_id", 61)
 OPTION_TFTP_SERVER_NAME = RawOption("tftp_server_name", 66)
 OPTION_BOOTFILE_NAME = RawOption("bootfile_name", 67)
+OPTION_FULLY_QUALIFIED_DOMAIN_NAME = RawOption("fqdn", 81)
 OPTION_DNS_DOMAIN_SEARCH_LIST = DomainListOption("domain_search_list", 119)
 OPTION_CLASSLESS_STATIC_ROUTES = ClasslessStaticRoutesOption(
         "classless_static_routes", 121)
@@ -477,6 +478,7 @@ DHCP_PACKET_OPTIONS = [
         OPTION_CLIENT_ID,
         OPTION_TFTP_SERVER_NAME,
         OPTION_BOOTFILE_NAME,
+        OPTION_FULLY_QUALIFIED_DOMAIN_NAME,
         OPTION_DNS_DOMAIN_SEARCH_LIST,
         OPTION_CLASSLESS_STATIC_ROUTES,
         OPTION_WEB_PROXY_AUTO_DISCOVERY,
