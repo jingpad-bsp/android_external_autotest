@@ -27,6 +27,7 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
+from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
@@ -140,11 +141,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
-    _LIGHT_SENSOR_FILES = [ "in_illuminance0_input",
-                            "in_illuminance_input",
-                            "in_illuminance0_raw",
-                            "in_illuminance_raw",
-                            "illuminance0_input"]
+    _LIGHTSENSOR_FILES = [ "in_illuminance0_input",
+                           "in_illuminance_input",
+                           "in_illuminance0_raw",
+                           "in_illuminance_raw",
+                           "illuminance0_input"]
     _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     _LABEL_FUNCTIONS = []
     _DETECTABLE_LABELS = []
@@ -2718,15 +2719,26 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @return: A list of some combination of 'touchscreen' and 'touchpad',
             depending on what is present on the device.
+
         """
         labels = []
-        input_cmd = '/opt/google/input/inputcontrol --names -t %s'
-        for elt in ['touchpad', 'touchscreen']:
-            if self.run(input_cmd % elt).stdout:
-                labels.append(elt)
+        looking_for = ['touchpad', 'touchscreen']
+        player = input_playback.InputPlayback()
+        input_events = self.run('ls /dev/input/event*').stdout.strip().split()
+        filename = '/tmp/touch_labels'
+        for event in input_events:
+            self.run('evtest %s > %s' % (event, filename), timeout=1,
+                     ignore_timeout=True)
+            properties = self.run('cat %s' % filename).stdout
+            input_type = player._determine_input_type(properties)
+            if input_type in looking_for:
+                labels.append(input_type)
+                looking_for.remove(input_type)
+            if len(looking_for) == 0:
+                break
+        self.run('rm %s' % filename)
+
         return labels
-
-
 
     def get_labels(self):
         """Return a list of labels for this given host.

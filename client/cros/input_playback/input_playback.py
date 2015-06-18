@@ -118,13 +118,12 @@ class InputPlayback(object):
         return props
 
 
-    def _determine_input_type(self, node):
-        """Find node's list of properties and return input type (if any).
+    def _determine_input_type(self, props):
+        """Find input type (if any) from a string of properties.
 
         @return: string of type, or None
 
         """
-        props = self._find_device_properties(node)
         if props.find('REL_X') >= 0 and props.find('REL_Y') >= 0:
             if (props.find('ABS_MT_POSITION_X') >= 0 and
                 props.find('ABS_MT_POSITION_Y') >= 0):
@@ -166,7 +165,8 @@ class InputPlayback(object):
 
         input_events = self._get_input_events()
         for event in input_events:
-            input_type = self._determine_input_type(event)
+            properties = self._find_device_properties(event)
+            input_type = self._determine_input_type(properties)
             if input_type:
                 class_folder = event.replace('dev', 'sys/class')
                 name_file = os.path.join(class_folder, 'device', 'name')
