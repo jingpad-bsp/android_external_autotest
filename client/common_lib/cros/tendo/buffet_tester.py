@@ -250,7 +250,7 @@ class BuffetTester(object):
 
     def close(self):
         """Cleanup to be used when done with this instance."""
-        buffet_config.BuffetConfig.naive_restart()
+        buffet_config.naive_restart()
         self._gcd.close()
         if self._temp_dir_path is not None:
             shutil.rmtree(self._temp_dir_path, True)

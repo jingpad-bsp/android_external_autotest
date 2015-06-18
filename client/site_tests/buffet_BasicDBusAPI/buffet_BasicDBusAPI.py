@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import dbus
+import inspect
 import json
 import logging
 import sets
@@ -10,13 +11,22 @@ import sets
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
-from autotest_lib.client.cros import dbus_util
+from autotest_lib.client.common_lib.cros.tendo import buffet_dbus_helper
+from autotest_lib.client.common_lib.cros.tendo import privet_helper
+from autotest_lib.client.cros.networking import wifi_proxy
 
-BUFFET_SERVICE_NAME = 'org.chromium.Buffet'
+def check(expected, value):
+    """Check that |value| == |expected|.
 
-BUFFET_MANAGER_INTERFACE = 'org.chromium.Buffet.Manager'
-BUFFET_MANAGER_OBJECT_PATH = '/org/chromium/Buffet/Manager'
-DBUS_PROPERTY_INTERFACE = 'org.freedesktop.DBus.Properties'
+    @param expected: expected value
+    @param value: actual value we found
+
+    """
+    if value != expected:
+        frame = inspect.getouterframes(inspect.currentframe())[1]
+        raise error.TestFail('%s:%s: "%s" != "%s"' % (frame[1], frame[2],
+                                                      expected, value))
+
 
 class buffet_BasicDBusAPI(test.test):
     """Check that basic buffet daemon DBus APIs are functional."""
@@ -24,47 +34,30 @@ class buffet_BasicDBusAPI(test.test):
 
     def run_once(self):
         """Test entry point."""
-        buffet_config.BuffetConfig().restart_with_config()
-        bus = dbus.SystemBus()
-        buffet_object = bus.get_object(BUFFET_SERVICE_NAME,
-                                       BUFFET_MANAGER_OBJECT_PATH)
-        manager_proxy = dbus.Interface(
-                buffet_object,
-                dbus_interface=BUFFET_MANAGER_INTERFACE)
-        properties = dbus.Interface(buffet_object,
-                                    DBUS_PROPERTY_INTERFACE)
+        buffet_config.BuffetConfig(options={
+            'wifi_bootstrap_mode': 'off',
+            'gcd_bootstrap_mode': 'off',
+        }).restart_with_config()
+        buffet = buffet_dbus_helper.BuffetDBusHelper()
 
+        check('', buffet.device_id)
+        check('Chromium', buffet.oem_name)
+        check('Brillo', buffet.model_name)
+        check('AATST', buffet.model_id)
+        check('', buffet.description)
+        check('', buffet.location)
 
-        #pylint: disable=C0111
-        def assert_property_equal(expected, name):
-            value = dbus_util.dbus2primitive(
-                    properties.Get(dbus.String(BUFFET_MANAGER_INTERFACE),
-                                   dbus.String(name)))
-            if expected != value:
-                raise error.TestFail('Expected=%s, actual=%s' % (expected,
-                                                                 value))
+        buffet.manager.UpdateDeviceInfo(dbus.String('A'),
+                                        dbus.String('B'),
+                                        dbus.String('C'))
 
-
-        assert_property_equal('', 'DeviceId')
-        assert_property_equal('Chromium', 'OemName')
-        assert_property_equal('Brillo', 'ModelName')
-        assert_property_equal('AATST', 'ModelId')
-        assert_property_equal('Developer device', 'Name')
-        assert_property_equal('', 'Description')
-        assert_property_equal('', 'Location')
-
-        dbus_util.dbus2primitive(
-                manager_proxy.UpdateDeviceInfo(dbus.String('A'),
-                                               dbus.String('B'),
-                                               dbus.String('C')))
-
-        assert_property_equal('A', 'Name')
-        assert_property_equal('B', 'Description')
-        assert_property_equal('C', 'Location')
+        check('A', buffet.name)
+        check('B', buffet.description)
+        check('C', buffet.location)
 
         # The test method better work.
         test_message = 'Hello world!'
-        echoed_message = manager_proxy.TestMethod(test_message)
+        echoed_message = buffet.manager.TestMethod(test_message)
         if test_message != echoed_message:
             raise error.TestFail('Expected Manager.TestMethod to return %s '
                                  'but got %s instead.' % (test_message,
@@ -83,7 +76,7 @@ class buffet_BasicDBusAPI(test.test):
 
         if expected_version is None:
             raise error.TestError('Failed to read version from lsb-release')
-        raw_state = manager_proxy.GetState()
+        raw_state = buffet.manager.GetState()
         parsed_state = json.loads(raw_state)
         logging.debug('%r', parsed_state)
         actual_version = parsed_state['base']['firmwareVersion']
@@ -91,12 +84,7 @@ class buffet_BasicDBusAPI(test.test):
             raise error.TestFail('Expected firmwareVersion "%s", but got "%s"' %
                                  (expected_version, actual_version))
 
-        state_property = dbus_util.dbus2primitive(
-                properties.Get(dbus.String(BUFFET_MANAGER_INTERFACE),
-                               dbus.String('State')))
-        if state_property != raw_state:
-            raise error.TestFail('Expected state property "%s", but got "%s"' %
-                                 (raw_state, state_property))
+        check(raw_state, buffet.state)
         expected_base_keys = sets.Set(
               ['firmwareVersion', 'localDiscoveryEnabled',
                'localAnonymousAccessMaxRole', 'localPairingEnabled'])
@@ -104,3 +92,46 @@ class buffet_BasicDBusAPI(test.test):
               parsed_state['base'].keys())
         if missing_base_keys:
             raise error.TestFail('Missing base keys "%s"' %  missing_base_keys)
+
+        # Privet API
+        shill = wifi_proxy.WifiProxy.get_proxy()
+        shill.remove_all_wifi_entries()
+
+        check('disabled', buffet.wi_fi_bootstrap_state)
+        check({}, buffet.pairing_info)
+
+        # But we should still be able to pair.
+        helper = privet_helper.PrivetHelper()
+        data = {'pairing': 'pinCode', 'crypto': 'none'}
+        pairing = helper.send_privet_request(privet_helper.URL_PAIRING_START,
+                                             request_data=data)
+        # And now we should be able to see a pin code in our pairing status.
+        pairing_info = buffet.pairing_info
+        logging.debug(pairing_info)
+        check(pairing_info.get('sessionId', ''), pairing['sessionId'])
+
+        if not 'code' in pairing_info:
+            raise error.TestFail('No code in pairing info (%r)' % pairing_info)
+        # And if we start a new pairing session, the session ID should change.
+        old_session_id = pairing_info['sessionId']
+        pairing = helper.send_privet_request(privet_helper.URL_PAIRING_START,
+                                             request_data=data)
+        if pairing['sessionId'] == old_session_id:
+            raise error.TestFail('Session IDs should change on each new '
+                                 'pairing attempt.')
+        # And if we start and complete a pairing session, we should have no
+        # pairing information exposed.
+        helper.privet_auth()
+        check({}, buffet.pairing_info)
+
+        buffet_config.BuffetConfig(options={
+            'wifi_bootstrapping_mode': 'automatic',
+            'device_whitelist': 'None',
+        }).restart_with_config()
+
+        buffet = buffet_dbus_helper.BuffetDBusHelper()
+        check('waiting', buffet.wi_fi_bootstrap_state)
+
+    def cleanup(self):
+        """Clean up processes altered during the test."""
+        buffet_config.naive_restart()
