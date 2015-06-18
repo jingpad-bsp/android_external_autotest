@@ -185,16 +185,6 @@ class kernel_fs_Punybench(test.test):
         self.write_perf_keyval({prefix + 'threadtree_ops': p})
 
 
-    def _uread_args(self):
-        """Set custom args for _uread tests
-        """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 1
-        return ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
-
-
     def _uread(self, prefix, file):
         """Read a large file.
 
@@ -216,16 +206,6 @@ class kernel_fs_Punybench(test.test):
         self.write_perf_keyval({prefix + 'uread_MiB_s': mib_s})
 
 
-    def _ureadrand_args(self):
-        """Set custom args for _ureadrand
-        """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 100000
-        return ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
-
-
     def _ureadrand(self, prefix, file):
         """Read randomly a large file
 
@@ -242,16 +222,6 @@ size=8589934592 n=10000 4.9 4. timer avg= 4.2 stdv= 4.5 8.8 MiB/s 2262 IOPs/sec
         r2 = re.search(re_float, r1.group(0))
         iops = r2.group(0)
         self.write_perf_keyval({prefix + 'ureadrand_iops': iops})
-
-
-    def _uwrite_args(self):
-        """Custom args for _uwrite
-        """
-        size = 8 * 1024 * 1024 * 1024
-        loops = 4
-        iterations = 1
-        return ('-f %s -z %d -i %d -l %d -b12' %
-               (file, size, iterations, loops))
 
 
     def _uwrite(self, prefix, file):
