@@ -3,20 +3,22 @@
 # found in the LICENSE file.
 
 AUTHOR = 'avakulenko, wiley, keybuk'
-NAME = 'privetd_PrivetInfo'
+NAME = 'buffet_WebServerSanity'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
 ATTRIBUTES = "suite:tendo_experimental"
 SUITE='tendo_experimental'
 
 DOC = """
-This test verifies that the privetd responds to /privet/info request and returns
-the expected JSON response object.
+This test verifies that the web server running on the device responds to simple
+HTTP requests at http://<ip>:8080/privet/ping URL and returns the expected
+payload. This verifies the web server operation as well as the firewall to
+make sure the TCP port is open and accessible from outside.
 
 """
 
 def run(machine):
-    job.run_test('privetd_PrivetInfo',
+    job.run_test('buffet_WebServerSanity',
                  host=hosts.create_host(machine))
 
 
