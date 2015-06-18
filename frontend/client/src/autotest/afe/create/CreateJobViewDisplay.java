@@ -127,6 +127,23 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         "?",
         "Example: \"device_addrs=00:1F:20:33:6A:1E, arg2=value2, arg3=value3\". " +
         "Separate multiple args with commas.");
+    private TextBoxImpl firmwareRWBuild = new TextBoxImpl();
+    private ToolTip firmwareRWBuildToolTip = new ToolTip(
+        "?",
+        "Name of the firmware build to update RW firmware of the DUT. Example: " +
+        "\"x86-alex-firmware/R41-6588.9.0\". If no firmware build is specified, " +
+        "the RW firmware of the DUT will not be updated.");
+    private TextBoxImpl firmwareROBuild = new TextBoxImpl();
+    private ToolTip firmwareROBuildToolTip = new ToolTip(
+        "?",
+        "Name of the firmware build to update RO firmware of the DUT. Example: " +
+        "\"x86-alex-firmware/R41-6588.9.0\". If no firmware RO build is specified, " +
+        "the RO firmware of the DUT will not be updated.");
+    private ExtendedListBox testSourceBuildList = new ExtendedListBox();
+    private ToolTip testSourceBuildListToolTip = new ToolTip(
+        "?",
+        "The image/build from which the tests will be fetched and ran from. It can " +
+        "be one of the specified Build Image, Firmware RW Build or the Firmware RO Build.");
     private TestSelectorDisplay testSelector = new TestSelectorDisplay();
     private CheckBoxPanelDisplay profilersPanel = new CheckBoxPanelDisplay(CHECKBOX_PANEL_COLUMNS);
     private CheckBoxImpl runNonProfiledIteration =
@@ -143,6 +160,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private Button resetButton = new Button("Reset");
     private Label viewLink = new Label("");
     private DisclosurePanel advancedOptionsPanel = new DisclosurePanel("");
+    private DisclosurePanel firmwareBuildOptionsPanel = new DisclosurePanel("");
 
     public void initialize(HTMLPanel panel) {
         jobName.addStyleName("jobname-image-boundedwidth");
@@ -290,16 +308,48 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
           }
 
         }
-
         advancedOptionsLayout.setWidth("100%");
         advancedOptionsPanel.addStyleName("panel-boundedwidth");
         advancedOptionsPanel.add(advancedOptionsLayout);
+
+        // Setup the Firmware Build options panel
+        firmwareBuildOptionsPanel.getHeaderTextAccessor().setText("Firmware Build Options (optional)");
+        FlexTable firmwareBuildOptionsLayout = new FlexTable();
+
+        firmwareBuildOptionsLayout.getFlexCellFormatter().setColSpan(0, 0, 2);
+        firmwareBuildOptionsLayout.setWidget(0, 0, new Label("Image URL/Build must be specified for " +
+            "updating the firmware of the test device with given firmware build. A servo may be " +
+            "required to be attached to the test device in order to have firmware updated."));
+
+        Panel firmwareRWBuildPanel = new HorizontalPanel();
+        firmwareRWBuild.addStyleName("jobname-image-boundedwidth");
+        firmwareRWBuildPanel.add(firmwareRWBuild);
+        firmwareRWBuildPanel.add(firmwareRWBuildToolTip);
+        firmwareBuildOptionsLayout.setWidget(1, 0, new Label("Firmware RW build:"));
+        firmwareBuildOptionsLayout.setWidget(1, 1, firmwareRWBuildPanel);
+
+        Panel firmwareROBuildPanel = new HorizontalPanel();
+        firmwareROBuild.addStyleName("jobname-image-boundedwidth");
+        firmwareROBuildPanel.add(firmwareROBuild);
+        firmwareROBuildPanel.add(firmwareROBuildToolTip);
+        firmwareBuildOptionsLayout.setWidget(2, 0, new Label("Firmware RO build:"));
+        firmwareBuildOptionsLayout.setWidget(2, 1, firmwareROBuildPanel);
+
+        firmwareBuildOptionsLayout.setWidth("100%");
+        firmwareBuildOptionsPanel.addStyleName("panel-boundedwidth");
+        firmwareBuildOptionsPanel.add(firmwareBuildOptionsLayout);
+        firmwareRWBuild.setEnabled(false);
+        firmwareROBuild.setEnabled(false);
+
+        testSourceBuildList.getElement().getStyle().setProperty("minWidth", "15em");
 
         // Add the remaining widgets to the main panel
         panel.add(jobName, "create_job_name");
         panel.add(jobNameToolTip, "create_job_name");
         panel.add(image_url, "create_image_url");
         panel.add(image_urlToolTip, "create_image_url");
+        panel.add(testSourceBuildList, "create_test_source_build");
+        panel.add(testSourceBuildListToolTip, "create_test_source_build");
         panel.add(fetchImageTestsButton, "fetch_image_tests");
         panel.add(testSelector, "create_tests");
         panel.add(controlFilePanel, "create_edit_control");
@@ -310,6 +360,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(droneSet, "create_drone_set");
 
         panel.add(advancedOptionsPanel, "create_advanced_options");
+        panel.add(firmwareBuildOptionsPanel, "create_firmware_build_options");
     }
 
     public CheckBoxPanel.Display getCheckBoxPanelDisplay() {
@@ -450,5 +501,17 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public HasClickHandlers getFetchImageTestsButton() {
         return fetchImageTestsButton;
+    }
+
+    public ITextBox getFirmwareRWBuild() {
+      return firmwareRWBuild;
+    }
+
+    public ITextBox getFirmwareROBuild() {
+      return firmwareROBuild;
+    }
+
+    public ExtendedListBox getTestSourceBuildList() {
+      return testSourceBuildList;
     }
 }

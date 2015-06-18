@@ -94,12 +94,18 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public HasClickHandlers getCreateTemplateJobButton();
         public HasClickHandlers getResetButton();
         public HasClickHandlers getFetchImageTestsButton();
+        public ITextBox getFirmwareRWBuild();
+        public ITextBox getFirmwareROBuild();
+        public ExtendedListBox getTestSourceBuildList();
     }
 
     private static final String EDIT_CONTROL_STRING = "Edit control file";
     private static final String UNEDIT_CONTROL_STRING= "Revert changes";
     private static final String VIEW_CONTROL_STRING = "View control file";
     private static final String HIDE_CONTROL_STRING = "Hide control file";
+    private static final String FIRMWARE_RW_BUILD = "firmware_rw_build";
+    private static final String FIRMWARE_RO_BUILD = "firmware_ro_build";
+    private static final String TEST_SOURCE_BUILD = "test_source_build";
 
     public interface JobCreateListener {
         public void onJobCreated(int jobId);
@@ -167,8 +173,37 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
         display.getJobName().setText(jobObject.get("name").isString().stringValue());
 
+        ArrayList<String> builds = new ArrayList<String>();
         if (jobObject.containsKey("image")) {
-            display.getImageUrl().setText(jobObject.get("image").isString().stringValue());
+            String image = jobObject.get("image").isString().stringValue();
+            builds.add(image);
+            display.getImageUrl().setText(image);
+            display.getFirmwareRWBuild().setEnabled(true);
+            display.getFirmwareROBuild().setEnabled(true);
+            display.getTestSourceBuildList().setEnabled(true);
+        }
+
+        if (jobObject.containsKey(FIRMWARE_RW_BUILD)) {
+            String firmwareRWBuild = jobObject.get(FIRMWARE_RW_BUILD).isString().stringValue();
+            builds.add(firmwareRWBuild);
+            display.getFirmwareRWBuild().setText(firmwareRWBuild);
+        }
+
+        if (jobObject.containsKey(FIRMWARE_RO_BUILD)) {
+            String firmwareROBuild = jobObject.get(FIRMWARE_RO_BUILD).isString().stringValue();
+            builds.add(firmwareROBuild);
+            display.getFirmwareROBuild().setText(firmwareROBuild);
+        }
+
+        for (String build : builds) {
+            display.getTestSourceBuildList().addItem(build);
+        }
+
+        if (jobObject.containsKey(TEST_SOURCE_BUILD)) {
+            String testSourceBuild = jobObject.get(TEST_SOURCE_BUILD).isString().stringValue();
+            if (builds.indexOf(testSourceBuild) >= 0) {
+                display.getTestSourceBuildList().setSelectedIndex(builds.indexOf(testSourceBuild));
+            }
         }
 
         Double priorityValue = jobObject.get("priority").isNumber().getValue();
@@ -431,6 +466,47 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         return maxRetries;
     }
 
+    protected void handleBuildChange() {
+        ChangeHandler handler = new ChangeHandler() {
+            @Override
+            public void onChange(ChangeEvent event) {
+                String image = display.getImageUrl().getText();
+                if (image.isEmpty()) {
+                    display.getFirmwareRWBuild().setText("");
+                    display.getFirmwareROBuild().setText("");
+                    display.getTestSourceBuildList().clear();
+                    display.getFirmwareRWBuild().setEnabled(false);
+                    display.getFirmwareROBuild().setEnabled(false);
+                    display.getTestSourceBuildList().setEnabled(false);
+                }
+                else {
+                    display.getFirmwareRWBuild().setEnabled(true);
+                    display.getFirmwareROBuild().setEnabled(true);
+                    display.getTestSourceBuildList().setEnabled(true);
+                    ArrayList<String> builds = new ArrayList<String>();
+                    builds.add(image);
+                    if (!display.getFirmwareRWBuild().getText().isEmpty())
+                        builds.add(display.getFirmwareRWBuild().getText());
+                    if (!display.getFirmwareROBuild().getText().isEmpty())
+                        builds.add(display.getFirmwareROBuild().getText());
+                    String currentTestSourceBuild = display.getTestSourceBuildList().getSelectedValue();
+                    int testSourceBuildIndex = builds.indexOf(currentTestSourceBuild);
+                    display.getTestSourceBuildList().clear();
+                    for (String build : builds) {
+                        display.getTestSourceBuildList().addItem(build);
+                    }
+                    if (testSourceBuildIndex >= 0) {
+                        display.getTestSourceBuildList().setSelectedIndex(testSourceBuildIndex);
+                    }
+                }
+            }
+        };
+
+        display.getImageUrl().addChangeHandler(handler);
+        display.getFirmwareRWBuild().addChangeHandler(handler);
+        display.getFirmwareROBuild().addChangeHandler(handler);
+    }
+
     protected void setInputsEnabled() {
         testSelector.setEnabled(true);
         profilersPanel.setEnabled(true);
@@ -585,6 +661,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 fetchImageTests();
             }
         });
+
+        handleBuildChange();
 
         reset();
 
@@ -741,6 +819,29 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                         NotifyManager.getInstance().showError(error);
                         return;
                     }
+                }
+
+                String firmwareRWBuild = display.getFirmwareRWBuild().getText();
+                String firmwareROBuild = display.getFirmwareROBuild().getText();
+                String testSourceBuild = display.getTestSourceBuildList().getSelectedValue();
+                if (!firmwareRWBuild.isEmpty() || !firmwareROBuild.isEmpty()) {
+                    String error = "";
+                    if (testSourceBuild.isEmpty())
+                        error = "You must specify which build should be used to retrieve test code.";
+
+                    // TODO(crbug.com/502638): Enable create test job with updating firmware.
+                    if (!display.getHostless().getValue())
+                        error = "Only suite job supports updating both ChromeOS build and firmware build.";
+                    if (error != "") {
+                        display.getSubmitJobButton().setEnabled(true);
+                        NotifyManager.getInstance().showError(error);
+                        return;
+                    }
+                    if (!firmwareRWBuild.isEmpty())
+                        args.put(FIRMWARE_RW_BUILD, new JSONString(firmwareRWBuild));
+                    if (!firmwareROBuild.isEmpty())
+                        args.put(FIRMWARE_RO_BUILD, new JSONString(firmwareROBuild));
+                    args.put(TEST_SOURCE_BUILD, new JSONString(testSourceBuild));
                 }
 
                 rpcProxy.rpcCall("create_job_page_handler", args, new JsonRpcCallback() {

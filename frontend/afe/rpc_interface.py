@@ -45,6 +45,7 @@ from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.frontend.tko import rpc_interface as tko_rpc_interface
 from autotest_lib.server import frontend
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import status_history
 
@@ -779,7 +780,9 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 
 
 def create_job_page_handler(name, priority, control_file, control_type,
-                            image=None, hostless=False, **kwargs):
+                            image=None, hostless=False, firmware_rw_build=None,
+                            firmware_ro_build=None, test_source_build=None,
+                            **kwargs):
     """\
     Create and enqueue a job.
 
@@ -787,6 +790,13 @@ def create_job_page_handler(name, priority, control_file, control_type,
     @param priority Integer priority of this job.  Higher is more important.
     @param control_file String contents of the control file.
     @param control_type Type of control file, Client or Server.
+    @param image: ChromeOS build to be installed in the dut. Default to None.
+    @param firmware_rw_build: Firmware build to update RW firmware. Default to
+                              None, i.e., RW firmware will not be updated.
+    @param firmware_ro_build: Firmware build to update RO firmware. Default to
+                              None, i.e., RO firmware will not be updated.
+    @param test_source_build: Build to be used to retrieve test code. Default
+                              to None.
     @param kwargs extra args that will be required by create_suite_job or
                   create_job.
 
@@ -798,9 +808,15 @@ def create_job_page_handler(name, priority, control_file, control_type,
                 'control_file' : "Control file cannot be empty"})
 
     if image and hostless:
+        builds = {}
+        builds[provision.CROS_VERSION_PREFIX] = image
+        if firmware_rw_build:
+            builds[provision.FW_VERSION_PREFIX] = firmware_rw_build
+        if firmware_ro_build:
+            builds[provision.FW_RO_VERSION_PREFIX] = firmware_ro_build
         return site_rpc_interface.create_suite_job(
                 name=name, control_file=control_file, priority=priority,
-                build=image, **kwargs)
+                builds=builds, test_source_build=test_source_build, **kwargs)
     return create_job(name, priority, control_file, control_type, image=image,
                       hostless=hostless, **kwargs)
 
@@ -885,6 +901,8 @@ def create_job(name, priority, control_file, control_type,
     known_parameterized_job.parameterizedjobparameter_set.create(
             test_parameter=image_parameter, parameter_value=image,
             parameter_type='string')
+
+    # TODO(crbug.com/502638): save firmware build etc to parameterized_job.
 
     # By passing a parameterized_job to create_job_common the job entry in
     # the afe_jobs table will have the field parameterized_job_id set.

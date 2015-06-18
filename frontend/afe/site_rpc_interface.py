@@ -212,7 +212,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     max_runtime_mins = max_runtime_mins or timeout * 60
 
     if not board:
-        board = utils.ParseBuildName(build)[0]
+        board = utils.ParseBuildName(builds[provision.CROS_VERSION_PREFIX])[0]
 
     # TODO(dshi): crbug.com/496782 Remove argument build and its reference after
     # R45 falls out of stable channel.
