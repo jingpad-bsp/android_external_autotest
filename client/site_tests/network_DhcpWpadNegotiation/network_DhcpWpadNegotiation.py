@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
@@ -79,7 +77,5 @@ class network_DhcpWpadNegotiation(dhcp_test_base.DhcpTestBase):
             raise error.TestFail("Test server didn't get all the messages it "
                                  "was told to expect during negotiation.")
 
-        # Wait for configuration to propagate over dbus to shill.
-        # TODO(wiley) Make this event based.  This is pretty sloppy.
-        time.sleep(0.1)
+        self.wait_for_dhcp_propagation()
         self.check_wpad_config(proxy_auto_config)

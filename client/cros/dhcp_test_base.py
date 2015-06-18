@@ -270,11 +270,15 @@ class DhcpTestBase(test.test):
         if disable_check:
             logging.info('Skipping check of negotiated DHCP lease parameters.')
         else:
-            # Wait for configuration to propagate over dbus to shill.
-            # TODO(wiley) Make this event based.  This is pretty sloppy.
-            time.sleep(0.1)
+            self.wait_for_dhcp_propagation()
             self.check_dhcp_config(dhcp_options)
 
+    def wait_for_dhcp_propagation(self):
+        """
+        Wait for configuration to propagate over dbus to shill.
+        TODO(wiley) Make this event based.  This is pretty sloppy.
+        """
+        time.sleep(0.1)
 
     def check_dhcp_config(self, dhcp_options):
         """
