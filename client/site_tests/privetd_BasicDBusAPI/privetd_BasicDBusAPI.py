@@ -7,7 +7,7 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
-from autotest_lib.client.common_lib.cros.tendo import privetd_helper
+from autotest_lib.client.common_lib.cros.tendo import privet_helper
 from autotest_lib.client.cros.networking import wifi_proxy
 from autotest_lib.client.cros.tendo import privetd_dbus_helper
 
@@ -35,9 +35,9 @@ class privetd_BasicDBusAPI(test.test):
     def run_once(self):
         """Test entry point."""
         # Initially, disable bootstapping and remove WiFi credentials.
-        config = privetd_helper.PrivetdConfig(
-                wifi_bootstrap_mode=privetd_helper.BOOTSTRAP_CONFIG_DISABLED,
-                gcd_bootstrap_mode=privetd_helper.BOOTSTRAP_CONFIG_DISABLED,
+        config = privet_helper.PrivetdConfig(
+                wifi_bootstrap_mode=privet_helper.BOOTSTRAP_CONFIG_DISABLED,
+                gcd_bootstrap_mode=privet_helper.BOOTSTRAP_CONFIG_DISABLED,
                 log_verbosity=3,
                 clean_state=True,
                 disable_pairing_security=True)
@@ -47,13 +47,13 @@ class privetd_BasicDBusAPI(test.test):
 
         check(privetd.manager.Ping(), 'Hello world!', 'ping response')
         check(privetd.wifi_bootstrap_status,
-              privetd_helper.WIFI_BOOTSTRAP_STATE_DISABLED,
+              privet_helper.WIFI_BOOTSTRAP_STATE_DISABLED,
               'wifi bootstrap status')
         check(privetd.pairing_info, {}, 'pairing info')
         # But we should still be able to pair.
-        helper = privetd_helper.PrivetdHelper()
+        helper = privet_helper.PrivetdHelper()
         data = {'pairing': 'pinCode', 'crypto': 'none'}
-        pairing = helper.send_privet_request(privetd_helper.URL_PAIRING_START,
+        pairing = helper.send_privet_request(privet_helper.URL_PAIRING_START,
                                              request_data=data)
         # And now we should be able to see a pin code in our pairing status.
         pairing_info = privetd.pairing_info
@@ -65,7 +65,7 @@ class privetd_BasicDBusAPI(test.test):
             raise error.TestFail('No code in pairing info (%r)' % pairing_info)
         # And if we start a new pairing session, the session ID should change.
         old_session_id = pairing_info[PAIRING_SESSION_ID_KEY]
-        pairing = helper.send_privet_request(privetd_helper.URL_PAIRING_START,
+        pairing = helper.send_privet_request(privet_helper.URL_PAIRING_START,
                                              request_data=data)
         if pairing[PAIRING_SESSION_ID_KEY] == old_session_id:
             raise error.TestFail('Session IDs should change on each new '
@@ -88,16 +88,16 @@ class privetd_BasicDBusAPI(test.test):
         if not interfaces:
             raise error.TestError('Cannot find appropriate WiFi interface to '
                                   'whitelist.')
-        config.wifi_bootstrap_mode = privetd_helper.BOOTSTRAP_CONFIG_AUTOMATIC
+        config.wifi_bootstrap_mode = privet_helper.BOOTSTRAP_CONFIG_AUTOMATIC
         config.device_whitelist = [interface.if_name
                                    for interface in interfaces]
         privetd = privetd_dbus_helper.make_dbus_helper(config)
         check(privetd.wifi_bootstrap_status,
-              privetd_helper.WIFI_BOOTSTRAP_STATE_WAITING,
+              privet_helper.WIFI_BOOTSTRAP_STATE_WAITING,
               'wifi bootstrap status')
 
 
     def cleanup(self):
         """Clean up processes altered during the test."""
-        privetd_helper.PrivetdConfig.naive_restart()
+        privet_helper.PrivetdConfig.naive_restart()
 
