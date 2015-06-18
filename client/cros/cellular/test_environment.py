@@ -279,7 +279,8 @@ class CellularTestEnvironment(object):
 
         """
         if self._backchannel is None:
-            raise error.TestError('Backchannel was not instantiated.')
+            return
+
         if not self._backchannel.is_using_ethernet():
             raise error.TestError('An ethernet connection is required between '
                                   'the test server and the device under test.')
