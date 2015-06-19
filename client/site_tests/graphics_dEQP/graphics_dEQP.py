@@ -28,12 +28,13 @@ class graphics_dEQP(test.test):
     _width = 256  # Use smallest width for which all tests run/pass.
     _height = 256  # Use smallest height for which all tests run/pass.
     _timeout = 70  # Larger than twice the dEQP watchdog timeout at 30s.
+    _test_names = None
 
     DEQP_BASEDIR = '/usr/local/deqp'
     DEQP_MODULES = {
-        'dEQP-EGL':    'egl',
-        'dEQP-GLES2':  'gles2',
-        'dEQP-GLES3':  'gles3',
+        'dEQP-EGL': 'egl',
+        'dEQP-GLES2': 'gles2',
+        'dEQP-GLES3': 'gles3',
         'dEQP-GLES31': 'gles31'
     }
 
@@ -47,7 +48,7 @@ class graphics_dEQP(test.test):
         if self._services:
             self._services.restore_services()
 
-    def _parse_test_results(self, result_filename, test_results={}):
+    def _parse_test_results(self, result_filename, test_results=None):
         """Handles result files with one or more test results.
 
         @param result_filename: log file to parse.
@@ -59,6 +60,9 @@ class graphics_dEQP(test.test):
         xml_complete = False
         xml_bad = False
         result = 'ParseTestResultFail'
+
+        if test_results is None:
+            test_results = {}
 
         if not os.path.isfile(result_filename):
             return test_results
@@ -120,7 +124,7 @@ class graphics_dEQP(test.test):
         subset_paths = glob.glob(os.path.join(expectations_dir, subset_spec))
         for subset_file in subset_paths:
             # Filter against hasty failures only in hasty mode.
-            if self._hasty or not '.hasty.bz2' in subset_file:
+            if self._hasty or '.hasty.bz2' not in subset_file:
                 not_passing_cases.extend(
                     bz2.BZ2File(subset_file).read().splitlines())
 
@@ -153,8 +157,8 @@ class graphics_dEQP(test.test):
         logging.info('Bootstrapping test cases matching "%s".', match)
         for case in caselist:
             if case.startswith(match):
-                test = case.split('TEST: ')[1]
-                test_cases.append(test)
+                case = case.split('TEST: ')[1]
+                test_cases.append(case)
 
         test_cases = list(set(test_cases) - set(not_passing_cases))
         if not test_cases:
@@ -248,7 +252,7 @@ class graphics_dEQP(test.test):
                 result = 'TestTimeout'
             except error.CmdError:
                 result = 'CommandFailed'
-            except:
+            except Exception:
                 result = 'UnexpectedError'
 
             logging.info('Result: %s', result)
@@ -287,7 +291,8 @@ class graphics_dEQP(test.test):
                        '--deqp-visibility=hidden '
                        '--deqp-watchdog=enable '
                        '--deqp-surface-width=%d '
-                       '--deqp-surface-height=%d ' % (executable, width, height))
+                       '--deqp-surface-height=%d ' % (executable, width,
+                                                      height))
 
             log_file = os.path.join(tempfile.gettempdir(),
                                     '%s_hasty_%d.log' % (self._filter, batch))
@@ -305,13 +310,13 @@ class graphics_dEQP(test.test):
                           stdin=batch_cases,
                           stdout_tee=utils.TEE_TO_LOGS,
                           stderr_tee=utils.TEE_TO_LOGS)
-            except:
+            except Exception:
                 pass
             results = self._parse_test_results(log_file, results)
             logging.info(results)
         return results
 
-    def run_once(self, opts=[]):
+    def run_once(self, opts=None):
         options = dict(filter='',
                        test_names='',  # e.g., dEQP-GLES3.info.version,
                                        # dEQP-GLES2.functional,
@@ -321,6 +326,8 @@ class graphics_dEQP(test.test):
                        hasty='False',
                        shard=1,  # TODO(ihf): Support sharding for bvt-cq.
                        shards=1)
+        if opts is None:
+            opts = []
         options.update(utils.args_to_dict(opts))
         logging.info('Test Options: %s', options)
 
@@ -343,7 +350,7 @@ class graphics_dEQP(test.test):
             test_prefix = self._test_names.split('.')[0]
             self._filter = '%s.filter_args' % test_prefix
         elif self._filter:
-            test_prefix, test_group = self._filter.split('.')
+            test_prefix = self._filter.split('.')[0]
         if test_prefix in self.DEQP_MODULES:
             module = self.DEQP_MODULES[test_prefix]
         elif self._test_names:
