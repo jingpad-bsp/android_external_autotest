@@ -47,7 +47,7 @@ _OPEN_STATUS_VALUES = [
     _make_open_status('Lab is up (cross your fingers)', 'open'),
     _make_open_status('Lab is on fire', 'throttled'),
     _make_open_status('Lab is up despite deadboard', 'open'),
-    _make_open_status('Lab is up despite R33-4966.0.0', 'open'),
+    _make_open_status('Lab is up despite .*/R33-4966.0.0', 'open'),
 ]
 
 _CLOSED_STATUS_VALUES = [
@@ -58,12 +58,12 @@ _CLOSED_STATUS_VALUES = [
 
 _DEADBUILD_STATUS_VALUES = [
     _make_deadbuild_status('Lab is up except for [deadboard-]'),
-    _make_deadbuild_status('Lab is up except for [^board- deadboard-]'),
-    _make_deadbuild_status('Lab is up except for [R33-]'),
+    _make_deadbuild_status('Lab is up except for [board- deadboard-]'),
+    _make_deadbuild_status('Lab is up except for [.*/R33-]'),
     _make_deadbuild_status('Lab is up except for [deadboard-.*/R33-]'),
     _make_deadbuild_status('Lab is up except for [ deadboard-]'),
     _make_deadbuild_status('Lab is up except for [deadboard- ]'),
-    _make_deadbuild_status('Lab is up [first R33- last]'),
+    _make_deadbuild_status('Lab is up [first .*/R33- last]'),
     _make_deadbuild_status('liveboard is good, but [deadboard-] is bad'),
     _make_deadbuild_status('Lab is up [deadboard- otherboard-]'),
     _make_deadbuild_status('Lab is up [otherboard- deadboard-]'),

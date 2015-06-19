@@ -218,7 +218,7 @@ def _decode_lab_status(lab_status, build):
     if not build_exceptions or not build:
         return
     for build_pattern in build_exceptions.group(1).split():
-        if re.search(build_pattern, build):
+        if re.match(build_pattern, build):
             raise TestLabException('Chromium OS Test Lab is closed: '
                                    '%s matches %s.' % (
                                            build, build_pattern))
