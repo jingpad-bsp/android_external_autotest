@@ -107,7 +107,7 @@ class BuffetConfig(object):
                  test_definitions_dir=None,
                  enable_xmpp=False,
                  enable_ping=True,
-                 disable_pairing_security=True,
+                 disable_pairing_security=False,
                  device_whitelist=None,
                  options=None):
         self.enable_xmpp = enable_xmpp

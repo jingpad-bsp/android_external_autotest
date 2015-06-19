@@ -34,10 +34,8 @@ class buffet_BasicDBusAPI(test.test):
 
     def run_once(self):
         """Test entry point."""
-        buffet_config.BuffetConfig(options={
-            'wifi_bootstrap_mode': 'off',
-            'gcd_bootstrap_mode': 'off',
-        }).restart_with_config()
+        buffet_config.BuffetConfig(
+                disable_pairing_security=True).restart_with_config()
         buffet = buffet_dbus_helper.BuffetDBusHelper()
 
         check('', buffet.device_id)

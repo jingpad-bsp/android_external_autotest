@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.tendo import buffet_config
 from autotest_lib.client.common_lib.cros.tendo import privet_helper
 from autotest_lib.server import test
 
@@ -31,23 +32,23 @@ def _assert_not_empty(dictionary, key):
         raise error.TestFail('Key "%s" is empty' % key)
 
 
-class privetd_PrivetInfo(test.test):
-    """This test verifies that the privetd responds to /privet/info request and
+class buffet_PrivetInfo(test.test):
+    """This test verifies that the buffet responds to /privet/info request and
     returns the expected JSON response object.
     """
     version = 1
 
     def warmup(self, host):
-        config = privet_helper.PrivetdConfig(log_verbosity=3, enable_ping=True)
+        config = buffet_config.BuffetConfig(log_verbosity=3)
         config.restart_with_config(host=host)
 
 
     def cleanup(self, host):
-        privet_helper.PrivetdConfig.naive_restart(host=host)
+        buffet_config.naive_restart(host=host)
 
 
     def run_once(self, host):
-        helper = privet_helper.PrivetdHelper(host=host)
+        helper = privet_helper.PrivetHelper(host=host)
         helper.ping_server()  # Make sure the server is up and running.
         info = helper.send_privet_request(privet_helper.URL_INFO)
 

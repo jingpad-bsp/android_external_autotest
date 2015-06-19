@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib.cros.network import netblock
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_security_types
 from autotest_lib.client.common_lib.cros.tendo import peerd_config
+from autotest_lib.client.common_lib.cros.tendo import buffet_config
 from autotest_lib.client.common_lib.cros.tendo import privet_helper
 from autotest_lib.server import site_linux_router
 from autotest_lib.server import test
@@ -29,20 +30,20 @@ PRIVET_CONNECT_TIMEOUT_SECONDS = 30
 POLLING_PERIOD = 0.5
 
 
-class privetd_PrivetSetupFlow(test.test):
+class buffet_PrivetSetupFlow(test.test):
     """This test validates the privet pairing/authentication/setup flow."""
     version = 1
 
     def warmup(self, host, router_hostname=None):
         self._router = None
         self._shill_xmlrpc_proxy = None
-        self._privet_config = privet_helper.PrivetdConfig(
+        config = buffet_config.BuffetConfig(
                 log_verbosity=3,
                 enable_ping=True,
-                wifi_bootstrap_mode=privet_helper.BOOTSTRAP_CONFIG_AUTOMATIC,
                 disable_pairing_security=True,
-                device_whitelist=privet_helper.INFER_WIFI_INTERFACES)
-        self._privet_config.restart_with_config(host=host)
+                device_whitelist='any',
+                options={'wifi_bootstrap_mode': 'automatic'})
+        config.restart_with_config(host=host)
         self._router = site_linux_router.build_router_proxy(
                 test_name=self.__class__.__name__,
                 client_hostname=host.hostname,
@@ -60,10 +61,11 @@ class privetd_PrivetSetupFlow(test.test):
             self._shill_xmlrpc_proxy.clean_profiles()
         if self._router is not None:
             self._router.close()
-        privet_helper.PrivetdConfig.naive_restart(host=host)
+        buffet_config.naive_restart(host=host)
 
 
     def run_once(self, host):
+        helper = privet_helper.PrivetHelper(host=host)
         logging.info('Looking for privet bootstrapping network from DUT.')
         scan_interface = self._router.get_wlanif(2437, 'managed')
         self._router.host.run('%s link set %s up' %
@@ -73,7 +75,7 @@ class privetd_PrivetSetupFlow(test.test):
         while time.time() - start_time < PRIVET_AP_STARTUP_TIMEOUT_SECONDS:
             bss_list = self._router.iw_runner.scan(scan_interface)
             for bss in bss_list or []:
-                if self._privet_config.is_softap_ssid(bss.ssid):
+                if helper.is_softap_ssid(bss.ssid):
                     privet_bss = bss
         if privet_bss is None:
             raise error.TestFail('Device did not start soft AP in time.')
@@ -178,7 +180,7 @@ class privetd_PrivetSetupFlow(test.test):
         else:
             raise error.TestFail('Timeout before ping was successful.')
 
-        # And privetd should think it is online as well.
+        # And buffet should think it is online as well.
         helper = privet_helper.PrivetdHelper(
                 host=host, hostname=managed_netblock.addr,
                 http_port=int(privet_record.port))
