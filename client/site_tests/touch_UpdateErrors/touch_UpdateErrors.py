@@ -26,14 +26,16 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
         log_cmd = 'grep -i touch /var/log/messages'
 
         pass_terms = ['chromeos-touch-firmware-update']
-        fail_terms = ['error']
+        fail_terms = ['error:']
 
         # Check for key terms in touch logs.
         for term in pass_terms + fail_terms:
             search_cmd = '%s | grep -i %s' % (log_cmd, term)
             log_entries = utils.run(search_cmd, ignore_status=True).stdout
             if term in fail_terms and len(log_entries) > 0:
-                raise error.TestFail('Error: %s.' % log_entries.split('\n')[0])
+                error_msg = log_entries.split('\n')[0]
+                error_msg = error_msg[error_msg.find(term)+len(term):].strip()
+                raise error.TestFail(error_msg)
             if term in pass_terms and len(log_entries) == 0:
                 raise error.TestFail('Touch firmware did not attempt update.')
 
