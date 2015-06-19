@@ -4,7 +4,7 @@
 
 from autotest_lib.server import utils
 
-AUTHOR = "helenzhang "
+AUTHOR = "ChromeOS team "
 NAME = "platform_FullyChargedPowerStatus"
 PURPOSE = "Check power status after suspend, unplug, plug and resumed"
 CRITERIA = "This test will fail if power status disply as no on AC, discharging as state & less than 95%."
