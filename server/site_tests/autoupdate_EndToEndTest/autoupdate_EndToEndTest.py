@@ -1407,8 +1407,12 @@ class autoupdate_EndToEndTest(test.test):
         # fall back to the old behavior by picking a devserver based on the
         # payload URI, with which ImageServer.resolve will return a random
         # devserver based on the hash of the URI.
-        autotest_devserver = dev_server.get_least_loaded_devserver()
-        if not autotest_devserver:
+        least_loaded_devserver = dev_server.get_least_loaded_devserver()
+        if least_loaded_devserver:
+            logging.debug('Choose the least loaded devserver: %s',
+                          least_loaded_devserver)
+            autotest_devserver = dev_server.ImageServer(least_loaded_devserver)
+        else:
             logging.warning('No devserver meets the maximum load requirement. '
                             'Pick a random devserver to use.')
             autotest_devserver = dev_server.ImageServer.resolve(
