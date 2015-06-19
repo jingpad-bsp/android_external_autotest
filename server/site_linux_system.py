@@ -306,14 +306,18 @@ class LinuxSystem(object):
         phys = []
         for phy in self.phys_for_frequency[frequency]:
             phy_obj = self._phy_by_name(phy)
-            spatial_streams = min(phy_obj.avail_rx_antennas,
-                                  phy_obj.avail_tx_antennas)
-            if spatial_streams >= self.MIN_SPATIAL_STREAMS:
+            num_antennas = min(phy_obj.avail_rx_antennas,
+                               phy_obj.avail_tx_antennas)
+            if num_antennas >= self.MIN_SPATIAL_STREAMS:
+                phys.append(phy)
+            elif num_antennas == 0:
+                logging.warning(
+                    'Allowing use of %s, which reports zero antennas', phy)
                 phys.append(phy)
             else:
                 logging.debug(
-                    'Filtered out PHY due to spatial stream limit: %s (%d)',
-                    phy, spatial_streams)
+                    'Filtering out %s, which reports only %d antennas',
+                    phy, num_antennas)
 
         busy_phys = set(net_dev.phy for net_dev in self._wlanifs_in_use)
         idle_phys = [phy for phy in phys if phy not in busy_phys]
