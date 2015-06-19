@@ -277,6 +277,11 @@ class graphics_dEQP(test.test):
         width = self._width
         height = self._height
         results = {}
+
+        log_path = os.path.join(tempfile.gettempdir(), '%s-logs' % self._filter)
+        shutil.rmtree(log_path, ignore_errors=True)
+        os.mkdir(log_path)
+
         # All tests combined less than 1h in hasty.
         batch_timeout = min(3600, self._timeout * self._hasty_batch_size)
         num_test_cases = len(test_cases)
@@ -294,10 +299,9 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d ' % (executable, width,
                                                       height))
 
-            log_file = os.path.join(tempfile.gettempdir(),
-                                    '%s_hasty_%d.log' % (self._filter, batch))
-            if os.path.exists(log_file):
-                os.remove(log_file)
+            log_file = os.path.join(log_path, '%s_hasty_%d.log' %
+                                    (self._filter, batch))
+
             command += '--deqp-log-filename=' + log_file
             logging.info('Running tests %d...%d out of %d:\n%s\n%s', batch + 1,
                          batch_to, num_test_cases, command, batch_cases)
