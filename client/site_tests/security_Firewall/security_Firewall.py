@@ -67,9 +67,10 @@ class security_Firewall(test.test):
         failed = False
         for executable in ["iptables", "ip6tables"]:
             baseline = self.load_baseline("baseline.%s" % executable)
-            # TODO(jorgelo): Fix the race and re-enable this (crbug.com/470701).
-            # if webservd_helper.webservd_is_installed():
-            #     baseline.update(self.load_baseline("baseline.webservd"))
+            # TODO(wiley) Remove when we get per-board baselines (crbug.com/406013)
+            webserv_rules = self.load_baseline("baseline.webservd")
+            if webservd_helper.webservd_is_running():
+                baseline.update(webserv_rules)
             current = self.get_firewall_settings(executable)
 
             # Save to results dir
@@ -78,11 +79,15 @@ class security_Firewall(test.test):
             missing_rules = baseline - current
             extra_rules = current - baseline
 
-            failed = False
             if len(missing_rules) > 0:
-                failed = True
-                self.log_error_rules(missing_rules,
-                                     "Missing %s rules" % executable)
+                if missing_rules == webserv_rules:
+                    self.log_error_rules(missing_rules,
+                                         "Missing %s webserv rules" %
+                                         executable)
+                else:
+                    failed = True
+                    self.log_error_rules(missing_rules,
+                                         "Missing %s rules" % executable)
 
             if len(extra_rules) > 0:
                 # TODO(zqiu): implement a way to verify per-interface rules
