@@ -67,9 +67,9 @@ class security_Firewall(test.test):
         failed = False
         for executable in ["iptables", "ip6tables"]:
             baseline = self.load_baseline("baseline.%s" % executable)
-            # TODO(wiley) Remove when we get per-board baselines (crbug.com/406013)
-            if webservd_helper.webservd_is_installed():
-                baseline.update(self.load_baseline("baseline.webservd"))
+            # TODO(jorgelo): Fix the race and re-enable this (crbug.com/470701).
+            # if webservd_helper.webservd_is_installed():
+            #     baseline.update(self.load_baseline("baseline.webservd"))
             current = self.get_firewall_settings(executable)
 
             # Save to results dir
