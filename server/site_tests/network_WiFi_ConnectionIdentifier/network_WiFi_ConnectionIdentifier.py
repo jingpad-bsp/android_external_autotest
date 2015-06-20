@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
+import time
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server.cros.network import hostap_config
@@ -12,7 +15,29 @@ class network_WiFi_ConnectionIdentifier(wifi_cell_test_base.WiFiCellTestBase):
     """Test for verifying connection identifier."""
     version = 1
 
+    CONNECTION_ID_TIMEOUT_SECS = 10
     SERVICE_PROPERTY_CONNECTION_ID = 'ConnectionId'
+
+    def _get_service_connection_id(self, ssid):
+        """Get the connection ID for a service.
+
+        Polls a service's properties until ConnectionId becomes non-zero,
+        or a timeout occurs.
+
+        @param ssid: SSID of the service of interest.
+        @raise TestError if a timeout occurs.
+        @return ConnectionId of the current service.
+        """
+        start_time = time.time()
+        while time.time() - start_time < self.CONNECTION_ID_TIMEOUT_SECS:
+            properties = self.context.client.shill.get_service_properties(ssid)
+            logging.debug('Service properties are: %s', properties)
+            connection_id = properties[self.SERVICE_PROPERTY_CONNECTION_ID]
+            if connection_id != 0:
+                return connection_id
+            time.sleep(1)
+        raise error.TestFail('ConnectionId remained zero')
+
 
     def _connect(self, ssid, expected_connection_id=None):
         """Connect to an AP, and verify connection ID if it is specified.
@@ -23,11 +48,12 @@ class network_WiFi_ConnectionIdentifier(wifi_cell_test_base.WiFiCellTestBase):
         """
         client_conf = xmlrpc_datatypes.AssociationParameters(ssid)
         self.context.assert_connect_wifi(client_conf)
-        properties = self.context.client.shill.get_service_properties(ssid)
-        connection_id = properties[self.SERVICE_PROPERTY_CONNECTION_ID]
+        connection_id = self._get_service_connection_id(ssid)
         if (expected_connection_id is not None and
                 expected_connection_id != connection_id):
-            raise error.TestFail('Connection ID mismatched')
+            raise error.TestFail(
+              'Expected connection ID %s, but got %s' % (
+                expected_connection_id, connection_id))
         return connection_id
 
 
