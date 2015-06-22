@@ -4,8 +4,8 @@
 
 """FAFT config setting overrides for Jerry."""
 
-from autotest_lib.server.cros.faft.config import veyron
+from autotest_lib.server.cros.faft.config import pinky
 
-class Values(veyron.Values):
-    """Inherit overrides from Veyron."""
+class Values(pinky.Values):
+    """Inherit overrides from Pinky."""
     pass
