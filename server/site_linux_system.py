@@ -6,11 +6,13 @@ import datetime
 import collections
 import logging
 import os
+import random
 import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import path_utils
 from autotest_lib.client.common_lib.cros import virtual_ethernet_pair
+from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.server.cros.network import packet_capturer
@@ -38,6 +40,9 @@ class LinuxSystem(object):
     CAPABILITY_VHT = 'vht'
     BRIDGE_INTERFACE_NAME = 'br0'
     MIN_SPATIAL_STREAMS = 2
+    MAC_BIT_LOCAL = 0x2  # Locally administered.
+    MAC_BIT_MULTICAST = 0x1
+    MAC_RETRY_LIMIT = 1000
 
 
     @property
@@ -99,6 +104,7 @@ class LinuxSystem(object):
                 self.iw_runner.remove_interface(interface.if_name)
 
         self._wlanifs_in_use = []
+        self._local_macs_in_use = set()
         self._capture_interface = None
         self._board = None
         # Some uses of LinuxSystem don't use the interface allocation facility.
@@ -184,6 +190,35 @@ class LinuxSystem(object):
         self._virtual_ethernet_pair = virtual_ethernet_pair.VirtualEthernetPair(
                 interface_ip=None, peer_interface_ip=None, host=self.host)
         self._virtual_ethernet_pair.setup()
+
+
+    def _get_unique_mac(self):
+        """Get a MAC address that is likely to be unique.
+
+        Generates a MAC address that is a) guaranteed not to be in use
+        on this host, and b) likely to be unique within the test cell.
+
+        @return string MAC address.
+
+        """
+        # We use SystemRandom to reduce the likelyhood of coupling
+        # across systems. (The default random class might, e.g., seed
+        # itself based on wall-clock time.)
+        sysrand = random.SystemRandom()
+        for tries in xrange(0, self.MAC_RETRY_LIMIT):
+            mac_addr = '%02x:%02x:%02x:%02x:%02x:%02x' % (
+                (sysrand.getrandbits(8) & ~self.MAC_BIT_MULTICAST) |
+                self.MAC_BIT_LOCAL,
+                sysrand.getrandbits(8),
+                sysrand.getrandbits(8),
+                sysrand.getrandbits(8),
+                sysrand.getrandbits(8),
+                sysrand.getrandbits(8))
+            if mac_addr not in self._local_macs_in_use:
+                self._local_macs_in_use.add(mac_addr)
+                return mac_addr
+        else:
+            raise error.TestError('Failed to find a new MAC address')
 
 
     def remove_interface(self, interface):
@@ -395,24 +430,88 @@ class LinuxSystem(object):
         # phy, reuse it.
         for net_dev in set(self._interfaces) - set(self._wlanifs_in_use):
             if net_dev.phy == phy and net_dev.if_type == phytype:
-                self._wlanifs_in_use.append(net_dev)
-                return net_dev.if_name
+                break
+        else:
+            # Because we can reuse interfaces, we have to iteratively find a
+            # good interface name.
+            name_exists = lambda name: bool([net_dev
+                                             for net_dev in self._interfaces
+                                             if net_dev.if_name == name])
+            if_name = lambda index: '%s%d' % (phytype, index)
+            if_index = len(self._interfaces)
+            while name_exists(if_name(if_index)):
+                if_index += 1
+            net_dev = NetDev(phy=phy, if_name=if_name(if_index),
+                             if_type=phytype, inherited=False)
+            self._interfaces.append(net_dev)
+            self.iw_runner.add_interface(phy, net_dev.if_name, phytype)
 
-        # Because we can reuse interfaces, we have to iteratively find a good
-        # interface name.
-        name_exists = lambda name: bool([net_dev
-                                         for net_dev in self._interfaces
-                                         if net_dev.if_name == name])
-        if_name = lambda index: '%s%d' % (phytype, index)
-        if_index = len(self._interfaces)
-        while name_exists(if_name(if_index)):
-            if_index += 1
-        net_dev = NetDev(phy=phy, if_name=if_name(if_index), if_type=phytype,
-                         inherited=False)
-        self._interfaces.append(net_dev)
+        # Link must be down to reconfigure MAC address.
+        self.host.run('%s link set dev %s down' % (
+            self.cmd_ip, net_dev.if_name))
+        if same_phy_as:
+            self.clone_mac_address(src_dev=same_phy_as,
+                                   dst_dev=net_dev.if_name)
+        else:
+            self.ensure_unique_mac(net_dev)
+
         self._wlanifs_in_use.append(net_dev)
-        self.iw_runner.add_interface(phy, net_dev.if_name, phytype)
         return net_dev.if_name
+
+
+    def ensure_unique_mac(self, net_dev):
+        """Ensure MAC address of |net_dev| meets uniqueness requirements.
+
+        The Linux kernel does not allow multiple APs with the same
+        BSSID on the same PHY (at least, with some drivers). Hence, we
+        want to ensure that the DEVs for a PHY have unique MAC
+        addresses.
+
+        Note that we do not attempt to make the MACs unique across
+        PHYs, because some tests deliberately create such scenarios.
+
+        @param net_dev NetDev to uniquify.
+
+        """
+        if net_dev.if_type == 'monitor':
+            return
+
+        our_ifname = net_dev.if_name
+        our_phy = net_dev.phy
+        our_mac = interface.Interface(our_ifname, self.host).mac_address
+        sibling_devs = [dev for dev in self._interfaces
+                        if (dev.phy == our_phy and
+                            dev.if_name != our_ifname and
+                            dev.if_type != 'monitor')]
+        sibling_macs = (
+            interface.Interface(sib_dev.if_name, self.host).mac_address
+            for sib_dev in sibling_devs)
+        if our_mac in sibling_macs:
+            self.configure_interface_mac(our_ifname,
+                                         self._get_unique_mac())
+
+
+    def configure_interface_mac(self, wlanif, new_mac):
+        """Change the MAC address for an interface.
+
+        @param wlanif string name of device to reconfigure.
+        @param new_mac string MAC address to assign (e.g. '00:11:22:33:44:55')
+
+        """
+        self.host.run('%s link set %s address %s' %
+                      (self.cmd_ip, wlanif, new_mac))
+
+
+    def clone_mac_address(self, src_dev=None, dst_dev=None):
+        """Copy the MAC address from one interface to another.
+
+        @param src_dev string name of device to copy address from.
+        @param dst_dev string name of device to copy address to.
+
+        """
+        self.configure_interface_mac(
+            dst_dev,
+            interface.Interface(src_dev, self.host).mac_address)
 
 
     def release_interface(self, wlanif):
