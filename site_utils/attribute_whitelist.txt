@@ -14,8 +14,10 @@ suite:cellular_mbim_compliance
 suite:cellular_modem_repair
 suite:chameleon_audio
 suite:chameleon_dp
+suite:chameleon_dp_e2e
 suite:chameleon_dp_weekly
 suite:chameleon_hdmi
+suite:chameleon_hdmi_e2e
 suite:chameleon_hdmi_weekly
 suite:chameleon_vga
 suite:crosbolt_perf_nightly
