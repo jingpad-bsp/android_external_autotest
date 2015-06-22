@@ -57,11 +57,7 @@ TEST_CONFIG = {
     'oauth_url': LOCAL_OAUTH_URL,
     'service_url': LOCAL_SERVICE_URL,
     'model_id': 'AATST',
-    'wifi_bootstrapping_mode': 'off',
-    'gcd_bootstrapping_mode': 'off',
-    'monitor_timeout_seconds': 120,
-    'connect_timeout_seconds': 60,
-    'bootstrap_timeout_seconds': 300,
+    'wifi_auto_setup_enabled': 'false',
     'name': build_unique_device_name()
 }
 

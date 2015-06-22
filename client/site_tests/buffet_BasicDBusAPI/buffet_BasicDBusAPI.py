@@ -123,8 +123,8 @@ class buffet_BasicDBusAPI(test.test):
         check({}, buffet.pairing_info)
 
         buffet_config.BuffetConfig(options={
-            'wifi_bootstrapping_mode': 'automatic',
             'device_whitelist': 'None',
+            'wifi_auto_setup_enabled': 'true',
         }).restart_with_config()
 
         buffet = buffet_dbus_helper.BuffetDBusHelper()
