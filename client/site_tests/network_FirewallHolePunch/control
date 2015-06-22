@@ -18,8 +18,5 @@ DOC = """
 This test verifies holes can be punched in the ChromeOS firewall.
 """
 
-def run_FirewallHolePunch(machine):
-    host = host.create_host(machine)
-    job.run_test('network_FirewallHolePunch', host=host)
+job.run_test('network_FirewallHolePunch')
 
-parallel_simple(run_FirewallHolePunch, machines)
