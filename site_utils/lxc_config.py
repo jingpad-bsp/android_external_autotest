@@ -51,7 +51,6 @@ presented.
 """
 
 import collections
-import getpass
 import json
 import os
 import socket
@@ -220,9 +219,6 @@ class DeployConfigManager(object):
         2. Update AUTOTEST_WEB/host and SERVER/hostname to be the IP of the host
            if any is set to localhost or 127.0.0.1. Otherwise, set it to be the
            FQDN of the config value.
-        3. Update SSP/user, which is used as the user makes RPC inside the
-           container. This allows the RPC to pass ACL check as if the call is
-           made in the host.
 
         """
         shadow_config = os.path.join(CONTAINER_AUTOTEST_DIR,
@@ -252,11 +248,6 @@ class DeployConfigManager(object):
             new_host = socket.getfqdn(afe_host)
         self.container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
                                   (new_host, shadow_config))
-
-        # Update SSP/user
-        self.container.attach_run(
-                'echo $\'\n[SSP]\nuser: %s\n\' >> %s' %
-                (getpass.getuser(), shadow_config))
 
 
     def _modify_ssh_config(self):
