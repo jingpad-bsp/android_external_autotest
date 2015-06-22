@@ -52,6 +52,8 @@ class VirtualEthernetPair(object):
                  peer_interface_name='veth_slave',
                  interface_ip='10.9.8.1/24',
                  peer_interface_ip='10.9.8.2/24',
+                 interface_ipv6=None,
+                 peer_interface_ipv6=None,
                  ignore_shutdown_errors=False,
                  host=None):
         """
@@ -69,6 +71,8 @@ class VirtualEthernetPair(object):
         self._peer_interface_name = peer_interface_name
         self._interface_ip = interface_ip
         self._peer_interface_ip = peer_interface_ip
+        self._interface_ipv6 = interface_ipv6
+        self._peer_interface_ipv6 = peer_interface_ipv6
         self._ignore_shutdown_errors = ignore_shutdown_errors
         self._run = utils.run
         self._host = host
@@ -242,9 +246,15 @@ class VirtualEthernetPair(object):
                   (self._interface_name, self._peer_interface_name))
         self._run('ip link set %s up' % self._interface_name)
         self._run('ip link set %s up' % self._peer_interface_name)
-        if not self._interface_ip is None:
+        if self._interface_ip is not None:
             self._run('ifconfig %s %s' % (self._interface_name,
                                           self._interface_ip))
-        if not self._peer_interface_ip is None:
+        if self._peer_interface_ip is not None:
             self._run('ifconfig %s %s' % (self._peer_interface_name,
                                           self._peer_interface_ip))
+        if self._interface_ipv6 is not None:
+            self._run('ip -6 addr add %s dev %s' % (self._interface_ipv6,
+                                                    self._interface_name))
+        if self._peer_interface_ipv6 is not None:
+            self._run('ip -6 addr add %s dev %s' % (self._peer_interface_ipv6,
+                                                    self._peer_interface_name))
