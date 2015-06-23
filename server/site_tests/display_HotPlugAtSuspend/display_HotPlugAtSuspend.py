@@ -22,14 +22,6 @@ class display_HotPlugAtSuspend(test.test):
     suspend/resume.
     """
     version = 1
-    PLUG_CONFIGS = [
-        # (plugged_before_suspend, plugged_after_suspend, plugged_before_resume)
-        (True, True, True),
-        (True, False, False),
-        (True, False, True),
-        (False, True, True),
-        (False, True, False),
-    ]
     # Duration of suspend, in second.
     SUSPEND_DURATION = 30
     # Allowed timeout for the transition of suspend.
@@ -40,7 +32,7 @@ class display_HotPlugAtSuspend(test.test):
     TIME_MARGIN_BEFORE_RESUME = 5
 
 
-    def run_once(self, host, test_mirrored=False):
+    def run_once(self, host, plug_status, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         display_facade = factory.create_display_facade()
         chameleon_board = host.chameleon
@@ -68,7 +60,7 @@ class display_HotPlugAtSuspend(test.test):
                          expected_connector, resolution)
 
             for (plugged_before_suspend, plugged_after_suspend,
-                 plugged_before_resume) in self.PLUG_CONFIGS:
+                 plugged_before_resume) in plug_status:
                 logging.info('TEST CASE: %s > suspend > %s > %s > resume',
                              'plug' if plugged_before_suspend else 'unplug',
                              'plug' if plugged_after_suspend else 'unplug',
