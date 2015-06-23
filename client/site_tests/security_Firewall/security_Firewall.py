@@ -80,14 +80,9 @@ class security_Firewall(test.test):
             extra_rules = current - baseline
 
             if len(missing_rules) > 0:
-                if missing_rules == webserv_rules:
-                    self.log_error_rules(missing_rules,
-                                         "Missing %s webserv rules" %
-                                         executable)
-                else:
-                    failed = True
-                    self.log_error_rules(missing_rules,
-                                         "Missing %s rules" % executable)
+                failed = True
+                self.log_error_rules(missing_rules,
+                                     "Missing %s rules" % executable)
 
             if len(extra_rules) > 0:
                 # TODO(zqiu): implement a way to verify per-interface rules
