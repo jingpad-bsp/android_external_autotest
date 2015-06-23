@@ -13,7 +13,7 @@ from autotest_lib.client.cros import service_stopper
 # Measurement duration [seconds] for one interation.
 MEASUREMENT_DURATION = 10
 
-TOTAL_TEST_DURATION = 3600 # change the test time to 72 hours [seconds].
+TOTAL_TEST_DURATION = 600 # change the test time to 7 days [seconds].
 
 # Time to exclude from calculation after launching the demo [seconds].
 STABILIZATION_DURATION = 20
@@ -26,7 +26,8 @@ THERMAL_SERVICES = ['temp_metrics', 'thermal']
 # Time in seconds to wait for cpu idle until giveup.
 WAIT_FOR_IDLE_CPU_TIMEOUT = 60.0
 # Maximum percent of cpu usage considered as idle.
-CPU_IDLE_USAGE = 0.1
+# Since Kiosk app runs in continuous mode, setting the idle % higher.
+CPU_IDLE_USAGE = 0.6
 
 _PERF_RESULT_FILE = '/tmp/perf.csv'
 
