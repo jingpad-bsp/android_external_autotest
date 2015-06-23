@@ -117,6 +117,9 @@ class platform_OSLimits(test.test):
         if utils.get_arch().startswith('arm'):
             ref_min['mmap_min_addr'] = 32768;
 
+        if utils.get_arch().startswith('aarch64'):
+            ref_min['mmap_min_addr'] = 32768;
+
         # Adjust version-specific details.
         kernel_ver = os.uname()[2]
         if utils.compare_versions(kernel_ver, "3.6") < 0:
