@@ -139,10 +139,11 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
 
         # Perform TDLS discover and check the status after waiting for response.
         self.context.client.discover_tdls_link(peer_ip)
-        link_state_disconnected = utils.poll_for_condition(
-                lambda: (self.context.client.query_tdls_link(peer_ip) ==
-                'Disconnected'), timeout=1)
-        if not link_state_disconnected:
+        try:
+            utils.poll_for_condition(
+                    lambda: (self.context.client.query_tdls_link(peer_ip) ==
+                    'Disconnected'), timeout=1)
+        except utils.TimeoutError:
             link_state = self.context.client.query_tdls_link(peer_ip)
             logging.error('DUT does not report TDLS link is disconnected: %r' %
                           link_state)
