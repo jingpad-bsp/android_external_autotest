@@ -103,7 +103,7 @@ class ExternalPackage(object):
         return class_name
 
 
-    def is_needed(self, unused_install_dir):
+    def is_needed(self, install_dir):
         """
         Check to see if we need to reinstall a package. This is contingent on:
         1. Module name: If the name of the module is different from the package,
@@ -118,7 +118,11 @@ class ExternalPackage(object):
         3. Version/Minimum version: The class that installs the package should
             contain a version string, and an optional minimum version string.
 
-        @param unused_install_dir: install directory, not used.
+        4. install_dir: If the module exists in a different directory, e.g.,
+            /usr/lib/python2.7/dist-packages/, the module will be forced to be
+            installed in install_dir.
+
+        @param install_dir: install directory.
         @returns True if self.module_name needs to be built and installed.
         """
         if not self.module_name or not self.version:
@@ -129,6 +133,12 @@ class ExternalPackage(object):
             module = __import__(self.module_name)
         except ImportError, e:
             logging.info("%s isn't present. Will install.", self.module_name)
+            return True
+        if not module.__file__.startswith(install_dir):
+            logging.info('Module %s is installed in %s, rather than %s. The '
+                         'module will be forced to be installed in %s.',
+                         self.module_name, module.__file__, install_dir,
+                         install_dir)
             return True
         self.installed_version = self._get_installed_version_from_module(module)
         logging.info('imported %s version %s.', self.module_name,
