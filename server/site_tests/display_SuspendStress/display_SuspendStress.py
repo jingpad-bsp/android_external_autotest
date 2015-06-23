@@ -71,8 +71,9 @@ class display_SuspendStress(test.test):
                 display_facade.set_mirrored(test_mirrored)
                 logging.info('Repeat %d times Suspend and resume', repeat_count)
 
-                while repeat_count > 0:
-                    repeat_count -= 1
+                count = repeat_count
+                while count > 0:
+                    count -= 1
                     if test_mirrored:
                         # magic sleep to make nyan_big wake up in mirrored mode
                         # TODO: find root cause
