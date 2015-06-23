@@ -5,6 +5,7 @@
   <video id="localVideo" width="1280" height="720" autoplay muted></video>
   <video id="remoteVideo" width="1280" height="720" autoplay muted></video>
 <script src="ssim.js"></script>
+<script src="blackframe.js"></script>
 <script>
 
 
@@ -46,8 +47,6 @@ function CameraTest(resolutionArray) {
 
   this.inFps = [];
   this.outFps = [];
-  // Variables associated with near-black frame detection.
-  this.nonBlackPixelLumaThreshold = 20;
   // Variables associated with nearly-frozen frames detection.
   this.previousFrame = [];
   this.identicalFrameSsimThreshold = 0.985;
@@ -223,7 +222,7 @@ CameraTest.prototype = {
     var imageData = this.context.getImageData(0, 0, this.canvas.width,
         this.canvas.height);
 
-      if (this.isBlackFrame(imageData.data, imageData.data.length)) {
+      if (isBlackFrame(imageData.data, imageData.data.length)) {
         this.results.frameStats.numBlackFrames++;
       }
 
