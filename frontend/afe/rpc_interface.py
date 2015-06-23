@@ -1322,6 +1322,42 @@ def get_host_status_task(host_id, end_time):
                              host_id=host_id, end_time=end_time)
 
 
+def get_host_diagnosis_interval(host_id, end_time, success):
+    """Find a "diagnosis interval" for a given host.
+
+    A "diagnosis interval" identifies a start and end time where
+    the host went from "working" to "broken", or vice versa.  The
+    interval's starting time is the starting time of the last status
+    task with the old status; the end time is the finish time of the
+    first status task with the new status.
+
+    This routine finds the most recent diagnosis interval for the
+    given host prior to `end_time`, with a starting status matching
+    `success`.  If `success` is true, the interval will start with a
+    successful status task; if false the interval will start with a
+    failed status task.
+
+    @param host_id      Id in the database of the target host.
+    @param end_time     Time reference for the diagnosis interval.
+    @param success      Whether the diagnosis interval should start
+                        with a successful or failed status task.
+
+    @return A list of two strings.  The first is the timestamp for
+            the beginning of the interval; the second is the
+            timestamp for the end.  If the host has never changed
+            state, the list is empty.
+
+    """
+    host = models.Host.smart_get(host_id)
+    if not host.shard:
+        return status_history.get_diagnosis_interval(
+                host_id, end_time, success)
+    else:
+        shard_afe = frontend.AFE(server=host.shard.rpc_hostname())
+        return shard_afe.get_host_diagnosis_interval(
+                host_id, end_time, success)
+
+
 # support for host detail view
 
 def get_host_queue_entries_and_special_tasks(host, query_start=None,

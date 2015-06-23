@@ -52,11 +52,14 @@ The selected hosts may also be filtered based on status:
 
 Output Formats
 ~~~~~~~~~~~~~~
-There are three available output formats:
+There are four available output formats:
   * A simple list of host names.
   * A status summary showing one line per host.
   * A detailed job history for all selected DUTs, sorted by
     time of execution.
+  * A job history for all selected DUTs showing only the history
+    surrounding the DUT's last change from working to broken,
+    or vice versa.
 
 The default format depends on whether hosts are filtered by
 status:
@@ -69,6 +72,8 @@ These options override the default formats:
   -o/--oneline - Use the one-line summary with the --working or
       --broken options.
   -f/--full_history - Print detailed per-host job history.
+  -g/--diagnosis - Print the job history surrounding a status
+      change.
 
 Examples
 ~~~~~~~~
@@ -178,13 +183,23 @@ def _print_host_summaries(history_list, arguments):
                      url)
 
 
+def _print_event_summary(event):
+    """Print a one-line summary of a job or special task."""
+    start_time = time_utils.epoch_time_to_date_string(
+            event.start_time)
+    print '    %s  %s %s' % (
+            start_time,
+            _DIAGNOSIS_IDS[event.diagnosis],
+            event.job_url)
+
+
 def _print_hosts(history_list, arguments):
-    """Print hosts, optionally with their job history.
+    """Print hosts, optionally with a job history.
 
     This function handles both the default format for --working
     and --broken options, as well as the output for the
-    --full_history option.  The `arguments` parameter determines the
-    format to use.
+    --full_history and --diagnosis options.  The `arguments`
+    parameter determines the format to use.
 
     @param history_list A list of HostHistory objects to be printed.
     @param arguments    Parsed arguments object as returned by
@@ -196,15 +211,12 @@ def _print_hosts(history_list, arguments):
         if not _include_status(status, arguments):
             continue
         print history.hostname
-        if not arguments.full_history:
-            continue
-        for event in history:
-            start_time = time_utils.epoch_time_to_date_string(
-                    event.start_time)
-            print '    %s  %s %s' % (
-                    start_time,
-                    _DIAGNOSIS_IDS[event.diagnosis],
-                    event.job_url)
+        if arguments.full_history:
+            for event in history:
+                _print_event_summary(event)
+        elif arguments.diagnosis:
+            for event in history.diagnosis_interval():
+                _print_event_summary(event)
 
 
 def _validate_time_range(arguments):
@@ -325,7 +337,8 @@ def _validate_format_options(arguments):
                      ArgumentParser.parse_args().
 
     """
-    if not arguments.oneline and not arguments.full_history:
+    if (not arguments.oneline and not arguments.diagnosis and
+            not arguments.full_history):
         arguments.oneline = (not arguments.working and
                              not arguments.broken)
     if not arguments.working and not arguments.broken:
@@ -389,19 +402,18 @@ def _parse_command(argv):
                              ' (default: %d)' % _DEFAULT_DURATION)
 
     format_group = parser.add_mutually_exclusive_group()
-    format_group.add_argument('-f', '--full_history',
-                              action='store_true',
+    format_group.add_argument('-f', '--full_history', action='store_true',
                               help='Display host history from most '
                                    'to least recent for each DUT')
+    format_group.add_argument('-g', '--diagnosis', action='store_true',
+                              help='Display host history for the '
+                                   'most recent DUT status change')
     format_group.add_argument('-o', '--oneline', action='store_true',
-                              default=False,
                               help='Display host status summary')
 
     parser.add_argument('-w', '--working', action='store_true',
-                        default=False,
                         help='List working devices by name only')
     parser.add_argument('-n', '--broken', action='store_true',
-                        default=False,
                         help='List non-working devices by name only')
 
     parser.add_argument('-b', '--board',

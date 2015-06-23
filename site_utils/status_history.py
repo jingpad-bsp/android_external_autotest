@@ -2,6 +2,38 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Services relating to DUT status and job history.
+
+The central abstraction of this module is the `HostJobHistory`
+class.  This class provides two related pieces of information
+regarding a single DUT:
+  * A history of tests and special tasks that have run on
+    the DUT in a given time range.
+  * Whether the DUT was "working" or "broken" at a given
+    time.
+
+The "working" or "broken" status of a DUT is determined by
+the DUT's special task history.  At the end of any job or
+task, the status is indicated as follows:
+  * After any successful special task, the DUT is considered
+    "working".
+  * After any failed Repair task, the DUT is considered "broken".
+  * After any other special task or after any regular test job, the
+    DUT's status is considered unchanged.
+
+Definitions for terms used in the code below:
+  * status task - Any special task that determines the DUT's
+    status; that is, any successful task, or any failed Repair.
+  * diagnosis interval - A time interval during which DUT status
+    changed either from "working" to "broken", or vice versa.  The
+    interval starts with the last status task with the old status,
+    and ends after the first status task with the new status.
+
+Diagnosis intervals are interesting because they normally contain
+the logs explaining a failure or repair event.
+
+"""
+
 import common
 from autotest_lib.frontend import setup_django_environment
 from django.db import models as django_models
@@ -260,7 +292,7 @@ class _TestJobEvent(_JobEvent):
 
 
 class HostJobHistory(object):
-    """Class to query and remember DUT execution history.
+    """Class to query and remember DUT execution and status history.
 
     This class is responsible for querying the database to determine
     the history of a single DUT in a time interval of interest, and
@@ -269,17 +301,27 @@ class HostJobHistory(object):
     @property hostname    Host name of the DUT.
     @property start_time  Start of the requested time interval.
     @property end_time    End of the requested time interval.
-    @property host        Database host object for the DUT.
-    @property history     A list of jobs and special tasks that
+    @property _afe        Autotest frontend for queries.
+    @property _host       Database host object for the DUT.
+    @property _history    A list of jobs and special tasks that
                           ran on the DUT in the requested time
                           interval, ordered in reverse, from latest
                           to earliest.
+
+    @property _status_interval   A list of all the jobs and special
+                                 tasks that ran on the DUT in the
+                                 last diagnosis interval prior to
+                                 `end_time`, ordered from latest to
+                                 earliest.
+    @property _status_diagnosis  The DUT's status as of `end_time`.
+    @property _status_task       The DUT's last status task as of
+                                 `end_time`.
 
     """
 
     @classmethod
     def get_host_history(cls, afe, hostname, start_time, end_time):
-        """Create a HostJobHistory instance for a single host.
+        """Create a `HostJobHistory` instance for a single host.
 
         Simple factory method to construct host history from a
         hostname.  Simply looks up the host in the AFE database, and
@@ -291,7 +333,7 @@ class HostJobHistory(object):
                            interval.
         @param end_time    End time for the history's time interval.
 
-        @return A new HostJobHistory instance.
+        @return A new `HostJobHistory` instance.
 
         """
         afehost = afe.get_hosts(hostname=hostname)[0]
@@ -301,7 +343,7 @@ class HostJobHistory(object):
     @classmethod
     def get_multiple_histories(cls, afe, start_time, end_time,
                                board=None, pool=None):
-        """Create HostJobHistory instances for a set of hosts.
+        """Create `HostJobHistory` instances for a set of hosts.
 
         The set of hosts can be specified as "all hosts of a given
         board type", "all hosts in a given pool", or "all hosts
@@ -316,7 +358,7 @@ class HostJobHistory(object):
         @param pool        All hosts must be in this pool; if
                            `None`, all pools are allowed.
 
-        @return A list of new HostJobHistory instances.
+        @return A list of new `HostJobHistory` instances.
 
         """
         # If `board` or `pool` are both `None`, we could search the
@@ -337,32 +379,31 @@ class HostJobHistory(object):
     def __init__(self, afe, afehost, start_time, end_time):
         self._afe = afe
         self.hostname = afehost.hostname
-        self.start_time = start_time
-        self.end_time = end_time
+        self.start_time = time_utils.epoch_time_to_date_string(start_time)
+        self.end_time = time_utils.epoch_time_to_date_string(end_time)
         self._host = afehost
         # Don't spend time on queries until they're needed.
         self._history = None
+        self._status_interval = None
         self._status_diagnosis = None
         self._status_task = None
 
 
-    def _get_history(self):
-        """Fill in `self._history`."""
-        if self._history is not None:
-            return
-        start_time = time_utils.epoch_time_to_date_string(self.start_time)
-        end_time = time_utils.epoch_time_to_date_string(self.end_time)
+    def _get_history(self, start_time, end_time):
+        """Get the list of events for the given interval."""
         newtasks = _SpecialTaskEvent.get_tasks(
                 self._afe, self._host.id, start_time, end_time)
         newhqes = _TestJobEvent.get_hqes(
                 self._afe, self._host.id, start_time, end_time)
         newhistory = newtasks + newhqes
         newhistory.sort(reverse=True)
-        self._history = newhistory
+        return newhistory
 
 
     def __iter__(self):
-        self._get_history()
+        if self._history is None:
+            self._history = self._get_history(self.start_time,
+                                              self.end_time)
         return self._history.__iter__()
 
 
@@ -392,25 +433,59 @@ class HostJobHistory(object):
         return self._extract_prefixed_label(prefix)
 
 
-    def _get_status_task(self):
+    def _init_status_task(self):
         """Fill in `self._status_diagnosis` and `_status_task`."""
         if self._status_diagnosis is not None:
             return
-        end_time = time_utils.epoch_time_to_date_string(self.end_time)
         self._status_task = _SpecialTaskEvent.get_status_task(
-                self._afe, self._host.id, end_time)
+                self._afe, self._host.id, self.end_time)
         if self._status_task is not None:
             self._status_diagnosis = self._status_task.diagnosis
         else:
             self._status_diagnosis = UNKNOWN
 
 
+    def _init_status_interval(self):
+        """Fill in `self._status_interval`."""
+        if self._status_interval is not None:
+            return
+        self._init_status_task()
+        self._status_interval = []
+        if self._status_task is None:
+            return
+        interval = self._afe.get_host_diagnosis_interval(
+                self._host.id, self.end_time,
+                self._status_diagnosis != WORKING)
+        if not interval:
+            return
+        self._status_interval = self._get_history(interval[0],
+                                                  interval[1])
+
+
+    def diagnosis_interval(self):
+        """Find this history's most recent diagnosis interval.
+
+        Returns a list of `_JobEvent` instances corresponding to the
+        most recent diagnosis interval occurring before this
+        history's end time.
+
+        The list is returned as with `self._history`, ordered from
+        most to least recent.
+
+        @return The list of the `_JobEvent`s in the diagnosis
+                interval.
+
+        """
+        self._init_status_interval()
+        return self._status_interval
+
+
     def last_diagnosis(self):
         """Return the diagnosis of whether the DUT is working.
 
-        This searches the DUT's job history from most to least
-        recent, looking for jobs that indicate whether the DUT
-        was working.  Return a tuple of `(diagnosis, task)`.
+        This searches the DUT's job history, looking for the most
+        recent status task for the DUT.  Return a tuple of
+        `(diagnosis, task)`.
 
         The `diagnosis` entry in the tuple is one of these values:
           * WORKING - The DUT is working.
@@ -418,30 +493,75 @@ class HostJobHistory(object):
           * UNKNOWN - No task could be found indicating status for
               the DUT.
 
-        The `task` entry in the tuple is the task that led to the
-        diagnosis.  The task will be `None` if the diagnosis is
+        The `task` entry in the tuple is the status task that led to
+        the diagnosis.  The task will be `None` if the diagnosis is
         `UNKNOWN`.
 
         @return A tuple with the DUT's diagnosis and the task that
                 determined it.
 
         """
-        self._get_status_task()
+        self._init_status_task()
         return self._status_diagnosis, self._status_task
 
 
+def get_diagnosis_interval(host_id, end_time, success):
+    """Return the last diagnosis interval for a given host and time.
+
+    This routine queries the database for the special tasks on a
+    given host before a given time.  From those tasks it selects the
+    last status task before a change in status, and the first status
+    task after the change.  When `success` is true, the change must
+    be from "working" to "broken".  When false, the search is for a
+    change in the opposite direction.
+
+    A "successful status task" is any successful special task.  A
+    "failed status task" is a failed Repair task.  These criteria
+    are based on the definition of "status task" in the module-level
+    docstring, above.
+
+    This is the RPC endpoint for `AFE.get_host_diagnosis_interval()`.
+
+    @param host_id     Database host id of the desired host.
+    @param end_time    Find the last eligible interval before this time.
+    @param success     Whether the eligible interval should start with a
+                       success or a failure.
+
+    @return A list containing the start time of the earliest job
+            selected, and the end time of the latest job.
+
+    """
+    base_query = afe_models.SpecialTask.objects.filter(
+            host_id=host_id, is_complete=True)
+    success_query = base_query.filter(success=True)
+    failure_query = base_query.filter(success=False, task='Repair')
+    if success:
+        query0 = success_query
+        query1 = failure_query
+    else:
+        query0 = failure_query
+        query1 = success_query
+    query0 = query0.filter(time_finished__lte=end_time)
+    query0 = query0.order_by('time_started').reverse()
+    if not query0:
+        return []
+    task0 = query0[0]
+    query1 = query1.filter(time_finished__gt=task0.time_finished)
+    task1 = query1.order_by('time_started')[0]
+    return [task0.time_started.strftime(time_utils.TIME_FMT),
+            task1.time_finished.strftime(time_utils.TIME_FMT)]
+
+
 def get_status_task(host_id, end_time):
-    """Get the task indicating a host's status at a given time.
+    """Get the last status task for a host before a given time.
+
+    This routine returns a Django query for the AFE database to find
+    the last task that finished on the given host before the given
+    time that was either a successful task, or a Repair task.  The
+    query criteria are based on the definition of "status task" in
+    the module-level docstring, above.
 
     This is the RPC endpoint for `_SpecialTaskEvent.get_status_task()`.
-    This performs a database query to find the status task for the
-    given host at the given time.
-
-    The status task is the last diagnostic task before `end_time`.
-    A "diagnostic task" is any Repair task or a succesful special
-    task of any type.  The status of the last diagnostic task
-    (`WORKING` or `BROKEN`) determines whether the host is working
-    or broken.
 
     @param host_id     Database host id of the desired host.
     @param end_time    End time of the range of interest.
@@ -450,14 +570,14 @@ def get_status_task(host_id, end_time):
             interest.
 
     """
-    # Selects diag tasks:  any Repair task, or any successful task.
-    diag_tasks = (django_models.Q(task='Repair') |
-                  django_models.Q(success=True))
+    # Selects status tasks:  any Repair task, or any successful task.
+    status_tasks = (django_models.Q(task='Repair') |
+                    django_models.Q(success=True))
     # Our caller needs a Django query set in order to serialize the
     # result, so we don't resolve the query here; we just return a
     # slice with at most one element.
     return afe_models.SpecialTask.objects.filter(
-            diag_tasks,
+            status_tasks,
             host_id=host_id,
             time_finished__lte=end_time,
             is_complete=True).order_by('time_started').reverse()[0:1]
