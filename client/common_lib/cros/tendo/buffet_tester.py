@@ -26,13 +26,12 @@ from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
 from autotest_lib.client.common_lib.cros.fake_device_server.client_lib import \
         registration
 from autotest_lib.client.common_lib.cros.tendo import buffet_config
+from autotest_lib.client.common_lib.cros.tendo import buffet_dbus_helper
 
 
 TEST_NAME = 'test_name '
 TEST_DESCRIPTION = 'test_description '
 TEST_LOCATION = 'test_location '
-
-DBUS_INTERFACE_OBJECT_MANAGER = 'org.freedesktop.DBus.ObjectManager'
 
 TEST_COMMAND_CATEGORY = 'registration_test'
 TEST_COMMAND_NAME = '_TestEcho'
@@ -47,6 +46,10 @@ TEST_COMMAND_DEFINITION = {
     }
 }
 
+STATUS_UNCONFIGURED = 'unconfigured'
+STATUS_CONNECTING = 'connecting'
+STATUS_CONNECTED = 'connected'
+STATUS_INVALID_CREDENTIALS = 'invalid_credentials'
 
 def _assert_has(resource, key, value, resource_description):
     if resource is None:
@@ -73,7 +76,6 @@ class BuffetTester(object):
         self._expected_messages = []
         # We store our command definitions under this root.
         self._temp_dir_path = None
-        self._bus = dbus.SystemBus()
         # Spin up our mock server.
         self._gcd = fake_gcd_helper.FakeGCDHelper()
         self._gcd.start()
@@ -122,19 +124,11 @@ class BuffetTester(object):
         @param timeout_seconds: number of seconds to wait for status to change.
 
         """
-        manager_properties = dbus.Interface(
-                self._bus.get_object(buffet_config.SERVICE_NAME,
-                                     buffet_config.MANAGER_OBJECT_PATH),
-                dbus_interface='org.freedesktop.DBus.Properties')
-
+        buffet = buffet_dbus_helper.BuffetDBusHelper()
         start_time = time.time()
         while True:
-            actual_status = manager_properties.Get(
-                buffet_config.MANAGER_INTERFACE,
-                buffet_config.MANAGER_PROPERTY_STATUS)
-            actual_device_id = manager_properties.Get(
-                buffet_config.MANAGER_INTERFACE,
-                buffet_config.MANAGER_PROPERTY_DEVICE_ID)
+            actual_status = buffet.status
+            actual_device_id = buffet.device_id
             if (actual_status == expected_status and
                 actual_device_id == expected_device_id):
                 return
@@ -171,18 +165,15 @@ class BuffetTester(object):
         self._expected_messages.append(new_command_message)
         self._command_client.create_command(device_id, command_resource)
         # Confirm that the command eventually appears on buffet.
-        object_manager = dbus.Interface(
-                self._bus.get_object(buffet_config.SERVICE_NAME,
-                                     buffet_config.OBJECT_MANAGER_PATH),
-                dbus_interface=DBUS_INTERFACE_OBJECT_MANAGER)
+        buffet = buffet_dbus_helper.BuffetDBusHelper()
         polling_interval_seconds = 0.5
         start_time = time.time()
         while time.time() - start_time < timeout_seconds:
             objects = dbus_util.dbus2primitive(
-                    object_manager.GetManagedObjects())
-            cmds = [interfaces[buffet_config.COMMAND_INTERFACE]
+                    buffet.object_manager.GetManagedObjects())
+            cmds = [interfaces[buffet_dbus_helper.COMMAND_INTERFACE]
                     for path, interfaces in objects.iteritems()
-                    if buffet_config.COMMAND_INTERFACE in interfaces]
+                    if buffet_dbus_helper.COMMAND_INTERFACE in interfaces]
             # |cmds| is a list of property sets
             if len(cmds) != len(self._expected_messages):
                 # Still waiting for our pending command to show up.
@@ -211,7 +202,7 @@ class BuffetTester(object):
 
         This includes the whole registration flow and ends with buffet
         obtained an access token for future interactions. The status
-        is guaranteed to be buffet_config.STATUS_CONNECTED when this
+        is guaranteed to be STATUS_CONNECTED when this
         method returns.
 
         @return string: the device_id obtained during registration.
@@ -219,13 +210,12 @@ class BuffetTester(object):
         """
         ticket = self._registration_client.create_registration_ticket()
         logging.info('Created ticket: %r', ticket)
-        manager_proxy = dbus.Interface(
-                self._bus.get_object(buffet_config.SERVICE_NAME,
-                                     buffet_config.MANAGER_OBJECT_PATH),
-                dbus_interface=buffet_config.MANAGER_INTERFACE)
-        manager_proxy.UpdateDeviceInfo(dbus.String(TEST_NAME), dbus.String(TEST_DESCRIPTION), dbus.String(TEST_LOCATION))
+        buffet = buffet_dbus_helper.BuffetDBusHelper()
+        buffet.manager.UpdateDeviceInfo(dbus.String(TEST_NAME),
+                                        dbus.String(TEST_DESCRIPTION),
+                                        dbus.String(TEST_LOCATION))
         device_id = dbus_util.dbus2primitive(
-                manager_proxy.RegisterDevice(dbus.String(ticket['id'])))
+                buffet.manager.RegisterDevice(dbus.String(ticket['id'])))
         # Confirm that registration has populated some fields.
         device_resource = self._device_client.get_device(device_id)
         logging.debug('Got device resource=%r', device_resource)
@@ -234,9 +224,9 @@ class BuffetTester(object):
         _assert_has(device_resource, 'modelManifestId', 'AATST',
                     'device resource')
         logging.info('Registration successful')
-        self.check_buffet_status_is(
-                buffet_config.STATUS_CONNECTED, expected_device_id=device_id,
-                timeout_seconds=5)
+        self.check_buffet_status_is(STATUS_CONNECTED,
+                                    expected_device_id=device_id,
+                                    timeout_seconds=5)
         return device_id
 
 

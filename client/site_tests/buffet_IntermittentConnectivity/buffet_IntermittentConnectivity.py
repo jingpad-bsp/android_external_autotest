@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib.cros.tendo import buffet_config
 from autotest_lib.client.common_lib.cros.tendo import buffet_tester
 
 class buffet_IntermittentConnectivity(test.test):
@@ -20,7 +19,7 @@ class buffet_IntermittentConnectivity(test.test):
         # server, register with the cloud and check we can poll for
         # commands.
         self._helper.restart_buffet(reset_state=True)
-        self._helper.check_buffet_status_is(buffet_config.STATUS_UNCONFIGURED)
+        self._helper.check_buffet_status_is(buffet_tester.STATUS_UNCONFIGURED)
         device_id = self._helper.register_with_server()
         self._helper.check_buffet_is_polling(device_id)
 
@@ -29,7 +28,7 @@ class buffet_IntermittentConnectivity(test.test):
         # that we transition to the CONNECTING state.
         self._helper._fail_control_client.start_failing_requests()
         self._helper.check_buffet_status_is(
-                buffet_config.STATUS_CONNECTING,
+                buffet_tester.STATUS_CONNECTING,
                 expected_device_id=device_id,
                 timeout_seconds=20)
 
@@ -37,7 +36,7 @@ class buffet_IntermittentConnectivity(test.test):
         # the CONNECTED state.
         self._helper._fail_control_client.stop_failing_requests()
         self._helper.check_buffet_status_is(
-                buffet_config.STATUS_CONNECTED,
+                buffet_tester.STATUS_CONNECTED,
                 expected_device_id=device_id,
                 timeout_seconds=20)
         self._helper.check_buffet_is_polling(device_id)
