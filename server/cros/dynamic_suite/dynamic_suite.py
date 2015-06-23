@@ -396,6 +396,9 @@ class SuiteSpec(object):
                     self.builds[provision.CROS_VERSION_PREFIX])
             self.builds[provision.CROS_VERSION_PREFIX] = translated_build
 
+        if test_source_build:
+            test_source_build = self.devserver.translate(test_source_build)
+
         self.test_source_build = Suite.get_test_source_build(
                 self.builds, test_source_build=test_source_build)
 
