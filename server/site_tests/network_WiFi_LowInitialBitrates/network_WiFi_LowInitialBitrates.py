@@ -26,22 +26,22 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
 
         """
         logging.info('Analyzing packet capture...')
-        dut_src_diplay_filter = ('wlan.sa==%s' %
+        dut_src_display_filter = ('wlan.sa==%s' %
                                self.context.client.wifi_mac)
         # Some chips use self-addressed frames to tune channel
         # performance. They don't carry host-generated traffic, so
         # filter them out.
-        dut_dst_diplay_filter = ('wlan.da==%s' %
+        dut_dst_display_filter = ('wlan.da==%s' %
                                self.context.client.wifi_mac)
         # Get all the frames in chronological order.
         frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
                 ('%s and not %s' % (
-                    dut_src_diplay_filter, dut_dst_diplay_filter)))
+                    dut_src_display_filter, dut_dst_display_filter)))
         # Get just the DHCP related packets.
         dhcp_frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
-                '%s and bootp' % dut_src_diplay_filter)
+                '%s and bootp' % dut_src_display_filter)
         if not dhcp_frames:
             raise error.TestFail('Packet capture did not contain a DHCP '
                                  'negotiation!')
