@@ -41,7 +41,10 @@ function onMessageHandler(message, sender, sendResponse) {
 
         if (internal_width == null) {
           console.log('Cannot get internal display width.');
-          return;
+          // For DUTs without internal display, the test image is displayed
+          // on the first display available.
+          // TODO: make it work for multiple external displays.
+          internal_width = -1
         }
         chrome.windows.update(sender.tab.windowId, {
             left: internal_width + 1,
