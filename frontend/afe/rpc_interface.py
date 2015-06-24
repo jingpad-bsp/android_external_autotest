@@ -646,11 +646,12 @@ def get_acl_groups(**filter_data):
 
 def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
                           client_control_file='', use_container=False,
-                          profile_only=None, upload_kernel_config=False):
+                          profile_only=None, upload_kernel_config=False,
+                          db_tests=True):
     """
     Generates a client-side control file to load a kernel and run tests.
 
-    @param tests List of tests to run.
+    @param tests List of tests to run. See db_tests for more information.
     @param kernel A list of kernel info dictionaries configuring which kernels
         to boot for this job and other options for them
     @param label Name of label to grab kernel config from.
@@ -671,6 +672,11 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
             file code that uploads the kernel config file to the client and
             tells the client of the new (local) path when compiling the kernel;
             the tests must be server side tests
+    @param db_tests: if True, the test object can be found in the database
+                     backing the test model. In this case, tests is a tuple
+                     of test IDs which are used to retrieve the test objects
+                     from the database. If False, tests is a tuple of test
+                     dictionaries stored client-side in the AFE.
 
     @returns a dict with the following keys:
         control_file: str, The control file text.
@@ -685,7 +691,7 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
 
     cf_info, test_objects, profiler_objects, label = (
         rpc_utils.prepare_generate_control_file(tests, kernel, label,
-                                                profilers))
+                                                profilers, db_tests))
     cf_info['control_file'] = control_file.generate_control(
         tests=test_objects, kernels=kernel, platform=label,
         profilers=profiler_objects, is_server=cf_info['is_server'],

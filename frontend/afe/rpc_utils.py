@@ -255,8 +255,27 @@ def get_consistent_value(objects, field):
     return value
 
 
-def prepare_generate_control_file(tests, kernel, label, profilers):
-    test_objects = [models.Test.smart_get(test) for test in tests]
+def afe_test_dict_to_test_object(test_dict):
+    if not isinstance(test_dict, dict):
+        return test_dict
+
+    numerized_dict = {}
+    for key, value in test_dict.iteritems():
+        try:
+            numerized_dict[key] = int(value)
+        except (ValueError, TypeError):
+            numerized_dict[key] = value
+
+    return type('TestObject', (object,), numerized_dict)
+
+
+def prepare_generate_control_file(tests, kernel, label, profilers,
+                                  db_tests=True):
+    if db_tests:
+        test_objects = [models.Test.smart_get(test) for test in tests]
+    else:
+        test_objects = [afe_test_dict_to_test_object(test) for test in tests]
+
     profiler_objects = [models.Profiler.smart_get(profiler)
                         for profiler in profilers]
     # ensure tests are all the same type
@@ -265,7 +284,7 @@ def prepare_generate_control_file(tests, kernel, label, profilers):
     except InconsistencyException, exc:
         test1, test2 = exc.args
         raise model_logic.ValidationError(
-            {'tests' : 'You cannot run both server- and client-side '
+            {'tests' : 'You cannot run both test_suites and server-side '
              'tests together (tests %s and %s differ' % (
             test1.name, test2.name)})
 
@@ -277,8 +296,12 @@ def prepare_generate_control_file(tests, kernel, label, profilers):
     if label:
         label = models.Label.smart_get(label)
 
-    dependencies = set(label.name for label
-                       in models.Label.objects.filter(test__in=test_objects))
+    if db_tests:
+        dependencies = set(label.name for label
+                           in models.Label.objects.filter(test__in=test_objects))
+    else:
+        dependencies = reduce(
+                set.union, [set(test.dependencies) for test in test_objects])
 
     cf_info = dict(is_server=is_server, synch_count=synch_count,
                    dependencies=list(dependencies))

@@ -167,7 +167,7 @@ public class TestSelector extends Composite implements DataTableListener, Change
 
         JSONArray tests = staticData.getData("tests").isArray();
 
-        if (imageTests.size() > 0) {
+        if (usingTestsFromBuild()) {
             tests = imageTests;
         }
 
@@ -258,5 +258,9 @@ public class TestSelector extends Composite implements DataTableListener, Change
 
     public void setImageTests(JSONArray tests) {
         imageTests = tests;
+    }
+
+    public boolean usingTestsFromBuild() {
+        return imageTests.size() > 0;
     }
 }

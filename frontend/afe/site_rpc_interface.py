@@ -615,7 +615,10 @@ def get_tests_by_build(build):
         # values, these must be corrected to avoid the risk of tests
         # being omitted by the AFE.
         # The 'id' is an additional value used in the AFE.
+        # The control_data parsing does not reference 'run_reset', but it
+        # is also used in the AFE and defaults to True.
         test_object['id'] = _id
+        test_object['run_reset'] = True
         test_object['description'] = test_object.get('doc', '')
         test_object['test_time'] = test_object.get('time', 0)
         test_object['test_retry'] = test_object.get('retries', 0)
@@ -630,7 +633,11 @@ def get_tests_by_build(build):
 
         test_object['name'] = testname
 
+        # Correct the test path as parse_control_string sets an empty string.
+        test_object['path'] = control_file_path
+
         _id += 1
         test_objects.append(test_object)
 
+    test_objects = sorted(test_objects, key=lambda x: x.get('name'))
     return rpc_utils.prepare_for_serialization(test_objects)

@@ -366,9 +366,17 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     "kernel", getKernelParams(kernelString, display.getKernelCmdline().getText()));
         }
 
+        boolean testsFromBuild = testSelector.usingTestsFromBuild();
+        params.put("db_tests", JSONBoolean.getInstance(!testsFromBuild));
+
         JSONArray tests = new JSONArray();
         for (JSONObject test : testSelector.getSelectedTests()) {
-            tests.set(tests.size(), test.get("id"));
+            if (testsFromBuild) {
+                tests.set(tests.size(), test);
+            }
+            else {
+                tests.set(tests.size(), test.get("id"));
+            }
         }
         params.put("tests", tests);
 
