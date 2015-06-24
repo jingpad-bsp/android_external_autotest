@@ -6,6 +6,7 @@ import logging
 import os
 
 from autotest_lib.client.bin import site_utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -94,5 +95,9 @@ class ui_SystemTray(ui_test_base.ui_TestBase):
         self.height = height
         self.logged_in = logged_in
         self.mask_points = mask_points
+
+        if utils.get_board() != 'link':
+            logging.info('This test should only be run on link so exiting.')
+            return
 
         self.run_screenshot_comparison_test()
