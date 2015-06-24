@@ -1037,6 +1037,45 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._shill_proxy.set_sched_scan(enable)
 
 
+    def check_connected_on_last_resume(self):
+        """Checks whether the DUT was connected on its last resume.
+
+        Checks that the DUT was connected after waking from suspend by parsing
+        the last instance shill log message that reports shill's connection
+        status on resume. Fails the test if this log message reports that
+        the DUT woke up disconnected.
+
+        """
+        # As of build R43 6913.0.0, the shill log message from the function
+        # OnAfterResume is called as soon as shill resumes from suspend, and
+        # will report whether or not shill is connected. The log message will
+        # take one of the following two forms:
+        #
+        #       [...] [INFO:wifi.cc(1941)] OnAfterResume: connected
+        #       [...] [INFO:wifi.cc(1941)] OnAfterResume: not connected
+        #
+        # where 1941 is an arbitrary PID number. By checking if the last
+        # instance of this message contains the substring "not connected", we
+        # can determine whether or not shill was connected on its last resume.
+        connection_status_msg_regex_str = 'INFO:wifi\.cc.*OnAfterResume'
+        not_connected_substr = 'not connected'
+        connected_substr = 'connected'
+
+        cmd = ('grep -E %s /var/log/net.log | tail -1' %
+               connection_status_msg_regex_str)
+        cmdresult = self.host.run(cmd).stdout
+        if not cmdresult:
+            raise error.TestFail(
+                    'Could not find resume connection status log message.')
+        if not_connected_substr in cmdresult:
+            raise error.TestFail(
+                    'Client was not connected upon waking from suspend.')
+        if not connected_substr in cmdresult:
+            raise error.TestFail(
+                    'Resume log message did not contain connection status.')
+        logging.info('Client was connected upon waking from suspend.')
+
+
 class TemporaryDBusProperty:
     """Utility class to temporarily change a dbus property for the WiFi device.
 
