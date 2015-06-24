@@ -23,12 +23,13 @@ class buffet_InvalidCredentials(test.test):
         self._helper.check_buffet_is_polling(device_id)
 
         # Now invalidate buffet's access and refresh token and check
-        # that buffet transitions to the invalid_credentials state.
+        # that buffet transitions to the invalid_credentials state and clears
+        # the stored credentials/device_id.
         self._helper._oauth_client.invalidate_all_refresh_tokens()
         self._helper._oauth_client.invalidate_all_access_tokens()
         self._helper.check_buffet_status_is(
                 buffet_tester.STATUS_INVALID_CREDENTIALS,
-                expected_device_id=device_id,
+                expected_device_id='',
                 timeout_seconds=20)
 
 
