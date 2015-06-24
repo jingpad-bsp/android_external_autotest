@@ -370,6 +370,36 @@ class LabelUpdateTests(mox.MoxTestBase):
         self.assertEqual(reporter._get_project_label_from_title(
                 TITLE_PROJ_SUBBOARD), 'Proj-rikku')
 
+    def testBuildLabelExtraction(self):
+        """Test that the build label is correctly extracted from the title."""
+        TITLE_EMPTY = ''
+        TITLE_NO_BUILD = '[stress] platformDevice Failure on release/47-75.0.0'
+        TITLE_BUILD = '[stress] p_Device Failure on rikku-release/R44-7075.0.0'
+        TITLE_BUILD2 = '[stress] p_Device Failure on ' \
+                      'rikku-freon-release/R44-7075.0.0'
+        TITLE_BUILD_TRAILING = '[stress] p_Device on ' \
+                              'rikku-release/R44-7075.0.0 something else'
+        TITLE_BUILD_SUBBOARD = '[stress] p_Device Failure on ' \
+                              'veyron_rikku-release/R44-7075.0.0'
+
+        client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                   mox.IgnoreArg())
+        self.mox.ReplayAll()
+
+        reporter = reporting.Reporter()
+        self.assertEqual(reporter._get_release_label_from_title(TITLE_EMPTY),
+                '')
+        self.assertEqual(reporter._get_release_label_from_title(
+                TITLE_NO_BUILD), '')
+        self.assertEqual(reporter._get_release_label_from_title(TITLE_BUILD),
+                'm-44-7075.0.0')
+        self.assertEqual(reporter._get_release_label_from_title(TITLE_BUILD2),
+                'm-44-7075.0.0')
+        self.assertEqual(reporter._get_release_label_from_title(
+                TITLE_BUILD_TRAILING), 'm-44-7075.0.0')
+        self.assertEqual(reporter._get_release_label_from_title(
+                TITLE_BUILD_SUBBOARD), 'm-44-7075.0.0')
+
 
     def testCountLabelIncrement(self):
         """Test that incrementing an autofiled-count label should work."""
