@@ -47,7 +47,7 @@ class moblab_RunSuite(moblab_test.MoblabTest):
                     "%s/site_utils/run_suite.py --pool='' "
                     "--board=%s --build=%s --suite_name=%s" %
                     (moblab_host.AUTOTEST_INSTALL_DIR, board, build,
-                     suite_name))
+                     suite_name), timeout=10800)
         except error.AutoservRunError as e:
             # Collect the results and logs from the moblab device.
             moblab_logs_dir = os.path.join(self.resultsdir, 'moblab_logs')
