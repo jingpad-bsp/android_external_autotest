@@ -118,6 +118,7 @@ suite:wifi_perf_intel7265
 suite:wifi_perf_marvell8897
 suite:wifi_release
 suite:wifi_update_router
+suite:wificell-pre-cq
 suite:wifichaos
 suite:wimax
 suite:youtube_mse_eme
