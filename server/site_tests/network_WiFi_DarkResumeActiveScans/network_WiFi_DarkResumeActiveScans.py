@@ -24,6 +24,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
     def initialize(self, host):
+        super(network_WiFi_DarkResumeActiveScans, self).initialize(host)
         """Set up for dark resume."""
         self._dr_utils = dark_resume_utils.DarkResumeUtils(host)
 
