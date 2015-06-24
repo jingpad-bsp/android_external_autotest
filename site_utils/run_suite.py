@@ -101,7 +101,8 @@ def parse_options():
     parser.add_option("-i", "--build", dest="build")
     parser.add_option("-w", "--web", dest="web", default=None,
                       help="Address of a webserver to receive suite requests.")
-    parser.add_option('--firmware_build', dest='firmware_build', default=None,
+    parser.add_option('--firmware_rw_build', dest='firmware_rw_build',
+                      default=None,
                       help='Firmware build to be installed in dut RW firmware.')
     parser.add_option('--firmware_ro_build', dest='firmware_ro_build',
                       default=None,
@@ -110,7 +111,7 @@ def parse_options():
                       default=None,
                       help=('Build that contains the test code, '
                             'e.g., it can be the value of `--build`, '
-                            '`--firmware_build` or `--firmware_ro_build` '
+                            '`--firmware_rw_build` or `--firmware_ro_build` '
                             'arguments. Default is None, that is, use the test '
                             'code from `--build` (CrOS image)'))
     #  This should just be a boolean flag, but the autotest "proxy" code
@@ -1270,8 +1271,8 @@ class ResultCollector(object):
         runtime_in_secs = -1
         if (self.timings.tests_end_time is not None and
             self.timings.suite_start_time is not None):
-          runtime_in_secs = (self.timings.tests_end_time -
-                  self.timings.suite_start_time).total_seconds()
+            runtime_in_secs = (self.timings.tests_end_time -
+                    self.timings.suite_start_time).total_seconds()
 
         job_overhead.record_suite_runtime(self._suite_job_id, self._suite_name,
                 self._board, self._build, self._num_child_jobs, runtime_in_secs)
@@ -1289,8 +1290,8 @@ def create_suite(afe, options):
     builds = {}
     if options.build:
         builds[provision.CROS_VERSION_PREFIX] = options.build
-    if options.firmware_build:
-        builds[provision.FW_VERSION_PREFIX] = options.firmware_build
+    if options.firmware_rw_build:
+        builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
     wait = options.no_wait == 'False'

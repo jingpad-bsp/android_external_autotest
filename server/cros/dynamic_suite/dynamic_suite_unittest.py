@@ -25,8 +25,8 @@ class DynamicSuiteTest(mox.MoxTestBase):
     """
 
     _DEVSERVER_HOST = 'http://devserver1'
-    _BUILDS = {provision.CROS_VERSION_PREFIX: 'build',
-               provision.FW_VERSION_PREFIX:'fw_build'}
+    _BUILDS = {provision.CROS_VERSION_PREFIX: 'build_1',
+               provision.FW_RW_VERSION_PREFIX:'fwrw_build_1'}
 
     def setUp(self):
 

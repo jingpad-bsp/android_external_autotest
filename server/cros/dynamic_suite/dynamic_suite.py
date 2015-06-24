@@ -316,7 +316,7 @@ class SuiteSpec(object):
                                  this suite will run.
         @param timeout: Max lifetime in hours for each of the sub-jobs that
                         this suite run.
-        @param firmware_reimage: True if we should use FW_VERSION_PREFIX as
+        @param firmware_reimage: True if we should use FW_RW_VERSION_PREFIX as
                                  the version_prefix.
                                  False if we should use CROS_VERSION_PREFIX as
                                  the version_prefix.
@@ -387,8 +387,8 @@ class SuiteSpec(object):
             if version_prefix:
                 prefix = version_prefix
             else:
-                prefix = (provision.FW_VERSION_PREFIX if firmware_reimage else
-                          provision.CROS_VERSION_PREFIX)
+                prefix = (provision.FW_RW_VERSION_PREFIX if firmware_reimage
+                          else provision.CROS_VERSION_PREFIX)
             self.builds = {prefix: build}
 
         if provision.CROS_VERSION_PREFIX in self.builds:

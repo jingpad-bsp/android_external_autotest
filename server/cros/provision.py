@@ -14,7 +14,7 @@ from autotest_lib.server.cros import provision_actionables as actionables
 
 ### Constants for label prefixes
 CROS_VERSION_PREFIX = 'cros-version'
-FW_VERSION_PREFIX = 'fw-version'
+FW_RW_VERSION_PREFIX = 'fwrw-version'
 FW_RO_VERSION_PREFIX = 'fwro-version'
 
 # Default number of provisions attempts to try if we believe the devserver is
@@ -42,7 +42,7 @@ def fw_version_to_label(image):
     @returns: A string that is the appropriate label name.
 
     """
-    return FW_VERSION_PREFIX + ':' + image
+    return FW_RW_VERSION_PREFIX + ':' + image
 
 
 class _SpecialTaskAction(object):
@@ -158,7 +158,7 @@ class Provision(_SpecialTaskAction):
                               'disable_before_iteration_sysinfo': True,
                               'disable_after_test_sysinfo': True,
                               'disable_after_iteration_sysinfo': True}),
-        FW_VERSION_PREFIX: actionables.TestActionable(
+        FW_RW_VERSION_PREFIX: actionables.TestActionable(
                 'provision_FirmwareUpdate'),
     }
 

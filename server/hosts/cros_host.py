@@ -818,7 +818,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def _clear_fw_version_labels(self):
         """Clear firmware version labels from the machine."""
         labels = self._AFE.get_labels(
-                name__startswith=provision.FW_VERSION_PREFIX,
+                name__startswith=provision.FW_RW_VERSION_PREFIX,
                 host__hostname=self.hostname)
         for label in labels:
             label.remove_hosts(hosts=[self.hostname])

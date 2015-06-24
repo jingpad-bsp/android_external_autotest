@@ -811,7 +811,7 @@ def create_job_page_handler(name, priority, control_file, control_type,
         builds = {}
         builds[provision.CROS_VERSION_PREFIX] = image
         if firmware_rw_build:
-            builds[provision.FW_VERSION_PREFIX] = firmware_rw_build
+            builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
         if firmware_ro_build:
             builds[provision.FW_RO_VERSION_PREFIX] = firmware_ro_build
         return site_rpc_interface.create_suite_job(
