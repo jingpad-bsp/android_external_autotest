@@ -164,7 +164,7 @@ def _print_host_summaries(history_list, arguments):
                         ArgumentParser.parse_args().
 
     """
-    fmt = '%-28s %-2s  %-19s  %s'
+    fmt = '%-30s %-2s  %-19s  %s'
     print fmt % ('hostname', 'S', 'last checked', 'URL')
     for history in history_list:
         status, event = history.last_diagnosis()
