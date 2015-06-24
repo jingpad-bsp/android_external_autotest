@@ -334,17 +334,19 @@ def get_predicate_for_possible_test_arg(test):
             'job name similar to %s' % test)
 
 
-def _add_ssh_identity(temp_directory):
+def _add_ssh_identity(temp_directory, ssh_private_key=_TEST_KEY_PATH):
     """Add an ssh identity to the agent.
 
-    @param temp_directory: A directory to copy the testing_rsa into.
+    @param temp_directory: A directory to copy the |private key| into.
+    @param ssh_private_key: Path to the ssh private key to use for testing.
     """
     # Add the testing key to the current ssh agent.
     if os.environ.has_key('SSH_AGENT_PID'):
         # Copy the testing key to the temp directory and make it NOT
         # world-readable. Otherwise, ssh-add complains.
-        shutil.copy(_TEST_KEY_PATH, temp_directory)
-        key_copy_path = os.path.join(temp_directory, _TEST_KEY_FILENAME)
+        shutil.copy(ssh_private_key, temp_directory)
+        key_copy_path = os.path.join(temp_directory,
+                                     os.path.basename(ssh_private_key))
         os.chmod(key_copy_path, stat.S_IRUSR | stat.S_IWUSR)
         p = subprocess.Popen(['ssh-add', key_copy_path],
                              stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
@@ -603,6 +605,9 @@ def parse_arguments(argv):
     parser.add_argument('--ssh_options', action='store', default=None,
                         help='A string giving additional options to be '
                         'added to ssh commands.')
+    parser.add_argument('--ssh_private_key', action='store',
+                        default=_TEST_KEY_PATH, help='Path to the private ssh '
+                        'key.')
     parser.add_argument('--debug', action='store_true',
                         help='Include DEBUG level messages in stdout. Note: '
                              'these messages will be included in output log '
@@ -820,7 +825,7 @@ def _main_for_local_run(argv, arguments):
         return 1
 
     results_directory = _create_results_directory(arguments.results_dir)
-    _add_ssh_identity(results_directory)
+    _add_ssh_identity(results_directory, arguments.ssh_private_key)
     arguments.results_dir = results_directory
 
     # If the board has not been specified through --board, and is not set in the
