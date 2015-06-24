@@ -1723,11 +1723,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
           - ConnectTimeout=30; maximum of 30 seconds allowed for an SSH
           connection failure.  Consistency with remote_access.sh.
 
-          - ServerAliveInterval=180; which causes SSH to ping connection every
-          180 seconds. In conjunction with ServerAliveCountMax ensures
-          that if the connection dies, Autotest will bail out quickly.
+          - ServerAliveInterval=900; which causes SSH to ping connection every
+          900 seconds. In conjunction with ServerAliveCountMax ensures
+          that if the connection dies, Autotest will bail out.
           Originally tried 60 secs, but saw frequent job ABORTS where
-          the test completed successfully.
+          the test completed successfully. Later increased from 180 seconds to
+          900 seconds to account for tests where the DUT is suspended for
+          longer periods of time.
 
           - ServerAliveCountMax=3; consistency with remote_access.sh.
 
@@ -1750,7 +1752,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         base_command = ('/usr/bin/ssh -a -x %s %s %s'
                         ' -o StrictHostKeyChecking=no'
                         ' -o UserKnownHostsFile=/dev/null -o BatchMode=yes'
-                        ' -o ConnectTimeout=30 -o ServerAliveInterval=180'
+                        ' -o ConnectTimeout=30 -o ServerAliveInterval=900'
                         ' -o ServerAliveCountMax=3 -o ConnectionAttempts=4'
                         ' -o Protocol=2 -l %s -p %d')
         return base_command % (self._ssh_verbosity_flag, self._ssh_options,
