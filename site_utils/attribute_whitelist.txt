@@ -108,6 +108,7 @@ suite:wifi_atten_perf
 suite:wifi_correctness_cros_core
 suite:wifi_flaky
 suite:wifi_interop
+suite:wifi_lucidsleep
 suite:wifi_matfunc
 suite:wifi_matfunc_bcm4356
 suite:wifi_matfunc_intel7265

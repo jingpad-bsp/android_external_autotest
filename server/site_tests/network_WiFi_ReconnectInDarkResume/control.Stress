@@ -7,8 +7,10 @@ NAME = 'network_WiFi_ReconnectInDarkResume.Stress'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'servo, wificell, board:samus'
-ATTRIBUTES = "suite:wifi_correctness_cros_core, suite:wifi_matfunc, suite:wifi_release"
-SUITE = 'wifi_matfunc, wifi_correctness_cros_core, wifi_release'
+ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_matfunc, '
+              'suite:wifi_release, suite:wifi_lucidsleep')
+SUITE = ('wifi_matfunc, wifi_correctness_cros_core, wifi_release, '
+         'wifi_lucidsleep')
 
 DOC = """
 This test verifies that the DUT successfully reconnects to a network in dark
@@ -54,6 +56,5 @@ def run(machine):
                  reconnect_to_same_ap=True,
                  num_iterations=5,
                  raw_cmdline_args=args)
-
 
 parallel_simple(run, machines)
