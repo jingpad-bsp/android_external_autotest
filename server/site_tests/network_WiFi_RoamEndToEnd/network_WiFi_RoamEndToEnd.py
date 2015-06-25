@@ -53,7 +53,9 @@ class network_WiFi_RoamEndToEnd(wifi_cell_test_base.WiFiCellTestBase):
         client_at = autotest.Autotest(self._host)
         ssid = self.context.router.get_ssid(instance=0)
         client_at.run_test('network_RoamWifiEndToEnd',
-                           ssid=ssid, test=chrome_net_constants.OPEN_CONNECT)
+                           tag='connect',
+                           ssid=ssid,
+                           test=chrome_net_constants.OPEN_CONNECT)
         # Configure second AP with channel 149, mode N and same ssid as before.
         self._config_ap(149, hostap_config.HostapConfig.MODE_11N_PURE, ssid)
         ssid = self.context.router.get_ssid(instance=1)
@@ -61,6 +63,8 @@ class network_WiFi_RoamEndToEnd(wifi_cell_test_base.WiFiCellTestBase):
         # Bring down the AP that the device is connected to.
         self.context.router.deconfig_aps(instance=0)
         client_at.run_test('network_RoamWifiEndToEnd',
-                           ssid=ssid, test=chrome_net_constants.OPEN_ROAM)
+                           tag='roam',
+                           ssid=ssid,
+                           test=chrome_net_constants.OPEN_ROAM)
 
         self.context.router.deconfig()

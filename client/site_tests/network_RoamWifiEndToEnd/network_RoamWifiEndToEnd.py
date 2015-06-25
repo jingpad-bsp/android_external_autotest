@@ -63,8 +63,8 @@ class network_RoamWifiEndToEnd(test.test):
             raise error.TestFail('Network with ssid=%s is not found', self.SSID)
 
         if required_network_service_list['ConnectionState'] != 'Connected':
-            raise error.TestFail('DUT failed to roam/connect to the second'
-                                 'network')
+            raise error.TestFail(
+                'DUT failed to roam/connect to the second network')
 
         if required_network_service_list['ConnectionState'] == 'Connected':
             logging.info('DUT successfully roamed to the other Open network')
