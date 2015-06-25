@@ -28,6 +28,9 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
     """
     version = 1
 
+    # Boards without Bluetooth support.
+    _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'lumpy']
+
     def _err(self, message):
         """Raise error after first collecting more information.
 
@@ -37,6 +40,14 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         self.collect_logs('ERROR HAS OCCURED: %s' % message)
         raise error.TestError(message)
 
+    def supports_bluetooth(self):
+        """Return True if this device has Bluetooth capabilities; else False."""
+        device = utils.get_board()
+        if device in self._INVALID_BOARDS:
+            logging.info('%s does not have Bluetooth.', device)
+            return False
+        return True
+
     def _get_objects(self):
         """Return the managed objects for this chromebook."""
         manager = dbus.Interface(
@@ -45,13 +56,13 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
         return manager.GetManagedObjects()
 
     def _get_adapter_info(self):
-        """Return the adapter interface objects, or error if not found."""
+        """Return the adapter interface objects, or None if not found."""
         objects = self._get_objects()
         for path, interfaces in objects.items():
             if _ADAPTER_INTERFACE in interfaces:
                 self._adapter_path = path
                 return interfaces[_ADAPTER_INTERFACE]
-        self._err('Bluetooth Adapter not found.')
+        return None
 
     def _get_device_info(self, addr):
         """Return the device interface objects, or None if not found."""
@@ -62,13 +73,15 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                     return interfaces[_DEVICE_INTERFACE]
         return None
 
-    def _verify_adapter(self, adapter_status=True):
+    def _verify_adapter_power(self, adapter_power_status):
         """Return True/False if adapter power status matches given value."""
         info = self._get_adapter_info()
-        return True if info['Powered'] == adapter_status else False
+        if not info:
+            self._err('No adapter found!')
+        return True if info['Powered'] == adapter_power_status else False
 
-    def _verify_connection(self, addr, paired_status=True,
-                           connected_status=True):
+    def _verify_device_connection(self, addr, paired_status=True,
+                                  connected_status=True):
         """Return True/False if device statuses match given values."""
         def _check_info():
             info = self._get_device_info(addr)
@@ -88,33 +101,48 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
             results = _check_info()
         return results
 
-    def set_adapter(self, adapter_status=True):
+    def set_adapter_power(self, adapter_power_status):
         """Set adapter power status to match given value via dbus call.
 
-        @param adapter_status: True to turn adapter on; False for off.
+        Block until the power is set.
+
+        @param adapter_power_status: True to turn adapter on; False for off.
 
         """
-        if not hasattr(self, '_adapter_path'):
-            self._get_adapter_info()
+        info = self._get_adapter_info()
+        if not info:
+            self._err('No adapter found!')
         properties = dbus.Interface(
                 self._bus.get_object('org.bluez', self._adapter_path),
                 dbus_interface='org.freedesktop.DBus.Properties')
-        properties.Set(_ADAPTER_INTERFACE, 'Powered', adapter_status)
+        properties.Set(_ADAPTER_INTERFACE, 'Powered', adapter_power_status)
 
-    def wait_for_adapter(self, adapter_status=True):
+        self.poll_adapter_power(adapter_power_status)
+
+    def poll_adapter_presence(self):
+        """Raise error if adapter is not found after some time."""
+        complete = lambda: self._get_adapter_info() is not None
+        try:
+            utils.poll_for_condition(
+                    condition=complete, timeout=15, sleep_interval=1)
+        except utils.TimeoutError:
+            self._err('No adapter found after polling!')
+
+    def poll_adapter_power(self, adapter_power_status=True):
         """Wait until adapter power status matches given value.
 
-        @param adapter_status: True for adapter is on; False off.
+        @param adapter_power_status: True for adapter is on; False for off.
 
         """
-        complete = lambda: self._verify_adapter(adapter_status=adapter_status)
-        adapter_str = 'ON' if adapter_status else 'OFF'
+        complete = lambda: self._verify_adapter_power(
+                adapter_power_status=adapter_power_status)
+        adapter_str = 'ON' if adapter_power_status else 'OFF'
         utils.poll_for_condition(
                 condition=complete, timeout=_DEVICE_TIMEOUT_TIME,
                 sleep_interval=1,
                 desc=('Timeout for Bluetooth Adapter to be %s' % adapter_str))
 
-    def _wait_for_connection(self, addr, paired_status, connected_status):
+    def _poll_connection(self, addr, paired_status, connected_status):
         """Wait until device statuses match given values."""
         paired_str = 'PAIRED' if paired_status else 'NOT PAIRED'
         conn_str = 'CONNECTED' if connected_status else 'NOT CONNECTED'
@@ -122,14 +150,14 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                                                              conn_str)
         logging.info(message)
 
-        complete = lambda: self._verify_connection(
+        complete = lambda: self._verify_device_connection(
                 addr, paired_status=paired_status,
                 connected_status=connected_status)
         utils.poll_for_condition(
                 condition=complete, timeout=_DEVICE_TIMEOUT_TIME,
                 sleep_interval=1, desc=('Timeout while %s' % message))
 
-    def wait_for_connections(self, paired_status=True, connected_status=True):
+    def poll_connections(self, paired_status=True, connected_status=True):
         """Wait until all Bluetooth devices have the given statues.
 
         @param paired_status: True for device paired; False for unpaired.
@@ -137,8 +165,8 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
 
         """
         for addr in self._addrs:
-            self._wait_for_connection(addr, paired_status=paired_status,
-                                      connected_status=connected_status)
+            self._poll_connection(addr, paired_status=paired_status,
+                                  connected_status=connected_status)
 
     def login_and_open_browser(self):
         """Log in to machine, open browser, and navigate to dialog template.
@@ -238,8 +266,8 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                        'click mice, press keyboard keys, or use the '
                        'Connect button in Settings.)')
         self.tell_user(message)
-        self.wait_for_adapter(adapter_status=True)
-        self.wait_for_connections(paired_status=True, connected_status=True)
+        self.poll_adapter_power(True)
+        self.poll_connections(paired_status=True, connected_status=True)
         self.ask_user('Are all Bluetooth devices working?<br>'
                        'Is audio playing only through Bluetooth devices?<br>'
                        'Do onboard keyboard and trackpad work?')
@@ -250,9 +278,9 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
                       'through onboard speakers or wired headphones.')
 
     def start_dump(self, message=''):
-        """Run hcidump in subprocess.
+        """Run btmon in subprocess.
 
-        Kill previous hcidump (if needed) and start new one using current
+        Kill previous btmon (if needed) and start new one using current
         test type as base filename.  Dumps stored in results folder.
 
         @param message: string of text added to top of log entry.
@@ -262,20 +290,20 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
             self._dump.kill()
         if not hasattr(self, '_test_type'):
             self._test_type = 'test'
-        logging.info('Starting hcidump')
-        filename = '%s_hcidump' % self._test_type
+        logging.info('Starting btmon')
+        filename = '%s_btmon' % self._test_type
         path = os.path.join(self.resultsdir, filename)
         with open(path, 'a') as f:
             f.write('%s\n' % _SECTION_BREAK)
-            f.write('%s: Starting hcidump\n' % time.strftime(_TIME_FORMAT))
+            f.write('%s: Starting btmon\n' % time.strftime(_TIME_FORMAT))
             f.write('%s\n' % message)
             f.flush()
-            hcidump_path = '/usr/bin/hcidump'
+            btmon_path = '/usr/bin/btmon'
             try:
-                self._dump = subprocess.Popen([hcidump_path], stdout=f,
+                self._dump = subprocess.Popen([btmon_path], stdout=f,
                                               stderr=subprocess.PIPE)
             except Exception as e:
-                raise error.TestError('hcidump: %s' % e)
+                raise error.TestError('btmon: %s' % e)
 
     def collect_logs(self, message=''):
         """Store results of dbus GetManagedObjects and hciconfig.
@@ -356,7 +384,7 @@ class BluetoothSemiAutoHelper(semiauto_framework.semiauto_test):
     def cleanup(self):
         """Cleanup of various files/processes opened during test.
 
-        Closes running hcidump, closes browser (if asked to at start), and
+        Closes running btmon, closes browser (if asked to at start), and
         deletes files added during test.
 
         """

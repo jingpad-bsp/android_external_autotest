@@ -14,9 +14,6 @@ class bluetooth_IDCheck(bluetooth_semiauto_helper.BluetoothSemiAutoHelper):
     """Checks whether the Bluetooth ID is in the correct format."""
     version = 1
 
-    # Boards which do not have Bluetooth or do not ship.
-    _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'lumpy', 'rambi']
-
     # Boards which only support bluetooth version 3 and below
     _BLUETOOTH_3_BOARDS = ['x86-mario', 'x86-zgb']
 
@@ -26,11 +23,12 @@ class bluetooth_IDCheck(bluetooth_semiauto_helper.BluetoothSemiAutoHelper):
 
     def _check_id(self):
         """Fail if the Bluetooth ID is not in the correct format."""
+        device = utils.get_board()
         adapter_info = self._get_adapter_info()
         modalias = adapter_info['Modalias']
         logging.info('Saw Bluetooth ID of: %s', modalias)
 
-        if self._device in self._BLUETOOTH_3_BOARDS:
+        if device in self._BLUETOOTH_3_BOARDS:
             bt_format = 'bluetooth:v00E0p24..d0300'
         else:
             bt_format = 'bluetooth:v00E0p24..d0400'
@@ -41,12 +39,8 @@ class bluetooth_IDCheck(bluetooth_semiauto_helper.BluetoothSemiAutoHelper):
 
     def run_once(self):
         """Entry point of this test."""
-
-        # Abort test for invalid boards.
-        self._device = utils.get_board()
-        if self._device in self._INVALID_BOARDS:
-            logging.info('Aborting test; %s does not have Bluetooth.',
-                         self._device)
+        if not self.supports_bluetooth():
             return
 
+        self.poll_adapter_presence()
         self._check_id()
