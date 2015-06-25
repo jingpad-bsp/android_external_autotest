@@ -26,14 +26,10 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
-        self.context.configure(hostap_config.HostapConfig(channel=1))
-        assoc_params = xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid())
-        self.context.assert_connect_wifi(assoc_params)
-
+        ap_ssid = self.configure_and_connect_to_ap(
+                hostap_config.HostapConfig(channel=1))
         client = self.context.client
         router = self.context.router
-        ap_ssid = router.get_ssid()
 
         # Enable the wake on SSID feature in shill, and set the scan period.
         with contextlib.nested(

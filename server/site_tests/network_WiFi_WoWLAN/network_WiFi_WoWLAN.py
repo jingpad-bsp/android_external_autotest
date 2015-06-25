@@ -25,11 +25,7 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Body of the test."""
-        self.context.configure(hostap_config.HostapConfig(channel=1))
-        assoc_params = xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid())
-        self.context.assert_connect_wifi(assoc_params)
-
+        self.configure_and_connect_to_ap(hostap_config.HostapConfig(channel=1))
         client = self.context.client
         router = self.context.router
         dut_mac = client.wifi_mac

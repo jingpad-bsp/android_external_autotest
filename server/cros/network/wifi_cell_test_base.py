@@ -7,6 +7,7 @@ import logging
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros import constants
 from autotest_lib.server import frontend
 from autotest_lib.server import site_utils
@@ -116,3 +117,19 @@ class WiFiCellTestBase(test.test):
         # If we fail during initialization, we might not have a context.
         if hasattr(self, '_wifi_context'):
             self._wifi_context.teardown()
+
+
+    def configure_and_connect_to_ap(self, configuration_parameters):
+        """
+        Configure the router as an AP with the given parameters and connect
+        the DUT to it.
+
+        @param configuration_parameters HostapConfig object.
+
+        @return name of the configured AP
+        """
+        self.context.configure(configuration_parameters)
+        ap_ssid = self.context.router.get_ssid()
+        assoc_params = xmlrpc_datatypes.AssociationParameters(ssid=ap_ssid)
+        self.context.assert_connect_wifi(assoc_params)
+        return ap_ssid

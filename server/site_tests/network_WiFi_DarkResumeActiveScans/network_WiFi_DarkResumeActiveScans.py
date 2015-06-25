@@ -63,10 +63,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
 
         ap_config = hostap_config.HostapConfig(channel=1)
-        self.context.configure(ap_config)
-        assoc_params = xmlrpc_datatypes.AssociationParameters(
-                ssid=self.context.router.get_ssid())
-        self.context.assert_connect_wifi(assoc_params)
+        self.configure_and_connect_to_ap(ap_config)
         self.context.assert_ping_from_dut()
 
         client = self.context.client
