@@ -827,6 +827,7 @@ def create_job_page_handler(name, priority, control_file, control_type,
                       hostless=hostless, **kwargs)
 
 
+@rpc_utils.route_rpc_to_master
 def create_job(name, priority, control_file, control_type,
                hosts=(), meta_hosts=(), one_time_hosts=(),
                atomic_group_name=None, synch_count=None, is_template=False,

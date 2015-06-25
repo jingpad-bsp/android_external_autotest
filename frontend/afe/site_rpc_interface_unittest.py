@@ -118,10 +118,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         self.assertRaises(error.StageControlFileFailure,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None)
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None)
 
 
     def testGetControlFileFail(self):
@@ -140,10 +140,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         self.assertRaises(error.ControlFileEmpty,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None)
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None)
 
 
     def testGetControlFileListFail(self):
@@ -162,34 +162,34 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.mox.ReplayAll()
         self.assertRaises(error.NoControlFileList,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None)
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None)
 
 
     def testBadNumArgument(self):
         """Ensure we handle bad values for the |num| argument."""
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None,
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None,
                           num='goo')
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None,
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None,
                           num=[])
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
-                          self._NAME,
-                          self._BOARD,
-                          self._BUILD,
-                          None,
+                          name=self._NAME,
+                          board=self._BOARD,
+                          build=self._BUILD,
+                          pool=None,
                           num='5')
 
 

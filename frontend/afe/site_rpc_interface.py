@@ -119,6 +119,7 @@ def _stage_build_artifacts(build):
     return (ds, timings)
 
 
+@rpc_utils.route_rpc_to_master
 def create_suite_job(name='', board='', build='', pool='', control_file='',
                      check_hosts=True, num=None, file_bugs=False, timeout=24,
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,

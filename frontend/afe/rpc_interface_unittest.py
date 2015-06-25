@@ -220,8 +220,9 @@ class RpcInterfaceTest(unittest.TestCase,
 
 
     def _create_job_helper(self, **kwargs):
-        return rpc_interface.create_job('test', 'Medium', 'control file',
-                                        SERVER, **kwargs)
+        return rpc_interface.create_job(name='test', priority='Medium',
+                                        control_file='control file',
+                                        control_type=SERVER, **kwargs)
 
 
     def test_one_time_hosts(self):
