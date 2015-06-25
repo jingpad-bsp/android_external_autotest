@@ -218,7 +218,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     # R45 falls out of stable channel.
     # Prepend build and board to the control file.
     inject_dict = {'board': board,
-                   'build': test_source_build,
+                   'build': builds[provision.CROS_VERSION_PREFIX],
                    'builds': builds,
                    'check_hosts': check_hosts,
                    'pool': pool,
