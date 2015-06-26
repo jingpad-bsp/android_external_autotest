@@ -32,12 +32,12 @@ class firmware_ECBootTime(FirmwareTest):
         # issue.
         if self._x86:
             boot_anchors = ["\[([0-9\.]+) PB", "\[([0-9\.]+) Port 80"]
-        elif self._veyron:
-            boot_anchors = ["\[([0-9\.]+) power state 5 = S5",
-                            "\[([0-9\.]+) power state 3 = S0"]
-        else:
+        elif self._arm_legacy:
             boot_anchors = ["\[([0-9\.]+) AP running ...",
                             "\[([0-9\.]+) XPSHOLD seen"]
+        else:
+            boot_anchors = ["\[([0-9\.]+) power state 1 = S5",
+                            "\[([0-9\.]+) power state 3 = S0"]
         power_cmd = "powerbtn" if self._x86 else "power on"
         reboot = self.ec.send_command_get_output(
             "reboot ap-off",
@@ -55,17 +55,16 @@ class firmware_ECBootTime(FirmwareTest):
         if boot_time > 1.0:
             raise error.TestFail("Boot time longer than 1 second.")
 
-    def is_veyron_board(self):
-        veyrons = ('Brain', 'Jaq', 'Jerry', 'Mighty', 'Minnie', 'Nicky',
-                   'Pinky', 'Remy', 'Rialto', 'Speedy', 'Thea')
+    def is_arm_legacy_board(self):
+        arm_legacy = ('Snow', 'Spring', 'Pit', 'Pi', 'Big', 'Blaze', 'Kitty')
         output = self.faft_client.system.get_platform_name()
-        return output in veyrons
+        return output in arm_legacy
 
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
         self._x86 = ('x86' in self.faft_config.ec_capability)
-        self._veyron = self.is_veyron_board()
+        self._arm_legacy = self.is_arm_legacy_board()
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})
         logging.info("Reboot and check EC cold boot time and host boot time.")
         self.switcher.mode_aware_reboot('custom', self.check_boot_time)
