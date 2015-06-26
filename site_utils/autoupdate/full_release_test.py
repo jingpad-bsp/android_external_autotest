@@ -15,7 +15,6 @@ import logging
 import optparse
 import os
 import re
-import subprocess
 import sys
 
 import common
@@ -31,10 +30,6 @@ from autotest_lib.site_utils.autoupdate.lib import test_params
 
 chromite = import_common.download_and_import('chromite',
                                              external_packages.ChromiteRepo())
-try:
-   from chromite.cbuildbot import cbuildbot_config
-except ImportError:
-   from chromite.buildbot import cbuildbot_config
 
 # Autotest pylint is more restrictive than it should with args.
 #pylint: disable=C0111
@@ -515,31 +510,12 @@ def get_job_url(server, job_id):
             _autotest_url_format % dict(host=server, job=job_id))
 
 
-def get_boards_from_chromite(hwtest_enabled_only=False):
-    """Returns the list of boards from cbuildbot_config.
-
-    @param hwtest_enabled_only: Whether to only return boards with hw_tests
-                                enabled.
-
-    @return list of boards name strings.
-    """
-    boards = set()
-    for config in cbuildbot_config.GetConfig().itervalues():
-        if hwtest_enabled_only and not config.get('hw_tests'):
-            continue
-        boards.update(config.get('boards'))
-
-    return list(boards)
-
-
 def parse_args(argv):
     parser = optparse.OptionParser(
             usage='Usage: %prog [options] RELEASE [BOARD...]',
             description='Schedule Chrome OS release update tests on given '
                         'board(s).')
 
-    parser.add_option('--all_boards', dest='all_boards', action='store_true',
-                      help='default test run to all known boards')
     parser.add_option('--archive_url', metavar='URL',
                       help='Use this archive url to find the target payloads.')
     parser.add_option('--dump', default=False, action='store_true',
@@ -580,21 +556,8 @@ def parse_args(argv):
 
     opts.tested_release = args[0]
     opts.tested_board_list = args[1:]
-    if not opts.tested_board_list and not opts.all_boards:
+    if not opts.tested_board_list:
         parser.error('No boards listed.')
-    if opts.tested_board_list and opts.all_boards:
-        parser.error('--all_boards should not be used with individual board '
-                     'arguments".')
-
-    if opts.all_boards:
-        opts.tested_board_list = get_boards_from_chromite(
-            hwtest_enabled_only=True)
-    else:
-        # Sanity check board.
-        all_boards = get_boards_from_chromite()
-        for board in opts.tested_board_list:
-            if board not in all_boards:
-                parser.error('unknown board (%s)' % board)
 
     # Skip specific board.
     if opts.skip_boards:
