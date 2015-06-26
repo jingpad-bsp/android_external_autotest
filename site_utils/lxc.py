@@ -292,6 +292,7 @@ def install_package_precheck(package):
 
 
 @timer.decorate
+@retry.retry(error.CmdError, timeout_min=20)
 def install_package(package):
     """Install the given package inside container.
 
@@ -316,6 +317,7 @@ def install_package(package):
 
 
 @timer.decorate
+@retry.retry(error.CmdError, timeout_min=20)
 def install_python_package(package):
     """Install the given python package inside container using pip.
 
