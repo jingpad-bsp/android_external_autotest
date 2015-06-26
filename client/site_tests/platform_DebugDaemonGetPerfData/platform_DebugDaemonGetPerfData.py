@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import cStringIO, dbus, gzip, logging, subprocess
+import cStringIO, collections, dbus, gzip, logging, subprocess
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -38,6 +38,9 @@ class platform_DebugDaemonGetPerfData(test.test):
     _dbus_debugd_object = '/org/chromium/debugd'
     _dbus_debugd_name = 'org.chromium.debugd'
 
+    # For storing the size of returned results.
+    SizeInfo = collections.namedtuple('SizeInfo', ['size', 'size_zipped'])
+
     def gzip_string(self, string):
         """
         Gzip a string.
@@ -54,12 +57,9 @@ class platform_DebugDaemonGetPerfData(test.test):
         return string_file.getvalue()
 
 
-    def validate_get_perf_method(self, get_perf_method, duration, num_reps,
-                                 profile_type):
+    def validate_get_perf_method(self, duration, num_reps, profile_type):
         """
         Validate a debugd method that returns perf data.
-
-        @param get_perf_method: The debugd method to test.
 
         @param duration: The duration to use for perf data collection.
 
@@ -67,15 +67,34 @@ class platform_DebugDaemonGetPerfData(test.test):
 
         @param profile_type: A label to use for storing into perf keyvals.
         """
-        iface_function = getattr(self.dbus_iface, get_perf_method)
-        result_total_size = 0
-        result_zipped_total_size = 0
+        # Dictionary for storing results returned from debugd.
+        # Key:   Name of data type (string)
+        # Value: Sizes of results in bytes (list of SizeInfos)
+        stored_results = collections.defaultdict(list)
+
         for _ in range(num_reps):
-            result = iface_function(duration)
-            if not result:
-                raise error.TestFail('No perf output found: %s' % result)
-            logging.info('%s() for %s seconds returned %d items',
-                         get_perf_method, duration, len(result))
+            status, perf_data, perf_stat = (
+                self.dbus_iface.GetRandomPerfOutput(duration))
+            if status != 0:
+                raise error.TestFail('GetRandomPerfOutput() returned status %d',
+                                     status)
+            if len(perf_data) == 0 and len(perf_stat) == 0:
+                raise error.TestFail('GetRandomPerfOutput() returned no data')
+            if len(perf_data) > 0 and len(perf_stat) > 0:
+                raise error.TestFail('GetRandomPerfOutput() returned both '
+                                     'perf_data and perf_stat')
+
+            result_type = None
+            if perf_data:
+                result = perf_data
+                result_type = "perf_data"
+            else:   # if perf_stat
+                result = perf_stat
+                result_type = "perf_stat"
+
+            logging.info('GetRandomPerfOutput() for %s seconds returned %d '
+                         'bytes of type %s',
+                         duration, len(result), result_type)
             if len(result) < 10:
                 raise error.TestFail('Perf output too small')
 
@@ -89,15 +108,18 @@ class platform_DebugDaemonGetPerfData(test.test):
             if result.startswith('<process exited with status: '):
                 raise error.TestFail('Quipper failed: %s' % result)
 
-            result_total_size += len(result)
-            result_zipped_total_size += len(self.gzip_string(result))
+            stored_results[result_type].append(
+                self.SizeInfo(len(result), len(self.gzip_string(result))))
 
-        key = 'mean_%s_size_%s_%d' % (get_perf_method, profile_type, duration)
-        keyvals = {}
-        if num_reps > 0:
-            keyvals[key] = result_total_size / num_reps
-            keyvals[key + '_zipped'] = result_zipped_total_size / num_reps
-        self.write_perf_keyval(keyvals)
+        for result_type, sizes in stored_results.iteritems():
+            key = 'mean_%s_size_%s_%d' % (result_type, profile_type, duration)
+            total_size = sum(entry.size for entry in sizes)
+            total_size_zipped = sum(entry.size_zipped for entry in sizes)
+
+            keyvals = {}
+            keyvals[key] = total_size / len(sizes)
+            keyvals[key + '_zipped'] = total_size_zipped / len(sizes)
+            self.write_perf_keyval(keyvals)
 
 
     def run_once(self, *args, **kwargs):
@@ -110,8 +132,6 @@ class platform_DebugDaemonGetPerfData(test.test):
         self.dbus_iface = dbus.Interface(proxy,
                                          dbus_interface=self._dbus_debugd_name)
 
-        get_perf_methods = ['GetRichPerfData']
-
         # Open /dev/null to redirect unnecessary output.
         devnull = open('/dev/null', 'w')
 
@@ -123,9 +143,7 @@ class platform_DebugDaemonGetPerfData(test.test):
 
             for duration, num_reps in self._profile_duration_and_repetitions:
                 # Collect perf data from debugd.
-                for get_perf_method in get_perf_methods:
-                    self.validate_get_perf_method(get_perf_method, duration,
-                                                  num_reps, profile_type)
+                self.validate_get_perf_method(duration, num_reps, profile_type)
 
             # Terminate the process and actually wait for it to terminate.
             process.terminate()
