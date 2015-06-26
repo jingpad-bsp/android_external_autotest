@@ -65,12 +65,15 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                             '%s rather than HDMI is selected on Cros device' %
                                     output_nodes)
 
+                # Transfer the data to Cros device first because it takes
+                # several seconds.
+                source.set_playback_data(golden_file)
+
                 logging.info('Start recording from Chameleon.')
                 recorder.start_recording()
 
                 time.sleep(self.DELAY_BEFORE_PLAYBACK)
 
-                source.set_playback_data(golden_file)
                 logging.info('Start playing %s on Cros device',
                              golden_file.path)
                 source.start_playback(blocking=True)
