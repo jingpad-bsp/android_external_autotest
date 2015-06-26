@@ -549,8 +549,6 @@ def is_in_container():
 
     @return: True if the process is running inside a container, otherwise False.
     """
-    try:
-        base_utils.run('cat /proc/1/cgroup | grep "/lxc/" || false')
-        return True
-    except error.CmdError:
-        return False
+    result = base_utils.run('grep -q "/lxc/" /proc/1/cgroup',
+                            verbose=False, ignore_status=True)
+    return result.exit_status == 0
