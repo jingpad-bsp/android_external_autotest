@@ -17,6 +17,9 @@ CHAN_FLAG_DISABLED = 'disabled'
 CHAN_FLAG_NO_IR = 'no IR'
 CHAN_FLAG_PASSIVE_SCAN = 'passive scan'
 CHAN_FLAG_RADAR_DETECT = 'radar detection'
+DEV_MODE_AP = 'AP'
+DEV_MODE_IBSS = 'IBSS'
+DEV_MODE_MONITOR = 'monitor'
 
 HT20 = 'HT20'
 HT40_ABOVE = 'HT40+'
@@ -26,7 +29,7 @@ SECURITY_OPEN = 'open'
 SECURITY_WEP = 'wep'
 SECURITY_WPA = 'wpa'
 SECURITY_WPA2 = 'wpa2'
-# MIxed mode security is WPA2/WPA
+# Mixed mode security is WPA2/WPA
 SECURITY_MIXED = 'mixed'
 
 # Table of lookups between the output of item 'secondary channel offset:' from

@@ -226,6 +226,9 @@ class LinuxSystem(object):
                 caps.add(self.CAPABILITY_TDLS)
             if phy.support_vht:
                 caps.add(self.CAPABILITY_VHT)
+        if any([iw_runner.DEV_MODE_IBSS in phy.modes
+                for phy in self.phy_list]):
+            caps.add(self.CAPABILITY_IBSS)
         return caps
 
 

@@ -110,7 +110,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
     def get_capabilities(self):
         """@return iterable object of AP capabilities for this system."""
-        caps = set([self.CAPABILITY_IBSS])
+        caps = set()
         try:
             self.cmd_send_management_frame = path_utils.must_be_installed(
                     '/usr/bin/send_management_frame', host=self.host)
