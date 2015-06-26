@@ -36,6 +36,8 @@ def get_x86_cpu_arch():
         return 'Atom'
     if re.search(r'Intel.*Celeron.*N2[89][0-9][0-9]', cpuinfo):
         return 'Celeron N2000'
+    if re.search(r'Intel.*Celeron.*N3[0-9][0-9][0-9]', cpuinfo):
+        return 'Celeron N3000'
     if re.search(r'Intel.*Celeron.*[0-9]{3,4}', cpuinfo):
         return 'Celeron'
     if re.search(r'Intel.*Core.*i[357]-[234][0-9][0-9][0-9]', cpuinfo):
