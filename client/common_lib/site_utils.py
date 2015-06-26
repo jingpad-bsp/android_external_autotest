@@ -552,3 +552,20 @@ def is_in_container():
     result = base_utils.run('grep -q "/lxc/" /proc/1/cgroup',
                             verbose=False, ignore_status=True)
     return result.exit_status == 0
+
+
+def is_flash_installed():
+    """
+    The Adobe Flash binary is only distributed with internal builds.
+    """
+    return (os.path.exists('/opt/google/chrome/pepper/libpepflashplayer.so')
+        and os.path.exists('/opt/google/chrome/pepper/pepper-flash.info'))
+
+
+def verify_flash_installed():
+    """
+    The Adobe Flash binary is only distributed with internal builds.
+    Warn users of public builds of the extra dependency.
+    """
+    if not is_flash_installed():
+        raise error.TestNAError('No Adobe Flash binary installed.')

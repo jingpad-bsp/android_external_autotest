@@ -63,5 +63,6 @@ class video_YouTubeFlash(test.test):
 
 
     def run_once(self):
+        utils.verify_flash_installed()
         with chrome.Chrome() as cr:
             self.run_youtube_tests(cr.browser)

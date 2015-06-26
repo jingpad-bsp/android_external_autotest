@@ -90,5 +90,6 @@ class desktopui_FlashSanityCheck(test.test):
             raise error.TestFail('Pepper process disappeared during test.')
 
     def run_once(self, time_to_wait_secs=60):
+        utils.verify_flash_installed()
         with chrome.Chrome() as cr:
             self.run_flash_sanity_test(cr.browser, time_to_wait_secs)

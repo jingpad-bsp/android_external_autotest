@@ -17,6 +17,7 @@ class power_FlashVideoSuspend(test.test):
     version = 2
 
     def run_once(self, video_urls=None):
+        utils.verify_flash_installed()
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
