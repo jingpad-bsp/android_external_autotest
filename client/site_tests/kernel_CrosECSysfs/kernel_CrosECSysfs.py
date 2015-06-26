@@ -14,6 +14,9 @@ class kernel_CrosECSysfs(test.test):
 
     cros_ec = '/dev/cros_ec'
     sysfs_path = '/sys/devices/virtual/chromeos/cros_ec'
+    kernel_ver = os.uname()[2]
+    if utils.compare_versions(kernel_ver, "3.14") >= 0:
+        sysfs_path = '/sys/class/chromeos/cros_ec'
 
     def _read_file(self, filename):
         """
