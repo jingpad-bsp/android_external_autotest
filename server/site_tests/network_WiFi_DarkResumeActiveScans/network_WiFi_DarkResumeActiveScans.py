@@ -8,7 +8,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
-from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import dark_resume_utils
 from autotest_lib.server.cros.network import hostap_config
