@@ -1068,23 +1068,56 @@ class WiFiClient(site_linux_system.LinuxSystem):
         # where 1941 is an arbitrary PID number. By checking if the last
         # instance of this message contains the substring "not connected", we
         # can determine whether or not shill was connected on its last resume.
-        connection_status_msg_regex_str = 'INFO:wifi\.cc.*OnAfterResume'
+        connection_status_log_regex_str = 'INFO:wifi\.cc.*OnAfterResume'
         not_connected_substr = 'not connected'
         connected_substr = 'connected'
 
         cmd = ('grep -E %s /var/log/net.log | tail -1' %
-               connection_status_msg_regex_str)
-        cmdresult = self.host.run(cmd).stdout
-        if not cmdresult:
-            raise error.TestFail(
-                    'Could not find resume connection status log message.')
-        if not_connected_substr in cmdresult:
-            raise error.TestFail(
-                    'Client was not connected upon waking from suspend.')
-        if not connected_substr in cmdresult:
-            raise error.TestFail(
-                    'Resume log message did not contain connection status.')
+               connection_status_log_regex_str)
+        connection_status_log = self.host.run(cmd).stdout
+        if not connection_status_log:
+            raise error.TestFail('Could not find resume connection status log '
+                                 'message.')
+
+        logging.debug('Connection status message:\n%s', connection_status_log)
+        if not_connected_substr in connection_status_log:
+            raise error.TestFail('Client was not connected upon waking from '
+                                 'suspend.')
+
+        if not connected_substr in connection_status_log:
+            raise error.TestFail('Last resume log message did not contain '
+                                 'connection status.')
+
         logging.info('Client was connected upon waking from suspend.')
+
+
+    def check_wake_on_wifi_throttled(self):
+        """
+        Checks whether wake on WiFi was throttled on the DUT on the last dark
+        resume. Check for this by parsing shill logs for a throttling message.
+
+        """
+        # We are looking for an dark resume error log message indicating that
+        # wake on WiFi was throttled. This is an example of the error message:
+        #     [...] [ERROR:wake_on_wifi.cc(1304)] OnDarkResume: Too many dark \
+        #       resumes; disabling wake on WiFi temporarily
+        dark_resume_log_regex_str = 'ERROR:wake_on_wifi\.cc.*OnDarkResume:.*'
+        throttled_msg_substr = ('Too many dark resumes; disabling wake on '
+                                   'WiFi temporarily')
+
+        cmd = ('grep -E %s /var/log/net.log | tail -1' %
+               dark_resume_log_regex_str)
+        last_dark_resume_error_log = self.host.run(cmd).stdout
+        if not last_dark_resume_error_log:
+            raise error.TestFail('Could not find a dark resume log message.')
+
+        logging.debug('Last dark resume log message:\n%s',
+                last_dark_resume_error_log)
+        if not throttled_msg_substr in last_dark_resume_error_log:
+            raise error.TestFail('Wake on WiFi was not throttled on the last '
+                                 'dark resume.')
+
+        logging.info('Wake on WiFi was throttled on the last dark resume.')
 
 
 class TemporaryDBusProperty:
