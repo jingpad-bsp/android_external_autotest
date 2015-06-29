@@ -1356,7 +1356,7 @@ def get_host_diagnosis_interval(host_id, end_time, success):
 
     """
     host = models.Host.smart_get(host_id)
-    if not host.shard:
+    if not host.shard or utils.is_shard():
         return status_history.get_diagnosis_interval(
                 host_id, end_time, success)
     else:
