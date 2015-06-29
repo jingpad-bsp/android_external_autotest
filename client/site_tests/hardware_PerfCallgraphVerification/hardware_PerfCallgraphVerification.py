@@ -9,6 +9,10 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 
 def chain_length(line):
+    """
+    Return the length of a chain in |line|.
+    E.g. if line is "... chain: nr:5" return 5
+    """
     return int(line.split(':')[2])
 
 class hardware_PerfCallgraphVerification(test.test):
@@ -30,6 +34,12 @@ class hardware_PerfCallgraphVerification(test.test):
         # Waiting on ARM/perf support
         if not utils.get_current_kernel_arch().startswith('x86'):
             raise error.TestNAError('Unsupported architecture')
+        # These boards are not supported
+        unsupported_boards = ['gizmo']
+        board = utils.get_board()
+        if board in unsupported_boards:
+            raise error.TestNAError('Unsupported board')
+
 
     def report_has_callchain_length_at_least(self, lines, wanted_length):
         # Look through the output of 'perf report' for the following which

@@ -50,6 +50,10 @@ class hardware_PerfCounterVerification(test.test):
             uarch = utils.get_intel_cpu_uarch()
             if uarch not in INTEL_LBR_UARCHS:
                 raise error.TestNAError('Unsupported microarchitecture.')
+        unsupported_boards = ['gizmo']
+        board = utils.get_board()
+        if board in unsupported_boards:
+            raise error.TestNAError('Unsupported board')
 
     def run_once(self, **kwargs):
         noploop = os.path.join(self.srcdir, 'noploop')
