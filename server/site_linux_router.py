@@ -153,14 +153,25 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         """
         super(LinuxRouter, self).__init__(host, 'router')
+        self._ssid_prefix = test_name
+        self._enable_avahi = enable_avahi
+        self.__setup()
 
+
+    def __setup(self):
+        """Set up this system.
+
+        Can be used either to complete initialization of a LinuxRouter
+        object, or to re-establish a good state after a reboot.
+
+        """
         self.cmd_dhcpd = '/usr/sbin/dhcpd'
         self.cmd_hostapd = path_utils.must_be_installed(
-                '/usr/sbin/hostapd', host=host)
+                '/usr/sbin/hostapd', host=self.host)
         self.cmd_hostapd_cli = path_utils.must_be_installed(
-                '/usr/sbin/hostapd_cli', host=host)
+                '/usr/sbin/hostapd_cli', host=self.host)
         self.cmd_wpa_supplicant = path_utils.must_be_installed(
-                '/usr/sbin/wpa_supplicant', host=host)
+                '/usr/sbin/wpa_supplicant', host=self.host)
         self.dhcpd_conf = '/tmp/dhcpd.%s.conf'
         self.dhcpd_leases = '/tmp/dhcpd.leases'
 
@@ -175,7 +186,6 @@ class LinuxRouter(site_linux_system.LinuxSystem):
 
         # hostapd configuration persists throughout the test, subsequent
         # 'config' commands only modify it.
-        self._ssid_prefix = test_name
         if self._ssid_prefix.startswith(self.KNOWN_TEST_PREFIX):
             # Many of our tests start with an uninteresting prefix.
             # Remove it so we can have more unique bytes.
@@ -201,7 +211,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         self.set_default_antenna_bitmap()
 
         # Some tests want this functionality, but otherwise, it's a distraction.
-        if enable_avahi:
+        if self._enable_avahi:
             self.host.run('start avahi', ignore_status=True)
         else:
             self.host.run('stop avahi', ignore_status=True)
@@ -217,6 +227,16 @@ class LinuxRouter(site_linux_system.LinuxSystem):
                       self._log_start_timestamp, ignore_status=True)
         self.host.get_file('/tmp/router_log', 'debug/router_host_messages')
         super(LinuxRouter, self).close()
+
+
+    def reboot(self, timeout):
+        """Reboot this router, and restore it to a known-good state.
+
+        @param timeout Maximum seconds to wait for router to return.
+
+        """
+        super(LinuxRouter, self).reboot(timeout)
+        self.__setup()
 
 
     def has_local_server(self):

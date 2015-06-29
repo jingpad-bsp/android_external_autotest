@@ -60,25 +60,37 @@ class LinuxSystem(object):
 
 
     def __init__(self, host, role, inherit_interfaces=False):
-        # Command locations.
-        cmd_iw = path_utils.must_be_installed('/usr/sbin/iw', host=host)
-        self.cmd_ip = path_utils.must_be_installed('/usr/sbin/ip', host=host)
-        self.cmd_readlink = '%s -l' % path_utils.must_be_installed(
-                '/bin/ls', host=host)
-
         self.host = host
         self.role = role
+        self.inherit_interfaces = inherit_interfaces
+        self.__setup()
+
+
+    def __setup(self):
+        """Set up this system.
+
+        Can be used either to complete initialization of a LinuxSystem object,
+        or to re-establish a good state after a reboot.
+
+        """
+        # Command locations.
+        cmd_iw = path_utils.must_be_installed('/usr/sbin/iw', host=self.host)
+        self.cmd_ip = path_utils.must_be_installed('/usr/sbin/ip',
+                                                   host=self.host)
+        self.cmd_readlink = '%s -l' % path_utils.must_be_installed(
+                '/bin/ls', host=self.host)
 
         self._packet_capturer = packet_capturer.get_packet_capturer(
-                self.host, host_description=role, cmd_ip=self.cmd_ip,
+                self.host, host_description=self.role, cmd_ip=self.cmd_ip,
                 cmd_iw=cmd_iw, ignore_failures=True)
-        self.iw_runner = iw_runner.IwRunner(remote_host=host, command_iw=cmd_iw)
+        self.iw_runner = iw_runner.IwRunner(remote_host=self.host,
+                                            command_iw=cmd_iw)
 
         self._phy_list = None
         self.phys_for_frequency, self.phy_bus_type = self._get_phy_info()
         self._interfaces = []
         for interface in self.iw_runner.list_interfaces():
-            if inherit_interfaces:
+            if self.inherit_interfaces:
                 self._interfaces.append(NetDev(inherited=True,
                                                if_name=interface.if_name,
                                                if_type=interface.if_type,
@@ -206,6 +218,16 @@ class LinuxSystem(object):
             self.remove_ethernet_pair_interface()
         self.host.close()
         self.host = None
+
+
+    def reboot(self, timeout):
+        """Reboot this system, and restore it to a known-good state.
+
+        @param timeout Maximum seconds to wait for system to return.
+
+        """
+        self.host.reboot(timeout=timeout, wait=True)
+        self.__setup()
 
 
     def get_capabilities(self):

@@ -301,8 +301,7 @@ class network_WiFi_RegDomain(test.test):
                 self.cmdline_args,
                 self.debugdir)
             with wifi_context:
-                wifi_context.router.host.reboot(
-                    timeout=self.REBOOT_TIMEOUT_SECS, wait=True)
+                wifi_context.router.reboot(timeout=self.REBOOT_TIMEOUT_SECS)
                 for channel_config in self.channel_infos:
                     try:
                         self.test_channel(wifi_context, channel_config)
