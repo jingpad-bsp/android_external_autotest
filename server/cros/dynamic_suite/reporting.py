@@ -786,29 +786,6 @@ class Reporter(object):
             return ''
 
 
-    @classmethod
-    def _get_release_label_from_title(cls, title):
-        """Extract a major build label for the device being tested from
-        provided bug title. If no build is found, return empty string.
-
-        E.g. For the following bug title:
-
-          [stress] platform_BootDevice Failure on rikku-release/R44-7075.0.0
-
-        we extract '44-7075.0.0' and return a string 'm-44-7075.0.0'.
-
-        @param title: A string of the bug title, from which to extract
-                      the relase label for the device being tested.
-        @return: '' if no valid build label is found, or a label of the
-                 form 'm-44-7075.0.0' if found.
-        """
-        m = re.search('.*/R(?P<release>[^ ]*)', title)
-        if m and m.group('release'):
-            return 'm-%s' % m.group('release')
-        else:
-            return ''
-
-
     def report(self, bug, bug_template={}, ignore_duplicate=False):
         """Report an issue to the bug tracker.
 
@@ -836,7 +813,6 @@ class Reporter(object):
             return None, 0
 
         project_label = self._get_project_label_from_title(bug.title())
-        release_label = self._get_release_label_from_title(bug.title())
 
         issue = None
         try:
@@ -863,8 +839,6 @@ class Reporter(object):
                     self._create_autofiled_count_update(issue))
             if project_label:
                 label_update.append(project_label)
-            if release_label:
-                label_update.append(release_label)
             self.modify_bug_report(issue.id, comment, label_update)
             return issue.id, bug_count
 
@@ -884,8 +858,6 @@ class Reporter(object):
 
         if project_label:
             bug_template.get('labels', []).append(project_label)
-        if release_label:
-            bug_template.get('labels', []).append(release_label)
         bug_id = self._create_bug_report(bug, bug_template, sheriffs)
         bug_count = 1 if bug_id else 0
         return bug_id, bug_count
