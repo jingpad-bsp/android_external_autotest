@@ -68,10 +68,10 @@ class RpcHandler(object):
 
 
     def log_request(self, user, decoded_request, decoded_result,
-                    log_all=False):
+                    remote_ip, log_all=False):
         if log_all or should_log_message(decoded_request['method']):
-            msg = '%s:%s %s'  % (decoded_request['method'], user,
-                                 decoded_request['params'])
+            msg = '%s| %s:%s %s'  % (remote_ip, decoded_request['method'],
+                                     user, decoded_request['params'])
             if decoded_result['err']:
                 msg += '\n' + decoded_result['err_traceback']
                 rpcserver_logging.rpc_logger.error(msg)
@@ -84,13 +84,17 @@ class RpcHandler(object):
 
 
     def handle_rpc_request(self, request):
+        remote_ip = self._get_remote_ip(request)
         user = models.User.current_user()
         json_request = self.raw_request_data(request)
         decoded_request = self.decode_request(json_request)
+
+        decoded_request['remote_ip'] = remote_ip
         decoded_result = self.dispatch_request(decoded_request)
         result = self.encode_result(decoded_result)
         if rpcserver_logging.LOGGING_ENABLED:
-            self.log_request(user, decoded_request, decoded_result)
+            self.log_request(user, decoded_request, decoded_result,
+                             remote_ip)
         return rpc_utils.raw_http_response(result)
 
 
@@ -132,3 +136,27 @@ class RpcHandler(object):
                 continue
             decorated_function = RpcHandler._allow_keyword_args(attribute)
             setattr(self._rpc_methods, name, decorated_function)
+
+
+    def _get_remote_ip(self, request):
+        """Get the ip address of a RPC caller.
+
+        Returns the IP of the request, accounting for the possibility of
+        being behind a proxy.
+        If a Django server is behind a proxy, request.META["REMOTE_ADDR"] will
+        return the proxy server's IP, not the client's IP.
+        The proxy server would provide the client's IP in the
+        HTTP_X_FORWARDED_FOR header.
+
+        @param request: django.core.handlers.wsgi.WSGIRequest object.
+
+        @return: IP address of remote host as a string.
+                 Empty string if the IP cannot be found.
+        """
+        remote = request.META.get('HTTP_X_FORWARDED_FOR', None)
+        if remote:
+            # X_FORWARDED_FOR returns client1, proxy1, proxy2,...
+            remote = remote.split(',')[0].strip()
+        else:
+            remote = request.META.get('REMOTE_ADDR', '')
+        return remote
