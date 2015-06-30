@@ -43,8 +43,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['tyanh@chromium.org', 'kalin@chromium.org', 'yuli@chromium.org',
-           'conradlo@chromium.org', 'chromeos-audio-bugs@google.com']
+    'cc': ['kalin@chromium.org', 'yuli@chromium.org', 'conradlo@chromium.org',
+           'chromeos-audio-bugs@google.com']
 }
 
 args_dict['name'] = NAME

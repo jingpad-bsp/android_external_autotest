@@ -40,8 +40,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['tyanh@chromium.org', 'waihong@chromium.org', 'yuli@chromium.org',
-           'conradlo@chromium.org']
+    'cc': ['yuli@chromium.org', 'waihong@chromium.org', 'conradlo@chromium.org']
 }
 
 args_dict['name'] = NAME
