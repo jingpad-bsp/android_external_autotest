@@ -270,7 +270,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         start_time = time.time()
         while time.time() - start_time < self.STARTUP_TIMEOUT_SECONDS:
             success = self.router.run(
-                    'grep "Completing interface initialization" %s' % log_file,
+                    'grep "Setup of interface done" %s' % log_file,
                     ignore_status=True).exit_status == 0
             if success:
                 break
