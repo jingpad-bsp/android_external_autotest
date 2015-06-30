@@ -604,7 +604,7 @@ def get_output_rect(output):
 
 def get_internal_resolution():
     if utils.is_freon():
-        if _has_internal_display():
+        if has_internal_display():
             crtcs = get_modetest_crtcs()
             if len(crtcs) > 0:
                 return crtcs[0].size
@@ -615,7 +615,7 @@ def get_internal_resolution():
         return (width, height)
 
 
-def _has_internal_display():
+def has_internal_display():
     """Checks whether the DUT is equipped with an internal display.
 
     @return True if internal display is present; False otherwise.
@@ -630,7 +630,7 @@ def get_external_resolution():
             connected.
     """
     if utils.is_freon():
-        offset = 1 if _has_internal_display() else 0
+        offset = 1 if has_internal_display() else 0
         crtcs = get_modetest_crtcs()
         if len(crtcs) > offset and crtcs[offset].size != (0, 0):
             return crtcs[offset].size
@@ -737,7 +737,7 @@ def set_display_output(output_name, enable):
 
 # TODO(ihf): Fix this for multiple external connectors.
 def get_external_crtc(index=0):
-    offset = 1 if _has_internal_display() else 0
+    offset = 1 if has_internal_display() else 0
     crtcs = get_modetest_crtcs()
     if len(crtcs) > offset + index:
         return crtcs[offset + index].id
@@ -745,7 +745,7 @@ def get_external_crtc(index=0):
 
 
 def get_internal_crtc():
-    if _has_internal_display():
+    if has_internal_display():
         crtcs = get_modetest_crtcs()
         if len(crtcs) > 0:
             return crtcs[0].id
