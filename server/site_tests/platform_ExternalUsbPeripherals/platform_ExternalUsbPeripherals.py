@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import error
 
 _WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
+_SUSPEND_TIME = 30
 _WAKE_PRESS_IN_SEC = 0.2
 _CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
                 CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
@@ -91,13 +92,25 @@ class platform_ExternalUsbPeripherals(test.test):
         return True
 
 
+    def suspend_for_time(self, suspend_time=_SUSPEND_TIME):
+        """Calls the host method suspend with suspend_time argument.
+
+        @param suspend_time: time to suspend the device for.
+
+        """
+        try:
+            self.host.suspend(suspend_time=suspend_time)
+        except error.AutoservSuspendError:
+            pass
+
+
     def action_suspend(self):
         """Suspend i.e. powerd_dbus_suspend and wait
 
         @returns boot_id for the following resume
         """
         boot_id = self.host.get_boot_id()
-        thread = threading.Thread(target = self.host.suspend)
+        thread = threading.Thread(target=self.suspend_for_time)
         thread.start()
         self.host.test_wait_for_sleep(_LONG_TIMEOUT)
         logging.debug('--- Suspended')
