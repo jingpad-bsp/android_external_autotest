@@ -370,8 +370,8 @@ class SuiteSchedulerBug(Bug):
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
         # TODO(fdeng): flaky deduping behavior, see crbug.com/486895
-        return 'SuiteSchedulerBug(%s, %s, %s)' % (
-                self._suite, self._build, type(self._exception))
+        return 'SuiteSchedulerBug(%s, %s)' % (
+                self._suite, type(self._exception))
 
 
 class Reporter(object):
