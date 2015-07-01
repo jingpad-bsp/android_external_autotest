@@ -421,13 +421,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
         devserver_url = dev_server.ImageServer.resolve(image_name).url()
 
-        labels = self._AFE.get_labels(name=cros_label)
-        if labels:
-            label = labels[0]
-        else:
-            label = self._AFE.create_label(name=cros_label)
-
-        label.add_hosts([self.hostname])
+        self._AFE.run('label_add_hosts', id=cros_label, hosts=[self.hostname])
         self.update_job_repo_url(devserver_url, image_name)
 
 
