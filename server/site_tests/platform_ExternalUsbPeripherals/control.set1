@@ -65,7 +65,7 @@ def run(machine):
             ["USB Headphone Set: USB Audio", "HD Pro Webcam C920: USB Audio"],
         # USB stick four partitions volumes
         "loggedin:ls -l /media/removable/" :
-            ["ExFAT", "Ext4", "FAT", "NTFS"],
+            ["ExFAT", "Ext4", "FAT", "NTFS", "SD Card"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name" :
             ["HD Pro Webcam C920"],

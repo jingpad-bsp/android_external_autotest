@@ -72,7 +72,7 @@ def run(machine):
              "Microsoft LifeChat LX-3000: USB Audio"],
         # USB stick four partitions volumes
         "loggedin:ls -l /media/removable/" :
-            ["USB Drive"],
+            ["USB Drive", "SD Card"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name" :
             ["TeckNet"],
