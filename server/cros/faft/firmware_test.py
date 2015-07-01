@@ -42,7 +42,7 @@ class FAFTBase(test.test):
         self.faft_client = RPCProxy(host)
         self.lockfile = '/var/tmp/faft/lock'
 
-    def wait_for_client(self, timeout=100):
+    def wait_for_client(self, timeout=180):
         """Wait for the client to come back online.
 
         New remote processes will be launched if their used flags are enabled.
