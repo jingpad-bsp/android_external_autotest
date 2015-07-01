@@ -5,9 +5,21 @@
 import logging, os
 
 from autotest_lib.client.cros import constants
-from telemetry.core import browser_finder, browser_options, exceptions
-from telemetry.core import extension_to_load, util
+from telemetry.core import exceptions, util
 
+# TODO(achuith): Clean this up - crbug.com/506037.
+try:
+    from telemetry.core import browser_finder
+except ImportError:
+    from telemetry.internal.browser import browser_finder
+try:
+    from telemetry.core import browser_options
+except ImportError:
+    from telemetry.internal.browser import browser_options
+try:
+    from telemetry.core import extension_to_load
+except ImportError:
+    from telemetry.internal.browser import extension_to_load
 
 Error = exceptions.Error
 

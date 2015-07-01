@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import utils
-from telemetry.core import webpagereplay
+try:
+    from telemetry.core import webpagereplay
+except ImportError:
+    from telemetry.internal.util import webpagereplay
 
 
 class WebPageReplayWrapper(object):
