@@ -443,6 +443,12 @@ class HostapConfig(object):
         return self._scenario_name
 
 
+    @property
+    def min_streams(self):
+        """@return int _min_streams value, or None."""
+        return self._min_streams
+
+
     def __init__(self, mode=MODE_11B, channel=None, frequency=None,
                  n_capabilities=[], hide_ssid=None, beacon_interval=None,
                  dtim_period=None, frag_threshold=None, ssid=None, bssid=None,
@@ -454,7 +460,8 @@ class HostapConfig(object):
                  ac_capabilities=[],
                  beacon_footer='',
                  spectrum_mgmt_required=None,
-                 scenario_name=None):
+                 scenario_name=None,
+                 min_streams=None):
         """Construct a HostapConfig.
 
         You may specify channel or frequency, but not both.  Both options
@@ -487,6 +494,7 @@ class HostapConfig(object):
             spectrum management.
         @param scenario_name string to be included in file names, instead
             of the interface name.
+        @param min_streams int number of spatial streams required.
 
         """
         super(HostapConfig, self).__init__()
@@ -555,6 +563,7 @@ class HostapConfig(object):
         self._beacon_footer = beacon_footer
         self._spectrum_mgmt_required = spectrum_mgmt_required
         self._scenario_name = scenario_name
+        self._min_streams = min_streams
 
 
     def __repr__(self):

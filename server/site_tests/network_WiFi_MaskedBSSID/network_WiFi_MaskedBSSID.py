@@ -26,7 +26,8 @@ class network_WiFi_MaskedBSSID(wifi_cell_test_base.WiFiCellTestBase):
                           frequency=frequency,
                           mode=hostap_config.HostapConfig.MODE_11B,
                           bssid='00:11:22:33:44:55',
-                          ssid=('CrOS_Masked%d' % i)) for i in range(2)]
+                          ssid=('CrOS_Masked%d' % i),
+                          min_streams=1) for i in range(2)]
         # Create an AP, manually specifying both the SSID and BSSID.
         self.context.configure(configurations[0])
         # Create a second AP that responds to probe requests with the same BSSID
@@ -40,7 +41,3 @@ class network_WiFi_MaskedBSSID(wifi_cell_test_base.WiFiCellTestBase):
         self.context.client.scan([frequency],
                                  [config.ssid for config in configurations])
         self.context.router.deconfig()
-
-
-
-

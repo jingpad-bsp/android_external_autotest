@@ -315,7 +315,7 @@ class LinuxSystem(object):
                       (epoch_seconds, busybox_date))
 
 
-    def _get_phy_for_frequency(self, frequency, phytype):
+    def _get_phy_for_frequency(self, frequency, phytype, spatial_streams):
         """Get a phy appropriate for a frequency and phytype.
 
         Return the most appropriate phy interface for operating on the
@@ -325,28 +325,34 @@ class LinuxSystem(object):
 
         @param frequency int WiFi frequency of phy.
         @param phytype string key of phytype registered at construction time.
+        @param spatial_streams int number of spatial streams required.
         @return string name of phy to use.
 
         """
-        phys = []
-        for phy in self.phys_for_frequency[frequency]:
-            phy_obj = self._phy_by_name(phy)
+        phy_objs = []
+        for phy_name in self.phys_for_frequency[frequency]:
+            phy_obj = self._phy_by_name(phy_name)
             num_antennas = min(phy_obj.avail_rx_antennas,
                                phy_obj.avail_tx_antennas)
-            if num_antennas >= self.MIN_SPATIAL_STREAMS:
-                phys.append(phy)
+            if num_antennas >= spatial_streams:
+                phy_objs.append(phy_obj)
             elif num_antennas == 0:
                 logging.warning(
-                    'Allowing use of %s, which reports zero antennas', phy)
-                phys.append(phy)
+                    'Allowing use of %s, which reports zero antennas', phy_name)
+                phy_objs.append(phy_obj)
             else:
                 logging.debug(
                     'Filtering out %s, which reports only %d antennas',
-                    phy, num_antennas)
+                    phy_name, num_antennas)
 
         busy_phys = set(net_dev.phy for net_dev in self._wlanifs_in_use)
-        idle_phys = [phy for phy in phys if phy not in busy_phys]
-        phys = idle_phys or phys
+        idle_phy_objs = [phy_obj for phy_obj in phy_objs
+                         if phy_obj.name not in busy_phys]
+        phy_objs = idle_phy_objs or phy_objs
+        phy_objs.sort(key=lambda phy_obj: min(phy_obj.avail_rx_antennas,
+                                              phy_obj.avail_tx_antennas),
+                      reverse=True)
+        phys = [phy_obj.name for phy_obj in phy_objs]
 
         preferred_bus = {'monitor': 'usb', 'managed': 'pci'}.get(phytype)
         preferred_phys = [phy for phy in phys
@@ -356,15 +362,20 @@ class LinuxSystem(object):
         return phys[0]
 
 
-    def get_wlanif(self, frequency, phytype, same_phy_as=None):
+    def get_wlanif(self, frequency, phytype,
+                   spatial_streams=None, same_phy_as=None):
         """Get a WiFi device that supports the given frequency and type.
 
         @param frequency int WiFi frequency to support.
         @param phytype string type of phy (e.g. 'monitor').
+        @param spatial_streams int number of spatial streams required.
         @param same_phy_as string create the interface on the same phy as this.
         @return string WiFi device.
 
         """
+        if spatial_streams is None:
+            spatial_streams = self.MIN_SPATIAL_STREAMS
+
         if same_phy_as:
             for net_dev in self._interfaces:
                 if net_dev.if_name == same_phy_as:
@@ -374,7 +385,8 @@ class LinuxSystem(object):
                 raise error.TestFail('Unable to find phy for interface %s' %
                                      same_phy_as)
         elif frequency in self.phys_for_frequency:
-            phy = self._get_phy_for_frequency(frequency, phytype)
+            phy = self._get_phy_for_frequency(
+                frequency, phytype, spatial_streams)
         else:
             raise error.TestFail('Unable to find phy for frequency %d' %
                                  frequency)
