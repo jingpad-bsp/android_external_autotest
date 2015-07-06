@@ -23,7 +23,8 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
     version = 1
 
     def check_firmware_version(self, expected_ver):
-        actual_ver = self.faft_client.bios.get_version('a')
+        actual_ver = self.faft_client.bios.get_version(
+                'b' if self.fw_vboot2 else 'a')
         actual_tpm_fwver = self.faft_client.tpm.get_firmware_version()
         if actual_ver != expected_ver or actual_tpm_fwver != expected_ver:
             raise error.TestFail(
@@ -34,10 +35,6 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
             logging.info(
                 'Update success, now version is %s',
                 actual_ver)
-
-    def check_version_and_run_recovery(self):
-        self.check_firmware_version(self._update_version)
-        self.faft_client.updater.run_recovery()
 
     def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
@@ -83,18 +80,21 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
         self.switcher.mode_aware_reboot()
 
         logging.info("Copy firmware form B to A.")
-        self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.faft_client.updater.run_bootok('test')
+        self.check_state((self.checkers.fw_tries_checker, 'B'))
         self.switcher.mode_aware_reboot()
 
         logging.info("Check firmware and TPM version, then recovery.")
-        self.check_state((self.checkers.fw_tries_checker, 'A'))
-        self.check_version_and_run_recovery()
+        self.check_state((self.checkers.fw_tries_checker,
+                          'B' if self.fw_vboot2 else 'A'))
+        self.check_firmware_version(self._update_version)
+        self.faft_client.updater.run_recovery()
         self.reboot_and_reset_tpm()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {
                           'fwid': self._fwid
                           }))
-        self.check_state((self.checkers.fw_tries_checker, 'A'))
+        self.check_state((self.checkers.fw_tries_checker,
+                          'B' if self.fw_vboot2 else 'A'))
         self.check_firmware_version(self._update_version - 1)
