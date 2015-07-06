@@ -88,6 +88,7 @@ class network_RoamWifiEndToEnd(test.test):
                 self.chrome_networking.enable_network_device(
                     self.chrome_networking.WIFI_DEVICE)
 
+            self.chrome_networking.scan_for_networks()
             if test == chrome_net_constants.OPEN_CONNECT:
                 self._find_and_connect_to_configured_network()
             elif test == chrome_net_constants.OPEN_ROAM:
