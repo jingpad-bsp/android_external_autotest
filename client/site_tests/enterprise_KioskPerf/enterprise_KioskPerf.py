@@ -49,24 +49,16 @@ class enterprise_KioskPerf(test.test):
 
         @returns a dictionary that contains the test result.
         """
-        def get_cpu_usage():
-            cpu_usage_start = site_utils.get_cpu_usage()
-            time.sleep(MEASUREMENT_DURATION)
-            cpu_usage_end = site_utils.get_cpu_usage()
-            return site_utils.compute_active_cpu_time(cpu_usage_start,
-                                                      cpu_usage_end) * 100
         if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
                                        CPU_IDLE_USAGE):
             raise error.TestError('Could not get idle CPU.')
         if not utils.wait_for_cool_machine():
             raise error.TestError('Could not get cold machine.')
-        # Stop the thermal service that may change the cpu frequency.
-        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
-        self._service_stopper.stop_services()
-        # Set the scaling governor to performance mode to set the cpu to the
-        # highest frequency available.
-        self._original_governors = utils.set_high_performance_mode()
-        return get_cpu_usage()
+        cpu_usage_start = site_utils.get_cpu_usage()
+        time.sleep(MEASUREMENT_DURATION)
+        cpu_usage_end = site_utils.get_cpu_usage()
+        return site_utils.compute_active_cpu_time(cpu_usage_start,
+                                                  cpu_usage_end) * 100
 
 
     def used_mem(self):
@@ -88,6 +80,13 @@ class enterprise_KioskPerf(test.test):
             logging.warn('No credentials found - exiting test.')
             return
 
+        # Stop the thermal service that may change the cpu frequency.
+        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
+        self._service_stopper.stop_services()
+        # Set the scaling governor to performance mode to set the cpu to the
+        # highest frequency available.
+        self._original_governors = utils.set_high_performance_mode()
+
         with chrome.Chrome(auto_login=False) as cr:
             cr.browser.oobe.NavigateEnterpriseEnrollment(user_id, password)
             time.sleep(STABILIZATION_DURATION)
@@ -96,12 +95,13 @@ class enterprise_KioskPerf(test.test):
             perf_keyval = {}
             perf_file = open(_PERF_RESULT_FILE, 'w')
             writer = csv.writer(perf_file)
-            writer.writerow(['cpu','memory'])
+            writer.writerow(['cpu','memory', 'timestamp'])
             while (time.time() - start_time) < TOTAL_TEST_DURATION:
                 perf_keyval['cpu_usage'] = self.test_cpu_usage()
                 perf_keyval['memory_usage'] = self.used_mem()
                 writer.writerow([perf_keyval['cpu_usage'],
-                                perf_keyval['memory_usage']])
+                                perf_keyval['memory_usage'],
+                                time.strftime('%Y/%m/%d %H:%M:%S')])
                 self.write_perf_keyval(perf_keyval)
                 time.sleep(10)
             perf_file.close()
