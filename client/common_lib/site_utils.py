@@ -426,7 +426,7 @@ def version_match(build_version, release_version, update_url=''):
 
     The method is designed to compare version for following 6 scenarios with
     samples of build version and expected release version:
-    1. trybot paladin build.
+    1. trybot non-release build (paladin or pre-cq build).
     build version:   trybot-lumpy-paladin/R27-3837.0.0-b123
     release version: 3837.0.2013_03_21_1340
 
@@ -475,9 +475,9 @@ def version_match(build_version, release_version, update_url=''):
     # Trim the builder info, e.g., trybot-lumpy-paladin/
     stripped_version = stripped_version.split('/')[-1]
 
-    is_trybot_paladin_build = (
-            re.match(r'.*trybot-.+-paladin', build_version) or
-            re.match(r'.*trybot-.+-paladin', update_url))
+    is_trybot_non_release_build = (
+            re.match(r'.*trybot-.+-(paladin|pre-cq)', build_version) or
+            re.match(r'.*trybot-.+-(paladin|pre-cq)', update_url))
 
     # Replace date string with 0 in release_version
     release_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
@@ -492,10 +492,11 @@ def version_match(build_version, release_version, update_url=''):
     release_version_no_pgo = release_version.replace('-pgo-generate', '')
     has_pgo_generate = release_version != release_version_no_pgo
 
-    if is_trybot_paladin_build:
+    if is_trybot_non_release_build:
         if not has_date_string:
-            logging.error('A trybot paladin build is expected. Version '
-                          '"%s" is not a paladin build.', release_version)
+            logging.error('A trybot paladin or pre-cq build is expected. '
+                          'Version "%s" is not a paladin or pre-cq  build.',
+                          release_version)
             return False
         return stripped_version == release_version_no_date
     elif is_pgo_generate_build:
@@ -507,8 +508,8 @@ def version_match(build_version, release_version, update_url=''):
         return stripped_version == release_version_no_pgo
     else:
         if has_date_string:
-            logging.error('Unexpected date found in a non trybot paladin '
-                          'build.')
+            logging.error('Unexpected date found in a non trybot paladin or '
+                          'pre-cq build.')
             return False
         # Versioned build, i.e., rc or release build.
         return stripped_version == release_version
