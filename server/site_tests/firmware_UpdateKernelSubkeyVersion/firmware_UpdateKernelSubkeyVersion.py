@@ -38,7 +38,8 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
             self._update_version))
 
     def check_kernel_subkey_version(self, expected_ver):
-        actual_ver = self.faft_client.bios.get_kernel_subkey_version('a')
+        actual_ver = self.faft_client.bios.get_kernel_subkey_version(
+                'b' if self.fw_vboot2 else 'a')
         if actual_ver != expected_ver:
             raise error.TestFail(
                     'Kernel subkey version should be %s, but got %s.' %
@@ -47,11 +48,6 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
             logging.info(
                 'Update success, now subkey version is %s',
                 actual_ver)
-
-    def run_bootok_and_recovery(self):
-        self.faft_client.updater.run_bootok('test')
-        self.check_kernel_subkey_version(self._update_version)
-        self.faft_client.updater.run_recovery()
 
     def initialize(self, host, cmdline_args):
         dict_args = utils.args_to_dict(cmdline_args)
@@ -96,13 +92,16 @@ class firmware_UpdateKernelSubkeyVersion(FirmwareTest):
         self.switcher.mode_aware_reboot()
 
         logging.info("Check firmware data key version and Rollback.")
+        self.faft_client.updater.run_bootok('test')
         self.check_state((self.checkers.fw_tries_checker, 'B'))
-        self.run_bootok_and_recovery()
+        self.check_kernel_subkey_version(self._update_version)
+        self.faft_client.updater.run_recovery()
         self.switcher.mode_aware_reboot()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {
                           'fwid': self._fwid
                           }))
-        self.check_state((self.checkers.fw_tries_checker, 'A'))
+        self.check_state((self.checkers.fw_tries_checker,
+                          'B' if self.fw_vboot2 else 'A'))
         self.check_kernel_subkey_version(self._update_version - 1)
