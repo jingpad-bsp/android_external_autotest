@@ -1291,7 +1291,8 @@ def route_rpc_to_master(func):
     @returns: The function to replace func with.
     """
     @wraps(func)
-    def replacement(**kwargs):
+    def replacement(*args, **kwargs):
+        kwargs = inspect.getcallargs(func, *args, **kwargs)
         if server_utils.is_shard():
             afe = frontend_wrappers.RetryingAFE(
                     server=get_global_afe_hostname())
