@@ -44,6 +44,7 @@ class network_WiFi_ProfileBasic(wifi_cell_test_base.WiFiCellTestBase):
 
     version = 1
 
+    CHANNEL_NUMBER = 1
     STATE_TRANSITION_TIMEOUT_SECONDS = 20
 
 
@@ -71,9 +72,9 @@ class network_WiFi_ProfileBasic(wifi_cell_test_base.WiFiCellTestBase):
         wep_config = xmlrpc_security_types.WEPConfig(
                 wep_keys=['abcde', 'fghij', 'klmno', 'pqrst'])
         ap_config0 = hostap_config.HostapConfig(
-                channel=1, security_config=wep_config)
+                channel=self.CHANNEL_NUMBER, security_config=wep_config)
         ap_config1 = hostap_config.HostapConfig(
-                channel=11, security_config=wep_config)
+                channel=self.CHANNEL_NUMBER, security_config=wep_config)
         with ProfileRemovingContext(self.context.client,
                                     profile_name='bottom') as bottom:
             self.context.configure(ap_config0)
