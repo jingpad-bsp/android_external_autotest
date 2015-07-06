@@ -320,26 +320,3 @@ def run_special_task_actions(job, host, labels, task):
         else:
             job.record('INFO', None, task.name,
                        "Can't %s label '%s:%s'." % (task.name, name, value))
-
-
-# This has been copied out of dynamic_suite's reimager.py, which no longer
-# exists.  I'd prefer if this would go away by doing http://crbug.com/249424,
-# so that labels are just automatically made when we try to add them to a host.
-def ensure_label_exists(name):
-    """
-    Ensure that a label called |name| exists in the autotest DB.
-
-    @param name: the label to check for/create.
-    @raises ValidationError: There was an error in the response that was
-                             not because the label already existed.
-
-    """
-    afe = frontend.AFE()
-    try:
-        afe.create_label(name=name)
-    except proxy.ValidationError as ve:
-        if ('name' in ve.problem_keys and
-            'This value must be unique' in ve.problem_keys['name']):
-            logging.debug('Version label %s already exists', name)
-        else:
-            raise ve

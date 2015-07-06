@@ -646,6 +646,8 @@ def _ensure_label_exists(name):
                              not because the label already existed.
     @returns True is a label was created, False otherwise.
     """
+    # Make sure this function is not called on shards but only on master.
+    assert not server_utils.is_shard()
     try:
         models.Label.objects.get(name=name)
     except models.Label.DoesNotExist:

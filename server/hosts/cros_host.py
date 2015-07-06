@@ -825,9 +825,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         """
         fw_label = provision.fw_version_to_label(build)
-        provision.ensure_label_exists(fw_label)
-        label = self._AFE.get_labels(name__startswith=fw_label)[0]
-        label.add_hosts([self.hostname])
+        self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
 
 
     def firmware_install(self, build=None):

@@ -76,13 +76,6 @@ class provision_AutoUpdate(test.test):
 
         url = _IMAGE_URL_PATTERN % (ds.url(), image)
 
-        # Installing a build on a host assumes that a label of
-        # 'cros-version:<build>' has already been created, so we need to make
-        # sure that one exists.
-        # TODO(milleral):  http://crbug.com/249424
-        # Consider making the add-a-label-to-a-host call automatically create a
-        # label if it does not already exist.
-        provision.ensure_label_exists(provision.cros_version_to_label(image))
         logging.debug('Installing image')
         try:
             host.machine_install(force_update=True, update_url=url,
