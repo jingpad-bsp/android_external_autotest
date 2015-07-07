@@ -180,8 +180,9 @@ def label_add_hosts(id, hosts):
     # S2 should have the new label without any problem.
     # We ignore exception in such a case.
     rpc_utils.fanout_rpc(
-            host_objs, 'add_label', name=label.name, id=label.id,
-            include_hostnames=False, ignore_exception_if_exists=True)
+            host_objs, 'add_label', include_hostnames=False,
+            name=label.name, ignore_exception_if_exists=True,
+            id=label.id, platform=label.platform)
     rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
 
     add_label_to_hosts(id, hosts)
