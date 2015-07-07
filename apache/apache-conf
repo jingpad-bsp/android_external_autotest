@@ -12,7 +12,7 @@
 
 <IfVersion >= 2.4>
    <Location /server-status>
-      Require ip 172.22.64.0/24
+      Require ip 127.0.0.1 172.22.64.0/24 172.22.67.0/24
    </Location>
 </IfVersion>
 <IfVersion < 2.2.99>
@@ -20,7 +20,7 @@
       SetHandler server-status
       Order deny,allow
       Deny from all
-      Allow from 172.22.64.0/24
+      Allow from 127.0.0.1 172.22.64.0/24 172.22.67.0/24
    </Location>
 </IfVersion>
 
