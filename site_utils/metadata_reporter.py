@@ -76,6 +76,8 @@ def _run():
                 else:
                     logging.warn('Failed to upload %d entries of metadata, '
                                  'they will be retried later.', len(data_list))
+                    autotest_stats.Gauge('metadata_reporter').send(
+                            'entries_failed', len(data_list))
                     for data in data_list:
                         queue(data)
             sleep_time = _REPORT_INTERVAL_SECONDS - time.time() + start_time
