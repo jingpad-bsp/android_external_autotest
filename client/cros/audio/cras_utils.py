@@ -295,3 +295,92 @@ def get_selected_node_types():
             else:
                 output_node_types.append(node_type)
     return (output_node_types, input_node_types)
+
+
+def set_selected_node_types(output_node_types, input_node_types):
+    """Sets selected node types.
+
+    @param output_node_types: A list of output node types. None to skip setting.
+    @param input_node_types: A list of input node types. None to skip setting.
+
+    """
+    if output_node_types:
+        set_selected_output_nodes(output_node_types)
+    if input_node_types:
+        set_selected_input_nodes(input_node_types)
+
+
+def set_selected_output_nodes(types):
+    """Sets selected output node types.
+
+    Note that Chrome UI uses SetActiveOutputNode of Cras DBus API
+    to select one output node. Here we use add/remove active output node
+    to support multiple nodes.
+
+    @param types: A list of output node types.
+
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['IsInput']:
+            continue
+        if node['Type'] in types:
+            add_active_output_node(node['Id'])
+        elif node['Active']:
+            remove_active_output_node(node['Id'])
+
+
+def set_selected_input_nodes(types):
+    """Sets selected input node types.
+
+    Note that Chrome UI uses SetActiveInputNode of Cras DBus API
+    to select one input node. Here we use add/remove active input node
+    to support multiple nodes.
+
+    @param types: A list of input node types.
+
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if not node['IsInput']:
+            continue
+        if node['Type'] in types:
+            add_active_input_node(node['Id'])
+        elif node['Active']:
+            remove_active_input_node(node['Id'])
+
+
+def add_active_output_node(node_id):
+    """Adds an active output node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().AddActiveOutputNode(node_id)
+
+
+def add_active_input_node(node_id):
+    """Adds an active input node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().AddActiveInputNode(node_id)
+
+
+def remove_active_output_node(node_id):
+    """Removes an active output node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().RemoveActiveOutputNode(node_id)
+
+
+def remove_active_input_node(node_id):
+    """Removes an active input node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().RemoveActiveInputNode(node_id)
