@@ -67,6 +67,18 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         with chameleon_audio_helper.bind_widgets(playback_binder):
             with chameleon_audio_helper.bind_widgets(record_binder):
 
+                # Checks the input node selected by Cras is internal microphone.
+                # Checks crbug.com/495537 for the reason to lower bluetooth
+                # microphone priority.
+                _, input_nodes = audio_facade.get_selected_node_types()
+                if input_nodes != ['INTERNAL_MIC']:
+                    raise error.TestError(
+                            '%s rather than internal mic is selected on Cros '
+                            'device' % input_nodes)
+
+                # Selects bluetooth mic to be the active input node.
+                audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+
                 # Checks the node selected by Cras is correct.
                 o_nodes, i_nodes = audio_facade.get_selected_node_types()
                 if o_nodes != ['BLUETOOTH'] or i_nodes != ['BLUETOOTH']:
