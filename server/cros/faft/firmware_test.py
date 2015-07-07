@@ -351,15 +351,12 @@ class FirmwareTest(FAFTBase):
         else:
             raise error.TestFail('Timed out waiting for DUT reboot')
 
-    def assert_test_image_in_usb_disk(self, usb_dev=None, install_shim=False):
+    def assert_test_image_in_usb_disk(self, usb_dev=None):
         """Assert an USB disk plugged-in on servo and a test image inside.
 
         @param usb_dev: A string of USB stick path on the host, like '/dev/sdc'.
                         If None, it is detected automatically.
-        @param install_shim: True to verify an install shim instead of a test
-                             image.
-        @raise TestError: if USB disk not detected or not a test (install shim)
-                          image.
+        @raise TestError: if USB disk not detected or not a test image.
         """
         if self.check_setup_done('usb_check'):
             return
@@ -378,33 +375,26 @@ class FirmwareTest(FAFTBase):
         self.servo.system('mount -o ro %s %s' % (rootfs, tmpd))
 
         try:
-            if install_shim:
-                dir_list = self.servo.system_output('ls -a %s' %
-                                                    os.path.join(tmpd, 'root'))
-                if '.factory_installer' not in dir_list:
-                    raise error.TestError(
-                        'USB stick in servo is not a factory install shim')
-            else:
-                usb_lsb = self.servo.system_output('cat %s' %
-                    os.path.join(tmpd, 'etc/lsb-release'))
-                logging.debug('Dumping lsb-release on USB stick:\n%s', usb_lsb)
-                dut_lsb = '\n'.join(self.faft_client.system.
-                    run_shell_command_get_output('cat /etc/lsb-release'))
-                logging.debug('Dumping lsb-release on DUT:\n%s', dut_lsb)
-                if not re.search(r'RELEASE_DESCRIPTION=.*(T|t)est', usb_lsb):
-                    raise error.TestError('USB stick in servo is no test image')
-                usb_board = re.search(r'BOARD=(.*)', usb_lsb).group(1)
-                dut_board = re.search(r'BOARD=(.*)', dut_lsb).group(1)
-                if usb_board != dut_board:
-                    raise error.TestError('USB stick in servo contains a %s '
-                        'image, but DUT is a %s' % (usb_board, dut_board))
+            usb_lsb = self.servo.system_output('cat %s' %
+                os.path.join(tmpd, 'etc/lsb-release'))
+            logging.debug('Dumping lsb-release on USB stick:\n%s', usb_lsb)
+            dut_lsb = '\n'.join(self.faft_client.system.
+                run_shell_command_get_output('cat /etc/lsb-release'))
+            logging.debug('Dumping lsb-release on DUT:\n%s', dut_lsb)
+            if not re.search(r'RELEASE_DESCRIPTION=.*(T|t)est', usb_lsb):
+                raise error.TestError('USB stick in servo is no test image')
+            usb_board = re.search(r'BOARD=(.*)', usb_lsb).group(1)
+            dut_board = re.search(r'BOARD=(.*)', dut_lsb).group(1)
+            if usb_board != dut_board:
+                raise error.TestError('USB stick in servo contains a %s '
+                    'image, but DUT is a %s' % (usb_board, dut_board))
         finally:
             for cmd in ('umount %s' % rootfs, 'sync', 'rm -rf %s' % tmpd):
                 self.servo.system(cmd)
 
         self.mark_setup_done('usb_check')
 
-    def setup_usbkey(self, usbkey, host=None, install_shim=False):
+    def setup_usbkey(self, usbkey, host=None):
         """Setup the USB disk for the test.
 
         It checks the setup of USB disk and a valid ChromeOS test image inside.
@@ -414,11 +404,9 @@ class FirmwareTest(FAFTBase):
                        not required.
         @param host: Optional, True to mux the USB disk to host, False to mux it
                     to DUT, default to do nothing.
-        @param install_shim: True to verify an install shim instead of a test
-                             image.
         """
         if usbkey:
-            self.assert_test_image_in_usb_disk(install_shim=install_shim)
+            self.assert_test_image_in_usb_disk()
         elif host is None:
             # USB disk is not required for the test. Better to mux it to host.
             host = True
@@ -937,20 +925,10 @@ class FirmwareTest(FAFTBase):
         time.sleep(self.faft_config.ec_boot_to_console)
         self.check_lid_and_power_on()
 
-    def reboot_with_factory_install_shim(self):
-        """Request reboot with factory install shim to reset TPM.
-
-        Factory install shim requires dev mode enabled. So this method switches
-        firmware to dev mode first and reboot. The client uses factory install
-        shim to reset TPM values.
-        """
-        # Unplug USB first to avoid the complicated USB autoboot cases.
-        is_dev = self.checkers.crossystem_checker({'devsw_boot': '1'})
-        if not is_dev:
-            self.switcher.reboot_to_mode(to_mode='dev', wait_for_dut_up=False)
-        self.switcher.reboot_to_mode(to_mode='rec', sync_before_boot=False)
-        self.switcher.bypass_rec_mode()
-        time.sleep(self.faft_config.install_shim_done)
+    def reboot_and_reset_tpm(self):
+        """Reboot into recovery mode, reset TPM, then reboot back to disk."""
+        self.switcher.reboot_to_mode(to_mode='rec')
+        self.faft_client.system.run_shell_command('chromeos-tpm-recovery')
         self.switcher.mode_aware_reboot()
 
     def full_power_off_and_on(self):

@@ -12,8 +12,7 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
     """
     Servo based firmware update test which checks the firmware version.
 
-    This test requires a USB disk plugged-in, which contains a Chrome OS
-    install shim (built by "build_image factory_install"). The firmware id of
+    This test requires a USB test image plugged in. The firmware id of
     the current running firmware must matches the system shellball's, or user
     can provide a shellball to do this test. In this way, the client will be
     update with the given shellball first. On runtime, this test modifies the
@@ -55,7 +54,7 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
             self.faft_client.updater.run_factory_install()
             self.switcher.mode_aware_reboot()
 
-        self.setup_usbkey(usbkey=True, host=True, install_shim=True)
+        self.setup_usbkey(usbkey=True)
         self.switcher.setup_mode('normal')
         self._fwid = self.faft_client.updater.get_fwid()
 
@@ -91,7 +90,7 @@ class firmware_UpdateFirmwareVersion(FirmwareTest):
         logging.info("Check firmware and TPM version, then recovery.")
         self.check_state((self.checkers.fw_tries_checker, 'A'))
         self.check_version_and_run_recovery()
-        self.reboot_with_factory_install_shim()
+        self.reboot_and_reset_tpm()
 
         logging.info("Check Rollback version.")
         self.check_state((self.checkers.crossystem_checker, {
