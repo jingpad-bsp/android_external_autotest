@@ -116,6 +116,21 @@ class AudioFacadeRemoteAdapter(object):
         self._audio_proxy.set_selected_output_volume(volume)
 
 
+    def set_selected_node_types(self, output_node_types, input_node_types):
+        """Set selected node types.
+
+        The node types are defined in cras_utils.CRAS_NODE_TYPES.
+
+        @param output_node_types: A list of output node types.
+                                  None to skip setting.
+        @param input_node_types: A list of input node types.
+                                 None to skip setting.
+
+        """
+        self._audio_proxy.set_selected_node_types(
+                output_node_types, input_node_types)
+
+
     def get_selected_node_types(self):
         """Gets the selected output and input node types on DUT.
 
