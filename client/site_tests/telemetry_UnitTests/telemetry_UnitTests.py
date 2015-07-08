@@ -5,7 +5,11 @@
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 
-from telemetry.unittest_util import run_chromeos_tests
+# TODO(achuith): Remove try block after PFQ passes. crbug.com/508122.
+try:
+    from telemetry.unittest_util import run_chromeos_tests
+except ImportError:
+    from telemetry.testing import run_chromeos_tests
 
 
 class telemetry_UnitTests(test.test):
