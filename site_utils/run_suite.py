@@ -40,10 +40,11 @@ This script exits with one of the following codes:
 
 
 import datetime as datetime_base
-import getpass, logging, optparse, os, sys, time
+import getpass, json, logging, optparse, os, sys, time
 from datetime import datetime
 
 import common
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
 from autotest_lib.client.common_lib import priorities
@@ -183,6 +184,9 @@ def parse_options():
                       action='store_true', default=False,
                       help='Advanced. Run the suite based on ATTRIBUTES of '
                       'control files, rather than SUITE.')
+    parser.add_option('--json_dump', dest='json_dump', action='store_true',
+                      default=False,
+                      help='Dump the output of run_suite to stdout.')
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -909,6 +913,19 @@ class TestView(object):
                 return not self.is_aborted() or self.hit_timeout()
 
 
+    def get_control_file_attributes(self):
+        """Get the attributes from the control file of the test.
+
+        @returns: A list of test attribute or None.
+        """
+        control_file = self.afe_job.control_file
+        attributes = None
+        if control_file:
+            cd = control_data.parse_control_string(control_file)
+            attributes = list(cd.attributes)
+        return attributes
+
+
 class ResultCollector(object):
     """Collect test results of a suite.
 
@@ -1217,6 +1234,64 @@ class ResultCollector(object):
         logging.info('\n')
 
 
+    def get_results_dict(self):
+        """Write test results, timings and web links into a dict.
+
+        @returns: A dict of results in the format like:
+                  {
+                  'tests': {
+                        'test_1': {'status': 'PASSED', 'attributes': [1,2], ...}
+                        'test_2': {'status': 'FAILED', 'attributes': [1],...}
+                  }
+                  'suite_timings': {
+                        'download_start': '1998-07-17 00:00:00',
+                        'payload_download_end': '1998-07-17 00:00:05',
+                        ...
+                  }
+                  }
+        """
+        output_dict = {}
+        tests_dict = output_dict.setdefault('tests', {})
+        for v in self._test_views:
+          test_name = v.get_testname()
+          test_info = tests_dict.setdefault(test_name, {})
+          test_info.update({
+              'status': v['status'],
+              'attributes': v.get_control_file_attributes() or list(),
+              'reason': v['reason'],
+              'retry_count': self._retry_counts.get(v['test_idx'], 0),
+              })
+
+        # Write the links to test logs into the |tests_dict| of |output_dict|.
+        # For test whose status is not 'GOOD', the link is also buildbot_link.
+        for link in self._web_links:
+          test_name = link.anchor.strip()
+          test_info = tests_dict.get(test_name)
+          if test_info:
+            test_info['link_to_logs'] = link.url
+            # Write the wmatrix link into the dict.
+            if link in self._buildbot_links and link.testname:
+              test_info['wmatrix_link'] = WMATRIX_RETRY_URL % link.testname
+            # Write the bug url into the dict.
+            if link.bug_id:
+              test_info['bug_url'] = link.get_bug_link(link.bug_id)
+
+        # Write the suite timings into |output_dict|
+        time_dict = output_dict.setdefault('suite_timings', {})
+        time_dict.update({
+            'download_start' : str(self.timings.download_start_time),
+            'payload_download_end' : str(self.timings.payload_end_time),
+            'suite_start' : str(self.timings.suite_start_time),
+            'artifact_download_end' : str(self.timings.artifact_end_time),
+            'tests_start' : str(self.timings.tests_start_time),
+            'tests_end' : str(self.timings.tests_end_time),
+            })
+
+        output_dict['suite_job_id'] = self._suite_job_id
+
+        return output_dict
+
+
     def output_buildbot_links(self):
         """Output buildbot links."""
         for link in self._buildbot_links:
@@ -1324,15 +1399,16 @@ def create_suite(afe, options):
                    offload_failures_only=offload_failures_only)
 
 
-def main_without_exception_handling():
+def main_without_exception_handling(options):
     """
-    Entry point for run_suite script without exception handling.
-    """
-    parser, options, args = parse_options()
-    if not verify_options_and_args(options, args):
-        parser.print_help()
-        return RETURN_CODES.INVALID_OPTIONS
+    run_suite script without exception handling.
 
+    @param options: The parsed options.
+
+    @returns: A tuple contains the return_code of run_suite and the dictionary
+              of the output.
+
+    """
     # If indicate to use the new style suite control file, convert the args
     if options.use_suite_attr:
         options = change_options_for_suite_attr(options)
@@ -1440,8 +1516,11 @@ def main_without_exception_handling():
                                     suite_name=options.name,
                                     suite_job_id=job_id)
         collector.run()
-        # Output test results, timings, web links.
-        collector.output_results()
+        # Dump test outputs into json.
+        output_dict = collector.get_results_dict()
+        output_dict['autotest_instance'] = instance_server
+        if not options.json_dump:
+          collector.output_results()
         code = collector.return_code
         return_message = collector.return_message
         if is_real_time:
@@ -1483,6 +1562,7 @@ def main_without_exception_handling():
         # And output return message.
         if return_message:
             logging.info('Reason: %s', return_message)
+            output_dict['return_message'] = return_message
 
         logging.info('\nOutput below this line is for buildbot consumption:')
         collector.output_buildbot_links()
@@ -1492,23 +1572,44 @@ def main_without_exception_handling():
                        '%s-%s' % (job_id, getpass.getuser()))
         logging.info(link.GenerateBuildbotLink())
         logging.info('--no_wait specified; Exiting.')
-    return code
+    return (code, output_dict)
 
 
 def main():
     """Entry point."""
     code = RETURN_CODES.OK
+    output_dict = {}
+
     try:
-        code = main_without_exception_handling()
-    except diagnosis_utils.BoardNotAvailableError as e:
-        logging.warning('Can not run suite: %s', e)
-        code = RETURN_CODES.BOARD_NOT_AVAILABLE
-    except utils.TestLabException as e:
-        logging.warning('Can not run suite: %s', e)
-        code = RETURN_CODES.INFRA_FAILURE
+        parser, options, args = parse_options()
+        # Silence the log when dumping outputs into json
+        if options.json_dump:
+            logging.disable(logging.CRITICAL)
+
+        if not verify_options_and_args(options, args):
+            parser.print_help()
+            code = RETURN_CODES.INVALID_OPTIONS
+        else:
+            (code, output_dict) = main_without_exception_handling(options)
     except Exception as e:
-        code = RETURN_CODES.INFRA_FAILURE
-        logging.exception('Unhandled run_suite exception: %s', e)
+        if isinstance(e, diagnosis_utils.BoardNotAvailableError):
+            error_msg = 'BoardNotAvailableError: %s' % e
+            code = RETURN_CODES.BOARD_NOT_AVAILABLE
+        elif isinstance(e, utils.TestLabException):
+            error_msg = 'TestLabException: %s' % e
+            code = RETURN_CODES.INFRA_FAILURE
+        else:
+            error_msg = 'Unhandled run_suite exception: %s' % e
+            code = RETURN_CODES.INFRA_FAILURE
+
+        output_dict['return_message'] = error_msg
+        logging.exception(error_msg)
+
+    # Dump test outputs into json.
+    output_dict['return_code'] = code
+    output_json = json.dumps(output_dict, sort_keys=True)
+    if options.json_dump:
+        sys.stdout.write(output_json)
 
     logging.info('Will return from run_suite with status: %s',
                   RETURN_CODES.get_string(code))
