@@ -105,6 +105,9 @@ CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 
 STATS_KEY = 'lxc.%s' % socket.gethostname().replace('.', '_')
 timer = autotest_stats.Timer(STATS_KEY)
+# Timer used inside container should not include the hostname, as that will
+# create individual timer for each container.
+container_timer = autotest_stats.Timer('lxc')
 
 
 def _get_container_info_moblab(container_path, **filters):
@@ -291,7 +294,7 @@ def install_package_precheck(package):
     return True
 
 
-@timer.decorate
+@container_timer.decorate
 @retry.retry(error.CmdError, timeout_min=20)
 def install_package(package):
     """Install the given package inside container.
@@ -316,7 +319,7 @@ def install_package(package):
     logging.debug('Package %s is installed.', package)
 
 
-@timer.decorate
+@container_timer.decorate
 @retry.retry(error.CmdError, timeout_min=20)
 def install_python_package(package):
     """Install the given python package inside container using pip.
