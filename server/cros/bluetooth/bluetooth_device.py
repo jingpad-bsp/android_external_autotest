@@ -233,6 +233,18 @@ class BluetoothDevice(object):
         return self._proxy.register_profile(path, uuid, options)
 
 
+    def has_device(self, address):
+        """Checks if the device with a given address exists.
+
+        @param address: Address of the device.
+
+        @returns: True if there is a device with that address.
+                  False otherwise.
+
+        """
+        return self._proxy.has_device(address)
+
+
     def pair_legacy_device(self, address, pin, timeout):
         """Pairs a device with a given pin code.
 

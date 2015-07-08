@@ -495,13 +495,26 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def has_device(self, address):
+        """Checks if the device with a given address exists.
+
+        @param address: Address of the device.
+
+        @returns: True if there is a device with that address.
+                  False otherwise.
+
+        """
+        return self._find_device(address) != None
+
+
     def _find_device(self, address):
         """Finds the device with a given address.
 
         Find the device with a given address and returns the
         device interface.
 
-        @param address: Address of the device to pair.
+        @param address: Address of the device.
 
         @returns: An 'org.bluez.Device1' interface to the device.
                   None if device can not be found.
