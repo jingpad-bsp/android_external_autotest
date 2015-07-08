@@ -46,12 +46,7 @@ def connect_bluetooth_module(bt_adapter, target_mac_address,
                   matches target_mac_address. False otherwise.
 
         """
-        devices = bt_adapter.get_devices()
-        for device in devices:
-            if device['Address'] == target_mac_address:
-                logging.info('Found bluetooth device %r', device)
-                return True
-        return False
+        return bt_adapter.has_device(target_mac_address)
 
     # Searches for bluetooth module with given MAC address.
     found_device = utils.wait_for_value(_find_device, True, timeout_sec=timeout)
