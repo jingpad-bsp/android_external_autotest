@@ -11,7 +11,6 @@ This is implemented using a Django database router.
 For more details on how the routing works, see db_router.py.
 """
 
-import os
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.frontend import database_settings_helper
@@ -58,7 +57,6 @@ DATABASE_ROUTERS = ['autotest_lib.frontend.db_router.Router']
 # and you need this app to coexist with others
 URL_PREFIX = 'afe/server/'
 TKO_URL_PREFIX = 'new_tko/server/'
-CROSCHART_URL_PREFIX = 'croschart/server/'
 
 # Local time zone for this installation. Choices can be found here:
 # http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE
@@ -113,20 +111,9 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'frontend.urls'
 
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-
-    os.path.abspath(os.path.dirname(__file__) + '/templates'),
-    os.path.abspath(os.path.dirname(__file__) + '/croschart/templates'),
-    os.path.abspath(os.path.dirname(__file__) + '/perf-dashboard/templates')
-)
-
 INSTALLED_APPS = (
     'frontend.afe',
     'frontend.tko',
-    'frontend.croschart',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
