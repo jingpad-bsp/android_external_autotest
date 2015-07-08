@@ -188,7 +188,7 @@ class BaseAutotest(installable_object.InstallableObject):
         pkg_dir = os.path.join(autodir, 'packages')
         # clean up the autodir except for the packages directory
         host.run('cd %s && ls | grep -v "^packages$"'
-                 ' | xargs rm -rf && rm -rf .[^.]*' % autodir)
+                 ' | xargs rm -rf && rm -rf .[!.]*' % autodir)
         pkgmgr.install_pkg('autotest', 'client', pkg_dir, autodir,
                            preserve_install_dir=True)
         self.installed = True

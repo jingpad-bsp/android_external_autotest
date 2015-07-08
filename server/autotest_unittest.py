@@ -158,7 +158,7 @@ class TestBaseAutotest(unittest.TestCase):
             run_function=self.host.run, run_function_dargs=dict(timeout=600))
         pkg_dir = os.path.join('autodir', 'packages')
         cmd = ('cd autodir && ls | grep -v "^packages$"'
-               ' | xargs rm -rf && rm -rf .[^.]*')
+               ' | xargs rm -rf && rm -rf .[!.]*')
         self.host.run.expect_call(cmd)
         pkgmgr.install_pkg.expect_call('autotest', 'client', pkg_dir,
                                        'autodir', preserve_install_dir=True)
