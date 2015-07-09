@@ -1559,10 +1559,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
             check_known_jobs_include = 'OR ' + check_known_jobs
 
         for sql in [cls.SQL_SHARD_JOBS, cls.SQL_SHARD_FRONTEND_JOBS]:
-            query = Job.objects.raw(
-                    cls.SQL_SHARD_JOBS %
-                    {'check_known_jobs': check_known_jobs_exclude,
-                     'shard_id': shard.id})
+            query = Job.objects.raw(sql % {
+                    'check_known_jobs': check_known_jobs_exclude,
+                    'shard_id': shard.id})
             job_ids |= set([j.id for j in query])
 
         if job_ids:
