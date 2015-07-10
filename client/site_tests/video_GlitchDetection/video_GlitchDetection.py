@@ -203,10 +203,27 @@ class video_GlitchDetection(test.test):
         of frames is distributed as expected.
 
         """
+
+        def dump_list(l):
+            """
+            Logs list line by line.
+
+            @param l, the list to log.
+
+            """
+            for elem in l:
+                logging.debug(elem)
+
         checksums = self.capture_frames()
+
+        logging.debug("*** RAW checksums ***")
+        dump_list(checksums)
 
         checksum_ind_list = self.get_unique_checksum_indices(checksums)
         logging.debug("Download golden checksum file.")
+
+        logging.debug("*** FILTERED checksum ***")
+        dump_list(checksum_ind_list)
 
         remote_golden_checksum_path = os.path.join(
             self.remote_golden_images_dir, self.factory.golden_checksum_filename)
