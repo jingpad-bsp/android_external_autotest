@@ -5,7 +5,9 @@
 import logging, os
 
 from autotest_lib.client.cros import constants
+from autotest_lib.client.bin import utils
 from telemetry.core import exceptions, util
+from telemetry.core.platform import cros_interface
 
 # TODO(achuith): Clean this up - crbug.com/506037.
 try:
@@ -186,6 +188,19 @@ class Chrome(object):
         except (Error):
             return True
         return False
+
+
+    @staticmethod
+    def wait_for_browser_restart(func):
+        """Runs func, and waits for a browser restart.
+
+        @param func: function to run.
+
+        """
+        _cri = cros_interface.CrOSInterface()
+        pid = _cri.GetChromePid()
+        Chrome.did_browser_crash(func)
+        utils.poll_for_condition(lambda: pid != _cri.GetChromePid(), timeout=60)
 
 
     def wait_for_browser_to_come_up(self):

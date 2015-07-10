@@ -22,7 +22,7 @@ class enterprise_RemoraRequisition(test.test):
                         self._HANGOUTS_EXT_ID)
                 if len(ext_contexts) > 1:
                     return ext_contexts
-            except KeyError:
+            except (KeyError, chrome.Error):
                 pass
             return []
         return utils.poll_for_condition(
