@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=441
+need_pass=440
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -198,7 +198,6 @@ run_test "spec/ARB_occlusion_query/gen_delete_while_active" 0.0 "bin/gen_delete_
 run_test "spec/ARB_occlusion_query/occlusion_query_lifetime" 0.0 "bin/occlusion_query_lifetime -fbo -auto"
 run_test "spec/ARB_occlusion_query/occlusion_query_meta_no_fragments" 0.0 "bin/occlusion_query_meta_no_fragments -fbo -auto"
 run_test "spec/ARB_occlusion_query/occlusion_query_order" 0.0 "bin/occlusion_query_order -fbo -auto"
-run_test "spec/ARB_occlusion_query2/api" 0.0 "bin/arb_occlusion_query2-api -fbo -auto"
 run_test "spec/ARB_pixel_buffer_object/fbo-pbo-readpixels-small" 0.0 "bin/fbo-pbo-readpixels-small -auto"
 run_test "spec/ARB_pixel_buffer_object/pbo-drawpixels" 0.0 "bin/pbo-drawpixels -auto"
 run_test "spec/ARB_pixel_buffer_object/pbo-read-argb8888" 0.0 "bin/pbo-read-argb8888 -auto"
@@ -475,7 +474,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 441 tests have passed. |"
+  echo "| Overall pass, as all 440 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

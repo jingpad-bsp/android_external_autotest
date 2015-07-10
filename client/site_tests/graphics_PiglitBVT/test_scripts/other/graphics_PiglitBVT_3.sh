@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=292
+need_pass=291
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -282,7 +282,6 @@ run_test "spec/!OpenGL 1.2/lodclamp-between-max" 0.0 "bin/lodclamp-between-max -
 run_test "spec/!OpenGL 1.2/mipmap-setup" 0.0 "bin/mipmap-setup -auto"
 run_test "spec/!OpenGL 1.2/tex-skipped-unit" 0.0 "bin/tex-skipped-unit -auto"
 run_test "spec/!OpenGL 1.2/tex3d" 0.0 "bin/tex3d -auto"
-run_test "spec/!OpenGL 1.2/texture-packed-formats" 0.0 "bin/texture-packed-formats -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D" 0.0 "bin/texwrap 3D GL_RGBA8 -fbo -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D bordercolor" 0.0 "bin/texwrap 3D GL_RGBA8 bordercolor -fbo -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D proj" 0.0 "bin/texwrap 3D GL_RGBA8 proj -fbo -auto"
@@ -326,7 +325,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 292 tests have passed. |"
+  echo "| Overall pass, as all 291 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

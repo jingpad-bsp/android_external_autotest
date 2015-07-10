@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=10448
+need_pass=10445
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib64/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib64/piglit/
@@ -748,7 +748,6 @@ run_test "shaders/glsl-derivs" 0.0 "bin/glsl-derivs -fbo -auto"
 run_test "shaders/glsl-derivs-swizzle" 0.0 "bin/shader_runner tests/shaders/glsl-derivs-swizzle.shader_test -auto"
 run_test "shaders/glsl-dlist-getattriblocation" 0.0 "bin/glsl-dlist-getattriblocation -fbo -auto"
 run_test "shaders/glsl-empty-vs-no-fs" 0.0 "bin/glsl-empty-vs-no-fs -fbo -auto"
-run_test "shaders/glsl-floating-constant-120" 0.0 "bin/shader_runner tests/shaders/glsl-floating-constant-120.shader_test -auto"
 run_test "shaders/glsl-fs-abs-01" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-01.shader_test -auto"
 run_test "shaders/glsl-fs-abs-02" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-02.shader_test -auto"
 run_test "shaders/glsl-fs-abs-03" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-03.shader_test -auto"
@@ -1220,7 +1219,6 @@ run_test "spec/!OpenGL 1.2/lodclamp-between-max" 0.0 "bin/lodclamp-between-max -
 run_test "spec/!OpenGL 1.2/mipmap-setup" 0.0 "bin/mipmap-setup -auto"
 run_test "spec/!OpenGL 1.2/tex-skipped-unit" 0.0 "bin/tex-skipped-unit -auto"
 run_test "spec/!OpenGL 1.2/tex3d" 0.0 "bin/tex3d -auto"
-run_test "spec/!OpenGL 1.2/texture-packed-formats" 0.0 "bin/texture-packed-formats -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D" 0.0 "bin/texwrap 3D GL_RGBA8 -fbo -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D bordercolor" 0.0 "bin/texwrap 3D GL_RGBA8 bordercolor -fbo -auto"
 run_test "spec/!OpenGL 1.2/texwrap 3D proj" 0.0 "bin/texwrap 3D GL_RGBA8 proj -fbo -auto"
@@ -1800,7 +1798,6 @@ run_test "spec/ARB_occlusion_query/gen_delete_while_active" 0.0 "bin/gen_delete_
 run_test "spec/ARB_occlusion_query/occlusion_query_lifetime" 0.0 "bin/occlusion_query_lifetime -fbo -auto"
 run_test "spec/ARB_occlusion_query/occlusion_query_meta_no_fragments" 0.0 "bin/occlusion_query_meta_no_fragments -fbo -auto"
 run_test "spec/ARB_occlusion_query/occlusion_query_order" 0.0 "bin/occlusion_query_order -fbo -auto"
-run_test "spec/ARB_occlusion_query2/api" 0.0 "bin/arb_occlusion_query2-api -fbo -auto"
 run_test "spec/ARB_pixel_buffer_object/fbo-pbo-readpixels-small" 0.0 "bin/fbo-pbo-readpixels-small -auto"
 run_test "spec/ARB_pixel_buffer_object/pbo-drawpixels" 0.0 "bin/pbo-drawpixels -auto"
 run_test "spec/ARB_pixel_buffer_object/pbo-read-argb8888" 0.0 "bin/pbo-read-argb8888 -auto"
@@ -10482,7 +10479,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 10448 tests have passed. |"
+  echo "| Overall pass, as all 10445 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
