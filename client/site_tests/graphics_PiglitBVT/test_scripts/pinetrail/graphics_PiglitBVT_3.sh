@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=244
+need_pass=243
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -184,7 +184,6 @@ run_test "shaders/glsl-deadcode-self-assign" 0.0 "bin/shader_runner tests/shader
 run_test "shaders/glsl-deadcode-varying" 0.0 "bin/shader_runner tests/shaders/glsl-deadcode-varying.shader_test -auto"
 run_test "shaders/glsl-dlist-getattriblocation" 0.0 "bin/glsl-dlist-getattriblocation -fbo -auto"
 run_test "shaders/glsl-empty-vs-no-fs" 0.0 "bin/glsl-empty-vs-no-fs -fbo -auto"
-run_test "shaders/glsl-floating-constant-120" 0.0 "bin/shader_runner tests/shaders/glsl-floating-constant-120.shader_test -auto"
 run_test "shaders/glsl-fs-abs-01" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-01.shader_test -auto"
 run_test "shaders/glsl-fs-abs-02" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-02.shader_test -auto"
 run_test "shaders/glsl-fs-abs-03" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-03.shader_test -auto"
@@ -278,7 +277,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 244 tests have passed. |"
+  echo "| Overall pass, as all 243 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

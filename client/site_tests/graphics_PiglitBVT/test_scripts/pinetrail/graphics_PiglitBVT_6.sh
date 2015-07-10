@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=100
+need_pass=99
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -32,7 +32,6 @@ function run_test()
 pushd $PIGLIT_PATH
 run_test "spec/!OpenGL 1.2/mipmap-setup" 0.0 "bin/mipmap-setup -auto"
 run_test "spec/!OpenGL 1.2/tex-skipped-unit" 0.0 "bin/tex-skipped-unit -auto"
-run_test "spec/!OpenGL 1.2/texture-packed-formats" 0.0 "bin/texture-packed-formats -auto"
 run_test "spec/!OpenGL 1.2/two-sided-lighting-separate-specular" 0.0 "bin/two-sided-lighting-separate-specular -auto"
 run_test "spec/!OpenGL 1.3/tex-border-1" 0.0 "bin/tex-border-1 -auto"
 run_test "spec/!OpenGL 1.3/tex3d-depth1" 0.0 "bin/tex3d-depth1 -fbo -auto"
@@ -134,7 +133,7 @@ popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 100 tests have passed. |"
+  echo "| Overall pass, as all 99 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"
