@@ -49,9 +49,14 @@ import sys
 import common
 import chromite
 from autotest_lib.server import utils
+from autotest_lib.site_utils import lxc
 
 with open(sys.argv[1], 'w') as f:
     f.write('test')
+
+# Test installing packages
+lxc.install_packages(['atop', 'libxslt-dev'], ['selenium', 'numpy'])
+
 """
 # Name of the test control file.
 TEST_CONTROL_FILE = 'attach.1'
@@ -184,15 +189,10 @@ def test_package_install(container):
 
     @param container: The test container.
     """
-    container.attach_run('sudo apt-get update -y')
-    container.attach_run('sudo apt-get install python-pip -y --force-yes')
-    target_setting = ''
-    # For containers running in Moblab, /usr/local/lib/python2.7/dist-packages/
-    # is a readonly mount from the host. Therefore, new python modules have to
-    # be installed in /usr/lib/python2.7/dist-packages/
-    if lxc.IS_MOBLAB:
-        target_setting = '--target="/usr/lib/python2.7/dist-packages/"'
-    container.attach_run('sudo pip install %s selenium' % target_setting)
+    # Packages are installed in TEST_SCRIPT_CONTENT. Verify the packages in
+    # this method.
+    container.attach_run('which atop')
+    container.attach_run('python -c "import selenium"')
 
 
 def test_ssh(container, remote):
@@ -256,7 +256,7 @@ def main(options):
         test_ssh(container, options.dut)
     if options.devserver:
         test_ssh(container, options.devserver)
-    # Install package takes the longest time, leave it to the last test.
+    # Packages are installed in TEST_SCRIPT, verify the packages are installed.
     test_package_install(container)
     logging.info('All tests passed.')
 

@@ -266,16 +266,16 @@ def download_extract(url, target, extract_dir):
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
-def install_package_precheck(package):
+def install_package_precheck(packages):
     """If SSP is not enabled or the test is running in chroot (using test_that),
-    package installation should be skipped.
+    packages installation should be skipped.
 
     The check does not raise exception so tests started by test_that or running
     in an Autotest setup with SSP disabled can continue. That assume the running
     environment, chroot or a machine, has the desired packages installed
     already.
 
-    @param package: Name of the package to install.
+    @param packages: A list of names of the packages to install.
 
     @return: True if package installation can continue. False if it should be
              skipped.
@@ -283,30 +283,32 @@ def install_package_precheck(package):
     """
     if not SSP_ENABLED:
         logging.info('Server-side packaging is not enabled. Install package %s '
-                     'is skipped.', package)
+                     'is skipped.', packages)
         return False
 
     if server_utils.is_inside_chroot():
         logging.info('Test is running inside chroot. Install package %s is '
-                     'skipped.', package)
+                     'skipped.', packages)
         return False
 
     return True
 
 
 @container_timer.decorate
-@retry.retry(error.CmdError, timeout_min=20)
-def install_package(package):
+@retry.retry(error.CmdError, timeout_min=30)
+def install_packages(packages=[], python_packages=[]):
     """Install the given package inside container.
 
-    @param package: Name of the package to install.
+    @param packages: A list of names of the packages to install.
+    @param python_packages: A list of names of the python packages to install
+                            using pip.
 
     @raise error.ContainerError: If package is attempted to be installed outside
                                  a container.
     @raise error.CmdError: If the package doesn't exist or failed to install.
 
     """
-    if not install_package_precheck(package):
+    if not install_package_precheck(packages or python_packages):
         return
 
     if not utils.is_in_container():
@@ -315,23 +317,14 @@ def install_package(package):
     # Always run apt-get update before installing any container. The base
     # container may have outdated cache.
     utils.run('sudo apt-get update')
-    utils.run('sudo apt-get install %s -y --force-yes' % package)
-    logging.debug('Package %s is installed.', package)
+    # Make sure the lists are not None for iteration.
+    packages = [] if not packages else packages
+    if python_packages:
+        packages.extend(['python-pip', 'python-dev'])
+    if packages:
+        utils.run('sudo apt-get install %s -y --force-yes' % ' '.join(packages))
+        logging.debug('Packages are installed: %s.', packages)
 
-
-@container_timer.decorate
-@retry.retry(error.CmdError, timeout_min=20)
-def install_python_package(package):
-    """Install the given python package inside container using pip.
-
-    @param package: Name of the python package to install.
-
-    @raise error.CmdError: If the package doesn't exist or failed to install.
-    """
-    if not install_package_precheck(package):
-        return
-
-    install_package('python-pip')
     target_setting = ''
     # For containers running in Moblab, /usr/local/lib/python2.7/dist-packages/
     # is a readonly mount from the host. Therefore, new python modules have to
@@ -339,8 +332,47 @@ def install_python_package(package):
     # Containers created in Moblab does not have autotest/site-packages folder.
     if not os.path.exists('/usr/local/autotest/site-packages'):
         target_setting = '--target="/usr/lib/python2.7/dist-packages/"'
-    utils.run('sudo pip install %s %s' % (target_setting, package))
-    logging.debug('Python package %s is installed.', package)
+    if python_packages:
+        utils.run('sudo pip install %s %s' % (target_setting,
+                                              ' '.join(python_packages)))
+        logging.debug('Python packages are installed: %s.', python_packages)
+
+
+@container_timer.decorate
+@retry.retry(error.CmdError, timeout_min=20)
+def install_package(package):
+    """Install the given package inside container.
+
+    This function is kept for backwards compatibility reason. New code should
+    use function install_packages for better performance.
+
+    @param package: Name of the package to install.
+
+    @raise error.ContainerError: If package is attempted to be installed outside
+                                 a container.
+    @raise error.CmdError: If the package doesn't exist or failed to install.
+
+    """
+    logging.warn('This function is obsoleted, please use install_packages '
+                 'instead.')
+    install_packages(packages=[package])
+
+
+@container_timer.decorate
+@retry.retry(error.CmdError, timeout_min=20)
+def install_python_package(package):
+    """Install the given python package inside container using pip.
+
+    This function is kept for backwards compatibility reason. New code should
+    use function install_packages for better performance.
+
+    @param package: Name of the python package to install.
+
+    @raise error.CmdError: If the package doesn't exist or failed to install.
+    """
+    logging.warn('This function is obsoleted, please use install_packages '
+                 'instead.')
+    install_packages(python_packages=[package])
 
 
 class Container(object):
