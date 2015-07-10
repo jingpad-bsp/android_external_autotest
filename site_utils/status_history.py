@@ -121,10 +121,7 @@ class _JobEvent(object):
 
     def __init__(self, start_time, end_time):
         self.start_time = parse_time(start_time)
-        if end_time:
-            self.end_time = parse_time(end_time)
-        else:
-            self.end_time = None
+        self.end_time = parse_time(end_time)
 
 
     def __cmp__(self, other):
@@ -187,10 +184,12 @@ class _SpecialTaskEvent(_JobEvent):
         @return A list of `_SpecialTaskEvent` objects.
 
         """
+        query_start = time_utils.epoch_time_to_date_string(start_time)
+        query_end = time_utils.epoch_time_to_date_string(end_time)
         tasks = afe.get_host_special_tasks(
                 host_id,
-                time_started__gte=start_time,
-                time_finished__lte=end_time,
+                time_started__gte=query_start,
+                time_finished__lte=query_end,
                 is_complete=1)
         return [cls(afe.server, t) for t in tasks]
 
@@ -211,7 +210,8 @@ class _SpecialTaskEvent(_JobEvent):
                 or `None` if no task was found.
 
         """
-        task = afe.get_host_status_task(host_id, end_time)
+        query_end = time_utils.epoch_time_to_date_string(end_time)
+        task = afe.get_host_status_task(host_id, query_end)
         return cls(afe.server, task) if task else None
 
 
@@ -265,10 +265,12 @@ class _TestJobEvent(_JobEvent):
         @return A list of `_TestJobEvent` objects.
 
         """
+        query_start = time_utils.epoch_time_to_date_string(start_time)
+        query_end = time_utils.epoch_time_to_date_string(end_time)
         hqelist = afe.get_host_queue_entries(
                 host_id=host_id,
-                start_time=start_time,
-                end_time=end_time,
+                start_time=query_start,
+                end_time=query_end,
                 complete=1)
         return [cls(afe.server, hqe) for hqe in hqelist]
 
@@ -300,6 +302,7 @@ class HostJobHistory(object):
 
     @property hostname    Host name of the DUT.
     @property start_time  Start of the requested time interval.
+                          This field may be `None`.
     @property end_time    End of the requested time interval.
     @property _afe        Autotest frontend for queries.
     @property _host       Database host object for the DUT.
@@ -379,8 +382,8 @@ class HostJobHistory(object):
     def __init__(self, afe, afehost, start_time, end_time):
         self._afe = afe
         self.hostname = afehost.hostname
-        self.start_time = time_utils.epoch_time_to_date_string(start_time)
-        self.end_time = time_utils.epoch_time_to_date_string(end_time)
+        self.end_time = end_time
+        self.start_time = start_time
         self._host = afehost
         # Don't spend time on queries until they're needed.
         self._history = None
@@ -453,13 +456,15 @@ class HostJobHistory(object):
         self._status_interval = []
         if self._status_task is None:
             return
+        query_end = time_utils.epoch_time_to_date_string(self.end_time)
         interval = self._afe.get_host_diagnosis_interval(
-                self._host.id, self.end_time,
+                self._host.id, query_end,
                 self._status_diagnosis != WORKING)
         if not interval:
             return
-        self._status_interval = self._get_history(interval[0],
-                                                  interval[1])
+        self._status_interval = self._get_history(
+                parse_time(interval[0]),
+                parse_time(interval[1]))
 
 
     def diagnosis_interval(self):
@@ -488,10 +493,16 @@ class HostJobHistory(object):
         `(diagnosis, task)`.
 
         The `diagnosis` entry in the tuple is one of these values:
+          * UNUSED - The host's last status task is older than
+              `self.start_time`.
           * WORKING - The DUT is working.
           * BROKEN - The DUT likely requires manual intervention.
           * UNKNOWN - No task could be found indicating status for
               the DUT.
+
+        If the DUT was working at last check, but hasn't been used
+        inside this history's time interval, the status `UNUSED` is
+        returned with the last status task, instead of `WORKING`.
 
         The `task` entry in the tuple is the status task that led to
         the diagnosis.  The task will be `None` if the diagnosis is
@@ -502,7 +513,13 @@ class HostJobHistory(object):
 
         """
         self._init_status_task()
-        return self._status_diagnosis, self._status_task
+        diagnosis = self._status_diagnosis
+        if (self.start_time is not None and
+                self._status_task is not None and
+                self._status_task.end_time < self.start_time and
+                diagnosis == WORKING):
+            diagnosis = UNUSED
+        return diagnosis, self._status_task
 
 
 def get_diagnosis_interval(host_id, end_time, success):
