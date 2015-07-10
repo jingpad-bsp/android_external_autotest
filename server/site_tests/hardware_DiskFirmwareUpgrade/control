@@ -39,7 +39,7 @@ DISK_FW_PACKAGES = {
     # MAG2GC:      4d4147324743
     # HBG4e\05:    484247346505
     # DS2016:      445332303136
-    r'(4d4147324743|484247346505|445332303136|LITEON CS1-SP.*)' : {
+    r'(4d4147324743|484247346505|445332303136|KINGSTON RBU-SUS.*|LITEON CS1-SP.*)' : {
         'test_firmware' : [0, True], # revert to previous firmware
     },
     r'.*' : {
