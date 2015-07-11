@@ -569,7 +569,6 @@ def check_for_duplicate_hosts(host_objects):
 def create_new_job(owner, options, host_objects, metahost_objects,
                    atomic_group=None):
     all_host_objects = host_objects + metahost_objects
-    metahost_counts = _get_metahost_counts(metahost_objects)
     dependencies = options.get('dependencies', [])
     synch_count = options.get('synch_count')
 
