@@ -290,6 +290,22 @@ class IwRunner(object):
         @return list of IwNetDev tuples.
 
         """
+
+        # Parse output in the following format:
+        #
+        #   $ adb shell iw dev
+        #   phy#0
+        #     Unnamed/non-netdev interface
+        #       wdev 0x2
+        #       addr aa:bb:cc:dd:ee:ff
+        #       type P2P-device
+        #     Interface wlan0
+        #       ifindex 4
+        #       wdev 0x1
+        #       addr aa:bb:cc:dd:ee:ff
+        #       ssid Whatever
+        #       type managed
+
         output = self._run('%s dev' % self._command_iw).stdout
         interfaces = []
         phy = None
@@ -299,18 +315,25 @@ class IwRunner(object):
             m = re.match('phy#([0-9]+)', line)
             if m:
                 phy = 'phy%d' % int(m.group(1))
+                if_name = None
+                if_type = None
+                continue
+            if not phy:
+                continue
             m = re.match('[\s]*Interface (.*)', line)
             if m:
                 if_name = m.group(1)
+                continue
+            if not if_name:
+                continue
             # Common values for type are 'managed', 'monitor', and 'IBSS'.
             m = re.match('[\s]*type ([a-zA-Z]+)', line)
             if m:
                 if_type = m.group(1)
-            if phy and if_name and if_type:
                 interfaces.append(IwNetDev(phy=phy, if_name=if_name,
                                            if_type=if_type))
                 # One phy may have many interfaces, so don't reset it.
-                if_name = if_type = None
+                if_name = None
 
         if desired_if_type:
             interfaces = [interface for interface in interfaces
