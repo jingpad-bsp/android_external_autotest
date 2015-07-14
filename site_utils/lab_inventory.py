@@ -677,7 +677,7 @@ def _generate_board_inventory_message(inventory):
 
 
 _POOL_INVENTORY_HEADER = '''\
-Notice to Infrastructure deputies:  If any boards are shown at
+Notice to Infrastructure deputies:  All boards shown below are at
 less than full strength, please take action to resolve the issues.
 Once you're satisified that failures won't recur, failed DUTs can
 be replaced with spares by running `balance_pool`.  Detailed
