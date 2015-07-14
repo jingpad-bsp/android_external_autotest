@@ -283,6 +283,16 @@ def get_drones():
     return [s.hostname for s in servers]
 
 
+def get_shards():
+    """Get a list of shards in status primary.
+
+    @return: A list of shards in status primary.
+    """
+    servers = get_servers(role=server_models.ServerRole.ROLE.SHARD,
+                          status=server_models.Server.STATUS.PRIMARY)
+    return [s.hostname for s in servers]
+
+
 def confirm_server_has_role(hostname, role):
     """Confirm a given server has the given role, and its status is primary.
 
