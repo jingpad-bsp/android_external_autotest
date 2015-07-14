@@ -335,6 +335,15 @@ class WpaCliProxy(object):
         return True
 
 
+    def delete_entries_for_ssid(self, ssid):
+        """Delete a profile entry.
+
+        @param ssid string of WiFi service for which to delete entries.
+        @return True on success, False otherwise.
+        """
+        return self.disconnect(ssid)
+
+
     def set_device_enabled(self, wifi_interface, enabled):
         """Enable or disable the WiFi device.
 
