@@ -826,12 +826,12 @@ class GVizAPIPackage(ExternalPackage):
 
 class StatsdPackage(ExternalPackage):
     """python-statsd package"""
-    version = '1.5.8'
+    version = '1.7.2'
     url_filename = 'python-statsd-%s.tar.gz' % version
     local_filename = url_filename
     urls = ('http://pypi.python.org/packages/source/p/python-statsd/%s' % (
         url_filename),)
-    hex_sum = '50eccab74ca88884297954497f85039e5a2e732c'
+    hex_sum = '2cc186ebdb723e2420b432ab71639786d877694b'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
