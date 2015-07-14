@@ -59,8 +59,8 @@ class IwEventLogger(object):
         output to a temporary file in remote host.
 
         """
-        command = '%s event -t > %s & echo $!' % (self._command_iw,
-                                                  IW_REMOTE_EVENT_LOG_FILE)
+        command = 'nohup %s event -t </dev/null >%s 2>&1 & echo $!' % (
+                self._command_iw, IW_REMOTE_EVENT_LOG_FILE)
         command += ';date +%s'
         out_lines = self._host.run(command).stdout.splitlines()
         self._pid = int(out_lines[0])
