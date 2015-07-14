@@ -149,7 +149,6 @@ class Interface:
                 ignore_status=True).exit_status == 0
         read_file = (lambda path: self._run('cat "%s"' % path).stdout.rstrip()
                      if exists(path) else None)
-        readlink = lambda path: self._run('readlink "%s"' % path).stdout.strip()
         if not self.is_wifi_device:
             logging.error('Device description not supported on non-wifi '
                           'interface: %s.', self._name)
@@ -174,13 +173,19 @@ class Interface:
             logging.error('Device vendor/product pair %r for device %s is '
                           'unknown!', driver_info, product_id)
             device_name = NAME_UNKNOWN
-        module_name = os.path.basename(
-                readlink(os.path.join(device_path, 'driver', 'module')))
-        kernel_release = self._run('uname -r').stdout.strip()
-        module_path = self._run('find '
-                                '/lib/modules/%s/kernel/drivers/net '
-                                '-name %s.ko -printf %%P' %
-                                (kernel_release, module_name)).stdout
+        module_readlink_result = self._run('readlink "%s"' %
+                os.path.join(device_path, 'driver', 'module'),
+                ignore_status=True)
+        if module_readlink_result.exit_status == 0:
+            module_name = os.path.basename(
+                    module_readlink_result.stdout.strip())
+            kernel_release = self._run('uname -r').stdout.strip()
+            module_path = self._run('find '
+                                    '/lib/modules/%s/kernel/drivers/net '
+                                    '-name %s.ko -printf %%P' %
+                                    (kernel_release, module_name)).stdout
+        else:
+            module_path = 'Unknown (kernel might have modules disabled)'
         return DeviceDescription(device_name, module_path)
 
 
