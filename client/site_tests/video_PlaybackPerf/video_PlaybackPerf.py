@@ -46,6 +46,7 @@ CPU_IDLE_USAGE = 0.1
 
 CPU_USAGE_DESCRIPTION = 'video_cpu_usage_'
 DROPPED_FRAMES_DESCRIPTION = 'video_dropped_frames_'
+DROPPED_FRAMES_PERCENT_DESCRIPTION = 'video_dropped_frames_percent_'
 POWER_DESCRIPTION = 'video_mean_energy_rate_'
 
 # Minimum battery charge percentage to run the test
@@ -143,8 +144,18 @@ class video_PlaybackPerf(test.test):
         if not power_test:
             # Run the video playback dropped frame tests.
             keyvals = self.test_dropped_frames(local_path)
-            self.log_result(keyvals, DROPPED_FRAMES_DESCRIPTION +
+
+            # Every dictionary value is a tuple. The first element of the tuple
+            # is dropped frames. The second is dropped frames percent.
+            keyvals_dropped_frames = {k: v[0] for k, v in keyvals.iteritems()}
+            keyvals_dropped_frames_percent = {
+                    k: v[1] for k, v in keyvals.iteritems()}
+
+            self.log_result(keyvals_dropped_frames, DROPPED_FRAMES_DESCRIPTION +
                                 video_description, 'frames')
+            self.log_result(keyvals_dropped_frames_percent,
+                            DROPPED_FRAMES_PERCENT_DESCRIPTION +
+                                video_description, 'percent')
 
             # Run the video playback cpu usage tests.
             keyvals = self.test_cpu_usage(local_path)
@@ -166,8 +177,23 @@ class video_PlaybackPerf(test.test):
         def get_dropped_frames(cr):
             time.sleep(MEASUREMENT_DURATION)
             tab = cr.browser.tabs[0]
-            return tab.EvaluateJavaScript("document.getElementsByTagName"
-                                          "('video')[0].webkitDroppedFrameCount")
+            decoded_frame_count = tab.EvaluateJavaScript(
+                    "document.getElementsByTagName"
+                    "('video')[0].webkitDecodedFrameCount")
+            dropped_frame_count = tab.EvaluateJavaScript(
+                    "document.getElementsByTagName"
+                    "('video')[0].webkitDroppedFrameCount")
+            if decoded_frame_count != 0:
+                dropped_frame_percent = \
+                        100.0 * dropped_frame_count / decoded_frame_count
+            else:
+                logging.error("No frame is decoded. Set drop percent to 100.")
+                dropped_frame_percent = 100.0
+            logging.info("Decoded frames=%d, dropped frames=%d, percent=%f" %
+                             (decoded_frame_count,
+                              dropped_frame_count,
+                              dropped_frame_percent))
+            return (dropped_frame_count, dropped_frame_percent)
         return self.test_playback(local_path, get_dropped_frames)
 
 
