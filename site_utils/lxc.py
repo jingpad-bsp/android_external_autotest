@@ -94,7 +94,7 @@ IS_MOBLAB = utils.is_moblab()
 SUPPORT_SNAPSHOT_CLONE = not IS_MOBLAB
 
 # Number of seconds to wait for network to be up in a container.
-NETWORK_INIT_TIMEOUT = 120
+NETWORK_INIT_TIMEOUT = 300
 # Network bring up is slower in Moblab.
 NETWORK_INIT_CHECK_INTERVAL = 2 if IS_MOBLAB else 0.1
 
