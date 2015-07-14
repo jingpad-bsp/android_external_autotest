@@ -233,7 +233,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: Ssh connection has timed out.
 
         """
-        command = '"%s; echo %s:\$?"' % (command, CMD_OUTPUT_PREFIX)
+        command = ('"%s; echo %s:\$?"' %
+                (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
         result = self._adb_run(
                 command, shell=True, use_serial=False, timeout=timeout,
                 ignore_status=ignore_status, ignore_timeout=ignore_timeout,

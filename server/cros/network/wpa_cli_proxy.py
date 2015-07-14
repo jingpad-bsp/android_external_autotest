@@ -51,7 +51,7 @@ class WpaCliProxy(object):
         """
         add_result = self._run_wpa_cli_cmd('add_network', check_result=False)
         network_id = int(add_result.stdout.splitlines()[-1])
-        self._run_wpa_cli_cmd('set_network %d ssid \'\\"%s\\"\'' %
+        self._run_wpa_cli_cmd('set_network %d ssid \\"%s\\"' %
                               (network_id, ssid))
         self._created_networks[ssid] = network_id
         logging.debug('Added network %s=%d', ssid, network_id)
