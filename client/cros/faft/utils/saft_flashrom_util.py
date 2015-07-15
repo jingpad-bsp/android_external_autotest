@@ -22,12 +22,8 @@ For more information, see help(saft_flashrom_util.flashrom_util).
 """
 
 import os
-import re
 import stat
-import subprocess
-import sys
 import tempfile
-import types
 
 import chromeos_interface
 
@@ -156,7 +152,7 @@ class LayoutScraper(object):
                 continue  # This line does not contain an area of interest.
 
             if name in layout_data:
-                raise TestError('%s duplicated in the layout' % area_name)
+                raise TestError('%s duplicated in the layout' % name)
 
             offset = int(d['area_offset'], 0)
             size = int(d['area_size'], 0)

@@ -3,13 +3,9 @@
 # found in the LICENSE file.
 
 """A module containing TPM handler class used by SAFT."""
-import os
-import re
-import shutil
 
 FW_NV_ADDRESS = 0x1007
 KERNEL_NV_ADDRESS = 0x1008
-COMMENT_PATTERN = '#saft'
 
 class TpmError(Exception):
     pass
@@ -62,18 +58,6 @@ class TpmNvRam(object):
             self.version_offset + 3] * 256 + self.contents[
             self.version_offset + 2]
 
-    def set_body_version(self, new_version):
-        new_contents = list(self.contents)
-        new_contents[self.version_offset + 1] = (new_version >> 8) & 0xff
-        new_contents[self.version_offset] = new_version & 0xff
-        if new_contents != self.contents:
-            self.contents = new_contents
-            cmd = 'tpmc write 0x%x %s' % (
-                self.addr, ' '.join('0x%2.2x' % x for x in new_contents))
-            self.os_if.run_shell_command(cmd)
-        else:
-            self.os_if.log('no version change for 0x%x' % self.addr)
-
 class TpmHandler(object):
     """An object to control TPM device's NVRAM.
 
@@ -111,56 +95,3 @@ class TpmHandler(object):
 
     def get_kernel_version(self):
         return self.nvrams['kernel'].get_body_version()
-
-    def set_fw_version(self, new_version):
-        return self.nvrams['bios'].set_body_version(new_version)
-
-    def set_kernel_version(self, new_version):
-        return self.nvrams['kernel'].set_body_version(new_version)
-
-    def _version_good(self, nvram, version_a, version_b):
-        return self.nvrams[nvram].get_body_version() == max(
-            version_a, version_b)
-
-    def kernel_version_good(self, version_a, version_b):
-        return self._version_good('kernel', version_a, version_b)
-
-    def fw_version_good(self, version_a, version_b):
-        return self._version_good('bios', version_a, version_b)
-
-    def enable_write_access(self, config_file_name='/etc/init/tcsd.conf'):
-        """Enable TPM write access on the next recovery mode restart.
-
-        Comment out from the TPM upstart script the following lines locking
-        the TPM (and thus preventing write access):
-
-            tpmc block  || logger "tpmc block:  status $?"
-            tpmc pplock || logger "tpmc pplock: status $?"
-
-        Save the original file in the state directory for future recovery.
-        """
-
-        pattern = re.compile('^\s+tpmc\s+(b|pp)lock\s+\|\|')
-        new_file_name = self.cros_if.state_dir_file(
-            os.path.basename(config_file_name))
-        shutil.copyfile(config_file_name, new_file_name + '.bak')
-        config_file = open(config_file_name, 'r')
-        new_file = open(new_file_name, 'w')
-        for line in config_file.readlines():
-            if pattern.search(line):
-                new_file.write('%s%s' % (COMMENT_PATTERN, line))
-            else:
-                new_file.write(line)
-        new_file.close()
-        config_file.close()
-        shutil.move(new_file_name, config_file_name)
-
-    def disable_write_access(self, config_file_name='/etc/init/tcsd.conf'):
-        """Disable TPM write access.
-
-        Restore previously edited startup file to lock the TPM on the next
-        restart.
-        """
-        backup_file_name = self.cros_if.state_dir_file(
-            os.path.basename(config_file_name) + '.bak')
-        shutil.move(backup_file_name, config_file_name)

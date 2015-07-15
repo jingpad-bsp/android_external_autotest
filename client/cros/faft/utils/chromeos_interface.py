@@ -7,11 +7,8 @@
 import datetime
 import os
 import re
-import shutil
 import struct
 import subprocess
-import tempfile
-import time
 
 class ChromeOSInterfaceError(Exception):
     """ChromeOS interface specific exception."""
@@ -203,12 +200,6 @@ class Crossystem(object):
 
         return boot_vector
 
-    def dump(self):
-        """Dump all crossystem values as multiline text."""
-
-        return '\n'.join(self.cros_if.run_shell_command_get_output(
-            'crossystem'))
-
 
 class ChromeOSInterface(object):
     """An object to encapsulate OS services functions."""
@@ -261,38 +252,12 @@ class ChromeOSInterface(object):
         """Get a full path of a file in the state directory."""
         return os.path.join(self.state_dir, file_name)
 
-    def init_environment(self):
-        """Initialize Chrome OS interface environment.
-
-        If state dir was not set up by the constructor, create a temp
-        directory, otherwise create the directory defined during construction
-        of this object.
-
-        Return the state directory name.
-        """
-
-        if not self.state_dir:
-            self.state_dir = tempfile.mkdtemp(suffix='_saft')
-        else:
-            # Wipe out state directory, to start the state machine clean.
-            shutil.rmtree(self.state_dir)
-            # And recreate it
-            self.init(self.state_dir, self.log_file)
-
-        return self.state_dir
-
-    def shut_down(self, new_log='/var/saft_log.txt'):
-        """Destroy temporary environment so that the test can be restarted."""
-        if os.path.exists(self.log_file):
-            shutil.copyfile(self.log_file, new_log)
-        shutil.rmtree(self.state_dir)
-
     def log(self, text):
         """Write text to the log file and print it on the screen, if enabled.
 
-      The entire log (maintained across reboots) can be found in
-      self.log_file.
-      """
+        The entire log (maintained across reboots) can be found in
+        self.log_file.
+        """
 
         # Don't print on the screen unless enabled.
         if not self.silent:
@@ -310,29 +275,18 @@ class ChromeOSInterface(object):
             log_f.flush()
             os.fdatasync(log_f)
 
-
-    def exec_exists(self, program):
-        """Check if the passed in string is a valid executable found in PATH."""
-
-        for path in os.environ['PATH'].split(os.pathsep):
-            exe_file = os.path.join(path, program)
-            if (os.path.isfile(exe_file) or os.path.islink(exe_file)
-                ) and os.access(exe_file, os.X_OK):
-                return True
-        return False
-
     def run_shell_command(self, cmd):
         """Run a shell command.
 
-      In case of the command returning an error print its stdout and stderr
-      outputs on the console and dump them into the log. Otherwise suppress all
-      output.
+        In case of the command returning an error print its stdout and stderr
+        outputs on the console and dump them into the log. Otherwise suppress all
+        output.
 
-      In case of command error raise an OSInterfaceError exception.
+        In case of command error raise an OSInterfaceError exception.
 
-      Return the subprocess.Popen() instance to provide access to console
-      output in case command succeeded.
-      """
+        Return the subprocess.Popen() instance to provide access to console
+        output in case command succeeded.
+        """
 
         self.log('Executing %s' % cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
@@ -410,8 +364,8 @@ class ChromeOSInterface(object):
     def run_shell_command_get_output(self, cmd):
         """Run shell command and return its console output to the caller.
 
-      The output is returned as a list of strings stripped of the newline
-      characters."""
+        The output is returned as a list of strings stripped of the newline
+        characters."""
 
         process = self.run_shell_command(cmd)
         return [x.rstrip() for x in process.stdout.readlines()]
@@ -451,40 +405,11 @@ class ChromeOSInterface(object):
         if len(list1) != len(list2):
             raise ChromeOSInterfaceError(
                     'Boot vectors (%s %s) should be of the same length'
-                    % (vecotr1, vector2))
+                    % (vector1, vector2))
         for i in range(len(list1)):
             if list1[i] != list2[i] and list1[i] != '*' and list2[i] != '*':
                 return False
         return True
-
-    def get_writeable_mount_point(self, dev, tmp_dir):
-        """Get mountpoint of the passed in device mounted in read/write mode.
-
-      If the device is already mounted and is writeable - return its mount
-      point. If the device is mounted but read-only - remount it read/write
-      and return its mount point. If the device is not mounted - mount it read
-      write on the passsed in path and return this path.
-      """
-
-      # The device root file system is mounted on is represented as /dev/root
-      # otherwise.
-        options_filter = re.compile('.*\((.+)\).*')
-        root_part = self.get_root_part()
-        if dev == root_part:
-            dev = '/dev/root'
-
-        for line in self.run_shell_command_get_output('mount'):
-            if not line.startswith('%s ' % dev):
-                continue
-            mount_options = options_filter.match(line).groups(0)[0]
-        # found mounted
-            if 'ro' in mount_options.split(','):
-          # mounted read only
-                self.run_shell_command('mount -o remount,rw %s' % dev)
-            return line.split()[2]  # Mountpoint is the third element.
-      # Not found, needs to be mounted
-        self.run_shell_command('mount %s %s' % (dev, tmp_dir))
-        return tmp_dir
 
     def retrieve_body_version(self, blob):
         """Given a blob, retrieve body version.

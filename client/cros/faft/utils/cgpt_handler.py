@@ -102,22 +102,6 @@ class CgptHandler(object):
                     partition_name, device))
         return result
 
-    def dump_partition(self, device, partition_name):
-        """Return text describing a partition on a device.
-
-        Inputs:
-          device: a string, the Linux device name
-          partition_name: a string, the partition name as reported by cgpt.
-
-        Returns:
-          A string, bunch of lines in the form <property>: <value> each,
-          listing all partition properties as reported by cgpt.
-        """
-
-        partition = self.get_partition(device, partition_name)
-        lines = ['%s: %s' % (x, str(partition[x])) for x in partition]
-        return '\n'.join(lines)
-
     def set_partition(self, device, partition_name, partition_value):
         """Set partition properties.
 
