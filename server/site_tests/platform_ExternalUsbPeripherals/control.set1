@@ -50,31 +50,37 @@ def run(machine):
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
-    usb_list = ["C-Media Electronics, Inc. Audio Adapter",
-                "Logitech, Inc. HD Pro Webcam C920",
-                "Kingston Technology Company Inc.",
+    usb_list = ["\"Chicony Electronics Co., Ltd\"",
+                "\"Kingston Technology Company Inc.\"",
+                "\"Alcor Micro Corp.\"",
+                "\"Microsoft Corp.|C-Media Electronics, Inc. Audio Adapter\"",
+                "\"Huawei Technologies Co., Ltd. Modem/Networkcard\"",
+                "\"Realtek Semiconductor Corp.\"",
+                # Commenting out due to crbug.com/488667.
+                #"LG Electronics, Inc.",
                ]
     usb_checks = {
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
-            "awk '/Output Devices:/,/Output Nodes:/'") :
-            ["USB Headphone Set: USB Audio" ],
+            "awk '/Output Devices:/,/Output Nodes:/' | grep -E ") :
+            ["\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\"" ],
         # USB Audio Input devices
         str("loggedin:cras_test_client --dump_server_info | "
-            "awk '/Input Devices:/,/Input Nodes:/'") :
-            ["USB Headphone Set: USB Audio", "HD Pro Webcam C920: USB Audio"],
+            "awk '/Input Devices:/,/Input Nodes:/' | grep -E ") :
+            ["TeckNet: USB Audio",
+             "\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\""],
         # USB stick four partitions volumes
-        "loggedin:ls -l /media/removable/" :
-            ["ExFAT", "Ext4", "FAT", "NTFS", "SD Card"],
+        "loggedin:ls -l /media/removable/ | grep " :
+            ["USB Drive", "SD Card", "ExFAT", "Ext4", "FAT", "NTFS"],
         # USB Web camera
-        "cat /sys/class/video4linux/video*/name" :
-            ["HD Pro Webcam C920"],
+        "cat /sys/class/video4linux/video*/name | grep -E " :
+            ["\"TeckNet|USB 2.0 PC Camera\""],
         }
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list = usb_list, usb_checks=usb_checks,
+                 usb_list=usb_list, usb_checks=usb_checks,
                  crash_check=crash_check)
 
 parallel_simple(run, machines)

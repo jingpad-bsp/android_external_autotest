@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, re, threading, time
+import logging, threading, time
 
 from autotest_lib.client.cros.crash_test import CrashTest
 from autotest_lib.server import autotest, test
@@ -80,15 +80,15 @@ class platform_ExternalUsbPeripherals(test.test):
         """
         start_time = int(time.time())
         time_delta = 0
-        while True:
-            out = self.host.run(cmd, ignore_status=True).stdout.strip()
-            if len(re.findall(check, out)) > 0:
-                break
+        command = '%s %s' % (cmd, check)
+        logging.debug('Command: %s', command)
+        while(self.host.run(command, ignore_status=True).exit_status != 0):
             time_delta = int(time.time()) - start_time
             if time_delta > timeout:
-                 self.add_failure('%s - %d sec' % (timeout_msg, timeout))
-                 return False
+                self.add_failure('%s - %d sec' % (timeout_msg, timeout))
+                return False
             time.sleep(0.5)
+        logging.debug('Succeeded in :%d sec', time_delta)
         return True
 
 
@@ -161,7 +161,7 @@ class platform_ExternalUsbPeripherals(test.test):
             # Check for mandatory USb devices passed by usb_list flag
             for usb_name in self.usb_list:
                 found = self.wait_for_cmd_output(
-                    'lsusb', usb_name, _WAIT_DELAY * 4,
+                    'lsusb | grep -E ', usb_name, _WAIT_DELAY * 4,
                     'Not detecting %s' % usb_name)
                 result = result and found
         time.sleep(_WAIT_DELAY)
@@ -197,7 +197,7 @@ class platform_ExternalUsbPeripherals(test.test):
             for out_match in out_match_list:
                 match_result = self.wait_for_cmd_output(
                     cmd, out_match, _WAIT_DELAY * 4,
-                    'USB CHECKS DETAILS failed at %s:' % cmd)
+                    'USB CHECKS DETAILS failed at %s %s:' % (cmd, out_match))
                 usb_check_result = usb_check_result and match_result
         return usb_check_result
 
