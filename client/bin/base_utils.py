@@ -330,6 +330,8 @@ def get_cpu_arch():
         return 'arm'
     elif list_grep(cpuinfo, '^flags.*:.* lm .*'):
         return 'x86_64'
+    elif list_grep(cpuinfo, 'CPU.*implementer.*0x41'):
+        return 'arm'
     else:
         return 'i386'
 

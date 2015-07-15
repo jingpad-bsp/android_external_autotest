@@ -893,12 +893,14 @@ class GraphicsKernelMemory(object):
         'gem_objects': ['/sys/kernel/debug/dri/0/i915_gem_objects'],
         'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
+    arm_fields = {}
     arch_fields = {
         'exynos5': exynos_fields,
         'tegra': tegra_fields,
         'rockchip': rockchip_fields,
         'i386': x86_fields,
         'x86_64': x86_fields,
+        'arm': arm_fields,
     }
 
     num_errors = 0
