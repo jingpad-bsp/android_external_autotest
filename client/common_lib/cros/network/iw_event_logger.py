@@ -118,7 +118,8 @@ class IwEventLogger(object):
             # without scanning. So if no scan event is detected before the
             # disconnect attempt, we'll assume the disconnect attempt is the
             # beginning of the reassociate attempt.
-            if (entry.message.startswith('disconnected') and
+            if ((entry.message.startswith('disconnected') or
+                    entry.message.startswith('Deauthenticated')) and
                     start_time is None):
                 start_time = entry.timestamp
             if entry.message.startswith('connected'):
@@ -135,27 +136,34 @@ class IwEventLogger(object):
         """Return number of times the system disconnected during the log.
 
         This function will search the iw event log to determine how many
-        times the "disconnect" message appears.
+        times the "disconnect" and "Deauthenticated" messages appear.
 
         @returns int number of times the system disconnected in the logs.
 
         """
-        return [entry.message.startswith('disconnected')
-                for entry in self.get_log_entries()].count(True)
+        count = 0
+        for entry in self.get_log_entries():
+          if (entry.message.startswith('disconnected') or
+                  entry.message.startswith('Deauthenticated')):
+            count += 1
+
+        return count
 
 
     def get_time_to_disconnected(self):
         """Return disconnect time.
 
         This function will search the iw event log to determine the number of
-        seconds between the time iw event logger is started to the time
-        "disconnected" event is received.
+        seconds between the time iw event logger is started to the time the
+        first "disconnected" or "Deauthenticated" event is received.
 
         @return float number of seconds between the time iw event logger is
-                started to the time "disconnected" event is received. Return
-                None if no "disconnected" event is detected in the iw event log.
+                started to the time "disconnected" or "Deauthenticated" event
+                is received. Return None if no "disconnected" or
+                "Deauthenticated" event is detected in the iw event log.
         """
         for entry in self.get_log_entries():
-            if entry.message.startswith('disconnected'):
+            if (entry.message.startswith('disconnected') or
+                    entry.message.startswith('Deauthenticated')):
                 return entry.timestamp - self._start_time
         return None
