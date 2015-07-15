@@ -12,8 +12,7 @@ Usage?  Just run it.
     utils/build_externals.py
 """
 
-import compileall, logging, os, shutil, sys, tempfile, time, urllib2
-import subprocess, re
+import compileall, logging, os, sys
 import common
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.client.common_lib import utils
@@ -136,8 +135,16 @@ def build_and_install_packages(packages, install_dir):
     """
     errors = []
     for package in packages:
-        if not package.build_and_install(install_dir):
-            msg = 'Unable to build and install %s' % package.name
+        result = package.build_and_install(install_dir)
+        if isinstance(result, bool):
+            success = result
+            message = None
+        else:
+            success = result[0]
+            message = result[1]
+        if not success:
+            msg = ('Unable to build and install %s.\nError: %s' %
+                   (package.name, message))
             logging.error(msg)
             errors.append(msg)
     return errors

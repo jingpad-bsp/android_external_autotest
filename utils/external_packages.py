@@ -71,6 +71,12 @@ class ExternalPackage(object):
       @attribute subclasses - This class attribute holds a list of all defined
               subclasses.  It is constructed dynamically using the metaclass.
     """
+    # Modules that are meant to be installed in system directory, rather than
+    # autotest/site-packages. These modules should be skipped if the module
+    # is already installed in system directory. This prevents an older version
+    # of the module from being installed in system directory.
+    SYSTEM_MODULES = ['setuptools']
+
     subclasses = []
     urls = ()
     local_filename = None
@@ -134,7 +140,8 @@ class ExternalPackage(object):
         except ImportError, e:
             logging.info("%s isn't present. Will install.", self.module_name)
             return True
-        if not module.__file__.startswith(install_dir):
+        if (not module.__file__.startswith(install_dir) and
+            not self.module_name in self.SYSTEM_MODULES):
             logging.info('Module %s is installed in %s, rather than %s. The '
                          'module will be forced to be installed in %s.',
                          self.module_name, module.__file__, install_dir,
@@ -521,14 +528,14 @@ class SetuptoolsPackage(ExternalPackage):
     # For all known setuptools releases a string compare works for the
     # version string.  Hopefully they never release a 0.10.  (Their own
     # version comparison code would break if they did.)
-    # Any system with setuptools > 0.6 is fine. If none installed, then
+    # Any system with setuptools > 18.0.1 is fine. If none installed, then
     # try to install the latest found on the upstream.
-    minimum_version = '0.6'
-    version = '0.6c11'
+    minimum_version = '18.0.1'
+    version = '18.0.1'
     urls = ('http://pypi.python.org/packages/source/s/setuptools/'
             'setuptools-%s.tar.gz' % (version,),)
     local_filename = 'setuptools-%s.tar.gz' % version
-    hex_sum = '8d1ad6384d358c547c50c60f1bfdb3362c6c4a7d'
+    hex_sum = 'ebc4fe81b7f6d61d923d9519f589903824044f52'
 
     SUDO_SLEEP_DELAY = 15
 
@@ -591,10 +598,11 @@ class MySQLdbPackage(ExternalPackage):
 
     def _build_and_install(self, install_dir):
         if not os.path.exists('/usr/bin/mysql_config'):
-            logging.error('You need to install /usr/bin/mysql_config')
-            logging.error('On Ubuntu or Debian based systems use this: '
-                          'sudo apt-get install libmysqlclient15-dev')
-            return False
+            error_msg = ('You need to install /usr/bin/mysql_config.\n'
+                         'On Ubuntu or Debian based systems use this: '
+                         'sudo apt-get install libmysqlclient15-dev')
+            logging.error(error_msg)
+            return False, error_msg
         return self._build_and_install_from_package(install_dir)
 
 
