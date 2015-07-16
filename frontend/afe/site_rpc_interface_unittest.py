@@ -747,18 +747,21 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Retrieve a list of all shards."""
         lumpy_label = models.Label.objects.create(name='board:lumpy',
                                                   platform=True)
+        stumpy_label = models.Label.objects.create(name='board:stumpy',
+                                                  platform=True)
 
         shard_id = site_rpc_interface.add_shard(
-            hostname='host1', label='board:lumpy')
+            hostname='host1', labels='board:lumpy,board:stumpy')
         self.assertRaises(model_logic.ValidationError,
                           site_rpc_interface.add_shard,
-                          hostname='host1', label='board:lumpy')
+                          hostname='host1', labels='board:lumpy,board:stumpy')
         shard = models.Shard.objects.get(pk=shard_id)
         self.assertEqual(shard.hostname, 'host1')
         self.assertEqual(shard.labels.values_list('pk')[0], (lumpy_label.id,))
+        self.assertEqual(shard.labels.values_list('pk')[1], (stumpy_label.id,))
 
         self.assertEqual(site_rpc_interface.get_shards(),
-                         [{'labels': ['board:lumpy'],
+                         [{'labels': ['board:lumpy','board:stumpy'],
                            'hostname': 'host1',
                            'id': 1}])
 

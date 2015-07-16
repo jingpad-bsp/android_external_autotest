@@ -442,26 +442,30 @@ def get_shards(**filter_data):
     return serialized_shards
 
 
-def add_shard(hostname, label):
+def add_shard(hostname, labels):
     """Add a shard and start running jobs on it.
 
     @param hostname: The hostname of the shard to be added; needs to be unique.
-    @param label: A platform label. Jobs of this label will be assigned to the
-                  shard.
+    @param labels: Board labels separated by a comma. Jobs of one of the labels
+                   will be assigned to the shard.
 
     @raises error.RPCException: If label provided doesn't start with `board:`
     @raises model_logic.ValidationError: If a shard with the given hostname
             already exists.
     @raises models.Label.DoesNotExist: If the label specified doesn't exist.
     """
-    if not label.startswith('board:'):
-        raise error.RPCException('Sharding only supported for `board:.*` '
-                                 'labels.')
+    labels = labels.split(',')
+    label_models = []
+    for label in labels:
+        if not label.startswith('board:'):
+            raise error.RPCException('Sharding only supports for `board:.*` '
+                                     'labels.')
+        # Fetch label first, so shard isn't created when label doesn't exist.
+        label_models.append(models.Label.smart_get(label))
 
-    # Fetch label first, so shard isn't created when label doesn't exist.
-    label = models.Label.smart_get(label)
     shard = models.Shard.add_object(hostname=hostname)
-    shard.labels.add(label)
+    for label in label_models:
+        shard.labels.add(label)
     return shard.id
 
 

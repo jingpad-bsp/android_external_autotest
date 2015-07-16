@@ -45,16 +45,14 @@ class shard_help(shard):
 
 
 class shard_list(action_common.atest_list, shard):
-    """Class for running atest shard list [--label <labels>]"""
-
-    def parse(self):
-        host_info = topic_common.item_parse_info(attribute_name='labels',
-                                                 inline_option='labels')
-        return super(shard_list, self).parse([host_info])
-
+    """Class for running atest shard list"""
 
     def execute(self):
-        return super(shard_list, self).execute(op='get_shards')
+        filters = {}
+        if self.shards:
+            filters['hostname__in'] = self.shards
+        return super(shard_list, self).execute(op='get_shards',
+                                               filters=filters)
 
 
     def warn_if_label_assigned_to_multiple_shards(self, results):
@@ -85,23 +83,25 @@ class shard_create(action_common.atest_create, shard):
     """Class for running atest shard create -l <label> <shard>"""
     def __init__(self):
         super(shard_create, self).__init__()
-        self.parser.add_option('-l', '--label',
-                               help=('Assign LABEL to the SHARD. All jobs that '
-                                     'require this label, will be run on the '
-                                     'shard.'),
+        self.parser.add_option('-l', '--labels',
+                               help=('Assign LABELs to the SHARD. All jobs that '
+                                     'require one of the labels will be run on  '
+                                     'the shard. List multiple labels separated '
+                                     'by a comma.'),
                                type='string',
-                               metavar='LABEL')
+                               metavar='LABELS')
 
 
     def parse(self):
-        (options, leftover) = super(shard_create,
-                                    self).parse(req_items='shards')
-        if not options.label:
-            print 'Must provide a label with -l <label>'
+        (options, leftover) = super(shard_create, self).parse(
+                req_items='shards')
+        if not options.labels:
+            print ('Must provide one or more labels separated by a comma '
+                  'with -l <labels>')
             self.parser.print_help()
             sys.exit(1)
         self.data_item_key = 'hostname'
-        self.data['label'] = options.label
+        self.data['labels'] = options.labels
         return (options, leftover)
 
 

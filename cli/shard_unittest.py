@@ -30,7 +30,7 @@ class shard_create_unittest(cli_mock.cli_unittest):
         self.run_cmd(argv=['atest', 'shard', 'create',
                            '-l', 'board:lumpy', 'shard0'],
                      rpcs=[('add_shard',
-                            {'hostname': 'shard0', 'label': 'board:lumpy'},
+                            {'hostname': 'shard0', 'labels': 'board:lumpy'},
                             True, 42)],
                      out_words_ok=['Created', 'shard0'])
 
@@ -39,7 +39,7 @@ class shard_create_unittest(cli_mock.cli_unittest):
         self.run_cmd(argv=['atest', 'shard', 'create',
                            '-l', 'board:lumpy', 'shard0'],
                      rpcs=[('add_shard',
-                            {'hostname': 'shard0', 'label': 'board:lumpy'},
+                            {'hostname': 'shard0', 'labels': 'board:lumpy'},
                             False,
                             '''ValidationError: {'name':
                             'This value must be unique (shard1)'}''')],
