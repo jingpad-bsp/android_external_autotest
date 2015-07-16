@@ -21,8 +21,23 @@ class provision_AutoUpdate(test.test):
     """A test that can provision a machine to the correct ChromeOS version."""
     version = 1
 
-    def initialize(self, host, value, force=False):
-        """Initialize."""
+    def initialize(self, host, value, force=False, is_test_na=False):
+        """Initialize.
+
+        @param host: The host object to update to |value|.
+        @param value: The build type and version to install on the host.
+        @param force: not used by initialize.
+        @param is_test_na: boolean, if True, will simply skip the test
+                           and emit TestNAError. The control file
+                           determines whether the test should be skipped
+                           and passes the decision via this argument. Note
+                           we can't raise TestNAError in control file as it won't
+                           be caught and handled properly.
+        """
+        if is_test_na:
+            raise error.TestNAError(
+                'Test not available for test_that. chroot detected, '
+                'you are probably using test_that.')
         # We check value in initialize so that it fails faster.
         if not value:
             raise error.TestFail('No build version specified.')
