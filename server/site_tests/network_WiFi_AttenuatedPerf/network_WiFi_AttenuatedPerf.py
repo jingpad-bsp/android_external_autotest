@@ -36,7 +36,6 @@ class network_WiFi_AttenuatedPerf(wifi_cell_test_base.WiFiCellTestBase):
                        netperf_runner.NetperfConfig.TEST_TYPE_UDP_MAERTS),
     ]
 
-    STARTING_ATTENUATION = 60
     ATTENUATION_STEP = 4
     FINAL_ATTENUATION = 100
 
@@ -77,9 +76,10 @@ class network_WiFi_AttenuatedPerf(wifi_cell_test_base.WiFiCellTestBase):
         session = netperf_session.NetperfSession(self.context.client,
                                                  self.context.router,
                                                  ignore_failures=True)
-        session.warmup_stations()
-        for atten in range(self.STARTING_ATTENUATION,
-                           self.FINAL_ATTENUATION + 1,
+        session.warmup_stations() 
+        start_atten = self.context.attenuator.get_minimal_total_attenuation()
+        for atten in range(start_atten,
+                           min(start_atten + 20, self.FINAL_ATTENUATION),
                            self.ATTENUATION_STEP):
             atten_tag = 'atten%03d' % atten
             self.context.attenuator.set_total_attenuation(

@@ -11,7 +11,6 @@ from autotest_lib.server.cros.network import attenuator_controller
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
-STARTING_ATTENUATION = 60
 ATTENUATION_STEP = 4
 FINAL_ATTENUATION = 90
 ATTENUATORS_PER_PHY = 2
@@ -175,8 +174,7 @@ class network_WiFi_VerifyAttenuator(wifi_cell_test_base.WiFiCellTestBase):
         ai.allows_connection = True
         ai.zeroed_linked_signal = self.context.client.wifi_signal_level
         logging.info('Connected successfully')
-        atten_values = self.context.attenuator._fixed_attenuations[attenuator_num]
-        start_atten = max(atten_values.values())
+        start_atten = self.context.attenuator.get_minimal_total_attenuation()
         for atten in range(start_atten,
                            min(start_atten + 20, FINAL_ATTENUATION),
                            ATTENUATION_STEP):

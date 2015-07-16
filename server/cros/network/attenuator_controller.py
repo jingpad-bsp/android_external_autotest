@@ -143,7 +143,6 @@ HOST_TO_FIXED_ATTENUATIONS = {
                 1: {2437: 54, 5220: 56, 5765: 58},
                 2: {2437: 54, 5220: 56, 5765: 57},
                 3: {2437: 54, 5220: 57, 5765: 58}},
-        # Dummy values for 7-12 before calibration
         'chromeos1-grover-host7-attenuator': {
                 0: {2437: 59, 5220: 61, 5765: 62},
                 1: {2437: 59, 5220: 64, 5765: 66},
@@ -351,3 +350,19 @@ class AttenuatorController(object):
                 self._host.run('echo %d > %s' %
                                (bit_value, gpio_pin.value_file))
                 bit_field = bit_field >> 1
+
+
+    def get_minimal_total_attenuation(self):
+        """Get attenuator's maximum fixed attenuation value.
+
+        This is pulled from the current attenuator's lines and becomes the
+        minimal total attenuation when stepping through attenuation levels.
+
+        @return maximum starting attenuation value
+
+        """
+        max_atten = 0
+        for atten_num in self._fixed_attenuations.iterkeys():
+            atten_values = self._fixed_attenuations[atten_num].values()
+            max_atten = max(max(atten_values), max_atten)
+        return max_atten
