@@ -49,6 +49,8 @@ except ImportError:
     jsonrpclib = None
 
 
+CONFIG = global_config.global_config
+
 class FactoryImageCheckerException(error.AutoservError):
     """Exception raised when an image is a factory image."""
     pass
@@ -113,7 +115,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # Minimum OS version that supports server side packaging. Older builds may
     # not have server side package built or with Autotest code change to support
     # server-side packaging.
-    MIN_VERSION_SUPPORT_SSP = global_config.global_config.get_config_value(
+    MIN_VERSION_SUPPORT_SSP = CONFIG.get_config_value(
             'AUTOSERV', 'min_version_support_ssp', type=int)
 
     # REBOOT_TIMEOUT: How long to wait for a reboot.
@@ -134,7 +136,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # Set shutdown timeout to account for the time for restarting the UI.
     _RPC_SHUTDOWN_TIMEOUT_SECONDS = cros_ui.RESTART_UI_TIMEOUT
 
-    _RPM_RECOVERY_BOARDS = global_config.global_config.get_config_value('CROS',
+    _RPM_RECOVERY_BOARDS = CONFIG.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
 
     _MAX_POWER_CYCLE_ATTEMPTS = 6
@@ -180,7 +182,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _RPM_OUTLET_CHANGED = 'outlet_changed'
 
     # URL pattern to download firmware image.
-    _FW_IMAGE_URL_PATTERN = global_config.global_config.get_config_value(
+    _FW_IMAGE_URL_PATTERN = CONFIG.get_config_value(
             'CROS', 'firmware_url_pattern', type=str)
 
     # File that has a list of directories to be collected
@@ -345,7 +347,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('DUT has no board attribute, '
                                       'cannot be repaired.')
         stable_version = self._AFE.run('get_stable_version', board=board)
-        build_pattern = global_config.global_config.get_config_value(
+        build_pattern = CONFIG.get_config_value(
                 'CROS', 'stable_build_pattern')
         return build_pattern % (board, stable_version)
 
@@ -666,7 +668,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.error('Need an image_name to stage a factory image.')
             return
 
-        factory_artifact = global_config.global_config.get_config_value(
+        factory_artifact = CONFIG.get_config_value(
                 'CROS', 'factory_artifact', type=str, default='')
         if not factory_artifact:
             raise ValueError('Cannot retrieve the factory artifact name from '
@@ -1656,14 +1658,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     'Need to collect crash-logs before verification')
 
         super(CrosHost, self).verify_software()
-        self.check_inodes(
-            '/mnt/stateful_partition',
-            global_config.global_config.get_config_value(
-                'SERVER', 'kilo_inodes_required', type=int,
-                default=100))
+        default_kilo_inodes_required = CONFIG.get_config_value(
+                'SERVER', 'kilo_inodes_required', type=int, default=100)
+        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
+        kilo_inodes_required = CONFIG.get_config_value(
+                'SERVER', 'kilo_inodes_required_%s' % board,
+                type=int, default=default_kilo_inodes_required)
+        self.check_inodes('/mnt/stateful_partition', kilo_inodes_required)
         self.check_diskspace(
             '/mnt/stateful_partition',
-            global_config.global_config.get_config_value(
+            CONFIG.get_config_value(
                 'SERVER', 'gb_diskspace_required', type=float,
                 default=20.0))
         encrypted_stateful_path = '/mnt/stateful_partition/encrypted'
@@ -1671,7 +1675,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if self.path_exists(encrypted_stateful_path):
             self.check_diskspace(
                 encrypted_stateful_path,
-                global_config.global_config.get_config_value(
+                CONFIG.get_config_value(
                     'SERVER', 'gb_encrypted_diskspace_required', type=float,
                     default=0.1))
 
