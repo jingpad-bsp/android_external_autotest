@@ -932,6 +932,8 @@ def get_gpu_family():
         return 'mali'
     if cpuarch == 'tegra':
         return 'tegra'
+    if os.path.exists('/sys/bus/platform/drivers/pvrsrvkm'):
+        return 'rogue'
 
     pci_path = '/sys/bus/pci/devices/0000:00:02.0/device'
 
