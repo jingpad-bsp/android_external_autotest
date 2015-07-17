@@ -62,16 +62,16 @@ def run(machine):
     usb_checks = {
         # USB Audio Output devices
         str("cras_test_client --dump_server_info | "
-            "awk '/Output Devices:/,/Output Nodes:/' | grep -E ") :
+            "awk \"/Output Devices:/,/Output Nodes:/\" | grep -E ") :
             ["\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\"" ],
         # USB Audio Input devices
         str("loggedin:cras_test_client --dump_server_info | "
-            "awk '/Input Devices:/,/Input Nodes:/' | grep -E ") :
-            ["TeckNet: USB Audio",
+            "awk \"/Input Devices:/,/Input Nodes:/\" | grep -E ") :
+            ["\"TeckNet: USB Audio|USB 2.0 PC Camera\"",
              "\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\""],
         # USB stick four partitions volumes
         "loggedin:ls -l /media/removable/ | grep " :
-            ["USB Drive", "SD Card", "ExFAT", "Ext4", "FAT", "NTFS"],
+            ["\"USB Drive\"", "\"SD Card\"", "ExFAT", "Ext4", "FAT", "NTFS"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name | grep -E " :
             ["\"TeckNet|USB 2.0 PC Camera\""],
