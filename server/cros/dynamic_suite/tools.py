@@ -284,4 +284,6 @@ def get_test_name(build, suite, test_job_name):
                           lumpy-release/R31-1234.0.0/bvt/dummy_Pass_SERVER_JOB.
     @return: the test name, e.g., dummy_Pass_SERVER_JOB.
     """
+    # Do not change this naming convention without updating
+    # site_utils.parse_job_name.
     return test_job_name.replace('%s/%s/' % (build, suite), '')

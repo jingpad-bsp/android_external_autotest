@@ -1315,6 +1315,8 @@ class QueueTask(AbstractQueueTask):
             test_source_build = keyval_dict.get('test_source_build', None)
             if test_source_build:
                 invocation += ['--test_source_build', test_source_build]
+        if self.job.parent_job_id:
+            invocation += ['--parent_job_id', str(self.job.parent_job_id)]
         return invocation + ['--verify_job_repo_url']
 
 

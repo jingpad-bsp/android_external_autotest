@@ -189,6 +189,11 @@ class base_autoserv_parser(object):
                                      'test code. Default is empty, that is, '
                                      'use the build specified in --image to '
                                      'retrieve tests.'))
+        self.parser.add_option('--parent_job_id', action='store',
+                               type='string', default=None,
+                               dest='parent_job_id',
+                               help=('ID of the parent job. Default to None if '
+                                     'the job does not have a parent job'))
 
 
     def parse_args(self):

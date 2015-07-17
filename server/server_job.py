@@ -153,7 +153,8 @@ class base_server_job(base_job.base_job):
                  ssh_options=host_factory.DEFAULT_SSH_OPTIONS,
                  test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
-                 control_filename=SERVER_CONTROL_FILENAME):
+                 control_filename=SERVER_CONTROL_FILENAME,
+                 parent_job_id=None):
         """
         Create a server side job object.
 
@@ -181,6 +182,8 @@ class base_server_job(base_job.base_job):
                 tests for a modest shortening of test time.  [optional]
         @param control_filename: The filename where the server control file
                 should be written in the results directory.
+        @param parent_job_id: Job ID of the parent job. Default to None if the
+                job does not have a parent job.
         """
         super(base_server_job, self).__init__(resultdir=resultdir,
                                               test_retry=test_retry)
@@ -229,6 +232,10 @@ class base_server_job(base_job.base_job):
                     'drone' : platform.node(),
                     'status_version' : str(self._STATUS_VERSION),
                     'job_started' : str(int(time.time()))}
+        # Save parent job id to keyvals, so parser can retrieve the info and
+        # write to tko_jobs record.
+        if parent_job_id:
+            job_data['parent_job_id'] = parent_job_id
         if group_name:
             job_data['host_group_name'] = group_name
 
@@ -260,6 +267,8 @@ class base_server_job(base_job.base_job):
         # Initialize a flag to indicate DUT failure during the test, e.g.,
         # unexpected reboot.
         self.failed_with_device_error = False
+
+        self.parent_job_id = parent_job_id
 
 
     @classmethod
@@ -337,7 +346,8 @@ class base_server_job(base_job.base_job):
         # it does not
         job_idx = self.results_db.find_job(self._parse_job)
         if job_idx is None:
-            self.results_db.insert_job(self._parse_job, self.job_model)
+            self.results_db.insert_job(self._parse_job, self.job_model,
+                                       self.parent_job_id)
         else:
             machine_idx = self.results_db.lookup_machine(self.job_model.machine)
             self.job_model.index = job_idx

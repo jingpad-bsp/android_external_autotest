@@ -980,6 +980,11 @@ class base_job(object):
     use_sequence_number = property(_get_use_sequence_number,
                                    _set_use_sequence_number)
 
+    # parent job id is passed in from autoserv command line. It's only used in
+    # server job. The property is added here for unittest
+    # (base_job_unittest.py) to be consistent on validating public properties of
+    # a base_job object.
+    parent_job_id = None
 
     def __init__(self, *args, **dargs):
         # initialize the base directories, all others are relative to these

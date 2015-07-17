@@ -291,7 +291,8 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
         mailfailure(jobname, job, message)
 
     # write the job into the database.
-    db.insert_job(jobname, job)
+    db.insert_job(jobname, job,
+                  parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
 
     # Upload perf values to the perf dashboard, if applicable.
     for test in job.tests:

@@ -42,6 +42,8 @@ MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
 
 
 def canonicalize_suite_name(suite_name):
+    # Do not change this naming convention without updating
+    # site_utils.parse_job_name.
     return 'test_suites/control.%s' % suite_name
 
 
@@ -207,6 +209,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
         suite_name = canonicalize_suite_name(name)
         control_file = _get_control_file_contents_by_name(test_source_build,
                                                           ds, suite_name)
+        # Do not change this naming convention without updating
+        # site_utils.parse_job_name.
         name = '%s-%s' % (test_source_build, suite_name)
 
     timeout_mins = timeout_mins or timeout * 60

@@ -545,3 +545,46 @@ def is_inside_chroot():
 
     """
     return not cros_build_lib or cros_build_lib.IsInsideChroot()
+
+
+def parse_job_name(name):
+    """Parse job name to get information including build, board and suite etc.
+
+    Suite job created by run_suite follows the naming convention of:
+    [build]-test_suites/control.[suite]
+    For example: lumpy-release/R46-7272.0.0-test_suites/control.bvt
+    The naming convention is defined in site_rpc_interface.create_suite_job.
+
+    Test job created by suite job follows the naming convention of:
+    [build]/[suite]/[test name]
+    For example: lumpy-release/R46-7272.0.0/bvt/login_LoginSuccess
+    The naming convention is defined in
+    server/cros/dynamic_suite/tools.create_job_name
+
+    Note that pgo and chrome-perf builds will fail the method. Since lab does
+    not run test for these builds, they can be ignored.
+
+    @param name: Name of the job.
+
+    @return: A dictionary containing the test information. The keyvals include:
+             build: Name of the build, e.g., lumpy-release/R46-7272.0.0
+             build_version: The version of the build, e.g., R46-7272.0.0
+             board: Name of the board, e.g., lumpy
+             suite: Name of the test suite, e.g., bvt
+
+    """
+    info = {}
+    suite_job_regex = '([^/]*/[^/]*)-test_suites/control\.(.*)'
+    test_job_regex = '([^/]*/[^/]*)/([^/]+)/.*'
+    match = re.match(suite_job_regex, name)
+    if not match:
+        match = re.match(test_job_regex, name)
+    if match:
+        info['build'] = match.groups()[0]
+        info['suite'] = match.groups()[1]
+        info['build_version'] = info['build'].split('/')[1]
+        try:
+            info['board'], _, _, _ = ParseBuildName(info['build'])
+        except ParseBuildNameException:
+            pass
+    return info
