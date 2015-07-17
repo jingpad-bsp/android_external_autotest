@@ -364,12 +364,19 @@ class AbstractSSHHost(remote.RemoteHost):
             source = [source]
         remote_dest = self._encode_remote_paths([dest])
 
+        local_sources = [utils.sh_escape(path) for path in source]
+        if not local_sources:
+            raise error.TestError('source |%s| yielded an empty list' % (
+                source))
+        if any([local_source.find('\x00') != -1 for
+                local_source in local_sources]):
+            raise error.TestError('one or more sources include NUL char')
+
         # If rsync is disabled or fails, try scp.
         try_scp = True
         if self.use_rsync():
             logging.debug('Using Rsync.')
             try:
-                local_sources = [utils.sh_escape(path) for path in source]
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
                                              delete_dest, preserve_symlinks)
                 utils.run(rsync)
@@ -396,6 +403,8 @@ class AbstractSSHHost(remote.RemoteHost):
                 except error.CmdError, e:
                     logging.debug('scp failed: %s', e)
                     raise error.AutoservRunError(e.args[0], e.args[1])
+            else:
+                logging.debug('skipping scp for empty source list')
 
 
     def ssh_ping(self, timeout=60, base_cmd='true'):
