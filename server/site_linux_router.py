@@ -853,13 +853,14 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         @raises AutoservRunError: If footer file copy fails.
 
         """
-        with tempfile.TemporaryFile() as fp:
+        with tempfile.NamedTemporaryFile() as fp:
             fp.write(footer)
             try:
-                self.host.send_file(fp, self.PROBE_RESPONSE_FOOTER_FILE)
+                self.host.send_file(fp.name, self.PROBE_RESPONSE_FOOTER_FILE)
             except error.AutoservRunError:
                 logging.error('failed to copy footer file to AP')
                 raise
+
 
     def send_management_frame_on_ap(self, frame_type, channel, instance=0):
         """Injects a management frame into an active hostapd session.
