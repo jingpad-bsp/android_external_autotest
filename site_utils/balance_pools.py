@@ -463,6 +463,16 @@ def _balance_board(arguments, afe, board, start_time, end_time):
                       len(main_pool.broken_hosts) - shortfall,
                       -shortfall)
 
+    if (len(main_pool.broken_hosts) > arguments.max_broken and
+        not arguments.force_rebalance):
+        _log_error('%s %s pool: Refusing to act on pool with %d broken DUTs.',
+                   board, main_pool.pool, len(main_pool.broken_hosts))
+        _log_error('Please investigate this board to see if there is a bug ')
+        _log_error('that is bricking devices. Once you have finished your ')
+        _log_error('investigation, you can force a rebalance with ')
+        _log_error('--force-rebalance')
+        return
+
     if not spare_duts and not surplus_duts:
         if arguments.verbose:
             _log_info(arguments.dry_run, 'No exchange required.')
@@ -516,6 +526,17 @@ def _parse_command(argv):
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Print more detail about calculations for debug '
                              'purposes.')
+
+    parser.add_argument('-m', '--max-broken', default=2, type=int,
+                        metavar='COUNT',
+                        help='Only rebalance a pool if it has at most '
+                             'COUNT broken DUTs.')
+    parser.add_argument('-f', '--force-rebalance', action='store_true',
+                        help='Forcefully rebalance all DUTs in a pool, even '
+                             'if it has a large number of broken DUTs. '
+                             'Before doing this, please investigate whether '
+                             'there is a bug that is bricking devices in the '
+                             'lab.')
 
     parser.add_argument('pool',
                         metavar='POOL',
