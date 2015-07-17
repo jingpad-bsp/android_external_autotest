@@ -1,0 +1,46 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "scunningham"
+NAME = "policy_RestoreOnStartupURLs"
+ATTRIBUTES = "suite:regression"
+SUITE = "regression"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "enterprise"
+TEST_TYPE = "client"
+
+DOC = """
+Verify effects of RestoreOnStartupURLs policy on client behavior.
+
+This test verifies the effect of the RestoreOnStartupURLs user policy on
+Chrome OS client behavior and appearance. It excercises a range of valid
+policy values across three test cases.
+
+A test case shall pass when a single browser tab is opened for each URL
+specified in the policy value, and in the order specified (left to right).
+
+A test case fails if a tab is not opened for a specified URL, or if the tab
+order is not as specified in the policy, or if a tab is opened that was not
+specified in the policy.
+
+Default useage example:
+$ test_that <IPAddress> policy_RestoreOnStartupURLs
+
+Runs all three test cases using the local AutoTest fake DM server, and with
+the default policy values defined by each test case.
+
+Arguments useage example:
+$ test_that <IPAddress> policy_RestoreOnStartupURLs --args="env=prod
+mode=single case=1URL value=http://www.irs.com"
+
+Runs a single test case (e.g., 1URL) against the production environment, with
+an user-specified alternate policy value of http://www.irs.com.
+
+See accompanying README file for additional usage instructions and examples.
+
+"""
+
+job.run_test("policy_RestoreOnStartupURLs", args=args)
+

@@ -49,7 +49,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         os.chdir(self.srcdir)
         utils.make()
 
-    def initialize(self, args=[]):
+    def initialize(self, args=()):
         self._initialize_test_context(args)
 
         # Start AutoTest DM Server if using local fake server.
@@ -67,37 +67,75 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if self.cr:
             self.cr.close()
 
-    def _initialize_test_context(self, args=[]):
-        """Initializes class-level test context parameters."""
+    def _initialize_test_context(self, args=()):
+        """
+        Initializes class-level test context parameters.
+
+        @raises error.TestError if an arg is given an invalid value or some
+                combination of args is given incompatible values.
+
+        """
         # Extract local parameters from command line args.
         args_dict = utils.args_to_dict(args)
         self.mode = args_dict.get('mode', 'all')
         self.case = args_dict.get('case')
-        self.env = args_dict.get('env', 'dm-fake')
         self.value = args_dict.get('value')
+        self.env = args_dict.get('env', 'dm-fake')
         self.username = args_dict.get('username')
         self.password = args_dict.get('password')
         self.dms_name = args_dict.get('dms_name')
 
-        # Verify |case| is given iff |mode|==single.
-        if self.mode == 'single' and not self.case:
-            raise error.TestError('case must be given when running '
-                                  'in single mode.')
-        if self.mode != 'single' and self.case:
-            raise error.TestError('case must not be given when not running '
-                                  'in single mode.')
+        # If |mode| is 'all', then |env| must be 'dm-fake', and
+        # the |case| and |value| args must not be given.
+        if self.mode == 'all':
+            if self.env != 'dm-fake':
+                raise error.TestError('env must be "dm-fake" '
+                                      'when mode=all.')
+            if self.case:
+                raise error.TestError('case must not be given '
+                                      'when mode=all.')
+            if self.value:
+                raise error.TestError('value must not be given '
+                                      'when mode=all.')
 
-        # Verify |env| is valid.
+        # If |value| is given, set |is_value_given| flag to True. And if
+        # |value| was given as 'none' or '', then set |value| to None.
+        if self.value is not None:
+            self.is_value_given = True
+            if self.value.lower() == 'none' or self.value == '':
+                self.value = None
+        else:
+            self.is_value_given = False
+
+        # Verify |env| is a valid environment.
         if self.env not in ENTERPRISE_FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
-        # Verify |value| is not given when the |env| is 'dm-fake' or
-        # a test |case| is not specified.
-        if self.value is not None:
-            if self.env == 'dm-fake' or self.case is None:
-                raise error.TestError('value must not be given when using the '
-                                      'fake DM Server or without a specific '
-                                      'test case.')
+        # If |env| is 'dm-fake', ensure value and credentials are not given.
+        if self.env == 'dm-fake':
+            if self.is_value_given:
+                raise error.TestError('value must not be given when using '
+                                      'the fake DM Server.')
+            if self.username or self.password:
+                raise error.TestError('user credentials must not be given '
+                                      'when using the fake DM Server.')
+
+        # If either credential is not given, set both to default.
+        if self.username is None or self.password is None:
+            self.username = self.USERNAME
+            self.password = self.PASSWORD
+
+        # Verify |case| is given iff |mode|==single.
+        if self.mode == 'single' and not self.case:
+            raise error.TestError('case must be given when mode is single.')
+        if self.mode != 'single' and self.case:
+            raise error.TestError('case must not be given when mode is not '
+                                  'single.')
+
+        # Verify |case| is given if a |value| is given.
+        if self.is_value_given and self.case is None:
+            raise error.TestError('value must not be given without also '
+                                  'giving a test case.')
 
         # Verify |dms_name| is given iff |env|==dm-test.
         if self.env == 'dm-test' and not self.dms_name:
@@ -107,18 +145,12 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             raise error.TestError('dms_name must not be given when not using '
                                   'env=dm-test.')
 
-        # Use default value, username, and password with dm-fake.
-        if self.env == 'dm-fake':
-            self.value = None
-            self.username = self.USERNAME
-            self.password = self.PASSWORD
-
         # Log the test context parameters.
         logging.info('Test Context Parameters:')
         logging.info('  Run Mode: %r', self.mode)
         logging.info('  Test Case: %r', self.case)
+        logging.info('  Expected Value: %r', self.value)
         logging.info('  Environment: %r', self.env)
-        logging.info('  Value Shown: %r', self.value)
         logging.info('  Username: %r', self.username)
         logging.info('  Password: %r', self.password)
         logging.info('  Test DMS Name: %r', self.dms_name)
@@ -145,32 +177,40 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.extra_flags = env_flag_list
         self.cr = None
 
-    def setup_case(self, policy_name, policy_value, policy_json):
-        """Sets up context variables unique to the test case.
+    def setup_case(self, policy_name, policy_value, policies_json):
+        """
+        Sets up preconditions for a single test case.
+
+        If the AutoTest fake DM Server is initialized, upload |policies_json|
+        to it. Sign in to Chrome OS. Open the Policies page. Verify that the
+        user successfully signed in. Verify that the Policies page shows the
+        specified |policy_name| and has the correct |policy_value|.
 
         @param policy_name: Name of the policy under test.
-        @param policy_value: Expected value shown on chrome://policy page.
-        @param policy_json: Json string to set up the fake DMS policy value.
+        @param policy_value: Expected value to appear on chrome://policy page.
+        @param policies_json: JSON string to set up the fake DMS policy value.
+
+        @raises error.TestError if cryptohome vault is not mounted for user.
+        @raises error.TestFail if |policy_name| and |policy_value| are not
+                shown on the Policies page.
+
         """
-        # Set up policy blob for AutoTest DM Server only if initialized.
+        # Set up policy on AutoTest DM Server only if initialized.
         if self.env == 'dm-fake':
-            self._setup_policy(policy_json)
+            self._setup_policy(policies_json)
 
         # Launch Chrome browser.
         logging.info('Chrome Browser Arguments:')
         logging.info('  extra_browser_args: %s', self.extra_flags)
-        logging.info('  gaia_login: %s', True)
-        logging.info('  disable_gaia_services: %s', False)
-        logging.info('  autotest_ext: %s', True)
         logging.info('  username: %s', self.username)
         logging.info('  password: %s', self.password)
 
         self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
+                                username=self.username,
+                                password=self.password,
                                 gaia_login=True,
                                 disable_gaia_services=False,
-                                autotest_ext=True,
-                                username=self.username,
-                                password=self.password)
+                                autotest_ext=True)
 
         # Open a tab to the chrome://policy page.
         self.cr.browser.tabs[0].Activate()
@@ -179,7 +219,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         policy_tab.Navigate('chrome://policy')
         policy_tab.WaitForDocumentReadyStateToBeComplete()
 
-        # Confirm preconditions of test: user signed in, and policy set.
+        # Confirm test preconditions: user is signed in, and policy set.
         # Verify that user's cryptohome directory is mounted.
         if not cryptohome.is_vault_mounted(user=self.username,
                                            allow_fail=True):
@@ -196,13 +236,15 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         # Close the Policies tab.
         policy_tab.Close()
 
-    def _setup_policy(self, policy_json):
-        """Creates policy blob from JSON data, and sends to AutoTest fake DMS.
-
-        @param policy_json: The policy JSON data (name-value pairs).
+    def _setup_policy(self, policies_json):
         """
-        policy_json = self._move_modeless_to_mandatory(policy_json)
-        policy_json = self._remove_null_policies(policy_json)
+        Creates policy blob from JSON data, and sends to AutoTest fake DMS.
+
+        @param policies_json: The policy JSON data (name-value pairs).
+
+        """
+        policies_json = self._move_modeless_to_mandatory(policies_json)
+        policies_json = self._remove_null_policies(policies_json)
 
         policy_blob = """{
             "google/chromeos/user": %s,
@@ -211,35 +253,37 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             "current_key_index": 0,
             "invalidation_source": 16,
             "invalidation_name": "test_policy"
-        }""" % (json.dumps(policy_json), self.USERNAME)
+        }""" % (json.dumps(policies_json), self.USERNAME)
         self.setup_policy(policy_blob)
 
-    def _move_modeless_to_mandatory(self, policy_json):
-        """Adds the 'mandatory' mode if a policy's mode was omitted.
+    def _move_modeless_to_mandatory(self, policies_json):
+        """
+        Adds the 'mandatory' mode if a policy's mode was omitted.
 
         The AutoTest fake DM Server requires that every policy be contained
         within either a 'mandatory' or 'recommended' dictionary, to indicate
         the mode of the policy. This function moves modeless polices into the
         'mandatory' dictionary.
 
-        @param policy_json: The policy JSON data (name-value pairs).
+        @param policies_json: The policy JSON data (name-value pairs).
         @returns: dict of policies grouped by mode keys.
+
         """
         mandatory_policies = {}
         recommended_policies = {}
         collated_json = {}
 
         # Extract mandatory and recommended policies.
-        if 'mandatory' in policy_json:
-            mandatory_policies = policy_json['mandatory']
-            del policy_json['mandatory']
-        if 'recommended' in policy_json:
-            recommended_policies = policy_json['recommended']
-            del policy_json['recommended']
+        if 'mandatory' in policies_json:
+            mandatory_policies = policies_json['mandatory']
+            del policies_json['mandatory']
+        if 'recommended' in policies_json:
+            recommended_policies = policies_json['recommended']
+            del policies_json['recommended']
 
         # Move remaining modeless policies into mandatory dict.
-        if policy_json:
-            mandatory_policies.update(policy_json)
+        if policies_json:
+            mandatory_policies.update(policies_json)
 
         # Collate all policies into mandatory & recommended dicts.
         if recommended_policies:
@@ -249,26 +293,29 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         return collated_json
 
-    def _remove_null_policies(self, policy_json):
-        """Removes policy dict data that is set to None or ''.
+    def _remove_null_policies(self, policies_json):
+        """
+        Removes policy dict data that is set to None or ''.
 
         For the status of a policy to be shown as "Not set" on the
         chrome://policy page, the policy blob must contain no dictionary entry
         for that policy. This function removes policy NVPs from a copy of the
-        |policy_json| dictionary that the test case set to None or ''.
+        |policies_json| dictionary that the test case set to None or ''.
 
-        @param policy_json: setup policy JSON data (name-value pairs).
+        @param policies_json: setup policy JSON data (name-value pairs).
         @returns: setup policy JSON data with all 'Not set' policies removed.
+
         """
-        policy_json_copy = policy_json.copy()
-        for mode, policies in policy_json_copy.items():
+        policies_json_copy = policies_json.copy()
+        for mode, policies in policies_json_copy.items():
             for policy_data in policies.items():
                 if policy_data[1] is None or policy_data[1] == '':
                     policies.pop(policy_data[0])
-        return policy_json_copy
+        return policies_json_copy
 
     def _get_policy_value_shown(self, policy_tab, policy_name):
-        """Gets the value shown for the named policy on the Policies page.
+        """
+        Gets the value shown for the named policy on the Policies page.
 
         Takes |policy_name| as a parameter and returns the corresponding
         policy value shown on the chrome://policy page.
@@ -276,6 +323,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         @param policy_tab: Tab displaying the chrome://policy page.
         @param policy_name: The name of the policy.
         @returns: The value shown for the policy on the Policies page.
+
         """
         row_values = policy_tab.EvaluateJavaScript('''
                 var section = document.getElementsByClassName("policy-table-section")[0];
