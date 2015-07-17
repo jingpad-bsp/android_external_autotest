@@ -217,3 +217,24 @@ def record_cmd(
     args += ['-D', device]
     args += [output]
     return args
+
+
+def mixer_cmd(card_id, cmd):
+    '''Executes amixer command.
+
+    @param card_id: Soundcard ID.
+    @param cmd: Amixer command to execute.
+    @raise RuntimeError: If failed to execute command.
+
+    Amixer command like "set PCM 2dB+" with card_id 1 will be executed as:
+        amixer -c 1 set PCM 2dB+
+
+    Command output will be returned if any.
+    '''
+
+    cmd = AMIXER_PATH + ' -c %d ' % card_id + cmd
+    p = cmd_utils.popen(shlex.split(cmd), stdout=cmd_utils.PIPE)
+    output, _ = p.communicate()
+    if p.wait() != 0:
+        raise RuntimeError('amixer command failed')
+    return output

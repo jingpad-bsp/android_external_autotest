@@ -16,6 +16,7 @@ from glob import glob
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.bin.input.input_device import *
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.audio import alsa_utils
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_utils
@@ -30,6 +31,8 @@ _DEFAULT_REC_COMMAND = 'arecord -D hw:0,0 -d 10 -f dat'
 _DEFAULT_SOX_FORMAT = '-t raw -b 16 -e signed -r 48000 -L'
 _DEFAULT_PLAYBACK_VOLUME = 100
 _DEFAULT_CAPTURE_GAIN = 2500
+_DEFAULT_ALSA_MAX_VOLUME = '100%'
+_DEFAULT_ALSA_CAPTURE_GAIN = '25dB'
 
 # Minimum RMS value to pass when checking recorded file.
 _DEFAULT_SOX_RMS_THRESHOLD = 0.08
@@ -946,6 +949,37 @@ class cras_rms_test(_base_rms_test):
         cras_rms_test_setup()
 
 
+def alsa_rms_test_setup():
+    """Setup for alsa_rms_test.
+
+    Different boards/chipsets have different set of mixer controls.  Even
+    controls that have the same name on different boards might have different
+    capabilities.  The following is a general idea to setup a given class of
+    boards, and some specialized setup for certain boards.
+    """
+    card_id = alsa_utils.get_first_soundcard_with_control('Mic Jack', 'Mic')
+    arch = utils.get_arch()
+    board = utils.get_board()
+    uses_max98090 = os.path.exists('/sys/module/snd_soc_max98090')
+    if board in ['daisy_spring', 'daisy_skate']:
+        # The MIC controls of the boards do not support dB syntax.
+        alsa_utils.mixer_cmd(card_id,
+                             'sset Headphone ' + _DEFAULT_ALSA_MAX_VOLUME)
+        alsa_utils.mixer_cmd(card_id, 'sset MIC1 ' + _DEFAULT_ALSA_MAX_VOLUME)
+        alsa_utils.mixer_cmd(card_id, 'sset MIC2 ' + _DEFAULT_ALSA_MAX_VOLUME)
+    elif arch in ['armv7l', 'aarch64'] or uses_max98090:
+        # ARM platforms or Intel platforms that uses max98090 codec driver.
+        alsa_utils.mixer_cmd(card_id,
+                             'sset Headphone ' + _DEFAULT_ALSA_MAX_VOLUME)
+        alsa_utils.mixer_cmd(card_id, 'sset MIC1 ' + _DEFAULT_ALSA_CAPTURE_GAIN)
+        alsa_utils.mixer_cmd(card_id, 'sset MIC2 ' + _DEFAULT_ALSA_CAPTURE_GAIN)
+    else:
+        # The rest of Intel platforms.
+        alsa_utils.mixer_cmd(card_id, 'sset Master ' + _DEFAULT_ALSA_MAX_VOLUME)
+        alsa_utils.mixer_cmd(card_id,
+                             'sset Capture ' + _DEFAULT_ALSA_CAPTURE_GAIN)
+
+
 class alsa_rms_test(_base_rms_test):
     """Base test class for ALSA audio RMS test."""
 
@@ -953,10 +987,4 @@ class alsa_rms_test(_base_rms_test):
         skip_devices_to_test('x86-mario')
         super(alsa_rms_test, self).warmup()
 
-        # TODO(owenlin): Don't use CRAS for setup.
-        cras_rms_test_setup()
-
-        # CRAS does not apply the volume and capture gain to ALSA util
-        # streams are added. Do that to ensure the values have been set.
-        cras_utils.playback('/dev/zero', duration=0.1)
-        cras_utils.capture('/dev/null', duration=0.1)
+        alsa_rms_test_setup()
