@@ -10,8 +10,10 @@ This test will fail if the screen cannot be locked with
 autotestPrivate.lockScreen, or cannot be unlocked with the correct password,
 or if the screen is unlocked with an incorrect password.
 """
-ATTRIBUTES = "suite:smoke"
-SUITE = "smoke"
+# TODO(jdufault): Stop running this in the bvt suite once crbug.com/452599 is
+# resolved.
+ATTRIBUTES = "suite:smoke, suite:bvt-perbuild"
+SUITE = "smoke, bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
