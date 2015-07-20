@@ -6,11 +6,13 @@
 # found in the LICENSE file.
 
 import argparse
+import httplib
 import logging
 import os
 import signal
 import socket
 import time
+import urllib2
 
 import common
 from autotest_lib.frontend import setup_django_environment
@@ -250,6 +252,11 @@ class ShardClient(object):
                 'jobs': jobs, 'hqes': hqes}
 
 
+    def _heartbeat_failure(self, log_message):
+        logging.error("Heartbeat failed. %s", log_message)
+        autotest_stats.Counter(STATS_KEY).increment('heartbeat_failures')
+
+
     @timer.decorate
     def do_heartbeat(self):
         """Perform a heartbeat: Retreive new jobs.
@@ -259,14 +266,24 @@ class ShardClient(object):
         objects in the local database.
         """
         logging.info("Performing heartbeat.")
-
         packet = self._heartbeat_packet()
         autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.request_size', len(str(packet)))
-        response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
+
+        try:
+            response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
+        except urllib2.HTTPError, e:
+            self._heartbeat_failure("HTTPError %d: %s" % (e.code, e.reason))
+            return
+        except urllib2.URLError, e:
+            self._heartbeat_failure("URLError: %s" % e.reason)
+            return
+        except httplib.HTTPException, e:
+            self._heartbeat_failure("HTTPException: %s" % e)
+            return
+
         autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.response_size', len(str(response)))
-
         self._mark_jobs_as_uploaded([job['id'] for job in packet['jobs']])
         self.process_heartbeat_response(response)
         logging.info("Heartbeat completed.")
@@ -333,13 +350,13 @@ def get_shard_client():
 
 def main():
     try:
-        autotest_stats.Counter(STATS_KEY + 'starts').increment()
+        autotest_stats.Counter(STATS_KEY).increment('starts')
         main_without_exception_handling()
     except Exception as e:
         message = 'Uncaught exception; terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
-        autotest_stats.Counter(STATS_KEY + 'uncaught_exceptions').increment()
+        autotest_stats.Counter(STATS_KEY).increment('uncaught_exceptions')
         raise
     finally:
         email_manager.manager.send_queued_emails()
