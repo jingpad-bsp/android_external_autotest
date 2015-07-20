@@ -192,6 +192,27 @@ def sanitize_dir(dir_entry):
     shutil.move(src, dest)
 
 
+def correct_results_folder_permission(dir_entry):
+    """Make sure the results folder has the right permission settings.
+
+    For tests running with server-side packaging, the results folder has the
+    owner of root. This must be changed to the user running the autoserv
+    process, so parsing job can access the results folder.
+
+    @param dir_entry: Path to the results folder.
+
+    """
+    if not dir_entry:
+      return
+    try:
+      subprocess.check_call(
+          ['sudo', '-n', 'chown', '-R', str(os.getuid()), dir_entry])
+      subprocess.check_call(
+          ['sudo', '-n', 'chgrp', '-R', str(os.getgid()), dir_entry])
+    except subprocess.CalledProcessError as e:
+      logging.error('Failed to modify permission for %s: %s', dir_entry, e)
+
+
 def get_offload_dir_func(gs_uri):
   """Returns the offload directory function for the given gs_uri
 
@@ -256,9 +277,19 @@ def get_offload_dir_func(gs_uri):
         # Rewind the log files for stdout and stderr and log their contents.
         stdout_file.seek(0)
         stderr_file.seek(0)
+        stderr_content = stderr_file.read()
         logging.error('Error occurred when offloading %s:', dir_entry)
         logging.error('Stdout:\n%s \nStderr:\n%s',
-                      stdout_file.read(), stderr_file.read())
+                      stdout_file.read(), stderr_content)
+        # Some result files may have wrong file permission. Try to correct such
+        # error so later try can success.
+        # TODO(dshi): The code is added to correct result files with wrong file
+        # permission caused by bug 511778. After this code is pushed to lab and
+        # run for a while to clean up these files, following code and function
+        # correct_results_folder_permission can be deleted.
+        if 'CommandException: Error opening file' in stderr_content:
+          logging.warn('Try to correct file permission of %s.', dir_entry)
+          correct_results_folder_permission(dir_entry)
       stdout_file.close()
       stderr_file.close()
   return offload_dir
