@@ -221,6 +221,17 @@ class LinuxSystem(object):
             raise error.TestError('Failed to find a new MAC address')
 
 
+    def _phy_in_use(self, phy_name):
+        """Determine whether or not a PHY is used by an active DEV
+
+        @return bool True iff PHY is in use.
+        """
+        for net_dev in self._wlanifs_in_use:
+            if net_dev.phy == phy_name:
+                return True
+        return False
+
+
     def remove_interface(self, interface):
         """Remove an interface from a WiFi device.
 
@@ -397,17 +408,28 @@ class LinuxSystem(object):
         return phys[0]
 
 
-    def get_wlanif(self, frequency, phytype,
-                   spatial_streams=None, same_phy_as=None):
-        """Get a WiFi device that supports the given frequency and type.
+    def _get_wlanif(self, phytype, spatial_streams, frequency, same_phy_as):
+        """Get a WiFi device that supports the given frequency and phytype.
 
-        @param frequency int WiFi frequency to support.
+        We simply find or create a suitable DEV. It is left to the
+        caller to actually configure the frequency and bring up the
+        interface.
+
         @param phytype string type of phy (e.g. 'monitor').
         @param spatial_streams int number of spatial streams required.
+        @param frequency int WiFi frequency to support.
         @param same_phy_as string create the interface on the same phy as this.
-        @return string WiFi device.
+        @return NetDev WiFi device.
 
         """
+        if frequency and same_phy_as:
+            raise error.TestError(
+                'Can not combine |frequency| and |same_phy_as|')
+
+        if not (frequency or same_phy_as):
+            raise error.TestError(
+                'Must specify one of |frequency| or |same_phy_as|')
+
         if spatial_streams is None:
             spatial_streams = self.MIN_SPATIAL_STREAMS
 
@@ -455,6 +477,63 @@ class LinuxSystem(object):
         else:
             self.ensure_unique_mac(net_dev)
 
+        return net_dev
+
+
+    def get_configured_interface(self, phytype, spatial_streams=None,
+                                 frequency=None, same_phy_as=None):
+        """Get a WiFi device that supports the given frequency and phytype.
+
+        The device's link state will be UP, and (where possible) the device
+        will be configured to operate on |frequency|.
+
+        @param phytype string type of phy (e.g. 'monitor').
+        @param spatial_streams int number of spatial streams required.
+        @param frequency int WiFi frequency to support.
+        @param same_phy_as string create the interface on the same phy as this.
+        @return string WiFi device.
+
+        """
+        net_dev = self._get_wlanif(
+            phytype, spatial_streams, frequency, same_phy_as)
+
+        self.host.run('%s link set dev %s up' % (self.cmd_ip, net_dev.if_name))
+
+        if frequency:
+            if phytype == 'managed':
+                logging.debug('Skipped setting frequency for DEV %s '
+                              'since managed mode DEVs roam across APs.',
+                              net_dev.if_name)
+            elif same_phy_as or self._phy_in_use(net_dev.phy):
+                logging.debug('Skipped setting frequency for DEV %s '
+                              'since PHY %s is already in use',
+                              net_dev.if_name, net_dev.phy)
+            else:
+                self.iw_runner.set_freq(net_dev.if_name, frequency)
+
+        self._wlanifs_in_use.append(net_dev)
+        return net_dev.if_name
+
+
+    # TODO(quiche): Deprecate this, in favor of get_configured_interface().
+    # crbug.com/512169.
+    def get_wlanif(self, frequency, phytype,
+                   spatial_streams=None, same_phy_as=None):
+        """Get a WiFi device that supports the given frequency and phytype.
+
+        We simply find or create a suitable DEV. It is left to the
+        caller to actually configure the frequency and bring up the
+        interface.
+
+        @param frequency int WiFi frequency to support.
+        @param phytype string type of phy (e.g. 'monitor').
+        @param spatial_streams int number of spatial streams required.
+        @param same_phy_as string create the interface on the same phy as this.
+        @return string WiFi device.
+
+        """
+        net_dev = self._get_wlanif(
+            phytype, spatial_streams, frequency, same_phy_as)
         self._wlanifs_in_use.append(net_dev)
         return net_dev.if_name
 
