@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import pexpect
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -32,13 +31,10 @@ class firmware_ECPeci(FirmwareTest):
         Raises:
           error.TestFail: Raised when read fails.
         """
-        try:
-            t = int(self.ec.send_command_get_output("pecitemp",
-                    ["CPU temp = (\d+) K"])[0][1])
-            if t < 273 or t > 400:
-                raise error.TestFail("Abnormal CPU temperature %d K" % t)
-        except pexpect.TIMEOUT:
-            raise error.TestFail("Error reading PECI CPU temperature")
+        t = int(self.ec.send_command_get_output("pecitemp",
+                ["CPU temp = (\d+) K"])[0][1])
+        if t < 273 or t > 400:
+            raise error.TestFail("Abnormal CPU temperature %d K" % t)
 
     def run_once(self):
         if not self.check_ec_capability(['peci']):

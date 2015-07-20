@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import pexpect
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -24,13 +23,10 @@ class firmware_ECAdc(FirmwareTest):
         Raises:
           error.TestFail: Raised when read fails.
         """
-        try:
-            t = int(self.ec.send_command_get_output("temps",
-                    ["ECInternal\s+: (\d+) K"])[0][1])
-            if t < 273 or t > 373:
-                raise error.TestFail("Abnormal EC temperature %d K" % t)
-        except pexpect.TIMEOUT:
-            raise error.TestFail("Error reading EC internal temperature")
+        t = int(self.ec.send_command_get_output("temps",
+                ["ECInternal\s+: (\d+) K"])[0][1])
+        if t < 273 or t > 373:
+            raise error.TestFail("Abnormal EC temperature %d K" % t)
 
     def run_once(self):
         if not self.check_ec_capability(['adc_ectemp']):
