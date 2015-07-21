@@ -86,7 +86,7 @@ class ChameleonVideoCapturer(object):
 
         error_msg = "Expected current time to be > 0.5 seconds"
 
-        utils.poll_for_condition(lambda : self.player.currentTime() > 0.5,
+        utils.poll_for_condition(lambda : player.currentTime() > 0.5,
                                  timeout=5,
                                  exception=error.TestError(error_msg))
 
