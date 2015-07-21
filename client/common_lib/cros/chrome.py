@@ -7,7 +7,12 @@ import logging, os
 from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils
 from telemetry.core import exceptions, util
-from telemetry.core.platform import cros_interface
+# Need to support both paths for the transition (crbug.com/512427).
+try:
+  from telemetry.core.platform import cros_interface
+except ImportError:
+  from telemetry.core import cros_interface
+
 from telemetry.internal.browser import browser_finder, browser_options
 from telemetry.internal.browser import extension_to_load
 
