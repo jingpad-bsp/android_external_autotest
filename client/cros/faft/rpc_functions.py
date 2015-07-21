@@ -7,7 +7,7 @@
 These can be exposed via a xmlrpci server running on the DUT.
 """
 
-import functools, os, shutil, tempfile
+import functools, logging, os, shutil, tempfile
 
 import common
 from autotest_lib.client.cros.faft.utils import (cgpt_state,
@@ -95,12 +95,16 @@ class RPCFunctions(object):
         # TODO(waihong): Move the explicit object.init() methods to the
         # objects' constructors (ChromeOSInterface, FlashromHandler,
         # KernelHandler, and TpmHandler).
-        self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
+        self._chromeos_interface = chromeos_interface.ChromeOSInterface()
         # We keep the state of FAFT test in a permanent directory over reboots.
         state_dir = '/var/tmp/faft'
-        self._log_file = os.path.join(state_dir, 'faft_client.log')
-        self._chromeos_interface.init(state_dir, log_file=self._log_file)
+        self._chromeos_interface.init(state_dir)
         os.chdir(state_dir)
+
+        self._log_file = os.path.join(state_dir, 'faft_client.log')
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s %(message)s',
+                            filename=self._log_file)
 
         self._bios_handler = LazyFlashromHandlerProxy(
                                 saft_flashrom_util,
@@ -177,8 +181,8 @@ class RPCFunctions(object):
         if is_str:
             return str(func)
         else:
-            self._chromeos_interface.log('Dispatching method %s with args %s' %
-                    (str(func), str(params)))
+            logging.debug('Dispatching method %s with args %s',
+                          func.__name__, str(params))
             return func(*params)
 
     def _system_is_available(self):
@@ -390,9 +394,8 @@ class RPCFunctions(object):
         original_version = self._bios_get_version(section)
         new_version = original_version + delta
         flags = self._bios_handler.get_section_flags(section)
-        self._chromeos_interface.log(
-                'Setting firmware section %s version from %d to %d' % (
-                section, original_version, new_version))
+        logging.info('Setting firmware section %s version from %d to %d',
+                     section, original_version, new_version)
         self._bios_handler.set_section_version(section, new_version, flags,
                                                write_through=True)
 
@@ -598,9 +601,8 @@ class RPCFunctions(object):
         """
         original_version = self._kernel_handler.get_version(section)
         new_version = original_version + delta
-        self._chromeos_interface.log(
-                'Setting kernel section %s version from %d to %d' % (
-                section, original_version, new_version))
+        logging.info('Setting kernel section %s version from %d to %d',
+                     section, original_version, new_version)
         self._kernel_handler.set_version(section, new_version)
 
     @allow_multiple_section_input

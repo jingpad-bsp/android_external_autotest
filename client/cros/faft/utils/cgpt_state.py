@@ -4,6 +4,7 @@
 
 """CGPT state machine for cgpt tests"""
 
+import logging
 import os
 
 
@@ -248,12 +249,12 @@ class CgptState:
             if not self._is_matched_kern_prop_dict(part_prop,
                                                expected_kern_prop):
                 cgpt_kern_prop_flag = False
-                self.chros_if.log('Error (cgpt step %d) %s: Wrong cgpt \
-                           kernel property, %s was expected, but got %s' %
-                          (step, part_name, expected_kern_prop, part_prop))
+                logging.info('Error (cgpt step %d) %s: Wrong cgpt '
+                             'kernel property, %s was expected, but got %s',
+                             step, part_name, expected_kern_prop, part_prop)
             else:
-                self.chros_if.log('Cgpt %s: %s was expected and matched.' %
-                                  (part_name, expected_kern_prop))
+                logging.info('Cgpt %s: %s was expected and matched.',
+                             part_name, expected_kern_prop)
         return cgpt_kern_prop_flag
 
     def _check_boot_vector(self, step):
@@ -270,8 +271,9 @@ class CgptState:
         matched = self.chros_if.cmp_boot_vector(boot_vector,
                                                 expected_boot_vector)
         if not matched:
-            self.chros_if.log('Error (cgpt step %d): boot vectors %s and %s \
-                 do not match' % (step, boot_vector, expected_boot_vector))
+            logging.info('Error (cgpt step %d): boot vectors %s and %s '
+                         'do not match',
+                         step, boot_vector, expected_boot_vector)
         return matched
 
     def test_loop(self):
@@ -284,8 +286,8 @@ class CgptState:
 
         """
         step = self.get_step()
-        self.chros_if.log('Calling cgpt_state.test_loop: step = %d/%d' %
-                          (step, self.num_steps))
+        logging.info('Calling cgpt_state.test_loop: step = %d/%d',
+                     step, self.num_steps)
 
         # Checking the number of parameters in this cpgt state tuple
         if len(self.cgpt_state_seq[step]) != len(CgptState.PARA_POS):
@@ -307,8 +309,7 @@ class CgptState:
 
         # Check if we have finished cgpt state tests
         if step >= self.num_steps-1:
-            success_log = 'Finishes cgpt tests successfully at step %d.'
-            self.chros_if.log(success_log % step)
+            logging.info('Finishes cgpt tests successfully at step %d.', step)
             return 1
         else:
             self.set_step(step+1)
