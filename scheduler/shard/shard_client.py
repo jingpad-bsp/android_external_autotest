@@ -110,6 +110,26 @@ class ShardClient(object):
         self._shard = None
 
 
+    def _deserialize_many(self, serialized_list, djmodel, message):
+        """Deserialize data in JSON format to database.
+
+        Deserialize a list of JSON-formatted data to database using Django.
+
+        @param serialized_list: A list of JSON-formatted data.
+        @param djmodel: Django model type.
+        @param message: A string to be used in a logging message.
+        """
+        for serialized in serialized_list:
+            with transaction.commit_on_success():
+                try:
+                    djmodel.deserialize(serialized)
+                except Exception as e:
+                    logging.error('Deserializing a %s fails: %s, Error: %s',
+                                  message, serialized, e)
+                    autotest_stats.Counter(STATS_KEY).increment(
+                            'deserialization_failures')
+
+
     @timer.decorate
     def process_heartbeat_response(self, heartbeat_response):
         """Save objects returned by a heartbeat to the local database.
@@ -126,21 +146,16 @@ class ShardClient(object):
         suite_keyvals_serialized = heartbeat_response['suite_keyvals']
 
         autotest_stats.Gauge(STATS_KEY).send(
-            'hosts_received', len(hosts_serialized))
+                'hosts_received', len(hosts_serialized))
         autotest_stats.Gauge(STATS_KEY).send(
-            'jobs_received', len(jobs_serialized))
+                'jobs_received', len(jobs_serialized))
         autotest_stats.Gauge(STATS_KEY).send(
-            'suite_keyvals_received', len(suite_keyvals_serialized))
+                'suite_keyvals_received', len(suite_keyvals_serialized))
 
-        for host in hosts_serialized:
-            with transaction.commit_on_success():
-                models.Host.deserialize(host)
-        for job in jobs_serialized:
-            with transaction.commit_on_success():
-                models.Job.deserialize(job)
-        for keyval in suite_keyvals_serialized:
-            with transaction.commit_on_success():
-                models.JobKeyval.deserialize(keyval)
+        self._deserialize_many(hosts_serialized, models.Host, 'host')
+        self._deserialize_many(jobs_serialized, models.Job, 'job')
+        self._deserialize_many(suite_keyvals_serialized, models.JobKeyval,
+                               'jobkeyval')
 
         host_ids = [h['id'] for h in hosts_serialized]
         logging.info('Heartbeat response contains hosts %s', host_ids)
@@ -149,16 +164,20 @@ class ShardClient(object):
         parent_jobs_with_keyval = set([kv['job_id']
                                        for kv in suite_keyvals_serialized])
         logging.info('Heartbeat response contains suite_keyvals_for jobs %s',
-                     parent_jobs_with_keyval)
+                     list(parent_jobs_with_keyval))
 
         # If the master has just sent any jobs that we think have completed,
         # re-sync them with the master. This is especially useful when a
         # heartbeat or job is silently dropped, as the next heartbeat will
         # have a disagreement. Updating the shard_id to NULL will mark these
         # jobs for upload on the next heartbeat.
-        models.Job.objects.filter(
-                id__in=job_ids,
-                hostqueueentry__complete=True).update(shard=None)
+        job_models = models.Job.objects.filter(
+                id__in=job_ids, hostqueueentry__complete=True)
+        if job_models:
+            job_models.update(shard=None)
+            job_ids_repr = ', '.join([str(job.id) for job in job_models])
+            logging.warn('Following completed jobs are reset shard_id to NULL '
+                         'to be uploaded to master again: %s', job_ids_repr)
 
 
     @property
@@ -353,7 +372,7 @@ def main():
         autotest_stats.Counter(STATS_KEY).increment('starts')
         main_without_exception_handling()
     except Exception as e:
-        message = 'Uncaught exception; terminating shard_client.'
+        message = 'Uncaught exception. Terminating shard_client.'
         email_manager.manager.log_stacktrace(message)
         logging.exception(message)
         autotest_stats.Counter(STATS_KEY).increment('uncaught_exceptions')
