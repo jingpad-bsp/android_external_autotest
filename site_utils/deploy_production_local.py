@@ -391,11 +391,7 @@ def main(args):
     if behaviors.update:
         print('Updating Repo.')
         repo_sync()
-
         versions_after = repo_versions()
-        if versions_before == versions_after:
-            print('No change found.')
-            return
 
     if behaviors.actions:
         try:
