@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "ui"
 TEST_TYPE = "client"
-DEPENDENCIES = "board:daisy"
+DEPENDENCIES = "board:daisy", "board:link", "board:peppy"
 
 DOC = """
 Collects screenshots of the default apps in App Launcher. Compares them to a
@@ -23,9 +23,11 @@ golden image to look for unwanted changes and regressions.
 All images that don't match will be uploaded to the biopic web interface for
 easy comparison later.
 
+This test makes use of keyboard emulation to bring up the launcher.
+
 This test is to be used by the test team as part of their daily build
 qualification process.
 
 """
 
-job.run_test('ui_AppLauncher', width=300, height=100)
+job.run_test('ui_AppLauncher')

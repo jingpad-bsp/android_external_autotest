@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import time
+import logging
+import os
 
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.ui import ui_test_base
 
@@ -17,6 +19,12 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
 
     """
 
+    # The keyboard we are emulating
+    _KEYBOARD_PROP = 'keyboard.prop'
+
+    # The keyboard playback data
+    _KEYBOARD_PLAYBACK = 'searchkey_tabs_enter'
+
     def initialize(self):
         """Perform necessary initialization prior to test run.
 
@@ -27,10 +35,8 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
         self._services = service_stopper.ServiceStopper(['powerd'])
         self._services.stop_services()
 
-
     def cleanup(self):
         self._services.restore_services()
-
 
     def capture_screenshot(self, filepath):
         """
@@ -43,32 +49,41 @@ class ui_AppLauncher(ui_test_base.ui_TestBase):
         """
 
         # Login and load the default apps
-        with chrome.Chrome(disable_default_apps=False) as cr:
+        with chrome.Chrome(disable_default_apps=False):
 
-            # minimize the Chrome window
-            graphics_utils.press_key_X('alt+minus')
+            # Setup the keyboard file's paths
+            property_file = os.path.join(self.bindir, self._KEYBOARD_PROP)
+            playback_file = os.path.join(self.bindir, self._KEYBOARD_PLAYBACK)
 
-            # open the launcher using the search key
-            graphics_utils.press_key_X('super')
-
-            # Open the 'All Apps' folder
-            for x in xrange(0, 7):
-                graphics_utils.press_key_X('Tab')
-                time.sleep(0.5)
-
-            graphics_utils.press_key_X('Return')
-            time.sleep(0.5)
+            # Setup and playback the keyboard commands to open the launcher
+            player = input_playback.InputPlayback()
+            player.emulate('keyboard', property_file)
+            player.find_connected_inputs()
+            player.blocking_playback(playback_file, 'keyboard')
+            player.close()
 
             # Take a screenshot and crop to just the launcher
-            w, h = graphics_utils.get_display_resolution()
-            box = (w - self.width * 2, h - self.height * 2, self.width,
-                   self.height)
+            w, h = graphics_utils.get_internal_resolution()
+            upper_x = (w - self.launcher_width) / 2
+            upper_y = (h - self.launcher_height) / 2
+            box = (upper_x, upper_y, upper_x + self.launcher_width, upper_y +
+                   self.launcher_height)
+
             graphics_utils.take_screenshot_crop(filepath, box)
 
+    def run_once(self):
+        # The default launcher dimensions
+        self.launcher_width = 768
+        self.launcher_height = 570
 
-    def run_once(self, width, height):
-        self.width = width
-        self.height = height
+        w, h = graphics_utils.get_internal_resolution()
+        logging.info('DUT screen width: %d' % w)
+        logging.info('DUT screen height: %d' % h)
+
+        # If we have a high DPI screen, launcher size is doubled
+        if self.launcher_width * 2 < w:
+            self.launcher_width *= 2
+            self.launcher_height *= 2
+            self.tagged_testname += '.large'
 
         self.run_screenshot_comparison_test()
-
