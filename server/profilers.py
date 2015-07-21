@@ -5,7 +5,7 @@ from autotest_lib.client.common_lib import utils, error, profiler_manager
 from autotest_lib.server import profiler, autotest, standalone_profiler, hosts
 
 
-PROFILER_TMPDIR = '/usr/local/autotest/tmp/profilers'
+PROFILER_TMPDIR = '/tmp/profilers'
 
 
 def get_profiler_results_dir(autodir):
@@ -25,7 +25,6 @@ def get_profiler_log_path(autodir):
 
 
 class profilers(profiler_manager.profiler_manager):
-    """ Autotest profiler support."""
     def __init__(self, job):
         super(profilers, self).__init__(job)
         self.add_log = {}
