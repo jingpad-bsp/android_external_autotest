@@ -30,6 +30,22 @@ class IwEventLogger(object):
         self.stop()
 
 
+    def _check_message_for_disconnect(self, message):
+        """Check log message for disconnect event.
+
+        This function checks log messages for signs the connection was
+        terminated.
+
+        @param: message String message to check for disconnect event.
+
+        @returns True if the log message is a disconnect event, false otherwise.
+
+        """
+        return (message.startswith('disconnected') or
+            message.startswith('Deauthenticated') or
+            message == 'Previous authentication no longer valid')
+
+
     @property
     def local_file(self):
         """@return string local host path for log file."""
@@ -118,8 +134,7 @@ class IwEventLogger(object):
             # without scanning. So if no scan event is detected before the
             # disconnect attempt, we'll assume the disconnect attempt is the
             # beginning of the reassociate attempt.
-            if ((entry.message.startswith('disconnected') or
-                    entry.message.startswith('Deauthenticated')) and
+            if (self._check_message_for_disconnect(entry.message) and
                     start_time is None):
                 start_time = entry.timestamp
             if entry.message.startswith('connected'):
@@ -143,10 +158,8 @@ class IwEventLogger(object):
         """
         count = 0
         for entry in self.get_log_entries():
-          if (entry.message.startswith('disconnected') or
-                  entry.message.startswith('Deauthenticated')):
-            count += 1
-
+            if self._check_message_for_disconnect(entry.message):
+                count += 1
         return count
 
 
@@ -163,7 +176,6 @@ class IwEventLogger(object):
                 "Deauthenticated" event is detected in the iw event log.
         """
         for entry in self.get_log_entries():
-            if (entry.message.startswith('disconnected') or
-                    entry.message.startswith('Deauthenticated')):
+          if self._check_message_for_disconnect(entry.message):
                 return entry.timestamp - self._start_time
         return None
