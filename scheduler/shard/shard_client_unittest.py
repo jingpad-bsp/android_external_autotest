@@ -50,13 +50,14 @@ class ShardClientTest(mox.MoxTestBase,
 
     def expect_heartbeat(self, shard_hostname='host1',
                          known_job_ids=[], known_host_ids=[],
-                         hqes=[], jobs=[],
+                         known_host_statuses=[], hqes=[], jobs=[],
                          side_effect=None, return_hosts=[], return_jobs=[],
                          return_suite_keyvals=[]):
         call = self.afe.run(
             'shard_heartbeat', shard_hostname=shard_hostname,
             hqes=hqes, jobs=jobs,
             known_job_ids=known_job_ids, known_host_ids=known_host_ids,
+            known_host_statuses=known_host_statuses,
             )
 
         if side_effect:
@@ -162,13 +163,16 @@ class ShardClientTest(mox.MoxTestBase,
         modified_sample_host = self._get_sample_serialized_host()
         modified_sample_host['hostname'] = 'host2'
 
-        self.expect_heartbeat(return_hosts=[modified_sample_host],
-                              known_host_ids=[modified_sample_host['id']],
-                              known_job_ids=[1])
+        self.expect_heartbeat(
+                return_hosts=[modified_sample_host],
+                known_host_ids=[modified_sample_host['id']],
+                known_host_statuses=[modified_sample_host['status']],
+                known_job_ids=[1])
 
 
         def verify_upload_jobs_and_hqes(name, shard_hostname, jobs, hqes,
-                                        known_host_ids, known_job_ids):
+                                        known_host_ids, known_host_statuses,
+                                        known_job_ids):
             self.assertEqual(len(jobs), 1)
             self.assertEqual(len(hqes), 1)
             job, hqe = jobs[0], hqes[0]
@@ -176,9 +180,10 @@ class ShardClientTest(mox.MoxTestBase,
 
 
         self.expect_heartbeat(
-            jobs=mox.IgnoreArg(), hqes=mox.IgnoreArg(),
-            known_host_ids=[modified_sample_host['id']], known_job_ids=[],
-            side_effect=verify_upload_jobs_and_hqes)
+                jobs=mox.IgnoreArg(), hqes=mox.IgnoreArg(),
+                known_host_ids=[modified_sample_host['id']],
+                known_host_statuses=[modified_sample_host['status']],
+                known_job_ids=[], side_effect=verify_upload_jobs_and_hqes)
 
         self.mox.ReplayAll()
         sut = shard_client.get_shard_client()
@@ -261,7 +266,9 @@ class ShardClientTest(mox.MoxTestBase,
         self.expect_heartbeat(return_hosts=[host1_serialized])
         self.expect_heartbeat(return_hosts=[host1_serialized, host2_serialized])
         self.expect_heartbeat(known_host_ids=[host1_serialized['id'],
-                                              host2_serialized['id']])
+                                              host2_serialized['id']],
+                              known_host_statuses=[host1_serialized['status'],
+                                                   host2_serialized['status']])
 
         self.mox.ReplayAll()
         sut = shard_client.get_shard_client()

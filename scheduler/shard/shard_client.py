@@ -229,24 +229,31 @@ class ShardClient(object):
         return hqes
 
 
-    def _get_known_ids(self):
-        """Returns lists of host and job ids to send in a heartbeat.
+    def _get_known_jobs_and_hosts(self):
+        """Returns lists of host and job info to send in a heartbeat.
 
         The host and job ids are ids of objects that are already present on the
         shard and therefore don't need to be sent again.
 
-        For jobs, only incomplete jobs are sent, as the master won't sent
+        For jobs, only incomplete jobs are sent, as the master won't send
         already completed jobs anyway. This helps keeping the list of id's
         considerably small.
 
-        @returns: Tuple of two dictionaries. The first one contains job ids, the
-                  second one host ids.
+        For hosts, host status in addition to host id are sent to master
+        to sync the host status.
+
+        @returns: Tuple of three lists. The first one contains job ids, the
+                  second one host ids, and the third one host statuses.
         """
         job_ids = list(models.Job.objects.filter(
-            hostqueueentry__complete=False).values_list('id', flat=True))
-        host_ids = list(models.Host.objects.filter(
-                invalid=0).values_list('id', flat=True))
-        return job_ids, host_ids
+                hostqueueentry__complete=False).values_list('id', flat=True))
+        host_models = models.Host.objects.filter(invalid=0)
+        host_ids = []
+        host_statuses = []
+        for h in host_models:
+            host_ids.append(h.id)
+            host_statuses.append(h.status)
+        return job_ids, host_ids, host_statuses
 
 
     def _heartbeat_packet(self):
@@ -256,7 +263,8 @@ class ShardClient(object):
 
         @return: A heartbeat packet.
         """
-        known_job_ids, known_host_ids = self._get_known_ids()
+        known_job_ids, known_host_ids, known_host_statuses = (
+                self._get_known_jobs_and_hosts())
         logging.info('Known jobs: %s', known_job_ids)
 
         job_objs = self._get_jobs_to_upload()
@@ -268,6 +276,7 @@ class ShardClient(object):
         return {'shard_hostname': self.hostname,
                 'known_job_ids': known_job_ids,
                 'known_host_ids': known_host_ids,
+                'known_host_statuses': known_host_statuses,
                 'jobs': jobs, 'hqes': hqes}
 
 

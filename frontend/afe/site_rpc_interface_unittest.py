@@ -487,11 +487,13 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                                           **kwargs):
         known_job_ids = [job.id for job in known_jobs]
         known_host_ids = [host.id for host in known_hosts]
+        known_host_statuses = [host.status for host in known_hosts]
 
         retval = site_rpc_interface.shard_heartbeat(
             shard_hostname=shard_hostname,
             jobs=upload_jobs, hqes=upload_hqes,
-            known_job_ids=known_job_ids, known_host_ids=known_host_ids)
+            known_job_ids=known_job_ids, known_host_ids=known_host_ids,
+            known_host_statuses=known_host_statuses)
 
         self._assert_shard_heartbeat_response(shard_hostname, retval,
                                               **kwargs)

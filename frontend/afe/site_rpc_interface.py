@@ -367,8 +367,8 @@ def get_host_history(start_time, end_time, hosts=None, board=None, pool=None):
                     process_pool_size=4))
 
 
-def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
-                    known_job_ids=(), known_host_ids=()):
+def shard_heartbeat(shard_hostname, jobs=(), hqes=(), known_job_ids=(),
+                    known_host_ids=(), known_host_statuses=()):
     """Receive updates for job statuses from shards and assign hosts and jobs.
 
     @param shard_hostname: Hostname of the calling shard
@@ -379,6 +379,7 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
                  the corresponding job must be in jobs.
     @param known_job_ids: List of ids of jobs the shard already has.
     @param known_host_ids: List of ids of hosts the shard already has.
+    @param known_host_statuses: List of statuses of hosts the shard already has.
 
     @returns: Serialized representations of hosts, jobs, suite job keyvals
               and their dependencies to be inserted into a shard's database.
@@ -419,9 +420,16 @@ def shard_heartbeat(shard_hostname, jobs=(), hqes=(),
     with timer:
         shard_obj = rpc_utils.retrieve_shard(shard_hostname=shard_hostname)
         rpc_utils.persist_records_sent_from_shard(shard_obj, jobs, hqes)
+        assert len(known_host_ids) == len(known_host_statuses)
+        for i in range(len(known_host_ids)):
+            host_model = models.Host.objects.get(pk=known_host_ids[i])
+            if host_model.status != known_host_statuses[i]:
+                host_model.status = known_host_statuses[i]
+                host_model.save()
+
         hosts, jobs, suite_keyvals = rpc_utils.find_records_for_shard(
-            shard_obj,
-            known_job_ids=known_job_ids, known_host_ids=known_host_ids)
+                shard_obj, known_job_ids=known_job_ids,
+                known_host_ids=known_host_ids)
         return {
             'hosts': [host.serialize() for host in hosts],
             'jobs': [job.serialize() for job in jobs],
