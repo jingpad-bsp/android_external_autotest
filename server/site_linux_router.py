@@ -855,6 +855,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         """
         with tempfile.NamedTemporaryFile() as fp:
             fp.write(footer)
+            fp.flush()
             try:
                 self.host.send_file(fp.name, self.PROBE_RESPONSE_FOOTER_FILE)
             except error.AutoservRunError:
