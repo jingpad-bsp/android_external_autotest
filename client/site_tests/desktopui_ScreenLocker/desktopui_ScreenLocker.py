@@ -7,6 +7,7 @@ import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, session_manager
+from autotest_lib.client.cros import asan
 
 import gobject
 from dbus.mainloop.glib import DBusGMainLoop
@@ -15,7 +16,11 @@ class desktopui_ScreenLocker(test.test):
     """This is a client side test that exercises the screenlocker."""
     version = 1
 
-    _SCREEN_IS_LOCKED_TIMEOUT = 15
+    _SCREEN_IS_LOCKED_TIMEOUT = 30
+    # TODO(jdufault): Remove this timeout increase for asan bots once we figure
+    # out what's taking so long to lock the screen. See crbug.com/452599.
+    if asan.running_on_asan():
+      _SCREEN_IS_LOCKED_TIMEOUT *= 2
 
 
     def initialize(self):
