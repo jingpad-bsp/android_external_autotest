@@ -683,19 +683,6 @@ class Servo(object):
         self._programmer.program_bios(image)
 
 
-    def _get_board_from_ec(self, image):
-        """Get the board name from the EC image file.
-
-        @param image: string with the location of the image file
-
-        @return: Board name used in the EC image file.
-
-        """
-        cmd = ('strings "%s" | grep -oP "[a-z\-_0-9]*(?=_v[0-9]\.[0-9]\.)" | '
-               'head -n 1' % image)
-        return utils.run(cmd).stdout.strip()
-
-
     def program_ec(self, image):
         """Program ec on DUT with given image.
 
@@ -704,11 +691,9 @@ class Servo(object):
 
         """
         self._initialize_programmer()
-        board = self._get_board_from_ec(image)
-        logging.info('board name from ec image file is "%s".', board)
         if not self.is_localhost():
             image = self._scp_image(image)
-        self._programmer.program_ec(image, board=board)
+        self._programmer.program_ec(image)
 
 
     def _switch_usbkey_power(self, power_state, detection_delay=False):

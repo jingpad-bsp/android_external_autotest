@@ -190,16 +190,14 @@ class FlashECProgrammer(_BaseProgrammer):
         self._servo = servo
 
 
-    def prepare_programmer(self, image, board=None):
+    def prepare_programmer(self, image):
         """Prepare programmer for programming.
 
         @param image: string with the location of the image file
-        @param board: Name of the board used in EC image. Some board's name used
-                      by servod might be different from EC. Default to None.
         """
         # TODO: need to not have port be hardcoded
-        self._program_cmd = ('flash_ec --board=%s --image=%s --port=%s' %
-                             (board or self._servo.get_board(), image, '9999'))
+        self._program_cmd = ('flash_ec --chip=%s --image=%s --port=%s' %
+                             (self._servo.get('ec_chip'), image, '9999'))
 
 
 class ProgrammerV2(object):
@@ -360,13 +358,11 @@ class ProgrammerV3(object):
         self._bios_programmer.program()
 
 
-    def program_ec(self, image, board=None):
+    def program_ec(self, image):
         """Programs the DUT with provide ec image.
 
         @param image: (required) location of ec image file.
-        @param board: Name of the board used in EC image. Some board's name used
-                      by servod might be different from EC. Default to None.
 
         """
-        self._ec_programmer.prepare_programmer(image, board)
+        self._ec_programmer.prepare_programmer(image)
         self._ec_programmer.program()
