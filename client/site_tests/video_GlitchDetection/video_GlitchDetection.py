@@ -5,7 +5,10 @@
 import datetime, logging, os, time
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import base_utils, error, file_utils
+from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
+from autotest_lib.client.common_lib import sequence_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants, service_stopper
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
@@ -82,6 +85,8 @@ class video_GlitchDetection(test.test):
         bp_proj_name = '.'.join(bp_proj_specs)
 
         comparer = img_comp_factory.make_upload_on_fail_comparer(bp_proj_name)
+
+        self.bp_comparer = img_comp_factory.make_bp_comparer(bp_proj_name)
 
         self.verifier = img_comp_factory.make_image_verifier(comparer)
 
@@ -160,6 +165,10 @@ class video_GlitchDetection(test.test):
         checksums = self.capture_frames()
         checksum_index_list = self.get_unique_checksum_indices(checksums)
 
+        # check that we don't have unexpected repeated frames
+        self.ensure_expected_frame_repeat_count(
+                checksum_index_list, self.factory.max_repeat_frame_count)
+
         indices = [entry[1] for entry in checksum_index_list]
 
         self.video_capturer.write_images(indices)
@@ -194,6 +203,30 @@ class video_GlitchDetection(test.test):
         return  checksum_index_list
 
 
+    def ensure_expected_frame_repeat_count(self, checksum_indices,
+                                           max_repeat_count):
+        """
+        Walks the list of checksum, first occurrence tuple to ensure that
+        repeated counts of frames are reasonable.
+
+        @param checksum_indices: list of tuples checksum, first index occurred.
+        @param max_repeat_count: int, max. frame frequency allowed
+
+        """
+
+        for i in range(0, len(checksum_indices) - 1):
+            checksum = checksum_indices[i][0]
+            checksum_first_occurred = checksum_indices[i][1]
+            next_checksum_first_occurred = checksum_indices[i + 1][1]
+            repeat_count = (next_checksum_first_occurred -
+                            checksum_first_occurred)
+            if repeat_count > max_repeat_count:
+                msg = ("Too many repeated frames for checksum %s! # of "
+                       "repeated frames : %d. Max allowed is : %d"
+                       %(checksum, repeat_count, max_repeat_count))
+                raise error.TestFail(msg)
+
+
     def run_chameleon_image_comparison_test(self):
         """
         Capture frames. Perform image comparison. Also check that the number
@@ -216,12 +249,16 @@ class video_GlitchDetection(test.test):
         logging.debug("*** RAW checksums ***")
         dump_list(checksums)
 
-        checksum_ind_list = self.get_unique_checksum_indices(checksums)
-        logging.debug("Download golden checksum file.")
+        test_checksum_ind_list = self.get_unique_checksum_indices(checksums)
 
         logging.debug("*** FILTERED checksum ***")
-        dump_list(checksum_ind_list)
+        dump_list(test_checksum_ind_list)
 
+        # We may get a frame that is repeated many times
+        self.ensure_expected_frame_repeat_count(
+                test_checksum_ind_list, self.factory.max_repeat_frame_count)
+
+        logging.debug("Download golden checksum file.")
         remote_golden_checksum_path = os.path.join(
             self.remote_golden_images_dir, self.factory.golden_checksum_filename)
 
@@ -234,35 +271,66 @@ class video_GlitchDetection(test.test):
         golden_checksum_ind_list = self.read_chameleon_golden_checksumfile(
                 golden_checksum_path)
 
-        eps = self.factory.missing_frames_eps
+        eps = self.factory.frame_count_deviation
         golden_count = len(golden_checksum_ind_list)
-        test_count = len(checksum_ind_list)
+        test_count = len(test_checksum_ind_list)
 
-        if golden_count - test_count > eps:
+        # We may get too little or too many test frames received
+        if abs(golden_count - test_count) > eps:
             msg = ("Expecting about %d checksums, received %d. Allowed delta "
                    "is %d") % (golden_count, test_count, eps)
             raise error.TestFail(msg)
 
-        for i, checksum_ind in enumerate(golden_checksum_ind_list[:test_count]):
-            golden_checksum = checksum_ind[0]
-            golden_first_occurance_ind = checksum_ind[1]
-            test_checksum = checksum_ind_list[i][0]
-            test_first_occurance_ind = checksum_ind_list[i][1]
 
-            if test_checksum != golden_checksum:
-                test_path = self.video_capturer.write_images(
-                    test_first_occurance_ind)
-                golden_path = self.download_golden_images(test_path)
-                self.verifier.verify(golden_path, test_path)
+        """
+        Find the length of a longest common subsequence (LCS) between golden
+        and test checksums.
+        Sometimes you have a missing frame or an extra frame in one list or the
+        other. Using LCS we skip over the missing frame and continue the
+        comparison on the rest of the list
 
-            eps = self.factory.frame_count_deviation
-            if (abs(golden_first_occurance_ind -
-                test_first_occurance_ind) > eps):
-                msg = ("Golden frame first occured at index %d but test "
-                      "frame first occurred at %d. Allowed delta is %d."
-                       %(golden_first_occurance_ind,
-                         test_first_occurance_ind, eps))
-                raise error.TestFail(msg)
+        """
+
+        # Use a tuple because we will need to hash the checksums into a set
+        golden_checksums = [tuple(elem[0]) for elem in golden_checksum_ind_list]
+        test_checksums = [tuple(elem[0]) for elem in test_checksum_ind_list]
+
+        lcs_len = sequence_utils.lcs_length(golden_checksums, test_checksums)
+        eps = self.factory.nonmatching_frames_eps
+
+        missing_frames_count = len(golden_checksums) - lcs_len
+        unknown_frames_count = len(test_checksums) - lcs_len
+
+        msg = ("# of matching frames : %d. # of missing frames : %d. # of "
+               "unknown test frames : %d. Max allowed # of missing frames : "
+               "%d. # of golden frames : %d. # of test_checksums : %d"
+               %(lcs_len, missing_frames_count, unknown_frames_count, eps,
+                 len(golden_checksums), len(test_checksums)))
+
+        logging.debug(msg)
+
+        # get the checksums that are in test run but not in the golden run
+        # they could be glitchy
+
+        unknown_checksums = set(test_checksums) - set(golden_checksums)
+
+        if missing_frames_count + unknown_frames_count > eps:
+            # save it for later review, we are not really verifying,
+
+            indices = [i for checksum, i in test_checksum_ind_list if tuple(
+                checksum) in unknown_checksums]
+
+            paths = self.video_capturer.write_images(indices)
+
+            comp_url = ''
+            for path in paths:
+                comp_result = self.bp_comparer.compare(path, path)
+                # need the parent link, should be just one for all comparisons
+                if not comp_url:
+                   comp_url = os.path.dirname(comp_result.comparison_url)
+
+            raise error.TestFail("Too many non-matching frames! " + msg +
+                                 " Comparison urls : " + comp_url)
 
 
     def download_golden_images(self, filepaths):

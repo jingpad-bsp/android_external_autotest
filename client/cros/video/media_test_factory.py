@@ -292,10 +292,13 @@ class MediaTestFactory(object):
         self.video_frame_count = self.parser.getint(self.channel,
                                                     'video_frame_count')
 
-        self.missing_frames_eps = self.parser.getint(self.channel,
-                                                     'missing_frames_eps')
+        self.nonmatching_frames_eps = self.parser.getint(self.channel,
+                                                     'nonmatching_frames_eps')
         self.frame_count_deviation = self.parser.getint(self.channel,
                                                         'frame_count_deviation')
+
+        self.max_repeat_frame_count = self.parser.getint(
+                self.channel, 'max_repeat_frame_count')
 
 
     @property
