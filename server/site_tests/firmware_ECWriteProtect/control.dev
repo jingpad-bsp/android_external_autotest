@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_ECWriteProtect"
+NAME = "firmware_ECWriteProtect.dev"
 PURPOSE = "Servo based EC write protect test"
 CRITERIA = "This test will fail if EC write protect misbehaved"
 ATTRIBUTES = "suite:faft, suite:faft_ec"

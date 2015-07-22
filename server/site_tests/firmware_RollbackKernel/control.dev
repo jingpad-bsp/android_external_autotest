@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_RollbackKernel"
+NAME = "firmware_RollbackKernel.dev"
 PURPOSE = "Servo based kernel rollback test."
 CRITERIA = "This test will fail if kernel rollback doesn't fail verification."
 ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv3"

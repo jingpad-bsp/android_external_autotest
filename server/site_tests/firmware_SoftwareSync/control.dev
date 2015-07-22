@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_SoftwareSync"
+NAME = "firmware_SoftwareSync.dev"
 PURPOSE = "Servo based EC software sync test"
 CRITERIA = "This test will fail if EC software sync misbehalved"
 ATTRIBUTES = "suite:faft, suite:faft_ec"

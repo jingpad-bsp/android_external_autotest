@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_UserRequestRecovery"
+NAME = "firmware_UserRequestRecovery.dev"
 PURPOSE = "Request recovery mode and check it next reboot."
 CRITERIA = "This test will fail if firmware does not enter recovery mode"
 ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv2"

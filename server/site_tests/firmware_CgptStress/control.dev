@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_CgptStress"
+NAME = "firmware_CgptStress.dev"
 PURPOSE = "Servo based cgpt stress test"
 CRITERIA = "This test will fail if changing cgpt fails to switch kernel"
 ATTRIBUTES = "suite:faft, suite:faft_dev, suite:faft_stress"

@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_CorruptBothFwBodyAB"
+NAME = "firmware_CorruptBothFwBodyAB.dev"
 PURPOSE = "Servo based both firmware body A and B corruption test"
 CRITERIA = "This test will fail if firmware does not enter recovery mode"
 ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv3"

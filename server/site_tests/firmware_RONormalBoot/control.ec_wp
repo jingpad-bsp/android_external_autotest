@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_RONormalBoot"
+NAME = "firmware_RONormalBoot.ec_wp"
 PURPOSE = "Servo based firmware RO normal boot test"
 CRITERIA = "This test will fail if disabling RO normal boot flag boots failed"
 ATTRIBUTES = "suite:faft, suite:faft_ec, suite:faft_ec_wp"

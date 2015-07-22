@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_TryFwB"
+NAME = "firmware_TryFwB.ec_wp"
 PURPOSE = "Servo based RW firmware B boot test"
 CRITERIA = "This test will fail if firmware does not switch to firmware B"
 ATTRIBUTES = "suite:faft, suite:faft_ec, suite:faft_ec_wp"

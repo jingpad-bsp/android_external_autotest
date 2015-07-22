@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_RollbackFirmware"
+NAME = "firmware_RollbackFirmware.dev"
 PURPOSE = "Servo based firmware rollback test."
 CRITERIA = "This test will fail if firmware rollback doesn't fail verification."
 ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv3"
