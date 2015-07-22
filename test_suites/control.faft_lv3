@@ -17,12 +17,13 @@ DOC = """
 This test suite runs FAFT (Fully Automated Firmware Test) for BIOS that should
 all pass and that verifies the BIOS fit Chrome OS verified-boot requirements.
 
-All BIOS tests are categorized into 4 test levels:
+All BIOS tests are categorized into 5 test levels:
   Level-1: Basic BIOS tests which verify basic vboot functions.
   Level-2: Recovery BIOS tests which need external USB disk.
   Level-3: Corruption BIOS tests which modify firmware/kernel image.
            These tests may corrupt the system if any failure happens.
   Level-4: Advanced BIOS tests which verify not-so-critical features.
+  Level-5: Firmware update tests which update firmware/kernel image.
 
 This suite runs all Level-3 tests.
 

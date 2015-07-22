@@ -14,8 +14,8 @@ This test will fail if following requrements are met:
 1. fwid does not match shellball's (/usr/sbin/chromeos-firmwareupdate) fwid
 2. Kernel subkey version does not match original kernel subkey version.
 """
-ATTRIBUTES = "suite:faft_update"
-SUITE = "faft_update"
+ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_normal, suite:faft_lv5"
+SUITE = "faft,faft_bios,faft_normal,faft_lv5"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"

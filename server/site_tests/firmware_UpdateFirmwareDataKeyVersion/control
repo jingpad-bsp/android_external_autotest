@@ -19,8 +19,10 @@ This test will fail if following requrements are met:
 1. fwid does not match shellball's (/usr/sbin/chromeos-firmwareupdate) fwid
 2. Firmware datakey version does not match original datakey version.
 """
-ATTRIBUTES = "suite:faft_update"
-SUITE = "faft_update"
+# TODO(waihong): Add back to the regular FAFT suite when the TPM recovery
+# is added to the lab infrastructure.
+ATTRIBUTES = "suite:faft_lv5"
+SUITE = "faft_lv5"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"

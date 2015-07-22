@@ -20,8 +20,10 @@ This test will fail if one of the following conditions is met:
 3. Firmware version does not increase after firmware update.
 4. Firmware version does not recover to original version after recovery.
 """
-ATTRIBUTES = "suite:faft_update"
-SUITE = "faft_update"
+# TODO(waihong): Add back to the regular FAFT suite when the TPM recovery
+# is added to the lab infrastructure.
+ATTRIBUTES = "suite:faft_lv5"
+SUITE = "faft_lv5"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"

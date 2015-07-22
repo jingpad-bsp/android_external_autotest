@@ -38,9 +38,9 @@ suite:faft_lv1
 suite:faft_lv2
 suite:faft_lv3
 suite:faft_lv4
+suite:faft_lv5
 suite:faft_normal
 suite:faft_stress
-suite:faft_update
 suite:faft_update_ec
 suite:gpu_hang
 suite:graphics
