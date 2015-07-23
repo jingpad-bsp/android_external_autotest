@@ -18,6 +18,7 @@ PUSH_ORDER = {'database': 0,
               'drone': 1,
               'shard': 1,
               'golo_proxy': 1,
+              'afe': 2,
               'scheduler': 2,
               'host_scheduler': 2,
               'suite_scheduler': 2}
