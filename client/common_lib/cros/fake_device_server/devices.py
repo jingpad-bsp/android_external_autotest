@@ -6,6 +6,7 @@
 
 from cherrypy import tools
 import logging
+import time
 
 import common
 from fake_device_server import common_util
@@ -71,6 +72,10 @@ class Devices(resource_method.ResourceMethod):
 
         # Add server fields.
         resource['kind'] = 'clouddevices#device'
+        current_time_ms = str(int(round(time.time() * 1000)))
+        resource['creationTimeMs'] = current_time_ms
+        resource['lastUpdateTimeMs'] = current_time_ms
+        resource['lastSeenTimeMs'] = current_time_ms
 
 
     def create_device(self, api_key, device_config):
@@ -102,6 +107,9 @@ class Devices(resource_method.ResourceMethod):
         """
         self._fail_control_handler.ensure_not_in_failure_mode()
         id, api_key, _ = common_util.parse_common_args(args, kwargs)
+        if not api_key:
+            access_token = common_util.get_access_token()
+            api_key = self._oauth.get_api_key_from_access_token(access_token)
         if id:
             return self.resource.get_data_val(id, api_key)
         else:
@@ -175,7 +183,7 @@ class Devices(resource_method.ResourceMethod):
                      device_id, data)
         new_device = self.resource.update_data_val(device_id, api_key,
                                                    data_in=data)
-        return {}  # TODO(wiley) No idea what GCD returns here, leave it blank.
+        return data
 
 
     def DELETE(self, *args, **kwargs):
