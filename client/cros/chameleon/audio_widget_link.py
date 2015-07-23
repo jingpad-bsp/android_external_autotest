@@ -314,6 +314,7 @@ class HDMIWidgetLink(WidgetLink):
     # This is the default channel map for 2-channel data recorded on
     # Chameleon through HDMI cable.
     _DEFAULT_CHANNEL_MAP = [1, 0, None, None, None, None, None, None]
+    _DELAY_AFTER_PLUG_SECONDS = 6
 
     def __init__(self):
         super(HDMIWidgetLink, self).__init__()
@@ -360,6 +361,7 @@ class HDMIWidgetLink(WidgetLink):
         logging.info(
                 'Plug HDMI cable output. This is emulated on Chameleon port')
         widget.handler.plug()
+        time.sleep(self._DELAY_AFTER_PLUG_SECONDS)
 
 
     def _unplug_output(self, widget):

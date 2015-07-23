@@ -27,7 +27,6 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
     version = 2
     DELAY_BEFORE_PLAYBACK = 2
     DELAY_AFTER_PLAYBACK = 2
-    DELAY_AFTER_BINDING = 2
 
     def run_once(self, host):
         edid_path = os.path.join(self.bindir,
@@ -57,7 +56,6 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                     'Can not find HDMI port, perhaps HDMI is not connected?')
         with hdmi_port.use_edid_file(edid_path):
             with chameleon_audio_helper.bind_widgets(binder):
-                time.sleep(self.DELAY_AFTER_BINDING)
                 audio_facade = factory.create_audio_facade()
                 output_nodes, _ = audio_facade.get_selected_node_types()
                 if output_nodes != ['HDMI']:
