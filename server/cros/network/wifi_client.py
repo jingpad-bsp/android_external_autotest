@@ -992,6 +992,22 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self.assert_disconnect_count(0)
 
 
+    @contextmanager
+    def assert_disconnect_event(self):
+        """Context asserting at least one disconnect for the context lifetime.
+
+        Creates an iw logger during the lifetime of the context and asserts
+        that the client disconnects at least one time.
+
+        """
+        with self.iw_runner.get_event_logger() as logger:
+            logger.start()
+            yield
+            logger.stop()
+            if logger.get_disconnect_count() == 0:
+                raise error.TestFail('Client did not disconnect')
+
+
     def get_num_card_resets(self):
         """Get card reset count."""
         reset_msg = 'mwifiex_sdio_card_reset'
@@ -1001,6 +1017,33 @@ class WiFiClient(site_linux_system.LinuxSystem):
             return 0
         count = int(result.stdout.strip())
         return count
+
+
+    def get_disconnect_reasons(self):
+        """Get disconnect reason codes."""
+        disconnect_reason_msg = "updated DisconnectReason to ";
+        disconnect_reason_cleared = "clearing DisconnectReason for ";
+        result = self.host.run('grep -E "(%s|%s)" /var/log/net.log' %
+                               (disconnect_reason_msg,
+                               disconnect_reason_cleared),
+                               ignore_status=True)
+        if result.exit_status == 1:
+            return None
+
+        lines = result.stdout.strip().split('\n')
+        disconnect_reasons = []
+        disconnect_reason_regex = re.compile(' to (\D?\d+)')
+
+        found = False
+        for line in reversed(lines):
+          match = disconnect_reason_regex.search(line)
+          if match is not None:
+            disconnect_reasons.append(match.group(1))
+            found = True
+          else:
+            if (found):
+                break
+        return list(reversed(disconnect_reasons))
 
 
     def release_wifi_if(self):
