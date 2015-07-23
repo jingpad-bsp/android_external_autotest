@@ -406,7 +406,8 @@ class ESMetadata(object):
                           self.index, self.host, self.port)
             return None
         result = self.es.search(index=self.index, body=query,
-                                timeout=DEFAULT_TIMEOUT)
+                                timeout=DEFAULT_TIMEOUT,
+                                request_timeout=DEFAULT_TIMEOUT)
         # Check if all matched records are returned. It could be the size is
         # set too small. Special case for size set to 1, as that means that
         # the query cares about the first matched entry.
