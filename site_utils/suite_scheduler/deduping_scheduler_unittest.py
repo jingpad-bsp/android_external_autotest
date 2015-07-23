@@ -30,6 +30,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     """
 
     _BUILD = 'build'
+    _BUILDS = {'cros-version': 'build'}
     _BOARD = 'board'
     _SUITE = 'suite'
     _POOL = 'pool'
@@ -68,16 +69,18 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith='control.'+self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE,
+                          created_on__gte=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to schedule; allow it to succeed.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
-                     build=self._BUILD,
+                     builds=self._BUILDS,
                      check_hosts=False,
                      pool=self._POOL,
                      num=self._NUM,
                      priority=self._PRIORITY,
+                     test_source_build=None,
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndReturn(7)
@@ -98,7 +101,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # A similar suite has already been scheduled.
         self.afe.get_jobs(
             name__startswith=self._BUILD,
-            name__endswith='control.'+self._SUITE).AndReturn(['42'])
+            name__endswith='control.'+self._SUITE,
+            created_on__gte=mox.IgnoreArg()).AndReturn(['42'])
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
@@ -129,11 +133,12 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
-                     build=self._BUILD,
+                     builds=self._BUILDS,
                      check_hosts=False,
                      num=None,
                      pool=self._POOL,
                      priority=self._PRIORITY,
+                     test_source_build=None,
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndReturn(7)
@@ -155,7 +160,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # Barf while checking for similar suites.
         self.afe.get_jobs(
             name__startswith=self._BUILD,
-            name__endswith='control.'+self._SUITE).AndRaise(Exception())
+            name__endswith='control.'+self._SUITE,
+            created_on__gte=mox.IgnoreArg()).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.DedupException,
                           self.scheduler.ScheduleSuite,
@@ -174,16 +180,18 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith='control.'+self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE,
+                          created_on__gte=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to create a job for the suite; fail it.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
-                     build=self._BUILD,
+                     builds=self._BUILDS,
                      check_hosts=False,
                      num=None,
                      pool=None,
                      priority=self._PRIORITY,
+                     test_source_build=None,
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndReturn(None)
@@ -205,16 +213,18 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith='control.'+self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE,
+                          created_on__gte=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to create a job for the suite; barf on it.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
-                     build=self._BUILD,
+                     builds=self._BUILDS,
                      check_hosts=False,
                      num=None,
                      pool=None,
                      priority=self._PRIORITY,
+                     test_source_build=None,
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndRaise(Exception())
@@ -248,18 +258,20 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self._SetupLabStatus(self._BUILD)
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
-                          name__endswith='control.'+self._SUITE).AndReturn([])
+                          name__endswith='control.'+self._SUITE,
+                          created_on__gte=mox.IgnoreArg()).AndReturn([])
         message = 'Control file not found.'
         exception = error.ControlFileNotFound(message)
         site_utils.get_sheriffs(lab_only=True).AndReturn(['deputy1', 'deputy2'])
         self.afe.run('create_suite_job',
                      name=self._SUITE,
                      board=self._BOARD,
-                     build=self._BUILD,
+                     builds=self._BUILDS,
                      check_hosts=False,
                      pool=self._POOL,
                      num=self._NUM,
                      priority=self._PRIORITY,
+                     test_source_build=None,
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False).AndRaise(exception)

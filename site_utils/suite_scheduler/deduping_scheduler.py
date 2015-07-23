@@ -2,12 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import logging
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
+
+
+# Number of days back to search for existing job.
+SEARCH_JOB_MAX_DAYS = 14
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
@@ -46,7 +52,7 @@ class DedupingScheduler(object):
         self._file_bug = file_bug
 
 
-    def _ShouldScheduleSuite(self, suite, board, build):
+    def _ShouldScheduleSuite(self, suite, board, test_source_build):
         """Return True if |suite| has not yet been run for |build| on |board|.
 
         True if |suite| has not been run for |build| on |board|, and
@@ -54,26 +60,32 @@ class DedupingScheduler(object):
 
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param board: the board to run the suite on, e.g. x86-alex
-        @param build: the build to install e.g.
-                      x86-alex-release/R18-1655.0.0-a1-b1584.
+        @param test_source_build: Build with the source of tests.
+
         @return False if the suite was already scheduled, True if not
         @raise DedupException if the AFE raises while searching for jobs.
+
         """
         try:
-            site_utils.check_lab_status(build)
+            site_utils.check_lab_status(test_source_build)
         except site_utils.TestLabException as ex:
             logging.debug('Skipping suite %s, board %s, build %s:  %s',
-                          suite, board, build, str(ex))
+                          suite, board, test_source_build, str(ex))
             return False
         try:
-            return not self._afe.get_jobs(name__startswith=build,
-                                          name__endswith='control.'+suite)
+            start_time = str(datetime.datetime.now() -
+                             datetime.timedelta(days=SEARCH_JOB_MAX_DAYS))
+            return not self._afe.get_jobs(
+                    name__startswith=test_source_build,
+                    name__endswith='control.'+suite,
+                    created_on__gte=start_time)
         except Exception as e:
             raise DedupException(e)
 
 
     def _Schedule(self, suite, board, build, pool, num, priority, timeout,
-                  file_bugs=False):
+                  file_bugs=False, firmware_rw_build=None,
+                  test_source_build=None):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -89,25 +101,38 @@ class DedupingScheduler(object):
                          client.common_lib.priorities.Priority.
         @param timeout: The max lifetime of the suite in hours.
         @param file_bugs: True if bug filing is desired for this suite.
+        @param firmware_rw_build: Firmware build to update RW firmware. Default
+                                  to None.
+        @param test_source_build: Build that contains the server-side test code.
+                                  Default to None to use the ChromeOS build
+                                  (defined by `build`).
+
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
+
         """
         try:
+            builds = {provision.CROS_VERSION_PREFIX: build}
+            if firmware_rw_build:
+                builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
             logging.info('Scheduling %s on %s against %s (pool: %s)',
-                         suite, build, board, pool)
+                         suite, builds, board, pool)
             if self._afe.run(
                         'create_suite_job', name=suite, board=board,
-                        build=build, check_hosts=False, num=num, pool=pool,
+                        builds=builds, check_hosts=False, num=num, pool=pool,
                         priority=priority, timeout=timeout, file_bugs=file_bugs,
-                        wait_for_results=file_bugs) is not None:
+                        wait_for_results=file_bugs,
+                        test_source_build=test_source_build) is not None:
                 return True
             else:
                 raise ScheduleException(
-                    "Can't schedule %s for %s." % (suite, build))
+                    "Can't schedule %s for %s." % (suite, builds))
         except (error.ControlFileNotFound, error.ControlFileEmpty,
                 error.ControlFileMalformed, error.NoControlFileList) as e:
             if self._file_bug:
-                b = reporting.SuiteSchedulerBug(suite, build, board, e)
+                # File bug on test_source_build if it's specified.
+                b = reporting.SuiteSchedulerBug(
+                        suite, test_source_build or build, board, e)
                 # If a bug has filed with the same <suite, build, error type>
                 # will not file again, but simply gets the existing bug id.
                 bid, _ = reporting.Reporter().report(
@@ -121,7 +146,8 @@ class DedupingScheduler(object):
 
 
     def ScheduleSuite(self, suite, board, build, pool, num, priority, timeout,
-                      force=False, file_bugs=False):
+                      force=False, file_bugs=False, firmware_rw_build=None,
+                      test_source_build=None):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -129,7 +155,7 @@ class DedupingScheduler(object):
 
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param board: the board to run the suite on, e.g. x86-alex
-        @param build: the build to install e.g.
+        @param build: the ChromeOS build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
         @param num: the number of devices across which to shard the test suite.
@@ -139,13 +165,22 @@ class DedupingScheduler(object):
         @param timeout: The max lifetime of the suite in hours.
         @param force: Always schedule the suite.
         @param file_bugs: True if bug filing is desired for this suite.
+        @param firmware_rw_build: Firmware build to update RW firmware. Default
+                                  to None.
+        @param test_source_build: Build with the source of tests. Default to
+                                  None to use the ChromeOS build.
+
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
         @raise ScheduleException if the suite cannot be scheduled.
+
         """
-        if force or self._ShouldScheduleSuite(suite, board, build):
+        if (force or self._ShouldScheduleSuite(suite, board,
+                                               test_source_build or build)):
             return self._Schedule(suite, board, build, pool, num, priority,
-                                  timeout, file_bugs=file_bugs)
+                                  timeout, file_bugs=file_bugs,
+                                  firmware_rw_build=firmware_rw_build,
+                                  test_source_build=test_source_build)
         return False
 
 

@@ -34,6 +34,7 @@ class FakeTask(task.Task):
         self.Run(mox.IgnoreArg(),
                  mox.IgnoreArg(),
                  mox.IgnoreArg(),
+                 mox.IgnoreArg(),
                  mox.IgnoreArg()).InAnyOrder('tasks').AndReturn(True)
 
 
@@ -46,6 +47,7 @@ class FakeOneShot(FakeTask):
     def Arm(self):
         """Expect to be triggered once, and to ask for self-destruction."""
         self.Run(mox.IgnoreArg(),
+                 mox.IgnoreArg(),
                  mox.IgnoreArg(),
                  mox.IgnoreArg(),
                  mox.IgnoreArg()).AndReturn(False)

@@ -190,8 +190,9 @@ class TaskTest(TaskTestBase):
         """Test running a recurring task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 False, file_bugs=self._FILE_BUGS).AndReturn(
-                                        True)
+                                 False, file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -203,8 +204,9 @@ class TaskTest(TaskTestBase):
                            num=expected_sharding)
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, expected_sharding, None, None,
-                                 False, file_bugs=self._FILE_BUGS).AndReturn(
-                                        True)
+                                 False, file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(mytask.Run(self.sched, self._MAP, self._BOARD))
 
@@ -213,8 +215,9 @@ class TaskTest(TaskTestBase):
         """Test running a task that schedules a duplicate suite task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 False, file_bugs=self._FILE_BUGS).AndReturn(
-                                         False)
+                                 False, file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -256,8 +259,9 @@ class TaskTest(TaskTestBase):
         t = task.Task(self._TASK_NAME, self._SUITE, [])
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None,
-                                 False, file_bugs=self._FILE_BUGS).AndReturn(
-                                         True)
+                                 False, file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
@@ -267,8 +271,9 @@ class TaskTest(TaskTestBase):
         # Barf while scheduling.
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None, self._PRIORITY,
-            self._TIMEOUT, False, file_bugs=self._FILE_BUGS).AndRaise(
-                deduping_scheduler.ScheduleException('Simulated Failure'))
+            self._TIMEOUT, False, file_bugs=self._FILE_BUGS,
+            firmware_rw_build=None, test_source_build=None).AndRaise(
+                    deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -277,8 +282,9 @@ class TaskTest(TaskTestBase):
         """Test force running a recurring task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, self._PRIORITY, self._TIMEOUT,
-                                 True, file_bugs=self._FILE_BUGS).AndReturn(
-                                         True)
+                                 True, file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD, True))
 
@@ -307,7 +313,9 @@ class OneShotTaskTest(TaskTestBase):
         """Test running a one-shot task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, False,
-                                 file_bugs=self._FILE_BUGS).AndReturn(True)
+                                 file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -316,7 +324,9 @@ class OneShotTaskTest(TaskTestBase):
         """Test running a one-shot task that schedules a dup suite task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, False,
-                                 file_bugs=self._FILE_BUGS).AndReturn(False)
+                                 file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(False)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -326,7 +336,8 @@ class OneShotTaskTest(TaskTestBase):
         # Barf while scheduling.
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None,
-            None, None, False, file_bugs=self._FILE_BUGS).AndRaise(
+            None, None, False, file_bugs=self._FILE_BUGS,
+            firmware_rw_build=None, test_source_build=None).AndRaise(
                 deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
@@ -336,7 +347,9 @@ class OneShotTaskTest(TaskTestBase):
         """Test force running a one-shot task."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, True,
-                                 file_bugs=self._FILE_BUGS).AndReturn(True)
+                                 file_bugs=self._FILE_BUGS,
+                                 firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
                                        force=True))
@@ -346,7 +359,8 @@ class OneShotTaskTest(TaskTestBase):
         """Test that file_bugs is passed from the task to ScheduleSuite."""
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, True,
-                                 file_bugs=True).AndReturn(True)
+                                 file_bugs=True, firmware_rw_build=None,
+                                 test_source_build=None).AndReturn(True)
         self.mox.ReplayAll()
         self.task._file_bugs = True
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,

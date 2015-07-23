@@ -181,7 +181,7 @@ class BaseEvent(object):
         # we need to iterate over an immutable copy of self._tasks
         for task in list(self.tasks):
             if task.AvailableHosts(scheduler, board):
-                if not task.Run(scheduler, branch_builds, board, force):
+                if not task.Run(scheduler, branch_builds, board, force, self._mv):
                     self._tasks.remove(task)
             elif task.ShouldHaveAvailableHosts():
                 logging.warning('Skipping %s on %s, due to lack of hosts.',

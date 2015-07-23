@@ -13,3 +13,14 @@ class Labels:
     @var POOL_PREFIX The stright with which pool labels are prefixed."""
     BOARD_PREFIX = 'board:'
     POOL_PREFIX = 'pool:'
+
+
+class Builds:
+    """Constants related to build type.
+
+    @var FIRMWARE_RW: The string indicating the given build is used to update
+                      RW firmware.
+    @var CROS: The string indicating the given build is used to update ChromeOS.
+    """
+    FIRMWARE_RW = 'firmware_rw'
+    CROS = 'cros'

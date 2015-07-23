@@ -93,6 +93,7 @@ class ManifestVersions(object):
     _BOARD_MANIFEST_GLOB_PATTERN = 'build-name/%s-*/pass/'
     _BOARD_MANIFEST_RE_PATTERN = (r'build-name/%s-([^-]+)'
                                   r'(?:-group)?/pass/(\d+)/([0-9.]+)\.xml')
+    _BOARD_BRANCH_MANIFEST_GLOB_PATTERN = 'build-name/%s-%s/pass/'
 
 
     def __init__(self, tmp_repo_dir=None):
@@ -109,23 +110,23 @@ class ManifestVersions(object):
 
 
     def AnyManifestsSinceRev(self, revision):
-      """Determine if any builds passed since git |revision|.
+        """Determine if any builds passed since git |revision|.
 
-      @param revision: the git revision to look back to.
-      @return True if any builds have passed; False otherwise.
-      """
-      manifest_paths = self._ExpandGlobMinusPrefix(
-          self._tempdir.name, self._ANY_MANIFEST_GLOB_PATTERN)
-      if not manifest_paths:
-          logging.error('No paths to check for manifests???')
-          return False
-      logging.info('Checking if any manifests landed since %s', revision)
-      log_cmd = self._BuildCommand('log',
-                                   revision + '..HEAD',
-                                   '--pretty="format:%H"',
-                                   '--',
-                                   ' '.join(manifest_paths))
-      return _SystemOutput(log_cmd).strip() != ''
+        @param revision: the git revision to look back to.
+        @return True if any builds have passed; False otherwise.
+        """
+        manifest_paths = self._ExpandGlobMinusPrefix(
+                self._tempdir.name, self._ANY_MANIFEST_GLOB_PATTERN)
+        if not manifest_paths:
+            logging.error('No paths to check for manifests???')
+            return False
+        logging.info('Checking if any manifests landed since %s', revision)
+        log_cmd = self._BuildCommand('log',
+                                     revision + '..HEAD',
+                                     '--pretty="format:%H"',
+                                     '--',
+                                     ' '.join(manifest_paths))
+        return _SystemOutput(log_cmd).strip() != ''
 
 
     def Initialize(self):
@@ -199,6 +200,39 @@ class ManifestVersions(object):
             self._QueryManifestsSinceRev(rev, board))
 
 
+    def GetLatestManifest(self, board, build_type, milestone=None):
+        """Get the latest manifest of a given board and type.
+
+        @param board: the board whose manifests we want to check for.
+        @param build_type: Type of a build, e.g., release, factory or firmware.
+        @param milestone: Milestone to look for the latest manifest. Default to
+                          None, i.e., use the latest milestone.
+
+        @return: (milestone, manifest), e.g., (46, '7268.0.0')
+
+        """
+        milestones_folder = os.path.join(
+                self._tempdir.name,
+                self._BOARD_BRANCH_MANIFEST_GLOB_PATTERN % (board, build_type))
+        if not milestone:
+            try:
+                milestone_names = os.listdir(milestones_folder)
+            except OSError:
+                milestone_names = None
+            if not milestone_names:
+                raise QueryException('There is no milestone existed in %s.' %
+                                     milestones_folder)
+            milestone = max([m for m in milestone_names if m.isdigit()])
+        manifests_folder = os.path.join(milestones_folder, str(milestone))
+        manifests = [m.strip('.xml') for m in  os.listdir(manifests_folder)
+                     if m.endswith('.xml')]
+        if not manifests:
+            raise QueryException('There is no build existed in %s.' %
+                                 manifests_folder)
+        manifests.sort(key=version.LooseVersion)
+        return milestone, manifests[-1]
+
+
     def _GetManifests(self, matcher, manifest_paths):
         """Parse a list of manifest_paths into a map of branch:manifests.
 
@@ -221,7 +255,7 @@ class ManifestVersions(object):
             match = matcher.match(manifest_path)
             if not match:
                 logging.warning('Failed to parse path %s, regex: %s',
-                              manifest_path, matcher.pattern)
+                                manifest_path, matcher.pattern)
                 continue
             groups = match.groups()
             config_type, milestone, manifest = groups

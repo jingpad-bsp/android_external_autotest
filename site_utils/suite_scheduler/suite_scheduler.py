@@ -252,6 +252,11 @@ def main():
         if options.events:
             # Act as though listed events have just happened.
             keywords = re.split('\s*,\s*', options.events)
+            if not options.tmp_repo_dir:
+                logging.warn('To run a list of events, you may need to use '
+                             '--repo_dir to specify a folder that already has '
+                             'manifest repo set up. This is needed for suites '
+                             'requiring firmware update.')
             logging.info('Forcing events: %r', keywords)
             d.ForceEventsOnceForBuild(keywords, options.build)
         else:
