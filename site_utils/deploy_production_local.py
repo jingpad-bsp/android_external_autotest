@@ -25,7 +25,7 @@ import common
 from autotest_lib.client.common_lib import global_config
 
 # How long after restarting a service do we watch it to see if it's stable.
-SERVICE_STABILITY_TIMER = 60
+SERVICE_STABILITY_TIMER = 120
 
 
 class DirtyTreeException(Exception):
