@@ -87,6 +87,8 @@ class MediaTestFactory(object):
         self.channel_spec_filename = 'channel_spec.conf'
         self.golden_checksum_filename = 'golden_checksums.txt'
 
+        self.supported_boards = []
+
         # HTML file specs
         self.html_filename = ('vimeo.html' if video_name == 'vimeo' else
                               'video.html')
@@ -214,6 +216,9 @@ class MediaTestFactory(object):
 
         self.parser.read(os.path.join(self.autotest_cros_video_dir,
                                       self.device_spec_filename))
+
+        self.supported_boards = self.parser.sections()
+
         multires = self.parser.getboolean(dut, 'multires')
 
         if multires:
@@ -305,6 +310,18 @@ class MediaTestFactory(object):
                             self.video_def,
                             'golden_images',
                             self.device_under_test)
+
+
+    def is_board_supported(self):
+        """
+        Determines the if the board the test is being run on is supported.
+
+        @return: True if board is supported, False otherwise.
+
+        """
+
+        dut = utils.get_current_board().replace('board:', '')
+        return dut in self.supported_boards
 
 
     def make_screenshot_filenamer(self):

@@ -55,9 +55,6 @@ class video_GlitchDetection(test.test):
 
         """
         self.player = self.factory.make_video_player()
-        self.test_dir = self.factory.test_working_dir
-        self.golden_images_dir = self.factory.local_golden_images_dir
-        self.remote_golden_images_dir = self.factory.golden_images_remote_dir
 
         file_utils.make_leaf_dir(self.golden_images_dir)
         file_utils.rm_dir_if_exists(self.test_dir)
@@ -358,6 +355,14 @@ class video_GlitchDetection(test.test):
                     video_name=video_name,
                     video_format=self.video_format,
                     video_def=self.video_def)
+
+            self.test_dir = self.factory.test_working_dir
+            self.golden_images_dir = self.factory.local_golden_images_dir
+            self.remote_golden_images_dir = self.factory.golden_images_remote_dir
+
+            if not self.factory.is_board_supported:
+                logging.debug("Board not supported. End Test.")
+                return
 
             self.setup_image_capturing()
 
