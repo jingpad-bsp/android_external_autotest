@@ -8,7 +8,6 @@ import time
 from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import service_stopper
 
 # Measurement duration [seconds] for one interation.
 MEASUREMENT_DURATION = 10
@@ -17,11 +16,6 @@ TOTAL_TEST_DURATION = 600 # change the test time to 7 days [seconds].
 
 # Time to exclude from calculation after launching the demo [seconds].
 STABILIZATION_DURATION = 20
-
-# List of thermal throttling services that should be disabled.
-# - temp_metrics for link.
-# - thermal for daisy, snow, pit etc.
-THERMAL_SERVICES = ['temp_metrics', 'thermal']
 
 # Time in seconds to wait for cpu idle until giveup.
 WAIT_FOR_IDLE_CPU_TIMEOUT = 60.0
@@ -35,10 +29,6 @@ class enterprise_KioskPerf(test.test):
     """Enrolls to kiosk mode and monitors cpu/memory usage."""
 
     version = 1
-
-    def initialize(self):
-        self._service_stopper = None
-        self._original_governors = None
 
 
     def test_cpu_usage(self):
@@ -80,15 +70,11 @@ class enterprise_KioskPerf(test.test):
             logging.warn('No credentials found - exiting test.')
             return
 
-        # Stop the thermal service that may change the cpu frequency.
-        self._service_stopper = service_stopper.ServiceStopper(THERMAL_SERVICES)
-        self._service_stopper.stop_services()
-        # Set the scaling governor to performance mode to set the cpu to the
-        # highest frequency available.
-        self._original_governors = utils.set_high_performance_mode()
-
         with chrome.Chrome(auto_login=False) as cr:
-            cr.browser.oobe.NavigateEnterpriseEnrollment(user_id, password)
+            cr.browser.oobe.NavigateGaiaLogin(
+                    user_id, password,
+                    enterprise_enroll=True,
+                    for_user_triggered_enrollment=True)
             time.sleep(STABILIZATION_DURATION)
             self.verify_enrollment(user_id)
             start_time = time.time()
@@ -105,13 +91,3 @@ class enterprise_KioskPerf(test.test):
                 self.write_perf_keyval(perf_keyval)
                 time.sleep(10)
             perf_file.close()
-
-
-    def cleanup(self):
-        # cleanup() is run by common_lib/test.py.
-        if self._service_stopper:
-            self._service_stopper.restore_services()
-        if self._original_governors:
-            utils.restore_scaling_governor_states(self._original_governors)
-
-        super(enterprise_KioskPerf, self).cleanup()
