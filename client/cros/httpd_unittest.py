@@ -6,7 +6,7 @@
 
 """HTTPlistener unittest."""
 
-import logging, os, sys, threading, urllib
+import logging, os, sys, threading, urllib, unittest
 
 from httpd import HTTPListener, SecureHTTPListener
 
@@ -95,3 +95,7 @@ if __name__ == '__main__':
         run_server()
     else:
         test()
+
+
+if __name__ == '__main__':
+    unittest.main()

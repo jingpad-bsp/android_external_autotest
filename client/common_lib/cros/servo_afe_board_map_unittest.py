@@ -19,3 +19,7 @@ class ServoAfeBoardMapTest(unittest.TestCase):
         self.assertEqual(afe_map('gizmo'), 'panther')
         self.assertEqual(afe_map('link_freon'), 'link')
         self.assertEqual(afe_map('stumpy_moblab'), 'stumpy')
+
+
+if __name__ == '__main__':
+    unittest.main()

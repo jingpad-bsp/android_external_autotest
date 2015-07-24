@@ -7,6 +7,7 @@
 """Unit tests for server/cros/host_lock_manager.py."""
 
 import mox
+import unittest
 
 import common
 from autotest_lib.server import frontend
@@ -220,3 +221,7 @@ class HostLockManagerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.manager._host_modifier(hosts, self.manager.LOCK)
         self.assertEquals(set([self.HOST2]), self.manager.locked_hosts)
+
+
+if __name__ == '__main__':
+    unittest.main()

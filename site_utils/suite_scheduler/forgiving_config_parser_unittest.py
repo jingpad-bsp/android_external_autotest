@@ -46,3 +46,7 @@ class ForgivingConfigParserTest(mox.MoxTestBase):
         to_test.reread()
         self.assertEquals(None, to_test.getstring(section, option1))
         self.assertEquals(value2, to_test.getstring(section, option2))
+
+
+if __name__ == '__main__':
+    unittest.main()

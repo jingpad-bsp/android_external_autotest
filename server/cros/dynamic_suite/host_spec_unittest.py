@@ -9,6 +9,8 @@
 import mox
 import unittest
 
+import common
+
 from autotest_lib.server.cros.dynamic_suite import host_spec
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeHost
 
@@ -176,3 +178,7 @@ class HostGroupTest(mox.MoxTestBase):
 
         group.mark_host_success('h1')
         self.assertTrue(group.enough_hosts_succeeded())
+
+
+if __name__ == '__main__':
+    unittest.main()

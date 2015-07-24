@@ -6,8 +6,10 @@
 
 """Unit tests for server/cros/dynamic_suite/telemetry_runner.py."""
 import mox
+import unittest
 
 import common
+
 from autotest_lib.server.cros import telemetry_runner
 
 
@@ -176,3 +178,7 @@ class TelemetryResultTest(mox.MoxTestBase):
                           '__un_ts__')
         self.assertEquals(result._cleanup_units_string('^^un!ts##/time %'),
                           '__un_ts___per_time_percent')
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+#
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -86,3 +88,7 @@ class ConnectionManagerTests(unittest.TestCase):
         # Confirm that we don't open the connection when the class is
         # instantiated.
         self.assertTrue(connection_manager.db_connection is None)
+
+
+if __name__ == '__main__':
+    unittest.main()

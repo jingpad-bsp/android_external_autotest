@@ -1,8 +1,12 @@
+#!/usr/bin/python
+#
 # Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import unittest
+
+import common
 
 from autotest_lib.client.common_lib.cros.network import iw_runner
 
@@ -207,3 +211,7 @@ class IwRunnerTest(unittest.TestCase):
         for iw_bss_1, iw_bss_2 in zip([self.HT20_IW_BSS, self.HT20_2_IW_BSS],
                                       networks):
             self.verify_values(iw_bss_1, iw_bss_2)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -8,6 +8,9 @@
 """
 
 import mox
+import unittest
+
+import common
 
 from autotest_lib.server.cros.ap_configurators import \
     ap_configurator_config
@@ -239,3 +242,6 @@ class APConfiguratorFactoryTest(mox.MoxTestBase):
                                                            pre_configure=True)
         self.assertEquals([self.mock_ap3], actual)
 
+
+if __name__ == '__main__':
+    unittest.main()

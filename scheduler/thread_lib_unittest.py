@@ -1,3 +1,5 @@
+#!/usr/bin/python
+#
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -7,6 +9,7 @@
 import cPickle
 import logging
 import Queue
+import unittest
 
 import common
 from autotest_lib.client.common_lib import utils
@@ -222,5 +225,5 @@ class DroneThreadLibTest(unittest.TestCase):
         self.god.check_playback()
 
 
-
-
+if __name__ == '__main__':
+    unittest.main()

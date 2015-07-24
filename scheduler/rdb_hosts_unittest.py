@@ -1,3 +1,5 @@
+#!/usr/bin/python
+#
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -163,3 +165,6 @@ class RDBHostTests(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
                 self.db_helper.get_host(hostname=hostname)[0].status ==
                 new_status and client_host.status == new_status)
 
+
+if __name__ == '__main__':
+    unittest.main()

@@ -46,3 +46,7 @@ class DnsnameMangerUnittest(unittest.TestCase):
         self.assertEquals(
                 TESTER_FROM_OUTSIDE_LAB,
                 dnsname_mangler.get_tester_addr(HOST_FROM_OUTSIDE_LAB))
+
+
+if __name__ == '__main__':
+    unittest.main()

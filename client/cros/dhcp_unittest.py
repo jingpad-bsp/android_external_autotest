@@ -9,6 +9,8 @@ import socket
 import sys
 import time
 
+import common
+
 from autotest_lib.client.cros import dhcp_handling_rule
 from autotest_lib.client.cros import dhcp_packet
 from autotest_lib.client.cros import dhcp_test_server

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+#
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -5,6 +7,9 @@
 """Unittests for server/cros/dynamic_suite/frontend_wrappers.py"""
 
 import mox
+import unittest
+
+import common
 
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
@@ -78,3 +83,7 @@ class FrontendWrappersTest(mox.MoxTestBase):
     # The number of retries shouldn't be too large despite the small
     # delay as a result of backing off in an exponential fashion.
     self.assertEquals(max_retry, 18)
+
+
+if __name__ == '__main__':
+    unittest.main()
