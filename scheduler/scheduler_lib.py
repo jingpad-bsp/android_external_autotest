@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import readonly_connection
+from autotest_lib.server import utils as server_utils
 
 
 DB_CONFIG_SECTION = 'AUTOTEST_WEB'
@@ -42,24 +43,12 @@ class SchedulerError(Exception):
     """Raised by the scheduler when an inconsistent state occurs."""
 
 
-class Singleton(type):
-    """Enforce that only one client class is instantiated per process."""
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """Fetch the instance of a class to use for subsequent calls."""
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(
-                    *args, **kwargs)
-        return cls._instances[cls]
-
-
 class ConnectionManager(object):
     """Manager for the django database connections.
 
     The connection is used through scheduler_models and monitor_db.
     """
-    __metaclass__ = Singleton
+    __metaclass__ = server_utils.Singleton
 
     def __init__(self, readonly=True, autocommit=True):
         """Set global django database options for correct connection handling.
