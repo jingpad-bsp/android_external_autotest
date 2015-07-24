@@ -215,6 +215,7 @@ class Servo(object):
         self._server.hwinit()
         self.set('dut_hub_pwren', 'on')
         self.set('usb_mux_oe1', 'on')
+        self._usb_state = None
         self.switch_usbkey('off')
         if cold_reset:
             self._power_state.reset()
@@ -423,7 +424,10 @@ class Servo(object):
 
 
     def get(self, gpio_name):
-        """Get the value of a gpio from Servod."""
+        """Get the value of a gpio from Servod.
+
+        @param gpio_name Name of the gpio.
+        """
         assert gpio_name
         try:
             return self._server.get(gpio_name)
@@ -434,7 +438,11 @@ class Servo(object):
 
 
     def set(self, gpio_name, gpio_value):
-        """Set and check the value of a gpio using Servod."""
+        """Set and check the value of a gpio using Servod.
+
+        @param gpio_name Name of the gpio.
+        @param gpio_value New setting for the gpio.
+        """
         self.set_nocheck(gpio_name, gpio_value)
         retry_count = Servo.GET_RETRY_MAX
         while gpio_value != self.get(gpio_name) and retry_count:
@@ -448,7 +456,11 @@ class Servo(object):
 
 
     def set_nocheck(self, gpio_name, gpio_value):
-        """Set the value of a gpio using Servod."""
+        """Set the value of a gpio using Servod.
+
+        @param gpio_name Name of the gpio.
+        @param gpio_value New setting for the gpio.
+        """
         assert gpio_name and gpio_value
         logging.info('Setting %s to %s', gpio_name, gpio_value)
         try:
@@ -538,11 +550,11 @@ class Servo(object):
         for test purposes such as restoring a corrupted image or conducting
         an upgrade of ec/fw/kernel as part of a test of a specific image part.
 
-        Args:
-            image_path: Path on the host to the recovery image.
-            make_image_noninteractive: Make the recovery image noninteractive,
-                                       therefore the DUT will reboot
-                                       automatically after installation.
+        @param image_path Path on the host to the recovery image.
+        @param make_image_noninteractive Make the recovery image
+                                   noninteractive, therefore the DUT
+                                   will reboot automatically after
+                                   installation.
         """
         # We're about to start plugging/unplugging the USB key.  We
         # don't know the state of the DUT, or what it might choose
@@ -576,11 +588,12 @@ class Servo(object):
         board specified by the usb_dev.  If no image path is specified
         we use the recovery image already on the usb image.
 
-        Args:
-            image_path: Path on the host to the recovery image.
-            make_image_noninteractive: Make the recovery image noninteractive,
-                                       therefore the DUT will reboot
-                                       automatically after installation.
+        @param image_path Path on the host to the recovery image.
+        @param make_image_noninteractive Make the recovery image
+                                         noninteractive, therefore
+                                         the DUT will reboot
+                                         automatically after
+                                         installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
         self._power_state.power_on(rec_mode=self._power_state.REC_ON)
@@ -606,7 +619,11 @@ class Servo(object):
 
 
     def system(self, command, timeout=None):
-        """Execute the passed in command on the servod host."""
+        """Execute the passed in command on the servod host.
+
+        @param command Command to be executed.
+        @param timeout Maximum number of seconds of runtime allowed.
+        """
         logging.info('Will execute on servo host: %s', command)
         self._servo_host.run(command, timeout=timeout)
 
@@ -615,17 +632,15 @@ class Servo(object):
                       ignore_status=False, args=()):
         """Execute the passed in command on the servod host, return stdout.
 
-        @param command, a string, the command to execute
-        @param timeout, an int, max number of seconds to wait til command
+        @param command a string, the command to execute
+        @param timeout an int, max number of seconds to wait til command
                execution completes
-        @ignore_status, a Boolean, if true - ignore command's nonzero exit
+        @param ignore_status a Boolean, if true - ignore command's nonzero exit
                status, otherwise an exception will be thrown
-        @param args, a tuple of strings, each becoming a separate command line
+        @param args a tuple of strings, each becoming a separate command line
                parameter for the command
-        @return: command's stdout as a string.
+        @return command's stdout as a string.
         """
-        logging.info('Will execute and collect output on servo host: %s %s',
-                     command, ' '.join("'%s'" % x for x in args))
         return self._servo_host.run(command, timeout=timeout,
                                     ignore_status=ignore_status,
                                     args=args).stdout.strip()
