@@ -1010,6 +1010,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     usb_boot_timeout)
         timer.stop()
 
+        logging.info('Resetting the TPM status')
+        self.run('chromeos-tpm-recovery')
+
         install_timer_key = ('servo_install.install_timeout_%s'
                              % install_timeout)
         timer = autotest_stats.Timer(install_timer_key)
@@ -1046,8 +1049,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         Re-install the OS on the DUT by:
         1) installing a test image on a USB storage device attached to the Servo
                 board,
-        2) booting that image in recovery mode, and then
-        3) installing the image with chromeos-install.
+        2) booting that image in recovery mode,
+        3) resetting the TPM status, and then
+        4) installing the image with chromeos-install.
 
         @raises AutoservRepairMethodNA if the device does not have servo
                 support.
