@@ -6,8 +6,8 @@ AUTHOR = 'tienchang'
 NAME = 'network_WiFi_ChaosConnectDisconnect.nightly'
 TIME = 'LONG'
 TEST_TYPE = 'server'
-# TO-DO: tienchang@ to create new suite
-# ATTRIBUTES = 'suite:wifi_interop'
+ATTRIBUTES = 'suite:wifi_interop'
+SUITE = 'wifi_interop'
 # TO-DO: tienchang@ created tmp label for this control file to pick up
 # these 3 devices.
 DEPENDENCIES = 'chaos_dut, chaos_nightly'
