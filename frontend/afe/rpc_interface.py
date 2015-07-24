@@ -713,7 +713,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
                              reboot_before=None, reboot_after=None,
                              parse_failed_repair=None, hostless=False,
                              keyvals=None, drone_set=None, run_reset=True,
-                             require_ssq=None):
+                             require_ssp=None):
     """
     Creates and enqueues a parameterized job.
 
