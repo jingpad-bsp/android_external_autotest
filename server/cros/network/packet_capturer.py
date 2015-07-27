@@ -5,6 +5,7 @@
 import collections
 import logging
 import os.path
+import time
 import uuid
 
 from autotest_lib.client.common_lib import error
@@ -139,6 +140,8 @@ class DisabledPacketCapturer(object):
 
 class PacketCapturer(object):
     """Delegate with capability to initiate packet captures on a remote host."""
+
+    LIBPCAP_POLL_FREQ_SECS = 1
 
     @property
     def capture_running(self):
@@ -313,6 +316,10 @@ class PacketCapturer(object):
         If |capture_pid| is given, stops that capture, otherwise stops all
         ongoing captures.
 
+        This method will sleep for a small amount of time, to ensure that
+        libpcap has completed its last poll(). The caller must ensure that
+        no unwanted traffic is received during this time.
+
         @param capture_pid int pid of ongoing packet capture or None.
         @param local_save_dir path to directory to save pcap file in locally.
         @param local_pcap_filename name of file to store pcap in
@@ -320,6 +327,8 @@ class PacketCapturer(object):
         @return list of RemoteCaptureResult tuples
 
         """
+        time.sleep(self.LIBPCAP_POLL_FREQ_SECS * 2)
+
         if capture_pid:
             pids_to_kill = [capture_pid]
         else:
