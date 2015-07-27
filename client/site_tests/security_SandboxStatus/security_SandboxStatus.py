@@ -22,8 +22,9 @@ class security_SandboxStatus(test.test):
         except exceptions.EvaluateException:
             return None
 
+
     def _CheckAdequatelySandboxed(self):
-        '''Check that chrome:///sandbox shows "You are adequately sandboxed."'''
+        '''Checks that chrome:///sandbox shows "You are adequately sandboxed."'''
         sandbox_good_js = "document.getElementsByTagName('p')[0].textContent"
         sandbox_good = utils.poll_for_condition(
                 lambda: self._EvaluateJavaScript(sandbox_good_js),
@@ -35,11 +36,12 @@ class security_SandboxStatus(test.test):
             raise error.TestFail('Could not find "You\'re adequately '
                                  'sandboxed." in chrome://sandbox')
 
-    def _CheckGPUCell(self, cell, content, error_msg):
-        '''Checks the content of the cells in the GPU sandbox row.'''
+
+    def _CheckGPUCell(self, row, cell, content):
+        '''Checks the content of a cell in chrome://gpu.'''
 
         gpu_js = ("document.getElementsByTagName('table')"
-                  "[1].rows[1].cells[%d].textContent" % cell)
+                  "[1].rows[%d].cells[%d].textContent" % (row, cell))
         try:
             res = utils.poll_for_condition(
                     lambda: self._EvaluateJavaScript(gpu_js),
@@ -48,8 +50,8 @@ class security_SandboxStatus(test.test):
             raise error.TestError('Failed to evaluate in chrome://gpu "%s"'
                                   % gpu_js)
 
-        if res.find(content) == -1:
-            raise error.TestFail(error_msg)
+        return res.find(content) != -1
+
 
     def run_once(self):
         '''Open various sandbox-related pages and test that we are sandboxed.'''
@@ -59,6 +61,15 @@ class security_SandboxStatus(test.test):
             self._CheckAdequatelySandboxed()
 
             self._tab.Navigate('chrome://gpu')
-            self._CheckGPUCell(0, 'Sandboxed',
-                               'Could not locate "Sandboxed" row in table')
-            self._CheckGPUCell(1, 'true', 'GPU not sandboxed')
+            # GPU "Sandboxed" info can appear in rows 1 or 2.
+            # TODO(crbug.com/513593): Remove this workaround after Chrome uprev's.
+            in_row1 = self._CheckGPUCell(1, 0, 'Sandboxed')
+            in_row2 = self._CheckGPUCell(2, 0, 'Sandboxed')
+
+            if not (in_row1 or in_row2):
+                raise error.TestError('Could not locate "Sandboxed" row in table')
+
+            if in_row1 and not self._CheckGPUCell(1, 1, 'true'):
+                raise error.TestError('GPU not sandboxed')
+            elif in_row2 and not  self._CheckGPUCell(2, 1, 'true'):
+                raise error.TestError('GPU not sandboxed')
