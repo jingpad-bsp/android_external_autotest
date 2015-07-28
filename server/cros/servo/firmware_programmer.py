@@ -22,6 +22,9 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
 
+# Number of seconds for program EC/BIOS to time out.
+FIRMWARE_PROGRAM_TIMEOUT_SEC = 600
+
 class ProgrammerError(Exception):
     """Local exception class wrapper."""
     pass
@@ -90,7 +93,8 @@ class _BaseProgrammer(object):
         self._set_servo_state()
         try:
             logging.debug("Programmer command: %s", self._program_cmd)
-            self._servo.system(self._program_cmd)
+            self._servo.system(self._program_cmd,
+                               timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
         finally:
             self._restore_servo_state()
 
@@ -132,7 +136,8 @@ class FlashromProgrammer(_BaseProgrammer):
             for section in vpd_sections + gbb_section:
                 self._servo.system(' '.join([
                     'flashrom', '-V', '-p', programmer,
-                    '-r', self._fw_main, '-i', '%s:%s' % section]))
+                    '-r', self._fw_main, '-i', '%s:%s' % section]),
+                    timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
 
             # Pack the saved VPD into new firmware
             self._servo.system('cp %s %s' % (self._fw_path, self._fw_main))
@@ -144,7 +149,8 @@ class FlashromProgrammer(_BaseProgrammer):
                     '-w', self._fw_main]
             for section in vpd_sections:
                 pack_cmd.extend(['-i', '%s:%s' % section])
-            self._servo.system(' '.join(pack_cmd))
+            self._servo.system(' '.join(pack_cmd),
+                               timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
 
             # Read original HWID. The output format is:
             #    hardware_id: RAMBI TEST A_A 0128
@@ -159,7 +165,7 @@ class FlashromProgrammer(_BaseProgrammer):
             # Flash the new firmware
             self._servo.system(' '.join([
                     'flashrom', '-V', '-p', programmer,
-                    '-w', self._fw_main]))
+                    '-w', self._fw_main]), timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
         finally:
             self._restore_servo_state()
 

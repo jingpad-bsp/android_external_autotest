@@ -10,7 +10,6 @@ import os
 import logging, re, time, xmlrpclib
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.servo import firmware_programmer
 
 
@@ -618,23 +617,24 @@ class Servo(object):
         return dest_path
 
 
-    def system(self, command, timeout=None):
+    def system(self, command, timeout=3600):
         """Execute the passed in command on the servod host.
 
         @param command Command to be executed.
-        @param timeout Maximum number of seconds of runtime allowed.
+        @param timeout Maximum number of seconds of runtime allowed. Default to
+                       1 hour.
         """
         logging.info('Will execute on servo host: %s', command)
         self._servo_host.run(command, timeout=timeout)
 
 
-    def system_output(self, command, timeout=None,
+    def system_output(self, command, timeout=3600,
                       ignore_status=False, args=()):
         """Execute the passed in command on the servod host, return stdout.
 
         @param command a string, the command to execute
         @param timeout an int, max number of seconds to wait til command
-               execution completes
+               execution completes. Default to 1 hour.
         @param ignore_status a Boolean, if true - ignore command's nonzero exit
                status, otherwise an exception will be thrown
         @param args a tuple of strings, each becoming a separate command line
