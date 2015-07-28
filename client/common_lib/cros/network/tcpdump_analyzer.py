@@ -13,6 +13,7 @@ FRAME_FIELD_WLAN_FRAME_TYPE = 'wlan.fc_type_subtype'
 FRAME_FIELD_WLAN_MGMT_SSID = 'wlan_mgt.ssid'
 RADIOTAP_KNOWN_BAD_FCS_REJECTOR = (
     'not radiotap.flags.badfcs or radiotap.flags.badfcs==0')
+WLAN_BEACON_FRAME_TYPE = '0x08'
 WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
 WLAN_PROBE_REQ_ACCEPTOR = 'wlan.fc.type_subtype==0x04'
 PYSHARK_BROADCAST_SSID = 'SSID: '
@@ -24,11 +25,11 @@ class Frame(object):
     TIME_FORMAT = "%H:%M:%S.%f"
 
 
-    def __init__(self, frametime, bit_rate, mcs_index, probe_ssid):
+    def __init__(self, frametime, bit_rate, mcs_index, ssid):
         self._datetime = frametime
         self._bit_rate = bit_rate
         self._mcs_index = mcs_index
-        self._probe_ssid = probe_ssid
+        self._ssid = ssid
 
 
     @property
@@ -55,13 +56,13 @@ class Frame(object):
 
 
     @property
-    def probe_ssid(self):
+    def ssid(self):
         """
-        The SSID of the probe request, as a string.
+        The SSID of the frame, as a string.
 
-        The value may be None, if the frame is not a probe request.
+        The value may be None, if the frame does not have an SSID.
         """
-        return self._probe_ssid
+        return self._ssid
 
 
     @property
@@ -87,22 +88,6 @@ def _fetch_frame_field_value(frame, field):
         except AttributeError:
             return None
     return layer_object
-
-
-def _match_frame_field_with_value(frame, field, match_value):
-    """
-    Check if the value of |field| within the |frame| matches |match_value|.
-
-    @param frame: Pyshark packet object corresponding to a captured frame.
-    @param field: Field for which the value needs to be extracted from |frame|.
-    @param match_value: Value to be matched.
-
-    @return True if |match_value| macthes the value retrieved from the frame,
-            False otherwise.
-
-    """
-    value = _fetch_frame_field_value(frame, field)
-    return (match_value == value)
 
 
 def _open_capture(pcap_path, display_filter):
@@ -162,20 +147,19 @@ def get_frames(local_pcap_path, display_filter, bad_fcs):
             mcs_index = int(mcs_index)
 
         # Get the SSID for any probe requests
-        is_probe_req = _match_frame_field_with_value(
-                frame, FRAME_FIELD_WLAN_FRAME_TYPE, WLAN_PROBE_REQ_FRAME_TYPE)
-        if is_probe_req:
-            probe_ssid = _fetch_frame_field_value(
-                    frame, FRAME_FIELD_WLAN_MGMT_SSID)
+        frame_type = _fetch_frame_field_value(
+            frame, FRAME_FIELD_WLAN_FRAME_TYPE)
+        if (frame_type in [WLAN_BEACON_FRAME_TYPE, WLAN_PROBE_REQ_FRAME_TYPE]):
+            ssid = _fetch_frame_field_value(frame, FRAME_FIELD_WLAN_MGMT_SSID)
             # Since the SSID name is a variable length field, there seems to be
             # a bug in the pyshark parsing, it returns 'SSID: ' instead of ''
             # for broadcast SSID's.
-            if probe_ssid == PYSHARK_BROADCAST_SSID:
-                probe_ssid = BROADCAST_SSID
+            if ssid == PYSHARK_BROADCAST_SSID:
+                ssid = BROADCAST_SSID
         else:
-            probe_ssid = None
+            ssid = None
 
-        frames.append(Frame(frametime, rate, mcs_index, probe_ssid))
+        frames.append(Frame(frametime, rate, mcs_index, ssid))
 
     return frames
 
@@ -204,5 +188,4 @@ def get_probe_ssids(local_pcap_path, probe_sender=None):
     frames = get_frames(local_pcap_path, diplay_filter, bad_fcs='discard')
 
     return frozenset(
-            [frame.probe_ssid for frame in frames
-             if frame.probe_ssid is not None])
+            [frame.ssid for frame in frames if frame.ssid is not None])
