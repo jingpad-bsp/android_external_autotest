@@ -8,9 +8,11 @@ import string
 import time
 
 from autotest_lib.server.cros.network import frame_sender
+from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_interface_claim_context
 from autotest_lib.server import site_linux_system
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
 
@@ -24,6 +26,8 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
     SCAN_RETRY_TIMEOUT_SECONDS = 10
     NUM_BSS = 1024
     MISSING_BEACON_THRESHOLD = 2
+    FREQUENCY_MHZ = 2412
+    MSEC_PER_SEC = 1000
 
     def _build_ssid_prefix(self):
         """Build ssid prefix."""
@@ -35,25 +39,49 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         return prefix[-23:]
 
 
-    def _get_dwell_time(self, bss_list):
+    def _get_ssid_index(self, ssid):
+        """Return the SSID index from an SSID string.
+
+        Given an SSID of the form [testName]_[salt]_[index], returns |index|.
+
+        @param ssid: full SSID, as received in scan results.
+        @return int SSID index.
+        """
+        return int(ssid.split('_')[-1], 16)
+
+
+    def _get_beacon_timestamp(self, beacon_frames, ssid_num):
+        """Return the time at which the beacon with |ssid_num| was transmitted.
+
+        If multiple beacons match |ssid_num|, return the time of the first
+        matching beacon.
+
+        @param beacon_frames: List of Frames.
+        @param ssid_num: int SSID number to match.
+        @return datetime time at which beacon was transmitted.
+        """
+        for frame in beacon_frames:
+            if self._get_ssid_index(frame.ssid) == ssid_num:
+                return frame.time_datetime
+        else:
+            raise error.TestFail('Failed to find SSID %d in pcap.' % ssid_num)
+
+
+    def _get_dwell_time(self, bss_list, sent_beacon_frames):
         """Parse scan result to get dwell time.
 
         Calculate dwell time based on the SSIDs in the scan result.
 
-        @param bss_list: List of BSSs
+        @param bss_list: List of BSSs.
+        @param sent_beacon_frames: List of Frames, as captured on sender.
 
         @return int dwell time in ms.
         """
-        # Get ssid indices from the scan result.
-        # Expected SSID format: [testName]_[salt]_[index]
-        ssid_index = []
-        for bss in bss_list:
-            ssid = int(bss.ssid.split('_')[-1], 16)
-            ssid_index.append(ssid)
+        ssid_index = [self._get_ssid_index(bss) for bss in bss_list]
         # Calculate dwell time based on the start ssid index and end ssid index.
         ssid_index.sort()
         index_diff = ssid_index[-1] - ssid_index[0]
-        dwell_time = index_diff * self.DELAY_INTERVAL_MILLISECONDS
+
         # Check if number of missed beacon frames exceed the test threshold.
         missed_beacons = index_diff - (len(ssid_index) - 1)
         if missed_beacons > self.MISSING_BEACON_THRESHOLD:
@@ -61,7 +89,14 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
                          missed_beacons, ssid_index)
             raise error.TestFail('DUT missed more than %d beacon frames' %
                                  missed_beacons)
-        return dwell_time
+
+        first_ssid_tstamp = self._get_beacon_timestamp(
+            sent_beacon_frames, ssid_index[0])
+        last_ssid_tstamp = self._get_beacon_timestamp(
+            sent_beacon_frames, ssid_index[-1])
+        return int(round(
+            (last_ssid_tstamp - first_ssid_tstamp).total_seconds() *
+            self.MSEC_PER_SEC))
 
 
     def _channel_dwell_time_test(self, single_channel):
@@ -79,14 +114,18 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
 
         """
         dwell_time = 0
+        channel = hostap_config.HostapConfig.get_channel_for_frequency(
+            self.FREQUENCY_MHZ)
+        self.context.router.start_capture(self.FREQUENCY_MHZ)
         ssid_prefix = self._build_ssid_prefix()
-        with frame_sender.FrameSender(self.context.router, 'beacon', 1,
+
+        with frame_sender.FrameSender(self.context.router, 'beacon', channel,
                                       ssid_prefix=ssid_prefix,
-                                      num_bss = self.NUM_BSS,
+                                      num_bss=self.NUM_BSS,
                                       frame_count=0,
                                       delay=self.DELAY_INTERVAL_MILLISECONDS):
             if single_channel:
-                frequencies = [2412]
+                frequencies = [self.FREQUENCY_MHZ]
             else:
                 frequencies = []
             # Perform scan
@@ -103,14 +142,26 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
                 raise error.TestFail('Unable to trigger scan on client.')
             if not bss_list:
                 raise error.TestFail('Failed to find any BSS')
-            # Filter scan result based on ssid prefix to remove any cached
-            # BSSs from previous run.
-            result_list = [bss for bss in bss_list if
-                           bss.ssid.startswith(ssid_prefix)]
-            if result_list is None:
-                raise error.TestFail('Failed to find any BSS for this test')
-            dwell_time = self._get_dwell_time(result_list)
-        return dwell_time
+
+            # Remaining work is done outside the FrameSender
+            # context. This is to ensure that no additional frames are
+            # transmitted while we're waiting for the packet capture
+            # to complete.
+
+        pcap_path = self.context.router.stop_capture()[0].local_pcap_path
+
+        # Filter scan result based on ssid prefix to remove any cached
+        # BSSs from previous run.
+        result_list = [bss.ssid for bss in bss_list if
+                       bss.ssid.startswith(ssid_prefix)]
+        if result_list is None:
+            raise error.TestFail('Failed to find any BSS for this test')
+
+        # We don't filter for SSID prefix here, because the pcap only
+        # contains data from this run.
+        beacon_frames = tcpdump_analyzer.get_frames(
+            pcap_path, tcpdump_analyzer.WLAN_BEACON_FILTER)
+        return self._get_dwell_time(result_list, beacon_frames)
 
 
     def run_once(self):
