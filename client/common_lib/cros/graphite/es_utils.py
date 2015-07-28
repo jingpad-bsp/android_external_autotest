@@ -72,8 +72,9 @@ try:
     import elasticsearch
     from elasticsearch import helpers as elasticsearch_helpers
 except ImportError:
-    logging.error('Failed to import elasticsearch. Mock classes will be used '
-                  'and calls to Elasticsearch server will be no-op.')
+    logging.debug('Failed to import elasticsearch. Mock classes will be used '
+                  'and calls to Elasticsearch server will be no-op. Test run '
+                  'is not affected by the missing elasticsearch module.')
     import elasticsearch_mock as elasticsearch
     elasticsearch_helpers = elasticsearch.Elasticsearch()
 
