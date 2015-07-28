@@ -8,6 +8,7 @@ import time
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros import vboot_constants as vboot
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.firmware_test import ConnectionError
 
 
 class firmware_ConsecutiveBoot(FirmwareTest):
@@ -21,17 +22,30 @@ class firmware_ConsecutiveBoot(FirmwareTest):
     The iteration should be specified by the parameter -a "faft_iterations=10".
     """
     version = 1
+    # Number of power button press to boot before declare test fail.
+    POWER_ON_RETRY = 3
 
 
     def initialize(self, host, cmdline_args, dev_mode=False):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
+        self.faft_waitup_time = int(dict_args.get('faft_waitup_time', 0))
         super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args)
         self.switcher.setup_mode('dev' if dev_mode else 'normal')
         if dev_mode:
           self.clear_set_gbb_flags(0, vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY)
         self.setup_usbkey(usbkey=False)
+
+    def wait_for_client_aux(self):
+        """Use test specific timeout to wait for system to come up,
+           otherwise use default (180s).
+        """
+        logging.info('wait_for_client %d start.', self.faft_waitup_time)
+        if self.faft_waitup_time:
+            self.wait_for_client(self.faft_waitup_time)
+        else:
+            self.wait_for_client()
 
     def shutdown_power_on(self):
         """
@@ -46,12 +60,20 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         self.faft_client.system.run_shell_command('/sbin/shutdown -P now')
         logging.info('Wait for client to go offline')
         self.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
-        # The system should be ready in a few seconds, sleep a bit to be sure.
-        time.sleep(self.faft_config.powerup_ready)
-        logging.info("Tap power key to boot.")
-        self.servo.power_short_press()
-        logging.info('wait_for_client online')
-        self.wait_for_client()
+        # Retry in case power_short_press was not registered.
+        for i in xrange(self.POWER_ON_RETRY):
+            logging.info("sleep %d, tap power key to boot.",
+                         self.faft_config.powerup_ready)
+            time.sleep(self.faft_config.powerup_ready)
+            self.servo.power_short_press()
+            try:
+                self.wait_for_client_aux()
+            except ConnectionError:
+                logging.error('wait_for_client exception %d.', i)
+            else:
+                logging.info('wait_for_client online done %d.', i)
+                return
+        raise ConnectionError()
 
     def run_once(self, dev_mode=False):
         for i in xrange(self.faft_iterations):
