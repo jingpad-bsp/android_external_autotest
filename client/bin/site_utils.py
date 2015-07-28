@@ -598,16 +598,16 @@ def _get_line_from_file(path, line):
     line can be an integer or
     line can be a string that matches the beginning of the line
     """
-    f = open(path)
-    if (isinstance(line, int)):
-        l = f.readline()
-        for _ in range(0, line):
+    with open(path) as f:
+        if isinstance(line, int):
             l = f.readline()
-        return l
-    else:
-        for l in f:
-            if l.startswith(line):
-                return l
+            for _ in range(0, line):
+                l = f.readline()
+            return l
+        else:
+            for l in f:
+                if l.startswith(line):
+                    return l
     return None
 
 
