@@ -116,8 +116,8 @@ def _open_capture(pcap_path, display_filter):
 
     """
     import pyshark
-    capture = pyshark.FileCapture(input_file=pcap_path,
-                                  display_filter=display_filter)
+    capture = pyshark.FileCapture(
+        input_file=pcap_path, display_filter=display_filter)
     capture.load_packets(timeout=PYSHARK_LOAD_TIMEOUT)
     return capture
 
@@ -156,7 +156,8 @@ def get_frames(local_pcap_path, display_filter, bad_fcs):
 
         frametime = frame.sniff_time
 
-        mcs_index = _fetch_frame_field_value(frame, FRAME_FIELD_RADIOTAP_MCS_INDEX)
+        mcs_index = _fetch_frame_field_value(
+            frame, FRAME_FIELD_RADIOTAP_MCS_INDEX)
         if mcs_index:
             mcs_index = int(mcs_index)
 
