@@ -153,6 +153,14 @@ def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
                                        control=control)
     args = sys.argv[:]
     args.remove('--require-ssp')
+    # --parent_job_id is only useful in autoserv running in host, not in
+    # container. Include this argument will cause test to fail for builds before
+    # CL 286265 was merged.
+    if '--parent_job_id' in args:
+        index = args.index('--parent_job_id')
+        args.remove('--parent_job_id')
+        # Remove the actual parent job id in command line arg.
+        del args[index]
 
     # A dictionary of paths to replace in the command line. Key is the path to
     # be replaced with the one in value.
