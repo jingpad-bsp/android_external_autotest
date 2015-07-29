@@ -17,13 +17,14 @@ Goobuntu 12.04.
 """
 
 
+import socket
 import subprocess
 
 import common
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
-STATS_KEY = 'hung_processes'
+STATS_KEY = 'hung_processes.%s' % socket.gethostname().replace('.', '_')
 
 
 def check_proc(prog, max_elapsed_sec):
