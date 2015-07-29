@@ -13,7 +13,10 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
-SUITE = "experimental"
+JOB_RETRIES = 2
+
+ATTRIBUTES = "suite:bvt-cq"
+SUITE = "bvt-cq"
 
 DOC = """
 Verify performance callchain
