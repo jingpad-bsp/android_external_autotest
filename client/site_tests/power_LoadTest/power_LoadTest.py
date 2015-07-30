@@ -37,7 +37,7 @@ class power_LoadTest(test.test):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', wifi_timeout=60, tasks="", kblight_percent=10,
+                 wifi_pw='', wifi_timeout=60, tasks='', kblight_percent=10,
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
                  ac_ok=False):
         """
@@ -85,7 +85,7 @@ class power_LoadTest(test.test):
         self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
         self._force_wifi = force_wifi
         self._testServer = None
-        self._tasks = '\'' + tasks.replace(' ','') + '\''
+        self._tasks = tasks.replace(' ','')
         self._backchannel = None
         self._shill_proxy = None
         self._kblight_percent = kblight_percent
@@ -170,10 +170,6 @@ class power_LoadTest(test.test):
         # can access it
         os.system('chmod -R 755 %s' % self.bindir)
 
-        # write test parameters to the params.js file to be read by the test
-        # extension.
-        self._write_ext_params()
-
         # setup a HTTP Server to listen for status updates from the power
         # test extension
         self._testServer = httpd.HTTPListener(8001, docroot=self.bindir)
@@ -224,6 +220,10 @@ class power_LoadTest(test.test):
                                 username=self._username,
                                 password=self._password)
         extension = self._browser.get_extension(ext_path)
+        for k in params_dict:
+            if getattr(self, params_dict[k]) is not '':
+                extension.ExecuteJavaScript('var %s = %s;' %
+                                            (k, getattr(self, params_dict[k])))
 
         for i in range(self._loop_count):
             start_time = time.time()
@@ -377,19 +377,6 @@ class power_LoadTest(test.test):
             self._browser.close()
         if self._testServer:
             self._testServer.stop()
-
-
-    def _write_ext_params(self):
-        data = ''
-        template = 'var %s = %s;\n'
-        for k in params_dict:
-            data += template % (k, getattr(self, params_dict[k]))
-
-        filename = os.path.join(self.bindir, 'params.js')
-        utils.open_write_close(filename, data)
-
-        logging.debug('filename ' + filename)
-        logging.debug(data)
 
 
     def _do_wait(self, verbose, seconds, latch):

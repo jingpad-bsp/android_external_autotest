@@ -33,57 +33,6 @@ function testListener(request, sender, sendResponse) {
   }
 }
 
-function parseTaskList(tasks_string) {
-  if (tasks_string == '')
-    return [];
-  var task_strings = tasks_string.split('+');
-  var task_list = [];
-  var time = 0;
-
-  // Parse each task.
-  for (var i in task_strings) {
-    var task_strings_parallel = task_strings[i].split('&');
-    var max_duration = 0;
-
-    for (var j in task_strings_parallel) {
-      // Extract task parameters.
-      var params = task_strings_parallel[j].split(';');
-      var cmd = params[0];
-      var urls = params[1].split(',');
-      var duration = seconds(parseInt(params[2]));
-      if (duration > max_duration)
-        max_duration = duration;
-      if (params.length > 3)
-        var delay = seconds(parseInt(params[3]));
-
-      if (cmd == 'window') {
-        task_list.push( { type: 'window',
-                          start: time,
-                          duration: duration,
-                          focus: true,
-                          tabs: urls } );
-      }
-      else if (cmd == 'cycle') {
-        task_list.push( { type: 'cycle',
-                          start: time,
-                          duration: duration,
-                          delay: delay,
-                          timeout: seconds(10),
-                          focus: true,
-                          urls: urls } );
-      }
-      else {
-        console.log('Unrecognized command: ' + cmd);
-      }
-    }
-    // Increment the time to determine the start time of the next task.
-    time += max_duration;
-  }
-  return task_list;
-}
-
-var task_list = [];
-
 function close_preexisting_windows() {
   for (var i = 0; i < preexisting_windows.length; i++) {
     chrome.windows.remove(preexisting_windows[i].id);
@@ -173,36 +122,9 @@ function send_status() {
 }
 
 function startTest() {
-  chrome.runtime.onMessage.addListener(
-    function paramsSetupListener(request, sender) {
-      if (undefined != request._test_time_ms &&
-          undefined != request._should_scroll &&
-          undefined != request._should_scroll_up &&
-          undefined != request._scroll_loop &&
-          undefined != request._scroll_interval_ms &&
-          undefined != request._scroll_by_pixels &&
-          undefined != request._tasks) {
-        // Update test parameters from content script.
-        test_time_ms = request._test_time_ms;
-        should_scroll = request._should_scroll;
-        should_scroll_up = request._should_scroll_up;
-        scroll_loop = request._scroll_loop;
-        scroll_interval_ms = request._scroll_interval_ms;
-        scroll_by_pixels = request._scroll_by_pixels;
-        task_list = parseTaskList(request._tasks);
-        if (task_list.length != 0)
-          tasks = task_list;
-        time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
-        chrome.runtime.onMessage.removeListener(paramsSetupListener);
-        chrome.runtime.onMessage.addListener(testListener);
-        setTimeout(setupTest, 1000);
-      } else {
-        console.log("Error. Test parameters not received.");
-      }
-    }
-  );
-
-  chrome.windows.create({'url': 'http://localhost:8001/testparams.html'});
+  time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
+  chrome.runtime.onMessage.addListener(testListener);
+  setTimeout(setupTest, 1000);
 }
 
 function initialize() {
