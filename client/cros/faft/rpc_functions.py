@@ -10,8 +10,7 @@ These can be exposed via a xmlrpci server running on the DUT.
 import functools, os, shutil, tempfile
 
 import common
-from autotest_lib.client.cros.faft.utils import (cgpt_state,
-                                                 cgpt_handler,
+from autotest_lib.client.cros.faft.utils import (cgpt_handler,
                                                  chromeos_interface,
                                                  firmware_check_keys,
                                                  firmware_updater,
@@ -137,9 +136,6 @@ class RPCFunctions(object):
         self._tpm_handler.init(self._chromeos_interface)
 
         self._cgpt_handler = cgpt_handler.CgptHandler(self._chromeos_interface)
-        self._cgpt_state = cgpt_state.CgptState(
-                'SHORT', self._chromeos_interface, self._system_get_root_dev(),
-                self._cgpt_handler)
 
         self._rootfs_handler = rootfs_handler.RootfsHandler()
         self._rootfs_handler.init(self._chromeos_interface)
@@ -670,28 +666,6 @@ class RPCFunctions(object):
     def _tpm_get_firmware_datakey_version(self):
         """Retrieve tpm firmware data key version."""
         return self._tpm_handler.get_fw_body_version()
-
-    def _cgpt_run_test_loop(self):
-        """Run the CgptState test loop. The tst logic is handled in the client.
-
-        @return: 0: there are more cgpt tests to execute.
-                 1: no more CgptState test, finished.
-        """
-        return self._cgpt_state.test_loop()
-
-    def _cgpt_set_test_step(self, step):
-        """Set the CgptState test step.
-
-        @param step: A test step number.
-        """
-        self._cgpt_state.set_step(step)
-
-    def _cgpt_get_test_step(self):
-        """Get the CgptState test step.
-
-        @return: A test step number.
-        """
-        return self._cgpt_state.get_step()
 
     def _cgpt_get_attributes(self):
         """Get kernel attributes."""

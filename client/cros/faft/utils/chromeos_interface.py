@@ -20,127 +20,9 @@ class Crossystem(object):
     # Code dedicated for user triggering recovery mode through crossystem.
     USER_RECOVERY_REQUEST_CODE = '193'
 
-    """
-    The first three legacy boot vector digits are the boot vector base (the
-    entire vector consists of 5 digits). They used to be reported by the BIOS
-    through ACPI, but that scheme has been superseded by the 'crossystem'
-    interface.
-
-    The digits of the boot vector base have the following significance
-
-    - first digit -
-    1 - normal boot
-    2 - developer mode boot
-    3 - recovery initialed by pressing the recovery button
-    4 - recovery from developer mode warning screen
-    5 - recovery caused by both firmware images being invalid
-    6 - recovery caused by both kernel images being invalid
-    8 - recovery initiated by user
-
-    - second digit -
-    0 - recovery firmware
-    1 - rewritable firmware A
-    2 - rewritable firmware B
-
-    - third digit -
-    0 - Read only (recovery) EC firmware
-    1 - rewritable EC firmware
-
-
-    Below is a list of dictionaries to map current system state as reported by
-    'crossystem' into the 'legacy' boot vector digits.
-
-    The three elements of the list represent the three digits of the boot
-    vector. Each list element is a dictionary where the key is the legacy boot
-    vector value in the appropriate position, and the value is in turn a
-    dictionary of name-value pairs.
-
-    If all name-value pairs of a dictionary element match those reported by
-    crossystem, the legacy representation number is considered the appropriate
-    vector digit.
-
-    Note that on some platforms (namely, Mario) same parameters returned by
-    crossystem are set to a wrong value. The class init() routine adjust the
-    list to support those platforms.
-    """
-
-    VECTOR_MAPS = [
-        { # first vector position
-            '1': {
-                'devsw_boot': '0',
-                'mainfw_type': 'normal',
-                'recoverysw_boot': '0',
-                },
-            '2': {
-                'devsw_boot': '1',
-                'mainfw_type': 'developer',
-                'recoverysw_boot': '0',
-                },
-            '3': {
-                'devsw_boot': '0',
-                'mainfw_type': 'recovery',
-                'recovery_reason' : '2',
-                'recoverysw_boot': '1',
-                },
-            '4': {
-                'devsw_boot': '1',
-                'mainfw_type': 'recovery',
-                'recovery_reason' : '65',
-                'recoverysw_boot': '0',
-                },
-            '5': {
-                'devsw_boot': '0',
-                'mainfw_type': 'recovery',
-                'recovery_reason' : ('3', '23', '27'),
-                'recoverysw_boot': '0',
-                },
-            '6': {
-                'devsw_boot': '0',
-                'mainfw_type': 'recovery',
-                'recovery_reason' : '66',
-                'recoverysw_boot': '0',
-                },
-            '8': {
-                'devsw_boot': '0',
-                'mainfw_type': 'recovery',
-                'recovery_reason' : USER_RECOVERY_REQUEST_CODE,
-                'recoverysw_boot': '0',
-                },
-            },
-        { # second vector position
-            '0': {'mainfw_type': 'recovery',},
-            '1': {'mainfw_act': 'A',},
-            '2': {'mainfw_act': 'B',},
-            },
-        { # third vector position
-            '0': {'ecfw_act': 'RO',},
-            '1': {'ecfw_act': 'RW',},
-            # Skip the ecfw_act check when the value is neither 'RO' nor 'RW'.
-            # It happens on non-Chrome-EC devices.
-            '*': {},
-            },
-        ]
-
     def init(self, cros_if):
         """Init the instance. If running on Mario - adjust the map."""
-
         self.cros_if = cros_if
-
-        # Hack Alert!!! Adjust vector map to work on Mario
-        fwid = self.__getattr__('fwid').lower()
-        if not 'mario' in fwid:
-            return
-        # Mario firmware is broken and always reports recovery switch as set
-        # at boot time when booting up in recovery mode. This is why we
-        # exclude recoverysw_boot from the map when running on mario.
-        for state in self.VECTOR_MAPS[0].itervalues():
-            if state['mainfw_type'] != 'recovery':
-                continue
-            if 'recoverysw_boot' in state:
-                del(state['recoverysw_boot'])
-            if state['recovery_reason'] == self.USER_RECOVERY_REQUEST_CODE:
-                # This is the only recovery reason Mario knows about
-                state['recovery_reason'] = '1'
 
     def __getattr__(self, name):
         """
@@ -162,43 +44,6 @@ class Crossystem(object):
         """Request recovery mode next time the target reboots."""
 
         self.__setattr__('recovery_request', self.USER_RECOVERY_REQUEST_CODE)
-
-    def get_boot_vector_base(self):
-        """Convert system state into a legacy boot vector base.
-
-        The function looks up the VECTOR_MAPS list above to find the digits
-        matching the current crossystem output, and returns a list of three
-        digits in symbolic representation, which become the base of the 5
-        digit boot state vector.
-
-        Should it be impossible to interpret the state, the function returns
-        a partially built list, which is an indication of a problem for the
-        caller (list shorter than 3 elements).
-        """
-
-        boot_vector = []
-
-        for vector_map in self.VECTOR_MAPS:
-            for (digit, values) in vector_map.iteritems():
-                for (name, value) in values.iteritems():
-                    try:
-                        # Get the actual attribute value from crossystem.
-                        attr_value = self.__getattr__(name)
-                    except ChromeOSInterfaceError:
-                        # Skip the error in case of missing field in crossystem.
-                        break
-                    if isinstance(value, str):
-                        if attr_value != value:
-                            break
-                    else:
-                        # 'value' is a tuple of possible actual values.
-                        if attr_value not in value:
-                            break
-                else:
-                    boot_vector.append(digit)
-                    break
-
-        return boot_vector
 
 
 class ChromeOSInterface(object):
@@ -369,47 +214,6 @@ class ChromeOSInterface(object):
 
         process = self.run_shell_command(cmd)
         return [x.rstrip() for x in process.stdout.readlines()]
-
-    def boot_state_vector(self):
-        """Read and return to caller a string describing the system state.
-
-        The string has a form of x0:x1:x2:<removable>:<partition_number>,
-        where the field meanings of X# are described in the
-        Crossystem.get_boot_vector_base() docstring above.
-
-        <removable> is set to 1 or 0 depending if the root device is removable
-        or not, and <partition number> is the last element of the root device
-        name, designating the partition where the root fs is mounted.
-
-        This vector fully describes the way the system came up.
-        """
-
-        state = self.cs.get_boot_vector_base()
-
-        if len(state) != 3:
-            raise ChromeOSInterfaceError(self.cs.dump())
-
-        root_part = self.get_root_part()
-        state.append('%d' % int(self.is_removable_device(root_part)))
-        state.append('%s' % root_part[-1])
-        state_str = ':'.join(state)
-        return state_str
-
-    def cmp_boot_vector(self, vector1, vector2):
-        """Compare if the two boot vectors are the same
-
-        Note: a wildcard (*) will match any value.
-        """
-        list1 = vector1.split(':')
-        list2 = vector2.split(':')
-        if len(list1) != len(list2):
-            raise ChromeOSInterfaceError(
-                    'Boot vectors (%s %s) should be of the same length'
-                    % (vector1, vector2))
-        for i in range(len(list1)):
-            if list1[i] != list2[i] and list1[i] != '*' and list2[i] != '*':
-                return False
-        return True
 
     def retrieve_body_version(self, blob):
         """Given a blob, retrieve body version.
