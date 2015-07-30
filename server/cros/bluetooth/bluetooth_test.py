@@ -51,8 +51,10 @@ class BluetoothTest(test.test):
         """Close the test member objects."""
         if self.interactive:
             self.interactive.close()
+        self.device.copy_logs(self.outputdir)
         self.device.close()
         if self.tester:
+            self.tester.copy_logs(self.outputdir)
             self.tester.close()
 
         super(BluetoothTest, self).cleanup()
