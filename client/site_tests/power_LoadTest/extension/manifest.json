@@ -19,10 +19,6 @@
   "description": "GoogleTest",
   "content_scripts": [
     {
-      "matches": ["http://localhost/testparams.html"],
-      "js": ["testparams.js"]
-    },
-    {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["ct.js"],
       "run_at": "document_end",
