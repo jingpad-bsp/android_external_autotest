@@ -54,13 +54,12 @@ class RootfsHandler(object):
         table += ' error_behavior=eio'
 
         self._remove_mapper()
-        assert not os.path.exists(_DM_DEV_PATH)
+        assert not self.os_if.path_exists(_DM_DEV_PATH)
         self.os_if.run_shell_command(
                 "dmsetup create -r %s --table '%s'" % (_DM_DEVICE, table))
-        assert os.path.exists(_DM_DEV_PATH)
+        assert self.os_if.path_exists(_DM_DEV_PATH)
         try:
-            with open(_DM_DEV_PATH) as dm_device:
-                count = len(dm_device.read())
+            count = self.os_if.get_file_size(_DM_DEV_PATH)
             return count == partition_size
         except:
             return False
@@ -69,7 +68,7 @@ class RootfsHandler(object):
 
     def _remove_mapper(self):
         """Removes the dm device mapper used by this class."""
-        if os.path.exists(_DM_DEV_PATH):
+        if self.os_if.path_exists(_DM_DEV_PATH):
             self.os_if.run_shell_command_get_output(
                     'dmsetup remove %s' % _DM_DEVICE)
 

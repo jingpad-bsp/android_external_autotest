@@ -122,14 +122,10 @@ class KernelHandler(object):
         key directory.
         """
         self.dump_kernel(section, self.dump_file_name)
-        bfile = open(self.dump_file_name, 'r')
-        data = list(bfile.read())
-        bfile.close()
+        data = list(self.os_if.read_file(self.dump_file_name))
         if modification_type == KERNEL_BODY_MOD:
             data[0] = '%c' % ((ord(data[0]) + delta) % 0x100)
-            dumpf = open(self.dump_file_name, 'w')
-            dumpf.write(''.join(data))
-            dumpf.close()
+            self.os_if.write_file(self.dump_file_name, ''.join(data))
             kernel_to_write = self.dump_file_name
         elif modification_type == KERNEL_VERSION_MOD:
             new_version = delta
@@ -141,7 +137,7 @@ class KernelHandler(object):
                     os.path.join(self.dev_key_path, 'kernel_data_key.vbprivk'),
                     self.dump_file_name))
         elif modification_type == KERNEL_RESIGN_MOD:
-            if key_path and os.path.isdir(key_path):
+            if key_path and self.os_if.is_dir(key_path):
                 resign_key_path = key_path
             else:
                 resign_key_path = self.dev_key_path
@@ -178,8 +174,7 @@ class KernelHandler(object):
         """Return the SHA1 hash of the section blob."""
         s = hashlib.sha1()
         dev = self.partition_map[section.upper()]['device']
-        with open(dev, 'rb') as f:
-            s.update(f.read())
+        s.update(self.os_if.read_file(dev))
         return s.hexdigest()
 
     def set_version(self, section, version):

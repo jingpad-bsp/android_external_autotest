@@ -9,7 +9,6 @@ See FirmwareUpdater object below.
 """
 
 import os
-import shutil
 
 class FirmwareUpdater(object):
     """
@@ -22,58 +21,39 @@ class FirmwareUpdater(object):
     """
 
     def __init__(self, os_if):
+        self.os_if = os_if
         self._temp_path = '/var/tmp/faft/autest'
         self._keys_path = os.path.join(self._temp_path, 'keys')
         self._work_path = os.path.join(self._temp_path, 'work')
 
-        if os.path.isdir(self._temp_path):
-            self.os_if = os_if
-        else:
-            self.setup(os_if, None)
+        if not self.os_if.is_dir(self._temp_path):
+            self._setup_temp_dir()
 
 
-    def setup(self, os_if, shellball=None):
-        """Setup the data attributes of this class.
-
-        This method can be called when needed.
-        """
-        self.os_if = os_if
-        self._setup_temp_dir(shellball)
-
-
-    def _setup_temp_dir(self, shellball=None):
+    def _setup_temp_dir(self):
         """Setup temporary directory.
 
         Devkeys are copied to _key_path. Then, shellball (default:
         /usr/sbin/chromeos-firmwareupdate) is extracted to _work_path.
-
-        Args:
-            shellball: Path of shellball.
         """
         self.cleanup_temp_dir()
 
-        os.mkdir(self._temp_path)
-        os.chdir(self._temp_path)
+        self.os_if.create_dir(self._temp_path)
+        self.os_if.create_dir(self._work_path)
+        self.os_if.copy_dir('/usr/share/vboot/devkeys', self._keys_path)
 
-        os.mkdir(self._work_path)
-        shutil.copytree('/usr/share/vboot/devkeys/', self._keys_path)
-
-        shellball_path = os.path.join(self._temp_path,
-                                      'chromeos-firmwareupdate')
-
-        if shellball:
-            shutil.copyfile(shellball, shellball_path)
-        else:
-            shutil.copyfile('/usr/sbin/chromeos-firmwareupdate',
-                shellball_path)
+        original_shellball = '/usr/sbin/chromeos-firmwareupdate'
+        working_shellball = os.path.join(self._temp_path,
+                                         'chromeos-firmwareupdate')
+        self.os_if.copy_file(original_shellball, working_shellball)
         self.os_if.run_shell_command(
-            'sh %s --sb_extract %s' % (shellball_path, self._work_path))
+            'sh %s --sb_extract %s' % (working_shellball, self._work_path))
 
 
     def cleanup_temp_dir(self):
         """Cleanup temporary directory."""
-        if os.path.isdir(self._temp_path):
-            shutil.rmtree(self._temp_path)
+        if self.os_if.is_dir(self._temp_path):
+            self.os_if.remove_dir(self._temp_path)
 
 
     def retrieve_fwid(self):
@@ -100,19 +80,19 @@ class FirmwareUpdater(object):
         """
         ro_normal = 1
         self.os_if.run_shell_command(
-            '/usr/share/vboot/bin/resign_firmwarefd.sh '
-            '%s %s %s %s %s %s %s %d %d' % (
-                os.path.join(self._work_path, 'bios.bin'),
-                os.path.join(self._temp_path, 'output.bin'),
-                os.path.join(self._keys_path, 'firmware_data_key.vbprivk'),
-                os.path.join(self._keys_path, 'firmware.keyblock'),
-                os.path.join(self._keys_path, 'dev_firmware_data_key.vbprivk'),
-                os.path.join(self._keys_path, 'dev_firmware.keyblock'),
-                os.path.join(self._keys_path, 'kernel_subkey.vbpubk'),
-                version,
-                ro_normal))
-        shutil.copyfile('%s' % os.path.join(self._temp_path, 'output.bin'),
-                        '%s' % os.path.join(self._work_path, 'bios.bin'))
+                '/usr/share/vboot/bin/resign_firmwarefd.sh '
+                '%s %s %s %s %s %s %s %d %d' % (
+                    os.path.join(self._work_path, 'bios.bin'),
+                    os.path.join(self._temp_path, 'output.bin'),
+                    os.path.join(self._keys_path, 'firmware_data_key.vbprivk'),
+                    os.path.join(self._keys_path, 'firmware.keyblock'),
+                    os.path.join(self._keys_path, 'dev_firmware_data_key.vbprivk'),
+                    os.path.join(self._keys_path, 'dev_firmware.keyblock'),
+                    os.path.join(self._keys_path, 'kernel_subkey.vbpubk'),
+                    version,
+                    ro_normal))
+        self.os_if.copy_file('%s' % os.path.join(self._temp_path, 'output.bin'),
+                             '%s' % os.path.join(self._work_path, 'bios.bin'))
 
 
     def repack_shellball(self, append):
@@ -123,27 +103,28 @@ class FirmwareUpdater(object):
         Args:
             append: use for new fwid naming.
         """
-        shutil.copy('/usr/sbin/chromeos-firmwareupdate', '%s' %
-            os.path.join(self._temp_path,
-                         'chromeos-firmwareupdate-%s' % append))
+        self.os_if.copy_file(
+                '/usr/sbin/chromeos-firmwareupdate',
+                os.path.join(self._temp_path,
+                             'chromeos-firmwareupdate-%s' % append))
 
-        self.os_if.run_shell_command('sh %s  --sb_repack %s' % (
+        self.os_if.run_shell_command('sh %s --sb_repack %s' % (
             os.path.join(self._temp_path,
                          'chromeos-firmwareupdate-%s' % append),
             self._work_path))
 
         args = ['-i']
         args.append('"s/TARGET_FWID=\\"\\(.*\\)\\"/TARGET_FWID=\\"\\1.%s\\"/g"'
-            % append)
-        args.append('%s' % os.path.join(self._temp_path,
-                                        'chromeos-firmwareupdate-%s' % append))
+                    % append)
+        args.append(os.path.join(self._temp_path,
+                                 'chromeos-firmwareupdate-%s' % append))
         cmd = 'sed %s' % ' '.join(args)
         self.os_if.run_shell_command(cmd)
 
         args = ['-i']
         args.append('"s/TARGET_UNSTABLE=\\".*\\"/TARGET_UNSTABLE=\\"\\"/g"')
-        args.append('%s' % os.path.join(self._temp_path,
-                                        'chromeos-firmwareupdate-%s' % append))
+        args.append(os.path.join(self._temp_path,
+                                 'chromeos-firmwareupdate-%s' % append))
         cmd = 'sed %s' % ' '.join(args)
         self.os_if.run_shell_command(cmd)
 

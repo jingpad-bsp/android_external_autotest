@@ -21,10 +21,6 @@ In the saft_flashrom_util, we provide read and partial write abilities.
 For more information, see help(saft_flashrom_util.flashrom_util).
 """
 
-import os
-import stat
-import tempfile
-
 class TestError(Exception):
     pass
 
@@ -156,7 +152,7 @@ class LayoutScraper(object):
             size = int(d['area_size'], 0)
             layout_data[name] = (offset, offset + size - 1)
 
-        self.check_layout(layout_data, os.stat(file_name)[stat.ST_SIZE])
+        self.check_layout(layout_data, self.os_if.get_file_size(file_name))
         return layout_data
 
 # flashrom utility wrapper
@@ -229,29 +225,27 @@ class flashrom_util(object):
             return
         self._target_command = '-p ec'
 
-    def get_temp_filename(self, prefix):
-        """ (internal) Returns name of a temporary file in self.tmp_root """
-        (fd, name) = tempfile.mkstemp(prefix=prefix)
-        os.close(fd)
-        return name
+    def _get_temp_filename(self, prefix):
+        """Returns name of a temporary file in /tmp."""
+        return self.os_if.create_temp_file(prefix)
 
-    def remove_temp_file(self, filename):
-        """ (internal) Removes a temp file if self.keep_temp_files is false. """
+    def _remove_temp_file(self, filename):
+        """Removes a temp file if self.keep_temp_files is false."""
         if self.keep_temp_files:
             return
-        if os.path.exists(filename):
-            os.remove(filename)
+        if self.os_if.path_exists(filename):
+            self.os_if.remove_file(filename)
 
-    def create_layout_file(self, layout_map):
-        """
-        (internal) Creates a layout file based on layout_map.
+    def _create_layout_file(self, layout_map):
+        """Creates a layout file based on layout_map.
+
         Returns the file name containing layout information.
         """
         layout_text = ['0x%08lX:0x%08lX %s' % (v[0], v[1], k)
             for k, v in layout_map.items()]
         layout_text.sort()  # XXX unstable if range exceeds 2^32
-        tmpfn = self.get_temp_filename('lay')
-        open(tmpfn, 'wb').write('\n'.join(layout_text) + '\n')
+        tmpfn = self._get_temp_filename('lay_')
+        self.os_if.write_file(tmpfn, '\n'.join(layout_text) + '\n')
         return tmpfn
 
     def get_section(self, base_image, section_name):
@@ -324,15 +318,15 @@ class flashrom_util(object):
         Reads whole flash ROM data.
         Returns the data read from flash ROM, or empty string for other error.
         """
-        tmpfn = self.get_temp_filename('rd_')
+        tmpfn = self._get_temp_filename('rd_')
         cmd = 'flashrom %s -r "%s"' % (self._target_command, tmpfn)
         self.os_if.log('flashrom_util.read_whole(): %s' % cmd)
         self.os_if.run_shell_command(cmd)
-        result = open(tmpfn, 'rb').read()
+        result = self.os_if.read_file(tmpfn)
         self.set_firmware_layout(tmpfn)
 
         # clean temporary resources
-        self.remove_temp_file(tmpfn)
+        self._remove_temp_file(tmpfn)
         return result
 
     def write_partial(self, base_image, write_list, write_layout_map=None):
@@ -346,9 +340,9 @@ class flashrom_util(object):
         else:
             layout_map = self.firmware_layout
 
-        tmpfn = self.get_temp_filename('wr_')
-        open(tmpfn, 'wb').write(base_image)
-        layout_fn = self.create_layout_file(layout_map)
+        tmpfn = self._get_temp_filename('wr_')
+        self.os_if.write_file(tmpfn, base_image)
+        layout_fn = self._create_layout_file(layout_map)
 
         cmd = 'flashrom %s -l "%s" -i %s -w "%s"' % (
                 self._target_command, layout_fn, ' -i '.join(write_list), tmpfn)
@@ -356,8 +350,8 @@ class flashrom_util(object):
         self.os_if.run_shell_command(cmd)
 
         # clean temporary resources
-        self.remove_temp_file(tmpfn)
-        self.remove_temp_file(layout_fn)
+        self._remove_temp_file(tmpfn)
+        self._remove_temp_file(layout_fn)
 
     def write_whole(self, base_image):
         """Write the whole base image. """

@@ -8,7 +8,9 @@ import datetime
 import os
 import re
 import struct
-import subprocess
+
+import shell_wrapper
+
 
 class OSInterfaceError(Exception):
     """OS interface specific exception."""
@@ -51,12 +53,15 @@ class OSInterface(object):
 
     def __init__(self):
         """Object construction time initialization."""
+        self.shell = None
         self.state_dir = None
         self.log_file = None
         self.cs = Crossystem()
+        self.shell = shell_wrapper.LocalShell()
 
     def init(self, state_dir=None, log_file=None):
         """Initialize the OS interface object.
+
         Args:
           state_dir - a string, the name of the directory (as defined by the
                       caller). The contents of this directory persist over
@@ -66,7 +71,6 @@ class OSInterface(object):
 
         Default argument values support unit testing.
         """
-
         self.cs.init(self)
         self.state_dir = state_dir
 
@@ -82,9 +86,81 @@ class OSInterface(object):
                 else:
                     self.log_file = os.path.join(state_dir, log_file)
 
+        # Initialize the shell. Should be after creating the log file.
+        self.shell.init(self)
+
+    def run_shell_command(self, cmd):
+        """Run a shell command."""
+        self.shell.run_command(cmd)
+
+    def run_shell_command_get_status(self, cmd):
+        """Run shell command and return its return code."""
+        return self.shell.run_command_get_status(cmd)
+
+    def run_shell_command_get_output(self, cmd):
+        """Run shell command and return its console output."""
+        return self.shell.run_command_get_output(cmd)
+
+    def read_file(self, path):
+        """Read the content of the file."""
+        return self.shell.read_file(path)
+
+    def write_file(self, path, data):
+        """Write the data to the file."""
+        self.shell.write_file(path, data)
+
+    def append_file(self, path, data):
+        """Append the data to the file."""
+        self.shell.append_file(path, data)
+
+    def path_exists(self, path):
+        """Return True if the path exists on DUT."""
+        cmd = 'test -e %s' % path
+        return self.run_shell_command_get_status(cmd) == 0
+
+    def is_dir(self, path):
+        """Return True if the path is a directory."""
+        cmd = 'test -d %s' % path
+        return self.run_shell_command_get_status(cmd) == 0
+
+    def create_dir(self, path):
+        """Create a new directory."""
+        cmd = 'mkdir -p %s' % path
+        return self.run_shell_command(cmd)
+
+    def create_temp_file(self, prefix):
+        """Create a temporary file with a prefix."""
+        cmd = 'mktemp -t %sXXXXXX' % prefix
+        return self.run_shell_command_get_output(cmd)[0]
+
+    def copy_file(self, from_path, to_path):
+        """Copy the file."""
+        cmd = 'cp -f %s %s' % (from_path, to_path)
+        return self.run_shell_command(cmd)
+
+    def copy_dir(self, from_path, to_path):
+        """Copy the directory."""
+        cmd = 'cp -rf %s %s' % (from_path, to_path)
+        return self.run_shell_command(cmd)
+
+    def remove_file(self, path):
+        """Remove the file."""
+        cmd = 'rm -f %s' % path
+        return self.run_shell_command(cmd)
+
+    def remove_dir(self, path):
+        """Remove the directory."""
+        cmd = 'rm -rf %s' % path
+        return self.run_shell_command(cmd)
+
+    def get_file_size(self, path):
+        """Get the size of the file."""
+        cmd = 'stat -c %%s %s' % path
+        return int(self.run_shell_command_get_output(cmd)[0])
+
     def target_hosted(self):
         """Return True if running on a ChromeOS target."""
-        signature = open('/etc/lsb-release', 'r').readlines()[0]
+        signature = self.read_file('/etc/lsb-release')
         return re.search(r'chrom(ium|e)os', signature, re.IGNORECASE) != None
 
     def state_dir_file(self, file_name):
@@ -109,35 +185,6 @@ class OSInterface(object):
             log_f.flush()
             os.fdatasync(log_f)
 
-    def run_shell_command(self, cmd):
-        """Run a shell command.
-
-        In case of the command returning an error print its stdout and stderr
-        outputs on the console and dump them into the log. Otherwise suppress all
-        output.
-
-        In case of command error raise an OSInterfaceError exception.
-
-        Return the subprocess.Popen() instance to provide access to console
-        output in case command succeeded.
-        """
-
-        self.log('Executing %s' % cmd)
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        process.wait()
-        if process.returncode:
-            err = ['Failed running: %s' % cmd]
-            err.append('stdout:')
-            err.append(process.stdout.read())
-            err.append('stderr:')
-            err.append(process.stderr.read())
-            text = '\n'.join(err)
-            print text
-            self.log(text)
-            raise OSInterfaceError('command %s failed' % cmd)
-        return process
-
     def is_removable_device(self, device):
         """Check if a certain storage device is removable.
 
@@ -152,7 +199,7 @@ class OSInterface(object):
 
         # Drop trailing digit(s) and letter(s) (if any)
         base_dev = self.strip_part(device.split('/')[2])
-        removable = int(open('/sys/block/%s/removable' % base_dev, 'r').read())
+        removable = int(self.read_file('/sys/block/%s/removable' % base_dev))
 
         return removable == 1
 
@@ -168,7 +215,7 @@ class OSInterface(object):
         Return internal kernel disk.
         """
         if self.is_removable_device(device):
-            if os.path.exists('/dev/mmcblk0'):
+            if self.path_exists('/dev/mmcblk0'):
                 return '/dev/mmcblk0'
             else:
                 return '/dev/sda'
@@ -194,15 +241,6 @@ class OSInterface(object):
         """Return a stripped string without partition number"""
         dev_name_stripper = re.compile('p?[0-9]+$')
         return dev_name_stripper.sub('', dev_with_part)
-
-    def run_shell_command_get_output(self, cmd):
-        """Run shell command and return its console output to the caller.
-
-        The output is returned as a list of strings stripped of the newline
-        characters."""
-
-        process = self.run_shell_command(cmd)
-        return [x.rstrip() for x in process.stdout.readlines()]
 
     def retrieve_body_version(self, blob):
         """Given a blob, retrieve body version.
@@ -274,8 +312,6 @@ class OSInterface(object):
         tmp_file = self.state_dir_file('part.tmp')
         self.run_shell_command('dd if=%s of=%s bs=1 count=%d' % (
                 partition, tmp_file, size))
-        fileh = open(tmp_file, 'r')
-        data = fileh.read()
-        fileh.close()
-        os.remove(tmp_file)
+        data = self.read_file(tmp_file)
+        self.remove_file(tmp_file)
         return data

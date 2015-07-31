@@ -108,13 +108,15 @@ class RPCFunctions(object):
                                 'bios')
 
         self._ec_handler = None
-        if not os.system("mosys ec info"):
+        if self._os_if.run_shell_command_get_status('mosys ec info') == 0:
             self._ec_handler = LazyFlashromHandlerProxy(
                                   saft_flashrom_util,
                                   self._os_if,
                                   'ec_root_key.vpubk',
                                   '/usr/share/vboot/devkeys',
                                   'ec')
+        else:
+            self._os_if.log('No EC is reported by mosys.')
 
         self._kernel_handler = kernel_handler.KernelHandler()
         self._kernel_handler.init(self._os_if,
@@ -162,8 +164,8 @@ class RPCFunctions(object):
         if is_str:
             return str(func)
         else:
-            self._os_if.log('Dispatching method %s with args %s' %
-                    (str(func), str(params)))
+            self._os_if.log('Dispatching method %s with args %r' %
+                    (func.__name__, params))
             return func(*params)
 
     def _system_is_available(self):
@@ -417,27 +419,6 @@ class RPCFunctions(object):
         """
         self._bios_handler.dump_whole(bios_path)
 
-    def _bios_dump_rw(self, dir_path):
-        """Dump the current BIOS firmware RW to dir_path.
-
-        VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be dumped.
-
-        @param dir_path: The path of directory which contains files to be
-                         written.
-        """
-        if not os.path.isdir(dir_path):
-            raise Exception("%s doesn't exist" % dir_path)
-
-        VBOOTA_blob = self._bios_handler.get_section_sig('a')
-        VBOOTB_blob = self._bios_handler.get_section_sig('b')
-        FVMAIN_blob = self._bios_handler.get_section_body('a')
-        FVMAINB_blob = self._bios_handler.get_section_body('b')
-
-        open(os.path.join(dir_path, 'VBOOTA'), 'w').write(VBOOTA_blob)
-        open(os.path.join(dir_path, 'VBOOTB'), 'w').write(VBOOTB_blob)
-        open(os.path.join(dir_path, 'FVMAIN'), 'w').write(FVMAIN_blob)
-        open(os.path.join(dir_path, 'FVMAINB'), 'w').write(FVMAINB_blob)
-
     def _bios_write_whole(self, bios_path):
         """Write the firmware from bios_path to the current system.
 
@@ -445,33 +426,6 @@ class RPCFunctions(object):
         """
         self._bios_handler.new_image(bios_path)
         self._bios_handler.write_whole()
-
-    def _bios_write_rw(self, dir_path):
-        """Write the firmware RW from dir_path to the current system.
-
-        VBOOTA, VBOOTB, FVMAIN, FVMAINB need to be written.
-
-        @param dir_path: The path of directory which contains the source files.
-        """
-        if not os.path.exists(os.path.join(dir_path, 'VBOOTA')) or \
-           not os.path.exists(os.path.join(dir_path, 'VBOOTB')) or \
-           not os.path.exists(os.path.join(dir_path, 'FVMAIN')) or \
-           not os.path.exists(os.path.join(dir_path, 'FVMAINB')):
-            raise Exception("Source firmware file(s) doesn't exist.")
-
-        VBOOTA_blob = open(os.path.join(dir_path, 'VBOOTA'), 'rb').read()
-        VBOOTB_blob = open(os.path.join(dir_path, 'VBOOTB'), 'rb').read()
-        FVMAIN_blob = open(os.path.join(dir_path, 'FVMAIN'), 'rb').read()
-        FVMAINB_blob = open(os.path.join(dir_path, 'FVMAINB'), 'rb').read()
-
-        self._bios_handler.set_section_sig('a', VBOOTA_blob,
-                                           write_through=True)
-        self._bios_handler.set_section_sig('b', VBOOTB_blob,
-                                           write_through=True)
-        self._bios_handler.set_section_body('a', FVMAIN_blob,
-                                            write_through=True)
-        self._bios_handler.set_section_body('b', FVMAINB_blob,
-                                            write_through=True)
 
     def _ec_get_version(self):
         """Get EC version via mosys.
