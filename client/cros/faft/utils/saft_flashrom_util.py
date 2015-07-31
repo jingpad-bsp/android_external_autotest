@@ -207,10 +207,10 @@ class flashrom_util(object):
         keep_temp_files: boolean flag to control cleaning of temporary files
     """
 
-    def __init__(self, chros_if, keep_temp_files=False,
+    def __init__(self, os_if, keep_temp_files=False,
                  target_is_ec=False):
         """ constructor of flashrom_util. help(flashrom_util) for more info """
-        self.os_if = chros_if
+        self.os_if = os_if
         self.keep_temp_files = keep_temp_files
         self.firmware_layout = {}
         self._target_command = ''

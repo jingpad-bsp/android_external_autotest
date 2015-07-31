@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A module to provide interface to ChromeOS services."""
+"""A module to provide interface to OS services."""
 
 import datetime
 import os
@@ -10,8 +10,8 @@ import re
 import struct
 import subprocess
 
-class ChromeOSInterfaceError(Exception):
-    """ChromeOS interface specific exception."""
+class OSInterfaceError(Exception):
+    """OS interface specific exception."""
     pass
 
 class Crossystem(object):
@@ -20,9 +20,9 @@ class Crossystem(object):
     # Code dedicated for user triggering recovery mode through crossystem.
     USER_RECOVERY_REQUEST_CODE = '193'
 
-    def init(self, cros_if):
+    def init(self, os_if):
         """Init the instance. If running on Mario - adjust the map."""
-        self.cros_if = cros_if
+        self.os_if = os_if
 
     def __getattr__(self, name):
         """
@@ -31,14 +31,14 @@ class Crossystem(object):
         Attempt to access crossystemobject.name will invoke `crossystem name'
         and return the stdout as the value.
         """
-        return self.cros_if.run_shell_command_get_output(
+        return self.os_if.run_shell_command_get_output(
             'crossystem %s' % name)[0]
 
     def __setattr__(self, name, value):
-        if name in ('cros_if',):
+        if name in ('os_if',):
             self.__dict__[name] = value
         else:
-            self.cros_if.run_shell_command('crossystem "%s=%s"' % (name, value))
+            self.os_if.run_shell_command('crossystem "%s=%s"' % (name, value))
 
     def request_recovery(self):
         """Request recovery mode next time the target reboots."""
@@ -46,23 +46,17 @@ class Crossystem(object):
         self.__setattr__('recovery_request', self.USER_RECOVERY_REQUEST_CODE)
 
 
-class ChromeOSInterface(object):
+class OSInterface(object):
     """An object to encapsulate OS services functions."""
 
-    def __init__(self, silent):
-        """Object construction time initialization.
-
-        The only parameter is the Boolean 'silent', when True the instance
-        does not duplicate log messages on the console.
-        """
-
-        self.silent = silent
+    def __init__(self):
+        """Object construction time initialization."""
         self.state_dir = None
         self.log_file = None
         self.cs = Crossystem()
 
     def init(self, state_dir=None, log_file=None):
-        """Initialize the ChromeOS interface object.
+        """Initialize the OS interface object.
         Args:
           state_dir - a string, the name of the directory (as defined by the
                       caller). The contents of this directory persist over
@@ -81,7 +75,7 @@ class ChromeOSInterface(object):
                 try:
                     os.mkdir(self.state_dir)
                 except OSError, err:
-                    raise ChromeOSInterfaceError(err)
+                    raise OSInterfaceError(err)
             if log_file:
                 if log_file[0] == '/':
                     self.log_file = log_file
@@ -103,11 +97,6 @@ class ChromeOSInterface(object):
         The entire log (maintained across reboots) can be found in
         self.log_file.
         """
-
-        # Don't print on the screen unless enabled.
-        if not self.silent:
-            print text
-
         if not self.log_file or not os.path.exists(self.state_dir):
             # Called before environment was initialized, ignore.
             return
@@ -146,7 +135,7 @@ class ChromeOSInterface(object):
             text = '\n'.join(err)
             print text
             self.log(text)
-            raise ChromeOSInterfaceError('command %s failed' % cmd)
+            raise OSInterfaceError('command %s failed' % cmd)
         return process
 
     def is_removable_device(self, device):

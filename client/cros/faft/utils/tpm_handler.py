@@ -16,8 +16,7 @@ class TpmNvRam(object):
     Attributes:
     addr: a number, NvRAm address in TPM.
     size: a number, count of bites in this NvRam section.
-    os_if: an instance of the OS interface (chromeos_interface or a mock
-        object).
+    os_if: an instance of the OS interface (os_interface or a mock object).
     version_offset: - a number, offset into the NvRam contents where the the
         versions are stored. The total version field size is 4 bytes, the
         first two bytes are the body version, the second two bytes are the key
@@ -62,30 +61,29 @@ class TpmHandler(object):
     """An object to control TPM device's NVRAM.
 
     Attributes:
-      cros_if: an instance of the OS interface (chromeos_interface or a mock
-          object).
+      os_if: an instance of the OS interface (os_interface or a mock object).
       nvrams: A dictionary where the keys are the nvram names, and the values
           are instances of TpmNvRam objects, providing access to the
           appropriate TPM NvRam sections.
     """
 
     def __init__(self):
-        self.cros_if = None
+        self.os_if = None
         self.nvrams = {
             'kernel': TpmNvRam(KERNEL_NV_ADDRESS, 13, 5, (
                     1, [0x4c, 0x57, 0x52, 0x47])),
             'bios': TpmNvRam(FW_NV_ADDRESS, 10, 2)
             }
 
-    def init(self, cros_if):
-        self.cros_if = cros_if
-        status = self.cros_if.run_shell_command_get_output(
+    def init(self, os_if):
+        self.os_if = os_if
+        status = self.os_if.run_shell_command_get_output(
             'initctl status tcsd')[0]
         if status.startswith('tcsd start/running'):
-            self.cros_if.run_shell_command('stop tcsd')
+            self.os_if.run_shell_command('stop tcsd')
 
         for nvram in self.nvrams.itervalues():
-            nvram.init(self.cros_if)
+            nvram.init(self.os_if)
 
     def get_fw_version(self):
         return self.nvrams['bios'].get_body_version()

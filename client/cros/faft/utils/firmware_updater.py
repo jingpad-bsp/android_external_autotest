@@ -21,23 +21,23 @@ class FirmwareUpdater(object):
     put shellball under /var/tmp/faft/autest with name chromeos-firmwareupdate.
     """
 
-    def __init__(self, chros_if):
+    def __init__(self, os_if):
         self._temp_path = '/var/tmp/faft/autest'
         self._keys_path = os.path.join(self._temp_path, 'keys')
         self._work_path = os.path.join(self._temp_path, 'work')
 
         if os.path.isdir(self._temp_path):
-            self._chros_if = chros_if
+            self.os_if = os_if
         else:
-            self.setup(chros_if, None)
+            self.setup(os_if, None)
 
 
-    def setup(self, chros_if, shellball=None):
+    def setup(self, os_if, shellball=None):
         """Setup the data attributes of this class.
 
         This method can be called when needed.
         """
-        self._chros_if = chros_if
+        self.os_if = os_if
         self._setup_temp_dir(shellball)
 
 
@@ -66,7 +66,7 @@ class FirmwareUpdater(object):
         else:
             shutil.copyfile('/usr/sbin/chromeos-firmwareupdate',
                 shellball_path)
-        self._chros_if.run_shell_command(
+        self.os_if.run_shell_command(
             'sh %s --sb_extract %s' % (shellball_path, self._work_path))
 
 
@@ -84,10 +84,10 @@ class FirmwareUpdater(object):
         Returns:
             Shellball's fwid.
         """
-        self._chros_if.run_shell_command('dump_fmap -x %s %s' %
+        self.os_if.run_shell_command('dump_fmap -x %s %s' %
             (os.path.join(self._work_path, 'bios.bin'), 'RW_FWID_A'))
 
-        [fwid] = self._chros_if.run_shell_command_get_output(
+        [fwid] = self.os_if.run_shell_command_get_output(
             "cat RW_FWID_A | tr '\\0' '\\t' | cut -f1")
         return fwid
 
@@ -99,7 +99,7 @@ class FirmwareUpdater(object):
             version: new firmware version number.
         """
         ro_normal = 1
-        self._chros_if.run_shell_command(
+        self.os_if.run_shell_command(
             '/usr/share/vboot/bin/resign_firmwarefd.sh '
             '%s %s %s %s %s %s %s %d %d' % (
                 os.path.join(self._work_path, 'bios.bin'),
@@ -127,7 +127,7 @@ class FirmwareUpdater(object):
             os.path.join(self._temp_path,
                          'chromeos-firmwareupdate-%s' % append))
 
-        self._chros_if.run_shell_command('sh %s  --sb_repack %s' % (
+        self.os_if.run_shell_command('sh %s  --sb_repack %s' % (
             os.path.join(self._temp_path,
                          'chromeos-firmwareupdate-%s' % append),
             self._work_path))
@@ -138,14 +138,14 @@ class FirmwareUpdater(object):
         args.append('%s' % os.path.join(self._temp_path,
                                         'chromeos-firmwareupdate-%s' % append))
         cmd = 'sed %s' % ' '.join(args)
-        self._chros_if.run_shell_command(cmd)
+        self.os_if.run_shell_command(cmd)
 
         args = ['-i']
         args.append('"s/TARGET_UNSTABLE=\\".*\\"/TARGET_UNSTABLE=\\"\\"/g"')
         args.append('%s' % os.path.join(self._temp_path,
                                         'chromeos-firmwareupdate-%s' % append))
         cmd = 'sed %s' % ' '.join(args)
-        self._chros_if.run_shell_command(cmd)
+        self.os_if.run_shell_command(cmd)
 
 
     def run_firmwareupdate(self, mode, updater_append=None, options=[]):
@@ -165,7 +165,7 @@ class FirmwareUpdater(object):
         else:
             updater = os.path.join(self._temp_path, 'chromeos-firmwareupdate')
 
-        self._chros_if.run_shell_command(
+        self.os_if.run_shell_command(
             '/bin/sh %s --mode %s %s' % (updater, mode, ' '.join(options)))
 
 

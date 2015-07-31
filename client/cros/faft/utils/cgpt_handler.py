@@ -18,7 +18,7 @@ class CgptHandler(object):
     """Object representing one or more gpts present in the system.
 
     Attributes:
-      chros_if: an instance of chromeos_interface, initialized by the caller.
+      os_if: an instance of OSInterface, initialized by the caller.
       devices: a dictionary keyed by the storage device names (as in
                /dev/sda), the contents are dictionaries of cgpt information,
                where keys are partiton names, and contents are in turn
@@ -43,8 +43,8 @@ class CgptHandler(object):
         'successful' : 'S'
         }
 
-    def __init__(self, chros_if):
-        self.chros_if = chros_if
+    def __init__(self, os_if):
+        self.os_if = os_if
         self.devices = {}
 
     def read_device_info(self, dev_name):
@@ -54,7 +54,7 @@ class CgptHandler(object):
           dev_name: a string the Linux storage device name, (i.e. '/dev/sda')
         """
 
-        device_dump = self.chros_if.run_shell_command_get_output(
+        device_dump = self.os_if.run_shell_command_get_output(
             'cgpt show %s' % dev_name)
         label = None
         label_data = {}
@@ -134,4 +134,4 @@ class CgptHandler(object):
 
         command = 'cgpt add -i %d %s %s' % (
             current['partition'], ' '.join(options), device)
-        self.chros_if.run_shell_command(command)
+        self.os_if.run_shell_command(command)

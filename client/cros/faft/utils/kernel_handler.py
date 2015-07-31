@@ -36,7 +36,7 @@ class KernelHandler(object):
     KERNEL_SIZE_MB = 16
 
     def __init__(self):
-        self.chros_if = None
+        self.os_if = None
         self.dump_file_name = None
         self.partition_map = {}
         self.root_dev = None
@@ -44,14 +44,14 @@ class KernelHandler(object):
     def _get_version(self, device):
         """Get version of the kernel hosted on the passed in partition."""
         # 16 K should be enough to include headers and keys
-        data = self.chros_if.read_partition(device, 0x4000)
-        return self.chros_if.retrieve_body_version(data)
+        data = self.os_if.read_partition(device, 0x4000)
+        return self.os_if.retrieve_body_version(data)
 
     def _get_datakey_version(self,device):
         """Get datakey version of kernel hosted on the passed in partition."""
         # 16 K should be enought to include headers and keys
-        data = self.chros_if.read_partition(device, 0x4000)
-        return self.chros_if.retrieve_datakey_version(data)
+        data = self.os_if.read_partition(device, 0x4000)
+        return self.os_if.retrieve_datakey_version(data)
 
     def _get_partition_map(self, internal_disk=True):
         """Scan `cgpt show <device> output to find kernel devices.
@@ -60,13 +60,13 @@ class KernelHandler(object):
           internal_disk - decide whether to use internal kernel disk.
         """
         if internal_disk:
-            target_device = self.chros_if.get_internal_disk(
-                    self.chros_if.get_root_part())
+            target_device = self.os_if.get_internal_disk(
+                    self.os_if.get_root_part())
         else:
             target_device = self.root_dev
 
         kernel_partitions = re.compile('KERN-([AB])')
-        disk_map = self.chros_if.run_shell_command_get_output(
+        disk_map = self.os_if.run_shell_command_get_output(
             'cgpt show %s' % target_device)
 
         for line in disk_map:
@@ -75,7 +75,7 @@ class KernelHandler(object):
                 continue
             label = matched_line.group(1)
             part_info = {}
-            device = self.chros_if.join_part(target_device, line.split()[2])
+            device = self.os_if.join_part(target_device, line.split()[2])
             part_info['device'] = device
             part_info['version'] = self._get_version(device)
             part_info['datakey_version'] = self._get_datakey_version(device)
@@ -90,7 +90,7 @@ class KernelHandler(object):
         dev = self.partition_map[section.upper()]['device']
         cmd = 'dd if=%s of=%s bs=%dM count=1' % (
                 dev, kernel_path, self.KERNEL_SIZE_MB)
-        self.chros_if.run_shell_command(cmd)
+        self.os_if.run_shell_command(cmd)
 
     def write_kernel(self, section, kernel_path):
         """Write a kernel image to the specified section.
@@ -101,7 +101,7 @@ class KernelHandler(object):
         dev = self.partition_map[section.upper()]['device']
         cmd = 'dd if=%s of=%s bs=%dM count=1' % (
                 kernel_path, dev, self.KERNEL_SIZE_MB)
-        self.chros_if.run_shell_command(cmd)
+        self.os_if.run_shell_command(cmd)
 
     def _modify_kernel(self, section,
                        delta,
@@ -134,7 +134,7 @@ class KernelHandler(object):
         elif modification_type == KERNEL_VERSION_MOD:
             new_version = delta
             kernel_to_write = self.dump_file_name + '.new'
-            self.chros_if.run_shell_command(
+            self.os_if.run_shell_command(
                 'vbutil_kernel --repack %s --version %d '
                 '--signprivate %s --oldblob %s' % (
                     kernel_to_write, new_version,
@@ -147,7 +147,7 @@ class KernelHandler(object):
                 resign_key_path = self.dev_key_path
 
             kernel_to_write = self.dump_file_name + '.new'
-            self.chros_if.run_shell_command(
+            self.os_if.run_shell_command(
                 'vbutil_kernel --repack %s '
                 '--signprivate %s --oldblob %s --keyblock %s' % (
                     kernel_to_write,
@@ -195,13 +195,13 @@ class KernelHandler(object):
                             KERNEL_RESIGN_MOD,
                             key_path)
 
-    def init(self, chros_if, dev_key_path='.', internal_disk=True):
+    def init(self, os_if, dev_key_path='.', internal_disk=True):
         """Initialize the kernel handler object.
 
-        Input argument is a ChromeOS interface object reference.
+        Input argument is an OS interface object reference.
         """
-        self.chros_if = chros_if
+        self.os_if = os_if
         self.dev_key_path = dev_key_path
-        self.root_dev = chros_if.get_root_dev()
-        self.dump_file_name = chros_if.state_dir_file(TMP_FILE_NAME)
+        self.root_dev = os_if.get_root_dev()
+        self.dump_file_name = os_if.state_dir_file(TMP_FILE_NAME)
         self._get_partition_map(internal_disk)

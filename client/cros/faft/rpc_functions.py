@@ -11,7 +11,7 @@ import functools, os, shutil, tempfile
 
 import common
 from autotest_lib.client.cros.faft.utils import (cgpt_handler,
-                                                 chromeos_interface,
+                                                 os_interface,
                                                  firmware_check_keys,
                                                  firmware_updater,
                                                  flashrom_handler,
@@ -77,7 +77,7 @@ class RPCFunctions(object):
     this name to '_[categories]_[method_name]'.
 
     Attributes:
-        _chromeos_interface: An object to encapsulate OS services functions.
+        _os_if: An object to encapsulate OS services functions.
         _bios_handler: An object to automate BIOS flashrom testing.
         _ec_handler: An object to automate EC flashrom testing.
         _kernel_handler: An object to provide kernel related actions.
@@ -91,18 +91,18 @@ class RPCFunctions(object):
     def __init__(self):
         """Initialize the data attributes of this class."""
         # TODO(waihong): Move the explicit object.init() methods to the
-        # objects' constructors (ChromeOSInterface, FlashromHandler,
+        # objects' constructors (OSInterface, FlashromHandler,
         # KernelHandler, and TpmHandler).
-        self._chromeos_interface = chromeos_interface.ChromeOSInterface(False)
+        self._os_if = os_interface.OSInterface()
         # We keep the state of FAFT test in a permanent directory over reboots.
         state_dir = '/var/tmp/faft'
         self._log_file = os.path.join(state_dir, 'faft_client.log')
-        self._chromeos_interface.init(state_dir, log_file=self._log_file)
+        self._os_if.init(state_dir, log_file=self._log_file)
         os.chdir(state_dir)
 
         self._bios_handler = LazyFlashromHandlerProxy(
                                 saft_flashrom_util,
-                                self._chromeos_interface,
+                                self._os_if,
                                 None,
                                 '/usr/share/vboot/devkeys',
                                 'bios')
@@ -111,7 +111,7 @@ class RPCFunctions(object):
         if not os.system("mosys ec info"):
             self._ec_handler = LazyFlashromHandlerProxy(
                                   saft_flashrom_util,
-                                  self._chromeos_interface,
+                                  self._os_if,
                                   'ec_root_key.vpubk',
                                   '/usr/share/vboot/devkeys',
                                   'ec')
@@ -120,24 +120,24 @@ class RPCFunctions(object):
         # TODO(waihong): The dev_key_path is a new argument. We do that in
         # order not to break the old image and still be able to run.
         try:
-            self._kernel_handler.init(self._chromeos_interface,
+            self._kernel_handler.init(self._os_if,
                                       dev_key_path='/usr/share/vboot/devkeys',
                                       internal_disk=True)
         except TypeError:
             # Copy the key to the current working directory.
             shutil.copy('/usr/share/vboot/devkeys/kernel_data_key.vbprivk', '.')
-            self._kernel_handler.init(self._chromeos_interface,
+            self._kernel_handler.init(self._os_if,
                                       internal_disk=True)
 
         self._tpm_handler = tpm_handler.TpmHandler()
-        self._tpm_handler.init(self._chromeos_interface)
+        self._tpm_handler.init(self._os_if)
 
-        self._cgpt_handler = cgpt_handler.CgptHandler(self._chromeos_interface)
+        self._cgpt_handler = cgpt_handler.CgptHandler(self._os_if)
 
         self._rootfs_handler = rootfs_handler.RootfsHandler()
-        self._rootfs_handler.init(self._chromeos_interface)
+        self._rootfs_handler.init(self._os_if)
 
-        self._updater = firmware_updater.FirmwareUpdater(self._chromeos_interface)
+        self._updater = firmware_updater.FirmwareUpdater(self._os_if)
         self._check_keys = firmware_check_keys.firmwareCheckKeys()
 
         # Initialize temporary directory path
@@ -170,7 +170,7 @@ class RPCFunctions(object):
         if is_str:
             return str(func)
         else:
-            self._chromeos_interface.log('Dispatching method %s with args %s' %
+            self._os_if.log('Dispatching method %s with args %s' %
                     (str(func), str(params)))
             return func(*params)
 
@@ -197,7 +197,7 @@ class RPCFunctions(object):
 
         @param command: A shell command to be run.
         """
-        self._chromeos_interface.run_shell_command(command)
+        self._os_if.run_shell_command(command)
 
     def _system_run_shell_command_get_output(self, command):
         """Run shell command and get its console output.
@@ -205,11 +205,11 @@ class RPCFunctions(object):
         @param command: A shell command to be run.
         @return: A list of strings stripped of the newline characters.
         """
-        return self._chromeos_interface.run_shell_command_get_output(command)
+        return self._os_if.run_shell_command_get_output(command)
 
     def _system_software_reboot(self):
         """Request software reboot."""
-        self._chromeos_interface.run_shell_command('reboot')
+        self._os_if.run_shell_command('reboot')
 
     def _system_get_platform_name(self):
         """Get the platform name of the current system.
@@ -217,7 +217,7 @@ class RPCFunctions(object):
         @return: A string of the platform name.
         """
         # 'mosys platform name' sometimes fails. Let's get the verbose output.
-        lines = self._chromeos_interface.run_shell_command_get_output(
+        lines = self._os_if.run_shell_command_get_output(
                 '(mosys -vvv platform name 2>&1) || echo Failed')
         if lines[-1].strip() == 'Failed':
             raise Exception('Failed getting platform name: ' + '\n'.join(lines))
@@ -229,7 +229,7 @@ class RPCFunctions(object):
         @param key: A crossystem key.
         @return: A string of the requested crossystem value.
         """
-        return self._chromeos_interface.run_shell_command_get_output(
+        return self._os_if.run_shell_command_get_output(
                 'crossystem %s' % key)[0]
 
     def _system_get_root_dev(self):
@@ -237,21 +237,21 @@ class RPCFunctions(object):
 
         @return: A string of the root device without partition number.
         """
-        return self._chromeos_interface.get_root_dev()
+        return self._os_if.get_root_dev()
 
     def _system_get_root_part(self):
         """Get the name of root device with partition number.
 
         @return: A string of the root device with partition number.
         """
-        return self._chromeos_interface.get_root_part()
+        return self._os_if.get_root_part()
 
     def _system_set_try_fw_b(self, count=1):
         """Set 'Try Frimware B' flag in crossystem.
 
         @param count: # times to try booting into FW B
         """
-        self._chromeos_interface.cs.fwb_tries = count
+        self._os_if.cs.fwb_tries = count
 
     def _system_set_fw_try_next(self, next, count=0):
         """Set fw_try_next to A or B
@@ -259,34 +259,34 @@ class RPCFunctions(object):
         @param next: Next FW to reboot to (A or B)
         @param count: # of times to try booting into FW <next>
         """
-        self._chromeos_interface.cs.fw_try_next = next
+        self._os_if.cs.fw_try_next = next
         if count:
-            self._chromeos_interface.cs.fw_try_count = count
+            self._os_if.cs.fw_try_count = count
 
     def _system_get_fw_vboot2(self):
         """Get fw_vboot2"""
         try:
-            return self._chromeos_interface.cs.fw_vboot2 == '1'
-        except chromeos_interface.ChromeOSInterfaceError:
+            return self._os_if.cs.fw_vboot2 == '1'
+        except os_interface.OSInterfaceError:
             return False
 
     def _system_request_recovery_boot(self):
         """Request running in recovery mode on the restart."""
-        self._chromeos_interface.cs.request_recovery()
+        self._os_if.cs.request_recovery()
 
     def _system_get_dev_boot_usb(self):
         """Get dev_boot_usb value which controls developer mode boot from USB.
 
         @return: True if enable, False if disable.
         """
-        return self._chromeos_interface.cs.dev_boot_usb == '1'
+        return self._os_if.cs.dev_boot_usb == '1'
 
     def _system_set_dev_boot_usb(self, value):
         """Set dev_boot_usb value which controls developer mode boot from USB.
 
         @param value: True to enable, False to disable.
         """
-        self._chromeos_interface.cs.dev_boot_usb = 1 if value else 0
+        self._os_if.cs.dev_boot_usb = 1 if value else 0
 
     def _system_is_removable_device_boot(self):
         """Check the current boot device is removable.
@@ -294,8 +294,8 @@ class RPCFunctions(object):
         @return: True: if a removable device boots.
                  False: if a non-removable device boots.
         """
-        root_part = self._chromeos_interface.get_root_part()
-        return self._chromeos_interface.is_removable_device(root_part)
+        root_part = self._os_if.get_root_part()
+        return self._os_if.is_removable_device(root_part)
 
     def _system_create_temp_dir(self, prefix='backup_'):
         """Create a temporary directory and return the path."""
@@ -383,7 +383,7 @@ class RPCFunctions(object):
         original_version = self._bios_get_version(section)
         new_version = original_version + delta
         flags = self._bios_handler.get_section_flags(section)
-        self._chromeos_interface.log(
+        self._os_if.log(
                 'Setting firmware section %s version from %d to %d' % (
                 section, original_version, new_version))
         self._bios_handler.set_section_version(section, new_version, flags,
@@ -479,7 +479,7 @@ class RPCFunctions(object):
 
         @return: A string of the EC version.
         """
-        return self._chromeos_interface.run_shell_command_get_output(
+        return self._os_if.run_shell_command_get_output(
                 'mosys ec info | sed "s/.*| //"')[0]
 
     def _ec_get_firmware_sha(self):
@@ -559,7 +559,7 @@ class RPCFunctions(object):
         """
         original_version = self._kernel_handler.get_version(section)
         new_version = original_version + delta
-        self._chromeos_interface.log(
+        self._os_if.log(
                 'Setting kernel section %s version from %d to %d' % (
                 section, original_version, new_version))
         self._kernel_handler.set_version(section, new_version)
@@ -588,15 +588,15 @@ class RPCFunctions(object):
         @return: True: if kernel A is different with B.
                  False: if kernel A is the same as B.
         """
-        rootdev = self._chromeos_interface.get_root_dev()
-        kernel_a = self._chromeos_interface.join_part(rootdev, '2')
-        kernel_b = self._chromeos_interface.join_part(rootdev, '4')
+        rootdev = self._os_if.get_root_dev()
+        kernel_a = self._os_if.join_part(rootdev, '2')
+        kernel_b = self._os_if.join_part(rootdev, '4')
 
         # The signature (some kind of hash) for the kernel body is stored in
         # the beginning. So compare the first 64KB (including header, preamble,
         # and signature) should be enough to check them identical.
-        header_a = self._chromeos_interface.read_partition(kernel_a, 0x10000)
-        header_b = self._chromeos_interface.read_partition(kernel_b, 0x10000)
+        header_a = self._os_if.read_partition(kernel_a, 0x10000)
+        header_b = self._os_if.read_partition(kernel_b, 0x10000)
 
         return header_a != header_b
 
@@ -659,7 +659,7 @@ class RPCFunctions(object):
         @param shellball: Path of provided shellball. Use default shellball
                           if None,
         """
-        self._updater.setup(self._chromeos_interface, shellball)
+        self._updater.setup(self._os_if, shellball)
 
     def _updater_cleanup(self):
         self._updater.cleanup_temp_dir()

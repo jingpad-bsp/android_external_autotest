@@ -22,7 +22,7 @@ class RootfsHandler(object):
     """
 
     def __init__(self):
-        self.chros_if = None
+        self.os_if = None
         self.root_dev = None
         self.kernel_dump_file = None
 
@@ -31,14 +31,14 @@ class RootfsHandler(object):
 
         @param section: The rootfs to verify. May be A or B.
         """
-        kernel_path = self.chros_if.join_part(self.root_dev,
+        kernel_path = self.os_if.join_part(self.root_dev,
                 _KERNEL_MAP[section.upper()])
-        rootfs_path = self.chros_if.join_part(self.root_dev,
+        rootfs_path = self.os_if.join_part(self.root_dev,
                 _ROOTFS_MAP[section.upper()])
         # vbutil_kernel won't operate on a device, only a file.
-        self.chros_if.run_shell_command(
+        self.os_if.run_shell_command(
                 'dd if=%s of=%s' % (kernel_path, self.kernel_dump_file))
-        vbutil_kernel = self.chros_if.run_shell_command_get_output(
+        vbutil_kernel = self.os_if.run_shell_command_get_output(
                 'vbutil_kernel --verify %s --verbose' % self.kernel_dump_file)
         DM_REGEXP = re.compile(r'dm="(?:1 )?vroot none ro(?: 1)?,(0 (\d+) .+)"')
         match = DM_REGEXP.search('\n'.join(vbutil_kernel))
@@ -55,7 +55,7 @@ class RootfsHandler(object):
 
         self._remove_mapper()
         assert not os.path.exists(_DM_DEV_PATH)
-        self.chros_if.run_shell_command(
+        self.os_if.run_shell_command(
                 "dmsetup create -r %s --table '%s'" % (_DM_DEVICE, table))
         assert os.path.exists(_DM_DEV_PATH)
         try:
@@ -70,14 +70,14 @@ class RootfsHandler(object):
     def _remove_mapper(self):
         """Removes the dm device mapper used by this class."""
         if os.path.exists(_DM_DEV_PATH):
-            self.chros_if.run_shell_command_get_output(
+            self.os_if.run_shell_command_get_output(
                     'dmsetup remove %s' % _DM_DEVICE)
 
-    def init(self, chros_if):
+    def init(self, os_if):
         """Initialize the rootfs handler object.
 
-        @param chros_if: ChromeOS interface object reference.
+        @param os_if: OS interface object reference.
         """
-        self.chros_if = chros_if
-        self.root_dev = chros_if.get_root_dev()
-        self.kernel_dump_file = chros_if.state_dir_file(TMP_FILE_NAME)
+        self.os_if = os_if
+        self.root_dev = os_if.get_root_dev()
+        self.kernel_dump_file = os_if.state_dir_file(TMP_FILE_NAME)
