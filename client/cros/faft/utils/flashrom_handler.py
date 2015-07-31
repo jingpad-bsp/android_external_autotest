@@ -113,7 +113,8 @@ class FlashromHandler(object):
                          use for verifying both existing and new firmware.
         """
         if target == 'bios':
-            self.fum = flashrom_util_module.flashrom_util(target_is_ec=False)
+            self.fum = flashrom_util_module.flashrom_util(
+                    chros_if, target_is_ec=False)
             self.fv_sections = {
                 'a': FvSection('VBOOTA', 'FVMAIN'),
                 'b': FvSection('VBOOTB', 'FVMAINB'),
@@ -121,7 +122,8 @@ class FlashromHandler(object):
                 'ec_b': FvSection(None, 'ECMAINB'),
                 }
         elif target == 'ec':
-            self.fum = flashrom_util_module.flashrom_util(target_is_ec=True)
+            self.fum = flashrom_util_module.flashrom_util(
+                    chros_if, target_is_ec=True)
             self.fv_sections = {
                 'rw': FvSection(None, 'EC_RW'),
                 }
