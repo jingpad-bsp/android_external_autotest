@@ -13,7 +13,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 SUITE = "bvt-perbuild"
-DEPENDENCIES = "power:battery"
+DEPENDENCIES = "rpm, power:battery"
 
 DOC = """
 This test check fully charged power status after suspend and resume the device
