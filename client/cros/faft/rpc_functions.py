@@ -80,7 +80,6 @@ class RPCFunctions(object):
         _chromeos_interface: An object to encapsulate OS services functions.
         _bios_handler: An object to automate BIOS flashrom testing.
         _ec_handler: An object to automate EC flashrom testing.
-        _ec_image: An object to automate EC image for autest.
         _kernel_handler: An object to provide kernel related actions.
         _log_file: Path of the log file.
         _tpm_handler: An object to control TPM device.
@@ -116,8 +115,6 @@ class RPCFunctions(object):
                                   'ec_root_key.vpubk',
                                   '/usr/share/vboot/devkeys',
                                   'ec')
-
-        self._ec_image = None
 
         self._kernel_handler = kernel_handler.KernelHandler()
         # TODO(waihong): The dev_key_path is a new argument. We do that in
@@ -413,38 +410,6 @@ class RPCFunctions(object):
     def _bios_get_kernel_subkey_version(self, section):
         """Return kernel subkey version."""
         return self._bios_handler.get_section_kernel_subkey_version(section)
-
-    def _bios_setup_EC_image(self, ec_path):
-        """Setup the new EC image for later update.
-
-        @param ec_path: The path of the EC image to be updated.
-        """
-        self._ec_image = flashrom_handler.FlashromHandler()
-        self._ec_image.init(saft_flashrom_util,
-                            self._chromeos_interface,
-                            'ec_root_key.vpubk',
-                            '/usr/share/vboot/devkeys',
-                            'ec')
-        self._ec_image.new_image(ec_path)
-
-    def _bios_get_EC_image_sha(self):
-        """Get SHA1 hash of RW firmware section of the EC autest image."""
-        return self._ec_image.get_section_sha('rw')
-
-    def _bios_update_EC_from_image(self, section, flags):
-        """Update EC via software sync design.
-
-        It copys the RW section from the EC image, which is loaded by calling
-        bios_setup_EC_image(), to the EC area of the specified RW section on the
-        current AP firmware.
-
-        @param section: A firmware section on current BIOS, either 'a' or 'b'.
-        @param flags: An integer of preamble flags.
-        """
-        blob = self._ec_image.get_section_body('rw')
-        self._bios_handler.set_section_ecbin(section, blob,
-                                             write_through=True)
-        self._bios_set_preamble_flags(section, flags)
 
     def _bios_dump_whole(self, bios_path):
         """Dump the current BIOS firmware to a file, specified by bios_path.

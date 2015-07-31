@@ -14,8 +14,6 @@ See docstring for FlashromHandler class below.
 import hashlib
 import os
 import struct
-import tempfile
-from chromeos_interface import ChromeOSInterfaceError
 
 class FvSection(object):
     """An object to hold information about a firmware section.
@@ -448,36 +446,6 @@ class FlashromHandler(object):
         blob = self.fum.get_section(self.image, subsection_name)
         return blob
 
-    def _find_dtb_offset(self, blob):
-        """Return the offset of DTB blob from the given firmware blob"""
-        # The RW firmware is concatenated from u-boot, dtb, and ecbin.
-        # Search the magic of dtb to locate the dtb bloc.
-        return blob.find("\xD0\x0D\xFE\xED\x00")
-
-    def _find_ecbin_offset(self, blob):
-        """Return the offset of EC binary from the given firmware blob"""
-        dtb_offset = self._find_dtb_offset(blob)
-        # If the device tree was found, use it. Otherwise assume an index
-        # structure.
-        if dtb_offset != -1:
-            # The dtb size is a 32-bit integer which follows the magic.
-            _, dtb_size = struct.unpack_from(">2L", blob, dtb_offset)
-            # The ecbin part is aligned to 4-byte.
-            return (dtb_offset + dtb_size + 3) & ~3
-        else:
-            # The index will have a count, an offset and size for the system
-            # firmware, and then an offset and size for the EC binary.
-            return struct.unpack_from("<I", blob, 3 * 4)[0]
-
-    def get_section_ecbin(self, section):
-        """Retrieve EC binary of a firmware section"""
-        blob = self.get_section_body(section)
-        ecbin_offset = self._find_ecbin_offset(blob)
-        # Remove the pads of ecbin.
-        pad = blob[-1]
-        ecbin = blob[ecbin_offset :].rstrip(pad)
-        return ecbin
-
     def set_section_body(self, section, blob, write_through=False):
         """Put the supplied blob to the body of the firmware section"""
         subsection_name = self.fv_sections[section].get_body_name()
@@ -494,103 +462,6 @@ class FlashromHandler(object):
         self.image = self.fum.put_section(self.image, subsection_name, blob)
 
         if write_through:
-            self.dump_partial(subsection_name,
-                              self.chros_if.state_dir_file(subsection_name))
-            self.fum.write_partial(self.image, (subsection_name, ))
-
-    def set_section_ecbin(self, section, ecbin, write_through=False):
-        """Put the supplied EC binary to the firwmare section.
-
-        Note that the updated firmware image is not signed yet. Should call
-        set_section_version() afterward.
-        """
-        # Remove unncessary padding bytes.
-        pad = '\xff'
-        align = 4
-        ecbin = ecbin.rstrip(pad)
-        ecbin += pad * (-len(ecbin) % align)
-        ecbin_size = len(ecbin)
-
-        # Get the original main firmware body.
-        main_blob = self.get_section_body(section)
-
-        # Compute the hash of the ecbin.
-        hasher = hashlib.sha256()
-        hasher.update(ecbin)
-        echash = hasher.digest()
-
-        # Depthcharge firmware doesn't save the EC size on the DTB.
-        is_depthcharge = (self._find_dtb_offset(main_blob) == -1)
-
-        if is_depthcharge:
-            # The Depthcharge index header in main firmware section is like:
-            #  count = 2,
-            #  offset and size of main firmware,
-            #  offset and size of EC binary hash.
-            echash_offset = struct.unpack_from('<I', main_blob, 3 * 4)[0]
-
-            # Update the EC binary hash.
-            main_blob = main_blob[0 : echash_offset] + echash
-
-            # Construct the EC firmware section, which is composed of:
-            #  count = 1,
-            #  offset and size of EC firmware,
-            #  EC firmware.
-            ecbin_blob = struct.pack('<III', 1, 3 * 4, ecbin_size) + ecbin
-
-            # Write the EC firmware section back.
-            ec_section = 'ec_' + section
-            self.set_section_body(ec_section, ecbin_blob)
-            if write_through:
-                ec_fmap = self.fv_sections[ec_section].get_body_name()
-                self.dump_partial(ec_fmap,
-                                  self.chros_if.state_dir_file(ec_fmap))
-                self.fum.write_partial(self.image, (ec_fmap, ))
-        else:
-            # Update the size and the hash of the EC binary on the DTB.
-            dtb_offset = self._find_dtb_offset(main_blob)
-            ecbin_offset = self._find_ecbin_offset(main_blob)
-            dtb_blob = main_blob[dtb_offset : ecbin_offset]
-            dtb_size = ecbin_offset - dtb_offset
-            with tempfile.NamedTemporaryFile() as dtb_file:
-                dtb_file.write(dtb_blob)
-                dtb_file.flush()
-
-                cmd = ["fdtput", "-t lu", dtb_file.name,
-                        "/flash/rw-a-boot/ecbin",
-                        "reg", str(ecbin_offset), str(ecbin_size)]
-                self.chros_if.run_shell_command(' '.join(cmd))
-
-                # The old version of firmware doesn't save the EC hash in DTB.
-                # So check the EC hash first before updating.
-                try:
-                    cmd = ["fdtget", "-t bu", dtb_file.name,
-                            "/flash/rw-a-boot/ecbin", "hash"]
-                    self.chros_if.run_shell_command(' '.join(cmd))
-                except ChromeOSInterfaceError:
-                    self.chros_if.log(
-                            "Skip updating EC hash on the old firmware.")
-                else:
-                    cmd = ["fdtput", "-t bu", dtb_file.name,
-                            "/flash/rw-a-boot/ecbin", "hash"]
-                    cmd += [str(ord(c)) for c in echash]
-                    self.chros_if.run_shell_command(' '.join(cmd))
-
-                dtb_file.seek(0)
-                dtb_blob = dtb_file.read()
-                dtb_blob += pad * (-len(dtb_blob) % align)
-                assert len(dtb_blob) == dtb_size, (
-                        'Updating DTB should not change its size.')
-
-            pad = main_blob[-1]
-            pad_size = len(main_blob) - ecbin_offset - ecbin_size
-            main_blob = (main_blob[0 : dtb_offset] +
-                        dtb_blob + ecbin + pad * pad_size)
-
-        # Write the main firmware section back.
-        self.set_section_body(section, main_blob)
-        if write_through:
-            subsection_name = self.fv_sections[section].get_body_name()
             self.dump_partial(subsection_name,
                               self.chros_if.state_dir_file(subsection_name))
             self.fum.write_partial(self.image, (subsection_name, ))
