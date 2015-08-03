@@ -88,12 +88,13 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
                 [client_mac_filter, icmp_filter, tdls_filter])
         frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
-                dut_icmp_display_filter)
+                dut_icmp_display_filter,
+                bad_fcs='include')
         if expected and not frames:
-            raise error.TestFail('Packet capture did not contain a IBSS '
+            raise error.TestFail('Packet capture did not contain any IBSS '
                                  'frames from the DUT!')
         elif not expected and frames:
-            raise error.TestFail('Packet capture contain a IBSS frames '
+            raise error.TestFail('Packet capture contains an IBSS frame '
                                  'from the DUT, but we did not expect them!')
 
 
@@ -145,7 +146,7 @@ class network_WiFi_TDLSPing(wifi_cell_test_base.WiFiCellTestBase):
                     'Disconnected'), timeout=1)
         except utils.TimeoutError:
             link_state = self.context.client.query_tdls_link(peer_ip)
-            logging.error('DUT does not report TDLS link is disconnected: %r' %
+            logging.error('DUT does not report TDLS link is disconnected: %r',
                           link_state)
 
         # Ping from DUT to the associated peer without TDLS.

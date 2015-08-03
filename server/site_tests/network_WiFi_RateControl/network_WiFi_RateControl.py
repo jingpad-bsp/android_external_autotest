@@ -89,7 +89,8 @@ class network_WiFi_RateControl(wifi_cell_test_base.WiFiCellTestBase):
         display_filter = 'udp and ip.src==%s' % self.context.client.wifi_ip
         frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
-                display_filter)
+                display_filter,
+                bad_fcs='include')
 
         logging.info('Grouping frames by MCS index')
         counts = {}

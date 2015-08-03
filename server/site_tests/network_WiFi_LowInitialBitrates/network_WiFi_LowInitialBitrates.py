@@ -37,11 +37,13 @@ class network_WiFi_LowInitialBitrates(wifi_cell_test_base.WiFiCellTestBase):
         frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
                 ('%s and not %s' % (
-                    dut_src_display_filter, dut_dst_display_filter)))
+                    dut_src_display_filter, dut_dst_display_filter)),
+                bad_fcs='include')
         # Get just the DHCP related packets.
         dhcp_frames = tcpdump_analyzer.get_frames(
                 pcap_result.local_pcap_path,
-                '%s and bootp' % dut_src_display_filter)
+                '%s and bootp' % dut_src_display_filter,
+                bad_fcs='include')
         if not dhcp_frames:
             raise error.TestFail('Packet capture did not contain a DHCP '
                                  'negotiation!')

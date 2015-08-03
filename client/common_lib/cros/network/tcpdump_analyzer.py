@@ -4,13 +4,17 @@
 
 import logging
 
+from autotest_lib.client.common_lib import error
+
 PYSHARK_LOAD_TIMEOUT = 2
 FRAME_FIELD_RADIOTAP_DATARATE = 'radiotap.datarate'
 FRAME_FIELD_RADIOTAP_MCS_INDEX = 'radiotap.mcs_index'
 FRAME_FIELD_WLAN_FRAME_TYPE = 'wlan.fc_type_subtype'
 FRAME_FIELD_WLAN_MGMT_SSID = 'wlan_mgt.ssid'
+RADIOTAP_KNOWN_BAD_FCS_REJECTOR = (
+    'not radiotap.flags.badfcs or radiotap.flags.badfcs==0')
 WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
-WLAN_PROBE_REQ_FILTER = 'wlan.fc.type_subtype==0x04'
+WLAN_PROBE_REQ_ACCEPTOR = 'wlan.fc.type_subtype==0x04'
 PYSHARK_BROADCAST_SSID = 'SSID: '
 BROADCAST_SSID = ''
 
@@ -117,16 +121,26 @@ def _open_capture(pcap_path, display_filter):
     capture.load_packets(timeout=PYSHARK_LOAD_TIMEOUT)
     return capture
 
-def get_frames(local_pcap_path, display_filter):
+
+def get_frames(local_pcap_path, display_filter, bad_fcs):
     """
     Get a parsed representation of the contents of a pcap file.
 
     @param local_pcap_path: string path to a local pcap file on the host.
     @param diplay_filter: string filter to apply to captured frames.
+    @param bad_fcs: string 'include' or 'discard'
 
     @return list of Frame structs.
 
     """
+    if bad_fcs == 'include':
+        display_filter = display_filter
+    elif bad_fcs == 'discard':
+        display_filter = '(%s) and (%s)' % (RADIOTAP_KNOWN_BAD_FCS_REJECTOR,
+                                            display_filter)
+    else:
+        raise error.TestError('Invalid value for bad_fcs arg: %s.' % bad_fcs)
+
     logging.debug('Capture: %s, Filter: %s', local_pcap_path, display_filter)
     capture_frames = _open_capture(local_pcap_path, display_filter)
     frames = []
@@ -164,6 +178,7 @@ def get_frames(local_pcap_path, display_filter):
 
     return frames
 
+
 def get_probe_ssids(local_pcap_path, probe_sender=None):
     """
     Get the SSIDs that were named in 802.11 probe requests frames.
@@ -181,11 +196,11 @@ def get_probe_ssids(local_pcap_path, probe_sender=None):
     """
     if probe_sender:
         diplay_filter = '%s and wlan.addr==%s' % (
-                WLAN_PROBE_REQ_FILTER, probe_sender)
+                WLAN_PROBE_REQ_ACCEPTOR, probe_sender)
     else:
-        diplay_filter = WLAN_PROBE_REQ_FILTER
+        diplay_filter = WLAN_PROBE_REQ_ACCEPTOR
 
-    frames = get_frames(local_pcap_path, diplay_filter)
+    frames = get_frames(local_pcap_path, diplay_filter, bad_fcs='discard')
 
     return frozenset(
             [frame.probe_ssid for frame in frames
