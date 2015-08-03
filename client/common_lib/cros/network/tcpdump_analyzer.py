@@ -2,25 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime
 import logging
-import re
-
-from autotest_lib.client.common_lib import utils
 
 PYSHARK_LOAD_TIMEOUT = 2
-FRAME_FIELD_RADIOTAP_DATARATE = "radiotap.datarate"
-FRAME_FIELD_RADIOTAP_MCS_INDEX = "radiotap.mcs_index"
-FRAME_FIELD_WLAN_FRAME_TYPE = "wlan.fc_type_subtype"
-FRAME_FIELD_WLAN_MGMT_SSID = "wlan_mgt.ssid"
+FRAME_FIELD_RADIOTAP_DATARATE = 'radiotap.datarate'
+FRAME_FIELD_RADIOTAP_MCS_INDEX = 'radiotap.mcs_index'
+FRAME_FIELD_WLAN_FRAME_TYPE = 'wlan.fc_type_subtype'
+FRAME_FIELD_WLAN_MGMT_SSID = 'wlan_mgt.ssid'
 WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
-WLAN_PROBE_REQ_FILTER = "wlan.fc.type_subtype==0x04"
+WLAN_PROBE_REQ_FILTER = 'wlan.fc.type_subtype==0x04'
 PYSHARK_BROADCAST_SSID = 'SSID: '
 BROADCAST_SSID = ''
+
 
 class Frame(object):
     """A frame from a packet capture."""
     TIME_FORMAT = "%H:%M:%S.%f"
+
 
     def __init__(self, frametime, bit_rate, mcs_index, probe_ssid):
         self._datetime = frametime
@@ -86,6 +84,7 @@ def _fetch_frame_field_value(frame, field):
             return None
     return layer_object
 
+
 def _match_frame_field_with_value(frame, field, match_value):
     """
     Check if the value of |field| within the |frame| matches |match_value|.
@@ -100,6 +99,7 @@ def _match_frame_field_with_value(frame, field, match_value):
     """
     value = _fetch_frame_field_value(frame, field)
     return (match_value == value)
+
 
 def _open_capture(pcap_path, display_filter):
     """
