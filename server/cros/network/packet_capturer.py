@@ -8,6 +8,7 @@ import os.path
 import time
 import uuid
 
+from autotest_lib.client.bin import site_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import path_utils
 
@@ -31,6 +32,9 @@ CaptureResult = collections.namedtuple('CaptureResult',
 # parameter?). The value here is 2x the largest frame size observed in
 # a quick sample.
 SNAPLEN_WIFI_PROBE_REQUEST = 600
+
+TCPDUMP_START_TIMEOUT_SECONDS = 5
+TCPDUMP_START_POLL_SECONDS = 0.1
 
 def get_packet_capturer(host, host_description=None, cmd_ifconfig=None,
                         cmd_ip=None, cmd_iw=None, cmd_netdump=None,
@@ -277,6 +281,17 @@ class PacketCapturer(object):
         return monitor_device
 
 
+    def _is_capture_active(self, remote_log_file):
+        """Check if a packet capture has completed initialization.
+
+        @param remote_log_file string path to the capture's log file
+        @return True iff log file indicates that tcpdump is listening.
+        """
+        return self._host.run(
+            'grep "listening on" "%s"' % remote_log_file, ignore_status=True
+            ).exit_status == 0
+
+
     def start_capture(self, interface, local_save_dir,
                       remote_file=None, snaplen=None):
         """Start a packet capture on an existing interface.
@@ -306,6 +321,12 @@ class PacketCapturer(object):
         self._ongoing_captures[pid] = (remote_file,
                                        remote_log_file,
                                        local_save_dir)
+        is_capture_active = lambda: self._is_capture_active(remote_log_file)
+        site_utils.poll_for_condition(
+            is_capture_active,
+            timeout=TCPDUMP_START_TIMEOUT_SECONDS,
+            sleep_interval=TCPDUMP_START_POLL_SECONDS,
+            desc='Timeout waiting for tcpdump to start.')
         return pid
 
 
