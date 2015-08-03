@@ -16,8 +16,8 @@ from constants import Labels
 from constants import Builds
 
 import common
-from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.scheduler import scheduler_lib
 
 
 class MalformedConfigEntry(Exception):
@@ -48,7 +48,7 @@ class TotMilestoneManager(object):
     scheduler's ini file.
     """
 
-    __metaclass__ = server_utils.Singleton
+    __metaclass__ = scheduler_lib.Singleton
 
     # True if suite_scheduler is running for sanity check. When it's set to
     # True, the code won't make gsutil call to get the actual tot milestone to
