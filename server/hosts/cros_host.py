@@ -766,26 +766,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             while num_of_attempts > 0:
                 num_of_attempts -= 1
                 try:
-                    # TODO(pprabhu) Remove. crbug.com/515937
-                    # A bug in shill is causing some wifi related failures.
-                    # Turn off wifi before update so that update_engine can
-                    # proceed without interruption.
-                    cmd = '/usr/local/lib/flimflam/test/disable-device %s'
-                    try:
-                        self.run(cmd % 'wlan0', timeout=120)
-                    except Exception as e:
-                        # Blanket except: This is a hack. We *never* want to
-                        # fail here.
-                        logging.warning('Failed to turn off wifi before update')
-                        logging.warning(e)
-                    try:
-                        self.run(cmd % 'mlan0', timeout=120)
-                    except Exception as e:
-                        # Blanket except: This is a hack. We *never* want to
-                        # fail here.
-                        logging.warning('Failed to turn off wifi before update')
-                        logging.warning(e)
-
                     updater.run_update()
                 except Exception:
                     logging.warn('Autoupdate did not complete.')
