@@ -12,6 +12,7 @@ import common
 from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import readonly_connection
+from autotest_lib.server import utils as server_utils
 from autotest_lib.scheduler import scheduler_lib
 from django.db import utils as django_utils
 
@@ -23,7 +24,7 @@ class ConnectionManagerTests(unittest.TestCase):
         self.connection_manager = None
         readonly_connection.set_globally_disabled = mock.MagicMock()
         setup_django_environment.enable_autocommit = mock.MagicMock()
-        scheduler_lib.Singleton._instances = {}
+        server_utils.Singleton._instances = {}
 
 
     def tearDown(self):

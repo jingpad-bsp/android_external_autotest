@@ -42,7 +42,15 @@ import manifest_versions, sanity
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.site_utils import server_manager_utils
+try:
+    from autotest_lib.frontend import setup_django_environment
+    # server_manager_utils depend on django which
+    # may not be available when people run checks with --sanity
+    from autotest_lib.site_utils import server_manager_utils
+except ImportError:
+    server_manager_utils = None
+    logging.debug('Could not load server_manager_utils module, expected '
+                  'if you are running sanity check or pre-submit hook')
 
 
 CONFIG_SECTION = 'SCHEDULER'
@@ -227,6 +235,9 @@ def main():
     # If server database is enabled, check if the server has role
     # `suite_scheduler`. If the server does not have suite_scheduler role,
     # exception will be raised and suite scheduler will not continue to run.
+    if not server_manager_utils:
+        raise ImportError(
+            'Could not import autotest_lib.site_utils.server_manager_utils')
     if server_manager_utils.use_server_db():
         server_manager_utils.confirm_server_has_role(hostname='localhost',
                                                      role='suite_scheduler')
