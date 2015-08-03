@@ -12,11 +12,11 @@ TEST_CLASS = "power"
 TEST_TYPE = "client"
 
 DOC = """
-Suspends the system with a YouTube video playing in flash mode.
+Suspends the system with a Youtube video playing in HTML5 mode.
 
 Checks that video is playing when DUT is resumed.
 """
 
-video_url = "http://www.youtube.com/embed/6v2L2UGZJAM?enablejsapi=1&nohtml5=1"
+video_url = "http://www.youtube.com/embed/6v2L2UGZJAM?enablejsapi=1"
 job.add_sysinfo_logfile('/sys/kernel/debug/suspend_stats', on_every_test=True)
 job.run_test('power_FlashVideoSuspend', video_url = video_url)

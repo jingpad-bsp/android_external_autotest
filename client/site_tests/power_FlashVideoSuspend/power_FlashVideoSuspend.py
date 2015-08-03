@@ -16,14 +16,14 @@ class power_FlashVideoSuspend(test.test):
     """Suspend the system with a video playing."""
     version = 2
 
-    def run_once(self, video_urls=None):
+    def run_once(self, video_url=None):
         utils.verify_flash_installed()
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
             tab.Navigate(cr.browser.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube.html')))
-            self.suspend_with_youtube(cr.browser.tabs[0])
+            self.suspend_with_youtube(cr.browser.tabs[0], video_url)
 
 
     def check_video_is_playing(self, tab):
@@ -42,7 +42,7 @@ class power_FlashVideoSuspend(test.test):
             exception=error.TestError('Player is stuck until timeout.'))
 
 
-    def suspend_with_youtube(self, tab):
+    def suspend_with_youtube(self, tab, video_url):
         """
         Suspends kernel while video is running in browser.
 
@@ -50,7 +50,10 @@ class power_FlashVideoSuspend(test.test):
         """
         def player_is_ready():
             """Check if player is ready to play video."""
+            # TODO(avkodipelli):Move video playback code from suspend function
+            # while fixing crbug.com/507814
             tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+            tab.EvaluateJavaScript('play("%s")' % video_url)
             return tab.EvaluateJavaScript('typeof player != "undefined"')
 
         utils.poll_for_condition(
