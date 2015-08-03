@@ -28,7 +28,7 @@ messagebus:!:201:
 syslog:!:202:
 sshd:!:204:
 polkituser:!:206:
-tss:!:207:root,chaps,attestation,trunks
+tss:!:207:root,attestation,chaps,tpm_manager,trunks
 pkcs11:!:208:root,ipsec,chronos,chaps,wpa
 qdlservice:!:209:
 cromo:!:210:
