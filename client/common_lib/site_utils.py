@@ -426,7 +426,7 @@ def version_match(build_version, release_version, update_url=''):
 
     The method is designed to compare version for following 6 scenarios with
     samples of build version and expected release version:
-    1. trybot non-release build (paladin or pre-cq build).
+    1. trybot non-release build (paladin, pre-cq or test-ap build).
     build version:   trybot-lumpy-paladin/R27-3837.0.0-b123
     release version: 3837.0.2013_03_21_1340
 
@@ -476,8 +476,8 @@ def version_match(build_version, release_version, update_url=''):
     stripped_version = stripped_version.split('/')[-1]
 
     is_trybot_non_release_build = (
-            re.match(r'.*trybot-.+-(paladin|pre-cq)', build_version) or
-            re.match(r'.*trybot-.+-(paladin|pre-cq)', update_url))
+            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap)', build_version) or
+            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap)', update_url))
 
     # Replace date string with 0 in release_version
     release_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',

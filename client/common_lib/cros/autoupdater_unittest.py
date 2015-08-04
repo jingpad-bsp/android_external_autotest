@@ -330,6 +330,57 @@ class TestAutoUpdater(mox.MoxTestBase):
         self.assertTrue(updater.check_version_to_confirm_install())
 
 
+    def testCheckVersion_7(self):
+        """Test version check methods work for a test-ap build.
+
+        Test two methods used to check version, check_version and
+        check_version_to_confirm_install, for:
+        6. test-ap build.
+        update version: trybot-stumpy-test-ap/R46-7298.0.0-b23
+        booted version: 7298.0.0
+
+        """
+        update_url = ('http://100.107.160.2:8082/update/trybot-stumpy-test-api'
+                      '/R46-7298.0.0-b23')
+        updater = autoupdater.ChromiumOSUpdater(
+                update_url, host=self.mox.CreateMockAnything())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater.host, 'get_release_version')
+        updater.host.get_release_version().MultipleTimes().AndReturn(
+                '7298.0.2015_07_24_1640')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater.host, 'get_release_version')
+        updater.host.get_release_version().MultipleTimes().AndReturn(
+                '7298.0.2015_07_24_1640')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertTrue(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater.host, 'get_release_version')
+        updater.host.get_release_version().MultipleTimes().AndReturn('7298.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+        self.mox.UnsetStubs()
+        self.mox.StubOutWithMock(updater.host, 'get_release_version')
+        updater.host.get_release_version().MultipleTimes().AndReturn(
+                '7298.0.0')
+        self.mox.ReplayAll()
+
+        self.assertFalse(updater.check_version())
+        self.assertFalse(updater.check_version_to_confirm_install())
+
+
     def testTriggerUpdate(self):
         """Tests that we correctly handle updater errors."""
         self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater, '_run')
