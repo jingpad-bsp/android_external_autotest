@@ -17,6 +17,26 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
                        'x86-mario', 'stout']
 
+    # Special exception for crosbug.com/p/31012, to be removed once
+    # crbug.com/516886 is resolved.
+    def _is_actual_error(self, err):
+        """Returns True/False depending on whether this error is valid.
+
+        @param err: the error message we are about to raise
+
+        """
+        exceptions = {'expresso': 'Tue Jul 15 22:26:57 PDT 2014',
+                      'enguarde': 'Wed Jun 18 12:24:44 PDT 2014'}
+        valid_error = 'No valid firmware for ELAN0000:00 found'
+        if self.device in exceptions and err.find(valid_error) >= 0:
+            matches = utils.run(
+                    'grep "%s" /var/log/messages' % exceptions[self.device],
+                    ignore_status=True).stdout
+            if matches:
+                logging.info('Ignoring failure from crosbug.com/p/31012!')
+                return False
+        return True
+
     def _check_updates(self):
         """Fail the test if device has problems with touch firmware update.
 
@@ -35,7 +55,8 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             if term in fail_terms and len(log_entries) > 0:
                 error_msg = log_entries.split('\n')[0]
                 error_msg = error_msg[error_msg.find(term)+len(term):].strip()
-                raise error.TestFail(error_msg)
+                if self._is_actual_error(error_msg):
+                    raise error.TestFail(error_msg)
             if term in pass_terms and len(log_entries) == 0:
                 raise error.TestFail('Touch firmware did not attempt update.')
 
@@ -48,10 +69,10 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             return
 
         # Skip run on invalid touch inputs.
-        device = utils.get_board()
-        if device.find('freon') >= 0:
-            device = device[:-len('_freon')]
-        if device in self._INVALID_BOARDS:
+        self.device = utils.get_board()
+        if self.device.find('freon') >= 0:
+            self.device = self.device[:-len('_freon')]
+        if self.device in self._INVALID_BOARDS:
             logging.info('This touchpad is not supported for this test.')
             return
 
