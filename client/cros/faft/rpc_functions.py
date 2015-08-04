@@ -7,7 +7,7 @@
 These can be exposed via a xmlrpci server running on the DUT.
 """
 
-import functools, os, shutil, tempfile
+import functools, os, tempfile
 
 import common
 from autotest_lib.client.cros.faft.utils import (cgpt_handler,
@@ -117,17 +117,9 @@ class RPCFunctions(object):
                                   'ec')
 
         self._kernel_handler = kernel_handler.KernelHandler()
-        # TODO(waihong): The dev_key_path is a new argument. We do that in
-        # order not to break the old image and still be able to run.
-        try:
-            self._kernel_handler.init(self._os_if,
-                                      dev_key_path='/usr/share/vboot/devkeys',
-                                      internal_disk=True)
-        except TypeError:
-            # Copy the key to the current working directory.
-            shutil.copy('/usr/share/vboot/devkeys/kernel_data_key.vbprivk', '.')
-            self._kernel_handler.init(self._os_if,
-                                      internal_disk=True)
+        self._kernel_handler.init(self._os_if,
+                                  dev_key_path='/usr/share/vboot/devkeys',
+                                  internal_disk=True)
 
         self._tpm_handler = tpm_handler.TpmHandler()
         self._tpm_handler.init(self._os_if)
