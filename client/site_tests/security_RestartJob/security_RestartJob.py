@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -28,6 +28,7 @@ class security_RestartJob(test.test):
 
 
     def run_once(self):
+        """Main test code."""
         login.wait_for_browser()
         bus = dbus.SystemBus()
         proxy = bus.get_object('org.chromium.SessionManager',
@@ -35,34 +36,16 @@ class security_RestartJob(test.test):
         sessionmanager = dbus.Interface(proxy,
                                         'org.chromium.SessionManagerInterface')
 
-        # We can't just start our own sacrificial process to let
-        # 'session_manager' kill, because it knows which processes it's
-        # managing, so we have to locate the pid of Chrome.
-        pid = int(self._ps())
-
         # Craft a malicious replacement for the target process.
-        cmd = 'touch %s' % self._FLAGFILE
+        cmd = ['touch', self._FLAGFILE]
 
-        # Try to get our malicious replacement to run.
-        logging.info('Calling RestartJob(%s, \'%s\')', pid, cmd)
-        try:
-            if sessionmanager.RestartJob(pid, cmd):
-                raise error.TestFail(
-                        'RestartJob regression, see crbug.com/193322')
-        except dbus.DBusException as e:
-            logging.info(e.get_dbus_message())
-            pass
-
-        if os.path.exists(self._FLAGFILE):
-            raise error.TestFail('RestartJob regression, see crbug.com/189233')
-
-        # Try to get our malicious replacement to run via RestartJobWithAuth.
+        # Try to get our malicious replacement to run via RestartJob.
         try:
             remote, local = socket.socketpair(socket.AF_UNIX)
-            logging.info('Calling RestartJobWithAuth(<socket>, \'%s\')', cmd)
-            if sessionmanager.RestartJobWithAuth(dbus.types.UnixFd(remote),
-                                                 cmd):
-                raise error.TestFail('RestartJobWithAuth regression!')
+            logging.info('Calling RestartJob(<socket>, %r)', cmd)
+            sessionmanager.RestartJob(dbus.types.UnixFd(remote), cmd)
+            # Fails if the RestartJob call doesn't generate an error.
+            raise error.TestFail('RestartJob regression!')
         except dbus.DBusException as e:
             logging.info(e.get_dbus_message())
             pass
@@ -79,5 +62,5 @@ class security_RestartJob(test.test):
 
 
     def cleanup(self):
-        # Clean up, since this test killed Chrome.
+        """Reset the UI, since this test killed Chrome."""
         cros_ui.nuke()
