@@ -8,10 +8,7 @@ TIME = 'LONG'
 TEST_TYPE = 'server'
 ATTRIBUTES = 'suite:wifi_interop'
 SUITE = 'wifi_interop'
-# TO-DO: tienchang@ created tmp label for this control file to pick up
-# these 3 devices.
 DEPENDENCIES = 'chaos_dut, chaos_nightly'
-SYNC_COUNT = 3
 
 DOC = """
 This control file runs a combination of DUTs and APs in a nightly run of
@@ -23,15 +20,15 @@ from autotest_lib.server.cros.chaos_lib import chaos_runner
 
 def run_chaos_nightly(machine):
     host = hosts.create_host(machine)
-    ap_specs = [ap_spec.APSpec(hostnames='chromeos3-row5-rack2-host12',
-                               security=ap_spec.SECURITY_TYPE_WPA2PSK),
-                ap_spec.APSpec(hostnames='chromeos3-row5-rack4-host12',
-                               security=ap_spec.SECURITY_TYPE_WPA2PSK),
-                ap_spec.APSpec(hostnames='chromeos3-row2-rack1-host2')]
+    test_aps = ['chromeos3-row4-rack1-host11', 'chromeos3-row5-rack2-host12',
+                'chromeos3-row5-rack4-host12', 'chromeos3-row2-rack1-host2',
+                'chromeos3-row3-rack3-host5']
+    ap_specs = [ap_spec.APSpec(hostnames=test_aps,
+                               security=ap_spec.SECURITY_TYPE_WPA2PSK)]
 
     for spec in ap_specs:
         runner = chaos_runner.ChaosRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, spec)
-        runner.run(job)
+        runner.run(job, batch_size=1)
 
 parallel_simple(run_chaos_nightly, machines)
