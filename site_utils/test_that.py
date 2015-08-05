@@ -516,6 +516,9 @@ def validate_arguments(arguments):
         if arguments.ssh_verbosity:
             raise ValueError('--ssh_verbosity flag not supported when running '
                              'against :lab:')
+    else:
+        if arguments.web:
+            raise ValueError('--web flag not supported when running locally')
 
 
 def parse_arguments(argv):
@@ -523,11 +526,14 @@ def parse_arguments(argv):
     Parse command line arguments
 
     @param argv: argument list to parse
-    @returns:    parsed arguments.
+    @returns:    tuple of parsed arguments and argv suitable for remote runs
     @raises SystemExit if arguments are malformed, or required arguments
             are not present.
     """
-    parser = argparse.ArgumentParser(description='Run remote tests.')
+    local_parser, remote_argv = parse_local_arguments(argv)
+
+    parser = argparse.ArgumentParser(description='Run remote tests.',
+                                     parents=[local_parser])
 
     parser.add_argument('remote', metavar='REMOTE',
                         help='hostname[:port] for remote device. Specify '
@@ -615,7 +621,23 @@ def parse_arguments(argv):
                              'verbosity.')
     parser.add_argument('--iterations', action='store', type=int, default=1,
                         help='Number of times to run the tests specified.')
-    return parser.parse_args(argv)
+    return parser.parse_args(argv), remote_argv
+
+
+def parse_local_arguments(argv):
+    """
+    Strips out arguments that are not to be passed through to runs.
+
+    Add any arguments that should not be passed to remote test_that runs here.
+
+    @param argv: argument list to parse.
+    @returns: tuple of local argument parser and remaining argv.
+    """
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('-w', '--web', dest='web', default=None,
+                        help='Address of a webserver to receive test requests.')
+    _, remaining_argv = parser.parse_known_args(argv)
+    return parser, remaining_argv
 
 
 def sigint_handler(signum, stack_frame):
@@ -890,6 +912,8 @@ def _main_for_lab_run(argv, arguments):
                '--suite_name', 'test_that_wrapper',
                '--pool', arguments.pool,
                '--suite_args', flattened_argv]
+    if arguments.web:
+        command.extend(['--web', arguments.web])
     logging.info('About to start lab suite with command %s.', command)
     return subprocess.call(command)
 
@@ -900,7 +924,7 @@ def main(argv):
 
     @param argv: arguments list
     """
-    arguments = parse_arguments(argv)
+    arguments, remote_argv = parse_arguments(argv)
     try:
         validate_arguments(arguments)
     except ValueError as err:
@@ -908,7 +932,7 @@ def main(argv):
         return 1
 
     if arguments.remote == ':lab:':
-        return _main_for_lab_run(argv, arguments)
+        return _main_for_lab_run(remote_argv, arguments)
     else:
         return _main_for_local_run(argv, arguments)
 

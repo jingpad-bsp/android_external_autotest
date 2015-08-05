@@ -53,7 +53,7 @@ class TestThatUnittests(unittest.TestCase):
         pass
 
     def test_parse_arguments(self):
-        args = test_that.parse_arguments(
+        args, remote_argv = test_that.parse_arguments(
                 ['-b', 'some_board', '-i', 'some_image', '--args', 'some_args',
                  'some_remote', 'test1', 'test2'])
         self.assertEqual('some_board', args.board)
@@ -61,6 +61,23 @@ class TestThatUnittests(unittest.TestCase):
         self.assertEqual('some_args', args.args)
         self.assertEqual('some_remote', args.remote)
         self.assertEqual(['test1', 'test2'], args.tests)
+        self.assertEqual(remote_argv,
+                         ['-b', 'some_board', '-i', 'some_image', '--args',
+                          'some_args', 'some_remote', 'test1', 'test2'])
+
+    def test_parse_arguments_with_local_argument(self):
+        args, remote_argv = test_that.parse_arguments(
+                ['-b', 'some_board', '-i', 'some_image', '-w', 'server:port',
+                 '--args', 'some_args', 'some_remote', 'test1', 'test2'])
+        self.assertEqual('server:port', args.web)
+        self.assertEqual('some_board', args.board)
+        self.assertEqual('some_image', args.build)
+        self.assertEqual('some_args', args.args)
+        self.assertEqual('some_remote', args.remote)
+        self.assertEqual(['test1', 'test2'], args.tests)
+        self.assertEqual(remote_argv,
+                         ['-b', 'some_board', '-i', 'some_image', '--args',
+                          'some_args', 'some_remote', 'test1', 'test2'])
 
     def test_fetch_local_suite(self):
         # Deferred until fetch_local_suite knows about non-local builds.
