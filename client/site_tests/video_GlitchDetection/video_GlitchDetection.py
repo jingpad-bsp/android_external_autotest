@@ -277,8 +277,13 @@ class video_GlitchDetection(test.test):
 
         # We may get too little or too many test frames received
         if abs(golden_count - test_count) > eps:
+            logging.debug("Too few test images, save what we got.")
+            indices = [i for _, i in test_checksum_ind_list]
+            self.video_capturer.write_images(indices, self.resultsdir)
+
             msg = ("Expecting about %d checksums, received %d. Allowed delta "
                    "is %d") % (golden_count, test_count, eps)
+
             raise error.TestFail(msg)
 
 

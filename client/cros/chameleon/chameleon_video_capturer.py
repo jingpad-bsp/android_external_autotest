@@ -84,9 +84,9 @@ class ChameleonVideoCapturer(object):
 
         player.play()
 
-        error_msg = "Expected current time to be > 0.5 seconds"
+        error_msg = "Expected current time to be > 1 seconds"
 
-        utils.poll_for_condition(lambda : player.currentTime() > 0.5,
+        utils.poll_for_condition(lambda : player.currentTime() > 1,
                                  timeout=5,
                                  exception=error.TestError(error_msg))
 
@@ -116,20 +116,25 @@ class ChameleonVideoCapturer(object):
 
 
 
-    def write_images(self, frame_indices):
+    def write_images(self, frame_indices, dest_dir=None):
         """
         Saves frames of given indices to disk. The filename of the frame will be
         index in the list.
         @param frame_indices: list of frame indices to save.
+        @param dest_dir: path to the desired destination dir.
         @return: list of file paths
+
         """
         if type(frame_indices) is not list:
             frame_indices = [frame_indices]
 
+        if not dest_dir:
+            dest_dir = self.dest_dir
+
         test_images = []
         curr_checksum = None
         for i, frame_index in enumerate(frame_indices):
-            path = os.path.join(self.dest_dir, str(i) + '.' + self.image_format)
+            path = os.path.join(dest_dir, str(i) + '.' + self.image_format)
             # previous is what was current in the previous iteration
             prev_checksum = curr_checksum
             curr_checksum = self.checksums[frame_index]
