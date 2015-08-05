@@ -66,7 +66,7 @@ SOCKET_TYPES = [socket.SOCK_STREAM, socket.SOCK_DGRAM, socket.SOCK_RAW,
 class security_ProtocolFamilies(test.test):
     version = 1
     PF_BASELINE = ["PF_FILE", "PF_PACKET", "PF_INET", "PF_INET6", "PF_ROUTE",
-                   "PF_LOCAL", "PF_NETLINK", "PF_UNIX", "PF_BLUETOOTH"]
+                   "PF_LOCAL", "PF_NETLINK", "PF_UNIX", "PF_BLUETOOTH", "PF_ALG"]
     PER_BOARD = {}
 
 
