@@ -123,8 +123,12 @@ class RPCFunctions(object):
                                   dev_key_path='/usr/share/vboot/devkeys',
                                   internal_disk=True)
 
-        self._tpm_handler = tpm_handler.TpmHandler()
-        self._tpm_handler.init(self._os_if)
+        # FIXME(waihong): Add back the TPM support.
+        if not self._os_if.is_android:
+            self._tpm_handler = tpm_handler.TpmHandler()
+            self._tpm_handler.init(self._os_if)
+        else:
+            self._tpm_handler = None
 
         self._cgpt_handler = cgpt_handler.CgptHandler(self._os_if)
 

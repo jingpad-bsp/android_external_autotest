@@ -51,13 +51,19 @@ class Crossystem(object):
 class OSInterface(object):
     """An object to encapsulate OS services functions."""
 
+    ANDROID_TESTER_FILE = '/mnt/stateful_partition/.android_faft_tester'
+
     def __init__(self):
         """Object construction time initialization."""
-        self.shell = None
         self.state_dir = None
         self.log_file = None
         self.cs = Crossystem()
-        self.shell = shell_wrapper.LocalShell()
+        self.is_android = os.path.isfile(self.ANDROID_TESTER_FILE)
+        if self.is_android:
+            self.shell = shell_wrapper.AdbShell()
+        else:
+            self.shell = shell_wrapper.LocalShell()
+
 
     def init(self, state_dir=None, log_file=None):
         """Initialize the OS interface object.
@@ -130,7 +136,11 @@ class OSInterface(object):
 
     def create_temp_file(self, prefix):
         """Create a temporary file with a prefix."""
-        cmd = 'mktemp -t %sXXXXXX' % prefix
+        if self.is_android:
+            tmp_path = '/data/local/tmp'
+        else:
+            tmp_path = '/tmp'
+        cmd = 'mktemp -p %s %sXXXXXX' % (tmp_path, prefix)
         return self.run_shell_command_get_output(cmd)[0]
 
     def copy_file(self, from_path, to_path):
@@ -159,8 +169,10 @@ class OSInterface(object):
         return int(self.run_shell_command_get_output(cmd)[0])
 
     def target_hosted(self):
-        """Return True if running on a ChromeOS target."""
-        signature = self.read_file('/etc/lsb-release')
+        """Return True if running on DUT."""
+        if self.is_android:
+            return True
+        signature = open('/etc/lsb-release', 'r').readlines()[0]
         return re.search(r'chrom(ium|e)os', signature, re.IGNORECASE) != None
 
     def state_dir_file(self, file_name):
@@ -193,6 +205,8 @@ class OSInterface(object):
 
         Returns True if the device is removable, False if not.
         """
+        if self.is_android:
+            return False
 
         if not self.target_hosted():
             return False
@@ -224,7 +238,13 @@ class OSInterface(object):
 
     def get_root_part(self):
         """Return a string, the name of root device with partition number"""
-        return self.run_shell_command_get_output('rootdev -s')[0]
+        # FIXME(waihong): Android doesn't support dual kernel/root and misses
+        # the related tools. Just return something that not break the existing
+        # code.
+        if self.is_android:
+            return '/dev/mmcblk0p3'
+        else:
+            return self.run_shell_command_get_output('rootdev -s')[0]
 
     def get_root_dev(self):
         """Return a string, the name of root device without partition number"""
