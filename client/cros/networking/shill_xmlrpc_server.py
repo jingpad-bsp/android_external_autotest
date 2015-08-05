@@ -12,11 +12,11 @@ import multiprocessing
 import common
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
+from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros import tpm_store
-from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.client.cros.networking import wifi_proxy
 

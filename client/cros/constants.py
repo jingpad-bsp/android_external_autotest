@@ -139,14 +139,14 @@ INTERACTIVE_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 SHILL_XMLRPC_SERVER_PORT = 9989
 SHILL_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/network; '
+        'cd /usr/local/autotest/cros/networking; '
         './shill_xmlrpc_server.py')
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 BLUETOOTH_DEVICE_XMLRPC_SERVER_PORT = 9990
 BLUETOOTH_DEVICE_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/bluetooth; '
+        'cd /usr/local/autotest/cros/bluetooth; '
         './bluetooth_device_xmlrpc_server.py')
 BLUETOOTH_DEVICE_XMLRPC_SERVER_CLEANUP_PATTERN = (
         'bluetooth_device_xmlrpc_server')
@@ -154,7 +154,7 @@ BLUETOOTH_DEVICE_XMLRPC_SERVER_READY_METHOD = 'ready'
 
 BLUETOOTH_TESTER_XMLRPC_SERVER_PORT = 9990
 BLUETOOTH_TESTER_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/bluetooth;  '
+        'cd /usr/local/autotest/cros/bluetooth;  '
         './bluetooth_tester_xmlrpc_server.py')
 BLUETOOTH_TESTER_XMLRPC_SERVER_CLEANUP_PATTERN = (
         'bluetooth_tester_xmlrpc_server')
@@ -174,7 +174,7 @@ MULTIMEDIA_TEST_EXTENSION = (
 
 APMANAGER_XMLRPC_SERVER_PORT = 9992
 APMANAGER_XMLRPC_SERVER_COMMAND = (
-        'cd /usr/local/autotest/common_lib/cros/network; '
+        'cd /usr/local/autotest/cros/networking; '
         './apmanager_xmlrpc_server.py')
 APMANAGER_XMLRPC_SERVER_CLEANUP_PATTERN = 'apmanager_xmlrpc_server'
 APMANAGER_XMLRPC_SERVER_READY_METHOD = 'ready'
