@@ -9,8 +9,8 @@ import logging.handlers
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.networking import apmanager_proxy
 
 

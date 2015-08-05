@@ -8,9 +8,9 @@ import logging
 import logging.handlers
 
 import common
-from autotest_lib.client.common_lib.cros import xmlrpc_server
 from autotest_lib.client.cros import dark_resume_listener
 from autotest_lib.client.cros import sys_power
+from autotest_lib.client.cros import xmlrpc_server
 
 
 SERVER_PORT = 9993
