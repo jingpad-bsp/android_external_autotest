@@ -12,8 +12,10 @@ import re
 import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome, retry
-from autotest_lib.client.cros import constants, sys_power
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import image_generator
 

@@ -1,7 +1,7 @@
 import os, shutil, re, glob, subprocess, logging
 
 from autotest_lib.client.common_lib import log
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.client.bin import utils, package
 
 

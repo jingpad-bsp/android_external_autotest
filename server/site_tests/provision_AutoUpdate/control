@@ -18,7 +18,7 @@ cros-version label of a host to the desired setting.
 
 
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 
 
 # Uncomment the below line, and change it to the correct value if you are

@@ -4,9 +4,10 @@
 
 import contextlib, fcntl, logging, os, re, shutil
 
-import common, constants, cros_logging
+import common, cros_logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import constants
 
 
 class CrashTest(test.test):

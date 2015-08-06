@@ -2,7 +2,7 @@ import os, time, logging, shutil
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.server import utils
 
 

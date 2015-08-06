@@ -6,7 +6,7 @@ import os, shutil, tempfile
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.client.cros.graphics import graphics_utils
 
 

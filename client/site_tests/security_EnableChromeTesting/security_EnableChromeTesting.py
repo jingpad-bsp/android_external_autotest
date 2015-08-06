@@ -6,7 +6,7 @@ import dbus, logging, os, pwd
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 
 class security_EnableChromeTesting(test.test):
     version = 1

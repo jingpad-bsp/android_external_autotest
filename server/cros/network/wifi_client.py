@@ -15,7 +15,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system

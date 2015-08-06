@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.common_lib.cros.network import apmanager_constants
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.network import hostap_config
 

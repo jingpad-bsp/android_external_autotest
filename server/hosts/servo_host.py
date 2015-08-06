@@ -20,11 +20,11 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
+from autotest_lib.client.common_lib.cros import constants as client_constants
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
-from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers

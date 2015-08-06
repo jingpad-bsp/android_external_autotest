@@ -7,7 +7,7 @@ import logging, os, re, time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from constants import CLEANUP_LOGS_PAUSED_FILE
+from autotest_lib.client.common_lib.cros.constants import CLEANUP_LOGS_PAUSED_FILE
 
 
 def strip_timestamp(msg):

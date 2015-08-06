@@ -7,8 +7,10 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import policy, session_manager
-from autotest_lib.client.cros import constants, cros_ui, cryptohome, ownership
+from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.common_lib.cros import policy
+from autotest_lib.client.common_lib.cros import session_manager
+from autotest_lib.client.cros import cros_ui, cryptohome, ownership
 
 
 class login_OwnershipRetaken(test.test):

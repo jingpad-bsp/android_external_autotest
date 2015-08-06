@@ -9,7 +9,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, session_manager
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 
 
 class desktopui_ExitOnSupervisedUserCrash(test.test):

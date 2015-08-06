@@ -3,7 +3,7 @@ from django.contrib.auth import backends
 from django.contrib import auth
 from django import http
 
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.frontend import thread_local
 from autotest_lib.frontend.afe import models, management
 from autotest_lib.server import utils

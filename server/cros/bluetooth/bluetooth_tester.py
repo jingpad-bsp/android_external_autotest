@@ -5,7 +5,7 @@
 import base64
 import json
 
-from autotest_lib.client.cros import constants
+from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server import hosts
 from autotest_lib.server.cros import dnsname_mangler

@@ -7,7 +7,8 @@ import errno, os, stat
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import constants, httpd
+from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import httpd
 
 
 def _respond_with_cookies(handler, url_args):

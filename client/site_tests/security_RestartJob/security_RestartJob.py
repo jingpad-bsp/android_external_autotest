@@ -9,7 +9,8 @@ import socket
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import constants, cros_ui, login
+from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import cros_ui, login
 
 
 class security_RestartJob(test.test):
