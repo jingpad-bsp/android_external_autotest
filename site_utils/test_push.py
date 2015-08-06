@@ -169,6 +169,11 @@ def parse_arguments():
     parser.add_argument('-d', '--devserver', dest='devserver',
                         default=None,
                         help='devserver to find what\'s the latest build.')
+    parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
+                        default=24,
+                        help='Time in mins to wait before abort the jobs we '
+                             'are waiting on. Only for the asynchronous suites '
+                             'triggered by create_and_return flag.')
 
     arguments = parser.parse_args(sys.argv[1:])
 
@@ -183,7 +188,8 @@ def parse_arguments():
     return arguments
 
 
-def do_run_suite(suite_name, arguments, use_shard=False):
+def do_run_suite(suite_name, arguments, use_shard=False,
+                 create_and_return=False):
     """Call run_suite to run a suite job, and return the suite job id.
 
     The script waits the suite job to finish before returning the suite job id.
@@ -192,6 +198,8 @@ def do_run_suite(suite_name, arguments, use_shard=False):
     @param suite_name: Name of a suite, e.g., dummy.
     @param arguments: Arguments for run_suite command.
     @param use_shard: If true, suite is scheduled for shard board.
+    @param create_and_return: If True, run_suite just creates the suite, print
+                              the job id, then finish immediately.
 
     @return: Suite job ID.
 
@@ -219,6 +227,8 @@ def do_run_suite(suite_name, arguments, use_shard=False):
            '-p', arguments.pool,
            '-u', str(arguments.num),
            '-f', arguments.file_bugs]
+    if create_and_return:
+        cmd += ['-c']
 
     suite_job_id = None
 
@@ -241,6 +251,19 @@ def do_run_suite(suite_name, arguments, use_shard=False):
 
     if not suite_job_id:
         raise TestPushException('Failed to retrieve suite job ID.')
+
+    # If create_and_return specified, wait for the suite to finish.
+    if create_and_return:
+        end = time.time() + arguments.timeout_min * 60
+        while not afe.get_jobs(id=suite_job_id, finished=True):
+            if time.time() < end:
+                time.sleep(10)
+            else:
+                afe.run('abort_host_queue_entries', job=suite_job_id)
+                raise TestPushException(
+                        'Asynchronous suite triggered by create_and_return '
+                        'flag has timed out after %d mins. Aborting it.' %
+                        arguments.timeout_min)
 
     print 'Suite job %s is completed.' % suite_job_id
     return suite_job_id
@@ -268,15 +291,19 @@ def check_dut_image(build, suite_job_id):
                                     (hostname, found_build, build))
 
 
-def test_suite(suite_name, expected_results, arguments, use_shard=False):
+def test_suite(suite_name, expected_results, arguments, use_shard=False,
+               create_and_return=False):
     """Call run_suite to start a suite job and verify results.
 
     @param suite_name: Name of a suite, e.g., dummy
     @param expected_results: A dictionary of test name to test result.
     @param arguments: Arguments for run_suite command.
     @param use_shard: If true, suite is scheduled for shard board.
+    @param create_and_return: If True, run_suite just creates the suite, print
+                              the job id, then finish immediately.
     """
-    suite_job_id = do_run_suite(suite_name, arguments, use_shard)
+    suite_job_id = do_run_suite(suite_name, arguments, use_shard,
+                                create_and_return)
 
     # Confirm all DUTs used for the suite are imaged to expected build.
     # hqe.host_id for jobs running in shard is not synced back to master db,
@@ -350,7 +377,7 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False):
 
 
 def test_suite_wrapper(queue, suite_name, expected_results, arguments,
-                       use_shard=False):
+                       use_shard=False, create_and_return=False):
     """Wrapper to call test_suite. Handle exception and pipe it to parent
     process.
 
@@ -359,9 +386,12 @@ def test_suite_wrapper(queue, suite_name, expected_results, arguments,
     @param expected_results: A dictionary of test name to test result.
     @param arguments: Arguments for run_suite command.
     @param use_shard: If true, suite is scheduled for shard board.
+    @param create_and_return: If True, run_suite just creates the suite, print
+                              the job id, then finish immediately.
     """
     try:
-        test_suite(suite_name, expected_results, arguments, use_shard)
+        test_suite(suite_name, expected_results, arguments, use_shard,
+                   create_and_return)
     except:
         # Store the whole exc_info leads to a PicklingError.
         except_type, except_value, tb = sys.exc_info()
@@ -465,9 +495,16 @@ def main():
                       arguments, True))
         shard_suite.start()
 
+        # suite test with --create_and_return flag
+        asynchronous_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
+                      arguments, True, True))
+        asynchronous_suite.start()
+
         bug_filing_checked = False
         while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
-               shard_suite.is_alive()):
+               shard_suite.is_alive() or asynchronous_suite.is_alive()):
             check_queue(queue)
             # Check bug filing results to fail early if bug filing failed.
             if not bug_filing_checked and not push_to_prod_suite.is_alive():
@@ -480,6 +517,7 @@ def main():
         push_to_prod_suite.join()
         au_suite.join()
         shard_suite.join()
+        asynchronous_suite.join()
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
