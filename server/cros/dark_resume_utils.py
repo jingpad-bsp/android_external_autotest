@@ -6,7 +6,7 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import dark_resume_xmlrpc_server
+from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 
 POWER_DIR = '/var/lib/power_manager'
@@ -154,10 +154,12 @@ class DarkResumeUtils(object):
         client_at.install()
         # Start up the XMLRPC proxy on the client
         proxy = self._host.xmlrpc_connect(
-                dark_resume_xmlrpc_server.SERVER_COMMAND,
-                dark_resume_xmlrpc_server.SERVER_PORT,
-                command_name=dark_resume_xmlrpc_server.CLEANUP_PATTERN,
-                ready_test_name=dark_resume_xmlrpc_server.READY_METHOD,
+                constants.DARK_RESUME_XMLRPC_SERVER_COMMAND,
+                constants.DARK_RESUME_XMLRPC_SERVER_PORT,
+                command_name=
+                    constants.DARK_RESUME_XMLRPC_SERVER_CLEANUP_PATTERN,
+                ready_test_name=
+                    constants.DARK_RESUME_XMLRPC_SERVER_READY_METHOD,
                 timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS)
         return proxy
 
