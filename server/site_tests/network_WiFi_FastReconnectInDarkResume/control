@@ -6,7 +6,7 @@ AUTHOR = 'samueltan, ejcaruso'
 NAME = 'network_WiFi_FastReconnectInDarkResume'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-DEPENDENCIES = 'servo, wificell, board:samus'
+DEPENDENCIES = 'servo, wificell, lucidsleep'
 ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_release, '
               'suite:wifi_lucidsleep')
 SUITE = ('wifi_correctness_cros_core, wifi_release, wifi_lucidsleep')
