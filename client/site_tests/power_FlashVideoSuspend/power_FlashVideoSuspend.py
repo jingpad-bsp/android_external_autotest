@@ -47,17 +47,13 @@ class power_FlashVideoSuspend(test.test):
         Suspends kernel while video is running in browser.
 
         @param tab: Object to the browser tab
+        @param video_url: Object to video url
         """
-        def player_is_ready():
-            """Check if player is ready to play video."""
-            # TODO(avkodipelli):Move video playback code from suspend function
-            # while fixing crbug.com/507814
-            tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
-            tab.EvaluateJavaScript('play("%s")' % video_url)
-            return tab.EvaluateJavaScript('typeof player != "undefined"')
-
+        tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
+        logging.info('video url is %s', video_url)
+        tab.EvaluateJavaScript('play("%s")' % video_url)
         utils.poll_for_condition(
-            condition=player_is_ready,
+            lambda: tab.EvaluateJavaScript('typeof player != "undefined"'),
             exception=error.TestError('Timeout wating player get ready.'))
 
         self.check_video_is_playing(tab)
