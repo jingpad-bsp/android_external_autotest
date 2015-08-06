@@ -41,14 +41,9 @@ class WiFiCellTestBase(test.test):
         """
         logging.info('Installing Pyshark')
         try:
-            lxc.install_package('tshark')
-            lxc.install_package('python-dev')
-            lxc.install_package('libxml2-dev')
-            lxc.install_package('libxslt-dev')
-            lxc.install_package('zlib1g-dev')
-            # This will take care of downloading all the required dependent
-            # modules.
-            lxc.install_python_package('pyshark')
+            lxc.install_packages(['tshark', 'python-dev', 'libxml2-dev',
+                                  'libxslt-dev', 'zlib1g-dev'],
+                                 ['pyshark'])
         except error.ContainerError as e:
             logging.info('Not installing pyshark: %s', e)
         except error.CmdError as e:
