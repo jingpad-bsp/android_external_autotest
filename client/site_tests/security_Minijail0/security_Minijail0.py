@@ -35,6 +35,13 @@ class security_Minijail0(test.test):
         # arguments. They can also optionally contain a magic comment of the
         # form '# setup: <stuff>', in which case <stuff> is executed as a shell
         # command before running the test.
+        # Another optional magic comment of the form '# expected_ugid <uid>
+        # <gid>' is used when entering a new user namespace, where <uid> and
+        # <gid> are the expected uid and gid 'outside' the user namespace. If
+        # expected_ugid is set, a temporary directory is created, and a
+        # temporary file is passed to tests as first argument. Tests should
+        # 'touch' that file and its uid/gid will be checked outside the user
+        # namespace.
         #
         # If '%T' is present in either of the above magic comments, a temporary
         # directory is created, and its name is substituted for '%T' in both of
@@ -45,6 +52,8 @@ class security_Minijail0(test.test):
         setup = self.get_test_option(file(path), 'setup')
         args64 = self.get_test_option(file(path), 'args64')
         args32 = self.get_test_option(file(path), 'args32')
+        expugid = self.get_test_option(file(path), 'expected_ugid').split(" ")
+
         td = None
         if setup:
             if '%T' in setup:
@@ -66,17 +75,32 @@ class security_Minijail0(test.test):
         if '%S' in args:
             args = args.replace('%S', self.srcdir)
 
+        userns_td = None
+        userns_file = ''
+        if len(expugid) == 2:
+            expuid, expgid = expugid
+            userns_td = tempfile.mkdtemp()
+            os.chmod(userns_td, 0777)
+            userns_file = userns_td + '/userns'
+
         if static:
-            ret = utils.system('/sbin/minijail0 %s %s/staticbashexec %s'
-                                % (args, self.srcdir, path),
+            ret = utils.system('/sbin/minijail0 %s %s/staticbashexec %s %s'
+                                % (args, self.srcdir, path, userns_file),
                                 ignore_status=True)
         else:
-            ret = utils.system('/sbin/minijail0 %s /bin/bash %s'
-                                % (args, path),
+            ret = utils.system('/sbin/minijail0 %s /bin/bash %s %s'
+                                % (args, path, userns_file),
                                 ignore_status=True)
+        if ret == 0 and len(expugid) == 2:
+            stat = os.stat(userns_file)
+            if str(stat.st_uid) != expuid or str(stat.st_gid) != expgid:
+                ret = 1
+
         if td:
             # The test better not have polluted our mount namespace :).
             shutil.rmtree(td)
+        if userns_td:
+            shutil.rmtree(userns_td)
         return ret
 
 
