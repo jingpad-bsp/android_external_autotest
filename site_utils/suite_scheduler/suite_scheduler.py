@@ -55,7 +55,7 @@ except ImportError:
 
 CONFIG_SECTION = 'SCHEDULER'
 
-CONFIG_SECTION_SMTP = 'SERVER'
+CONFIG_SECTION_SERVER = 'SERVER'
 
 
 def signal_handler(signal, frame):
@@ -91,16 +91,16 @@ class SchedulerLoggingConfig(logging_config.LoggingConfig):
                 default='chromeos-lab-admins@google.com')
 
         self._smtp_server = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_server", default='localhost')
+                CONFIG_SECTION_SERVER, "smtp_server", default='localhost')
 
         self._smtp_port = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_port", default=None)
+                CONFIG_SECTION_SERVER, "smtp_port", default=None)
 
         self._smtp_user = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_user", default='')
+                CONFIG_SECTION_SERVER, "smtp_user", default='')
 
         self._smtp_password = global_config.global_config.get_config_value(
-                CONFIG_SECTION_SMTP, "smtp_password", default='')
+                CONFIG_SECTION_SERVER, "smtp_password", default='')
 
 
     @classmethod
@@ -180,10 +180,11 @@ def parse_options():
                             'This option is only used for testing.'))
     parser.add_option('-t', '--sanity', dest='sanity', action='store_true',
                       default=False,
-                      help="Check the config file for any issues.")
+                      help='Check the config file for any issues.')
     parser.add_option('-b', '--file_bug', dest='file_bug', action='store_true',
                       default=False,
-                      help="File bugs for known suite scheduling exceptions.")
+                      help='File bugs for known suite scheduling exceptions.')
+
 
     options, args = parser.parse_args()
     return parser, options, args
@@ -242,7 +243,12 @@ def main():
         server_manager_utils.confirm_server_has_role(hostname='localhost',
                                                      role='suite_scheduler')
 
-    afe = frontend_wrappers.RetryingAFE(timeout_min=1, delay_sec=5, debug=False)
+    afe_server = global_config.global_config.get_config_value(
+                CONFIG_SECTION_SERVER, "suite_scheduler_afe", default=None)
+
+    afe = frontend_wrappers.RetryingAFE(
+            server=afe_server, timeout_min=1, delay_sec=5, debug=False)
+    logging.info('Connecting to: %s' , afe.server)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe, options.file_bug)
     mv = manifest_versions.ManifestVersions(options.tmp_repo_dir)
