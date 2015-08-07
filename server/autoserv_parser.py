@@ -153,7 +153,7 @@ class autoserv_parser(object):
         self.parser.add_argument('--test-retry', action='store',
                                  type=int, default=0,
                                  help=('Num of times to retry a test that '
-                                       'failed [default: %default]'))
+                                       'failed [default: %(default)d]'))
         self.parser.add_argument('--verify_job_repo_url', action='store_true',
                                  dest='verify_job_repo_url', default=False,
                                  help=('Verify that the job_repo_url of the '
@@ -170,7 +170,8 @@ class autoserv_parser(object):
                                  dest='ssh_verbosity', default=0,
                                  type=str, choices=['0', '1', '2', '3'],
                                  help=('Verbosity level for ssh, between 0 '
-                                       'and 3 inclusive. [default: 0]'))
+                                       'and 3 inclusive. '
+                                       '[default: %(default)s]'))
         self.parser.add_argument('--ssh_options', action='store',
                                  dest='ssh_options', default='',
                                  help=('A string giving command line flags '
