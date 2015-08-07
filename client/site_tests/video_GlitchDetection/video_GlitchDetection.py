@@ -136,7 +136,10 @@ class video_GlitchDetection(test.test):
             logging.debug("Wait for fullscreen notifications to go away.")
             time.sleep(5)
 
-            return c.capture_only(self.player, self.factory.video_frame_count)
+            frame_count = (self.max_frame_count if self.max_frame_count else
+                           self.factory.video_frame_count)
+
+            return c.capture_only(self.player, frame_count)
 
 
     def get_unique_checksum_indices(self, checksums):
@@ -382,6 +385,7 @@ class video_GlitchDetection(test.test):
         self.video_def = video_def
         self.use_chameleon = use_chameleon
         self.collect_only = collect_only
+        self.max_frame_count = None
 
         do_not_scale_boards = ['link']
         this_board = utils.get_current_board()
@@ -407,6 +411,9 @@ class video_GlitchDetection(test.test):
 
             if 'video_def' in video_args:
                 self.video_def = video_args['video_def']
+
+            if 'max_frame_count' in video_args:
+                self.max_frame_count = int(video_args['max_frame_count'])
 
         ext_paths = []
         if use_chameleon:
