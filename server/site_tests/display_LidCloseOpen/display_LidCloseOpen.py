@@ -35,7 +35,7 @@ class display_LidCloseOpen(test.test):
         if not self.host.ping_wait_down(
             timeout=self.TIMEOUT_SUSPEND_TRANSITION):
             raise error.TestFail('Failed to SUSPEND within tieout')
-        logging.debug('DUT is suspended.')
+        logging.info('DUT IS SUSPENDED.')
 
 
     def wait_to_resume(self):
@@ -46,19 +46,19 @@ class display_LidCloseOpen(test.test):
         if not self.host.wait_up(timeout=self.TIMEOUT_RESUME_TRANSITION):
             raise error.TestFail(
                 'Failed to RESUME within timeout')
-        logging.debug('DUT is resumed.')
+        logging.info('DUT IS RESUMED.')
 
 
     def close_lid(self):
         """Close lid through servo"""
-        logging.debug('Closing lid')
+        logging.info('CLOSING LID...')
         self.host.servo.lid_close()
         time.sleep(self.WAIT_TIME_LID_TRANSITION)
 
 
     def open_lid(self):
         """Open lid through servo"""
-        logging.debug('Opening lid')
+        logging.info('OPENING LID...')
         self.host.servo.lid_open()
         time.sleep(self.WAIT_TIME_LID_TRANSITION)
 
@@ -90,7 +90,7 @@ class display_LidCloseOpen(test.test):
             raise error.TestFail('Device suspends when docked!')
         # Verify Chameleon displays main screen
         self.check_primary_display_on_external_screen()
-        logging.debug('DUT is docked!')
+        logging.info('DUT IS DOCKED!')
         return self.chameleon_port.wait_video_input_stable(
             timeout=self.WAIT_TIME_LID_TRANSITION)
 
@@ -99,7 +99,7 @@ class display_LidCloseOpen(test.test):
         """Checks DUT is (still) suspended"""
         if not self.host.ping_wait_down(timeout=self.TIMEOUT_SUSPEND_CHECK):
             raise error.TestFail('Device does not stay suspended!')
-        logging.debug('DUT still suspended')
+        logging.info('DUT STILL SUSPENDED')
 
 
     def check_external_display(self):
@@ -156,6 +156,11 @@ class display_LidCloseOpen(test.test):
         for (plugged_before_close,
              plugged_after_close,
              plugged_before_open) in plug_status:
+            logging.info('TEST CASE: %s > CLOSE_LID > %s > %s > OPEN_LID',
+                'PLUG' if plugged_before_close else 'UNPLUG',
+                'PLUG' if plugged_after_close else 'UNPLUG',
+                'PLUG' if plugged_before_open else 'UNPLUG')
+
             is_suspended = False
 
             # Plug before close

@@ -61,10 +61,10 @@ class display_HotPlugAtSuspend(test.test):
 
             for (plugged_before_suspend, plugged_after_suspend,
                  plugged_before_resume) in plug_status:
-                logging.info('TEST CASE: %s > suspend > %s > %s > resume',
-                             'plug' if plugged_before_suspend else 'unplug',
-                             'plug' if plugged_after_suspend else 'unplug',
-                             'plug' if plugged_before_resume else 'unplug')
+                logging.info('TEST CASE: %s > SUSPEND > %s > %s > RESUME',
+                             'PLUG' if plugged_before_suspend else 'UNPLUG',
+                             'PLUG' if plugged_after_suspend else 'UNPLUG',
+                             'PLUG' if plugged_before_resume else 'UNPLUG')
                 boot_id = host.get_boot_id()
                 chameleon_port.set_plug(plugged_before_suspend)
 
@@ -74,15 +74,16 @@ class display_HotPlugAtSuspend(test.test):
                     # Skip the following test if an unexpected display detected.
                     continue
 
-                logging.info('Going to suspend, for %d seconds...',
+                logging.info('GOING TO SUSPEND FOR %d SECONDS...',
                              self.SUSPEND_DURATION)
                 time_before_suspend = time.time()
                 display_facade.suspend_resume_bg(self.SUSPEND_DURATION)
 
                 # Confirm DUT suspended.
-                logging.info('- Wait for sleep...')
+                logging.info('WAITING FOR SUSPEND...')
                 host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
-                chameleon_port.set_plug(plugged_after_suspend)
+                if plugged_after_suspend is not plugged_before_suspend:
+                    chameleon_port.set_plug(plugged_after_suspend)
 
                 current_time = time.time()
                 sleep_time = (self.SUSPEND_DURATION -
@@ -91,10 +92,11 @@ class display_HotPlugAtSuspend(test.test):
                 if sleep_time > 0:
                     logging.info('- Sleep for %.2f seconds...', sleep_time)
                     time.sleep(sleep_time)
-                chameleon_port.set_plug(plugged_before_resume)
+                if plugged_before_resume is not plugged_after_suspend:
+                    chameleon_port.set_plug(plugged_before_resume)
                 time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
-                logging.info('- Wait for resume...')
+                logging.info('WAITING FOR RESUME...')
                 host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
 
                 logging.info('Resumed back')
