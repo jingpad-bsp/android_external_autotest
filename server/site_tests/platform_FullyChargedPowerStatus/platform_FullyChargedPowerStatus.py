@@ -7,7 +7,7 @@ import logging, threading, time
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
-_LONG_TIMEOUT = 200
+_LONG_TIMEOUT = 120
 _WAIT_DELAY = 5
 _CHROME_PATH = '/opt/google/chrome/chrome'
 
@@ -19,6 +19,16 @@ class platform_FullyChargedPowerStatus(test.test):
 
         """
         self.host.power_on()
+
+
+    def is_dut_chromebook(self):
+        """check if the device type is chromebook
+
+        @return true if it's chromebook
+
+        """
+        return self.host.run('cat /etc/lsb-release | grep DEVICETYPE=CHROMEBOOK',
+                             ignore_status=True).exit_status == 0
 
 
     def get_power_supply_parameters(self):
@@ -94,12 +104,15 @@ class platform_FullyChargedPowerStatus(test.test):
         else:
             raise error.TestError('No RPM is setup to device')
 
+        if not self.is_chrome_available():
+            raise error.TestNAError('Chrome does not reside on DUT. Test Skipped')
+
+        if self.is_dut_chromebook():
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
         online, state, percentage = self.get_power_supply_parameters()
         if not ( online == 'yes' and percentage > 95 ):
             raise error.TestError('The DUT is not on AC or Battery charge is low ')
-
-        if not self.is_chrome_available():
-            raise error.TestError('Chrome does not reside on DUT')
 
         self.action_login()
 
