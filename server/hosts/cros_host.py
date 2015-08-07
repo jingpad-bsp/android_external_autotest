@@ -1012,8 +1012,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     usb_boot_timeout)
         timer.stop()
 
+        # The new chromeos-tpm-recovery has been merged since R44-7073.0.0.
+        # In old CrOS images, this command fails. Skip the error.
         logging.info('Resetting the TPM status')
-        self.run('chromeos-tpm-recovery')
+        try:
+            self.run('chromeos-tpm-recovery')
+        except error.AutoservRunError:
+            logging.warn('chromeos-tpm-recovery is too old.')
+
 
         install_timer_key = ('servo_install.install_timeout_%s'
                              % install_timeout)
