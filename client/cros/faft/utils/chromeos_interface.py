@@ -4,7 +4,7 @@
 
 """A module to provide interface to ChromeOS services."""
 
-import logging
+import datetime
 import os
 import re
 import struct
@@ -204,17 +204,26 @@ class Crossystem(object):
 class ChromeOSInterface(object):
     """An object to encapsulate OS services functions."""
 
-    def __init__(self):
-        """Object construction time initialization."""
+    def __init__(self, silent):
+        """Object construction time initialization.
+
+        The only parameter is the Boolean 'silent', when True the instance
+        does not duplicate log messages on the console.
+        """
+
+        self.silent = silent
         self.state_dir = None
+        self.log_file = None
         self.cs = Crossystem()
 
-    def init(self, state_dir=None):
+    def init(self, state_dir=None, log_file=None):
         """Initialize the ChromeOS interface object.
         Args:
           state_dir - a string, the name of the directory (as defined by the
                       caller). The contents of this directory persist over
                       system restarts and power cycles.
+          log_file - a string, the name of the log file kept in the state
+                     directory.
 
         Default argument values support unit testing.
         """
@@ -228,6 +237,11 @@ class ChromeOSInterface(object):
                     os.mkdir(self.state_dir)
                 except OSError, err:
                     raise ChromeOSInterfaceError(err)
+            if log_file:
+                if log_file[0] == '/':
+                    self.log_file = log_file
+                else:
+                    self.log_file = os.path.join(state_dir, log_file)
 
     def target_hosted(self):
         """Return True if running on a ChromeOS target."""
@@ -237,6 +251,29 @@ class ChromeOSInterface(object):
     def state_dir_file(self, file_name):
         """Get a full path of a file in the state directory."""
         return os.path.join(self.state_dir, file_name)
+
+    def log(self, text):
+        """Write text to the log file and print it on the screen, if enabled.
+
+        The entire log (maintained across reboots) can be found in
+        self.log_file.
+        """
+
+        # Don't print on the screen unless enabled.
+        if not self.silent:
+            print text
+
+        if not self.log_file or not os.path.exists(self.state_dir):
+            # Called before environment was initialized, ignore.
+            return
+
+        timestamp = datetime.datetime.strftime(
+            datetime.datetime.now(), '%I:%M:%S %p:')
+
+        with open(self.log_file, 'a') as log_f:
+            log_f.write('%s %s\n' % (timestamp, text))
+            log_f.flush()
+            os.fdatasync(log_f)
 
     def run_shell_command(self, cmd):
         """Run a shell command.
@@ -251,7 +288,7 @@ class ChromeOSInterface(object):
         output in case command succeeded.
         """
 
-        logging.debug('Executing %s' % cmd)
+        self.log('Executing %s' % cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         process.wait()
@@ -262,7 +299,8 @@ class ChromeOSInterface(object):
             err.append('stderr:')
             err.append(process.stderr.read())
             text = '\n'.join(err)
-            logging.debug(text)
+            print text
+            self.log(text)
             raise ChromeOSInterfaceError('command %s failed' % cmd)
         return process
 

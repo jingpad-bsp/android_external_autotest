@@ -12,7 +12,6 @@ See docstring for FlashromHandler class below.
 """
 
 import hashlib
-import logging
 import os
 import struct
 import tempfile
@@ -569,7 +568,8 @@ class FlashromHandler(object):
                             "/flash/rw-a-boot/ecbin", "hash"]
                     self.chros_if.run_shell_command(' '.join(cmd))
                 except ChromeOSInterfaceError:
-                    logging.info("Skip updating EC hash on the old firmware.")
+                    self.chros_if.log(
+                            "Skip updating EC hash on the old firmware.")
                 else:
                     cmd = ["fdtput", "-t bu", dtb_file.name,
                             "/flash/rw-a-boot/ecbin", "hash"]

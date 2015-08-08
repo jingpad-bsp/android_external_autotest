@@ -21,7 +21,6 @@ In the saft_flashrom_util, we provide read and partial write abilities.
 For more information, see help(saft_flashrom_util.flashrom_util).
 """
 
-import logging
 import os
 import stat
 import tempfile
@@ -207,15 +206,17 @@ class flashrom_util(object):
           flashrom.write_partial(new_image, layout_map_all, ('all',))
 
     Attributes:
+        verbose:    print debug and helpful messages
         keep_temp_files: boolean flag to control cleaning of temporary files
     """
 
-    def __init__(self, keep_temp_files=False,
+    def __init__(self, verbose=False, keep_temp_files=False,
                  target_is_ec=False):
         """ constructor of flashrom_util. help(flashrom_util) for more info """
+        self.verbose = verbose
         self.keep_temp_files = keep_temp_files
         self.firmware_layout = {}
-        self.os_if = chromeos_interface.ChromeOSInterface()
+        self.os_if = chromeos_interface.ChromeOSInterface(True)
         self.os_if.init(tempfile.gettempdir())
         self._target_command = ''
         if target_is_ec:
@@ -330,7 +331,8 @@ class flashrom_util(object):
         """
         tmpfn = self.get_temp_filename('rd_')
         cmd = 'flashrom %s -r "%s"' % (self._target_command, tmpfn)
-        logging.debug('flashrom_util.read_whole(): %s', cmd)
+        if self.verbose:
+            print 'flashrom_util.read_whole(): ', cmd
 
         self.os_if.run_shell_command(cmd)
         result = open(tmpfn, 'rb').read()
@@ -357,7 +359,8 @@ class flashrom_util(object):
 
         cmd = 'flashrom %s -l "%s" -i %s -w "%s"' % (
                 self._target_command, layout_fn, ' -i '.join(write_list), tmpfn)
-        logging.debug('flashrom.write_partial(): %s', cmd)
+        if self.verbose:
+            print 'flashrom.write_partial(): ', cmd
 
         self.os_if.run_shell_command(cmd)
 
