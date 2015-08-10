@@ -278,10 +278,12 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
 
         @raise error.TestFail: If the DUT failed the test.
         """
+
+        """AVRCP is not supported by Chromebook and no need to run this test
         self.assert_nonempty_list(
             self.get_attribute(self.AVRCP_TG_CLASS_ID,
                 self.ADDITIONAL_PROTOCOLLIST_ATTR_ID))
-
+        """
 
     def test_non_existing_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-20-C from SDP Specification.
