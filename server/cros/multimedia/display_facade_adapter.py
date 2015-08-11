@@ -162,7 +162,9 @@ class DisplayFacadeRemoteAdapter(object):
         @param screenshot_func: function to take a screenshot and save the image
                 to specified path on DUT. Usage: screenshot_func(remote_path).
 
-        @return: An Image object, or None if any error.
+        @return: An Image object.
+                 Notice that the returned image may not be in RGB format,
+                 depending on PIL implementation.
         """
         with tempfile.NamedTemporaryFile(suffix='.png') as f:
             basename = os.path.basename(f.name)
@@ -175,7 +177,7 @@ class DisplayFacadeRemoteAdapter(object):
     def capture_internal_screen(self):
         """Captures the internal screen framebuffer.
 
-        @return: An Image object. None if any error.
+        @return: An Image object.
         """
         screenshot_func = self._display_proxy.take_internal_screenshot
         return self._take_screenshot(screenshot_func)

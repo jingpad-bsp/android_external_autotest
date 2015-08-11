@@ -152,6 +152,8 @@ class DisplayFacadeLocalAdapter(object):
         @param crtc: The id of the crtc to read.
 
         @return: An Image object, or None if any error.
+                 Notice that the returned image may not be in RGB format,
+                 depending on PIL implementation.
         """
         if 0 in (w, h):
             # Not a valid rectangle
@@ -175,7 +177,7 @@ class DisplayFacadeLocalAdapter(object):
     def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
-        @return: An Image object.
+        @return: An Image object. None if any error.
         """
         id = self._display_component.get_external_crtc()
         return self._read_root_window_rect(id)

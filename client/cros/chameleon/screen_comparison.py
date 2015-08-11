@@ -47,14 +47,21 @@ class ScreenComparer(object):
 
         @return: None if the check passes; otherwise, a string of error message.
         """
-        tags = (self._capturer1.TAG, self._capturer2.TAG)
-        images = (self._capturer1.capture(), self._capturer2.capture())
+        tags = [self._capturer1.TAG, self._capturer2.TAG]
+        images = [self._capturer1.capture(), self._capturer2.capture()]
 
         if None in images:
             message = ('Failed to capture the screen of %s.' %
                        tags[images.index(None)])
             logging.error(message)
             return message
+
+        # Sometimes the format of images got from X is not RGB,
+        # which may lead to ValueError raised by ImageChops.difference().
+        # So here we check the format before comparing them.
+        for i, image in enumerate(images):
+          if image.mode != 'RGB':
+            images[i] = image.convert('RGB')
 
         message = 'Unexpected exception'
         time_str = time.strftime('%H%M%S')
@@ -104,5 +111,5 @@ class ScreenComparer(object):
                     file_path = os.path.join(
                             self._output_dir,
                             '%s-%s.png' % (prefix_str, tags[i]))
-                    logging.info('Output the image to %s', file_path)
+                    logging.info('Output the image %d to %s', i, file_path)
                     images[i].save(file_path)
