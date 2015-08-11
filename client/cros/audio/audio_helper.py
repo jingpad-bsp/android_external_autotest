@@ -660,8 +660,9 @@ def trim_data(data, threshold=0):
     @param data: A list of numbers.
     @param threshold: The threshold to compare against.
 
-    @returns: A tuple (trimmed_data, valid_index), where valid_index is the
-              original index of the starting element in trimmed_data.
+    @returns: A tuple (trimmed_data, end_trimmed_length), where
+              end_trimmed_length is the length of original data being trimmed
+              from the end.
               Returns ([], None) if there is no valid data.
     """
     indice_valid = [
@@ -673,7 +674,9 @@ def trim_data(data, threshold=0):
         return [], None
     logging.debug('Start and end of indice_valid: %d, %d',
                   indice_valid[0], indice_valid[-1])
-    return data[indice_valid[0] : indice_valid[-1] + 1], indice_valid[0]
+    end_trimmed_length = len(data) - indice_valid[-1] - 1
+    logging.debug('Trimmed length in the end: %d', end_trimmed_length)
+    return (data[indice_valid[0] : indice_valid[-1] + 1], end_trimmed_length)
 
 
 def get_one_channel_correlation(test_data, golden_data):
@@ -690,7 +693,7 @@ def get_one_channel_correlation(test_data, golden_data):
               Otherwise returns (None, None). Refer to docstring of
               get_max_cross_correlation.
     """
-    trimmed_test_data, start_trimmed_length = trim_data(test_data)
+    trimmed_test_data, end_trimmed_length = trim_data(test_data)
 
     def to_float(samples):
       """Casts elements in the list to float.
@@ -706,9 +709,49 @@ def get_one_channel_correlation(test_data, golden_data):
             to_float(golden_data),
             to_float(trimmed_test_data))
 
-    # Adds back the trimmed length in the head.
+    # The reason to add back the trimmed length in the end.
+    # E.g.:
+    # golden data:
+    #
+    # |-----------vvvv----------------|  vvvv is the signal of interest.
+    #       a                 b
+    #
+    # test data:
+    #
+    # |---x----vvvv--------x----------------|  x is the place to trim.
+    #   c   d         e            f
+    #
+    # trimmed test data:
+    #
+    # |----vvvv--------|
+    #   d         e
+    #
+    # The first output of cross correlation computation :
+    #
+    #                  |-----------vvvv----------------|
+    #                       a                 b
+    #
+    # |----vvvv--------|
+    #   d         e
+    #
+    # The largest output of cross correlation computation happens at
+    # delay a + e.
+    #
+    #                  |-----------vvvv----------------|
+    #                       a                 b
+    #
+    #                         |----vvvv--------|
+    #                           d         e
+    #
+    # Cross correlation starts computing by aligning the last sample
+    # of the trimmed test data to the first sample of golden data.
+    # The best delay calculated from trimmed test data and golden data
+    # cross correlation is e + a. But the real best delay that should be
+    # identical on two channel should be e + a + f.
+    # So we need to add back the length being trimmed in the end.
+
     if max_cross_correlation:
-        return max_cross_correlation, best_delay + start_trimmed_length
+        return max_cross_correlation, best_delay + end_trimmed_length
     else:
         return None, None
 
