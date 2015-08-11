@@ -18,6 +18,7 @@ class ChromeNetworkProvider(object):
     """
 
     WIFI_DEVICE = 'WiFi'
+    CELLULAR = 'Cellular'
     SHORT_TIMEOUT = 3
 
 

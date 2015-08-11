@@ -81,12 +81,30 @@ Networking.prototype.createNetwork = function(shared, properties) {
   });
 };
 
+Networking.prototype.setProperties = function(guid, properties) {
+  if (!this._setupFunctionCall("setProperties"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.setProperties(guid, properties, function() {
+    self._setResult("setProperties", null);
+  });
+};
+
 Networking.prototype.findNetworks = function(type) {
   if (!this._setupFunctionCall("findNetworks"))
     return;
   var self = this;
   chrome.networkingPrivate.getVisibleNetworks(type, function(networks) {
     self._setResult("findNetworks", networks);
+  });
+};
+
+Networking.prototype.getNetworks = function(properties) {
+  if (!this._setupFunctionCall("getNetworks"))
+    return;
+  var self = this;
+  chrome.networkingPrivate.getNetworks(properties, function(networkList) {
+    self._setResult("getNetworks", networkList);
   });
 };
 
