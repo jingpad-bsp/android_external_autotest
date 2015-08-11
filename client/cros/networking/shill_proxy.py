@@ -81,6 +81,39 @@ class ShillProxy(object):
     SERVICE_PROPERTY_STATE = 'State'
     SERVICE_PROPERTY_TYPE = 'Type'
 
+    # EAP related properties.
+    SERVICE_PROPERTY_EAP_EAP = 'EAP.EAP'
+    SERVICE_PROPERTY_EAP_INNER_EAP = 'EAP.InnerEAP'
+    SERVICE_PROPERTY_EAP_IDENTITY = 'EAP.Identity'
+    SERVICE_PROPERTY_EAP_PASSWORD = 'EAP.Password'
+    SERVICE_PROPERTY_EAP_CA_CERT_PEM = 'EAP.CACertPEM'
+
+    # Mapping of service property to its dbus type.
+    SERVICE_PROPERTY_MAP = {
+        SERVICE_PROPERTY_AUTOCONNECT: dbus.Boolean,
+        SERVICE_PROPERTY_DEVICE: dbus.ObjectPath,
+        SERVICE_PROPERTY_GUID: dbus.String,
+        SERVICE_PROPERTY_HEX_SSID: dbus.String,
+        SERVICE_PROPERTY_HIDDEN: dbus.Boolean,
+        SERVICE_PROPERTY_MODE: dbus.String,
+        SERVICE_PROPERTY_NAME: dbus.String,
+        SERVICE_PROPERTY_PASSPHRASE: dbus.String,
+        SERVICE_PROPERTY_PROFILE: dbus.ObjectPath,
+        SERVICE_PROPERTY_SAVE_CREDENTIALS: dbus.Boolean,
+        SERVICE_PROPERTY_SECURITY_RAW: dbus.String,
+        SERVICE_PROPERTY_SECURITY_CLASS: dbus.String,
+        SERVICE_PROPERTY_SSID: dbus.String,
+        SERVICE_PROPERTY_STRENGTH: dbus.Byte,
+        SERVICE_PROPERTY_STATE: dbus.String,
+        SERVICE_PROPERTY_TYPE: dbus.String,
+
+        SERVICE_PROPERTY_EAP_EAP: dbus.String,
+        SERVICE_PROPERTY_EAP_INNER_EAP: dbus.String,
+        SERVICE_PROPERTY_EAP_IDENTITY: dbus.String,
+        SERVICE_PROPERTY_EAP_PASSWORD: dbus.String,
+        SERVICE_PROPERTY_EAP_CA_CERT_PEM: dbus.Array
+    }
+
     SERVICE_CONNECTED_STATES = ['portal', 'online']
 
     SUPPORTED_WIFI_STATION_TYPES = {'managed': 'managed',
@@ -151,6 +184,23 @@ class ShillProxy(object):
             return dbus_class(value.lower() in ('true','1'))
         else:
             return dbus_class(value)
+
+
+    @staticmethod
+    def service_properties_to_dbus_types(in_dict):
+        """Convert service properties to dbus types.
+
+        @param in_dict: Dictionary containing service properties.
+        @return DBus variant dictionary containing service properties.
+
+        """
+        dbus_dict = {}
+        for key, value in in_dict.iteritems():
+                if key not in ShillProxy.SERVICE_PROPERTY_MAP:
+                        raise ShillProxyError('Unsupported property %s' % (key))
+                dbus_dict[key] = ShillProxy.SERVICE_PROPERTY_MAP[key](
+                        value, variant_level=1)
+        return dbus_dict
 
 
     @classmethod
@@ -265,7 +315,18 @@ class ShillProxy(object):
         """
         config = properties.copy()
         config[self.SERVICE_PROPERTY_GUID] = guid
-        self.manager.ConfigureService(config)
+        self.configure_service(config)
+
+
+    def configure_service(self, config):
+        """Configure a service with given properties.
+
+        @param config dictionary of service property:value pairs.
+
+        """
+        # Convert configuration values to dbus variant typed values.
+        dbus_config = ShillProxy.service_properties_to_dbus_types(config)
+        self.manager.ConfigureService(dbus_config)
 
 
     def set_logging(self, level, scopes):

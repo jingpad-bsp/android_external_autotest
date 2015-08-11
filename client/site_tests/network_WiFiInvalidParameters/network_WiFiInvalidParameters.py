@@ -51,7 +51,7 @@ class network_WiFiInvalidParameters(test.test):
                              shill.SERVICE_PROPERTY_SECURITY_CLASS: 'none'}
             try:
                 accepted = True
-                shill.manager.ConfigureService(config_params)
+                shill.configure_service(config_params)
             except dbus.exceptions.DBusException, e:
                 accepted = False
                 if (e.get_dbus_name() !=
@@ -104,7 +104,7 @@ class network_WiFiInvalidParameters(test.test):
                              shill.SERVICE_PROPERTY_SECURITY_CLASS: 'wep'}
             try:
                 accepted = True
-                shill.manager.ConfigureService(config_params)
+                shill.configure_service(config_params)
             except dbus.exceptions.DBusException, e:
                 accepted = False
                 if (e.get_dbus_name() !=
@@ -124,7 +124,7 @@ class network_WiFiInvalidParameters(test.test):
                              shill.SERVICE_PROPERTY_PASSPHRASE: key,
                              shill.SERVICE_PROPERTY_SECURITY_CLASS: 'wep'}
             try:
-                shill.manager.ConfigureService(config_params)
+                shill.configure_service(config_params)
             except:
                 logging.error('%r', sys.exc_info())
                 raise error.TestFail('shill should let us use a WEP key '
@@ -149,7 +149,7 @@ class network_WiFiInvalidParameters(test.test):
                     shill.SERVICE_PROPERTY_SECURITY_RAW: security}
                 try:
                     accepted = True
-                    shill.manager.ConfigureService(config_params)
+                    shill.configure_service(config_params)
                 except dbus.exceptions.DBusException, e:
                     accepted = False
                     if (e.get_dbus_name() !=

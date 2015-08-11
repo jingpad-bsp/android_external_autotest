@@ -34,7 +34,7 @@ class network_DefaultProfileServices(test.test):
             raise error.TestFail('Could not connect to shill')
 
         shill.manager.PopAllUserProfiles()
-        path = shill.manager.ConfigureService({
+        path = shill.configure_service({
                 shill.SERVICE_PROPERTY_TYPE: 'wifi',
                 shill.SERVICE_PROPERTY_MODE: 'managed',
                 shill.SERVICE_PROPERTY_SSID: self.OUR_SSID,

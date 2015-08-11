@@ -90,7 +90,7 @@ class WifiProxy(shill_proxy.ShillProxy):
         if guid is not None:
             config_params[self.SERVICE_PROPERTY_GUID] = guid
         try:
-            self.manager.ConfigureService(config_params)
+            self.configure_service(config_params)
         except dbus.exceptions.DBusException as e:
             logging.error('Caught an error while configuring a WiFi '
                           'service: %r', e)

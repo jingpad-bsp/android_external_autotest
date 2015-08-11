@@ -83,7 +83,7 @@ class network_8021xWiredAuthentication(test.test):
         @param interface_name string The name of the associated interface
 
         """
-        service = self._shill_proxy.manager.ConfigureService({
+        service = self._shill_proxy.configure_service({
             'Type': 'etherneteap',
             'EAP.EAP': hostapd_server.HostapdServer.EAP_TYPE,
             'EAP.InnerEAP': 'auth=%s' % hostapd_server.HostapdServer.EAP_PHASE2,
