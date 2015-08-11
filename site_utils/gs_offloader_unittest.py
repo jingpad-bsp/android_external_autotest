@@ -72,9 +72,9 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         else:
             expected_gsuri = utils.DEFAULT_OFFLOAD_GSURI
         utils.get_offload_gsuri().AndReturn(expected_gsuri)
-        offload_func = gs_offloader.get_offload_dir_func(expected_gsuri)
+        offload_func = gs_offloader.get_offload_dir_func(expected_gsuri, False)
         self.mox.StubOutWithMock(gs_offloader, 'get_offload_dir_func')
-        gs_offloader.get_offload_dir_func(expected_gsuri).AndReturn(
+        gs_offloader.get_offload_dir_func(expected_gsuri, False).AndReturn(
                 offload_func)
         self.mox.ReplayAll()
         return offload_func
@@ -296,11 +296,12 @@ class _MockJobDirectory(job_directories._JobDirectory):
 class CommandListTests(unittest.TestCase):
     """Tests for `get_cmd_list()`."""
 
-    def _command_list_assertions(self, job, use_rsync=True):
+    def _command_list_assertions(self, job, use_rsync=True, multi=False):
         """Call `get_cmd_list()` and check the return value.
 
         Check the following assertions:
           * The command name (argv[0]) is 'gsutil'.
+          * '-m' option (argv[1]) is on when the argument, multi, is True.
           * The arguments contain the 'cp' subcommand.
           * The next-to-last argument (the source directory) is the
             job's `queue_args[0]`.
@@ -309,6 +310,8 @@ class CommandListTests(unittest.TestCase):
 
         @param job A job with properly calculated arguments to
                    `get_cmd_list()`
+        @param use_rsync True when using 'rsync'. False when using 'cp'.
+        @param multi True when using '-m' option for gsutil.
 
         """
         test_bucket_uri = 'gs://a-test-bucket'
@@ -316,10 +319,12 @@ class CommandListTests(unittest.TestCase):
         gs_offloader.USE_RSYNC_ENABLED = use_rsync
 
         command = gs_offloader.get_cmd_list(
-            job.queue_args[0],
-            os.path.join(test_bucket_uri, job.queue_args[1]))
+                multi, job.queue_args[0],
+                os.path.join(test_bucket_uri, job.queue_args[1]))
 
         self.assertEqual(command[0], 'gsutil')
+        if multi:
+            self.assertEqual(command[1], '-m')
         self.assertEqual(command[-2], job.queue_args[0])
 
         if use_rsync:
@@ -354,6 +359,18 @@ class CommandListTests(unittest.TestCase):
         """Test `get_cmd_list()` as for a special job."""
         job = _MockJobDirectory('hosts/host1/118-reset')
         self._command_list_assertions(job, use_rsync=False)
+
+
+    def test_get_cmd_list_regular_multi(self):
+        """Test `get_cmd_list()` as for a regular job with True multi."""
+        job = _MockJobDirectory('118-debug')
+        self._command_list_assertions(job, multi=True)
+
+
+    def test_get_cmd_list_special_multi(self):
+        """Test `get_cmd_list()` as for a special job with True multi."""
+        job = _MockJobDirectory('hosts/host1/118-reset')
+        self._command_list_assertions(job, multi=True)
 
 
 # Below is partial sample of e-mail notification text.  This text is
@@ -697,9 +714,9 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
         command.append(queue_args[0])
         gs_offloader.get_cmd_list(
-                queue_args[0], '%s%s' % (utils.DEFAULT_OFFLOAD_GSURI,
-                                         queue_args[1])).AndReturn(
-                        command)
+                False, queue_args[0],
+                '%s%s' % (utils.DEFAULT_OFFLOAD_GSURI,
+                          queue_args[1])).AndReturn(command)
         signal.alarm(0)
         signal.alarm(0)
 
@@ -716,8 +733,9 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         """
         self.mox.ReplayAll()
         gs_offloader.get_offload_dir_func(
-                utils.DEFAULT_OFFLOAD_GSURI)(self._job.queue_args[0],
-                                     self._job.queue_args[1])
+                utils.DEFAULT_OFFLOAD_GSURI, False)(
+                        self._job.queue_args[0],
+                        self._job.queue_args[1])
         self.mox.VerifyAll()
         self.assertEqual(not should_succeed,
                          os.path.isdir(self._job.queue_args[0]))
@@ -759,7 +777,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         """
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
         gs_offloader.get_cmd_list(
-                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                         ['test', '-d', self._job.queue_args[0]])
         signal.alarm(0).AndRaise(
                 gs_offloader.TimeoutException('fubar'))

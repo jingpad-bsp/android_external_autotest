@@ -113,9 +113,10 @@ def timeout_handler(_signum, _frame):
   raise TimeoutException('Process Timed Out')
 
 
-def get_cmd_list(dir_entry, gs_path):
+def get_cmd_list(multiprocessing, dir_entry, gs_path):
   """Return the command to offload a specified directory.
 
+  @param multiprocessing: True to turn on -m option for gsutil.
   @param dir_entry: Directory entry/path that which we need a cmd_list to
                     offload.
   @param gs_path: Location in google storage where we will
@@ -124,10 +125,17 @@ def get_cmd_list(dir_entry, gs_path):
   @return: A command list to be executed by Popen.
 
   """
+  cmd = ['gsutil']
+  if multiprocessing:
+      cmd.append('-m')
   if USE_RSYNC_ENABLED:
-    return ['gsutil', '-m', 'rsync', '-eR',
-            dir_entry, os.path.join(gs_path, os.path.basename(dir_entry))]
-  return ['gsutil', '-m', 'cp', '-eR', dir_entry, gs_path]
+      cmd.append('rsync')
+      target = os.path.join(gs_path, os.path.basename(dir_entry))
+  else:
+      cmd.append('cp')
+      target = gs_path
+  cmd += ['-eR', dir_entry, target]
+  return cmd
 
 
 def get_directory_size_kibibytes_cmd_list(directory):
@@ -213,10 +221,11 @@ def correct_results_folder_permission(dir_entry):
       logging.error('Failed to modify permission for %s: %s', dir_entry, e)
 
 
-def get_offload_dir_func(gs_uri):
+def get_offload_dir_func(gs_uri, multiprocessing):
   """Returns the offload directory function for the given gs_uri
 
   @param gs_uri: Google storage bucket uri to offload to.
+  @param multiprocessing: True to turn on -m option for gsutil.
 
   @returns offload_dir function to preform the offload.
   """
@@ -241,8 +250,9 @@ def get_offload_dir_func(gs_uri):
       process = None
       signal.alarm(OFFLOAD_TIMEOUT_SECS)
       gs_path = '%s%s' % (gs_uri, dest_path)
-      process = subprocess.Popen(get_cmd_list(dir_entry, gs_path),
-                                 stdout=stdout_file, stderr=stderr_file)
+      process = subprocess.Popen(
+          get_cmd_list(multiprocessing, dir_entry, gs_path),
+          stdout=stdout_file, stderr=stderr_file)
       process.wait()
       signal.alarm(0)
 
@@ -337,7 +347,7 @@ def wait_for_gs_write_access(gs_uri):
   # TODO (sbasi) - Try to use the gsutil command to check write access.
   # Ensure we have write access to gs_uri.
   dummy_file = tempfile.NamedTemporaryFile()
-  test_cmd = get_cmd_list(dummy_file.name, gs_uri)
+  test_cmd = get_cmd_list(False, dummy_file.name, gs_uri)
   while True:
     try:
       subprocess.check_call(test_cmd)
@@ -375,7 +385,8 @@ class Offloader(object):
     else:
       self.gs_uri = utils.get_offload_gsuri()
       logging.debug('Offloading to: %s', self.gs_uri)
-      self._offload_func = get_offload_dir_func(self.gs_uri)
+      self._offload_func = get_offload_dir_func(
+          self.gs_uri, options.multiprocessing)
     classlist = []
     if options.process_hosts_only or options.process_all:
       classlist.append(job_directories.SpecialJobDirectory)
@@ -502,6 +513,8 @@ def parse_options():
   parser.add_option('-l', '--log_size', dest='log_size',
                     help='Limit the offloader logs to a specified number of '
                          'Mega Bytes.', type='int', default=0)
+  parser.add_option('-m', dest='multiprocessing', action='store_true',
+                    help='Turn on -m option for gsutil.', default=False)
   options = parser.parse_args()[0]
   if options.process_all and options.process_hosts_only:
     parser.print_help()
