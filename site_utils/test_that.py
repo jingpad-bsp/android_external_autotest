@@ -526,6 +526,18 @@ def parse_arguments(argv):
     Parse command line arguments
 
     @param argv: argument list to parse
+    @returns:    parsed arguments
+    @raises SystemExit if arguments are malformed, or required arguments
+            are not present.
+    """
+    return _parse_arguments_internal(argv)[0]
+
+
+def _parse_arguments_internal(argv):
+    """
+    Parse command line arguments
+
+    @param argv: argument list to parse
     @returns:    tuple of parsed arguments and argv suitable for remote runs
     @raises SystemExit if arguments are malformed, or required arguments
             are not present.
@@ -924,7 +936,7 @@ def main(argv):
 
     @param argv: arguments list
     """
-    arguments, remote_argv = parse_arguments(argv)
+    arguments, remote_argv = _parse_arguments_internal(argv)
     try:
         validate_arguments(arguments)
     except ValueError as err:
