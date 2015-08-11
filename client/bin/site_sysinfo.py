@@ -7,9 +7,8 @@ import os
 
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.common_lib import error, utils, global_config
-from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.client.bin import base_sysinfo
-from autotest_lib.client.cros import tpm_dam
+from autotest_lib.client.cros import constants, tpm_dam
 
 get_value = global_config.global_config.get_config_value
 collect_corefiles = get_value('CLIENT', 'collect_corefiles',

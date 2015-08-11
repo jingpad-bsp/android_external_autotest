@@ -4,7 +4,7 @@
 
 import os, sys
 
-from autotest_lib.client.common_lib.cros import constants
+import constants
 
 sys.path.append(os.environ.get("SYSROOT", "/usr/local/") +
                 constants.FLIMFLAM_TEST_PATH)

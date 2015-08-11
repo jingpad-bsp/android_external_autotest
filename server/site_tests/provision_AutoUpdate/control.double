@@ -39,7 +39,7 @@ We are taking the risk because
 
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 from autotest_lib.server import utils as server_utils
 
 

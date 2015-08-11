@@ -10,8 +10,7 @@ from xml.dom.minidom import parse, parseString
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.cros import login
+from autotest_lib.client.cros import constants, login
 
 class security_DbusMap(test.test):
     version = 2

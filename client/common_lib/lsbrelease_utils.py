@@ -10,7 +10,7 @@ import os
 import re
 
 import common
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 
 
 def _lsbrelease_search(regex, group_id=0, lsb_release_content=None):

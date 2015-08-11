@@ -9,7 +9,7 @@ import logging
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.multimedia import local_facade_factory

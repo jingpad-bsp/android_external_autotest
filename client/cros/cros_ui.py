@@ -6,7 +6,7 @@ import common, logging, os, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 
 # Log messages used to signal when we're restarting UI. Used to detect
 # crashes by cros_ui_test.UITest.

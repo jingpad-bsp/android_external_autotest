@@ -7,10 +7,8 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.common_lib.cros import session_manager
-from autotest_lib.client.cros import cros_ui, ownership
+from autotest_lib.client.common_lib.cros import chrome, session_manager
+from autotest_lib.client.cros import constants, cros_ui, ownership
 
 
 def set_block_devmode(value):

@@ -16,7 +16,7 @@ must be logged in with an @google.com account to view chromeOS perf data there.
 import httplib, json, math, os, re, urllib, urllib2
 
 import common
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 from autotest_lib.tko import utils as tko_utils
 
 _ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -2,11 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common, logging, os, socket, stat, sys, threading, time
+import common, constants, logging, os, socket, stat, sys, threading, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
 
 class LocalDns(object):
     """A wrapper around miniFakeDns that runs the server in a separate thread

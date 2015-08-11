@@ -5,7 +5,7 @@
 import dbus
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 
 def connect(bus_loop):
     """Create and return a DBus connection to session_manager.

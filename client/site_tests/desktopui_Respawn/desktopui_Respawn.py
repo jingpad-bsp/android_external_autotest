@@ -5,8 +5,7 @@
 import logging, os, time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros import constants, cros_ui
 
 class desktopui_Respawn(test.test):
     """Validate that the UI will cease respawning after a certain number of

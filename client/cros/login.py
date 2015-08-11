@@ -4,10 +4,9 @@
 
 import logging, os
 
-import cros_logging, cros_ui, cryptohome
+import constants, cros_logging, cros_ui, cryptohome
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
 
 
 class CrashError(error.TestError):

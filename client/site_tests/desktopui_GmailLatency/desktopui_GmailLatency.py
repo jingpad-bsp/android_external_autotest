@@ -5,8 +5,7 @@
 import logging, os, time, utils
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.cros import cros_ui
+from autotest_lib.client.cros import constants, cros_ui
 from autotest_lib.client.cros.graphics import graphics_utils
 
 class desktopui_GmailLatency(test.test):

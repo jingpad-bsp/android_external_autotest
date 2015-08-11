@@ -4,7 +4,7 @@
 
 import logging, os
 
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils
 from telemetry.core import cros_interface, exceptions, util
 from telemetry.internal.browser import browser_finder, browser_options

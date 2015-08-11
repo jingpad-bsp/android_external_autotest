@@ -5,10 +5,9 @@
 import dbus, gobject, logging, os, random, re, shutil, string
 from dbus.mainloop.glib import DBusGMainLoop
 
-import common
+import common, constants
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import constants
 from autotest_lib.client.cros.cros_disks import DBusClient
 
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'

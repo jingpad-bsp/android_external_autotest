@@ -13,9 +13,8 @@ import sys
 
 import common
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.common_lib.cros import xmlrpc_server
+from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
+from autotest_lib.client.cros import constants
 
 
 class InteractiveXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):

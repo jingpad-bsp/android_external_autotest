@@ -16,7 +16,7 @@ from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import lsbrelease_utils
-from autotest_lib.client.common_lib.cros import constants
+from autotest_lib.client.cros import constants
 
 
 # Keep checking if the pid is alive every second until the timeout (in seconds)

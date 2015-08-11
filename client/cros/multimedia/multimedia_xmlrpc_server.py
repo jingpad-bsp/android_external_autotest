@@ -12,9 +12,8 @@ import xmlrpclib
 import traceback
 import common   # pylint: disable=unused-import
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.common_lib.cros import xmlrpc_server
+from autotest_lib.client.common_lib.cros import chrome, xmlrpc_server
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.multimedia import audio_facade_native
 from autotest_lib.client.cros.multimedia import display_facade_native
 

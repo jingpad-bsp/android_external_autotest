@@ -9,8 +9,7 @@ import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, utils
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.cros import cryptohome
+from autotest_lib.client.cros import constants, cryptohome
 
 class platform_CryptohomeTestAuth(test.test):
     version = 1

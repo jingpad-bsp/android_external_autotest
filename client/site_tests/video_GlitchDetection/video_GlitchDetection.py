@@ -10,8 +10,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib import sequence_utils
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.common_lib.cros import constants
-from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros import constants, service_stopper
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
 from autotest_lib.client.cros.video import media_test_factory
 from autotest_lib.client.cros.video import sequence_generator
