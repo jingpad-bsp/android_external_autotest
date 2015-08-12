@@ -4,7 +4,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import hashlib, logging, os, platform, re, signal, tempfile, time, uuid, urllib2
+import glob, hashlib, logging, os, platform, re, signal, tempfile, time
+import uuid, urllib2
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
@@ -685,11 +686,17 @@ def get_temperature_input_max():
     for path in paths:
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
         max_temperature = max(temperature, max_temperature)
-    # Sanity check for real world values.
-    assert ((max_temperature > 10.0) and
-            (max_temperature < 150.0)), ('Unreasonable temperature %.1fC.' %
-                                         max_temperature)
     return max_temperature
+
+
+def get_thermal_zone_temperatures():
+    """
+    Returns the maximum currently observered temperature in thermal_zones.
+    """
+    temperatures = []
+    for path in glob.glob('/sys/class/thermal/thermal_zone*/temp'):
+        temperatures.append(_get_float_from_file(path, 0, None, None) * 0.001)
+    return temperatures
 
 
 def get_ec_temperatures():
@@ -722,10 +729,13 @@ def get_current_temperature_max():
     """
     Returns the highest reported board temperature (all sensors) in Celsius.
     """
-    temperature = get_temperature_input_max()
-    ec_temperatures = get_ec_temperatures()
-    if ec_temperatures:
-        temperature = max(max(ec_temperatures), temperature)
+    temperature = max([get_temperature_input_max()] +
+                      get_thermal_zone_temperatures() +
+                      get_ec_temperatures())
+    # Sanity check for real world values.
+    assert ((temperature > 10.0) and
+            (temperature < 150.0)), ('Unreasonable temperature %.1fC.' %
+                                     temperature)
     return temperature
 
 
