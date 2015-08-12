@@ -16,12 +16,14 @@ class Error(Exception):
     """Module error class."""
 
 
-def GatherPerfStats(noploop, events, progress_func=lambda i, j: None):
-    """Run perf stat with the given events and noploop program.
+def GatherPerfStats(program, events, multiplier=1000,
+                    progress_func=lambda i, j: None):
+    """Run perf stat with the given events and given program.
 
-    @param noploop: path to noploop binary. It should take one argument (number
-        of loop iterations) and produce no output.
+    @param program: path to benchmark binary. It should take one argument
+        (number of loop iterations) and produce no output.
     @param events: value to pass to '-e' arg of perf stat.
+    @param multiplier: loop multiplier
     @param progress_func: function that tracks progress of running the
         benchmark. takes two arguments for the outer and inner iteration
         numbers.
@@ -30,11 +32,11 @@ def GatherPerfStats(noploop, events, progress_func=lambda i, j: None):
     facts = []
     for i, j in itertools.product(xrange(10), xrange(5)):
         progress_func(i, j)
-        loops = (i+1) * 10000000  # (i+1) * 10 million
+        loops = (i+1) * multiplier
         out = subprocess.check_output(
                 ('perf', 'stat', '-x', ',',
                  '-e', events,
-                 noploop, '%d' % loops),
+                 program, '%d' % loops),
                 stderr=subprocess.STDOUT)
         unsupported_events = []
         f = {'loops': loops}
@@ -74,7 +76,7 @@ def main():
 
     events = ('cycles', 'instructions')
     facts = GatherPerfStats('src/noploop', ','.join(events),
-                            progress_func=_Progress)
+                            multiplier=10*1000*1000, progress_func=_Progress)
 
     dt = numpy.dtype([('loops', numpy.int)] +
                      [(e, numpy.int) for e in events])

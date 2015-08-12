@@ -17,10 +17,21 @@ Verify performance counters
 Arguments:
   events: Events to pass to perf stat -e. Events are passed in together, so
     multiplexing may occur if more than one is specified.
+  program: Benchmark binary
 """
 
 job.run_test('hardware_PerfCounterVerification', tag='cycles_instructions',
-             perf_cmd='stat', events=('cycles', 'instructions'))
+             perf_cmd='stat', events=('cycles', 'instructions'),
+             program='noploop', multiplier=10000000)
 
 job.run_test('hardware_PerfCounterVerification', tag='LBR',
-             perf_cmd='record -b', events=('br_inst_retired.all_branches',))
+             perf_cmd='record -b', events=('br_inst_retired.all_branches',),
+             program='noploop', multiplier=10000000)
+
+job.run_test('hardware_PerfCounterVerification', tag='iTLB_misses',
+             perf_cmd='stat', events=('iTLB-misses','cycles'),
+             program='iTLB_benchmark', multiplier=100)
+
+job.run_test('hardware_PerfCounterVerification', tag='dTLB_misses',
+             perf_cmd='stat', events=('dTLB-misses','cycles'),
+             program='dTLB_benchmark', multiplier=10000)
