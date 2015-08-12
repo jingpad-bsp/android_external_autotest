@@ -523,12 +523,14 @@ class NetperfRunner(object):
                               ignore_status=True)
 
 
-    def run(self, ignore_failures=False):
+    def run(self, ignore_failures=False, retry_count=3):
         """Run netperf and take a performance measurement.
 
         @param ignore_failures bool True iff netperf runs that fail should be
                 ignored.  If this happens, run will return a None value rather
                 than a NetperfResult.
+        @param retry_count int number of times to retry the netperf command if
+                it fails due to an internal timeout within netperf.
         @return NetperfResult summarizing a netperf run.
 
         """
@@ -540,12 +542,27 @@ class NetperfRunner(object):
                 self._config.test_time,
                 self.NETPERF_DATA_PORT)
         logging.debug('Running netperf client.')
-        start_time = time.time()
         logging.info('Running netperf for %d seconds.', self._config.test_time)
         timeout = self._config.test_time + self.NETPERF_COMMAND_TIMEOUT_MARGIN
-        result = self._client_host.run(netperf, ignore_status=ignore_failures,
-                                       ignore_timeout=ignore_failures,
-                                       timeout=timeout)
+        for attempt in range(retry_count):
+            start_time = time.time()
+            result = self._client_host.run(netperf, ignore_status=True,
+                                           ignore_timeout=ignore_failures,
+                                           timeout=timeout)
+            # Exit retry loop on success.
+            if not result.exit_status:
+                break
+
+            # Only retry for internal timeout failures within netperf.
+            if 'Interrupted system call' not in result.stderr:
+                break
+
+            logging.info('Retrying netperf after internal timeout error.')
+
+        if result.exit_status and not ignore_failures:
+            raise error.CmdError(netperf, result,
+                                 "Command returned non-zero exit status")
+
         duration = time.time() - start_time
         if result is None or result.exit_status:
             return None
