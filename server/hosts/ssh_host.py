@@ -12,6 +12,7 @@ You should import the "hosts" package instead of importing each type of host.
 
 import re, logging
 from autotest_lib.client.common_lib import error, pxssh
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import abstract_ssh
 
@@ -79,10 +80,35 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         for arg in args:
             command += ' "%s"' % utils.sh_escape(arg)
         full_cmd = '%s "%s %s"' % (ssh_cmd, env, utils.sh_escape(command))
-        result = utils.run(full_cmd, timeout, True, stdout, stderr,
-                           verbose=False, stdin=stdin,
-                           stderr_is_expected=ignore_status,
-                           ignore_timeout=ignore_timeout)
+
+        # TODO(jrbarnette):  crbug.com/484726 - When we're in an SSP
+        # container, sometimes shortly after reboot we will see DNS
+        # resolution errors on ssh commands; the problem never
+        # occurs more than once in a row.  This especially affects
+        # the autoupdate_Rollback test, but other cases have been
+        # affected, too.
+        #
+        # We work around it by detecting the first DNS resolution error
+        # and retrying exactly one time.
+        dns_retry_count = 2
+        while True:
+            result = utils.run(full_cmd, timeout, True, stdout, stderr,
+                               verbose=False, stdin=stdin,
+                               stderr_is_expected=ignore_status,
+                               ignore_timeout=ignore_timeout)
+            dns_retry_count -= 1
+            if (result and result.exit_status == 255 and
+                    re.search(r'^ssh: .*: Name or service not known',
+                              result.stderr)):
+                if dns_retry_count:
+                    logging.debug('Retrying because of DNS failure')
+                    continue
+                logging.debug('Retry failed.')
+                autotest_stats.Counter('dns_retry_hack.fail').increment()
+            elif not dns_retry_count:
+                logging.debug('Retry succeeded.')
+                autotest_stats.Counter('dns_retry_hack.pass').increment()
+            break
 
         if ignore_timeout and not result:
             return None
