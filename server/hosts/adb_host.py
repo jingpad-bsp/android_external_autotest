@@ -14,12 +14,18 @@ from autotest_lib.server.hosts import abstract_ssh
 
 
 SHELL_CMD = 'shell'
+# Some devices have no serial, then `adb serial` has output such as:
+# (no serial number)  device
+# ??????????          device
+DEVICE_NO_SERIAL_MSG = '(no serial number)'
+DEVICE_NO_SERIAL_TAG = '<NO_SERIAL>'
 # Regex to find an adb device. Examples:
 # 0146B5580B01801B    device
 # 018e0ecb20c97a62    device
 # 172.22.75.141:5555  device
-DEVICE_FINDER_REGEX = ('^(?P<SERIAL>([\w]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}))'
-                       '([:]5555)?[ \t]+device')
+DEVICE_FINDER_REGEX = ('^(?P<SERIAL>([\w]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' +
+                       re.escape(DEVICE_NO_SERIAL_MSG) +
+                       ')([:]5555)?[ \t]+device')
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
@@ -163,7 +169,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         cmd = 'adb '
         if self._use_tcpip and not use_serial:
             cmd += '-s %s:5555 ' % self._device_hostname
-        elif self._serial:
+        elif self._serial and self._serial != DEVICE_NO_SERIAL_TAG:
             cmd += '-s %s ' % self._serial
         if shell:
             cmd += '%s ' % SHELL_CMD
@@ -361,8 +367,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             match = re.search(DEVICE_FINDER_REGEX,
                               line)
             if match:
-                logging.debug('Found Device: %s', match.group('SERIAL'))
-                devices.append(match.group('SERIAL'))
+                serial = match.group('SERIAL')
+                if serial == DEVICE_NO_SERIAL_MSG or re.match(r'^\?+$', serial):
+                    serial = DEVICE_NO_SERIAL_TAG
+                logging.debug('Found Device: %s', serial)
+                devices.append(serial)
+        if len(devices) != 1 and DEVICE_NO_SERIAL_TAG in devices:
+            raise error.AutoservError(
+                'Multiple ADB devices attached '
+                '*and* devices without serial number are present.')
         return devices
 
 
