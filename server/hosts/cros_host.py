@@ -2837,3 +2837,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         meminfo = self.run('grep %s /proc/meminfo' % key).stdout.strip()
         logging.debug('%s', meminfo)
         return int(re.search(r'\d+', meminfo).group(0))
+
+
+    def get_board_type(self):
+        """
+        Get the DUT's device type from /etc/lsb-release.
+        """
+        device_type = self.run('grep DEVICETYPE /etc/lsb-release').stdout
+        return device_type.split('=')[-1]

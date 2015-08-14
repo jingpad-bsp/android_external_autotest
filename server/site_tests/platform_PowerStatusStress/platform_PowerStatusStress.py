@@ -76,9 +76,6 @@ class platform_PowerStatusStress(test.test):
         self.wait_to_come_up()
 
 
-
-
-
     def cleanup(self):
         """ Finish as powered on and lid open"""
         self.host.power_on()
@@ -120,6 +117,10 @@ class platform_PowerStatusStress(test.test):
 
     def run_once(self, host, loop_count):
         self.host = host
+        dut_type = host.get_board_type()
+        if dut_type is not 'CHROMEBOOK':
+            raise error.TestError(
+                    'This test is not supported on %s' %  dut_type)
         self.autotest_client = autotest.Autotest(self.host)
 
         # Start as powered on
