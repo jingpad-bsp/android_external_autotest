@@ -19,7 +19,8 @@ SUITE_MIN_DUTS_KEY = 'suite_min_duts'
 
 # Job attribute and label names
 EXPERIMENTAL_PREFIX = 'experimental_'
-FW_RW_VERSION_PREFIX = 'fwrw-version:'
+FWRW_BUILD = 'fwrw_build'
+FWRO_BUILD = 'fwro_build'
 JOB_REPO_URL = 'job_repo_url'
 VERSION_PREFIX = 'cros-version:'
 BOARD_PREFIX = 'board:'

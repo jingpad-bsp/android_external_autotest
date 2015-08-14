@@ -736,6 +736,14 @@ class Suite(object):
             (build != self._test_source_build or len(self._builds) > 1)):
             keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = (
                     self._test_source_build)
+            for prefix, build in self._builds.iteritems():
+                if prefix == provision.FW_RW_VERSION_PREFIX:
+                    keyvals[constants.FWRW_BUILD]= build
+                elif prefix == provision.FW_RO_VERSION_PREFIX:
+                    keyvals[constants.FWRO_BUILD] = build
+        # Add suite job id to keyvals so tko parser can read it from keyval file
+        if self._suite_job_id:
+            keyvals[constants.PARENT_JOB_ID] = self._suite_job_id
         if retry_for:
             # We drop the old job's id in the new job's keyval file
             # so that later our tko parser can figure out the retring
