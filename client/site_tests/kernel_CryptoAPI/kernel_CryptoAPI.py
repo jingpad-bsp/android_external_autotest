@@ -8,6 +8,7 @@ import os
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
+from autotest_lib.client.cros import kernel_config
 
 import ctypes
 import hashlib
@@ -181,12 +182,22 @@ class kernel_CryptoAPI(test.test):
             self.test_digest(name, lib, data)
 
 
+    def test_is_valid(self):
+        """
+        Check if this test is worth running, based on whether the kernel
+        .config has the right features
+        """
+        config = kernel_config.KernelConfig()
+        config.initialize()
+        config.is_enabled('CRYPTO_USER_API_HASH')
+        config.is_enabled('CRYPTO_USER_API')
+        return len(config.failures()) == 0
+
+
     def run_once(self):
-        # crypto tests only work with AF_ALG support, so run only on >=3.8
-        # kernels
-        kernel_ver = os.uname()[2]
-        if utils.compare_versions(kernel_ver, "3.8") < 0:
-            raise error.TestNAError("Crypto tests not run for pre-v3.8 kernels")
+        # crypto tests only work with AF_ALG support
+        if not self.test_is_valid():
+            raise error.TestNAError("Crypto tests only run with AF_ALG support")
 
         module = "test_module"
         self.try_load_mod(module)
