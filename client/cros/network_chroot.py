@@ -248,14 +248,16 @@ class NetworkChroot(object):
                       self.get_pid_file(self.STARTUP_PID_FILE)))
 
 
-    def run(self, args):
+    def run(self, args, ignore_status=False):
         """Run a command in a chroot, within a separate network namespace.
 
         @param args list containing the command line arguments to run.
+        @param ignore_status bool set to true if a failure should be ignored.
 
         """
         utils.system('minijail0 -e -C %s %s' %
-                     (self._temp_dir, ' '.join(self._jail_args + args)))
+                     (self._temp_dir, ' '.join(self._jail_args + args)),
+                     ignore_status=ignore_status)
 
 
     def write_configs(self):

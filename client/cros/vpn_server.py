@@ -184,7 +184,7 @@ class L2TPIPSecVPNServer(VPNServer):
     def stop_server(self):
         """Start VPN server instance"""
         chroot = self._chroot
-        chroot.run([self.IPSEC_COMMAND, 'stop'])
+        chroot.run([self.IPSEC_COMMAND, 'stop'], ignore_status=True)
         chroot.kill_pid_file(self.XL2TPD_PID_FILE, missing_ok=True)
         chroot.kill_pid_file(self.PPPD_PID_FILE, missing_ok=True)
         chroot.shutdown()
