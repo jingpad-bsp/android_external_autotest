@@ -169,8 +169,15 @@ class TestBug(Bug):
 
     def search_marker(self):
         """Return an Anchor that we can use to dedupe this exact bug."""
+        board = ''
+        try:
+            board = site_utils.ParseBuildName(self.build)[0]
+        except site_utils.ParseBuildNameException as e:
+            logging.error(str(e))
+        reason = (self.reason.replace(board, 'BOARD_PLACEHOLDER') if board
+                  else self.reason)
         return "%s(%s,%s,%s)" % ('Test%s' % self.status, self.suite,
-                                 self.name, self.reason)
+                                 self.name, reason)
 
 
     def _get_links_for_failure(self):
