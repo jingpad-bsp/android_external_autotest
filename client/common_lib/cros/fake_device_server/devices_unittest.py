@@ -39,7 +39,6 @@ class DevicesTest(mox.MoxTestBase):
         """Tests that we can create a new device."""
         good_device_config = dict(userEmail='buffet@tasty.org',
                                   name='buffet_device',
-                                  deviceKind='vendor',
                                   channel=dict(supportedType='xmpp'))
 
         new_device = self.devices.create_device(None, good_device_config)
@@ -48,8 +47,7 @@ class DevicesTest(mox.MoxTestBase):
         # New device should be registered with commands handler.
         self.assertTrue(device_id in self.commands.device_commands)
 
-        bad_device_config = dict(name='buffet_device',
-                                 deviceKind='vendor')
+        bad_device_config = dict(name='buffet_device')
         self.assertRaises(server_errors.HTTPError,
                           self.devices.create_device, None, bad_device_config)
 

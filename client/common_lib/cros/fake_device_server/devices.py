@@ -66,7 +66,7 @@ class Devices(resource_method.ResourceMethod):
         if not resource:
             raise server_errors.HTTPError(400, 'Empty device resource.')
 
-        for key in ['name', 'deviceKind', 'channel']:
+        for key in ['name', 'channel']:
             if key not in resource:
                 raise server_errors.HTTPError(400, 'Must specify %s' % key)
 
@@ -153,7 +153,6 @@ class Devices(resource_method.ResourceMethod):
         {'channel': {'supportedType': 'xmpp'},
          'commandDefs': {},
          'description': 'test_description ',
-         'deviceKind': 'test_device_kind',
          'displayName': 'test_display_name ',
          'id': '4471f7',
          'location': 'test_location ',

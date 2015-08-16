@@ -53,7 +53,6 @@ class RegistrationTicketsTest(mox.MoxTestBase):
         expected_ticket = dict(
                 id=1234, userEmail='buffet@tasty.org',
                 deviceDraft=dict(name='buffet_device',
-                                 deviceKind='vendor',
                                  channel=dict(supportedType='xmpp')))
         self.tickets[(1234, None)] = expected_ticket
         returned_json = self.registration.POST(1234, 'finalize')

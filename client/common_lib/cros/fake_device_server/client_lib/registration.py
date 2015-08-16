@@ -86,12 +86,11 @@ class RegistrationClient(common_client.CommonClient):
         return json.loads(url_h.read())
 
 
-    def register_device(self, system_name, device_kind, channel,
+    def register_device(self, system_name, channel,
                         oauth_client_id, **kwargs):
         """Goes through the entire registration process using the device args.
 
         @param system_name: name to give the system.
-        @param device_kind: type of device.
         @param channel: supported communication channel.
         @param oauth_client_id: see oauth docs.
         @param kwargs: additional dictionary of args to put in config.
@@ -101,7 +100,6 @@ class RegistrationClient(common_client.CommonClient):
         ticket_id = ticket['id']
 
         device_draft = dict(name=system_name,
-                            deviceKind=device_kind,
                             channel=dict(supportedType=channel),
                             **kwargs)
 

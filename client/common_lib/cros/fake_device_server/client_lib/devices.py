@@ -40,16 +40,14 @@ class DevicesClient(common_client.CommonClient):
         return json.loads(url_h.read())
 
 
-    def create_device(self, system_name, device_kind, channel, **kwargs):
+    def create_device(self, system_name, channel, **kwargs):
         """Creates a device using the args.
 
         @param system_name: name to give the system.
-        @param device_kind: type of device.
         @param channel: supported communication channel.
         @param kwargs: additional dictionary of args to put in config.
         """
         data = dict(name=system_name,
-                    deviceKind=device_kind,
                     channel=channel,
                     **kwargs)
         headers = self.add_auth_headers({'Content-Type': 'application/json'})
