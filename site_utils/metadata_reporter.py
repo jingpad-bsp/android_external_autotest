@@ -16,6 +16,11 @@ import threading
 import common
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.scheduler import email_manager
+# The metadata_reporter thread runs inside scheduler process, thus it doesn't
+# need to setup django, otherwise, following import is needed:
+# from autotest_lib.frontend import setup_django_environment
+from autotest_lib.site_utils import server_manager_utils
 
 
 # Number of seconds to wait before checking queue again for uploading data.
@@ -23,6 +28,9 @@ _REPORT_INTERVAL_SECONDS = 5
 
 _MAX_METADATA_QUEUE_SIZE = 1000000
 _MAX_UPLOAD_SIZE = 50000
+# The number of seconds for upload to fail continuously. After that, upload will
+# be limited to 1 entry.
+_MAX_UPLOAD_FAIL_DURATION = 1800
 # Queue to buffer metadata to be reported.
 metadata_queue = Queue.Queue(_MAX_METADATA_QUEUE_SIZE)
 
@@ -54,15 +62,45 @@ def queue(data):
                           'to %d.', _MAX_METADATA_QUEUE_SIZE)
 
 
+def _email_alert():
+    """
+    """
+    if not server_manager_utils.use_server_db():
+        logging.debug('Server database not emailed, email alert is skipped.')
+        return
+    try:
+        server_manager_utils.confirm_server_has_role(hostname='localhost',
+                                                     role='scheduler')
+    except server_manager_utils.ServerActionError:
+        # Only email alert if the server is a scheduler, not shard.
+        return
+    subject = ('Metadata upload has been failing for %d seconds' %
+               _MAX_UPLOAD_FAIL_DURATION)
+    email_manager.manager.enqueue_notify_email(subject, '')
+    email_manager.manager.send_queued_emails()
+
+
 def _run():
     """Report metadata in the queue until being aborted.
     """
+    # Time when the first time upload failed. None if the last upload succeeded.
+    first_failed_upload = None
+    # True if email alert was sent when upload has been failing continuously
+    # for _MAX_UPLOAD_FAIL_DURATION seconds.
+    email_alert = False
     try:
         while True:
             start_time = time.time()
             data_list = []
-            while (not metadata_queue.empty() and
-                   len(data_list) < _MAX_UPLOAD_SIZE):
+            if (first_failed_upload and
+                time.time() - first_failed_upload > _MAX_UPLOAD_FAIL_DURATION):
+                upload_size = 1
+                if not email_alert:
+                    _email_alert()
+                    email_alert = True
+            else:
+                upload_size = _MAX_UPLOAD_SIZE
+            while (not metadata_queue.empty() and len(data_list) < upload_size):
                 data_list.append(metadata_queue.get_nowait())
             if data_list:
                 if autotest_es.bulk_post(data_list=data_list):
@@ -73,6 +111,8 @@ def _run():
                             'time_used', time_used)
                     autotest_stats.Gauge('metadata_reporter').send(
                             'entries_uploaded', len(data_list))
+                    first_failed_upload = None
+                    email_alert = False
                 else:
                     logging.warn('Failed to upload %d entries of metadata, '
                                  'they will be retried later.', len(data_list))
@@ -80,6 +120,8 @@ def _run():
                             'entries_failed', len(data_list))
                     for data in data_list:
                         queue(data)
+                    if not first_failed_upload:
+                        first_failed_upload = time.time()
             sleep_time = _REPORT_INTERVAL_SECONDS - time.time() + start_time
             if sleep_time < 0:
                 sleep_time = 0.5
