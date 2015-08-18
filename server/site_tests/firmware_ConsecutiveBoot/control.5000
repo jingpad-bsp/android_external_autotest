@@ -27,6 +27,7 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 args.append('faft_iterations=5000')
 args.append('faft_waitup_time=60')
+args.append('faft_localrun=1')
 
 def run_consecutive_boot(machine):
     host = hosts.create_host(machine, servo_args=servo_args)

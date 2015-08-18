@@ -817,12 +817,16 @@ def get_board():
 
 
 def get_board_type():
-    """ Get the ChromeOS board type from /etc/lsb-release.
+    """
+    Get the ChromeOS board type from /etc/lsb-release.
 
-    @return: DUT's device type.
+    @return device type.
     """
     with open('/etc/lsb-release') as f:
-        return re.search('DEVICETYPE=(.*)', f.read()).group(1)
+        pat = re.search('DEVICETYPE=(.*)', f.read())
+        if pat:
+            return pat.group(1)
+    return ''
 
 
 def get_board_with_frequency_and_memory():

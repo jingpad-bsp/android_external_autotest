@@ -32,6 +32,7 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         dict_args = utils.args_to_dict(cmdline_args)
         self.faft_iterations = int(dict_args.get('faft_iterations', 1))
         self.faft_waitup_time = int(dict_args.get('faft_waitup_time', 0))
+        self.faft_localrun = int(dict_args.get('faft_localrun', 0))
         super(firmware_ConsecutiveBoot, self).initialize(host, cmdline_args)
         self.switcher.setup_mode('dev' if dev_mode else 'normal')
         if dev_mode:
@@ -77,10 +78,8 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         raise ConnectionError()
 
     def run_once(self, host, dev_mode=False):
-        dut_type = host.get_board_type()
-        if dut_type is not 'CHROMEBOOK':
-            raise error.TestError(
-                    'This test is not supported on %s' %  dut_type)
+        if not self.faft_localrun and not ec.has_ectool():
+            raise error.TestError('Test not supported in lab without EC.')
         for i in xrange(self.faft_iterations):
             logging.info('======== Running FAFT ITERATION %d/%s ========',
                          i+1, self.faft_iterations)
