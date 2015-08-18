@@ -23,14 +23,16 @@ class LoggingConfig(object):
     stdout_level = logging.INFO
     stderr_level = logging.ERROR
 
+    FILE_FORMAT = ('%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
+                   '%(lineno)4.4d| %(message)s')
+
     file_formatter = logging.Formatter(
-        fmt='%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
-            '%(lineno)4.4d| %(message)s',
-        datefmt='%m/%d %H:%M:%S')
+        fmt=FILE_FORMAT, datefmt='%m/%d %H:%M:%S')
+
+    CONSOLE_FORMAT = '%(asctime)s %(levelname)-5.5s| %(message)s'
 
     console_formatter = logging.Formatter(
-        fmt='%(asctime)s %(levelname)-5.5s| %(message)s',
-        datefmt='%H:%M:%S')
+            fmt=CONSOLE_FORMAT, datefmt='%H:%M:%S')
 
     def __init__(self, use_console=True):
         self.logger = logging.getLogger()
@@ -54,29 +56,37 @@ class LoggingConfig(object):
         return os.path.join(cls.get_autotest_root(), 'logs')
 
 
-    def add_stream_handler(self, stream, level=logging.DEBUG):
+    def add_stream_handler(self, stream, level=logging.DEBUG, datefmt=None):
         handler = logging.StreamHandler(stream)
         handler.setLevel(level)
-        handler.setFormatter(self.console_formatter)
+        formatter = self.console_formatter
+        if datefmt:
+            formatter = logging.Formatter(fmt=self.CONSOLE_FORMAT,
+                                          datefmt=datefmt)
+        handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         return handler
 
 
-    def add_console_handlers(self):
-        stdout_handler = self.add_stream_handler(sys.stdout,
-                                                 level=self.stdout_level)
+    def add_console_handlers(self, datefmt=None):
+        stdout_handler = self.add_stream_handler(
+                sys.stdout, level=self.stdout_level, datefmt=datefmt)
         # only pass records *below* STDERR_LEVEL to stdout, to avoid duplication
         stdout_handler.addFilter(AllowBelowSeverity(self.stderr_level))
 
-        self.add_stream_handler(sys.stderr, self.stderr_level)
+        self.add_stream_handler(sys.stderr, self.stderr_level, datefmt)
 
 
-    def add_file_handler(self, file_path, level=logging.DEBUG, log_dir=None):
+    def add_file_handler(self, file_path, level=logging.DEBUG, log_dir=None,
+                         datefmt=None):
         if log_dir:
             file_path = os.path.join(log_dir, file_path)
         handler = logging.FileHandler(file_path)
         handler.setLevel(level)
-        handler.setFormatter(self.file_formatter)
+        formatter = self.file_formatter
+        if datefmt:
+            formatter = logging.Formatter(fmt=self.FILE_FORMAT, datefmt=datefmt)
+        handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         return handler
 
@@ -103,14 +113,14 @@ class LoggingConfig(object):
                 pass
 
 
-    def configure_logging(self, use_console=True, verbose=False):
+    def configure_logging(self, use_console=True, verbose=False, datefmt=None):
         self._clear_all_handlers() # see comment at top of file
         self.logger.setLevel(self.global_level)
 
         if verbose:
             self.stdout_level = logging.DEBUG
         if use_console:
-            self.add_console_handlers()
+            self.add_console_handlers(datefmt)
 
 
 class TestingConfig(LoggingConfig):
