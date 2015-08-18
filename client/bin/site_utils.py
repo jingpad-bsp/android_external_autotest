@@ -695,7 +695,14 @@ def get_thermal_zone_temperatures():
     """
     temperatures = []
     for path in glob.glob('/sys/class/thermal/thermal_zone*/temp'):
-        temperatures.append(_get_float_from_file(path, 0, None, None) * 0.001)
+        try:
+            temperatures.append(
+                    _get_float_from_file(path, 0, None, None) * 0.001)
+        except IOError:
+            # Some devices (e.g. Veyron) may have reserved thermal zones that
+            # are not active. Trying to read the temperature value would cause a
+            # EINVAL IO error.
+            continue
     return temperatures
 
 
