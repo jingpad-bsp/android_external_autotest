@@ -88,6 +88,7 @@ class ChameleonVideoCapturer(object):
 
         utils.poll_for_condition(lambda : player.currentTime() > 1,
                                  timeout=5,
+                                 sleep_interval=0.01,
                                  exception=error.TestError(error_msg))
 
         error_msg = "Couldn't get the right number of frames"
