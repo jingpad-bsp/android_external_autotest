@@ -30,17 +30,6 @@ class hardware_PerfCallgraphVerification(test.test):
         utils.make('clean')
         utils.make('all')
 
-    def warmup(self):
-        # Waiting on ARM/perf support
-        if not utils.get_current_kernel_arch().startswith('x86'):
-            raise error.TestNAError('Unsupported architecture')
-        # These boards are not supported
-        unsupported_boards = ['gizmo']
-        board = utils.get_board()
-        if board in unsupported_boards:
-            raise error.TestNAError('Unsupported board')
-
-
     def report_has_callchain_length_at_least(self, lines, wanted_length):
         # Look through the output of 'perf report' for the following which
         # shows a long enough callchain from the test graph program:
@@ -70,7 +59,17 @@ class hardware_PerfCallgraphVerification(test.test):
     def run_once(self):
         """
         Collect a perf callchain profile and check the detailed perf report.
+
         """
+        # Waiting on ARM/perf support
+        if not utils.get_current_kernel_arch().startswith('x86'):
+            return
+        # These boards are not supported
+        unsupported_boards = ['gizmo']
+        board = utils.get_board()
+        if board in unsupported_boards:
+            return
+
         try:
             graph = os.path.join(self.srcdir, 'graph')
             perf_file_path = os.tempnam()
