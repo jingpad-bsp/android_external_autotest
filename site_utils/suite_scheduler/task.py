@@ -335,6 +335,8 @@ class Task(object):
 
         self._bare_branches = []
         self._version_equal_constraint = False
+        self._version_gte_constraint = False
+        self._version_lte_constraint = False
         if not branch_specs:
             # Any milestone is OK.
             self._numeric_constraint = version.LooseVersion('0')
@@ -345,14 +347,19 @@ class Task(object):
                     tot_str = spec[spec.index('tot'):]
                     spec = spec.replace(
                             tot_str, TotMilestoneManager().ConvertTotSpec(
-                                tot_str))
+                                    tot_str))
                 if spec.startswith('>='):
                     self._numeric_constraint = version.LooseVersion(
-                        spec.lstrip('>=R'))
+                            spec.lstrip('>=R'))
+                    self._version_gte_constraint = True
+                elif spec.startswith('<='):
+                    self._numeric_constraint = version.LooseVersion(
+                            spec.lstrip('<=R'))
+                    self._version_lte_constraint = True
                 elif spec.startswith('=='):
                     self._version_equal_constraint = True
                     self._numeric_constraint = version.LooseVersion(
-                        spec.lstrip('==R'))
+                            spec.lstrip('==R'))
                 else:
                     self._bare_branches.append(spec)
 
@@ -382,7 +389,8 @@ class Task(object):
 
         When called on a branch name, will return whether that branch
         'fits' the specifications stored in self._bare_branches,
-        self._numeric_constraint and self._version_equal_constraint.
+        self._numeric_constraint, self._version_equal_constraint,
+        self._version_gte_constraint and self._version_lte_constraint.
 
         @param branch: the branch to check.
         @return True if b 'fits' with stored specs, False otherwise.
@@ -392,7 +400,12 @@ class Task(object):
         if self._numeric_constraint:
             if self._version_equal_constraint:
                 return version.LooseVersion(branch) == self._numeric_constraint
+            elif self._version_gte_constraint:
+                return version.LooseVersion(branch) >= self._numeric_constraint
+            elif self._version_lte_constraint:
+                return version.LooseVersion(branch) <= self._numeric_constraint
             else:
+                # Default to great or equal constraint.
                 return version.LooseVersion(branch) >= self._numeric_constraint
         else:
             return False
@@ -637,7 +650,7 @@ class Task(object):
             logging.info('Checking if %s fits spec %r',
                          branch, self.branch_specs)
             if self._FitsSpec(branch):
-                logging.debug('Build %s fits the spec.')
+                logging.debug('Build %s fits the spec.', build)
                 builds.extend(build)
         for build in builds:
             try:
