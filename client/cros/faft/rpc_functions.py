@@ -179,6 +179,23 @@ class RPCFunctions(object):
         """
         return True
 
+    def _system_wait_for_client(self, timeout):
+        """Wait for the client to come back online.
+
+        @param timeout: Time in seconds to wait for the client SSH daemon to
+                        come up.
+        @return: True if succeed; otherwise False.
+        """
+        return self._os_if.wait_for_device(timeout)
+
+    def _system_wait_for_client_offline(self, timeout):
+        """Wait for the client to come offline.
+
+        @param timeout: Time in seconds to wait the client to come offline.
+        @return: True if succeed; otherwise False.
+        """
+        return self._os_if.wait_for_no_device(timeout)
+
     def _system_dump_log(self, remove_log=False):
         """Dump the log file.
 

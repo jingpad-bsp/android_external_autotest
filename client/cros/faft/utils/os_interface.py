@@ -179,6 +179,14 @@ class OSInterface(object):
         """Get a full path of a file in the state directory."""
         return os.path.join(self.state_dir, file_name)
 
+    def wait_for_device(self, timeout):
+        """Wait for an Android device to be connected."""
+        return self.shell.wait_for_device(timeout)
+
+    def wait_for_no_device(self, timeout):
+        """Wait for no Android device to be connected (offline)."""
+        return self.shell.wait_for_no_device(timeout)
+
     def log(self, text):
         """Write text to the log file and print it on the screen, if enabled.
 

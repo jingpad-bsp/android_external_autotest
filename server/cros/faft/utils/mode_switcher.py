@@ -164,9 +164,13 @@ def _create_fw_bypasser(servo, faft_config):
     if bypasser_type == 'ctrl_d_bypasser':
         logging.info('Create a CtrlDBypasser')
         return _CtrlDBypasser(servo, faft_config)
-    if bypasser_type == 'jetstream_bypasser':
+    elif bypasser_type == 'jetstream_bypasser':
         logging.info('Create a JetstreamBypasser')
         return _JetstreamBypasser(servo, faft_config)
+    elif bypasser_type == 'ryu_bypasser':
+        # FIXME Create an RyuBypasser
+        logging.info('Create a CtrlDBypasser')
+        return _CtrlDBypasser(servo, faft_config)
     else:
         raise NotImplementedError('Not supported fw_bypasser_type: %s',
                                   bypasser_type)
@@ -477,6 +481,46 @@ class _JetstreamSwitcher(_BaseModeSwitcher):
         self._disable_rec_mode_and_reboot(usb_state='host')
 
 
+class _RyuSwitcher(_BaseModeSwitcher):
+    """Class that switches firmware mode via physical button."""
+
+    def wait_for_client(self, timeout=180):
+        """Wait for the client to come back online.
+
+        New remote processes will be launched if their used flags are enabled.
+
+        @param timeout: Time in seconds to wait for the client SSH daemon to
+                        come up.
+        @raise ConnectionError: Failed to connect DUT.
+        """
+        if not self.faft_client.system.wait_for_client(timeout):
+            raise ConnectionError()
+
+
+    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
+        """Wait for the client to come offline.
+
+        @param timeout: Time in seconds to wait the client to come offline.
+        @param orig_boot_id: A string containing the original boot id.
+        @raise ConnectionError: Failed to wait DUT offline.
+        """
+        # TODO: Add a way to check orig_boot_id
+        if not self.faft_client.system.wait_for_client_offline(timeout):
+            raise ConnectionError()
+
+
+    def _enable_dev_mode_and_reboot(self):
+        """Switch to developer mode and reboot."""
+        # FIXME Implement switching to dev mode.
+        pass
+
+
+    def _enable_normal_mode_and_reboot(self):
+        """Switch to normal mode and reboot."""
+        # FIXME Implement switching to normal mode.
+        pass
+
+
 def create_mode_switcher(faft_framework):
     """Creates a proper mode switcher.
 
@@ -492,6 +536,9 @@ def create_mode_switcher(faft_framework):
     elif switcher_type == 'jetstream_switcher':
         logging.info('Create a JetstreamSwitcher')
         return _JetstreamSwitcher(faft_framework)
+    elif switcher_type == 'ryu_switcher':
+        logging.info('Create a RyuSwitcher')
+        return _RyuSwitcher(faft_framework)
     else:
         raise NotImplementedError('Not supported mode_switcher_type: %s',
                                   switcher_type)

@@ -172,3 +172,14 @@ class AdbShell(object):
             self._host_shell.append_file(f.name, data)
             cmd = 'adb push %s %s' % (f.name, path)
             self._host_shell.run_command(cmd)
+
+    def wait_for_device(self, timeout):
+        """Wait for an Android device connected."""
+        cmd = 'timeout %s adb wait-for-device' % timeout
+        return self._host_shell.run_command_get_status(cmd) == 0
+
+    def wait_for_no_device(self, timeout):
+        """Wait for no Android connected (offline)."""
+        cmd = ('for i in $(seq 0 %d); do adb shell sleep 1 || false; done' %
+               timeout)
+        return self._host_shell.run_command_get_status(cmd) != 0
