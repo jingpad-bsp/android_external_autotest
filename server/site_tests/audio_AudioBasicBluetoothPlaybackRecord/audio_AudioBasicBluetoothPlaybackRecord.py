@@ -156,4 +156,4 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 golden_file, record_recorder, 'frequency'):
             error_messages += 'Playback: Recorded file does not match playback file.'
         if error_messages:
-            raise error.TestError(error_messages)
+            raise error.TestFail(error_messages)

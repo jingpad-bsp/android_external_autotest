@@ -90,5 +90,5 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
 
             if not chameleon_audio_helper.compare_recorded_result(
                     golden_file, recorder, 'correlation'):
-                raise error.TestError(
+                raise error.TestFail(
                         'Recorded file does not match playback file')

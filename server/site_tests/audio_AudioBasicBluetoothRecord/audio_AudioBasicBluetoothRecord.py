@@ -107,5 +107,5 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         # and HDMI.
         if not chameleon_audio_helper.compare_recorded_result(
                 golden_file, recorder, 'frequency'):
-            raise error.TestError(
+            raise error.TestFail(
                     'Recorded file does not match playback file')
