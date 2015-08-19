@@ -295,7 +295,7 @@ class _BaseModeSwitcher(object):
                 self.bypasser.bypass_dev_mode()
             if not is_dev:
                 self.bypasser.bypass_rec_mode()
-            self.faft_framework.wait_for_kernel_up()
+            self.faft_framework.wait_for_client()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
 

@@ -42,40 +42,6 @@ class FAFTBase(test.test):
         self.faft_client = RPCProxy(host)
         self.lockfile = '/var/tmp/faft/lock'
 
-    def wait_for_client(self, timeout=180):
-        """Wait for the client to come back online.
-
-        New remote processes will be launched if their used flags are enabled.
-
-        @param timeout: Time in seconds to wait for the client SSH daemon to
-                        come up.
-        @raise ConnectionError: Failed to connect DUT.
-        """
-        if not self._client.wait_up(timeout):
-            raise ConnectionError()
-        # Check the FAFT client is avaiable.
-        self.faft_client.system.is_available()
-
-    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
-        """Wait for the client to come offline.
-
-        @param timeout: Time in seconds to wait the client to come offline.
-        @param orig_boot_id: A string containing the original boot id.
-        @raise ConnectionError: Failed to connect DUT.
-        """
-        # When running against panther, we see that sometimes
-        # ping_wait_down() does not work correctly. There needs to
-        # be some investigation to the root cause.
-        # If we sleep for 120s before running get_boot_id(), it
-        # does succeed. But if we change this to ping_wait_down()
-        # there are implications on the wait time when running
-        # commands at the fw screens.
-        if not self._client.ping_wait_down(timeout):
-            if orig_boot_id and self._client.get_boot_id() != orig_boot_id:
-                logging.warn('Reboot done very quickly.')
-                return
-            raise ConnectionError()
-
 
 class FirmwareTest(FAFTBase):
     """
@@ -202,6 +168,49 @@ class FirmwareTest(FAFTBase):
         self._cleanup_uart_capture()
         super(FirmwareTest, self).cleanup()
         logging.info('FirmwareTest cleanup done (id=%s)', self.run_id)
+
+    def wait_for_client(self, timeout=180):
+        """Wait for the client to come back online.
+
+        New remote processes will be launched if their used flags are enabled.
+
+        @param timeout: Time in seconds to wait for the client SSH daemon to
+                        come up.
+        @raise ConnectionError: Failed to connect DUT.
+        """
+        logging.info("-[FAFT]-[ start wait_for_client ]---")
+        # Wait for the system to respond to ping before attempting ssh
+        if not self._client.ping_wait_up(timeout):
+            logging.warning("-[FAFT]-[ system did not respond to ping ]")
+        if self._client.wait_up(timeout):
+            # Check the FAFT client is avaiable.
+            self.faft_client.system.is_available()
+            # Stop update-engine as it may change firmware/kernel.
+            self._stop_service('update-engine')
+        else:
+            logging.error('wait_for_client() timed out.')
+            raise ConnectionError()
+        logging.info("-[FAFT]-[ end wait_for_client ]-----")
+
+    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
+        """Wait for the client to come offline.
+
+        @param timeout: Time in seconds to wait the client to come offline.
+        @param orig_boot_id: A string containing the original boot id.
+        @raise ConnectionError: Failed to wait DUT offline.
+        """
+        # When running against panther, we see that sometimes
+        # ping_wait_down() does not work correctly. There needs to
+        # be some investigation to the root cause.
+        # If we sleep for 120s before running get_boot_id(), it
+        # does succeed. But if we change this to ping_wait_down()
+        # there are implications on the wait time when running
+        # commands at the fw screens.
+        if not self._client.ping_wait_down(timeout):
+            if orig_boot_id and self._client.get_boot_id() != orig_boot_id:
+                logging.warn('Reboot done very quickly.')
+                return
+            raise ConnectionError()
 
     def _record_system_info(self):
         """Record some critical system info to the attr keyval.
@@ -894,23 +903,6 @@ class FirmwareTest(FAFTBase):
                                                       root_dev)
         else:
             self.faft_client.system.run_shell_command('hdparm -f %s' % root_dev)
-
-    def wait_for_kernel_up(self):
-        """
-        Helper function that waits for the device to boot up to kernel.
-        """
-        logging.info("-[FAFT]-[ start wait_for_kernel_up ]---")
-        # Wait for the system to respond to ping before attempting ssh
-        if not self._client.ping_wait_up(90):
-            logging.warning("-[FAFT]-[ system did not respond to ping ]")
-        try:
-            self.wait_for_client()
-            # Stop update-engine as it may change firmware/kernel.
-            self._stop_service('update-engine')
-        except ConnectionError:
-            logging.error('wait_for_client() timed out.')
-            self._restore_routine_from_timeout()
-        logging.info("-[FAFT]-[ end wait_for_kernel_up ]-----")
 
     def sync_and_ec_reboot(self, flags=''):
         """Request the client sync and do a EC triggered reboot.
