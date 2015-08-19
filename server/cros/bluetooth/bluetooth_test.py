@@ -32,7 +32,10 @@ class BluetoothTest(test.test):
 
     def warmup(self, device_host, tester_host, interactive=False):
         """Initialize the test member objects based on its arguments."""
-        super(BluetoothTest, self).warmup()
+        if interactive:
+            self.interactive = interactive_client.InteractiveClient(device_host)
+        else:
+            self.interactive = None
 
         self.device = bluetooth_device.BluetoothDevice(device_host)
 
@@ -40,11 +43,6 @@ class BluetoothTest(test.test):
             self.tester = bluetooth_tester.BluetoothTester(tester_host)
         else:
             self.tester = None
-
-        if interactive:
-            self.interactive = interactive_client.InteractiveClient(device_host)
-        else:
-            self.interactive = None
 
 
     def cleanup(self):

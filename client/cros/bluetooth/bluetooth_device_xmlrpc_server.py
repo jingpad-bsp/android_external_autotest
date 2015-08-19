@@ -151,6 +151,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 self._bluez = None
                 return False
             else:
+                logging.error('Error updating Bluez!')
                 raise
 
 
@@ -171,8 +172,10 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         self._adapter = None
         if self._bluez is None:
+            logging.warning('Bluez not found!')
             return False
         if not self._has_adapter:
+            logging.debug('Device has no adapter; returning')
             return True
 
         objects = self._bluez.GetManagedObjects(
@@ -186,6 +189,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                         path)
                 return True
         else:
+            logging.warning('No adapter found in interface!')
             return False
 
 
@@ -236,6 +240,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                                   dbus_interface=self.UPSTART_JOB_IFACE)
         except dbus.exceptions.DBusException, e:
             if e.get_dbus_name() != self.UPSTART_ERROR_UNKNOWNINSTANCE:
+                logging.error('Error resetting adapter!')
                 raise
 
         def bluez_stopped():
@@ -280,10 +285,14 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        if not powered and not self._adapter:
-            # Return success if we are trying to power off an adapter that's
-            # missing or gone away, since the expected result has happened.
-            return True
+        if not self._adapter:
+            if not powered:
+                # Return success if we are trying to power off an adapter that's
+                # missing or gone away, since the expected result has happened.
+                return True
+            else:
+                logging.warning('Adapter not found!')
+                return False
         self._set_powered(powered)
         return True
 
@@ -548,18 +557,18 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             self._pin_agent = None
         self._pin_agent = _PinAgent(pin, self._system_bus, agent_path)
         agent_manager = dbus.Interface(
-                              self._system_bus.get_object(
-                                  self.BLUEZ_SERVICE_NAME,
-                                  self.BLUEZ_AGENT_MANAGER_PATH),
-                              self.BLUEZ_AGENT_MANAGER_IFACE)
+                self._system_bus.get_object(self.BLUEZ_SERVICE_NAME,
+                                            self.BLUEZ_AGENT_MANAGER_PATH),
+                self.BLUEZ_AGENT_MANAGER_IFACE)
         try:
             agent_manager.RegisterAgent(agent_path, 'NoInputNoOutput')
         except dbus.exceptions.DBusException, e:
             if e.get_dbus_name() == self.BLUEZ_ERROR_ALREADY_EXISTS:
-                logging.info('Unregistering the old agent and register the new one.')
+                logging.info('Unregistering old agent and registering the new')
                 agent_manager.UnregisterAgent(agent_path)
                 agent_manager.RegisterAgent(agent_path, 'NoInputNoOutput')
             else:
+                logging.error('Error setting up pin agent: %s', e)
                 raise
         logging.info('Agent registered')
 
@@ -587,7 +596,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """
         props = dbus.Interface(device, dbus.PROPERTIES_IFACE)
         connected = props.Get(self.BLUEZ_DEVICE_IFACE, 'Connected')
-        logging.info('Get connected = %r', connected)
+        logging.info('Got connected = %r', connected)
         return bool(connected)
 
 

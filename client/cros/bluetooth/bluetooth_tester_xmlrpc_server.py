@@ -92,6 +92,8 @@ class BluetoothTesterXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           name, short_name ) = self._control.read_info(self.index)
         if profile_settings & supported_settings != profile_settings:
             logging.warning('Controller does not support requested settings')
+            logging.debug('Supported: %b; Requested: %b', supported_settings,
+                          profile_settings)
             return False
 
         # Before beginning, force the adapter power off, even if it's already

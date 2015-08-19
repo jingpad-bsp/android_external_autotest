@@ -294,7 +294,11 @@ class BluetoothSocket(btsocket.socket):
         # Read the message from the socket
         hdr = bytearray(MGMT_HDR_SIZE)
         data = bytearray(512)
-        (nbytes, ancdata, msg_flags, address) = self.recvmsg_into((hdr, data))
+        try:
+            (nbytes, ancdata, msg_flags, address) = self.recvmsg_into(
+                    (hdr, data))
+        except btsocket.timeout as e:
+            raise BluetoothSocketError('Error receiving event: %s' % e)
         if nbytes < MGMT_HDR_SIZE:
             raise BluetoothInvalidPacketError('Packet shorter than header')
 

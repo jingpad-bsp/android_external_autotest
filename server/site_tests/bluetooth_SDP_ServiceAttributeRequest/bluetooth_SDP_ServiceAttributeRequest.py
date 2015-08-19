@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros.bluetooth import bluetooth_test
 import uuid
 import xml.etree.ElementTree as ET
+
+from autotest_lib.client.common_lib import error
+from autotest_lib.server.cros.bluetooth import bluetooth_test
 
 class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
     """
@@ -109,7 +110,8 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         """
         res = self.tester.service_search_request([class_id], self.MAX_REC_CNT)
         if not (isinstance(res, list) and len(res) > 0):
-            raise error.TestFail('Failed to retrieve handle for %d' % class_id)
+            raise error.TestFail(
+                    'Failed to retrieve handle for 0x%x' % class_id)
         return res[0]
 
 
@@ -256,7 +258,7 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
     def test_profile_descriptor_list_attribute(self):
         """Implementation of test TP/SERVER/SA/BV-17-C from SDP Specification.
 
-        @return True if test passes, False if test fails
+        @raise error.TestFail: If list attribute not correct form.
 
         """
         profile_list = self.get_attribute(self.PNP_INFORMATION_CLASS_ID,
@@ -277,6 +279,7 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
         """Implementation of test TP/SERVER/SA/BV-21-C from SDP Specification.
 
         @raise error.TestFail: If the DUT failed the test.
+
         """
 
         """AVRCP is not supported by Chromebook and no need to run this test
@@ -414,9 +417,10 @@ class bluetooth_SDP_ServiceAttributeRequest(bluetooth_test.BluetoothTest):
 
     def run_once(self):
         # Reset the adapter to the powered on, discoverable state.
-        if not (self.device.reset_on() and
-                self.device.set_discoverable(True)):
-            raise error.TestFail('DUT could not be reset to initial state')
+        if not self.device.reset_on():
+            raise error.TestFail('DUT adapter could not be powered on')
+        if not self.device.set_discoverable(True):
+            raise error.TestFail('DUT could not be set as discoverable')
 
         self.adapter = self.device.get_adapter_properties()
 

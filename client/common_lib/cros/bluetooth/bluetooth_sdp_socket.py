@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import logging
 import socket
 import struct
 
@@ -103,8 +104,14 @@ class BluetoothSDPSocket(btsocket.socket):
         @param address: Bluetooth address.
 
         """
-        super(BluetoothSDPSocket, self).connect((address, SDP_PSM))
-
+        try:
+            super(BluetoothSDPSocket, self).connect((address, SDP_PSM))
+        except btsocket.error as e:
+            logging.error('Error connecting to %s: %s', address, e)
+            raise BluetoothSDPSocketError('Error connecting to host: %s' % e)
+        except btsocket.timeout as e:
+            logging.error('Timeout connecting to %s: %s', address, e)
+            raise BluetoothSDPSocketError('Timeout connecting to host: %s' % e)
 
     def send_request(self, code, tid, data, forced_pdu_size=None):
         """Send a request to the socket.
