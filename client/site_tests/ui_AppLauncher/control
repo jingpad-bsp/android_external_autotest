@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "ui"
 TEST_TYPE = "client"
-DEPENDENCIES = "board:daisy", "board:link", "board:peppy"
+DEPENDENCIES = "board:daisy, board:link, board:peppy"
 
 DOC = """
 Collects screenshots of the default apps in App Launcher. Compares them to a
