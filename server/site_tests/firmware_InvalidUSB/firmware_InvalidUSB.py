@@ -53,7 +53,7 @@ class firmware_InvalidUSB(FirmwareTest):
         self.switcher.bypass_rec_mode()
         logging.info('Wait to ensure the USB image is unable to boot...')
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
             raise error.TestFail('Should not boot from the invalid USB image.')
         except ConnectionError:
             logging.info(
@@ -61,7 +61,7 @@ class firmware_InvalidUSB(FirmwareTest):
 
         self.restore_usb()
         self.servo.switch_usbkey('dut')
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected to boot the restored USB image and reboot.")
         self.check_state((self.checkers.crossystem_checker, {

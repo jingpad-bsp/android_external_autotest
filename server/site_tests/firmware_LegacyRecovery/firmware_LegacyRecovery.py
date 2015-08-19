@@ -39,7 +39,7 @@ class firmware_LegacyRecovery(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_rec_mode()
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
         self.faft_client.system.run_shell_command(
@@ -54,12 +54,12 @@ class firmware_LegacyRecovery(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         logging.info('Wait to ensure DUT doesnt Boot on USB at Remove screen.')
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
             raise error.TestFail('Unexpected USB boot at Remove Screen.')
         except ConnectionError:
             logging.info('Done, Waited till timeout and no USB boot occured.')
         self.switcher.bypass_rec_mode()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected to boot the restored USB image and reboot.")
         self.check_state((self.checkers.crossystem_checker, {

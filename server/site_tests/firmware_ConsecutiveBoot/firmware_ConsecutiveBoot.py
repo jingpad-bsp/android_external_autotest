@@ -45,9 +45,9 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         """
         logging.info('wait_for_client %d start.', self.faft_waitup_time)
         if self.faft_waitup_time:
-            self.wait_for_client(self.faft_waitup_time)
+            self.switcher.wait_for_client(self.faft_waitup_time)
         else:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
 
     def shutdown_power_on(self):
         """
@@ -61,7 +61,7 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         logging.info("Sending /sbin/shutdown -P now")
         self.faft_client.system.run_shell_command('/sbin/shutdown -P now')
         logging.info('Wait for client to go offline')
-        self.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
+        self.switcher.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
         # Retry in case power_short_press was not registered.
         for i in xrange(self.POWER_ON_RETRY):
             logging.info("sleep %d, tap power key to boot.",

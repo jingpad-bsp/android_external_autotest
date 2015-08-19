@@ -89,7 +89,7 @@ class firmware_EventLog(FirmwareTest):
         logging.info('Verifying eventlog behavior in recovery mode')
         self._cutoff_time = self._now()
         self.switcher.reboot_to_mode(to_mode='rec', wait_for_dut_up=False)
-        self.wait_for_client_offline()
+        self.switcher.wait_for_client_offline()
         time.sleep(self.faft_config.firmware_screen)
         self.switcher.mode_aware_reboot(sync_before_boot=False)
         self.check_state((self.checkers.crossystem_checker, {

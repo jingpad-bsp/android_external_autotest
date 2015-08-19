@@ -73,7 +73,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         self.servo.enable_development_mode()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_dev_mode()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected values based on platforms (see above), "
                      "run 'chromeos-firmwareupdate --mode todev && reboot', "
@@ -84,7 +84,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         # Ignore the default reboot_action here because the
         # userspace_action (firmware updater) will reboot the system.
         self.switcher.trigger_dev_to_rec()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected recovery boot and disable dev switch.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -101,7 +101,7 @@ class firmware_DevTriggerRecovery(FirmwareTest):
         self.check_state(self.check_devsw_off_transition)
         self.faft_client.system.run_shell_command(
                             'chromeos-firmwareupdate --mode tonormal && reboot')
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected normal mode boot, done.")
         self.check_state((self.checkers.crossystem_checker, {

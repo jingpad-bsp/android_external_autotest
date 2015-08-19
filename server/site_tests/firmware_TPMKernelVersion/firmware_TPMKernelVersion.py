@@ -54,7 +54,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         self.faft_client.system.set_dev_boot_usb(1)
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_dev_boot_usb()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         # Check that DUT is booted from USB.
         self.check_state((self.checkers.crossystem_checker,

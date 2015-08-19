@@ -21,9 +21,7 @@ from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.servo import chrome_ec
 
 
-class ConnectionError(Exception):
-    """Raised on an error of connecting DUT."""
-    pass
+ConnectionError = mode_switcher.ConnectionError
 
 
 class FAFTBase(test.test):
@@ -169,49 +167,6 @@ class FirmwareTest(FAFTBase):
         super(FirmwareTest, self).cleanup()
         logging.info('FirmwareTest cleanup done (id=%s)', self.run_id)
 
-    def wait_for_client(self, timeout=180):
-        """Wait for the client to come back online.
-
-        New remote processes will be launched if their used flags are enabled.
-
-        @param timeout: Time in seconds to wait for the client SSH daemon to
-                        come up.
-        @raise ConnectionError: Failed to connect DUT.
-        """
-        logging.info("-[FAFT]-[ start wait_for_client ]---")
-        # Wait for the system to respond to ping before attempting ssh
-        if not self._client.ping_wait_up(timeout):
-            logging.warning("-[FAFT]-[ system did not respond to ping ]")
-        if self._client.wait_up(timeout):
-            # Check the FAFT client is avaiable.
-            self.faft_client.system.is_available()
-            # Stop update-engine as it may change firmware/kernel.
-            self._stop_service('update-engine')
-        else:
-            logging.error('wait_for_client() timed out.')
-            raise ConnectionError()
-        logging.info("-[FAFT]-[ end wait_for_client ]-----")
-
-    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
-        """Wait for the client to come offline.
-
-        @param timeout: Time in seconds to wait the client to come offline.
-        @param orig_boot_id: A string containing the original boot id.
-        @raise ConnectionError: Failed to wait DUT offline.
-        """
-        # When running against panther, we see that sometimes
-        # ping_wait_down() does not work correctly. There needs to
-        # be some investigation to the root cause.
-        # If we sleep for 120s before running get_boot_id(), it
-        # does succeed. But if we change this to ping_wait_down()
-        # there are implications on the wait time when running
-        # commands at the fw screens.
-        if not self._client.ping_wait_down(timeout):
-            if orig_boot_id and self._client.get_boot_id() != orig_boot_id:
-                logging.warn('Reboot done very quickly.')
-                return
-            raise ConnectionError()
-
     def _record_system_info(self):
         """Record some critical system info to the attr keyval.
 
@@ -245,7 +200,7 @@ class FirmwareTest(FAFTBase):
             self.servo.switch_usbkey('dut')
 
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
             lines = self.faft_client.system.run_shell_command_get_output(
                         'crossystem recovery_reason')
             recovery_reason = int(lines[0])
@@ -269,10 +224,10 @@ class FirmwareTest(FAFTBase):
         self.switcher.mode_aware_reboot(reboot_type='cold',
                                         sync_before_boot=False,
                                         wait_for_dut_up=False)
-        self.wait_for_client_offline()
+        self.switcher.wait_for_client_offline()
         self.switcher.bypass_dev_mode()
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
             return
         except ConnectionError:
             logging.warn('Cold reboot doesn\'t help, still connection error.')
@@ -309,10 +264,10 @@ class FirmwareTest(FAFTBase):
         logging.info('Try restore the OS image...')
         self.faft_client.system.run_shell_command('chromeos-install --yes')
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.wait_for_client_offline()
+        self.switcher.wait_for_client_offline()
         self.switcher.bypass_dev_mode()
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
             logging.info('Successfully restore OS image.')
             return
         except ConnectionError:
@@ -330,7 +285,7 @@ class FirmwareTest(FAFTBase):
         self.servo.switch_usbkey('host')
         self.switcher.bypass_rec_mode()
         try:
-            self.wait_for_client()
+            self.switcher.wait_for_client()
         except ConnectionError:
             raise error.TestError('Failed to boot the USB image.')
 
@@ -931,7 +886,7 @@ class FirmwareTest(FAFTBase):
         self.servo.power_key(self.faft_config.hold_pwr_button_poweroff)
         # device can take 44-51 seconds to restart,
         # add buffer from the default timeout of 60 seconds.
-        self.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
+        self.switcher.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
         time.sleep(self.faft_config.shutdown)
         # Short press power button to boot DUT again.
         self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
@@ -1059,7 +1014,7 @@ class FirmwareTest(FAFTBase):
         try:
             if shutdown_timeout is None:
                 shutdown_timeout = self.faft_config.shutdown_timeout
-            self.wait_for_client(timeout=shutdown_timeout)
+            self.switcher.wait_for_client(timeout=shutdown_timeout)
             raise error.TestFail(
                     'Should shut the device down after calling %s.' %
                     str(shutdown_action))

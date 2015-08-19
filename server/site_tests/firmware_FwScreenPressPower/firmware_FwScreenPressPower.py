@@ -80,7 +80,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.run_shutdown_process(self.wait_fw_screen_and_press_power,
                                   None,
                                   self.switcher.bypass_dev_mode)
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Reboot. When the developer screen shown, press "
                      "enter key to trigger either TO_NORM screen (new) or "
@@ -95,7 +95,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                                   None,
                                   self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Request recovery boot. When the RECOVERY INSERT "
                      "screen shows, press power button to make DUT shutdown.")
@@ -109,7 +109,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                                   None,
                                   self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Request recovery boot again. When the recovery "
                      "insert screen shows, insert a corrupted USB and trigger "
@@ -125,7 +125,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                                   None,
                                   self.switcher.bypass_dev_mode,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Switch back to normal mode.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -147,7 +147,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                                   None,
                                   None,
                                   self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Check and done.")
         self.check_state((self.checkers.crossystem_checker, {

@@ -6,6 +6,11 @@ import logging
 import time
 
 
+class ConnectionError(Exception):
+    """Raised on an error of connecting DUT."""
+    pass
+
+
 class _BaseFwBypasser(object):
     """Base class that controls bypass logic for firmware screens."""
 
@@ -172,6 +177,7 @@ class _BaseModeSwitcher(object):
 
     def __init__(self, faft_framework):
         self.faft_framework = faft_framework
+        self.client_host = faft_framework._client
         self.faft_client = faft_framework.faft_client
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
@@ -224,18 +230,18 @@ class _BaseModeSwitcher(object):
             self._enable_rec_mode_and_reboot(usb_state='dut')
             if wait_for_dut_up:
                 self.bypasser.bypass_rec_mode()
-                self.faft_framework.wait_for_client()
+                self.wait_for_client()
 
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
             if wait_for_dut_up:
                 self.bypasser.bypass_dev_mode()
-                self.faft_framework.wait_for_client()
+                self.wait_for_client()
 
         elif to_mode == 'normal':
             self._enable_normal_mode_and_reboot()
             if wait_for_dut_up:
-                self.faft_framework.wait_for_client()
+                self.wait_for_client()
 
         else:
             raise NotImplementedError(
@@ -279,7 +285,7 @@ class _BaseModeSwitcher(object):
             self.faft_framework.blocking_sync()
         reboot_method()
         if sync_before_boot:
-            self.faft_framework.wait_for_client_offline(orig_boot_id=boot_id)
+            self.wait_for_client_offline(orig_boot_id=boot_id)
         if wait_for_dut_up:
             # For encapsulating the behavior of skipping firmware screen,
             # e.g. requiring unplug and plug USB, the variants are not
@@ -295,7 +301,7 @@ class _BaseModeSwitcher(object):
                 self.bypasser.bypass_dev_mode()
             if not is_dev:
                 self.bypasser.bypass_rec_mode()
-            self.faft_framework.wait_for_client()
+            self.wait_for_client()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
 
@@ -368,6 +374,51 @@ class _BaseModeSwitcher(object):
         self.bypasser.trigger_dev_to_normal()
 
 
+    def wait_for_client(self, timeout=180):
+        """Wait for the client to come back online.
+
+        New remote processes will be launched if their used flags are enabled.
+
+        @param timeout: Time in seconds to wait for the client SSH daemon to
+                        come up.
+        @raise ConnectionError: Failed to connect DUT.
+        """
+        logging.info("-[FAFT]-[ start wait_for_client ]---")
+        # Wait for the system to respond to ping before attempting ssh
+        if not self.client_host.ping_wait_up(timeout):
+            logging.warning("-[FAFT]-[ system did not respond to ping ]")
+        if self.client_host.wait_up(timeout):
+            # Check the FAFT client is avaiable.
+            self.faft_client.system.is_available()
+            # Stop update-engine as it may change firmware/kernel.
+            self.faft_framework._stop_service('update-engine')
+        else:
+            logging.error('wait_for_client() timed out.')
+            raise ConnectionError()
+        logging.info("-[FAFT]-[ end wait_for_client ]-----")
+
+
+    def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
+        """Wait for the client to come offline.
+
+        @param timeout: Time in seconds to wait the client to come offline.
+        @param orig_boot_id: A string containing the original boot id.
+        @raise ConnectionError: Failed to wait DUT offline.
+        """
+        # When running against panther, we see that sometimes
+        # ping_wait_down() does not work correctly. There needs to
+        # be some investigation to the root cause.
+        # If we sleep for 120s before running get_boot_id(), it
+        # does succeed. But if we change this to ping_wait_down()
+        # there are implications on the wait time when running
+        # commands at the fw screens.
+        if not self.client_host.ping_wait_down(timeout):
+            if orig_boot_id and self.client_host.get_boot_id() != orig_boot_id:
+                logging.warn('Reboot done very quickly.')
+                return
+            raise ConnectionError()
+
+
 class _PhysicalButtonSwitcher(_BaseModeSwitcher):
     """Class that switches firmware mode via physical button."""
 
@@ -394,7 +445,7 @@ class _KeyboardDevSwitcher(_BaseModeSwitcher):
         # Rebooting EC with rec mode on. Should power on AP.
         # Plug out USB disk for preventing recovery boot without warning
         self._enable_rec_mode_and_reboot(usb_state='host')
-        self.faft_framework.wait_for_client_offline()
+        self.wait_for_client_offline()
         self.bypasser.trigger_rec_to_dev()
 
 
@@ -402,7 +453,7 @@ class _KeyboardDevSwitcher(_BaseModeSwitcher):
         """Switch to normal mode and reboot."""
         logging.info("Disabling keyboard controlled developer mode")
         self._disable_rec_mode_and_reboot()
-        self.faft_framework.wait_for_client_offline()
+        self.wait_for_client_offline()
         self.bypasser.trigger_dev_to_normal()
 
 
@@ -413,7 +464,7 @@ class _JetstreamSwitcher(_BaseModeSwitcher):
         """Switch to developer mode and reboot."""
         logging.info("Enabling Jetstream developer mode")
         self._enable_rec_mode_and_reboot(usb_state='host')
-        self.faft_framework.wait_for_client_offline()
+        self.wait_for_client_offline()
         self.bypasser.trigger_rec_to_dev()
 
 

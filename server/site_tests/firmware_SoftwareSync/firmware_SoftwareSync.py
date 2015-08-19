@@ -57,7 +57,7 @@ class firmware_SoftwareSync(FirmwareTest):
         self.record_hash_and_corrupt()
         self.sync_and_ec_reboot()
         self.wait_software_sync_and_boot()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expect EC in RW and RW is restored.")
         self.check_state(self.software_sync_checker)

@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import vboot_constants as vboot
@@ -107,7 +106,7 @@ class firmware_SelfSignedBoot(FirmwareTest):
         self.resignimage_ssdkeys()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_dev_boot_usb()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected USB boot.")
         self.check_state((self.checkers.dev_boot_usb_checker, True,

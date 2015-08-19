@@ -48,7 +48,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_rec_mode()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected recovery boot, request recovery again.")
         self.check_state((self.checkers.crossystem_checker, {
@@ -59,7 +59,7 @@ class firmware_UserRequestRecovery(FirmwareTest):
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         if not dev_mode:
             self.switcher.bypass_rec_mode()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected recovery boot.")
         self.check_state((self.checkers.crossystem_checker, {

@@ -39,7 +39,7 @@ class firmware_ConsecutiveBootPowerButton(FirmwareTest):
                         'mainfw_type': 'developer' if dev_mode else 'normal',
                         }))
             self.full_power_off_and_on()
-            self.wait_for_client()
+            self.switcher.wait_for_client()
 
             logging.info("Expected boot fine.")
             self.check_state((self.checkers.crossystem_checker, {

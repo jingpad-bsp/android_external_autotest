@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -64,7 +63,7 @@ class firmware_DevBootUSB(FirmwareTest):
         self.faft_client.system.set_dev_boot_usb(1)
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_dev_boot_usb()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Expected USB boot, set dev_boot_usb to the original.")
         self.check_state((self.checkers.dev_boot_usb_checker,
@@ -73,7 +72,7 @@ class firmware_DevBootUSB(FirmwareTest):
         self.faft_client.system.set_dev_boot_usb(self.original_dev_boot_usb)
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.switcher.bypass_dev_mode()
-        self.wait_for_client()
+        self.switcher.wait_for_client()
 
         logging.info("Check and done.")
         self.check_state((self.checkers.dev_boot_usb_checker, False))
