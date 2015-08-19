@@ -17,11 +17,11 @@ class display_LidCloseOpen(test.test):
     version = 1
 
     # Time to check if device is suspended
-    TIMEOUT_SUSPEND_CHECK = 2
+    TIMEOUT_SUSPEND_CHECK = 5
     # Allowed timeout for the transition of suspend.
-    TIMEOUT_SUSPEND_TRANSITION = 10
+    TIMEOUT_SUSPEND_TRANSITION = 30
     # Allowed timeout for the transition of resume.
-    TIMEOUT_RESUME_TRANSITION = 20
+    TIMEOUT_RESUME_TRANSITION = 30
     # Time to allow lid transition to take effect
     WAIT_TIME_LID_TRANSITION = 5
     # Time to allow display port plug transition to take effect
@@ -34,7 +34,7 @@ class display_LidCloseOpen(test.test):
         """
         if not self.host.ping_wait_down(
             timeout=self.TIMEOUT_SUSPEND_TRANSITION):
-            raise error.TestFail('Failed to SUSPEND within tieout')
+            raise error.TestFail('Failed to SUSPEND within timeout')
         logging.info('DUT IS SUSPENDED.')
 
 
