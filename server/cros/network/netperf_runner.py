@@ -498,16 +498,7 @@ class NetperfRunner(object):
 
 
     def __enter__(self):
-        logging.info('Starting netserver...')
-        self._kill_netserv()
-        self._server_host.run('%s -p %d >/dev/null 2>&1' %
-                              (self._command_netserv, self.NETPERF_PORT))
-        startup_time = time.time()
-        self._client_proxy.firewall_open('tcp', self._server_proxy.wifi_ip)
-        self._client_proxy.firewall_open('udp', self._server_proxy.wifi_ip)
-        # Wait for the netserv to come up.
-        while time.time() - startup_time < self.NETSERV_STARTUP_WAIT_TIME:
-            time.sleep(0.1)
+        self._restart_netserv()
         return self
 
 
@@ -521,6 +512,19 @@ class NetperfRunner(object):
         self._server_host.run('pkill %s' %
                               os.path.basename(self._command_netserv),
                               ignore_status=True)
+
+
+    def _restart_netserv(self):
+        logging.info('Starting netserver...')
+        self._kill_netserv()
+        self._server_host.run('%s -p %d >/dev/null 2>&1' %
+                              (self._command_netserv, self.NETPERF_PORT))
+        startup_time = time.time()
+        self._client_proxy.firewall_open('tcp', self._server_proxy.wifi_ip)
+        self._client_proxy.firewall_open('udp', self._server_proxy.wifi_ip)
+        # Wait for the netserv to come up.
+        while time.time() - startup_time < self.NETSERV_STARTUP_WAIT_TIME:
+            time.sleep(0.1)
 
 
     def run(self, ignore_failures=False, retry_count=3):
@@ -557,11 +561,18 @@ class NetperfRunner(object):
             if not result.exit_status:
                 break
 
-            # Only retry for internal timeout failures within netperf.
-            if 'Interrupted system call' not in result.stderr:
-                break
+            # Only retry for known retryable conditions.
+            if 'Interrupted system call' in result.stderr:
+                logging.info('Retrying netperf after internal timeout error.')
+                continue
 
-            logging.info('Retrying netperf after internal timeout error.')
+            if 'establish the control connection' in result.stdout:
+                logging.info('Restarting netserv after client failed connect.')
+                self._restart_netserv()
+                continue
+
+            # We are in an unhandled error case.
+            logging.info('Retrying netperf after an unknown error.')
 
         if result.exit_status and not ignore_failures:
             raise error.CmdError(netperf, result,
