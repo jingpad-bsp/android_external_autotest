@@ -30,7 +30,10 @@ _MAX_METADATA_QUEUE_SIZE = 1000000
 _MAX_UPLOAD_SIZE = 50000
 # The number of seconds for upload to fail continuously. After that, upload will
 # be limited to 1 entry.
-_MAX_UPLOAD_FAIL_DURATION = 1800
+_MAX_UPLOAD_FAIL_DURATION = 600
+# Number of entries to retry when the previous upload failed continueously for
+# the duration of _MAX_UPLOAD_FAIL_DURATION.
+_MIN_RETRY_ENTRIES = 10
 # Queue to buffer metadata to be reported.
 metadata_queue = Queue.Queue(_MAX_METADATA_QUEUE_SIZE)
 
@@ -88,18 +91,19 @@ def _run():
     # True if email alert was sent when upload has been failing continuously
     # for _MAX_UPLOAD_FAIL_DURATION seconds.
     email_alert = False
+    upload_size = _MIN_RETRY_ENTRIES
     try:
         while True:
             start_time = time.time()
             data_list = []
             if (first_failed_upload and
                 time.time() - first_failed_upload > _MAX_UPLOAD_FAIL_DURATION):
-                upload_size = 1
+                upload_size = _MIN_RETRY_ENTRIES
                 if not email_alert:
                     _email_alert()
                     email_alert = True
             else:
-                upload_size = _MAX_UPLOAD_SIZE
+                upload_size = min(upload_size*2, _MAX_UPLOAD_SIZE)
             while (not metadata_queue.empty() and len(data_list) < upload_size):
                 data_list.append(metadata_queue.get_nowait())
             if data_list:
