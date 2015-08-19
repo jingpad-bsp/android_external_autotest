@@ -549,6 +549,10 @@ class NetperfRunner(object):
             result = self._client_host.run(netperf, ignore_status=True,
                                            ignore_timeout=ignore_failures,
                                            timeout=timeout)
+            if not result:
+                logging.info('Retrying netperf after empty result.')
+                continue
+
             # Exit retry loop on success.
             if not result.exit_status:
                 break
