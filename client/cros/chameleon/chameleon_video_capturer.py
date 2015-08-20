@@ -104,6 +104,11 @@ class ChameleonVideoCapturer(object):
         self.checksums = self.chameleon_port.get_captured_checksums()
         count = self.chameleon_port.get_captured_frame_count()
 
+        logging.debug("***# of frames received %s", count)
+        logging.debug("Checksums before chopping repeated ones")
+        for c in self.checksums:
+            logging.debug(c)
+
         # Find the first frame that is different from previous ones. This
         # represents the start of 'interesting' frames
         first_index = 0
@@ -112,6 +117,7 @@ class ChameleonVideoCapturer(object):
                 first_index = i
                 break
 
+        logging.debug("*** First interesting frame at index = %s", first_index)
         self.checksums = self.checksums[first_index:]
         return self.checksums
 
