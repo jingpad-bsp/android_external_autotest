@@ -12,6 +12,7 @@ ARECORD_PATH = '/usr/bin/arecord'
 APLAY_PATH = '/usr/bin/aplay'
 AMIXER_PATH = '/usr/bin/amixer'
 CARD_NUM_RE = re.compile('(\d+) \[.*\]:.*')
+DEV_NUM_RE = re.compile('.* \[.*\], device (\d+):.*')
 CONTROL_NAME_RE = re.compile("name='(.*)'")
 SCONTROL_NAME_RE = re.compile("Simple mixer control '(.*)'")
 
@@ -150,7 +151,22 @@ def get_default_record_device():
     card_id = get_first_soundcard_with_control(cname='Mic Jack', scname='Mic')
     if card_id is None:
         return None
-    return 'plughw:%d' % card_id
+
+    # Get first device id of this card.
+    cmd = ARECORD_PATH + ' -l'
+    p = cmd_utils.popen(shlex.split(cmd), stdout=cmd_utils.PIPE)
+    output, _ = p.communicate()
+    if p.wait() != 0:
+        raise RuntimeError('arecord -l command failed')
+
+    dev_id = 0
+    for line in output.splitlines():
+        if 'card %d:' % card_id in line:
+            match = DEV_NUM_RE.search(line)
+            if match:
+                dev_id = int(match.group(1))
+                break
+    return 'plughw:%d,%d' % (card_id, dev_id)
 
 
 def _get_sysdefault(cmd):
