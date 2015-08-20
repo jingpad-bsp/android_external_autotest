@@ -1027,7 +1027,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.info('Installing image through chromeos-install.')
         self.run('chromeos-install --yes',
                  timeout=install_timeout)
-        self.run('halt')
+        self.run('( sleep 1 ; halt ) </dev/null >/dev/null 2>&1 &')
         timer.stop()
 
         logging.info('Power cycling DUT through servo.')
