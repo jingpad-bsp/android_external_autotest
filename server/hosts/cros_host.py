@@ -369,12 +369,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @raises KeyError if the host does not have a job_repo_url
         """
-        if not self._host_in_AFE():
-            return None
-
         hosts = self._AFE.get_hosts(hostname=self.hostname)
         if hosts and ds_constants.JOB_REPO_URL in hosts[0].attributes:
             return hosts[0].attributes[ds_constants.JOB_REPO_URL]
+        else:
+            return None
 
 
     def clear_cros_version_labels_and_job_repo_url(self):
