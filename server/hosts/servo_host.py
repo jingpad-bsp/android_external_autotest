@@ -26,6 +26,7 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import site_utils as server_site_utils
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import ssh_host
@@ -670,8 +671,12 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
 
     """
     if not utils.is_moblab():
-        lab_servo_hostname = make_servo_hostname(dut)
-        is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
+        dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
+        if dut_is_hostname:
+            lab_servo_hostname = make_servo_hostname(dut)
+            is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
+        else:
+            is_in_lab = False
     else:
         # Servos on Moblab are not in the actual lab.
         is_in_lab = False

@@ -22,7 +22,7 @@ ROUTER_FAILURE_MESSAGE = (
         'Cannot infer DNS name of WiFi router from a client IP address.')
 
 
-def _is_ip_address(hostname):
+def is_ip_address(hostname):
     """Infers whether |hostname| could be an IP address.
 
     @param hostname: string DNS name or IP address.
@@ -60,7 +60,7 @@ def get_companion_device_addr(client_hostname,
     """
     if cmdline_override is not None:
         return cmdline_override
-    if _is_ip_address(client_hostname):
+    if is_ip_address(client_hostname):
         logging.error('%r looks like an IP address?', client_hostname)
         if allow_failure:
             return None

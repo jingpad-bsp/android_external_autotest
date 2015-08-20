@@ -8,6 +8,7 @@
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.chameleon import chameleon
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.hosts import ssh_host
 
 
@@ -30,14 +31,30 @@ class ChameleonHost(ssh_host.SSHHost):
 
         @param chameleon_host: Name of the host where the chameleond process
                                is running.
+                               If this is passed in by IP address, it will be
+                               treated as not in lab.
         @param chameleon_port: Port the chameleond process is listening on.
 
         """
         super(ChameleonHost, self)._initialize(hostname=chameleon_host,
                                                *args, **dargs)
-        self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
         self._chameleon_connection = chameleon.ChameleonConnection(
                 self.hostname, chameleon_port)
+
+        self._is_in_lab = None
+        self._check_if_is_in_lab()
+
+
+    def _check_if_is_in_lab(self):
+        """Checks if Chameleon host is in lab and set self._is_in_lab.
+
+        If self.hostname is an IP address, we treat it as is not in lab zone.
+
+        """
+        self._is_in_lab = (False if dnsname_mangler.is_ip_address(self.hostname)
+                           else utils.host_is_in_lab_zone(self.hostname))
+
+
 
 
     def is_in_lab(self):
@@ -82,6 +99,8 @@ def create_chameleon_host(dut, chameleon_args):
 
     @param dut: host name of the host that chameleon connects. It can be used
                 to lookup the chameleon in test lab using naming convention.
+                If dut is an IP address, it can not be used to lookup the
+                chameleon in test lab.
     @param chameleon_args: A dictionary that contains args for creating
                            a ChameleonHost object,
                            e.g. {'chameleon_host': '172.11.11.112',
@@ -90,10 +109,12 @@ def create_chameleon_host(dut, chameleon_args):
     @returns: A ChameleonHost object or None.
 
     """
-    hostname = chameleon.make_chameleon_hostname(dut)
-    if utils.host_is_in_lab_zone(hostname):
-        return ChameleonHost(chameleon_host=hostname)
-    elif chameleon_args:
+    dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
+    if dut_is_hostname:
+        chameleon_hostname = chameleon.make_chameleon_hostname(dut)
+        if utils.host_is_in_lab_zone(chameleon_hostname):
+            return ChameleonHost(chameleon_host=chameleon_hostname)
+    if chameleon_args:
         return ChameleonHost(**chameleon_args)
     else:
         return None
