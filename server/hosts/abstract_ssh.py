@@ -1,4 +1,6 @@
 import os, time, socket, shutil, glob, logging, traceback, tempfile
+import subprocess
+
 from multiprocessing import Lock
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
@@ -749,3 +751,22 @@ class AbstractSSHHost(remote.RemoteHost):
                 shutil.rmtree(local_dest_dir, ignore_errors=ignore_errors)
             if not ignore_errors:
                 raise
+
+
+    def _create_ssh_tunnel(self, port, local_port):
+        """Create an ssh tunnel from local_port to port.
+
+        @param port: remote port on the host.
+        @param local_port: local forwarding port.
+
+        @return: the tunnel process.
+        """
+        tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
+        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
+        tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
+        logging.debug('Full tunnel command: %s', tunnel_cmd)
+        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
+        logging.debug('Started ssh tunnel, local = %d'
+                      ' remote = %d, pid = %d',
+                      local_port, port, tunnel_proc.pid)
+        return tunnel_proc

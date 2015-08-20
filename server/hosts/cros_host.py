@@ -9,7 +9,6 @@ import logging
 import os
 import re
 import socket
-import subprocess
 import time
 import xmlrpclib
 
@@ -1766,32 +1765,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                opts, user, port)
 
 
-    def _create_ssh_tunnel(self, port, local_port):
-        """Create an ssh tunnel from local_port to port.
-
-        @param port: remote port on the host.
-        @param local_port: local forwarding port.
-
-        @return: the tunnel process.
-        """
-        # Chrome OS on the target closes down most external ports
-        # for security.  We could open the port, but doing that
-        # would conflict with security tests that check that only
-        # expected ports are open.  So, to get to the port on the
-        # target we use an ssh tunnel.
-        tunnel_options = '-n -N -q -L %d:localhost:%d' % (local_port, port)
-        ssh_cmd = self.make_ssh_command(opts=tunnel_options)
-        tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
-        logging.debug('Full tunnel command: %s', tunnel_cmd)
-        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
-        logging.debug('Started ssh tunnel, local = %d'
-                      ' remote = %d, pid = %d',
-                      local_port, port, tunnel_proc.pid)
-        return tunnel_proc
-
-
     def _setup_rpc(self, port, command_name, remote_pid=None):
         """Sets up a tunnel process and performs rpc connection book keeping.
+
+        Chrome OS on the target closes down most external ports for security.
+        We could open the port, but doing that would conflict with security
+        tests that check that only expected ports are open.  So, to get to
+        the port on the target we use an ssh tunnel.
 
         This method assumes that xmlrpc and jsonrpc never conflict, since
         we can only either have an xmlrpc or a jsonrpc server listening on
