@@ -212,7 +212,10 @@ class Servo(object):
                           initialization.
         """
         self._server.hwinit()
-        self.set('dut_hub_pwren', 'on')
+        # Workaround for bug chrome-os-partner:42349. Without this check, the
+        # gpio will briefly pulse low if we set it from high to high.
+        if self.get('dut_hub_pwren') != 'on':
+            self.set('dut_hub_pwren', 'on')
         self.set('usb_mux_oe1', 'on')
         self._usb_state = None
         self.switch_usbkey('off')
