@@ -1,9 +1,9 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "firmware_FWtries"
+NAME = "firmware_FWtries.dev"
 SUITE = "faft,faft_bios,faft_normal,faft_lv1"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -26,6 +26,6 @@ def run_fwtries(machine):
     # Setup the client machine.
     host = hosts.create_host(machine, servo_args=servo_args)
     job.run_test('firmware_FWtries', host=host, cmdline_args=args,
-                 dev_mode=False, tag="normal")
+                 dev_mode=True, tag="dev")
 
 parallel_simple(run_fwtries, machines)

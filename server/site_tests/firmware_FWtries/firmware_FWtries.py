@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
 
@@ -14,7 +13,7 @@ class firmware_FWtries(FirmwareTest):
     in order to do so.
 
     Setup Steps:
-    1. Check device in normal mode
+    1. Make the device in normal/dev mode.
 
     Test Steps:
     2. Set # of tries to 2 (through try_fwb)
@@ -44,11 +43,9 @@ class firmware_FWtries(FirmwareTest):
 
     version = 1
 
-    def initialize(self, host, cmdline_args):
-        dict_args = utils.args_to_dict(cmdline_args)
+    def initialize(self, host, cmdline_args, dev_mode=False):
         super(firmware_FWtries, self).initialize(host, cmdline_args)
-        # Set device in normal mode
-        self.switcher.setup_mode('normal')
+        self.switcher.setup_mode('dev' if dev_mode else 'normal')
 
     def run_once(self, host):
         self.check_state((self.checkers.fw_tries_checker, ('A', True, 0)))
@@ -56,9 +53,9 @@ class firmware_FWtries(FirmwareTest):
         self.try_fwb(2);
 
         self.check_state((self.checkers.fw_tries_checker, ('A', True, 2)))
-        host.reboot()
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.fw_tries_checker, ('B', True, 1)))
-        host.reboot()
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.fw_tries_checker, ('B', True, 0)))
-        host.reboot()
+        self.switcher.mode_aware_reboot()
         self.check_state((self.checkers.fw_tries_checker, ('A', True, 0)))
