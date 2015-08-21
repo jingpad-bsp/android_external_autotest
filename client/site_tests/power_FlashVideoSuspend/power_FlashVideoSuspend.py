@@ -60,7 +60,7 @@ class power_FlashVideoSuspend(test.test):
 
         time.sleep(2)
         try:
-            sys_power.kernel_suspend(10)
+            sys_power.do_suspend(10)
         except Exception as e:
             logging.error(e)
             raise error.TestFail('====Kernel suspend failed====')
