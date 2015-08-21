@@ -11,3 +11,4 @@ class Values(veyron.Values):
     has_lid = False
     has_keyboard = False
     rec_button_dev_switch = True
+    hold_pwr_button_poweron = 0.7
