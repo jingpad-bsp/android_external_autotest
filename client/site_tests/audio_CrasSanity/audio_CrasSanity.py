@@ -119,6 +119,7 @@ class audio_CrasSanity(test.test):
         @param tab: tab to open an audio stream.
         @url: audio/video test url.
         """
+        tab.Activate()
         tab.Navigate(url)
         tab.ExecuteJavaScript(
                 "document.getElementsByTagName('video')[0].loop=true")
