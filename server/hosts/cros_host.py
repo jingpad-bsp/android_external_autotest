@@ -2848,5 +2848,5 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         device_type = self.run('grep DEVICETYPE /etc/lsb-release',
                                ignore_status=True).stdout
         if device_type:
-            return device_type.split('=')[-1]
+            return device_type.split('=')[-1].strip()
         return ''
