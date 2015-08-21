@@ -936,13 +936,13 @@ class FirmwareTest(FAFTBase):
         boot_id = self.get_bootid()
         # Press power button to trigger Chrome OS normal shutdown process.
         # We use a customized delay since the normal-press 1.2s is not enough.
-        self.servo.power_key(self.faft_config.hold_pwr_button)
+        self.servo.power_key(self.faft_config.hold_pwr_button_poweroff)
         # device can take 44-51 seconds to restart,
         # add buffer from the default timeout of 60 seconds.
         self.wait_for_client_offline(timeout=100, orig_boot_id=boot_id)
         time.sleep(self.faft_config.shutdown)
         # Short press power button to boot DUT again.
-        self.servo.power_short_press()
+        self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
 
     def check_lid_and_power_on(self):
         """
@@ -1077,7 +1077,7 @@ class FirmwareTest(FAFTBase):
 
         if pre_power_action:
             self._call_action(pre_power_action)
-        self.servo.power_short_press()
+        self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
         if post_power_action:
             self._call_action(post_power_action)
 

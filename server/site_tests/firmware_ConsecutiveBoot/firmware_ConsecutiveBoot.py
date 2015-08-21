@@ -67,7 +67,7 @@ class firmware_ConsecutiveBoot(FirmwareTest):
             logging.info("sleep %d, tap power key to boot.",
                          self.faft_config.powerup_ready)
             time.sleep(self.faft_config.powerup_ready)
-            self.servo.power_short_press()
+            self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
             try:
                 self.wait_for_client_aux()
             except ConnectionError:
