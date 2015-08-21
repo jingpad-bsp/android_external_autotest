@@ -25,7 +25,7 @@ class system_ColdBoot(test.test):
         host.test_wait_for_shutdown(self.TIMEOUT_POWEROFF_TRANSITION)
         time.sleep(self.WAIT_TIME_FULL_POWEROFF)
 
-        host.servo.power_short_press()
+        host.servo.power_normal_press()
         host.test_wait_for_boot(boot_id)
 
         autotest.Autotest(host).run_test("desktopui_SimpleLogin",
