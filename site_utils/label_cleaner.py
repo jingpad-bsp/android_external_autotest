@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 
-"""Script to clean up labels that are not in use.
+"""Tool for cleaning up labels that are not in use.
 
 Delete given labels from database when they are not in use.
 Labels that match the query `SELECT_USED_LABELS_FORMAT` are considered in use.
@@ -24,12 +24,14 @@ If '-p' option is not given, we delete labels whose name is exactly
 import argparse
 import logging
 import MySQLdb
+import socket
 import sys
 import traceback
 
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config
+from autotest_lib.server import frontend
 
 
 DB_SERVER = global_config.global_config.get_config_value('AUTOTEST_WEB', 'host')
@@ -130,6 +132,17 @@ def delete_labels(conn, labels, max_delete):
         _delete_labels(conn, labels_to_del)
 
 
+def is_primary_server():
+    """Check if this server's status is primary
+
+    @return: True if primary, False otherwise.
+    """
+    server = frontend.AFE().run('get_servers', hostname=socket.getfqdn())
+    if server and server['status'] == 'primary':
+        return True
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -145,6 +158,8 @@ def main():
     parser.add_argument('-n', dest='max_delete', type=int,
            help=('Max number of records to delete in each query.'),
            default=100)
+    parser.add_argument('-s', dest='check_status', action='store_true',
+           help=('Enforce to run only in a server that has primary status'))
     parser.add_argument('label', help='Label name to delete')
     options = parser.parse_args()
 
@@ -152,6 +167,10 @@ def main():
             datefmt='%Y-%m-%d %H:%M:%S')
 
     try:
+        if options.check_status and not is_primary_server():
+            logging.error('Cannot run in a non-primary server.')
+            return 1
+
         conn = MySQLdb.connect(host=options.db_server, user=USER,
                                passwd=PASSWD, db=DATABASE)
         used_labels = get_used_labels(conn)

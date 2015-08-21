@@ -522,9 +522,10 @@ def delete_shard(hostname):
     shard.delete()
 
 
-def get_servers(role=None, status=None):
+def get_servers(hostname=None, role=None, status=None):
     """Get a list of servers with matching role and status.
 
+    @param hostname: FQDN of the server.
     @param role: Name of the server role, e.g., drone, scheduler. Default to
                  None to match any role.
     @param status: Status of the server, e.g., primary, backup, repair_required.
@@ -536,7 +537,7 @@ def get_servers(role=None, status=None):
     if not server_manager_utils.use_server_db():
         raise error.RPCException('Server database is not enabled. Please try '
                                  'retrieve servers from global config.')
-    servers = server_manager_utils.get_servers(hostname=None, role=role,
+    servers = server_manager_utils.get_servers(hostname=hostname, role=role,
                                                status=status)
     return [s.get_details() for s in servers]
 
