@@ -33,7 +33,7 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 _BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'StressRack-Experimental'],
-    'owner': 'mohsinally@chromium.org',
+    'owner': 'dchan@chromium.org',
 }
 
 
