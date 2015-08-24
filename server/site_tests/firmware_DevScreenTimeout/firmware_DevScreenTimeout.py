@@ -25,9 +25,6 @@ class firmware_DevScreenTimeout(FirmwareTest):
     """
     version = 1
 
-    CTRL_D_REPEAT_COUNT = 20
-    CTRL_D_REPEAT_DELAY = 0.5
-
     # We accept 5s timeout margin as we need 5s to ensure client is offline.
     # If the margin is too small and firmware initialization is too fast,
     # the test will fail incorrectly.
@@ -36,10 +33,14 @@ class firmware_DevScreenTimeout(FirmwareTest):
     fw_time_record = {}
 
     def ctrl_d_repeatedly(self):
-        """Press Ctrl-D repeatedly."""
-        for _ in range(self.CTRL_D_REPEAT_COUNT):
+        """Press Ctrl-D repeatedly. We want to be aggressive and obtain a
+        low firmware boot time when developer mode is enabled, so spam the
+        AP console with ctrl-D every half second until the firmware_screen
+        delay has been reached.
+        """
+        for _ in range(self.faft_config.firmware_screen * 2):
             self.servo.ctrl_d()
-            time.sleep(self.CTRL_D_REPEAT_DELAY)
+            time.sleep(0.5)
 
     def record_fw_boot_time(self, tag):
         """Record the current firmware boot time with the tag.
