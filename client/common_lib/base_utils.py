@@ -3,17 +3,38 @@
 
 # pylint: disable-msg=C0111
 
+import StringIO
 import errno
-import os, pickle, random, re, resource, select, shutil, signal, StringIO
-import socket, struct, subprocess, time, textwrap, urlparse
-import warnings, smtplib, logging, urllib2
 import itertools
+import logging
+import os
+import pickle
+import random
+import re
+import resource
+import select
+import shutil
+import signal
+import smtplib
+import socket
+import struct
+import subprocess
+import textwrap
+import time
+import urllib2
+import urlparse
+import warnings
+
 from threading import Thread, Event
+
 try:
     import hashlib
 except ImportError:
-    import md5, sha
+    import md5
+    import sha
+
 from autotest_lib.client.common_lib import error, logging_manager
+
 
 def deprecated(func):
     """This is a decorator which can be used to mark functions as deprecated.
