@@ -6,12 +6,15 @@ import logging
 import os
 import re
 from autotest_lib.client.common_lib import utils as client_utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
 from autotest_lib.server import utils
 
+
+CRASH_SERVER_OVERLOAD = 'crash_server_overload'
+CRASH_SERVER_FOUND = 'crash_server_found'
 
 def generate_minidump_stacktrace(minidump_path):
     """
@@ -46,7 +49,15 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
         raise dev_server.DevServerException(
             'Cannot determine build being tested.')
 
-    devserver = dev_server.CrashServer.resolve(keyvals[JOB_BUILD_KEY])
+    crashserver_name = dev_server.get_least_loaded_devserver(
+            devserver_type=dev_server.CrashServer)
+    if not crashserver_name:
+        autotest_stats.Counter(CRASH_SERVER_OVERLOAD).increment()
+        raise dev_server.DevServerException(
+                'No crash server has the capacity to symbolicate the dump.')
+    else:
+        autotest_stats.Counter(CRASH_SERVER_FOUND).increment()
+    devserver = dev_server.CrashServer(crashserver_name)
     trace_text = devserver.symbolicate_dump(
         minidump_path, keyvals[JOB_BUILD_KEY])
     if not trace_text:
