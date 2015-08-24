@@ -867,8 +867,14 @@ def run(command, timeout=None, ignore_status=False,
         raise TypeError('Got a string for the "args" keyword argument, '
                         'need a sequence.')
 
-    for arg in args:
-        command += ' "%s"' % sh_escape(arg)
+    # In some cases, command will actually be a list
+    # (For example, see get_user_hash in client/cros/cryptohome.py.)
+    # So, to cover that case, detect if it's a string or not and convert it
+    # into one if necessary.
+    if not isinstance(command, basestring):
+        command = ' '.join([sh_quote_word(arg) for arg in command])
+
+    command = ' '.join([command] + [sh_quote_word(arg) for arg in args])
     if stderr_is_expected is None:
         stderr_is_expected = ignore_status
 

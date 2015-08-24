@@ -752,14 +752,16 @@ class test_run(unittest.TestCase):
 
 
     def test_safe_args(self):
-        cmd = 'echo "hello \\"world" "again"'
+        # NOTE: The string in expected_quoted_cmd depends on the internal
+        # implementation of shell quoting which is used by base_utils.run(),
+        # in this case, sh_quote_word().
+        expected_quoted_cmd = "echo 'hello \"world' again"
         self.__check_result(base_utils.run(
-                'echo', verbose=False, args=('hello "world', 'again')), cmd,
-                stdout='hello "world again\n')
+                'echo', verbose=False, args=('hello "world', 'again')),
+                expected_quoted_cmd, stdout='hello "world again\n')
 
 
     def test_safe_args_given_string(self):
-        cmd = 'echo "hello \\"world" "again"'
         self.assertRaises(TypeError, base_utils.run, 'echo', args='hello')
 
 
