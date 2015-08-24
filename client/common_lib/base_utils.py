@@ -206,8 +206,8 @@ class BgJob(object):
                                          'job with no_pipes=True.')
         if self._output_prepare_called:
             logging.warning('BgJob [%s] received a duplicate call to '
-                         'output prepare. Allowing, but this may result '
-                         'in data missing from BgJob.result.')
+                            'output prepare. Allowing, but this may result '
+                            'in data missing from BgJob.result.')
         self.stdout_file = stdout_file
         self.stderr_file = stderr_file
         self._output_prepare_called = True
@@ -236,9 +236,10 @@ class BgJob(object):
                                          'a job with no_pipes=True')
         if not self._output_prepare_called and not self._process_output_warned:
             logging.warning('BgJob with command [%s] handled a process_output '
-                         'call before output_prepare was called. Some output '
-                         'data discarded. Future warnings suppressed.',
-                         self.command)
+                            'call before output_prepare was called. '
+                            'Some output data discarded. '
+                            'Future warnings suppressed.',
+                            self.command)
             self._process_output_warned = True
         if stdout:
             pipe, buf, tee = self.sp.stdout, self.stdout_file, self.stdout_tee
@@ -273,7 +274,7 @@ class BgJob(object):
                                          'a job with no_pipes=True')
         if self._cleanup_called:
             logging.warning('BgJob [%s] received a duplicate call to '
-                         'cleanup. Ignoring.', self.command)
+                            'cleanup. Ignoring.', self.command)
             return
         try:
             self.stdout_tee.flush()
@@ -1048,7 +1049,7 @@ def _wait_for_commands(bg_jobs, start_time, timeout):
             continue
 
         logging.warning('run process timeout (%s) fired on: %s', timeout,
-                     bg_job.command)
+                        bg_job.command)
         if nuke_subprocess(bg_job.sp) is None:
             # If process could not be SIGKILL'd, log kernel stack.
             logging.warning(read_file('/proc/%d/stack' % bg_job.sp.pid))

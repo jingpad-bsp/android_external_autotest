@@ -648,7 +648,7 @@ class test_run(unittest.TestCase):
     """
     def setUp(self):
         self.god = mock.mock_god(ut=self)
-        self.god.stub_function(base_utils.logging, 'warn')
+        self.god.stub_function(base_utils.logging, 'warning')
         self.god.stub_function(base_utils.logging, 'debug')
 
 
@@ -687,7 +687,7 @@ class test_run(unittest.TestCase):
 
     def test_timeout(self):
         # we expect a logging.warning() message, don't care about the contents
-        base_utils.logging.warn.expect_any_call()
+        base_utils.logging.warning.expect_any_call()
         try:
             base_utils.run('echo -n output && sleep 10', timeout=1, verbose=False)
         except base_utils.error.CmdError, err:
@@ -734,8 +734,12 @@ class test_run(unittest.TestCase):
 
         base_utils.select.select.expect_any_call().and_raises(
                 select.error(errno.EINTR, 'Select interrupted'))
+        base_utils.logging.warning.expect_any_call()
+
         base_utils.select.select.expect_any_call().and_return(
                 ([bg_job.sp.stdout, bg_job.sp.stderr], [], None))
+        base_utils.logging.warning.expect_any_call()
+
         self.assertFalse(
                 base_utils._wait_for_commands([bg_job], time.time(), None))
 
