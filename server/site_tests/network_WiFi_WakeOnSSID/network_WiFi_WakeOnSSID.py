@@ -30,6 +30,9 @@ class network_WiFi_WakeOnSSID(wifi_cell_test_base.WiFiCellTestBase):
         client = self.context.client
         router = self.context.router
 
+        if (client.is_wake_on_wifi_supported() is False):
+            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
+
         # Enable the wake on SSID feature in shill, and set the scan period.
         with contextlib.nested(
                 client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),

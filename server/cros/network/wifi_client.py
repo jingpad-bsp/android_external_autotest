@@ -28,6 +28,7 @@ WAKE_ON_WIFI_NONE = 'none'
 WAKE_ON_WIFI_PACKET = 'packet'
 WAKE_ON_WIFI_SSID = 'ssid'
 WAKE_ON_WIFI_PACKET_SSID = 'packet_and_ssid'
+WAKE_ON_WIFI_NOT_SUPPORTED = 'not_supported'
 
 # Wake-on-WiFi test timing constants
 SUSPEND_WAIT_TIME_SECONDS = 10
@@ -1173,6 +1174,16 @@ class WiFiClient(site_linux_system.LinuxSystem):
         logger_command = '/usr/bin/logger --tag shill --priority daemon.debug'
         cmd = ('%s \"%s\"' % (logger_command, message))
         self.host.run(cmd)
+
+
+    def is_wake_on_wifi_supported(self):
+        """Returns true iff wake-on-WiFi is supported by the DUT."""
+
+        if (self.shill.get_dbus_property_on_device(
+                    self.wifi_if, self.WAKE_ON_WIFI_FEATURES) ==
+             WAKE_ON_WIFI_NOT_SUPPORTED):
+            return False
+        return True
 
 
 class TemporaryDBusProperty:

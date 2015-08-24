@@ -28,6 +28,9 @@ class network_WiFi_WakeOnDisconnect(wifi_cell_test_base.WiFiCellTestBase):
         client = self.context.client
         router = self.context.router
 
+        if (client.is_wake_on_wifi_supported() is False):
+            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
+
         # ask shill to set up wake-on-ssid
         with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID):
             logging.info('Set up WoWLAN')

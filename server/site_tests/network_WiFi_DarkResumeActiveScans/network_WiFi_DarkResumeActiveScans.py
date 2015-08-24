@@ -72,6 +72,9 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
         dut_ip = client.wifi_ip
         prev_num_dark_resumes = 0
 
+        if (client.is_wake_on_wifi_supported() is False):
+            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
+
         logging.info('DUT WiFi MAC = %s, IPv4 = %s', dut_mac, dut_ip)
         logging.info('Router WiFi IPv4 = %s', router.wifi_ip)
 

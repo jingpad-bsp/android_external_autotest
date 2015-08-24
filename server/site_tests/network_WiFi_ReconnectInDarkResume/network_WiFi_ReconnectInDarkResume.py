@@ -42,6 +42,9 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
         client = self.context.client
         router = self.context.router
 
+        if (client.is_wake_on_wifi_supported() is False):
+            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
+
         # We configure and connect to two APs (i.e. same AP configured with two
         # different SSIDs) so that the DUT has two preferred networks.
         first_ap_ssid = self.configure_and_connect_to_ap(
