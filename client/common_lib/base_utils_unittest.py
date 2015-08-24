@@ -602,6 +602,14 @@ class test_sh_escape(unittest.TestCase):
         self._test_in_shell('\'efgh\'')
 
 
+    def test_string_with_single_quote(self):
+        self._test_in_shell("a'b")
+
+
+    def test_string_with_escaped_single_quote(self):
+        self._test_in_shell(r"a\'b")
+
+
     def test_double_quote(self):
         self._test_in_shell('"')
 
@@ -637,6 +645,37 @@ class test_sh_escape(unittest.TestCase):
         self._test_in_shell('\\b')
         self._test_in_shell('\\a')
         self._test_in_shell('\\000')
+
+    def test_real_newline(self):
+        self._test_in_shell('\n')
+        self._test_in_shell('\\\n')
+
+
+class test_sh_quote_word(test_sh_escape):
+    """Run tests on sh_quote_word.
+
+    Inherit from test_sh_escape to get the same tests to run on both.
+    """
+
+    def _test_in_shell(self, text):
+        quoted_word = base_utils.sh_quote_word(text)
+        echoed_value = subprocess.check_output('echo %s' % quoted_word,
+                                               shell=True)
+        self.assertEqual(echoed_value, text + '\n')
+
+
+class test_nested_sh_quote_word(test_sh_quote_word):
+    """Run nested tests on sh_quote_word.
+
+    Inherit from test_sh_quote_word to get the same tests to run on both.
+    """
+
+    def _test_in_shell(self, text):
+        command = 'echo ' + base_utils.sh_quote_word(text)
+        nested_command = 'echo ' + base_utils.sh_quote_word(command)
+        produced_command = subprocess.check_output(nested_command, shell=True)
+        echoed_value = subprocess.check_output(produced_command, shell=True)
+        self.assertEqual(echoed_value, text + '\n')
 
 
 class test_run(unittest.TestCase):

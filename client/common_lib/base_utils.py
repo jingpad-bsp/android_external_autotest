@@ -17,6 +17,7 @@ import shutil
 import signal
 import smtplib
 import socket
+import string
 import struct
 import subprocess
 import textwrap
@@ -67,6 +68,12 @@ DEFAULT_STDERR_LEVEL = logging.ERROR
 # prefixes for logging stdout/stderr of commands
 STDOUT_PREFIX = '[stdout] '
 STDERR_PREFIX = '[stderr] '
+
+# safe characters for the shell (do not need quoting)
+SHELL_QUOTING_WHITELIST = frozenset(string.ascii_letters +
+                                    string.digits +
+                                    '_-+=')
+
 
 def custom_warning_handler(message, category, filename, lineno, file=None,
                            line=None):
@@ -1872,6 +1879,36 @@ def sh_escape(command):
     command = command.replace('"', r'\"')
     command = command.replace('`', r'\`')
     return command
+
+
+def sh_quote_word(text, whitelist=SHELL_QUOTING_WHITELIST):
+    r"""Quote a string to make it safe as a single word in a shell command.
+
+    POSIX shell syntax recognizes no escape characters inside a single-quoted
+    string.  So, single quotes can safely quote any string of characters except
+    a string with a single quote character.  A single quote character must be
+    quoted with the sequence '\'' which translates to:
+        '  -> close current quote
+        \' -> insert a literal single quote
+        '  -> reopen quoting again.
+
+    This is safe for all combinations of characters, including embedded and
+    trailing backslashes in odd or even numbers.
+
+    This is also safe for nesting, e.g. the following is a valid use:
+
+        adb_command = 'adb shell %s' % (
+                sh_quote_word('echo %s' % sh_quote_word('hello world')))
+
+    @param text: The string to be quoted into a single word for the shell.
+    @param whitelist: Optional list of characters that do not need quoting.
+                      Defaults to a known good list of characters.
+
+    @return A string, possibly quoted, safe as a single word for a shell.
+    """
+    if all(c in whitelist for c in text):
+        return text
+    return "'" + text.replace("'", r"'\''") + "'"
 
 
 def configure(extra=None, configure='./configure'):
