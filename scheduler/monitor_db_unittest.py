@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task
-from autotest_lib.scheduler import monitor_db, drone_manager, email_manager
+from autotest_lib.scheduler import monitor_db, drone_manager
 from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats
 from autotest_lib.scheduler import scheduler_lib
@@ -559,7 +559,6 @@ class PidfileRunMonitorTest(unittest.TestCase):
             drone_manager.DroneManager, 'drone_manager')
         self.god.stub_with(drone_manager, '_the_instance',
                            self.mock_drone_manager)
-        self.god.stub_function(email_manager.manager, 'enqueue_notify_email')
         self.god.stub_with(pidfile_monitor, '_get_pidfile_timeout_secs',
                            self._mock_get_pidfile_timeout_secs)
 
@@ -702,8 +701,6 @@ class PidfileRunMonitorTest(unittest.TestCase):
         self.set_running()
         self.setup_is_running(False)
         self.set_running(use_second_read=True)
-        email_manager.manager.enqueue_notify_email.expect_call(
-            mock.is_string_comparator(), mock.is_string_comparator())
         self._test_get_pidfile_info_helper(self.pid, 1, 0)
         self.assertTrue(self.monitor.lost_process)
 
@@ -718,8 +715,6 @@ class PidfileRunMonitorTest(unittest.TestCase):
 
     def test_process_failed_to_write_pidfile(self):
         self.set_not_yet_run()
-        email_manager.manager.enqueue_notify_email.expect_call(
-            mock.is_string_comparator(), mock.is_string_comparator())
         self.monitor._start_time = (time.time() -
                                     pidfile_monitor._get_pidfile_timeout_secs() - 1)
         self._test_get_pidfile_info_helper(None, 1, 0)
