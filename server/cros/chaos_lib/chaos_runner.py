@@ -78,6 +78,13 @@ class ChaosRunner(object):
             webdriver_instance = utils.allocate_webdriver_instance(lock_manager)
             self._ap_spec._webdriver_hostname = webdriver_instance
 
+            # If a test is cancelled or aborted the VM may be left on.  Always
+            # turn of the VM to return it to a clean state.
+            try:
+                utils.power_off_VM(webdriver_master, webdriver_instance)
+            except:
+                logging.debug('VM was already off, ignoring.')
+
             try:
                 logging.info('Starting up VM %s', webdriver_instance)
                 utils.power_on_VM(webdriver_master, webdriver_instance)
