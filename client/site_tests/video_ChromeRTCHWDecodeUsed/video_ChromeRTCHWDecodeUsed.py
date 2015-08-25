@@ -8,9 +8,8 @@ import os
 import urllib2
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import histogram_parser
+from autotest_lib.client.cros.video import histogram_verifier
 
 
 # Chrome flags to use fake camera and skip camera permission.
@@ -18,10 +17,7 @@ EXTRA_BROWSER_ARGS = ['--use-fake-device-for-media-stream',
                       '--use-fake-ui-for-media-stream']
 FAKE_FILE_ARG = '--use-file-for-fake-video-capture="%s"'
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/crowd/'
-VIDEO_NAME = 'crowd720_25frames.y4m'
 
-RTC_VIDEO_DECODE = 'Media.RTCVideoDecoderInitDecodeSucces'
-RTC_VIDEO_DECODE_BUCKET = 1
 HISTOGRAMS_URL = 'chrome://histograms/'
 
 
@@ -42,29 +38,10 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         tab.WaitForDocumentReadyStateToBeComplete()
 
 
-    def assert_hardware_accelerated(self, cr):
-        """
-        Checks if WebRTC decoding is hardware accelerated.
-
-        @param cr: Autotest Chrome instance.
-
-        @raises error.TestError if decoding is not hardware accelerated.
-        """
-        parser = histogram_parser.HistogramParser(cr.browser.tabs.New(),
-                                                  RTC_VIDEO_DECODE)
-        buckets = parser.buckets
-
-        if (not buckets or not buckets[RTC_VIDEO_DECODE_BUCKET]
-                or buckets[RTC_VIDEO_DECODE_BUCKET].percent < 100.0):
-
-            raise error.TestError('%s not found or not at 100 percent. %s'
-                                  % (RTC_VIDEO_DECODE, str(parser)))
-
-
-    def run_once(self):
+    def run_once(self, video_name, histogram_name, histogram_bucket_val):
         # Download test video.
-        url = DOWNLOAD_BASE + VIDEO_NAME
-        local_path = os.path.join(self.bindir, VIDEO_NAME)
+        url = DOWNLOAD_BASE + video_name
+        local_path = os.path.join(self.bindir, video_name)
         self.download_file(url, local_path)
 
         # Start chrome with test flags.
@@ -75,7 +52,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
             self.start_loopback(cr)
 
             # Make sure decode is hardware accelerated.
-            self.assert_hardware_accelerated(cr)
+            histogram_verifier.verify(cr, histogram_name, histogram_bucket_val)
 
 
     def download_file(self, url, local_path):
