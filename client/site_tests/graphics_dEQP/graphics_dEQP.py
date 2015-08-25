@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import tempfile
-import xml.etree.cElementTree as et
+import xml.etree.ElementTree as et
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
@@ -90,7 +90,8 @@ class graphics_dEQP(test.test):
 
                 if xml_complete or xml_bad:
                     if xml_complete:
-                        root = et.fromstring(xml)
+                        myparser = et.XMLParser(encoding='ISO-8859-1')
+                        root = et.fromstring(xml, parser=myparser)
                         result = root.find('Result').get('StatusCode').strip()
                         xml_complete = False
                     test_results[result] = test_results.get(result, 0) + 1
