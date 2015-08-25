@@ -255,8 +255,11 @@ class FAFTCheckers(object):
                               the expected copy of EC running firmware.
         @return: True if the current EC running copy matches; otherwise, False.
         """
-        lines = self.faft_client.system.run_shell_command_get_output(
-                    'ectool version')
+        if self.faft_client.system.has_host():
+            cmd = 'fwtool ec version'
+        else:
+            cmd = 'ectool version'
+        lines = self.faft_client.system.run_shell_command_get_output(cmd)
         pattern = re.compile("Firmware copy: (.*)")
         for line in lines:
             matched = pattern.match(line)
@@ -267,6 +270,5 @@ class FAFTCheckers(object):
                     logging.info("Expected EC in %s but now in %s",
                                  expected_copy, matched.group(1))
                     return False
-        logging.info("Wrong output format of 'ectool version':\n%s",
-                     '\n'.join(lines))
+        logging.info("Wrong output format of '%s':\n%s", cmd, '\n'.join(lines))
         return False

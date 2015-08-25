@@ -179,6 +179,10 @@ class RPCFunctions(object):
         """
         return True
 
+    def _system_has_host(self):
+        """Return True if a host is connected to DUT."""
+        return self._os_if.has_host()
+
     def _system_wait_for_client(self, timeout):
         """Wait for the client to come back online.
 

@@ -99,6 +99,10 @@ class OSInterface(object):
         if self.host_shell:
             self.host_shell.init(self)
 
+    def has_host(self):
+        """Return True if a host is connected to DUT."""
+        return self.is_android
+
     def run_shell_command(self, cmd):
         """Run a shell command."""
         self.shell.run_command(cmd)
