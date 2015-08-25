@@ -9,24 +9,18 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import tcpdump_analyzer
 from autotest_lib.server import site_linux_system
-from autotest_lib.server.cros import dark_resume_utils
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import wifi_cell_test_base
+from autotest_lib.server.cros.network import lucid_sleep_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
+class network_WiFi_DarkResumeActiveScans(
+        lucid_sleep_test_base.LucidSleepTestBase):
     """
     Test that no active scans are launched when the system wakes on dark resumes
     triggered by RTC timers and wake on pattern.
     """
 
     version = 1
-
-    def initialize(self, host):
-        super(network_WiFi_DarkResumeActiveScans, self).initialize(host)
-        """Set up for dark resume."""
-        self._dr_utils = dark_resume_utils.DarkResumeUtils(host)
-
 
     def stop_capture_and_check_for_probe_requests(self, mac):
         """
@@ -72,9 +66,6 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
         dut_ip = client.wifi_ip
         prev_num_dark_resumes = 0
 
-        if (client.is_wake_on_wifi_supported() is False):
-            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
-
         logging.info('DUT WiFi MAC = %s, IPv4 = %s', dut_mac, dut_ip)
         logging.info('Router WiFi IPv4 = %s', router.wifi_ip)
 
@@ -86,7 +77,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
             # Wake on packets from the router.
             client.add_wake_packet_source(self.context.router.wifi_ip)
 
-            with self._dr_utils.suspend():
+            with self.dr_utils.suspend():
                 time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 # Start capture after suspend concludes in case probe requests
@@ -107,7 +98,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 # during the wake.
                 self.stop_capture_and_check_for_probe_requests(mac=dut_mac)
 
-                prev_num_dark_resumes = self._dr_utils.count_dark_resumes()
+                prev_num_dark_resumes = self.dr_utils.count_dark_resumes()
                 if prev_num_dark_resumes < 1:
                     raise error.TestFail('Client failed to wake on packet.')
                 logging.info('Client woke up on packet successfully.')
@@ -124,7 +115,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
             router.deconfig_aps()
             time.sleep(wifi_client.DISCONNECT_WAIT_TIME_SECONDS)
 
-            with self._dr_utils.suspend():
+            with self.dr_utils.suspend():
                 time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 # Start capture after suspend concludes in case probe requests
@@ -142,13 +133,7 @@ class network_WiFi_DarkResumeActiveScans(wifi_cell_test_base.WiFiCellTestBase):
                 # during the wake.
                 self.stop_capture_and_check_for_probe_requests(mac=dut_mac)
 
-                if (self._dr_utils.count_dark_resumes() -
+                if (self.dr_utils.count_dark_resumes() -
                     prev_num_dark_resumes) < 1:
                     raise error.TestFail('Client failed to wake up to scan.')
                 logging.info('Client woke up to scan successfully.')
-
-
-    def cleanup(self):
-        self._dr_utils.teardown()
-        # Make sure we clean up everything
-        super(network_WiFi_DarkResumeActiveScans, self).cleanup()

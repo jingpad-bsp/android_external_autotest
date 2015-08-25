@@ -7,21 +7,15 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import dark_resume_utils
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import wifi_cell_test_base
+from autotest_lib.server.cros.network import lucid_sleep_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
+class network_WiFi_ReconnectInDarkResume(
+        lucid_sleep_test_base.LucidSleepTestBase):
     """Test that known WiFi access points wake up the system."""
 
     version = 1
-
-    def initialize(self, host):
-        super(network_WiFi_ReconnectInDarkResume, self).initialize(host)
-        """Set up for dark resume."""
-        self._dr_utils = dark_resume_utils.DarkResumeUtils(host)
-
 
     def run_once(self,
                  disconnect_before_suspend=False,
@@ -41,9 +35,6 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
         """
         client = self.context.client
         router = self.context.router
-
-        if (client.is_wake_on_wifi_supported() is False):
-            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
 
         # We configure and connect to two APs (i.e. same AP configured with two
         # different SSIDs) so that the DUT has two preferred networks.
@@ -74,7 +65,7 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
                 router.deconfig_aps()
                 time.sleep(wifi_client.DISCONNECT_WAIT_TIME_SECONDS)
 
-            with self._dr_utils.suspend():
+            with self.dr_utils.suspend():
                 for iter_num in xrange(1, num_iterations+1):
                     logging.info('Iteration %d of %d' %
                             (iter_num, num_iterations))
@@ -110,7 +101,7 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
 
             client.check_connected_on_last_resume()
 
-            num_dark_resumes = self._dr_utils.count_dark_resumes()
+            num_dark_resumes = self.dr_utils.count_dark_resumes()
             if disconnect_before_suspend and num_iterations == 1:
                 # Only expect a single wake on SSID dark resume in this case
                 # since no wake on disconnect would have been triggered.
@@ -127,9 +118,3 @@ class network_WiFi_ReconnectInDarkResume(wifi_cell_test_base.WiFiCellTestBase):
                                      'during the test (expected: at least %d)' %
                                      (num_dark_resumes,
                                       expected_num_dark_resumes))
-
-
-    def cleanup(self):
-        self._dr_utils.teardown()
-        # Make sure we clean up everything
-        super(network_WiFi_ReconnectInDarkResume, self).cleanup()

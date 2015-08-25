@@ -6,21 +6,14 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server.cros import dark_resume_utils
 from autotest_lib.server.cros.network import hostap_config
-from autotest_lib.server.cros.network import wifi_cell_test_base
+from autotest_lib.server.cros.network import lucid_sleep_test_base
 from autotest_lib.server.cros.network import wifi_client
 
-class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
+class network_WiFi_WoWLAN(lucid_sleep_test_base.LucidSleepTestBase):
     """Test that WiFi packets can wake up the system."""
 
     version = 1
-
-    def initialize(self, host):
-        super(network_WiFi_WoWLAN, self).initialize(host)
-        """Set up for dark resume."""
-        self._dr_utils = dark_resume_utils.DarkResumeUtils(host)
-
 
     def run_once(self):
         """Body of the test."""
@@ -30,9 +23,6 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
         dut_mac = client.wifi_mac
         dut_ip = client.wifi_ip
 
-        if (client.is_wake_on_wifi_supported() is False):
-            raise error.TestNAError('Wake on WiFi is not supported by this DUT')
-
         logging.info('DUT WiFi MAC = %s, IPv4 = %s', dut_mac, dut_ip)
         logging.info('Router WiFi IPv4 = %s', router.wifi_ip)
 
@@ -41,7 +31,7 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
             logging.info('Set up WoWLAN')
             client.add_wake_packet_source(router.wifi_ip)
 
-            with self._dr_utils.suspend():
+            with self.dr_utils.suspend():
                 time.sleep(wifi_client.SUSPEND_WAIT_TIME_SECONDS)
 
                 router.send_magic_packet(dut_ip, dut_mac)
@@ -55,15 +45,12 @@ class network_WiFi_WoWLAN(wifi_cell_test_base.WiFiCellTestBase):
                         timeout=wifi_client.WAIT_UP_TIMEOUT_SECONDS):
                     raise error.TestFail('Client woke up fully.')
 
-                if self._dr_utils.count_dark_resumes() < 1:
+                if self.dr_utils.count_dark_resumes() < 1:
                     raise error.TestFail('Client failed to wake up.')
 
                 logging.info('Client woke up successfully.')
 
 
     def cleanup(self):
-        self._dr_utils.teardown()
-        # Clean up packet wake sources
         self.context.client.remove_all_wake_packet_sources()
-        # Make sure we clean up everything
         super(network_WiFi_WoWLAN, self).cleanup()
