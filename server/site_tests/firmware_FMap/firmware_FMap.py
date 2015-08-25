@@ -2,20 +2,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 import logging
-from tempfile import NamedTemporaryFile
 
-from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-TARGET_BIOS = 'bios'
-TARGET_EC = 'ec'
+TARGET_BIOS = 'host_firmware'
+TARGET_EC = 'ec_firmware'
 
-FMAP_AREA_NAMES = (
+FMAP_AREA_NAMES = [
     'name',
     'offset',
-    'size',
-)
+    'size'
+]
 
 EXPECTED_FMAP_TREE_BIOS = {
   'WP_RO': {
@@ -51,54 +52,63 @@ EXPECTED_FMAP_TREE_EC = {
   },
 }
 
-class FMap(object):
-    """Provides access to firmware FMap.
+class firmware_FMap(FirmwareTest):
+    """Provides access to firmware FMap"""
 
-    Attributes:
-
-    @attr _target: Target of firmware, either TARGET_BIOS or TARGET_EC.
-    @attr _areas: List of dicts containing area names, offsets, and sizes.
-    """
-
-    _TARGET_PROGRAMMERS = {
-        TARGET_BIOS: '-p host',
-        TARGET_EC: '-p ec',
+    _TARGET_AREA = {
+        TARGET_BIOS: [],
+        TARGET_EC: [],
     }
 
-    def __init__(self, target=None):
-        self._target = target or TARGET_BIOS
-        self._areas = None
+    _EXPECTED_FMAP_TREE = {
+        TARGET_BIOS: EXPECTED_FMAP_TREE_BIOS,
+        TARGET_EC: EXPECTED_FMAP_TREE_EC,
+    }
 
+    """Client-side FMap test.
 
-    def is_flash_available(self):
-        """Is the flash chip available?"""
-        return utils.system("flashrom %s" %
-                            self._TARGET_PROGRAMMERS[self._target],
-                            ignore_status=True) == 0
+    This test checks the active BIOS and EC firmware contains the required
+    FMap areas and verifies their hierarchies. It relies on flashrom to dump
+    the active BIOS and EC firmware and dump_fmap to decode them.
+    """
+    version = 1
 
+    def initialize(self, host, cmdline_args, dev_mode=False):
+        super(firmware_FMap, self).initialize(host, cmdline_args)
+
+    def run_cmd(self, command):
+        """
+        Log and execute command and return the output.
+
+        @param command: Command to executeon device.
+        @returns the output of command.
+
+        """
+        logging.info('Execute %s', command)
+        output = self.faft_client.system.run_shell_command_get_output(command)
+        logging.info('Output %s', output)
+        return output
 
     def get_areas(self):
-        """Get a list of dicts containing area names, offsets, and sizes.
+        """Get a list of dicts containing area names, offsets, and sizes
+        per device.
 
-        It fetches the FMap data from the active firmware via flashrom and
-        dump_fmap. Caches the result in self._areas.
+        It fetches the FMap data from the active firmware via mosys.
+        Stores the result in the appropriate _TARGET_AREA.
         """
-        if not self._areas:
-            with NamedTemporaryFile(prefix='fw_%s_' % self._target) as f:
-                utils.system("flashrom %s -r %s -i FMAP" % (
-                        self._TARGET_PROGRAMMERS[self._target],
-                        f.name))
-                lines = utils.system_output("dump_fmap -p %s" % f.name)
-            # The above output is formatted as:
-            # name1 offset1 size1
-            # name2 offset2 size2
-            # ...
-            # Convert it to a list of dicts like:
-            # [{'name': name1, 'offset': offset1, 'size': size1},
-            #  {'name': name2, 'offset': offset2, 'size': size2}, ...]
-            self._areas = [dict(zip(FMAP_AREA_NAMES, line.split()))
-                           for line in lines.split('\n') if line.strip()]
-        return self._areas
+        lines = self.run_cmd("mosys eeprom map")
+
+        # The above output is formatted as:
+        # name1 offset1 size1
+        # name2 offset2 size2
+        # ...
+        # Convert it to a list of dicts like:
+        # [{'name': name1, 'offset': offset1, 'size': size1},
+        #  {'name': name2, 'offset': offset2, 'size': size2}, ...]
+        for line in lines:
+            row = line.split(' | ')
+            self._TARGET_AREA[row[0]].append(
+                dict(zip(FMAP_AREA_NAMES, [row[1], row[2], row[3]])))
 
 
     def _is_bounded(self, region, bounds):
@@ -151,6 +161,7 @@ class FMap(object):
         >>> f.check_areas(a, {'FOO': {'ZEROSIZED': {}}})
         False
         """
+
         succeed = True
         checked_regions = []
         for branch in expected_tree:
@@ -159,9 +170,9 @@ class FMap(object):
                 logging.error("The area %s is not existed.", branch)
                 succeed = False
                 continue
-            region = [int(area['offset']),
-                      int(area['offset']) + int(area['size'])]
-            if int(area['size']) == 0:
+            region = [int(area['offset'], 16),
+                      int(area['offset'], 16) + int(area['size'], 16)]
+            if int(area['size'], 16) == 0:
                 logging.error("The area %s is zero-sized.", branch)
                 succeed = False
             elif bounds and not self._is_bounded(region, bounds):
@@ -179,23 +190,11 @@ class FMap(object):
         return succeed
 
 
-class firmware_FMap(test.test):
-    """Client-side FMap test.
-
-    This test checks the active BIOS and EC firmware contains the required
-    FMap areas and verifies their hierarchies. It relies on flashrom to dump
-    the active BIOS and EC firmware and dump_fmap to decode them.
-    """
-    version = 1
-
     def run_once(self):
-        f = FMap(TARGET_BIOS)
-        if not f.check_areas(f.get_areas(), EXPECTED_FMAP_TREE_BIOS):
-            raise error.TestFail("BIOS FMap is not qualified.")
+        self.get_areas()
 
-        f = FMap(TARGET_EC)
-        if f.is_flash_available():
-            if not f.check_areas(f.get_areas(), EXPECTED_FMAP_TREE_EC):
-                raise error.TestFail("EC FMap is not qualified.")
-        else:
-            logging.warning("EC is not available on this device.")
+        for key in self._TARGET_AREA.keys():
+            if self._TARGET_AREA[key] and \
+               not self.check_areas(self._TARGET_AREA[key],
+                                    self._EXPECTED_FMAP_TREE[key]):
+                raise error.TestFail("%s FMap is not qualified.", key)
