@@ -34,6 +34,8 @@ from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server import frontend
 
 
+GLOBAL_AFE = global_config.global_config.get_config_value(
+        'SERVER', 'global_afe_hostname')
 DB_SERVER = global_config.global_config.get_config_value('AUTOTEST_WEB', 'host')
 USER = global_config.global_config.get_config_value('AUTOTEST_WEB', 'user')
 PASSWD = global_config.global_config.get_config_value(
@@ -137,8 +139,9 @@ def is_primary_server():
 
     @return: True if primary, False otherwise.
     """
-    server = frontend.AFE().run('get_servers', hostname=socket.getfqdn())
-    if server and server['status'] == 'primary':
+    server = frontend.AFE(server=GLOBAL_AFE).run(
+            'get_servers', hostname=socket.getfqdn())
+    if server and server[0]['status'] == 'primary':
         return True
     return False
 
@@ -167,6 +170,7 @@ def main():
             datefmt='%Y-%m-%d %H:%M:%S')
 
     try:
+        logging.info("Label cleaner starts.")
         if options.check_status and not is_primary_server():
             logging.error('Cannot run in a non-primary server.')
             return 1
@@ -176,6 +180,7 @@ def main():
         used_labels = get_used_labels(conn)
         labels = fetch_labels(conn, options.label, options.prefix)
         delete_labels(conn, labels - used_labels, options.max_delete)
+        logging.info("Done.")
     except:
         logging.error(traceback.format_exc())
         return 1
