@@ -156,6 +156,11 @@ class kernel_ConfigVerify(test.test):
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MODULE.append('TEST_ASYNC_DRIVER_PROBE')
 
+        if utils.compare_versions(kernel_ver, "3.18") >= 0:
+            for entry in self.IS_EXCLUSIVE:
+                if entry['regex'] == '.*_FS$':
+                    entry['builtin'].append('SND_PROC_FS')
+
         # Run the static checks.
         map(config.has_builtin, self.IS_BUILTIN)
         map(config.has_module, self.IS_MODULE)
