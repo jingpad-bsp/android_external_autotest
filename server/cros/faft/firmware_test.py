@@ -1166,13 +1166,15 @@ class FirmwareTest(FAFTBase):
         @param suffix: a string appended to backup file name
         """
         remote_temp_dir = self.faft_client.system.create_temp_dir()
-        self.faft_client.bios.dump_whole(os.path.join(remote_temp_dir, 'bios'))
-        self._client.get_file(os.path.join(remote_temp_dir, 'bios'),
+        remote_bios_path = os.path.join(remote_temp_dir, 'bios')
+        self.faft_client.bios.dump_whole(remote_bios_path)
+        self._client.get_file(remote_bios_path,
                               os.path.join(self.resultsdir, 'bios' + suffix))
-
-        self._backup_firmware_sha = self.get_current_firmware_sha()
+        self._client.run('rm -rf %s' % remote_temp_dir)
         logging.info('Backup firmware stored in %s with suffix %s',
             self.resultsdir, suffix)
+
+        self._backup_firmware_sha = self.get_current_firmware_sha()
 
     def is_firmware_saved(self):
         """Check if a firmware saved (called backup_firmware before).
