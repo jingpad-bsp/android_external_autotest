@@ -451,9 +451,7 @@ class FirmwareTest(FAFTBase):
             return
         logging.info('Changing GBB flags from 0x%x to 0x%x.',
                      gbb_flags, new_flags)
-        self.faft_client.system.run_shell_command(
-                '/usr/share/vboot/bin/set_gbb_flags.sh 0x%x' % new_flags)
-        self.faft_client.bios.reload()
+        self.faft_client.bios.set_gbb_flags(new_flags)
         # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
         if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
             self.switcher.mode_aware_reboot()

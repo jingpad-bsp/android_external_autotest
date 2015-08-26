@@ -404,6 +404,23 @@ class FlashromHandler(object):
             raise FlashromHandlerError(e)
         return gbb_flags
 
+    def set_gbb_flags(self, flags, write_through=False):
+        """Retrieve the GBB flags"""
+        gbb_header_format = '<L'
+        section_name = 'FV_GBB'
+        gbb_section = self.fum.get_section(self.image, section_name)
+        try:
+            formatted_flags = struct.pack(gbb_header_format, flags)
+        except struct.error, e:
+            raise FlashromHandlerError(e)
+        gbb_section = gbb_section[:12] + formatted_flags + gbb_section[16:]
+        self.image = self.fum.put_section(self.image, section_name, gbb_section)
+
+        if write_through:
+            self.dump_partial(section_name,
+                              self.os_if.state_dir_file(section_name))
+            self.fum.write_partial(self.image, (section_name, ))
+
     def enable_write_protect(self):
         """Enable write protect of the flash chip"""
         self.fum.enable_write_protect()

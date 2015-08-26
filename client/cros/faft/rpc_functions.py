@@ -304,6 +304,13 @@ class RPCFunctions(object):
         """
         return self._bios_handler.get_gbb_flags()
 
+    def _bios_set_gbb_flags(self, flags):
+        """Set the GBB flags.
+
+        @param flags: An integer of the GBB flags.
+        """
+        self._bios_handler.set_gbb_flags(flags, write_through=True)
+
     def _bios_get_preamble_flags(self, section):
         """Get the preamble flags of a firmware section.
 
