@@ -18,7 +18,9 @@ class power_BrightnessResetAfterReboot(test.test):
         """This test verify that user should get default brightness
         after rebooting the device with maximum brigntness level.
         """
-        self.check_freon_internal_display(host)
+        if host.get_board_type() == 'CHROMEBOX':
+            raise error.TestNAError('Test can not processed on chrome boxes')
+        self.is_freon_build(host)
         autotest_client = autotest.Autotest(host)
         host.reboot()
         autotest_client.run_test(client_autotest,
@@ -70,15 +72,10 @@ class power_BrightnessResetAfterReboot(test.test):
             return float(result)
 
 
-    def check_freon_internal_display(self, host):
-        """Checks for the devices with internal diplay.
-           @param host: host object representing the DUT
+    def is_freon_build(self, host):
+        """ Checks for the freon builds.
+            @param host: host object representing the DUT
         """
-        try:
-            result = host.run('modetest | grep eDP').stdout
-        except error.AutoservRunError:
-            raise error.TestError('Device contains Non-Freon build')
-        if not result:
-            raise error.TestError('There is no internal display for'
-                                  ' this device')
+        if not host.run('modetest', ignore_status=True ).exit_status == 0:
+            raise error.TestNAError('Test can not processed on non-freon build')
 
