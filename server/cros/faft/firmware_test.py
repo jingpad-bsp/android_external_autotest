@@ -753,7 +753,12 @@ class FirmwareTest(FAFTBase):
         """Restore GBB flags to their original state."""
         if not self._backup_gbb_flags:
             return
-        self._write_gbb_flags(self._backup_gbb_flags)
+        # Setting up and restoring the GBB flags take a lot of time. For
+        # speed-up purpose, don't restore it.
+        logging.info('***')
+        logging.info('*** Please manually restore the original GBB flags to: '
+                     '0x%x ***', self._backup_gbb_flags)
+        logging.info('***')
         self.unmark_setup_done('gbb_flags')
 
     def setup_tried_fwb(self, tried_fwb):
