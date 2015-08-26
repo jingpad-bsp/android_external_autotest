@@ -88,9 +88,10 @@ if __name__ == '__main__':
         utils.restart_job('cras')
 
         with chrome.Chrome(
-                extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
+                extension_paths=[constants.DISPLAY_TEST_EXTENSION],
                 extra_browser_args=extra_browser_args,
-                clear_enterprise_policy=not args.restart) as cr:
+                clear_enterprise_policy=not args.restart,
+                autotest_ext=True) as cr:
             server = xmlrpc_server.XmlRpcServer(
                     'localhost', constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
             server.register_delegate(MultimediaXmlRpcDelegate(cr))

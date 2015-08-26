@@ -50,6 +50,23 @@ class DisplayFacadeLocalAdapter(object):
         return self._display_component.get_internal_connector_name()
 
 
+    def move_to_display(self, display_index):
+        """Moves the current window to the indicated display.
+
+        @param display_index: The index of the indicated display.
+        """
+        self._display_component.move_to_display(display_index)
+
+
+    def set_fullscreen(self, is_fullscreen):
+        """Sets the current window to full screen.
+
+        @param is_fullscreen: True or False to indicate fullscreen state.
+        @return True if success, False otherwise.
+        """
+        return self._display_component.set_fullscreen(is_fullscreen)
+
+
     def load_calibration_image(self, resolution):
         """Load a full screen calibration image from the HTTP server.
 

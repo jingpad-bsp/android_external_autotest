@@ -14,6 +14,7 @@ from autotest_lib.client.cros import constants, service_stopper
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
 from autotest_lib.client.cros.video import media_test_factory
 from autotest_lib.client.cros.video import sequence_generator
+from autotest_lib.client.cros.multimedia import local_facade_factory
 
 
 class video_GlitchDetection(test.test):
@@ -125,6 +126,9 @@ class video_GlitchDetection(test.test):
                 self.host.hostname, self.chameleon_host_args)
         with self.video_capturer as c:
             self.player.load_video()
+            self.display_facade.move_to_display(
+                    self.display_facade.get_first_external_display_index())
+            self.display_facade.set_fullscreen(True)
             self.player.play()
             utils.poll_for_condition(lambda : self.player.currentTime() > 0.0,
                                      timeout=5,
@@ -420,7 +424,7 @@ class video_GlitchDetection(test.test):
 
         ext_paths = []
         if use_chameleon:
-            ext_paths = [constants.MULTIMEDIA_TEST_EXTENSION]
+            ext_paths = [constants.DISPLAY_TEST_EXTENSION]
 
         wpr_server = (media_test_factory.MediaTestFactory
                       .make_webpagereplay_server(video_name))
@@ -428,7 +432,8 @@ class video_GlitchDetection(test.test):
         browser_args += wpr_server.chrome_flags_for_wpr
 
         with chrome.Chrome(extra_browser_args=browser_args,
-                           extension_paths=ext_paths) as cr, wpr_server:
+                           extension_paths=ext_paths,
+                           autotest_ext=True) as cr, wpr_server:
             cr.browser.SetHTTPServerDirectories(self.bindir)
 
             self.factory = media_test_factory.MediaTestFactory(
@@ -438,6 +443,8 @@ class video_GlitchDetection(test.test):
                     video_name=video_name,
                     video_format=self.video_format,
                     video_def=self.video_def)
+            self.display_facade = local_facade_factory.LocalFacadeFactory(
+                                  cr).create_display_facade()
 
             self.test_dir = self.factory.test_working_dir
             self.golden_images_dir = self.factory.local_golden_images_dir

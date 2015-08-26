@@ -15,6 +15,9 @@ class ChameleonScreenTest(object):
     This class contains the screen-related testing operations.
 
     """
+    # Time in seconds to wait for notation bubbles, including bubbles for
+    # external detection, mirror mode and fullscreen, to disappear.
+    _TEST_IMAGE_STABILIZE_TIME = 10
 
     def __init__(self, chameleon_port, display_facade, output_dir):
         """Initializes the ScreenUtilityFactory objects."""
@@ -68,20 +71,37 @@ class ChameleonScreenTest(object):
         return error
 
 
-    def load_test_image(self, image_size, calibration_image_setup_time=10):
+    def load_test_image(self, image_size, test_mirrored=None):
         """Loads calibration image on the CrOS with logging
 
         @param image_size: A tuple (width, height) conforms the resolution.
-        @param calibration_image_setup_time: Time to wait for the full screen
-                bubble and the external display detecting notation to disappear.
+        @param test_mirrored: True to test mirrored mode. False not to. None
+                              to test mirrored mode iff the current mode is
+                              mirrored.
         """
+        if test_mirrored is None:
+            test_mirrored = self._display_facade.is_mirrored_enabled()
         self._display_facade.load_calibration_image(image_size)
+        if not test_mirrored:
+            self._display_facade.move_to_display(
+                    self._display_facade.get_first_external_display_index())
+        self._display_facade.set_fullscreen(True)
         logging.info('Waiting for calibration image to stabilize...')
-        time.sleep(calibration_image_setup_time)
+        time.sleep(self._TEST_IMAGE_STABILIZE_TIME)
 
 
     def unload_test_image(self):
-        """Close the tab in browser to unload test image."""
+        """Sets window state back and closes the tab in browser to unload
+           the test image.
+        """
+        # set_fullscreen(False) is necessary here because currently there
+        # is a bug in close_tab(). If we call close_tab() without setting
+        # state back to normal, it will cancel fullscreen mode without
+        # changing system display record, and so that when the next test
+        # call set_fullscreen(True), the function will find that current
+        # state is already 'fullscreen' (though it is not) and do nothing,
+        # which will break all the following tests.
+        self._display_facade.set_fullscreen(False)
         self._display_facade.close_tab()
 
 
@@ -101,7 +121,6 @@ class ChameleonScreenTest(object):
         if test_mirrored is None:
             test_mirrored = self._display_facade.is_mirrored_enabled()
 
-        # TODO(tingyuan): Check test_image is keeping full-screen.
         if test_mirrored:
             test_image_size = self._display_facade.get_internal_resolution()
         else:

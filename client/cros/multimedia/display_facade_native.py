@@ -58,9 +58,9 @@ class DisplayFacadeNative(object):
         """
 
         extension = self._chrome.get_extension(
-                constants.MULTIMEDIA_TEST_EXTENSION)
+                constants.DISPLAY_TEST_EXTENSION)
         if not extension:
-            raise RuntimeError('Graphics test extension not found')
+            raise RuntimeError('Display test extension not found')
         extension.ExecuteJavaScript('window.__display_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.system.display.getInfo(function(info) {"
@@ -69,6 +69,26 @@ class DisplayFacadeNative(object):
                 extension.EvaluateJavaScript("window.__display_info") != None),
                 expected_value=True)
         return extension.EvaluateJavaScript("window.__display_info")
+
+
+    @_retry_chrome_call
+    def get_window_info(self):
+        """Gets the current window info from Chrome.system.window API.
+
+        @return a dict for the information of the current window.
+        """
+
+        extension = self._chrome.autotest_ext
+        if not extension:
+            raise RuntimeError('Autotest extension not found')
+        extension.ExecuteJavaScript('window.__window_info = null;')
+        extension.ExecuteJavaScript(
+                "chrome.windows.getCurrent(function(info) {"
+                "window.__window_info = info;})")
+        utils.wait_for_value(lambda: (
+                extension.EvaluateJavaScript("window.__window_info") != None),
+                expected_value=True)
+        return extension.EvaluateJavaScript("window.__window_info")
 
 
     def _wait_for_display_options_to_appear(self, tab, display_index,
@@ -230,6 +250,7 @@ class DisplayFacadeNative(object):
         finally:
             self.close_tab()
 
+
     @_retry_display_call
     def get_external_resolution(self):
         """Gets the resolution of the external screen.
@@ -381,7 +402,9 @@ class DisplayFacadeNative(object):
         """Sets mirrored mode.
 
         @param is_mirrored: True or False to indicate mirrored state.
+        @return True if success, False otherwise.
         """
+        # TODO: Do some experiments to minimize waiting time after toggling.
         retries = 3
         while self.is_mirrored_enabled() != is_mirrored and retries > 0:
             self.toggle_mirrored()
@@ -451,6 +474,76 @@ class DisplayFacadeNative(object):
         result = utils.wait_for_value(self.get_external_connector_name,
                                       expected_value=display)
         return result == display
+
+
+    @_retry_chrome_call
+    def move_to_display(self, display_index):
+        """Moves the current window to the indicated display.
+
+        @param display_index: The index of the indicated display.
+        @return True if success, False otherwise.
+        """
+        display_info = self.get_display_info()
+        if (display_index is False or
+            display_index not in xrange(0, len(display_info)) or
+            not display_info[display_index]['isEnabled']):
+            raise RuntimeError('Cannot find the indicated display')
+        target_bounds = display_info[display_index]['bounds']
+        extension = self._chrome.autotest_ext
+        if not extension:
+            raise RuntimeError('Autotest extension not found')
+        # If the area of bounds is empty (here we achieve this by setting
+        # width and height to zero), the window_sizer will automatically
+        # determine an area which is visible and fits on the screen.
+        # For more details, see chrome/browser/ui/window_sizer.cc
+        # Without setting state to 'normal', if the current state is
+        # 'minimized', 'maximized' or 'fullscreen', the setting of
+        # 'left', 'top', 'width' and 'height' will be ignored.
+        # For more details, see chrome/browser/extensions/api/tabs/tabs_api.cc
+        extension.ExecuteJavaScript(
+                """
+                var __status = 'Running';
+                chrome.windows.update(
+                        chrome.windows.WINDOW_ID_CURRENT,
+                        {left: %d, top: %d, width: 0, height: 0,
+                         state: 'normal'},
+                        function() { __status = 'Done'; });
+                """
+                % (target_bounds['left'], target_bounds['top'])
+        )
+        utils.wait_for_value(lambda: (
+                extension.EvaluateJavaScript('__status') == 'Done'),
+                expected_value=True)
+        return extension.EvaluateJavaScript('__status') == 'Done'
+
+
+    def toggle_fullscreen(self):
+        """Toggles mirrored."""
+        graphics_utils.screen_toggle_fullscreen()
+        return True
+
+
+    def is_fullscreen_enabled(self):
+        """Checks the fullscreen state.
+
+        @return True if fullscreen mode is enabled.
+        """
+        return self.get_window_info()['state'] == 'fullscreen'
+
+
+    def set_fullscreen(self, is_fullscreen):
+        """Sets the current window to full screen.
+
+        @param is_fullscreen: True or False to indicate fullscreen state.
+        @return True if success, False otherwise.
+        """
+        # TODO: Do some experiments to minimize waiting time after toggling.
+        retries = 3
+        while self.is_fullscreen_enabled() != is_fullscreen and retries > 0:
+            self.toggle_fullscreen()
+            time.sleep(3)
+            retries -= 1
+        return self.is_fullscreen_enabled() == is_fullscreen
 
 
     @_retry_chrome_call

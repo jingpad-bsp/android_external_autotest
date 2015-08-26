@@ -24,8 +24,8 @@ class display_ClientChameleonConnection(test.test):
     version = 1
 
     def run_once(self, host, args):
-        ext_paths = [constants.MULTIMEDIA_TEST_EXTENSION]
-        with chrome.Chrome(extension_paths=ext_paths) as cr:
+        ext_paths = [constants.DISPLAY_TEST_EXTENSION]
+        with chrome.Chrome(extension_paths=ext_paths, autotest_ext=True) as cr:
             factory = local_facade_factory.LocalFacadeFactory(cr)
             display_facade = factory.create_display_facade()
 
