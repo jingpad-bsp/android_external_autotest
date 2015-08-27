@@ -1279,7 +1279,7 @@ def get_label(name):
 def get_global_afe_hostname():
     """Read the hostname of the global AFE from the global configuration."""
     return global_config.global_config.get_config_value(
-            'SHARD', 'global_afe_hostname')
+            'SERVER', 'global_afe_hostname')
 
 
 def route_rpc_to_master(func):
