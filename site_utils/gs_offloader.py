@@ -44,7 +44,8 @@ from chromite.lib import parallel
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
     'CROS', 'gs_offloading_enabled', type=bool, default=True)
 
-STATS_KEY = 'gs_offloader.%s' % socket.gethostname()
+STATS_KEY = 'gs_offloader.%s' % socket.gethostname().replace('.', '_')
+METADATA_TYPE = 'result_dir_size'
 
 timer = autotest_stats.Timer(STATS_KEY)
 
@@ -260,7 +261,11 @@ def get_offload_dir_func(gs_uri, multiprocessing):
         kibibytes_transferred = get_directory_size_kibibytes(dir_entry)
 
         counter.increment('kibibytes_transferred_total', kibibytes_transferred)
-        autotest_stats.Gauge(STATS_KEY).send(
+        metadata = {'_type': METADATA_TYPE,
+                    'size_KB': kibibytes_transferred,
+                    'result_dir': dir_entry,
+                    'drone': socket.gethostname().replace('.', '_')}
+        autotest_stats.Gauge(STATS_KEY, metadata=metadata).send(
                 'kibibytes_transferred', kibibytes_transferred)
         counter.increment('jobs_offloaded')
         shutil.rmtree(dir_entry)
