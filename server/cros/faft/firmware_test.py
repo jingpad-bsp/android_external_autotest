@@ -737,7 +737,8 @@ class FirmwareTest(FAFTBase):
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
                                  vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
                                  vboot.GBB_FLAG_FORCE_DEV_BOOT_USB |
-                                 vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK,
+                                 vboot.GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK |
+                                 vboot.GBB_FLAG_FORCE_DEV_BOOT_FASTBOOT_FULL_CAP,
                                  vboot.GBB_FLAG_ENTER_TRIGGERS_TONORM |
                                  vboot.GBB_FLAG_FAFT_KEY_OVERIDE)
         self.mark_setup_done('gbb_flags')
