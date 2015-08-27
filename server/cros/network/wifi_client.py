@@ -11,6 +11,7 @@ from collections import namedtuple
 
 from autotest_lib.client.bin import site_utils as client_site_utils
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
@@ -1171,9 +1172,17 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param message: the message to be logged.
 
         """
-        logger_command = '/usr/bin/logger --tag shill --priority daemon.debug'
-        cmd = ('%s \"%s\"' % (logger_command, message))
-        self.host.run(cmd)
+        logger.info(message)
+
+        # Skip this command if running on Android, since Android does not
+        # have a /usr/bin/logger (or an equivalent that takes the same
+        # parameters as the Linux logger does.)
+        if not isinstance(self.host, adb_host.ADBHost):
+            logger_command = ('/usr/bin/logger'
+                              ' --tag shill'
+                              ' --priority daemon.debug'
+                              ' "%s"' % base_utils.sh_escape(message))
+            self.host.run(logger_command)
 
 
     def is_wake_on_wifi_supported(self):
