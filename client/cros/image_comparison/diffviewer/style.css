@@ -1,0 +1,31 @@
+#testrundetails {
+  height: 200px;
+}
+
+#thumbnails {
+  top: 250px;
+  left: 10px;
+  width: 260px;
+  margin: 0px;
+  padding: 0px;
+  position: absolute;
+}
+
+.thumb {
+  width: 200px;
+  height: auto;
+  cursor: pointer;
+  border: 3px solid black;
+}
+
+.thumb:hover {
+  border: 3px solid blue;
+}
+
+#content {
+  margin-left: 260px;
+}
+
+.tagname {
+   font-weight: bold;
+}

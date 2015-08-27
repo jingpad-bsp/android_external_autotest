@@ -3,11 +3,13 @@
 # found in the LICENSE file.
 
 import abc
+import datetime
 import os
 import urllib2
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error, file_utils, lsbrelease_utils
+from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.image_comparison import image_comparison_factory
 from PIL import Image
 from PIL import ImageDraw
@@ -119,11 +121,38 @@ class ui_TestBase(test.test):
 
         self.capture_screenshot(test_image_filepath)
 
-        comparer = img_comp_factory.make_upload_on_fail_comparer(project_name)
 
-        verifier = img_comp_factory.make_image_verifier(comparer)
 
-        verifier.verify(golden_image_local_path, test_image_filepath)
+        comparer = img_comp_factory.make_pdiff_comparer()
+        comp_res = comparer.compare(golden_image_local_path,
+                                    test_image_filepath)
+
+        if comp_res.diff_pixel_count > img_comp_factory.pixel_thres:
+            publisher = img_comp_factory.make_imagediff_publisher(
+                    self.resultsdir)
+
+            # get chrome version
+            version_string = utils.system_output(
+                constants.CHROME_VERSION_COMMAND, ignore_status=True)
+            version_string = utils.parse_chrome_version(version_string)[0]
+
+            # tags for publishing
+            tags = [
+                self.tagged_testname,
+                utils.get_chromeos_release_version(),
+                version_string,
+                utils.get_board(),
+                datetime.date.today().strftime("%m/%d/%y"),
+                comp_res.diff_pixel_count
+            ]
+
+            publisher.publish(golden_image_local_path,
+                                    test_image_filepath,
+                                    comp_res.pdiff_image_path, tags)
+
+            raise error.TestFail('Test Failed. Please see image comparison '
+                                 'result by opening index.html from the '
+                                 'results directory.')
 
         file_utils.rm_dir_if_exists(ui_TestBase.WORKING_DIR)
 

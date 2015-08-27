@@ -1,0 +1,34 @@
+<!doctype html>
+<head>
+    <meta charset="utf-8">
+    <title>Image Comparison Viewer</title>
+    <link rel="stylesheet" href="style.css" type="text/css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="code.js"></script>
+</head>
+<body>
+    <div id="testrundetails">
+        <h1> Test Run Details </h1>
+        <ul>
+            <li><span class="tagname"> Test Name: </span>{0}</li>
+            <li><span class="tagname"> ChromeOS Build Number: </span>{1}</li>
+            <li><span class="tagname"> Chrome Build Number: </span>{2}</li>
+            <li><span class="tagname"> Device: </span>{3}</li>
+            <li><span class="tagname"> Date of run: </span>{4}</li>
+            <li><span class="tagname"> Differing pixels: </span>{5} </li>
+        </ul>
+    </div>
+    <hr />
+    <div id="thumbnails">
+        <p>Golden</p>
+        <img class="thumb" src="golden.png"><br>
+        <p>Test</p>
+        <img class="thumb" src="test.png"><br>
+        <p>Diff</p>
+        <img class="thumb" src="diff.png">
+    </div>
+    <div id="content">
+        <img id="fullsizeimage" src="golden.png" />
+    </div>
+</body>
+</html>

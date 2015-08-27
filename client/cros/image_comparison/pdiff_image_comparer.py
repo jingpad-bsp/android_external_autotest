@@ -18,7 +18,6 @@ class PdiffImageComparer(object):
 
     """
 
-
     @method_logger.log
     def compare(self, golden_img_path, test_img_path, box=None):
         """
@@ -64,34 +63,42 @@ class PdiffImageComparer(object):
 
         # TODO mussa: Could downsampling the images be good for us?
 
-        args = ['perceptualdiff', golden_img_path, test_img_path]
+        tmp_diff_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+        args = ['perceptualdiff', golden_img_path, test_img_path, '-output',
+                tmp_diff_file.name]
 
         logging.debug("Start process with args : " + str(args))
 
         p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        output = p.communicate()[0]
+        output = p.communicate()
+        logging.debug('output of perceptual diff command is')
+        logging.debug(output)
+
+        stdoutdata = output[0]
 
         mismatch_error = "Image dimensions do not match"
         diff_message = "Images are visibly different"
         filenotfound_message = "Cannot open"
 
+        #TODO(dhaddock): Check for image not created
         if p.returncode == 0:
             # pdiff exited with 0, images were the same
-            return comparison_result.ComparisonResult(0, '')
+            return comparison_result.ComparisonResult(0, '', None)
 
-        if mismatch_error in output:
-            raise ValueError("pdiff says: " + output)
+        if mismatch_error in stdoutdata:
+            raise ValueError("pdiff says: " + stdoutdata)
 
-        if diff_message in output:
-            diff_pixels = [int(s) for s in output.split() if s.isdigit()][0]
-            return comparison_result.ComparisonResult(int(diff_pixels), '')
+        if diff_message in stdoutdata:
+            diff_pixels = [int(s) for s in stdoutdata.split() if s.isdigit()][0]
+            return comparison_result.ComparisonResult(int(diff_pixels), '',
+                                                      tmp_diff_file.name)
 
-        if filenotfound_message in output:
-            raise OSError(errno.ENOENT, "pdiff says: " + output)
+        if filenotfound_message in stdoutdata:
+            raise OSError(errno.ENOENT, "pdiff says: " + stdoutdata)
 
         raise RuntimeError("Unknown result from pdiff: "
-                           "Output : " + output)
+                           "Output : " + stdoutdata)
 
     def __enter__(self):
         return self

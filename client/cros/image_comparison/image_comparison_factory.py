@@ -8,6 +8,7 @@ import logging
 from autotest_lib.client.cros.image_comparison import bp_http_client
 from autotest_lib.client.cros.image_comparison import bp_image_comparer
 from autotest_lib.client.cros.image_comparison import pdiff_image_comparer
+from autotest_lib.client.cros.image_comparison import publisher
 from autotest_lib.client.cros.image_comparison import rgb_image_comparer
 from autotest_lib.client.cros.image_comparison import upload_on_fail_comparer
 from autotest_lib.client.cros.image_comparison import verifier
@@ -81,7 +82,6 @@ class ImageComparisonFactory(object):
         @returns a PDiffImageComparer object.
 
         """
-
         return pdiff_image_comparer.PdiffImageComparer()
 
 
@@ -157,3 +157,13 @@ class ImageComparisonFactory(object):
             # we will know about it and decide what to do
             comparer = self.make_pdiff_comparer()
         return comparer, success
+
+
+    @method_logger.log
+    def make_imagediff_publisher(self, results_folder):
+        """
+        @param results_folder: path, where to publish the results to
+        @returns an ImageDIffPublisher object
+
+        """
+        return publisher.ImageDiffPublisher(results_folder)
