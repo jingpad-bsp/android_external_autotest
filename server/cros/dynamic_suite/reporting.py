@@ -21,6 +21,7 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.site_utils  import gmail_lib
 
 # Try importing the essential bug reporting libraries.
 try:
@@ -135,7 +136,7 @@ class TestBug(Bug):
         """Combines information about this bug into a summary string."""
 
         links = self._get_links_for_failure()
-        template = ('This bug has been automatically filed to track the '
+        template = ('This report is automatically generated to track the '
                     'following %(status)s:\n'
                     'Test: %(test)s.\n'
                     'Suite: %(suite)s.\n'
@@ -885,3 +886,12 @@ def submit_generic_bug_report(*args, **kwargs):
     bug = Bug(*args, **kwargs)
     reporter = Reporter()
     return reporter.report(bug)[0]
+
+
+def send_email(bug):
+    """Send email to the owner and cc's to notify the TestBug.
+
+    @param bug: TestBug instance.
+    """
+    recipients = ', '.join(bug.cc + ([bug.owner] if bug.owner else []))
+    gmail_lib.send_email(recipients, bug.title(), bug.summary(True))
