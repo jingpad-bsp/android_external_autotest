@@ -30,7 +30,8 @@ TODO(fdeng):
 import json
 import re
 import os
-import os_utilities
+
+from api import os_utilities
 
 # Unused argument 'bot' - pylint: disable=W0613
 
@@ -99,7 +100,7 @@ def on_before_task(bot):
     # TODO(fdeng): it is possible that the format gets updated
     # without warning. It would be better to find a long term solution.
     work_dir = os.path.join(bot.base_dir, 'work')
-    path = os.path.join(work_dir, 'task_run.json')
+    path = os.path.join(work_dir, 'task_runner_in.json')
     manifest = {}
     with open(path) as f:
         manifest = json.load(f)
