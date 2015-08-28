@@ -63,7 +63,6 @@ NAME = '" + AUTOTEST_NAME + "'\n\
 AUTHOR = 'chromeos-gfx'\n\
 PURPOSE = 'Collection of automated tests for OpenGL implementations.'\n\
 CRITERIA = 'All tests in a slice have to pass, otherwise it will fail.'\n\
-SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'\n\
 TIME='SHORT'\n\
 TEST_CATEGORY = 'Functional'\n\
 TEST_CLASS = 'graphics'\n\
