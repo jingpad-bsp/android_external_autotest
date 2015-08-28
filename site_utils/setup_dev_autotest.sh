@@ -15,7 +15,7 @@ Options:\n\
   -v Show info logging from build_externals.py and compile_gwt_clients.py \n\
   -n Non-interactive mode, doesn't ask for any user input.
      Requires -p and -a to be set.\n\
-  -m Master node."
+  -m Allow remote access for database."
 
 function get_y_or_n_interactive {
     local ret
@@ -43,9 +43,9 @@ AUTOTEST_DIR=
 PASSWD=
 verbose="FALSE"
 noninteractive="FALSE"
-master="FALSE"
+remotedb="FALSE"
 while getopts ":p:a:vnmh" opt; do
-  case $opt in
+  case ${opt} in
     a)
       AUTOTEST_DIR=$OPTARG
       ;;
@@ -59,7 +59,7 @@ while getopts ":p:a:vnmh" opt; do
       noninteractive="TRUE"
       ;;
     m)
-      master="TRUE"
+      remotedb="TRUE"
       ;;
     h)
       echo -e "${HELP}" >&2
@@ -217,8 +217,7 @@ check_database()
   local sql_priv="GRANT ALL PRIVILEGES ON $db_name.* TO \
   'chromeosqa-admin'@'localhost' IDENTIFIED BY '${PASSWD}';"
 
-  # Master DB needs to enable connection from shard nodes.
-  if [ "${master}" = "TRUE" ]; then
+  if [ "${remotedb}" = "TRUE" ]; then
     sql_priv="${sql_priv} GRANT ALL PRIVILEGES ON $db_name.* TO \
     'chromeosqa-admin'@'%' IDENTIFIED BY '${PASSWD}';"
   fi
