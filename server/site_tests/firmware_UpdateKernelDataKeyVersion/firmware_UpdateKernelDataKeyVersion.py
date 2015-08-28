@@ -30,14 +30,11 @@ class firmware_UpdateKernelDataKeyVersion(FirmwareTest):
                 actual_ver)
 
     def resign_kernel_datakey_version(self, host):
-        host.send_file(os.path.join(
-                           '~/trunk/src/platform/vboot_reference/scripts',
-                           'keygeneration/common.sh'),
+        host.send_file(os.path.join(self.bindir,
+                                    'files/common.sh'),
                        os.path.join(self.faft_client.updater.get_temp_path(),
-                                    'common.sh'))
-        host.send_file(os.path.join('~/trunk/src/third_party/autotest/files/',
-                                    'server/site_tests',
-                                    'firmware_UpdateKernelDataKeyVersion',
+                                     'common.sh'))
+        host.send_file(os.path.join(self.bindir,
                                     'files/make_keys.sh'),
                        os.path.join(self.faft_client.updater.get_temp_path(),
                                     'make_keys.sh'))
