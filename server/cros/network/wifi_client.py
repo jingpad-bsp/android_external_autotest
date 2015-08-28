@@ -1172,7 +1172,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param message: the message to be logged.
 
         """
-        logger.info(message)
+        logging.info(message)
 
         # Skip this command if running on Android, since Android does not
         # have a /usr/bin/logger (or an equivalent that takes the same
