@@ -11,9 +11,6 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 
-# local import
-import webcam
-
 EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream']
 
 # Statistics from the loopback.html page.
@@ -41,6 +38,30 @@ class video_WebRtcCamera(test.test):
         self.tab.Navigate(cr.browser.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
+
+
+    def webcam_supports_720p(self):
+        """Checks if 720p capture supported.
+
+        @returns: True if 720p supported, false if VGA is supported.
+        @raises: TestError if neither 720p nor VGA are supported.
+        """
+        cmd = 'lsusb -v'
+        # Get usb devices and make output a string with no newline marker.
+        usb_devices = utils.system_output(cmd, ignore_status=True).splitlines()
+        usb_devices = ''.join(usb_devices)
+
+        # Check if 720p resolution supported.
+        if re.search(r'\s+wWidth\s+1280\s+wHeight\s+720', usb_devices):
+            return True
+        # The device should support at least VGA.
+        # Otherwise the cam must be broken.
+        if re.search(r'\s+wWidth\s+640\s+wHeight\s+480', usb_devices):
+            return False
+        # This should not happen.
+        raise error.TestFail(
+                'Could not find any cameras reporting '
+                'either VGA or 720p in lsusb output: %s' % usb_devices)
 
 
     def is_test_completed(self):
@@ -95,7 +116,7 @@ class video_WebRtcCamera(test.test):
         for resolution in results:
             item = results[resolution]
             if (item['cameraErrors'] and resolution == '1280,720'
-                    and webcam.supports_720p()):
+                    and self.webcam_supports_720p()):
                 logging.error('Camera error: %s', item['cameraErrors'])
                 return False
             if not item['frameStats']:
