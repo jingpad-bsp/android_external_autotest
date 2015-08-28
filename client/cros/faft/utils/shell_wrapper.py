@@ -96,6 +96,7 @@ class AdbShell(object):
         self._os_if = os_if
         self._host_shell = LocalShell()
         self._host_shell.init(os_if)
+        self._root_granted = False
 
     def _run_command(self, cmd):
         """Helper function of run_command() methods.
@@ -103,6 +104,12 @@ class AdbShell(object):
         Return the subprocess.Popen() instance to provide access to console
         output in case command succeeded.
         """
+        if not self._root_granted:
+            if (self._host_shell.run_command_get_output('adb shell whoami')[0]
+                != 'root'):
+                # Get the root access first as some commands need it.
+                self._host_shell.run_command('adb root')
+            self._root_granted = True
         cmd = "adb shell '%s'" % cmd.replace("'", "\\'")
         return self._host_shell._run_command(cmd)
 
