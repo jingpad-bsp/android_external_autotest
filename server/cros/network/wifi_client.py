@@ -835,6 +835,20 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._assert_method_supported('request_roam')
         self._shill_proxy.request_roam(bssid)
 
+    def request_roam_dbus(self, bssid, interface):
+        """Request that we roam to the specified BSSID through dbus.
+
+        Note that this operation assumes that:
+
+        1) We're connected to an SSID for which |bssid| is a member.
+        2) There is a BSS with an appropriate ID in our scan results.
+
+        @param bssid: string MAC address of bss to roam to.
+
+        """
+        self._assert_method_supported('request_roam_dbus')
+        self._shill_proxy.request_roam_dbus(bssid, interface)
+
 
     def wait_for_roam(self, bssid, timeout_seconds=10.0):
         """Wait for a roam to the given |bssid|.

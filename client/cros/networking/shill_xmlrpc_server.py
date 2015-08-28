@@ -463,6 +463,27 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
 
     @xmlrpc_server.dbus_safe(False)
+    def request_roam_dbus(self, bssid, interface):
+        """Request that we roam to the specified BSSID.
+
+        Note that this operation assumes that:
+
+        1) We're connected to an SSID for which |bssid| is a member.
+        2) There is a BSS with an appropriate ID in our scan results.
+
+        @param bssid: string BSSID of BSS to roam to.
+
+        """
+
+        device_object = self._wifi_proxy.find_object(
+                self.DBUS_DEVICE, {'Name': interface})
+        if device_object is None:
+            return False
+        device_object.RequestRoam(bssid)
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
     def set_device_enabled(self, wifi_interface, enabled):
         """Enable or disable the WiFi device.
 
