@@ -819,7 +819,16 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                         error = "Client side test does not need server-side packaging.";
                     }
                     else if (imageUrlString.equals("")) {
-                      error = "You must specify an image to run test with server-side packaging.";
+                      boolean has_cros_version_dependency = false;
+                      for (int i = 0; i < getSelectedDependencies().size(); i++) {
+                        String dep = getSelectedDependencies().get(i).toString();
+                        if (dep.startsWith("\"cros-version:")) {
+                          has_cros_version_dependency = true;
+                          break;
+                        }
+                      }
+                      if (!has_cros_version_dependency)
+                        error = "You must specify an image to run test with server-side packaging.";
                     }
 
                     if (error != "") {
