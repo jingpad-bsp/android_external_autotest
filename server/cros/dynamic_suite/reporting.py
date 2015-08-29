@@ -888,10 +888,19 @@ def submit_generic_bug_report(*args, **kwargs):
     return reporter.report(bug)[0]
 
 
-def send_email(bug):
+def send_email(bug, bug_template):
     """Send email to the owner and cc's to notify the TestBug.
 
     @param bug: TestBug instance.
+    @param bug_template: A template dictionary specifying the default bug
+                         filing options for failures in this suite.
     """
-    recipients = ', '.join(bug.cc + ([bug.owner] if bug.owner else []))
-    gmail_lib.send_email(recipients, bug.title(), bug.summary(True))
+    to_set = set(bug.cc) if bug.cc else set()
+    if bug.owner:
+        to_set.add(bug.owner)
+    if bug_template.get('cc'):
+        to_set = to_set.union(bug_template.get('cc'))
+    if bug_template.get('owner'):
+        to_set.add(bug_template.get('owner'))
+    recipients = ', '.join(to_set)
+    gmail_lib.send_email(recipients, bug.title(), bug.summary())
