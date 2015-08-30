@@ -118,7 +118,7 @@ class platform_PowerStatusStress(test.test):
     def run_once(self, host, loop_count):
         self.host = host
         dut_type = host.get_board_type()
-        if dut_type is not 'CHROMEBOOK':
+        if dut_type != 'CHROMEBOOK':
             raise error.TestError(
                     'This test is not supported on %s' %  dut_type)
         self.autotest_client = autotest.Autotest(self.host)
