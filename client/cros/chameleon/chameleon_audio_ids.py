@@ -16,9 +16,11 @@ class ChameleonIds(object):
     LINEIN = 'Chameleon LineIn'
     LINEOUT = 'Chameleon LineOut'
     MIC = 'Chameleon Mic'
+    USBIN = 'Chameleon USBIn'
+    USBOUT = 'Chameleon USBOut'
 
-    SINK_PORTS = [HDMI, LINEIN, MIC]
-    SOURCE_PORTS = [LINEOUT]
+    SINK_PORTS = [HDMI, LINEIN, MIC, USBIN]
+    SOURCE_PORTS = [LINEOUT, USBOUT]
 
 
 class CrosIds(object):
@@ -35,9 +37,11 @@ class CrosIds(object):
     INTERNAL_MIC = 'Cros Internal Mic'
     BLUETOOTH_HEADPHONE = 'Cros Bluetooth Headphone'
     BLUETOOTH_MIC = 'Cros Bluetooth Mic'
+    USBIN = 'Cros USBIn'
+    USBOUT = 'Cros USBOut'
 
-    SINK_PORTS = [EXTERNAL_MIC, INTERNAL_MIC, BLUETOOTH_MIC]
-    SOURCE_PORTS = [HDMI, HEADPHONE, SPEAKER, BLUETOOTH_HEADPHONE]
+    SINK_PORTS = [EXTERNAL_MIC, INTERNAL_MIC, BLUETOOTH_MIC, USBIN]
+    SOURCE_PORTS = [HDMI, HEADPHONE, SPEAKER, BLUETOOTH_HEADPHONE, USBOUT]
 
 
 class PeripheralIds(object):
