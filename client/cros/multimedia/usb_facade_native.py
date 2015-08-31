@@ -11,6 +11,32 @@ import os
 from autotest_lib.client.common_lib import base_utils
 
 
+class USBFacadeNativeError(Exception):
+    """Error in USBFacadeNative."""
+    pass
+
+
+class USBFacadeNative(object):
+    """Facade to access the USB-related functionality.
+
+    Property:
+      _drivers_manager: A USBDeviceDriversManager object used to manage the
+                        status of drivers associated with the USB audio gadget
+                        on the host side.
+
+    """
+    _DEFAULT_DEVICE_PRODUCT_NAME = 'Linux USB Audio Gadget'
+
+    def __init__(self):
+        """Initializes the USB facade.
+
+        The _drivers_manager is set with a USBDeviceDriversManager, which is
+        used to control the visibility and availability of a USB device on a
+        host Cros device.
+        """
+        self._drivers_manager = USBDeviceDriversManager()
+
+
 class USBDeviceDriversManagerError(Exception):
     """Error in USBDeviceDriversManager."""
     pass
