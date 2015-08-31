@@ -9,3 +9,5 @@ from collections import namedtuple
 ComparisonResult = namedtuple('ComparisonResult',
                               'diff_pixel_count comparison_url '
                               'pdiff_image_path')
+
+ComparisonResult.__new__.__defaults__ = (0, '', None)
