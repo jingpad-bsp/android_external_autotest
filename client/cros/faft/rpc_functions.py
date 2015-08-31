@@ -154,7 +154,7 @@ class RPCFunctions(object):
         if is_str:
             method = method.rsplit('.', 1)[0]
 
-        categories = ('system', 'bios', 'ec', 'kernel',
+        categories = ('system', 'host', 'bios', 'ec', 'kernel',
                       'tpm', 'cgpt', 'updater', 'rootfs')
         try:
             if method.split('.', 1)[0] in categories:
@@ -221,6 +221,21 @@ class RPCFunctions(object):
         @return: A list of strings stripped of the newline characters.
         """
         return self._os_if.run_shell_command_get_output(command)
+
+    def _host_run_shell_command(self, command):
+        """Run shell command on the host.
+
+        @param command: A shell command to be run.
+        """
+        self._os_if.run_host_shell_command(command)
+
+    def _host_run_shell_command_get_output(self, command):
+        """Run shell command and get its console output on the host.
+
+        @param command: A shell command to be run.
+        @return: A list of strings stripped of the newline characters.
+        """
+        return self._os_if.run_host_shell_command_get_output(command)
 
     def _system_software_reboot(self):
         """Request software reboot."""

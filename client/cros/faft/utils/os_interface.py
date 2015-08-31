@@ -61,8 +61,10 @@ class OSInterface(object):
         self.is_android = os.path.isfile(self.ANDROID_TESTER_FILE)
         if self.is_android:
             self.shell = shell_wrapper.AdbShell()
+            self.host_shell = shell_wrapper.LocalShell()
         else:
             self.shell = shell_wrapper.LocalShell()
+            self.host_shell = None
 
 
     def init(self, state_dir=None, log_file=None):
@@ -94,6 +96,8 @@ class OSInterface(object):
 
         # Initialize the shell. Should be after creating the log file.
         self.shell.init(self)
+        if self.host_shell:
+            self.host_shell.init(self)
 
     def run_shell_command(self, cmd):
         """Run a shell command."""
@@ -106,6 +110,27 @@ class OSInterface(object):
     def run_shell_command_get_output(self, cmd):
         """Run shell command and return its console output."""
         return self.shell.run_command_get_output(cmd)
+
+    def run_host_shell_command(self, cmd):
+        """Run a shell command on the host."""
+        if self.host_shell:
+            self.host_shell.run_command(cmd)
+        else:
+            raise OSInterfaceError('There is no host for DUT.')
+
+    def run_host_shell_command_get_status(self, cmd):
+        """Run shell command and return its return code on the host."""
+        if self.host_shell:
+            return self.host_shell.run_command_get_status(cmd)
+        else:
+            raise OSInterfaceError('There is no host for DUT.')
+
+    def run_host_shell_command_get_output(self, cmd):
+        """Run shell command and return its console output."""
+        if self.host_shell:
+            return self.host_shell.run_command_get_output(cmd)
+        else:
+            raise OSInterfaceError('There is no host for DUT.')
 
     def read_file(self, path):
         """Read the content of the file."""
