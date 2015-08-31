@@ -37,6 +37,21 @@ class USBFacadeNative(object):
         self._drivers_manager = USBDeviceDriversManager()
 
 
+    def plug(self):
+        """Sets and plugs the USB device into the host.
+
+        The USB device is initially set to one with the default product name,
+        which is assumed to be the name of the USB audio gadget on Chameleon.
+        """
+        self._drivers_manager.set_usb_device(self._DEFAULT_DEVICE_PRODUCT_NAME)
+        self._drivers_manager.bind_usb_drivers()
+
+
+    def unplug(self):
+        """Unplugs the USB device from the host."""
+        self._drivers_manager.unbind_usb_drivers()
+
+
 class USBDeviceDriversManagerError(Exception):
     """Error in USBDeviceDriversManager."""
     pass
