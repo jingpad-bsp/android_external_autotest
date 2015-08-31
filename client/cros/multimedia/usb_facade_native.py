@@ -4,6 +4,11 @@
 
 """An adapter to access the local USB facade."""
 
+import glob
+import logging
+
+from autotest_lib.client.common_lib import base_utils
+
 
 class USBDeviceDriversManagerError(Exception):
     """Error in USBDeviceDriversManager."""
@@ -30,3 +35,27 @@ class USBDeviceDriversManager(object):
         """
         self._device_product_name = None
         self._device_bus_id = None
+
+
+    def _find_usb_device_bus_id(self, product_name):
+        """Finds the bus ID of the USB device with the given product name.
+
+        @param product_name: The product name of the USB device as it appears
+                             to the host. But it is case-insensitive in this
+                             method.
+
+        @returns: The bus ID of the USB device if it is detected by the host
+                  successfully; or None if there is no such device with the
+                  given product name.
+
+        """
+        devices_glob_search_path = '/sys/bus/usb/drivers/usb/usb?/'
+        product_name_lowercase = product_name.lower()
+        for path in glob.glob(devices_glob_search_path + '*/product'):
+            current_product_name = base_utils.read_one_line(path).lower()
+            if product_name_lowercase in current_product_name:
+                bus_id = path[len(devices_glob_search_path):]
+                bus_id = bus_id[:-len('/product')]
+                return bus_id
+        logging.error('Bus ID of %s not found', product_name)
+        return None
