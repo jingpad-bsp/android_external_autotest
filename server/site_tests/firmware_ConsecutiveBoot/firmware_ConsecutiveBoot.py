@@ -78,8 +78,6 @@ class firmware_ConsecutiveBoot(FirmwareTest):
         raise ConnectionError()
 
     def run_once(self, host, dev_mode=False):
-        if not self.faft_localrun and not ec.has_ectool():
-            raise error.TestError('Test not supported in lab without EC.')
         for i in xrange(self.faft_iterations):
             logging.info('======== Running FAFT ITERATION %d/%s ========',
                          i+1, self.faft_iterations)
