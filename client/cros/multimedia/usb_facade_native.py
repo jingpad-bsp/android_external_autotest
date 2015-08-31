@@ -95,3 +95,39 @@ class USBDeviceDriversManager(object):
         """
         driver_path = self._USB_BOUND_DRIVERS_FILE_PATH % self._device_bus_id
         return os.path.exists(driver_path)
+
+
+    def bind_usb_drivers(self):
+        """Binds the USB driver(s) of the current device to the host.
+
+        This is applied to all the drivers associated with and listed under
+        the USB device with the current _device_product_name and _device_bus_id.
+
+        @raises: USBDeviceDriversManagerError if device bus ID for this instance
+                 has not been set yet.
+
+        """
+        if self._device_bus_id is None:
+            raise USBDeviceDriversManagerError('USB Bus ID is not set yet.')
+        if self._drivers_are_bound():
+            return
+        base_utils.open_write_close(self._USB_BIND_FILE_PATH,
+                self._device_bus_id)
+
+
+    def unbind_usb_drivers(self):
+        """Unbinds the USB driver(s) of the current device from the host.
+
+        This is applied to all the drivers associated with and listed under
+        the USB device with the current _device_product_name and _device_bus_id.
+
+        @raises: USBDeviceDriversManagerError if device bus ID for this instance
+                 has not been set yet.
+
+        """
+        if self._device_bus_id is None:
+            raise USBDeviceDriversManagerError('USB Bus ID is not set yet.')
+        if not self._drivers_are_bound():
+            return
+        base_utils.open_write_close(self._USB_UNBIND_FILE_PATH,
+                                    self._device_bus_id)
