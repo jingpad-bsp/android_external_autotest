@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""An adapter to access the local USB facade."""
+"""An interface to access the local USB facade."""
 
 import glob
 import logging
@@ -59,3 +59,22 @@ class USBDeviceDriversManager(object):
                 return bus_id
         logging.error('Bus ID of %s not found', product_name)
         return None
+
+
+    def set_usb_device(self, product_name):
+        """Sets _device_product_name and _device_bus_id if it can be found.
+
+        @param product_name: The product name of the USB device as it appears
+                             to the host.
+
+        @raises: USBDeviceDriversManagerError if device bus ID cannot be found
+                 for the device with the given product name.
+
+        """
+        device_bus_id = self._find_usb_device_bus_id(product_name)
+        if device_bus_id is None:
+            error_message = 'Cannot find device with product name: %s'
+            raise USBDeviceDriversManagerError(error_message % product_name)
+        else:
+            self._device_product_name = product_name
+            self._device_bus_id = device_bus_id
