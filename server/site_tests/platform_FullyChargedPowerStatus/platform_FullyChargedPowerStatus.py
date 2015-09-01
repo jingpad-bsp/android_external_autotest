@@ -21,16 +21,6 @@ class platform_FullyChargedPowerStatus(test.test):
         self.host.power_on()
 
 
-    def is_dut_chromebook(self):
-        """check if the device type is chromebook
-
-        @return true if it's chromebook
-
-        """
-        return self.host.run('cat /etc/lsb-release | grep DEVICETYPE=CHROMEBOOK',
-                             ignore_status=True).exit_status == 0
-
-
     def get_power_supply_parameters(self):
         """ Retrieve power supply info
 
@@ -50,7 +40,6 @@ class platform_FullyChargedPowerStatus(test.test):
         @param status: record power status set when fail
 
         """
-
         errors = list()
         online, state, percentage = self.get_power_supply_parameters()
 
@@ -76,7 +65,8 @@ class platform_FullyChargedPowerStatus(test.test):
     def is_chrome_available(self):
         """check if _CHROME_PATH exists
 
-        @return true if _CHROME_PATH no exists
+        @returns true if _CHROME_PATH no exists
+
         """
         return self.host.run('ls %s' % _CHROME_PATH,
                              ignore_status=True).exit_status == 0
@@ -86,6 +76,7 @@ class platform_FullyChargedPowerStatus(test.test):
         """Suspend i.e. powerd_dbus_suspend and wait
 
         @returns boot_id for the following resume
+
         """
         boot_id = self.host.get_boot_id()
         thread = threading.Thread(target = self.host.suspend)
@@ -99,16 +90,16 @@ class platform_FullyChargedPowerStatus(test.test):
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
 
+        if not self.is_chrome_available():
+            raise error.TestNAError('Chrome does not reside on DUT. Test Skipped')
+
+        if not self.host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
         if self.host.has_power():
             self.host.power_on()
         else:
             raise error.TestError('No RPM is setup to device')
-
-        if not self.is_chrome_available():
-            raise error.TestNAError('Chrome does not reside on DUT. Test Skipped')
-
-        if self.is_dut_chromebook():
-            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
 
         online, state, percentage = self.get_power_supply_parameters()
         if not ( online == 'yes' and percentage > 95 ):
