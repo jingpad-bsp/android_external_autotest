@@ -15,6 +15,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_board
 from autotest_lib.client.cros.chameleon import edid as edid_lib
+from autotest_lib.client.cros.chameleon import usb_controller
 
 
 CHAMELEON_PORT = 9992
@@ -91,6 +92,7 @@ class ChameleonBoard(object):
         """
         self.host = chameleon_host
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
+        self._usb_ctrl = usb_controller.USBController(chameleon_connection)
         if self._chameleond_proxy.HasAudioBoard():
             self._audio_board = audio_board.AudioBoard(chameleon_connection)
         else:
@@ -150,6 +152,14 @@ class ChameleonBoard(object):
         @return: An AudioBoard object.
         """
         return self._audio_board
+
+
+    def get_usb_controller(self):
+        """Gets the USB controller on Chameleon.
+
+        @return: A USBController object.
+        """
+        return self._usb_ctrl
 
 
     def get_mac_address(self):
