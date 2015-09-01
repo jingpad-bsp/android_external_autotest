@@ -38,7 +38,7 @@ class firmware_ECBootTime(FirmwareTest):
         else:
             boot_anchors = ["\[([0-9\.]+) power state 1 = S5",
                             "\[([0-9\.]+) power state 3 = S0"]
-        power_cmd = "powerbtn" if self._x86 else "power on"
+        power_cmd = "powerbtn"  if self._x86 or self._ryu else "power on"
         reboot = self.ec.send_command_get_output(
             "reboot ap-off",
             ["([0-9\.]+) Inits done"])
@@ -60,11 +60,16 @@ class firmware_ECBootTime(FirmwareTest):
         output = self.faft_client.system.get_platform_name()
         return output in arm_legacy
 
+    def is_ryu_board(self):
+        output = self.faft_client.system.get_platform_name()
+        return output == 'Ryu'
+
     def run_once(self):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
         self._x86 = ('x86' in self.faft_config.ec_capability)
         self._arm_legacy = self.is_arm_legacy_board()
+        self._ryu = self.is_ryu_board()
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})
         logging.info("Reboot and check EC cold boot time and host boot time.")
         self.switcher.mode_aware_reboot('custom', self.check_boot_time)
