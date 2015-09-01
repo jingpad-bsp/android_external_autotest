@@ -120,6 +120,7 @@ class AudioLinkFactory(object):
         self._chameleon_board = cros_host.chameleon
         self._audio_board = self._chameleon_board.get_audio_board()
         self._bluetooth_device = None
+        self._usb_ctrl = None
 
 
     def _acquire_audio_bus_index(self):
@@ -192,6 +193,15 @@ class AudioLinkFactory(object):
                     self._audio_board.get_bluetooth_controller(),
                     chameleon_info.get_bluetooth_mac_address(
                             self._chameleon_board))
+        elif issubclass(link_type, audio_widget_link.USBWidgetLink):
+            # Aside from managing connection between USB audio gadget driver on
+            # Chameleon with Cros device, USBWidgetLink also handles changing
+            # the gadget driver's configurations, through the USBController that
+            # is passed to it at initialization.
+            if not self._usb_ctrl:
+                self._usb_ctrl = self._chameleon_board.get_usb_controller()
+
+            link = link_type(self._usb_ctrl)
         else:
             raise NotImplementedError('Link %s is not implemented' % link_type)
 
