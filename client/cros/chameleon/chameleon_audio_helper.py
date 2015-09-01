@@ -225,6 +225,7 @@ class AudioWidgetFactory(object):
 
         """
         self._audio_facade = factory.create_audio_facade()
+        self._usb_facade = factory.create_usb_facade()
         self._cros_host = cros_host
         self._chameleon_board = cros_host.chameleon
         self._link_factory = AudioLinkFactory(cros_host)
