@@ -340,6 +340,87 @@ class AudioBusToCrosLink(AudioBusLink):
                 'channel map %r', self.name, self.channel_map)
 
 
+class USBWidgetLink(WidgetLink):
+    """The abstraction for USB Cable."""
+
+    # This is the default channel map for 2-channel data
+    _DEFAULT_CHANNEL_MAP = [0, 1]
+    _DELAY_BEFORE_PLUGGING_CROS_SECONDS = 3
+
+    def __init__(self, usb_ctrl):
+        """Initializes a USBWidgetLink.
+
+        @param usb_ctrl: A USBController object.
+
+        """
+        super(USBWidgetLink, self).__init__()
+        self.name = 'USB Cable'
+        self.channel_map = self._DEFAULT_CHANNEL_MAP
+        self._usb_ctrl = usb_ctrl
+        logging.debug(
+                'Create a USBWidgetLink. Do nothing because USB cable'
+                ' is dedicated')
+
+
+    def connect(self, source, sink):
+        """Connects source widget to sink widget.
+
+        This method first identifies the Chameleon widget and plug it first so
+        that it is visible to the Cros host for it to plug in the Cros widget.
+
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
+
+        """
+        if source.audio_port.host == 'Chameleon':
+            source.handler.plug()
+            time.sleep(self._DELAY_BEFORE_PLUGGING_CROS_SECONDS)
+            sink.handler.plug()
+        else:
+            sink.handler.plug()
+            time.sleep(self._DELAY_BEFORE_PLUGGING_CROS_SECONDS)
+            source.handler.plug()
+
+
+    def disconnect(self, source, sink):
+        """Disconnects source widget from sink widget.
+
+        This method first identifies the Cros widget and unplugs it first while
+        the Chameleon widget is still visible for the Cros host to know which
+        USB port to unplug Cros widget from.
+
+        @param source: An AudioWidget object.
+        @param sink: An AudioWidget object.
+
+        """
+        if source.audio_port.host == 'Cros':
+            source.handler.unplug()
+            sink.handler.unplug()
+        else:
+            sink.handler.unplug()
+            source.handler.unplug()
+
+
+class USBToCrosWidgetLink(USBWidgetLink):
+    """The abstraction for the USB cable connected to the Cros device."""
+
+    def __init__(self, *args, **kwargs):
+        """Initializes a USBToCrosWidgetLink."""
+        super(USBToCrosWidgetLink, self).__init__(*args, **kwargs)
+        self.name = 'USB Cable to Cros'
+        logging.debug('Create a USBToCrosWidgetLink: %s', self.name)
+
+
+class USBToChameleonWidgetLink(USBWidgetLink):
+    """The abstraction for the USB cable connected to the Chameleon device."""
+
+    def __init__(self, *args, **kwargs):
+        """Initializes a USBToChameleonWidgetLink."""
+        super(USBToChameleonWidgetLink, self).__init__(*args, **kwargs)
+        self.name = 'USB Cable to Chameleon'
+        logging.debug('Create a USBToChameleonWidgetLink: %s', self.name)
+
+
 class HDMIWidgetLink(WidgetLink):
     """The abstraction for HDMI cable."""
 
