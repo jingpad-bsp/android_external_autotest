@@ -516,6 +516,26 @@ class CrosWidgetHandler(WidgetHandler):
         pass
 
 
+class PlugHandler(object):
+    """This class abstracts plug/unplug action for widgets on Cros device.
+
+    This class will be used by CrosWidgetHandler when performinng plug/unplug.
+
+    """
+    def __init__(self):
+        """Initializes a PlugHandler."""
+
+
+    def plug(self):
+        """Plugs in the widget/device."""
+        raise NotImplementedError('plug() not implemented.')
+
+
+    def unplug(self):
+        """Unplugs the widget/device."""
+        raise NotImplementedError('unplug() not implemented.')
+
+
 class CrosInputWidgetHandlerError(Exception):
     """Error in CrosInputWidgetHandler."""
 
