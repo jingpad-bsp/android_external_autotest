@@ -170,7 +170,13 @@ def main():
             datefmt='%Y-%m-%d %H:%M:%S')
 
     try:
-        logging.info("Label cleaner starts.")
+        msg = 'Label cleaner starts. Will delete '
+        if options.prefix:
+            msg += 'all labels whose prefix is "%s".'
+        else:
+            msg += 'a label "%s".'
+        logging.info(msg, options.label)
+        logging.info('Target database: %s.', options.db_server)
         if options.check_status and not is_primary_server():
             logging.error('Cannot run in a non-primary server.')
             return 1
@@ -180,7 +186,7 @@ def main():
         used_labels = get_used_labels(conn)
         labels = fetch_labels(conn, options.label, options.prefix)
         delete_labels(conn, labels - used_labels, options.max_delete)
-        logging.info("Done.")
+        logging.info('Done.')
     except:
         logging.error(traceback.format_exc())
         return 1
