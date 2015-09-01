@@ -100,6 +100,10 @@ class AudioLinkFactory(object):
         (ids.PeripheralIds.BLUETOOTH_DATA_TX,
          ids.CrosIds.BLUETOOTH_MIC):
                 audio_widget_link.BluetoothMicWidgetLink,
+        (ids.CrosIds.USBOUT, ids.ChameleonIds.USBIN):
+                audio_widget_link.USBToChameleonWidgetLink,
+        (ids.ChameleonIds.USBOUT, ids.CrosIds.USBIN):
+                audio_widget_link.USBToCrosWidgetLink,
         # TODO(cychiang): Add link for other widget pairs.
     }
 
