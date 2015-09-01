@@ -27,7 +27,7 @@ class display_HotPlugAtSuspend(test.test):
     # Allowed timeout for the transition of suspend.
     SUSPEND_TIMEOUT = 20
     # Allowed timeout for the transition of resume.
-    RESUME_TIMEOUT = 30
+    RESUME_TIMEOUT = 60
     # Time margin to do plug/unplug before resume.
     TIME_MARGIN_BEFORE_RESUME = 5
 
@@ -61,10 +61,11 @@ class display_HotPlugAtSuspend(test.test):
 
             for (plugged_before_suspend, plugged_after_suspend,
                  plugged_before_resume) in plug_status:
-                logging.info('TEST CASE: %s > SUSPEND > %s > %s > RESUME',
-                             'PLUG' if plugged_before_suspend else 'UNPLUG',
-                             'PLUG' if plugged_after_suspend else 'UNPLUG',
-                             'PLUG' if plugged_before_resume else 'UNPLUG')
+                test_case = ('TEST CASE: %s > SUSPEND > %s > %s > RESUME' %
+                    ('PLUG' if plugged_before_suspend else 'UNPLUG',
+                     'PLUG' if plugged_after_suspend else 'UNPLUG',
+                     'PLUG' if plugged_before_resume else 'UNPLUG'))
+                logging.info(test_case)
                 boot_id = host.get_boot_id()
                 chameleon_port.set_plug(plugged_before_suspend)
 
@@ -81,7 +82,10 @@ class display_HotPlugAtSuspend(test.test):
 
                 # Confirm DUT suspended.
                 logging.info('WAITING FOR SUSPEND...')
-                host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
+                try:
+                    host.test_wait_for_sleep(self.SUSPEND_TIMEOUT)
+                except error.TestFail, ex:
+                    errors.append("%s - %s" % (test_case, str(ex)))
                 if plugged_after_suspend is not plugged_before_suspend:
                     chameleon_port.set_plug(plugged_after_suspend)
 
@@ -97,7 +101,10 @@ class display_HotPlugAtSuspend(test.test):
                 time.sleep(self.TIME_MARGIN_BEFORE_RESUME)
 
                 logging.info('WAITING FOR RESUME...')
-                host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
+                try:
+                    host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT)
+                except error.TestFail, ex:
+                    errors.append("%s - %s" % (test_case, str(ex)))
 
                 logging.info('Resumed back')
 
@@ -111,7 +118,7 @@ class display_HotPlugAtSuspend(test.test):
                     if test_mirrored and (
                             not display_facade.is_mirrored_enabled()):
                         error_message = 'Error: not resumed to mirrored mode'
-                        errors.append(error_message)
+                        errors.append("%s - %s" % (test_case, error_message))
                         logging.error(error_message)
                         logging.info('Set mirrored: %s', True)
                         display_facade.set_mirrored(True)
