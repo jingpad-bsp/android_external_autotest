@@ -489,16 +489,19 @@ class CrosWidgetHandler(WidgetHandler):
     Properties:
         _audio_facade: An AudioFacadeRemoteAdapter to access Cros device
                        audio functionality.
+        _plug_handler: A PlugHandler for performing plug and unplug.
 
     """
-    def __init__(self, audio_facade):
+    def __init__(self, audio_facade, plug_handler):
         """Initializes a CrosWidgetHandler.
 
         @param audio_facade: An AudioFacadeRemoteAdapter to access Cros device
                              audio functionality.
+        @param plug_handler: A PlugHandler object for plug and unplug.
 
         """
         self._audio_facade = audio_facade
+        self._plug_handler = plug_handler
 
 
     def plug(self):
@@ -507,13 +510,13 @@ class CrosWidgetHandler(WidgetHandler):
         # will need access to ChameleonBoard and interface name.
         # For widget on 3.5mm jack(Headphone and External Mic), we need to
         # plug/unplug 3.5mm jack by fixture controlled by Chameleon.
-        pass
+        self._plug_handler.plug()
 
 
     def unplug(self):
         """Unplugs this widget."""
         # TODO(cychiang): Similar to plug().
-        pass
+        self._plug_handler.unplug()
 
 
 class PlugHandler(object):

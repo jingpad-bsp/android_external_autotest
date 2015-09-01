@@ -266,10 +266,16 @@ class AudioWidgetFactory(object):
                       role of audio_port.
 
             """
+            # Currently the jack plugger control is handled in
+            # audio_widget_link and it will be cleaned up by @cychiang.
+            plug_handler = audio_widget.DummyPlugHandler()
+
             if audio_port.role == 'sink':
-                return audio_widget.CrosInputWidgetHandler(self._audio_facade)
+                return audio_widget.CrosInputWidgetHandler(self._audio_facade,
+                                                           plug_handler)
             else:
-                return audio_widget.CrosOutputWidgetHandler(self._audio_facade)
+                return audio_widget.CrosOutputWidgetHandler(self._audio_facade,
+                                                            plug_handler)
 
 
         def _create_audio_widget(audio_port, handler):
