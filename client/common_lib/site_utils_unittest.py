@@ -124,5 +124,20 @@ class IsPuppylabVmUnittest(unittest.TestCase):
         self.assertFalse(utils.is_puppylab_vm('chromeos-server.mtv:8001'))
 
 
+class IsInSameSubnetUnittest(unittest.TestCase):
+    """Test is_in_same_subnet function."""
+
+    def test_is_in_same_subnet(self):
+        """Test is_in_same_subnet function."""
+        self.assertTrue(utils.is_in_same_subnet('192.168.0.0', '192.168.1.2',
+                                                23))
+        self.assertFalse(utils.is_in_same_subnet('192.168.0.0', '192.168.1.2',
+                                                24))
+        self.assertTrue(utils.is_in_same_subnet('192.168.0.0', '192.168.0.255',
+                                                24))
+        self.assertFalse(utils.is_in_same_subnet('191.168.0.0', '192.168.0.0',
+                                                24))
+
+
 if __name__ == "__main__":
     unittest.main()

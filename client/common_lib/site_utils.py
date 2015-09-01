@@ -8,6 +8,7 @@ import os
 import re
 import signal
 import socket
+import struct
 import time
 import urllib2
 import uuid
@@ -570,3 +571,21 @@ def verify_flash_installed():
     """
     if not is_flash_installed():
         raise error.TestNAError('No Adobe Flash binary installed.')
+
+
+def is_in_same_subnet(ip_1, ip_2, mask_bits=24):
+    """Check if two IP addresses are in the same subnet with given mask bits.
+
+    The two IP addresses are string of IPv4, e.g., '192.168.0.3'.
+
+    @param ip_1: First IP address to compare.
+    @param ip_2: Second IP address to compare.
+    @param mask_bits: Number of mask bits for subnet comparison. Default to 24.
+
+    @return: True if the two IP addresses are in the same subnet.
+
+    """
+    mask = ((2L<<mask_bits-1) -1)<<(32-mask_bits)
+    ip_1_num = struct.unpack('!I', socket.inet_aton(ip_1))[0]
+    ip_2_num = struct.unpack('!I', socket.inet_aton(ip_2))[0]
+    return ip_1_num & mask == ip_2_num & mask
