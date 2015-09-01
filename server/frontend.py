@@ -13,12 +13,18 @@ For docs, see:
     http://docs.djangoproject.com/en/dev/ref/models/querysets/#queryset-api
 """
 
-import getpass, os, time, traceback, re
+import getpass
+import os
+import re
+import time
+import traceback
+
 import common
 from autotest_lib.frontend.afe import rpc_client_lib
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.tko import db
 
 
@@ -30,6 +36,8 @@ form_ntuples_from_machines = server_utils.form_ntuples_from_machines
 
 GLOBAL_CONFIG = global_config.global_config
 DEFAULT_SERVER = 'autotest'
+
+_tko_timer = autotest_stats.Timer('tko')
 
 def dump_object(header, obj):
     """
@@ -129,6 +137,7 @@ class TKO(RpcClient):
         self._db = None
 
 
+    @_tko_timer.decorate
     def get_job_test_statuses_from_db(self, job_id):
         """Get job test statuses from the database.
 
@@ -141,7 +150,7 @@ class TKO(RpcClient):
         @returns a TestStatus object of the resulting information.
         """
         if self._db is None:
-          self._db = db.db()
+            self._db = db.db()
         fields = ['status', 'test_name', 'subdir', 'reason',
                   'test_started_time', 'test_finished_time', 'afe_job_id',
                   'job_owner', 'hostname', 'job_tag']

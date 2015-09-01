@@ -6,6 +6,7 @@ import re, os, sys, time, random
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend import database_settings_helper
 from autotest_lib.server import site_utils
 from autotest_lib.tko import utils
@@ -142,6 +143,7 @@ class db_sql(object):
                     try:
                         self._random_delay()
                         self._init_db()
+                        autotest_stats.Counter('tko_db_error').increment()
                     except OperationalError, e:
                         self._log_operational_error(e)
             else:
@@ -161,8 +163,17 @@ class db_sql(object):
             sys.stdout.write('SQL: ' + str(value) + '\n')
 
 
+    def _commit(self):
+        """Private method for function commit to call for retry.
+        """
+        return self.con.commit()
+
+
     def commit(self):
-        self.con.commit()
+        if self.autocommit:
+            return self.run_with_retry(self._commit)
+        else:
+            return self._commit()
 
 
     def rollback(self):
