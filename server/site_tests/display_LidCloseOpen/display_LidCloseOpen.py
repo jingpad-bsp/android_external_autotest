@@ -21,32 +21,13 @@ class display_LidCloseOpen(test.test):
     # Allowed timeout for the transition of suspend.
     TIMEOUT_SUSPEND_TRANSITION = 30
     # Allowed timeout for the transition of resume.
-    TIMEOUT_RESUME_TRANSITION = 30
+    TIMEOUT_RESUME_TRANSITION = 60
+    # Time to allow for table video input
+    WAIT_TIME_STABLE_VIDEO_INPUT = 10
     # Time to allow lid transition to take effect
     WAIT_TIME_LID_TRANSITION = 5
     # Time to allow display port plug transition to take effect
     WAIT_TIME_PLUG_TRANSITION = 5
-
-    def wait_to_suspend(self):
-        """Wait for DUT to suspend.
-
-        @raise TestFail: If fail to suspend in time.
-        """
-        if not self.host.ping_wait_down(
-            timeout=self.TIMEOUT_SUSPEND_TRANSITION):
-            raise error.TestFail('Failed to SUSPEND within timeout')
-        logging.info('DUT IS SUSPENDED.')
-
-
-    def wait_to_resume(self):
-        """Wait for DUT to resume.
-
-        @raise TestFail: if fail to resume in time.
-        """
-        if not self.host.wait_up(timeout=self.TIMEOUT_RESUME_TRANSITION):
-            raise error.TestFail(
-                'Failed to RESUME within timeout')
-        logging.info('DUT IS RESUMED.')
 
 
     def close_lid(self):
@@ -66,21 +47,21 @@ class display_LidCloseOpen(test.test):
     def check_primary_display_on_internal_screen(self):
         """Checks primary display is on onboard/internal screen"""
         if not self.display_facade.is_display_primary(internal=True):
-            self.errors.append('Primary display is not on internal screen')
+            raise error.TestFail('Primary display is not on internal screen')
 
 
     def check_primary_display_on_external_screen(self):
         """Checks primary display is on external screen"""
         if not self.display_facade.is_display_primary(internal=False):
-            self.errors.append('Primary display is not on external screen')
+            raise error.TestFail('Primary display is not on external screen')
 
 
     def check_mode(self):
         """Checks the display mode is as expected"""
         if self.display_facade.is_mirrored_enabled() is not self.test_mirrored:
-            self.errors.append('Display mode %s is not preserved!' %
-                                ('mirrored' if self.test_mirrored
-                                    else 'extended'))
+            raise error.TestFail('Display mode %s is not preserved!' %
+                                 ('mirrored' if self.test_mirrored
+                                     else 'extended'))
 
 
     def check_docked(self):
@@ -92,7 +73,7 @@ class display_LidCloseOpen(test.test):
         self.check_primary_display_on_external_screen()
         logging.info('DUT IS DOCKED!')
         return self.chameleon_port.wait_video_input_stable(
-            timeout=self.WAIT_TIME_LID_TRANSITION)
+            timeout=self.WAIT_TIME_STABLE_VIDEO_INPUT)
 
 
     def check_still_suspended(self):
@@ -162,46 +143,50 @@ class display_LidCloseOpen(test.test):
                 'PLUG' if plugged_before_open else 'UNPLUG')
 
             is_suspended = False
+            boot_id = self.host.get_boot_id()
 
             # Plug before close
             self.chameleon_port.set_plug(plugged_before_close)
             self.chameleon_port.wait_video_input_stable(
-                    timeout=self.WAIT_TIME_PLUG_TRANSITION)
+                    timeout=self.WAIT_TIME_STABLE_VIDEO_INPUT)
 
             # Close lid and check
             self.close_lid()
             if plugged_before_close:
                 self.check_docked()
             else:
-                self.wait_to_suspend()
+                self.host.test_wait_for_sleep(self.TIMEOUT_SUSPEND_TRANSITION)
                 is_suspended = True
 
             # Plug after close and check
             if plugged_after_close is not plugged_before_close:
                 self.chameleon_port.set_plug(plugged_after_close)
                 self.chameleon_port.wait_video_input_stable(
-                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
+                        timeout=self.WAIT_TIME_STABLE_VIDEO_INPUT)
                 if not plugged_before_close:
                     self.check_still_suspended()
                 else:
-                    self.wait_to_suspend()
+                    self.host.test_wait_for_sleep(
+                        self.TIMEOUT_SUSPEND_TRANSITION)
                     is_suspended = True
 
             # Plug before open and check
             if plugged_before_open is not plugged_after_close:
                 self.chameleon_port.set_plug(plugged_before_open)
                 self.chameleon_port.wait_video_input_stable(
-                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
+                        timeout=self.WAIT_TIME_STABLE_VIDEO_INPUT)
                 if not plugged_before_close or not plugged_after_close:
                     self.check_still_suspended()
                 else:
-                    self.wait_to_suspend()
+                    self.host.test_wait_for_sleep(
+                        self.TIMEOUT_SUSPEND_TRANSITION)
                     is_suspended = True
 
             # Open lid and check
             self.open_lid()
             if is_suspended:
-                self.wait_to_resume()
+                self.host.test_wait_for_resume(boot_id,
+                                               self.TIMEOUT_RESUME_TRANSITION)
                 is_suspended = False
 
             # Check internal screen switch to primary display
@@ -211,7 +196,7 @@ class display_LidCloseOpen(test.test):
             if not plugged_before_open:
                 self.chameleon_port.set_plug(True)
                 self.chameleon_port.wait_video_input_stable(
-                        timeout=self.WAIT_TIME_PLUG_TRANSITION)
+                        timeout=self.WAIT_TIME_STABLE_VIDEO_INPUT)
 
             # Check status
             self.check_external_display()
