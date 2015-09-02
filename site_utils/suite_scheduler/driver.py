@@ -8,7 +8,11 @@ import base_event, board_enumerator, build_event
 import task, timed_event
 
 import common
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils
+
+
+_timer = autotest_stats.Timer('suite_scheduler')
 
 class Driver(object):
     """Implements the main loop of the suite_scheduler.
@@ -120,12 +124,15 @@ class Driver(object):
                 self.HandleEventsOnce(mv)
             except board_enumerator.EnumeratorException as e:
                 logging.warning('Failed to enumerate boards: %r', e)
-            mv.Update()
-            task.TotMilestoneManager().refresh()
+            with _timer.get_client('manifest_versions_update'):
+                mv.Update()
+            with _timer.get_client('tot_milestone_manager_refresh'):
+                task.TotMilestoneManager().refresh()
             time.sleep(self._LOOP_INTERVAL_SECONDS)
             self.RereadAndReprocessConfig(config, mv)
 
 
+    @_timer.decorate
     def HandleEventsOnce(self, mv):
         """One turn through the loop.  Separated out for unit testing.
 
