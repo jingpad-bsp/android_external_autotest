@@ -4,7 +4,8 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "firmware_FWtries.dev"
-SUITE = "faft,faft_bios,faft_normal,faft_lv1"
+ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv1, suite:faft_dev_ryu"
+SUITE = "faft,faft_bios,faft_dev,faft_lv1,faft_dev_ryu"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
