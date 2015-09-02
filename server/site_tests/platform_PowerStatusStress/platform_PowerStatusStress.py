@@ -119,7 +119,7 @@ class platform_PowerStatusStress(test.test):
         self.host = host
         dut_type = host.get_board_type()
         if dut_type != 'CHROMEBOOK':
-            raise error.TestError(
+            raise error.TestNAError(
                     'This test is not supported on %s' %  dut_type)
         self.autotest_client = autotest.Autotest(self.host)
 
