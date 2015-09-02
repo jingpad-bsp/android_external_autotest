@@ -536,6 +536,23 @@ class PlugHandler(object):
         raise NotImplementedError('unplug() not implemented.')
 
 
+class DummyPlugHandler(PlugHandler):
+    """A dummy class that does not do anything for plug() or unplug().
+
+    This class can be used by Cros widgets that have alternative ways of
+    performing plug and unplug.
+
+    """
+
+    def plug(self):
+        """Does nothing for plug."""
+        pass
+
+    def unplug(self):
+        """Does nothing for unplug."""
+        pass
+
+
 class CrosInputWidgetHandlerError(Exception):
     """Error in CrosInputWidgetHandler."""
 
