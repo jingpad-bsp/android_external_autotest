@@ -119,7 +119,8 @@ CameraTest.prototype = {
   stop: function() {
     clearInterval(this.videoFrameChecker);
     saveResult(this.resolution, this.results);
-    this.localStream.stop();
+    track = this.localStream.getTracks()[0];
+    track.stop();
     this.localVideo.src = null;
   },
 }
