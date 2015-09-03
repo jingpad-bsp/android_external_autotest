@@ -14,9 +14,9 @@ class firmware_ECHash(FirmwareTest):
     Servo based EC hash recompute test.
 
     This test ensures that the AP will ask the EC to recompute the hash if
-    the current hash isn't the right size/offset. Use 'ectool echash' command
-    to request the hash of some other part of EC EEPROM, then warm-reboot
-    the AP and use 'ectool echash' to see what hash the EC has after booting.
+    the current hash isn't the right size/offset. Use the 'echash' command
+    of EC tool to request the hash of some other part of EC EEPROM, then
+    warm-reboot the AP and check what hash the EC has after booting.
     AP-RW should have requested the EC recompute the hash of EC-RW.
     """
     version = 1
@@ -33,20 +33,26 @@ class firmware_ECHash(FirmwareTest):
         super(firmware_ECHash, self).cleanup()
 
     def get_echash(self):
-        """Get the current EC hash via ectool."""
-        command = 'ectool echash'
+        """Get the current EC hash via ectool/fwtool."""
+        if self.faft_client.system.has_host():
+            command = 'fwtool ec echash'
+        else:
+            command = 'ectool echash'
         lines = self.faft_client.system.run_shell_command_get_output(command)
         pattern = re.compile('hash:    ([0-9a-f]{64})')
         for line in lines:
             matched = pattern.match(line)
             if matched:
                 return matched.group(1)
-        raise error.TestError("Wrong output of 'ectool echash': \n%s" %
-                              '\n'.join(lines))
+        raise error.TestError("Wrong output of '%s': \n%s" %
+                              (command, '\n'.join(lines)))
 
     def invalidate_echash(self):
         """Invalidate the EC hash by requesting hashing some other part."""
-        command = 'ectool echash recalc 0 4'
+        if self.faft_client.system.has_host():
+            command = 'fwtool ec echash recalc 0 4'
+        else:
+            command = 'ectool echash recalc 0 4'
         self.faft_client.system.run_shell_command(command)
 
     def save_echash_and_invalidate(self):
