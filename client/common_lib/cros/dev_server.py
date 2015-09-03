@@ -11,6 +11,7 @@ import logging
 import multiprocessing
 import os
 import re
+import socket
 import sys
 import urllib2
 
@@ -339,17 +340,73 @@ class DevServer(object):
 
 
     @classmethod
-    def resolve(cls, build):
-        """"Resolves a build to a devserver instance.
+    def get_devserver_in_same_subnet(cls, ip):
+        """Get the devservers in the same subnet of the given ip.
+
+        @param ip: The IP address of a dut to look for devserver.
+
+        @return: A list of devservers in the same subnet of the given ip.
+
+        """
+        devservers = []
+        for server in cls.servers():
+            server_name = ImageServer.get_server_name(server)
+            try:
+                server_ip = socket.gethostbyname(server_name)
+                if utils.is_in_same_subnet(server_ip, ip, 19):
+                    devservers.append(server)
+            except socket.gaierror:
+                pass
+        return devservers
+
+
+    @classmethod
+    def get_healthy_devserver(cls, build, devservers):
+        """"Get a healthy devserver instance from the list of devservers.
 
         @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
+
+        @return: A DevServer object of a healthy devserver. Return None if no
+                 healthy devserver is found.
+
         """
-        devservers = cls.servers()
         while devservers:
             hash_index = hash(build) % len(devservers)
             devserver = devservers.pop(hash_index)
             if cls.devserver_healthy(devserver):
                 return cls(devserver)
+
+
+    @classmethod
+    def resolve(cls, build, hostname=None):
+        """"Resolves a build to a devserver instance.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514).
+        @param hostname: The hostname of dut that requests a devserver. It's
+                         used to make sure a devserver in the same subnet is
+                         preferred.
+        """
+        host_ip = None
+        if hostname:
+            try:
+                host_ip = socket.gethostbyname(hostname)
+            except socket.gaierror as e:
+                logging.error('Failed to get IP address of %s, error: %s. Will '
+                              'pick a devserver without subnet constraint.',
+                              hostname, e)
+        if host_ip:
+            devservers = cls.get_devserver_in_same_subnet(host_ip)
+            devserver = cls.get_healthy_devserver(build, devservers)
+            if devserver:
+                return devserver
+            else:
+                logging.warn('All devservers in the same subnet are currently '
+                             'down. pick a devserver without subnet '
+                             'constraint.')
+        devservers = cls.servers()
+        devserver = cls.get_healthy_devserver(build, devservers)
+        if devserver:
+            return devserver
         else:
             logging.error('All devservers are currently down!!!')
             raise DevServerException('All devservers are currently down!!!')
