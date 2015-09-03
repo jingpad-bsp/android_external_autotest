@@ -241,6 +241,14 @@ class RPCFunctions(object):
         """
         return self._os_if.run_host_shell_command_get_output(command)
 
+    def _host_run_nonblock_shell_command(self, command):
+        """Run non-blocking shell command
+
+        @param command: A shell command to be run.
+        @return: none
+        """
+        return self._os_if.run_host_shell_command(command, False)
+
     def _system_software_reboot(self):
         """Request software reboot."""
         self._os_if.run_shell_command('reboot')

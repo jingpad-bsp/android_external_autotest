@@ -115,10 +115,10 @@ class OSInterface(object):
         """Run shell command and return its console output."""
         return self.shell.run_command_get_output(cmd)
 
-    def run_host_shell_command(self, cmd):
+    def run_host_shell_command(self, cmd, block=True):
         """Run a shell command on the host."""
         if self.host_shell:
-            self.host_shell.run_command(cmd)
+            self.host_shell.run_command(cmd, block)
         else:
             raise OSInterfaceError('There is no host for DUT.')
 

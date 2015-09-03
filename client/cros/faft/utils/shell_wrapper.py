@@ -19,19 +19,21 @@ class LocalShell(object):
     def init(self, os_if):
         self._os_if = os_if
 
-    def _run_command(self, cmd):
+    def _run_command(self, cmd, block=True):
         """Helper function of run_command() methods.
 
         Return the subprocess.Popen() instance to provide access to console
-        output in case command succeeded.
+        output in case command succeeded.  If block=False, will not wait for
+        process to return before returning.
         """
         self._os_if.log('Executing %s' % cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
-        process.wait()
+        if block:
+            process.wait()
         return process
 
-    def run_command(self, cmd):
+    def run_command(self, cmd, block=True):
         """Run a shell command.
 
         In case of the command returning an error print its stdout and stderr
@@ -40,7 +42,7 @@ class LocalShell(object):
 
         In case of command error raise an ShellError exception.
         """
-        process = self._run_command(cmd)
+        process = self._run_command(cmd, block)
         if process.returncode:
             err = ['Failed running: %s' % cmd]
             err.append('stdout:')
