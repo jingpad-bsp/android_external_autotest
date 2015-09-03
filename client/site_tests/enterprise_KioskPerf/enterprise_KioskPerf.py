@@ -17,12 +17,6 @@ TOTAL_TEST_DURATION = 600 # change the test time to 7 days [seconds].
 # Time to exclude from calculation after launching the demo [seconds].
 STABILIZATION_DURATION = 20
 
-# Time in seconds to wait for cpu idle until giveup.
-WAIT_FOR_IDLE_CPU_TIMEOUT = 60.0
-# Maximum percent of cpu usage considered as idle.
-# Since Kiosk app runs in continuous mode, setting the idle % higher.
-CPU_IDLE_USAGE = 0.6
-
 _PERF_RESULT_FILE = '/tmp/perf.csv'
 
 class enterprise_KioskPerf(test.test):
@@ -39,11 +33,6 @@ class enterprise_KioskPerf(test.test):
 
         @returns a dictionary that contains the test result.
         """
-        if not utils.wait_for_idle_cpu(WAIT_FOR_IDLE_CPU_TIMEOUT,
-                                       CPU_IDLE_USAGE):
-            raise error.TestError('Could not get idle CPU.')
-        if not utils.wait_for_cool_machine():
-            raise error.TestError('Could not get cold machine.')
         cpu_usage_start = site_utils.get_cpu_usage()
         time.sleep(MEASUREMENT_DURATION)
         cpu_usage_end = site_utils.get_cpu_usage()
