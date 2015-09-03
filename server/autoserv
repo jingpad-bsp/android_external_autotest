@@ -32,7 +32,9 @@ try:
 except ImportError:
     results_mocker = None
 
-require_atfork = global_config.global_config.get_config_value(
+_CONFIG = global_config.global_config
+
+require_atfork = _CONFIG.get_config_value(
         'AUTOSERV', 'require_atfork_module', type=bool, default=True)
 
 
@@ -50,7 +52,7 @@ try:
     atfork.stdlib_fixer.fix_logging_module()
 except ImportError, e:
     from autotest_lib.client.common_lib import global_config
-    if global_config.global_config.get_config_value(
+    if _CONFIG.get_config_value(
             'AUTOSERV', 'require_atfork_module', type=bool, default=False):
         print >>sys.stderr, 'Please run utils/build_externals.py'
         print e
@@ -70,6 +72,10 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 # Control segment to stage server-side package.
 STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE = server_job._control_segment_path(
         'stage_server_side_package')
+
+# Command line to start servod in a moblab.
+START_SERVOD_CMD = 'sudo start servod BOARD=%s PORT=%s'
+STOP_SERVOD_CMD = 'sudo stop servod'
 
 def log_alarm(signum, frame):
     logging.error("Received SIGALARM. Ignoring and continuing on.")
@@ -237,6 +243,51 @@ def correct_results_folder_permission(results):
         autotest_es.post(use_http=True, type_str='correct_results_folder_failure',
                          metadata=metadata)
         raise
+
+
+def _start_servod(machine):
+    """Try to start servod in moblab if it's not already running or running with
+    different board or port.
+
+    @param machine: Name of the dut used for test.
+    """
+    if not utils.is_moblab():
+        return
+
+    try:
+        afe = frontend.AFE()
+        board = server_utils.get_board_from_afe(machine, afe)
+        hosts = afe.get_hosts(hostname=machine)
+        servo_host = hosts[0].attributes.get('servo_host', None)
+        servo_port = hosts[0].attributes.get('servo_port', 9999)
+        if not servo_host in ['localhost', '127.0.0.1']:
+            return
+    except (urllib2.HTTPError, urllib2.URLError):
+        # Ignore error if RPC failed to get board
+        logging.error('Failed to get board name from AFE. Start servod is '
+                      'aborted')
+        return
+
+    try:
+        pid = utils.run('pgrep servod').stdout
+        cmd_line = utils.run('ps -fp %s' % pid).stdout
+        if ('--board %s' % board in cmd_line and
+            '--port %s' % servo_port in cmd_line):
+            logging.debug('Servod is already running with given board and port.'
+                          ' There is no need to restart servod.')
+            return
+        logging.debug('Servod is running with different board or port. '
+                      'Stopping existing servod.')
+        utils.run('sudo stop servod')
+    except error.CmdError:
+        # servod is not running.
+        pass
+
+    try:
+        utils.run(START_SERVOD_CMD % (board, servo_port))
+        logging.debug('Servod is started')
+    except error.CmdError as e:
+        logging.error('Servod failed to be started, error: %s', e)
 
 
 def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
@@ -435,6 +486,11 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             elif cleanup:
                 job.cleanup(job_labels)
             else:
+                auto_start_servod = _CONFIG.get_config_value(
+                        'AUTOSERV', 'auto_start_servod', type=bool,
+                        default=False)
+                if auto_start_servod and len(machines) == 1:
+                    _start_servod(machines[0])
                 if use_ssp:
                     try:
                         _run_with_ssp(container_name, job_or_task_id, results,
@@ -500,8 +556,8 @@ def record_autoserv(options, duration_secs):
 def main():
     start_time = datetime.datetime.now()
     # White list of tests with run time measurement enabled.
-    measure_run_time_tests_names = global_config.global_config.get_config_value(
-                        'AUTOSERV', 'measure_run_time_tests', type=str)
+    measure_run_time_tests_names = _CONFIG.get_config_value(
+            'AUTOSERV', 'measure_run_time_tests', type=str)
     if measure_run_time_tests_names:
         measure_run_time_tests = [t.strip() for t in
                                   measure_run_time_tests_names.split(',')]
@@ -638,9 +694,9 @@ def main():
     # testing_exceptions: test_suite,dummy_Pass. You can figure out
     # what label autoserv is invoked with by looking through the logs of a test
     # for the autoserv command's -l option.
-    testing_exceptions = global_config.global_config.get_config_value(
+    testing_exceptions = _CONFIG.get_config_value(
             'AUTOSERV', 'testing_exceptions', type=list, default=[])
-    test_mode = global_config.global_config.get_config_value(
+    test_mode = _CONFIG.get_config_value(
             'AUTOSERV', 'testing_mode', type=bool, default=False)
     test_mode = (results_mocker and test_mode and not
                  any([ex in parser.options.label
