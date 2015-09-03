@@ -7,9 +7,6 @@ import logging
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from telemetry.core import exceptions
-
-from telemetry.core import exceptions
 
 class ChromeNetworkingTestContext(object):
     """
@@ -37,7 +34,6 @@ class ChromeNetworkingTestContext(object):
 
     NETWORK_TEST_EXTENSION_PATH = ('/usr/local/autotest/cros/networking/'
                                    'chrome_testing/network_test_ext')
-    NETWORK_TEST_EXT_READY_TIMEOUT = 10
     FIND_NETWORKS_TIMEOUT = 5
 
     # Network type strings used by chrome.networkingPrivate
@@ -71,21 +67,8 @@ class ChromeNetworkingTestContext(object):
         self._ensure_network_test_extension_is_ready()
 
     def _ensure_network_test_extension_is_ready(self):
-        # Wait until the network test extension has fully executed its
-        # background script before attempting to run any JavaScript on it.
-        # TODO(armansito): This method won't be necessary once crbug.com/251913
-        # gets fixed.
-        extension = self.network_test_extension
-        def _check_chrome_testing_is_defined():
-            try:
-                extension.EvaluateJavaScript('chromeTesting')
-                return True
-            except exceptions.EvaluateException:
-                return False
-        utils.poll_for_condition(
-                _check_chrome_testing_is_defined,
-                error.TestFail('network_test_ext was never ready.'),
-                self.NETWORK_TEST_EXT_READY_TIMEOUT)
+        self.network_test_extension.WaitForJavaScriptExpression(
+            "typeof chromeTesting != 'undefined'")
 
     def _get_extension(self, path):
         if self._chrome is None:
