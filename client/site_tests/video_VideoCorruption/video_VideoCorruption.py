@@ -4,8 +4,7 @@
 
 import os
 
-from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 
 WAIT_TIMEOUT_S = 30
@@ -28,10 +27,6 @@ class video_VideoCorruption(test.test):
 
             tab.EvaluateJavaScript(
                     'loadSourceAndRunCorruptionTest("%s")' % video)
-
             # Expect corruption being detected after playing corrupted video.
-            utils.poll_for_condition(
-                    lambda: tab.EvaluateJavaScript('corruptionDetected()'),
-                    exception=error.TestError('Corruption test is timeout'),
-                    timeout=WAIT_TIMEOUT_S,
-                    sleep_interval=1)
+            tab.WaitForJavaScriptExpression('corruptionDetected();')
+

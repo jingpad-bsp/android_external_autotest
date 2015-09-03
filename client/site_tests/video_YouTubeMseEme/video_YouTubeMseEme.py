@@ -40,31 +40,13 @@ class video_YouTubeMseEme(test.test):
         self.load_javascript(self.TEST_JS)
 
 
-    def check_event_happened(self, event_name, delay_time_sec=5):
+    def _check_event_happened(self, event_name):
         """A wrapper to check if an event in JS has fired.
 
         @param event_name: A string to denote the name of the event to check.
-        @param delay_time_sec: Time to wait before querying the test (float).
-                This is to give the VM some time to schedule the next execution.
-
-        @returns: A boolean indicating if the event has fired.
-
         """
-        def _event_reported_condition(event_name):
-            """An inner function to test if the event has happened.
-
-            @param event_name: A string to denote the event's name to check.
-
-            @returns: A boolean indicating if the event happened.
-
-            """
-            return self.tab.EvaluateJavaScript(
-                    'window.__eventReporter["%s"] === true;' % event_name)
-
-        return utils.poll_for_condition(
-                lambda: _event_reported_condition(event_name),
-                timeout=delay_time_sec,
-                desc=event_name)
+        self.tab.WaitForJavaScriptExpression(
+            'window.__eventReporter["%s"] === true;' % event_name)
 
 
     def load_javascript(self, sub_path):
@@ -122,10 +104,7 @@ class video_YouTubeMseEme(test.test):
 
         """
         self.tab.ExecuteJavaScript('window.__testAttach();')
-        self.assert_(
-                self.check_event_happened('sourceopen'),
-                msg=('test_attach_source failed since "sourceopen" event did '
-                     'not fire.'))
+        self._check_event_happened('sourceopen')
 
 
     def test_add_source_buffer(self):

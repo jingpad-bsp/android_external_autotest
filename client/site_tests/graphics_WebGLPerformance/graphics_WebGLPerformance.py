@@ -34,19 +34,6 @@ class graphics_WebGLPerformance(test.test):
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
-    def poll_for_condition(self, tab, condition, error_msg):
-        """Waits until javascript condition is true.
-
-        @param tab:       The tab the javascript/condition runs on.
-        @param condition: The javascript condition to evaluate.
-        @param error_msg: Test failure error string on timeout.
-        """
-        utils.poll_for_condition(
-            lambda: tab.EvaluateJavaScript(condition),
-            exception=error.TestError(error_msg),
-            timeout=self.test_duration_secs,
-            sleep_interval=1)
-
     def run_performance_test(self, browser, test_url):
         """Runs the performance test from the given url.
 
@@ -63,8 +50,7 @@ class graphics_WebGLPerformance(test.test):
         tab.Activate()
 
         # Wait for test completion.
-        self.poll_for_condition(tab, 'time_ms_geom_mean > 0.0',
-            'Timed out running the test.')
+        tab.WaitForJavaScriptExpression('time_ms_geom_mean > 0.0')
 
         # Get the geometric mean of individual runtimes.
         time_ms_geom_mean = tab.EvaluateJavaScript(

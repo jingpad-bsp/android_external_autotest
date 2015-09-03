@@ -52,9 +52,7 @@ class power_FlashVideoSuspend(test.test):
         tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
         logging.info('video url is %s', video_url)
         tab.EvaluateJavaScript('play("%s")' % video_url)
-        utils.poll_for_condition(
-            lambda: tab.EvaluateJavaScript('typeof player != "undefined"'),
-            exception=error.TestError('Timeout wating player get ready.'))
+        tab.WaitForJavaScriptExpression('typeof player != "undefined"')
 
         self.check_video_is_playing(tab)
 

@@ -26,7 +26,10 @@ class video_MultiplePlayback(test.test):
 
 
     def verify_localvideo_playback(self, tab1):
-        """To verify local video playback """
+        """To verify local video playback
+
+        @param tab1: browser tab.
+        """
 
         playback = 0 # seconds
         prev_playback = 0
@@ -55,12 +58,7 @@ class video_MultiplePlayback(test.test):
                 os.path.join(self.bindir, 'video.html')))
 
         # Waiting for test video to load.
-        wait_time = 0 # seconds
-        utils.poll_for_condition(
-                lambda: tab1.EvaluateJavaScript('testvideo.currentTime') < 1.0,
-                exception=error.TestError('Video failed to load.'),
-                timeout=WAIT_TIMEOUT_S,
-                sleep_interval=1)
+        tab1.WaitForJavaScriptExpression('testvideo.currentTime < 1.0')
 
         tab2 = browser.tabs.New()
         tab2.Navigate(browser.http_server.UrlOf(
