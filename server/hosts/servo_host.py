@@ -38,6 +38,7 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 
+_CONFIG = global_config.global_config
 
 class ServoHostException(error.AutoservError):
     """This is the base class for exceptions raised by ServoHost."""
@@ -419,11 +420,11 @@ class ServoHost(ssh_host.SSHHost):
                          'the host.', self.hostname)
             return
 
-        board = global_config.global_config.get_config_value(
+        board = _CONFIG.get_config_value(
                 'CROS', 'servo_board')
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         target_version = afe.run('get_stable_version', board=board)
-        build_pattern = global_config.global_config.get_config_value(
+        build_pattern = _CONFIG.get_config_value(
                 'CROS', 'stable_build_pattern')
         target_build = build_pattern % (board, target_version)
         target_build_number = server_site_utils.ParseBuildName(
@@ -670,7 +671,12 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
     @returns: A ServoHost object or None. See comments above.
 
     """
-    if not utils.is_moblab():
+    if not utils.is_in_container():
+        is_moblab = utils.is_moblab()
+    else:
+        is_moblab = _CONFIG.get_config_value(
+                'SSP', 'is_moblab', type=bool, default=False)
+    if not is_moblab:
         dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
         if dut_is_hostname:
             lab_servo_hostname = make_servo_hostname(dut)
@@ -687,6 +693,10 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
             servo_args[SERVO_HOST_ATTR] = hosts[0].attributes[SERVO_HOST_ATTR]
             servo_args[SERVO_PORT_ATTR] = hosts[0].attributes.get(
                     SERVO_PORT_ATTR, 9999)
+            if (utils.is_in_container() and
+                servo_args[SERVO_HOST_ATTR] in ['localhost', '127.0.0.1']):
+                servo_args[SERVO_HOST_ATTR] = _CONFIG.get_config_value(
+                        'SSP', 'host_container_ip', type=str, default=None)
 
     if not is_in_lab:
         if servo_args is None:

@@ -253,10 +253,16 @@ class DeployConfigManager(object):
         self.container.attach_run('echo $\'\n[SERVER]\nhostname: %s\n\' >> %s' %
                                   (new_host, shadow_config))
 
-        # Update SSP/user
+        # Update configurations in SSP section:
+        # user: The user running current process.
+        # is_moblab: True if the autotest server is a Moblab instance.
+        # host_container_ip: IP address of the lxcbr0 interface. Process running
+        #     inside container can make RPC through this IP.
         self.container.attach_run(
-                'echo $\'\n[SSP]\nuser: %s\n\' >> %s' %
-                (getpass.getuser(), shadow_config))
+                'echo $\'\n[SSP]\nuser: %s\nis_moblab: %s\n'
+                'host_container_ip: %s\n\' >> %s' %
+                (getpass.getuser(), bool(utils.is_moblab()),
+                 lxc_utils.get_host_ip(), shadow_config))
 
 
     def _modify_ssh_config(self):
