@@ -40,10 +40,12 @@ _RELATIVE_LEVEL = {
 
 _SOURCE_LEVEL_TABLE = {
         ids.ChameleonIds.LINEOUT: _AudioLevel.LINE_LEVEL,
+        ids.ChameleonIds.USBOUT: _AudioLevel.DIGITAL,
         ids.CrosIds.HDMI: _AudioLevel.DIGITAL,
         ids.CrosIds.HEADPHONE: _AudioLevel.LINE_LEVEL,
         ids.CrosIds.SPEAKER: _AudioLevel.LINE_LEVEL,
         ids.CrosIds.BLUETOOTH_HEADPHONE: _AudioLevel.DIGITAL,
+        ids.CrosIds.USBOUT: _AudioLevel.DIGITAL,
         ids.PeripheralIds.MIC: _AudioLevel.MIC_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.LINE_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_TX: _AudioLevel.DIGITAL,
@@ -52,9 +54,11 @@ _SOURCE_LEVEL_TABLE = {
 _SINK_LEVEL_TABLE = {
         ids.ChameleonIds.HDMI: _AudioLevel.DIGITAL,
         ids.ChameleonIds.LINEIN: _AudioLevel.LINE_LEVEL,
+        ids.ChameleonIds.USBIN: _AudioLevel.DIGITAL,
         ids.CrosIds.EXTERNAL_MIC: _AudioLevel.MIC_LEVEL,
         ids.CrosIds.INTERNAL_MIC: _AudioLevel.MIC_LEVEL,
         ids.CrosIds.BLUETOOTH_MIC: _AudioLevel.DIGITAL,
+        ids.CrosIds.USBIN: _AudioLevel.DIGITAL,
         ids.PeripheralIds.SPEAKER: _AudioLevel.LINE_LEVEL,
         ids.PeripheralIds.BLUETOOTH_DATA_RX: _AudioLevel.DIGITAL,
         ids.PeripheralIds.BLUETOOTH_DATA_TX:
