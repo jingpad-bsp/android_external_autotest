@@ -33,6 +33,10 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                                  'test_data/edids/HDMI_DELL_U2410.txt')
         golden_file = audio_test_data.SWEEP_TEST_FILE
 
+        # Dump audio diagnostics data for debugging.
+        audio_diagnostics_file = os.path.join(
+                self.resultsdir, 'audio_diagnostics.txt')
+
         chameleon_board = host.chameleon
         factory = remote_facade_factory.RemoteFacadeFactory(host)
 
@@ -79,6 +83,8 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                 logging.info('Stopped playing %s on Cros device',
                              golden_file.path)
                 time.sleep(self.DELAY_AFTER_PLAYBACK)
+
+                audio_facade.dump_diagnostics(audio_diagnostics_file)
 
                 recorder.stop_recording()
                 logging.info('Stopped recording from Chameleon.')
