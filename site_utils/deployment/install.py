@@ -156,7 +156,9 @@ def _install_dut(arguments, hostname):
     hostlist = afe.get_hosts([hostname])
     if hostlist:
         afe_host = hostlist[0]
-        if not afe_host.locked or afe_host.status != 'Ready':
+        if (not afe_host.locked or
+                (afe_host.status != 'Ready' and
+                 afe_host.status != 'Repair Failed')):
             return 'Host exists, but is not locked and idle'
     else:
         afe_host = None
