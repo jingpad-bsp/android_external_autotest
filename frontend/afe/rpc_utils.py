@@ -1285,13 +1285,54 @@ def get_global_afe_hostname():
 def route_rpc_to_master(func):
     """Route RPC to master AFE.
 
-    @param func: The function to decorate
+    When a shard receives an RPC decorated by this, the RPC is just
+    forwarded to the master.
+    When the master gets the RPC, the RPC function is executed.
 
-    @returns: The function to replace func with.
+    @param func: An RPC function to decorate
+
+    @returns: A function replacing the RPC func.
     """
     @wraps(func)
     def replacement(*args, **kwargs):
-        kwargs = inspect.getcallargs(func, *args, **kwargs)
+        """
+        We need a special care when decorating an RPC that can be called
+        directly using positional arguments. One example is
+        rpc_interface.create_job().
+        rpc_interface.create_job_page_handler() calls the function using
+        positional and keyword arguments.
+        Since frontend.RpcClient.run() takes only keyword arguments for
+        an RPC, positional arguments of the RPC function need to be
+        transformed to key-value pair (dictionary type).
+
+        inspect.getcallargs() is a useful utility to achieve the goal,
+        however, we need an additional effort when an RPC function has
+        **kwargs argument.
+        Let's say we have a following form of RPC function.
+
+        def rpcfunc(a, b, **kwargs)
+
+        When we call the function like "rpcfunc(1, 2, id=3, name='mk')",
+        inspect.getcallargs() returns a dictionary like below.
+
+        {'a':1, 'b':2, 'kwargs': {'id':3, 'name':'mk'}}
+
+        This is an incorrect form of arguments to pass to the rpc function.
+        Instead, the dictionary should be like this.
+
+        {'a':1, 'b':2, 'id':3, 'name':'mk'}
+        """
+        argspec = inspect.getargspec(func)
+        if argspec.varargs is not None:
+            raise Exception('RPC function must not have *args.')
+        funcargs = inspect.getcallargs(func, *args, **kwargs)
+        kwargs = dict()
+        for k, v in funcargs.iteritems():
+            if argspec.keywords and k in argspec.keywords:
+                kwargs.update(v)
+            else:
+                kwargs[k] = v
+
         if server_utils.is_shard():
             afe = frontend_wrappers.RetryingAFE(
                     server=get_global_afe_hostname())
