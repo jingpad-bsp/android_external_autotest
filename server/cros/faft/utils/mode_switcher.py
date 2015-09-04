@@ -4,7 +4,12 @@
 
 import logging
 import time
+import sys
 
+from multiprocessing import Process
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.faft.utils import shell_wrapper
 
 class ConnectionError(Exception):
     """Raised on an error of connecting DUT."""
@@ -484,6 +489,11 @@ class _JetstreamSwitcher(_BaseModeSwitcher):
 class _RyuSwitcher(_BaseModeSwitcher):
     """Class that switches firmware mode via physical button."""
 
+    FASTBOOT_OEM_DELAY = 10
+    RECOVERY_TIMEOUT = 2400
+    RECOVERY_SETUP = 60
+    ANDROID_BOOTUP = 600
+
     def wait_for_client(self, timeout=180):
         """Wait for the client to come back online.
 
@@ -508,18 +518,97 @@ class _RyuSwitcher(_BaseModeSwitcher):
         if not self.faft_client.system.wait_for_client_offline(timeout):
             raise ConnectionError()
 
+    def print_recovery_warning(self):
+        logging.info("***")
+        logging.info("*** Entering recovery mode.  This may take awhile ***")
+        logging.info("***")
+        # wait a minute for DUT to get settled into wipe stage
+        time.sleep(self.RECOVERY_SETUP)
+
+    def is_fastboot_mode(self):
+        """Return True if DUT in fastboot mode, False otherwise"""
+        result = self.faft_client.host.run_shell_command_get_output(
+            'fastboot devices')
+        if not result:
+            return False
+        else:
+            return True
+
+    def wait_for_client_fastboot(self, timeout=30):
+        """Wait for the client to come online in fastboot mode
+
+        @param timeout: Time in seconds to wait the client
+        @raise ConnectionError: Failed to wait DUT offline.
+        """
+        utils.wait_for_value(self.is_fastboot_mode, True, timeout_sec=timeout)
+
+    def _run_cmd(self, args):
+        """Wrapper for run_shell_command
+
+        For Process creation
+        """
+        return self.faft_client.host.run_shell_command(args)
 
     def _enable_dev_mode_and_reboot(self):
         """Switch to developer mode and reboot."""
-        # FIXME Implement switching to dev mode.
-        pass
+        logging.info("Entering RyuSwitcher: _enable_dev_mode_and_reboot")
+        try:
+            self.faft_client.system.run_shell_command('reboot bootloader')
+            self.wait_for_client_fastboot()
 
+            process = Process(
+                target=self._run_cmd,
+                args=('fastboot oem unlock',))
+            process.start()
+
+            # need a slight delay to give the ap time to get into valid state
+            time.sleep(self.FASTBOOT_OEM_DELAY)
+            self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
+            process.join()
+
+            self.print_recovery_warning()
+            self.wait_for_client_fastboot(self.RECOVERY_TIMEOUT)
+            self.faft_client.host.run_shell_command('fastboot continue')
+            self.wait_for_client(self.ANDROID_BOOTUP)
+
+        # need to reset DUT into clean state
+        except shell_wrapper.ShellError:
+            raise error.TestError('Error executing shell command')
+        except ConnectionError:
+            raise error.TestError('Timed out waiting for DUT to exit recovery')
+        except:
+            raise error.TestError('Unexpected Exception: %s' % sys.exc_info()[0])
+        logging.info("Exiting RyuSwitcher: _enable_dev_mode_and_reboot")
 
     def _enable_normal_mode_and_reboot(self):
         """Switch to normal mode and reboot."""
-        # FIXME Implement switching to normal mode.
-        pass
+        try:
+            self.faft_client.system.run_shell_command('reboot bootloader')
+            self.wait_for_client_fastboot()
 
+            process = Process(
+                target=self._run_cmd,
+                args=('fastboot oem lock',))
+            process.start()
+
+            # need a slight delay to give the ap time to get into valid state
+            time.sleep(self.FASTBOOT_OEM_DELAY)
+            self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
+            process.join()
+
+            self.print_recovery_warning()
+            self.wait_for_client_fastboot(self.RECOVERY_TIMEOUT)
+            self.faft_client.host.run_shell_command('fastboot continue')
+            self.wait_for_client(self.ANDROID_BOOTUP)
+
+        # need to reset DUT into clean state
+        except shell_wrapper.ShellError:
+            raise error.TestError('Error executing shell command')
+        except ConnectionError:
+            raise error.TestError('Timed out waiting for DUT to exit recovery')
+        except:
+            raise error.TestError('Unexpected Exception: %s' % sys.exc_info()[0])
+        logging.info("Exiting RyuSwitcher: _enable_normal_mode_and_reboot")
 
 def create_mode_switcher(faft_framework):
     """Creates a proper mode switcher.
