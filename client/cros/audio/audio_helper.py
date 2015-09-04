@@ -756,11 +756,12 @@ def get_one_channel_correlation(test_data, golden_data):
         return None, None
 
 
-def compare_one_channel_correlation(test_data, golden_data):
+def compare_one_channel_correlation(test_data, golden_data, parameters):
     """Compares two one-channel data by correlation.
 
     @param test_data: A list containing the data to compare against golden data.
     @param golden_data: A list containing the golden data.
+    @param parameters: A dict containing parameters for method.
 
     @returns: A dict containing:
               index: The index of similarity where 1 means they are different
@@ -769,6 +770,11 @@ def compare_one_channel_correlation(test_data, golden_data):
                   data.
               equal: A bool containing comparing result.
     """
+    if 'correlation_threshold' in parameters:
+        threshold = parameters['correlation_threshold']
+    else:
+        threshold = _CORRELATION_INDEX_THRESHOLD
+
     result_dict = dict()
     max_cross_correlation, best_delay = get_one_channel_correlation(
             test_data, golden_data)
@@ -776,7 +782,7 @@ def compare_one_channel_correlation(test_data, golden_data):
     result_dict['best_delay'] = best_delay
     result_dict['equal'] = True if (
         max_cross_correlation and
-        max_cross_correlation > _CORRELATION_INDEX_THRESHOLD) else False
+        max_cross_correlation > threshold) else False
     logging.debug('result_dict: %r', result_dict)
     return result_dict
 
@@ -846,7 +852,8 @@ def compare_one_channel_frequency(test_data, test_data_format,
 
 
 def compare_one_channel_data(test_data, test_data_format,
-                             golden_data, golden_data_format, method):
+                             golden_data, golden_data_format, method,
+                             parameters):
     """Compares two one-channel data.
 
     @param test_data: A list containing the data to compare against golden data.
@@ -855,6 +862,7 @@ def compare_one_channel_data(test_data, test_data_format,
     @param golden_data_format: The data format of golden data.
     @param method: The comparing method. Currently only 'correlation' is
                    supported.
+    @param parameters: A dict containing parameters for method.
 
     @returns: A dict containing:
               index: The index of similarity where 1 means they are different
@@ -866,7 +874,8 @@ def compare_one_channel_data(test_data, test_data_format,
     @raises: NotImplementedError if method is not supported.
     """
     if method == 'correlation':
-        return compare_one_channel_correlation(test_data, golden_data)
+        return compare_one_channel_correlation(test_data, golden_data,
+                parameters)
     if method == 'frequency':
         return compare_one_channel_frequency(
                 test_data, test_data_format, golden_data, golden_data_format)
@@ -875,7 +884,7 @@ def compare_one_channel_data(test_data, test_data_format,
 
 def compare_data(golden_data_binary, golden_data_format,
                  test_data_binary, test_data_format,
-                 channel_map, method):
+                 channel_map, method, parameters=None):
     """Compares two raw data.
 
     @param golden_data_binary: The binary containing golden data.
@@ -892,11 +901,16 @@ def compare_data(golden_data_binary, golden_data_format,
                    general data. Use 'frequency' to compare data containing
                    sine wave.
 
+    @param parameters: A dict containing parameters for method, if needed.
+
     @returns: A boolean for compare result.
 
     @raises: NotImplementedError if file type is not raw.
              NotImplementedError if sampling rates of two data are not the same.
     """
+    if parameters is None:
+        parameters = dict()
+
     if (golden_data_format['file_type'] != 'raw' or
         test_data_format['file_type'] != 'raw'):
         raise NotImplementedError('Only support raw data in compare_data.')
@@ -923,7 +937,8 @@ def compare_data(golden_data_binary, golden_data_format,
         result_dict.update(
                 compare_one_channel_data(
                         test_data_one_channel, test_data_format,
-                        golden_data_one_channel, golden_data_format, method))
+                        golden_data_one_channel, golden_data_format, method,
+                        parameters))
         compare_results.append(result_dict)
     logging.info('compare_results: %r', compare_results)
     return_value = False if not compare_results else True
