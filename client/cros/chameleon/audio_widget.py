@@ -648,6 +648,17 @@ class CrosInputWidgetHandler(CrosWidgetHandler):
             return open(f.name).read()
 
 
+class CrosUSBInputWidgetHandler(CrosInputWidgetHandler):
+    """
+    This class abstracts a Cros device audio input widget handler.
+
+    """
+    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
+                                sample_format='S16_LE',
+                                channel=2,
+                                rate=48000)
+
+
 class CrosOutputWidgetHandlerError(Exception):
     """The error in CrosOutputWidgetHandler."""
     pass

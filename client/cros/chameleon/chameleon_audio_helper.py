@@ -280,8 +280,9 @@ class AudioWidgetFactory(object):
                       role of audio_port.
 
             """
-            usb_cros_ids = [ids.CrosIds.USBIN, ids.CrosIds.USBOUT]
-            if audio_port.port_id in usb_cros_ids:
+            is_usb = audio_port.port_id in [ids.CrosIds.USBIN,
+                                            ids.CrosIds.USBOUT]
+            if is_usb:
                 plug_handler = audio_widget.USBPlugHandler(self._usb_facade)
             else:
                 # Currently the jack plugger control is handled in
@@ -289,8 +290,12 @@ class AudioWidgetFactory(object):
                 plug_handler = audio_widget.DummyPlugHandler()
 
             if audio_port.role == 'sink':
-                return audio_widget.CrosInputWidgetHandler(self._audio_facade,
-                                                           plug_handler)
+                if is_usb:
+                    return audio_widget.CrosUSBInputWidgetHandler(
+                            self._audio_facade, plug_handler)
+                else:
+                    return audio_widget.CrosInputWidgetHandler(
+                            self._audio_facade, plug_handler)
             else:
                 return audio_widget.CrosOutputWidgetHandler(self._audio_facade,
                                                             plug_handler)
