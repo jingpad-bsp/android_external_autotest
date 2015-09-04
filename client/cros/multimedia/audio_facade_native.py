@@ -26,8 +26,11 @@ class AudioFacadeNative(object):
     The methods inside this class only accept Python native types.
 
     """
-    _CAPTURE_DATA_FORMAT = dict(
-            file_type='raw', sample_format='S16_LE', channel=1, rate=48000)
+    _CAPTURE_DATA_FORMATS = [
+            dict(file_type='raw', sample_format='S16_LE',
+                 channel=1, rate=48000),
+            dict(file_type='raw', sample_format='S16_LE',
+                 channel=2, rate=48000)]
 
     _PLAYBACK_DATA_FORMAT = dict(
             file_type='raw', sample_format='S16_LE', channel=2, rate=48000)
@@ -89,8 +92,8 @@ class AudioFacadeNative(object):
     def start_recording(self, data_format):
         """Starts recording an audio file.
 
-        Currently the format specified in _CAPTURE_DATA_FORMAT is the only
-        format.
+        Currently the format specified in _CAPTURE_DATA_FORMATS is the only
+        formats.
 
         @param data_format: A dict containing:
                             file_type: 'raw'.
@@ -107,7 +110,7 @@ class AudioFacadeNative(object):
         """
         logging.info('AudioFacadeNative record format: %r', data_format)
 
-        if data_format != self._CAPTURE_DATA_FORMAT:
+        if data_format not in self._CAPTURE_DATA_FORMATS:
             raise AudioFacadeNativeError(
                     'data format %r is not supported' % data_format)
 
