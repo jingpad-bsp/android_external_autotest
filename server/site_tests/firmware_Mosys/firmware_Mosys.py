@@ -68,7 +68,10 @@ class firmware_Mosys(FirmwareTest):
         @param exp_ec_version: The exepected EC version string.
 
         """
-        lines = self.run_cmd('ectool version')
+        if self.faft_client.system.has_host():
+            lines = self.run_cmd('fwtool ec version')
+        else:
+            lines = self.run_cmd('ectool version')
         fwcopy_pattern = re.compile('Firmware copy: (.*)$')
         ver_pattern = re.compile('(R[OW]) version:    (.*)$')
         version = {}
@@ -142,6 +145,31 @@ class firmware_Mosys(FirmwareTest):
                   return
         self._tag_failure(command)
 
+    def check_adb_devices(self, command, fieldname, exp_value):
+        """
+        Compare output of fieldname in adb devices -l to exp_value.
+
+        @param command: command string
+        @param fieldname: field name from adb devices -l output.
+        @param exp_value: expected value for fieldname
+
+        """
+        device_info = 'adb devices -l'
+        lines = self.faft_client.host.run_shell_command_get_output(device_info)
+        logging.info(lines)
+        pattern = re.compile(fieldname + ':(.*)\s+')
+        logging.info(pattern)
+        for line in lines:
+            matched = pattern.search(line)
+            if matched:
+                actual = matched.group(1)
+                logging.info('Expected %s %s actual %s',
+                             fieldname, exp_value, actual)
+                # Some board will have prefix.  Example nyan_big for big.
+                if exp_value.lower() in actual.lower():
+                  return
+        self._tag_failure(command)
+
     def _tag_failure(self, cmd):
         self.failed_command.append(cmd)
         logging.error('Execute %s failed', cmd)
@@ -179,10 +207,13 @@ class firmware_Mosys(FirmwareTest):
         # c. mosys platform name
         command = 'mosys platform name'
         output = self.run_cmd(command)[0]
-        self.check_lsb_info(command, 'CHROMEOS_RELEASE_BOARD', output)
+        if self.faft_client.system.has_host():
+            self.check_adb_devices(command, 'model', output)
+        else:
+            self.check_lsb_info(command, 'CHROMEOS_RELEASE_BOARD', output)
 
         # d. mosys eeprom map
-        command = "mosys eeprom map|egrep 'RW_SHARED|RW_SECTION_[AB]'"
+        command = 'mosys eeprom map|egrep "RW_SHARED|RW_SECTION_[AB]"'
         lines = self.run_cmd(command)
         if len(lines) != 3:
           logging.error('Expect RW_SHARED|RW_SECTION_[AB] got "%s"', lines)
