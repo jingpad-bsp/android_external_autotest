@@ -6,6 +6,7 @@
 
 import glob
 import logging
+import os
 
 from autotest_lib.client.common_lib import base_utils
 
@@ -27,6 +28,8 @@ class USBDeviceDriversManager(object):
     _USB_BIND_FILE_PATH = '/sys/bus/usb/drivers/usb/bind'
     # The file to write to unbind USB drivers of specified device
     _USB_UNBIND_FILE_PATH = '/sys/bus/usb/drivers/usb/unbind'
+    # The file path that exists when drivers are bound for current device
+    _USB_BOUND_DRIVERS_FILE_PATH = '/sys/bus/usb/drivers/usb/%s/driver'
 
     def __init__(self):
         """Initializes the manager.
@@ -78,3 +81,17 @@ class USBDeviceDriversManager(object):
         else:
             self._device_product_name = product_name
             self._device_bus_id = device_bus_id
+
+
+    def _drivers_are_bound(self):
+        """Checks whether the drivers with the of current device are bound.
+
+        If the drivers are already bound, calling bind_usb_drivers will be
+        redundant and also result in an error.
+
+        @return: True if the path to the drivers exist, meaning the drivers
+                 are already bound. False otherwise.
+
+        """
+        driver_path = self._USB_BOUND_DRIVERS_FILE_PATH % self._device_bus_id
+        return os.path.exists(driver_path)
