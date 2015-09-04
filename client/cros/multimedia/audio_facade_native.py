@@ -115,7 +115,7 @@ class AudioFacadeNative(object):
                     'data format %r is not supported' % data_format)
 
         self._recorder = Recorder()
-        self._recorder.start()
+        self._recorder.start(data_format)
 
         return True
 
@@ -207,10 +207,17 @@ class Recorder(object):
         self._capture_subprocess = None
 
 
-    def start(self):
+    def start(self, data_format):
         """Starts recording.
 
         Starts recording subprocess. It can be stopped by calling stop().
+
+        @param data_format: A dict containing:
+                            file_type: 'raw'.
+                            sample_format: 'S16_LE' for 16-bit signed integer in
+                                           little-endian.
+                            channel: channel number.
+                            rate: sampling rate.
 
         @raises: RecorderError: If recording subprocess is terminated
                  unexpectedly.
@@ -218,7 +225,9 @@ class Recorder(object):
         """
         self._capture_subprocess = cmd_utils.popen(
                 cras_utils.capture_cmd(
-                        capture_file=self.file_path, duration=None))
+                        capture_file=self.file_path, duration=None,
+                        channels=data_format['channel'],
+                        rate=data_format['rate']))
 
 
     def stop(self):
