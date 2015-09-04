@@ -44,11 +44,13 @@ class ChromeNetworkingTestContext(object):
     CHROME_NETWORK_TYPE_VPN = 'VPN'
     CHROME_NETWORK_TYPE_ALL = 'All'
 
-    def __init__(self, extensions=None):
+    def __init__(self, extensions=None, username=None, password=None):
         if extensions is None:
             extensions = []
         extensions.append(self.NETWORK_TEST_EXTENSION_PATH)
         self._extension_paths = extensions
+        self._username = username
+        self._password = password
         self._chrome = None
 
     def __enter__(self):
@@ -59,8 +61,10 @@ class ChromeNetworkingTestContext(object):
         self.teardown()
 
     def _create_browser(self):
-        self._chrome = chrome.Chrome(logged_in=True,
-                                     extension_paths=self._extension_paths)
+        self._chrome = chrome.Chrome(logged_in=True, gaia_login=True,
+                                     extension_paths=self._extension_paths,
+                                     username=self._username,
+                                     password=self._password)
 
         # TODO(armansito): This call won't be necessary once crbug.com/251913
         # gets fixed.

@@ -95,11 +95,15 @@ class ChromeNetworkProvider(object):
         time.sleep(self.SHORT_TIMEOUT)
 
 
-    def scan_for_networks(self):
-        """Scan for all the available networks"""
+    def scan_for_networks(self, timeout=SHORT_TIMEOUT):
+        """Scan for all the available networks
+
+        @param timeout int seconds to sleep while scanning for networks 
+
+        """
         self._chrome_testing.call_test_function_async('requestNetworkScan')
         # Allow enough time for Chrome to scan and get all the network SSIDs.
-        time.sleep(self.SHORT_TIMEOUT)
+        time.sleep(timeout)
 
 
     def connect_to_network(self, service_list):
@@ -112,6 +116,15 @@ class ChromeNetworkProvider(object):
                             test_utils.LONG_TIMEOUT,
                             'connectToNetwork',
                             '"' + service_list['GUID'] +'"')
+
+       if connect_status['error'] == 'connected':
+           return
+       elif connect_status['error'] == 'connecting':
+           for retry in range(3):
+               logging.debug('Just hold on for 10 seconds')
+               time.sleep(10)
+               if connect_status['error'] == 'connected':
+                   return
 
        if connect_status['status'] == 'chrome-test-call-status-failure':
            raise error.TestFail(
