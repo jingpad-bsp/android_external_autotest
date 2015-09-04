@@ -267,8 +267,12 @@ class AudioWidgetFactory(object):
                 return audio_widget.ChameleonInputWidgetHandler(
                         self._chameleon_board, audio_port.interface)
             else:
-                return audio_widget.ChameleonOutputWidgetHandler(
-                        self._chameleon_board, audio_port.interface)
+                if audio_port.port_id == ids.ChameleonIds.LINEOUT:
+                    return audio_widget.ChameleonLineOutOutputWidgetHandler(
+                            self._chameleon_board, audio_port.interface)
+                else:
+                    return audio_widget.ChameleonOutputWidgetHandler(
+                            self._chameleon_board, audio_port.interface)
 
 
         def _create_cros_handler(audio_port):

@@ -416,10 +416,11 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
     This class abstracts a Chameleon audio output widget handler.
 
     """
-    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
-                                sample_format='S32_LE',
-                                channel=8,
-                                rate=48000)
+    def __init__(self, *args, **kwargs):
+        """Initializes an ChameleonOutputWidgetHandler."""
+        super(ChameleonOutputWidgetHandler, self).__init__(*args, **kwargs)
+        self._test_data_for_chameleon_format = None
+
 
     def set_playback_data(self, test_data):
         """Sets data to play.
@@ -432,16 +433,30 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
         @return: The remote data path on Chameleon.
 
         """
-        converted_audio_test_data = test_data.convert(
-                self._DEFAULT_DATA_FORMAT, self.scale)
+        self._test_data_for_chameleon_format = test_data.data_format
+        return self._scale_and_send_playback_data(test_data)
+
+
+    def _scale_and_send_playback_data(self, test_data):
+        """Sets data to play on Chameleon.
+
+        Creates a path and sends the scaled test data to Chameleon at that path.
+
+        @param test_data: An AudioTestData object.
+
+        @return: The remote data path on Chameleon.
+
+        """
+        test_data_for_chameleon = test_data.convert(
+                self._test_data_for_chameleon_format, self.scale)
 
         try:
             with tempfile.NamedTemporaryFile(prefix='audio_') as f:
                 self._chameleon_board.host.send_file(
-                        converted_audio_test_data.path, f.name)
+                        test_data_for_chameleon.path, f.name)
             return f.name
         finally:
-            converted_audio_test_data.delete()
+            test_data_for_chameleon.delete()
 
 
     def start_playback(self, path, blocking=False):
@@ -455,7 +470,8 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
             raise NotImplementedError(
                     'Blocking playback on chameleon is not supported')
 
-        self._port.start_playing_audio(path, self._DEFAULT_DATA_FORMAT)
+        self._port.start_playing_audio(
+                path, self._test_data_for_chameleon_format)
 
 
     def stop_playback(self):
@@ -480,6 +496,33 @@ class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):
             raise ValueError(
                     'Port %s is not connected to Chameleon' % interface)
         return chameleon_port
+
+
+class ChameleonLineOutOutputWidgetHandler(ChameleonOutputWidgetHandler):
+    """
+    This class abstracts a Chameleon usb audio output widget handler.
+
+    """
+
+    _DEFAULT_DATA_FORMAT = dict(file_type='raw',
+                                sample_format='S32_LE',
+                                channel=8,
+                                rate=48000)
+
+    def set_playback_data(self, test_data):
+        """Sets data to play.
+
+        Handles scale if needed. Creates a path and sends the scaled data to
+        Chameleon at that path.
+
+        @param test_data: An AudioTestData object.
+
+        @return: The remote data path on Chameleon.
+
+        """
+        self._test_data_for_chameleon_format = self._DEFAULT_DATA_FORMAT
+        return self._scale_and_send_playback_data(test_data)
+
 
 
 class CrosWidgetHandler(WidgetHandler):
