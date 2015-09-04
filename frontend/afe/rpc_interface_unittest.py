@@ -8,6 +8,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
 from autotest_lib.frontend.afe import model_logic, model_attributes
+from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
@@ -458,29 +459,42 @@ class RpcInterfaceTest(unittest.TestCase,
 
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
                     server=shard_hostname)
-            mock_afe2.run.expect_call('modify_host', id=host.id, locked=True,
-                                      lock_reason='_modify_host_helper lock')
+            mock_afe2.run.expect_call('modify_host_local', id=host.id,
+                    locked=True, lock_reason='_modify_host_helper lock')
+        elif on_shard:
+            mock_afe = self.god.create_mock_class_obj(
+                    frontend_wrappers.RetryingAFE, 'MockAFE')
+            self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+            mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
+                    server=rpc_utils.get_global_afe_hostname())
+            mock_afe2.run.expect_call('modify_host', id=host.id,
+                    locked=True, lock_reason='_modify_host_helper lock')
 
         rpc_interface.modify_host(id=host.id, locked=True,
                                   lock_reason='_modify_host_helper lock')
 
         host = models.Host.objects.get(pk=host.id)
-        self.assertTrue(host.locked)
+        if on_shard:
+            # modify_host on shard does nothing but routing the RPC to master.
+            self.assertFalse(host.locked)
+        else:
+            self.assertTrue(host.locked)
         self.god.check_playback()
 
 
     def test_modify_host_on_master_host_on_master(self):
-        """Ensure no RPC is made on modify_host if the host isn't on a shard."""
+        """Call modify_host to master for host in master."""
         self._modify_host_helper()
 
 
     def test_modify_host_on_master_host_on_shard(self):
-        """Ensure an RPC is made on modify_host if the host is on a shard."""
+        """Call modify_host to master for host in shard."""
         self._modify_host_helper(host_on_shard=True)
 
 
     def test_modify_host_on_shard(self):
-        """Ensure no RPC is made on modify_host if executed on a shard."""
+        """Call modify_host to shard for host in shard."""
         self._modify_host_helper(on_shard=True, host_on_shard=True)
 
 
@@ -501,7 +515,7 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertFalse(host2.locked)
 
         mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
-                                                 'MockAFE')
+                                                  'MockAFE')
         self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
         # The statuses of one host might differ on master and shard.
@@ -511,14 +525,14 @@ class RpcInterfaceTest(unittest.TestCase,
 
         mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(server='shard2')
         mock_afe2.run.expect_call(
-            'modify_hosts',
+            'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
                          'lock_reason': 'Testing forward to shard'})
 
         mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(server='shard1')
         mock_afe1.run.expect_call(
-            'modify_hosts',
+            'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
                          'lock_reason': 'Testing forward to shard'})

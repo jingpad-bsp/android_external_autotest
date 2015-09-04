@@ -268,31 +268,47 @@ def add_host(hostname, status=None, locked=None, lock_reason='', protection=None
                                   protection=protection).id
 
 
-@rpc_utils.forward_single_host_rpc_to_shard
-def modify_host(id, **data):
+@rpc_utils.route_rpc_to_master
+def modify_host(id, **kwargs):
     """Modify local attributes of a host.
 
     If this is called on the master, but the host is assigned to a shard, this
-    will also forward the call to the responsible shard. This means i.e. if a
-    host is being locked using this function, this change will also propagate to
-    shards.
+    will call `modify_host_local` RPC to the responsible shard. This means if
+    a host is being locked using this function, this change will also propagate
+    to shards.
+    When this is called on a shard, the shard just routes the RPC to the master
+    and does nothing.
 
     @param id: id of the host to modify.
-    @param **data: key=value pairs of values to set on the host.
+    @param kwargs: key=value pairs of values to set on the host.
     """
-    rpc_utils.check_modify_host(data)
+    rpc_utils.check_modify_host(kwargs)
     host = models.Host.smart_get(id)
+    rpc_utils.check_modify_host_locking(host, kwargs)
 
-    rpc_utils.check_modify_host_locking(host, data)
-    host.update_object(data)
+    rpc_utils.fanout_rpc([host], 'modify_host_local',
+                         include_hostnames=False, id=id, **kwargs)
+    host.update_object(kwargs)
 
 
+def modify_host_local(id, **kwargs):
+    """Modify host attributes in local DB.
+
+    @param id: Host id.
+    @param kwargs: key=value pairs of values to set on the host.
+    """
+    models.Host.smart_get(id).update_object(kwargs)
+
+
+@rpc_utils.route_rpc_to_master
 def modify_hosts(host_filter_data, update_data):
     """Modify local attributes of multiple hosts.
 
     If this is called on the master, but one of the hosts in that match the
-    filters is assigned to a shard, this will also forward the call to the
-    responsible shard.
+    filters is assigned to a shard, this will call `modify_hosts_local` RPC
+    to the responsible shard.
+    When this is called on a shard, the shard just routes the RPC to the master
+    and does nothing.
 
     The filters are always applied on the master, not on the shards. This means
     if the states of a host differ on the master and a shard, the state on the
@@ -321,14 +337,23 @@ def modify_hosts(host_filter_data, update_data):
             affected_shard_hostnames.add(host.shard.rpc_hostname())
             affected_host_ids.append(host.id)
 
-    if not utils.is_shard():
-        # Caution: Changing the filter from the original here. See docstring.
-        rpc_utils.run_rpc_on_multiple_hostnames(
-            'modify_hosts', affected_shard_hostnames,
+    # Caution: Changing the filter from the original here. See docstring.
+    rpc_utils.run_rpc_on_multiple_hostnames(
+            'modify_hosts_local', affected_shard_hostnames,
             host_filter_data={'id__in': affected_host_ids},
             update_data=update_data)
 
     for host in hosts:
+        host.update_object(update_data)
+
+
+def modify_hosts_local(host_filter_data, update_data):
+    """Modify attributes of hosts in local DB.
+
+    @param host_filter_data: Filters out which hosts to modify.
+    @param update_data: A dictionary with the changes to make to the hosts.
+    """
+    for host in models.Host.query_objects(host_filter_data):
         host.update_object(update_data)
 
 
