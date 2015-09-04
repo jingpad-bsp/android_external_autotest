@@ -14,6 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "touch"
 TEST_TYPE = "client"
+DEPENDENCIES = 'bluetooth'
 
 DOC = """
 Uses dbus commands to enable the adapter then disable it.  Test will fail if
