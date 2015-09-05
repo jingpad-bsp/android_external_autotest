@@ -95,7 +95,6 @@ def screen_switch_on(on):
 
 def screen_toggle_fullscreen():
     """Toggles fullscreen mode."""
-    # TODO(ihf): Does this work on freon?
     if utils.is_freon():
         press_keys(['KEY_F11'])
     else:
@@ -104,7 +103,6 @@ def screen_toggle_fullscreen():
 
 def screen_toggle_mirrored():
     """Toggles the mirrored screen."""
-    # TODO(ihf): Does this work on freon?
     if utils.is_freon():
         press_keys(['KEY_LEFTCTRL', 'KEY_F4'])
     else:
