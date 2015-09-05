@@ -43,6 +43,8 @@ class DisplayFacadeNative(object):
     """
 
     CALIBRATION_IMAGE_PATH = '/tmp/calibration.svg'
+    MINIMUM_REFRESH_RATE_EXPECTED = 25.0
+    DELAY_TIME = 3
 
     def __init__(self, chrome):
         self._chrome = chrome
@@ -143,7 +145,8 @@ class DisplayFacadeNative(object):
         @raise TimeoutException when the operation is timed out.
         """
         try:
-            tab = self._load_url('chrome://settings-frame/display')
+            self.load_url('chrome://settings-frame/display')
+            tab = self._browser.tabs[-1]
             self._wait_for_display_options_to_appear(tab, display_index)
             return tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_"
@@ -201,7 +204,8 @@ class DisplayFacadeNative(object):
         """
 
         try:
-            tab = self._load_url('chrome://settings-frame/display')
+            self.load_url('chrome://settings-frame/display')
+            tab = self._browser.tabs[-1]
             self._wait_for_display_options_to_appear(tab, display_index)
 
             tab.ExecuteJavaScript(
@@ -547,28 +551,73 @@ class DisplayFacadeNative(object):
 
 
     @_retry_chrome_call
-    def _load_url(self, url):
-        """Loads the given url in a new tab.
+    def load_url(self, url):
+        """Loads the given url in a new tab. The new tab will be active.
 
         @param url: The url to load as a string.
-        @return: A new tab object.
         """
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
-        return tab
+        return True
 
 
     def load_calibration_image(self, resolution):
-        """Load a full screen calibration image from the HTTP server.
+        """Opens a new tab and loads a full screen calibration
+           image from the HTTP server.
 
         @param resolution: A tuple (width, height) of resolution.
         """
         path = self.CALIBRATION_IMAGE_PATH
         self._image_generator.generate_image(resolution[0], resolution[1], path)
         os.chmod(path, 0644)
-        self._load_url('file://%s' % path)
+        self.load_url('file://%s' % path)
         return True
+
+
+    def load_color_sequence(self, color_sequence):
+        """Displays a series of colors on the last tab.
+
+        @param color_sequence: An integer list for switching colors.
+        @return A list of the timestamp for each switch.
+        """
+        tab = self._browser.tabs[-1]
+        color_sequence_for_java_script = (
+                'var color_sequence = [' +
+                ','.join("'#%06X'" % x for x in color_sequence) +
+                '];')
+        # Paints are synchronized to the fresh rate of the screen by
+        # window.requestAnimationFrame.
+        tab.ExecuteJavaScript(color_sequence_for_java_script + """
+            function render(timestamp) {
+                window.timestamp_list.push(timestamp);
+                if (window.count < color_sequence.length) {
+                    document.body.style.backgroundColor =
+                            color_sequence[count];
+                    window.count++;
+                    window.requestAnimationFrame(render);
+                }
+            }
+            window.count = 0;
+            window.timestamp_list = [];
+            window.requestAnimationFrame(render);
+            """)
+
+        # Waiting time is decided by following concerns:
+        # 1. MINIMUM_REFRESH_RATE_EXPECTED: the minimum refresh rate
+        #    we expect it to be. Real refresh rate is related to
+        #    not only hardware devices but also drivers and browsers.
+        #    Most graphics devices support at least 60fps for a single
+        #    monitor, and under mirror mode, since the both frames
+        #    buffers need to be updated for an input frame, the refresh
+        #    rate will decrease by half, so here we set it to be a
+        #    little less than 30 (= 60/2) to make it more tolerant.
+        # 2. DELAY_TIME: extra wait time for timeout.
+        tab.WaitForJavaScriptExpression(
+                'window.count == color_sequence.length',
+                (len(color_sequence) / self.MINIMUM_REFRESH_RATE_EXPECTED)
+                + self.DELAY_TIME)
+        return tab.EvaluateJavaScript("window.timestamp_list")
 
 
     @_retry_chrome_call

@@ -67,12 +67,29 @@ class DisplayFacadeLocalAdapter(object):
         return self._display_component.set_fullscreen(is_fullscreen)
 
 
+    def load_url(self, url):
+        """Loads the given url in a new tab. The new tab will be active.
+
+        @param url: The url to load as a string.
+        """
+        self._display_component.load_url(url)
+
+
     def load_calibration_image(self, resolution):
         """Load a full screen calibration image from the HTTP server.
 
         @param resolution: A tuple (width, height) of resolution.
         """
         self._display_component.load_calibration_image(resolution)
+
+
+    def load_color_sequence(self, color_sequence):
+        """Displays a series of colors on full screen on the last tab.
+
+        @param color_sequence: An integer list for switching colors.
+        @return A list of the timestamp for each switch.
+        """
+        return self._display_component.load_color_sequence(color_sequence)
 
 
     def close_tab(self, index=-1):
