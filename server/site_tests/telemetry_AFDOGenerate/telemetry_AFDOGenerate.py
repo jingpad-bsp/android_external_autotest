@@ -26,6 +26,7 @@ Example invocation:
 import bz2
 import logging
 import os
+import time
 
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.server import autotest
@@ -35,19 +36,31 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import telemetry_runner
 
 # List of benchmarks to run to capture profile information. This is
-# based on the "perf_v2" list and other telemetry benchmarks. Goal is
-# to have a short list that is as representative as possible and takes
-# a short time to execute. At this point the list of benchmarks is in
-# flux.  Some of the benchmarks here may not be good for our purposes
-# (take too long or are too flaky).
-TELEMETRY_AFDO_BENCHMARKS = [
-        'dromaeo.domcoreattr',
-        'dromaeo.domcorequery',
-        'dromaeo.domcoretraverse',
-        'kraken',
-        'octane',
-        'sunspider' ]
+# based on the "superhero" and "perf_v2" list and other telemetry
+# benchmarks. Goal is to have a short list that is as representative
+# as possible and takes a short time to execute. At this point the
+# list of benchmarks is in flux.
+TELEMETRY_AFDO_BENCHMARKS = (
+    ('page_cycler.typical_25', ('--pageset-repeat=2',)),
+    ('page_cycler.intl_ja_zh', ('--pageset-repeat=1',)),
+    ('page_cycler.intl_ar_fa_he', ('--pageset-repeat=1',)),
+    ('page_cycler.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
+    ('page_cycler.intl_ko_th_vi', ('--pageset-repeat=1',)),
+    ('page_cycler.intl_hi_ru', ('--pageset-repeat=1',)),
+    ('page_cycler.dhtml', ('--pageset-repeat=1',)),
+    ('octane',),
+    ('kraken',),
+    ('speedometer',),
+    ('dromaeo.domcoreattr',),
+    ('dromaeo.domcoremodify',),
+    ('smoothness.tough_webgl_cases',)
+    )
 
+# Some benchmarks removed from the profile set:
+# 'page_cycler.morejs' -> uninteresting, seems to fail frequently,
+# 'page_cycler.moz' -> seems very old.
+# 'media.tough_video_cases' -> removed this because it does not bring
+#                              any benefit and takes more than 12 mins
 
 # List of boards where this test can be run.
 # Currently, this has only been tested on 'sandybridge' boards.
@@ -84,8 +97,17 @@ class telemetry_AFDOGenerate(test.test):
             self._telemetry_runner = telemetry_runner.TelemetryRunner(
                     self._host, self._local)
 
-            for benchmark in TELEMETRY_AFDO_BENCHMARKS:
-                self._run_test(benchmark)
+            for benchmark_info in TELEMETRY_AFDO_BENCHMARKS:
+                benchmark = benchmark_info[0]
+                args = () if len(benchmark_info) == 1 else benchmark_info[1]
+                try:
+                    self._run_test_with_retry(benchmark, *args)
+                except error.TestBaseException:
+                    if not self._ignore_failures:
+                        raise
+                    else:
+                        logging.info('Ignoring failure from benchmark %s.',
+                                     benchmark)
 
 
     def after_run_once(self):
@@ -125,8 +147,7 @@ class telemetry_AFDOGenerate(test.test):
         self._gs_test_location = not utils.host_is_in_lab_zone(
                 self._host.hostname)
         # Ignore individual test failures.
-        # TODO(llozano): Change default to False when tests are more stable.
-        self._ignore_failures = True
+        self._ignore_failures = False
         # Use local copy of telemetry instead of using the dev server copy.
         self._local = False
         # Chrome version to which the AFDO data corresponds.
@@ -134,7 +155,7 @@ class telemetry_AFDOGenerate(test.test):
         # Try to use the minimal support from Telemetry. The Telemetry
         # benchmarks in ChromeOS are too flaky at this point. So, initially,
         # this will be set to True by default.
-        self._minimal_telemetry = True
+        self._minimal_telemetry = False
 
         for option_name, value in args.iteritems():
             if option_name == 'arch':
@@ -153,22 +174,29 @@ class telemetry_AFDOGenerate(test.test):
                 raise error.TestFail('Unknown option passed: %s' % option_name)
 
 
-    def _run_test(self, benchmark):
+    def _run_test(self, benchmark, *args):
         """Run the benchmark using Telemetry.
 
         @param benchmark: Name of the benchmark to run.
-        @raises if failures are not being ignored raises error.TestFail if
-                execution of test failed. Also re-raise any exceptions thrown
-                by run_telemetry benchmark.
+        @param args: Additional arguments to pass to the telemetry execution
+                     script.
+        @raises Raises error.TestFail if execution of test failed.
+                Also re-raise any exceptions thrown by run_telemetry benchmark.
         """
         try:
-            result = self._telemetry_runner.run_telemetry_benchmark(benchmark)
+            logging.info('Starting run for Telemetry benchmark %s', benchmark)
+            start_time = time.time()
+            result = self._telemetry_runner.run_telemetry_benchmark(
+                    benchmark, None, *args)
+            end_time = time.time()
+            logging.info('Completed Telemetry benchmark %s in %f seconds',
+                         benchmark, end_time - start_time)
         except error.TestBaseException as e:
-            if not self._ignore_failures:
-                raise
-            else:
-                logging.info('Ignoring exception from benchmark %s', benchmark)
-                return
+            end_time = time.time()
+            logging.info('Got exception from Telemetry benchmark %s '
+                         'after %f seconds. Exception: %s',
+                         benchmark, end_time - start_time, str(e))
+            raise
 
         # We dont generate any keyvals for this run. This is not
         # an official run of the benchmark. We are just running it to get
@@ -177,11 +205,36 @@ class telemetry_AFDOGenerate(test.test):
         if result.status is telemetry_runner.SUCCESS_STATUS:
             logging.info('Benchmark %s succeeded', benchmark)
         else:
-            if not self._ignore_failures:
-                raise error.TestFail ('An error occurred while executing'
-                                      ' benchmark: %s' % benchmark)
-            else:
-                logging.info('Ignoring failure from benchmark %s', benchmark)
+            raise error.TestFail('An error occurred while executing'
+                                 ' benchmark: %s' % benchmark)
+
+
+    def _run_test_with_retry(self, benchmark, *args):
+        """Run the benchmark using Telemetry. Retry in case of failure.
+
+        @param benchmark: Name of the benchmark to run.
+        @param args: Additional arguments to pass to the telemetry execution
+                     script.
+        @raises Re-raise any exceptions thrown by _run_test.
+        """
+
+        tried = False
+        while True:
+            try:
+                self._run_test(benchmark, *args)
+                logging.info('Benchmark %s succeeded on %s try',
+                             benchmark,
+                             'first' if not tried else 'second')
+                break
+            except error.TestBaseException:
+                if not tried:
+                   tried = True
+                   logging.info('Benchmark %s failed. Retrying ...',
+                                benchmark)
+                else:
+                    logging.info('Benchmark %s failed twice. Not retrying',
+                                  benchmark)
+                    raise
 
 
     def _run_tests_minimal_telemetry(self):
