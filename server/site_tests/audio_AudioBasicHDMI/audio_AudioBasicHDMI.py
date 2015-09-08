@@ -28,6 +28,20 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
     DELAY_BEFORE_PLAYBACK = 2
     DELAY_AFTER_PLAYBACK = 2
 
+    def cleanup(self):
+        """Restore the CPU scaling governor mode."""
+        self._system_facade.set_scaling_governor_mode(0, self._original_mode)
+        logging.debug('Set CPU0 mode to %s', self._original_mode)
+
+
+    def set_high_performance_mode(self):
+        """Set the CPU scaling governor mode to performance mode."""
+        self._original_mode = self._system_facade.set_scaling_governor_mode(
+                0, 'performance')
+        logging.debug('Set CPU0 scaling governor mode to performance, '
+                      'original_mode: %s', self._original_mode)
+
+
     def run_once(self, host):
         edid_path = os.path.join(self.bindir,
                                  'test_data/edids/HDMI_DELL_U2410.txt')
@@ -39,6 +53,9 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
 
         chameleon_board = host.chameleon
         factory = remote_facade_factory.RemoteFacadeFactory(host)
+
+        self._system_facade = factory.create_system_facade()
+        self.set_high_performance_mode()
 
         chameleon_board.reset()
 
