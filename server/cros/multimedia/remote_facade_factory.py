@@ -14,6 +14,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.multimedia import audio_facade_adapter
 from autotest_lib.server.cros.multimedia import display_facade_adapter
+from autotest_lib.server.cros.multimedia import system_facade_adapter
 
 
 class _Method:
@@ -181,4 +182,10 @@ class RemoteFacadeFactory(object):
     def create_display_facade(self):
         """Creates a display facade object."""
         return display_facade_adapter.DisplayFacadeRemoteAdapter(
+                self._client, self._proxy)
+
+
+    def create_system_facade(self):
+        """Creates a system facade object."""
+        return system_facade_adapter.SystemFacadeRemoteAdapter(
                 self._client, self._proxy)
