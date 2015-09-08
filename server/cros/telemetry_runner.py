@@ -316,7 +316,7 @@ class TelemetryRunner(object):
         self._telemetry_path = telemetry_src
 
 
-    def _get_telemetry_cmd(self, script, test_or_benchmark):
+    def _get_telemetry_cmd(self, script, test_or_benchmark, *args):
         """Build command to execute telemetry based on script and benchmark.
 
         @param script: Telemetry script we want to run. For example:
@@ -324,6 +324,8 @@ class TelemetryRunner(object):
         @param test_or_benchmark: Name of the test or benchmark we want to run,
                                   with the page_set (if required) as part of
                                   the string.
+        @param args: additional list of arguments to pass to the script.
+
         @returns Full telemetry command to execute the script.
         """
         telemetry_cmd = []
@@ -337,12 +339,14 @@ class TelemetryRunner(object):
                  script,
                  '--verbose',
                  '--browser=cros-chrome',
-                 '--remote=%s' % self._host.hostname,
-                 test_or_benchmark])
+                 '--remote=%s' % self._host.hostname])
+        telemetry_cmd.extend(args)
+        telemetry_cmd.append(test_or_benchmark)
+
         return telemetry_cmd
 
 
-    def _run_telemetry(self, script, test_or_benchmark):
+    def _run_telemetry(self, script, test_or_benchmark, *args):
         """Runs telemetry on a dut.
 
         @param script: Telemetry script we want to run. For example:
@@ -350,13 +354,16 @@ class TelemetryRunner(object):
         @param test_or_benchmark: Name of the test or benchmark we want to run,
                                  with the page_set (if required) as part of the
                                  string.
+        @param args: additional list of arguments to pass to the script.
 
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
         # TODO (sbasi crbug.com/239933) add support for incognito mode.
 
-        telemetry_cmd = self._get_telemetry_cmd(script, test_or_benchmark)
+        telemetry_cmd = self._get_telemetry_cmd(script,
+                                                test_or_benchmark,
+                                                *args)
         logging.debug('Running Telemetry: %s', ' '.join(telemetry_cmd))
 
         output = StringIO.StringIO()
@@ -384,56 +391,63 @@ class TelemetryRunner(object):
                                stderr=stderr)
 
 
-    def _run_test(self, script, test):
+    def _run_test(self, script, test, *args):
         """Runs a telemetry test on a dut.
 
         @param script: Which telemetry test script we want to run. Can be
                        telemetry's base test script or the Chrome OS specific
                        test script.
         @param test: Telemetry test we want to run.
+        @param args: additional list of arguments to pass to the script.
 
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
         logging.debug('Running telemetry test: %s', test)
         telemetry_script = os.path.join(self._telemetry_path, script)
-        result = self._run_telemetry(telemetry_script, test)
+        result = self._run_telemetry(telemetry_script, test, *args)
         if result.status is FAILED_STATUS:
             raise error.TestFail('Telemetry test %s failed.' % test)
         return result
 
 
-    def run_telemetry_test(self, test):
+    def run_telemetry_test(self, test, *args):
         """Runs a telemetry test on a dut.
 
         @param test: Telemetry test we want to run.
+        @param args: additional list of arguments to pass to the telemetry
+                     execution script.
 
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
         """
-        return self._run_test(TELEMETRY_RUN_TESTS_SCRIPT, test)
+        return self._run_test(TELEMETRY_RUN_TESTS_SCRIPT, test, *args)
 
 
-    def run_cros_telemetry_test(self, test):
+    def run_cros_telemetry_test(self, test, *args):
         """Runs a cros specific telemetry test on a dut.
 
         @param test: Telemetry test we want to run.
+        @param args: additional list of arguments to pass to the telemetry
+                     execution script.
 
         @returns A TelemetryResult instance with the results of this telemetry
                  execution.
         """
-        return self._run_test(TELEMETRY_RUN_CROS_TESTS_SCRIPT, test)
+        return self._run_test(TELEMETRY_RUN_CROS_TESTS_SCRIPT, test, *args)
 
 
-    def run_gpu_test(self, test):
+    def run_gpu_test(self, test, *args):
         """Runs a gpu test on a dut.
 
         @param test: Gpu test we want to run.
+        @param args: additional list of arguments to pass to the telemetry
+                     execution script.
 
         @returns A TelemetryResult instance with the results of this telemetry
                  execution.
         """
-        return self._run_test(TELEMETRY_RUN_GPU_TESTS_SCRIPT, test)
+        return self._run_test(TELEMETRY_RUN_GPU_TESTS_SCRIPT, test, *args)
 
 
     @staticmethod
@@ -460,7 +474,8 @@ class TelemetryRunner(object):
                     graph=perf_value['graph'])
 
 
-    def run_telemetry_benchmark(self, benchmark, perf_value_writer=None):
+    def run_telemetry_benchmark(self, benchmark, perf_value_writer=None,
+                                *args):
         """Runs a telemetry benchmark on a dut.
 
         @param benchmark: Benchmark we want to run.
@@ -468,6 +483,8 @@ class TelemetryRunner(object):
                                   output_perf_value(), if None, no perf value
                                   will be written. Typically this will be the
                                   job object from an autotest test.
+        @param args: additional list of arguments to pass to the telemetry
+                     execution script.
 
         @returns A TelemetryResult Instance with the results of this telemetry
                  execution.
@@ -475,7 +492,7 @@ class TelemetryRunner(object):
         logging.debug('Running telemetry benchmark: %s', benchmark)
         telemetry_script = os.path.join(self._telemetry_path,
                                         TELEMETRY_RUN_BENCHMARKS_SCRIPT)
-        result = self._run_telemetry(telemetry_script, benchmark)
+        result = self._run_telemetry(telemetry_script, benchmark, *args)
         result.parse_benchmark_results()
 
         if perf_value_writer:
