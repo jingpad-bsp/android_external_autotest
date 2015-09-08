@@ -127,6 +127,43 @@ def _configure_install_logging():
     root_logger.addHandler(handler)
 
 
+def _try_lock_host(afe_host):
+    """Lock a host in the AFE, and report whether it succeeded.
+
+    The lock action is logged regardless of success; failures are
+    logged if they occur.
+
+    @param afe_host AFE Host instance to be locked.
+    @return `True` on success, or `False` on failure.
+    """
+    try:
+        logging.warning('Locking host now.')
+        afe_host.modify(locked=True,
+                        lock_reason='Running deployment_test')
+    except Exception as e:
+        logging.exception('Failed to lock: %s', e)
+        return False
+    return True
+
+
+def _try_unlock_host(afe_host):
+    """Unlock a host in the AFE, and report whether it succeeded.
+
+    The unlock action is logged regardless of success; failures are
+    logged if they occur.
+
+    @param afe_host AFE Host instance to be unlocked.
+    @return `True` on success, or `False` on failure.
+    """
+    try:
+        logging.warning('Unlocking host.')
+        afe_host.modify(locked=False, lock_reason='')
+    except Exception as e:
+        logging.exception('Failed to unlock: %s', e)
+        return False
+    return True
+
+
 def _install_dut(arguments, hostname):
     """Install the initial test image on one DUT using servo.
 
@@ -154,12 +191,19 @@ def _install_dut(arguments, hostname):
 
     afe = frontend.AFE(server=arguments.web)
     hostlist = afe.get_hosts([hostname])
+    unlock_on_failure = False
     if hostlist:
         afe_host = hostlist[0]
-        if (not afe_host.locked or
-                (afe_host.status != 'Ready' and
-                 afe_host.status != 'Repair Failed')):
-            return 'Host exists, but is not locked and idle'
+        if not afe_host.locked:
+            if _try_lock_host(afe_host):
+                unlock_on_failure = True
+            else:
+                return 'Failed to lock host'
+        if (afe_host.status != 'Ready' and
+                 afe_host.status != 'Repair Failed'):
+            if unlock_on_failure and not _try_unlock_host(afe_host):
+                return 'Host is in use, and failed to unlock it'
+            return 'Host is in use by Autotest'
     else:
         afe_host = None
 
@@ -169,20 +213,20 @@ def _install_dut(arguments, hostname):
         host._servo_repair_reinstall()
     except error.AutoservRunError as re:
         logging.exception('Failed to install: %s', re)
+        if unlock_on_failure and not _try_unlock_host(afe_host):
+            logging.error('Failed to unlock host!')
         return 'chromeos-install failed'
     except Exception as e:
         logging.exception('Failed to install: %s', e)
+        if unlock_on_failure and not _try_unlock_host(afe_host):
+            logging.error('Failed to unlock host!')
         return str(e)
     finally:
         host.close()
 
     if afe_host is not None:
-        try:
-            logging.debug('Unlocking host in AFE.')
-            afe_host.modify(locked=False, lock_reason='')
-        except Exception as e:
-            logging.exception('Failed to unlock: %s', e)
-            return 'Failed to unlock after installing'
+        if not _try_unlock_host(afe_host):
+            return 'Failed to unlock after successful install'
     else:
         logging.debug('Creating host in AFE.')
         atest_path = os.path.join(
@@ -193,13 +237,11 @@ def _install_dut(arguments, hostname):
         if status != 0:
             logging.error('Host creation failed, status = %d', status)
             return 'Failed to add host to AFE'
+    # Must re-query to get state changes, especially label changes.
     afe_host = afe.get_hosts([hostname])[0]
-    haveboard = False
-    for label in afe_host.labels:
-        if label.startswith(constants.Labels.BOARD_PREFIX):
-            haveboard = True
-            break
-    if not haveboard:
+    have_board = any([label.startswith(constants.Labels.BOARD_PREFIX)
+                         for label in afe_host.labels])
+    if not have_board:
         afe_host.delete()
         return 'Failed to add labels to host'
     return None
