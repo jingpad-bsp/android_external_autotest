@@ -17,6 +17,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.multimedia import audio_facade_native
 from autotest_lib.client.cros.multimedia import display_facade_native
+from autotest_lib.client.cros.multimedia import system_facade_native
 
 
 class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
@@ -26,7 +27,8 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         """Initializes the facade objects."""
         self._facades = {
             'audio': audio_facade_native.AudioFacadeNative(chromium),
-            'display': display_facade_native.DisplayFacadeNative(chromium)
+            'display': display_facade_native.DisplayFacadeNative(chromium),
+            'system': system_facade_native.SystemFacadeNative(),
         }
 
 
