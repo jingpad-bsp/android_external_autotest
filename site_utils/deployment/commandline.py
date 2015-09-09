@@ -427,6 +427,7 @@ def parse_command(argv):
                 arguments.board)
         arguments.dir = os.path.join(os.environ['HOME'],
                                      'Documents', basename)
-    if not os.path.isdir(arguments.dir):
+        os.makedirs(arguments.dir)
+    elif not os.path.isdir(arguments.dir):
         os.mkdir(arguments.dir)
     return arguments
