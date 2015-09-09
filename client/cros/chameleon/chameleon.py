@@ -249,6 +249,7 @@ class ChameleonVideoInput(ChameleonPort):
     It contains some special methods to control a video input.
     """
 
+    _DUT_STABILIZE_TIME = 3
     _DURATION_UNPLUG_FOR_EDID = 5
     _TIMEOUT_VIDEO_STABLE_PROBE = 10
     _EDID_ID_DISABLE = -1
@@ -270,8 +271,17 @@ class ChameleonVideoInput(ChameleonPort):
         @return: True if the video input becomes stable within the timeout
                  period; otherwise, False.
         """
-        return self.chameleond_proxy.WaitVideoInputStable(self.port_id,
-                                                          timeout)
+        is_input_stable = self.chameleond_proxy.WaitVideoInputStable(
+                                self.port_id, timeout)
+
+        # If video input of Chameleon has been stable, wait for DUT software
+        # layer to be stable as well to make sure all the configurations have
+        # been propagated before proceeding.
+        if is_input_stable:
+            logging.info('Video input has been stable. Waiting for the DUT'
+                         ' to be stable...')
+            time.sleep(self._DUT_STABILIZE_TIME)
+        return is_input_stable
 
 
     def read_edid(self):
