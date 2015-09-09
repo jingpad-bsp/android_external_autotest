@@ -2,30 +2,34 @@
 <head>
     <meta charset="utf-8">
     <title>Image Comparison Viewer</title>
-    <link rel="stylesheet" href="style.css" type="text/css" />
+    <style>
+       {}
+    </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script src="code.js"></script>
+    <script type="text/javascript">
+        {}
+    </script>
 </head>
 <body>
     <div id="testrundetails">
         <h1> Test Run Details </h1>
         <ul>
-            <li><span class="tagname"> Test Name: </span>{0}</li>
-            <li><span class="tagname"> ChromeOS Build Number: </span>{1}</li>
-            <li><span class="tagname"> Chrome Build Number: </span>{2}</li>
-            <li><span class="tagname"> Device: </span>{3}</li>
-            <li><span class="tagname"> Date of run: </span>{4}</li>
-            <li><span class="tagname"> Differing pixels: </span>{5} </li>
+            <li><span class="tagname"> Test Name: </span>{}</li>
+            <li><span class="tagname"> ChromeOS Build Number: </span>{}</li>
+            <li><span class="tagname"> Chrome Build Number: </span>{}</li>
+            <li><span class="tagname"> Device: </span>{}</li>
+            <li><span class="tagname"> Date of run: </span>{}</li>
+            <li><span class="tagname"> Differing pixels: </span>{} </li>
         </ul>
     </div>
     <hr />
     <div id="thumbnails">
         <p>Golden</p>
-        <img class="thumb" src="golden.png"><br>
+        <img id="golden" class="thumb" src="data:image/png;base64, {}"><br>
         <p>Test</p>
-        <img class="thumb" src="test.png"><br>
+        <img id="test" class="thumb" src="data:image/png;base64, {}"><br>
         <p>Diff</p>
-        <img class="thumb" src="diff.png">
+        <img id="diff" class="thumb" src="data:image/png;base64, {}">
     </div>
     <div id="content">
         <img id="fullsizeimage" src="golden.png" />
