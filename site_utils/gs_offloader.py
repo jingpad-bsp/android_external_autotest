@@ -77,13 +77,16 @@ LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 NOTIFY_ADDRESS = global_config.global_config.get_config_value(
     'SCHEDULER', 'notify_email', default='')
 
+ERROR_EMAIL_HELPER_URL = 'http://go/cros-triage-gsoffloader'
 ERROR_EMAIL_SUBJECT_FORMAT = 'GS Offloader notifications from %s'
 ERROR_EMAIL_REPORT_FORMAT = '''\
 gs_offloader is failing to offload results directories.
 
+Check %s to triage the issue.
+
 First failure       Count   Directory name
 =================== ======  ==============================
-'''
+''' % ERROR_EMAIL_HELPER_URL
 # --+----1----+----  ----+  ----+----1----+----2----+----3
 
 ERROR_EMAIL_DIRECTORY_FORMAT = '%19s  %5d  %-1s\n'

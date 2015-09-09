@@ -433,6 +433,12 @@ class EmailTemplateTests(mox.MoxTestBase):
         gs_offloader.report_offload_failures(self._joblist)
 
 
+    def test_email_url(self):
+        """Check that the expected helper url is in the email header."""
+        self.assertIn(gs_offloader.ERROR_EMAIL_HELPER_URL,
+                      gs_offloader.ERROR_EMAIL_REPORT_FORMAT)
+
+
 class _MockJob(object):
     """Class to mock the return value of `AFE.get_jobs()`."""
     def __init__(self, created):
