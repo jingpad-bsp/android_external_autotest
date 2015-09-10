@@ -53,16 +53,43 @@ class DisplayFacadeNative(object):
 
 
     @_retry_chrome_call
+    def _get_extension(self, extension_path=None):
+        """Gets the extension from the indicated path.
+
+        @param extension_path: the path of the target extension.
+                               Set to None to get autotest extension.
+                               Defaults to None.
+        @return an extension object.
+
+        @raise RuntimeError if the extension is not found.
+        @raise chrome.Error if the found extension has not yet been
+               retrieved succesfully.
+        """
+        try:
+            if extension_path is None:
+                extension = self._chrome.autotest_ext
+            else:
+                extension = self._chrome.get_extension(extension_path)
+        except KeyError, errmsg:
+            # Trigger _retry_chrome_call to retry to retrieve the
+            # found extension.
+            raise chrome.Error(errmsg)
+        if not extension:
+            if extension_path is None:
+                raise RuntimeError('Autotest extension not found')
+            else:
+                raise RuntimeError('Extension not found in %r'
+                                    % extension_path)
+        return extension
+
+
+    @_retry_chrome_call
     def get_display_info(self):
         """Gets the display info from Chrome.system.display API.
 
         @return array of dict for display info.
         """
-
-        extension = self._chrome.get_extension(
-                constants.DISPLAY_TEST_EXTENSION)
-        if not extension:
-            raise RuntimeError('Display test extension not found')
+        extension = self._get_extension(constants.DISPLAY_TEST_EXTENSION)
         extension.ExecuteJavaScript('window.__display_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.system.display.getInfo(function(info) {"
@@ -79,10 +106,7 @@ class DisplayFacadeNative(object):
 
         @return a dict for the information of the current window.
         """
-
-        extension = self._chrome.autotest_ext
-        if not extension:
-            raise RuntimeError('Autotest extension not found')
+        extension = self._get_extension()
         extension.ExecuteJavaScript('window.__window_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.windows.getCurrent(function(info) {"
@@ -493,9 +517,8 @@ class DisplayFacadeNative(object):
             not display_info[display_index]['isEnabled']):
             raise RuntimeError('Cannot find the indicated display')
         target_bounds = display_info[display_index]['bounds']
-        extension = self._chrome.autotest_ext
-        if not extension:
-            raise RuntimeError('Autotest extension not found')
+
+        extension = self._get_extension()
         # If the area of bounds is empty (here we achieve this by setting
         # width and height to zero), the window_sizer will automatically
         # determine an area which is visible and fits on the screen.
