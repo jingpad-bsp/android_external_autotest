@@ -91,17 +91,7 @@ class ChameleonScreenTest(object):
 
 
     def unload_test_image(self):
-        """Sets window state back and closes the tab in browser to unload
-           the test image.
-        """
-        # set_fullscreen(False) is necessary here because currently there
-        # is a bug in close_tab(). If we call close_tab() without setting
-        # state back to normal, it will cancel fullscreen mode without
-        # changing system display record, and so that when the next test
-        # call set_fullscreen(True), the function will find that current
-        # state is already 'fullscreen' (though it is not) and do nothing,
-        # which will break all the following tests.
-        self._display_facade.set_fullscreen(False)
+        """Closes the tab in browser to unload the fullscreen test image."""
         self._display_facade.close_tab()
 
 

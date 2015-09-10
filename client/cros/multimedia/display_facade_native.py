@@ -573,9 +573,18 @@ class DisplayFacadeNative(object):
 
     @_retry_chrome_call
     def close_tab(self, index=-1):
-        """Closes the tab of the given index.
+        """Disables fullscreen and closes the tab of the given index.
 
         @param index: The tab index to close. Defaults to the last tab.
         """
+        # set_fullscreen(False) is necessary here because currently there
+        # is a bug in tabs.Close(). If the current state is fullscreen and
+        # we call close_tab() without setting state back to normal, it will
+        # cancel fullscreen mode without changing system configuration, and
+        # so that the next time someone calls set_fullscreen(True), the
+        # function will find that current state is already 'fullscreen'
+        # (though it is not) and do nothing, which will break all the
+        # following tests.
+        self.set_fullscreen(False)
         self._browser.tabs[index].Close()
         return True

@@ -76,7 +76,7 @@ class DisplayFacadeLocalAdapter(object):
 
 
     def close_tab(self, index=-1):
-        """Closes the tab of the given index.
+        """Disables fullscreen and closes the tab of the given index.
 
         @param index: The tab index to close. Defaults to the last tab.
         """
