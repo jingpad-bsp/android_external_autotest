@@ -163,41 +163,38 @@ class DisplayFacadeLocalAdapter(object):
         return self._display_component.get_content_protection()
 
 
-    def _read_root_window_rect(self, id):
-        """Reads the given rectangle from frame buffer.
+    def _take_screenshot(self, screenshot_func):
+        """Gets screenshot from frame buffer.
 
-        @param crtc: The id of the crtc to read.
+        @param screenshot_func: function to take a screenshot and save the image
+                to specified path. Usage: screenshot_func(path).
 
-        @return: An Image object, or None if any error.
+        @return: An Image object.
                  Notice that the returned image may not be in RGB format,
                  depending on PIL implementation.
         """
-        if 0 in (w, h):
-            # Not a valid rectangle
-            return None
-
         with tempfile.NamedTemporaryFile(suffix='.png') as f:
-            self._display_component.take_screenshot_crtc(f.name, crtc_id=id)
+            screenshot_func(f.name)
             return Image.open(f.name)
 
 
     def capture_internal_screen(self):
         """Captures the internal screen framebuffer.
 
-        @return: An Image object. None if any error.
+        @return: An Image object.
         """
-        id = self._display_component.get_internal_crtc()
-        return self._read_root_window_rect(id)
+        screenshot_func = self._display_component.take_internal_screenshot
+        return self._take_screenshot(screenshot_func)
 
 
     # TODO(ihf): This function needs to be fixed for multiple screens.
     def capture_external_screen(self):
         """Captures the external screen framebuffer.
 
-        @return: An Image object. None if any error.
+        @return: An Image object.
         """
-        id = self._display_component.get_external_crtc()
-        return self._read_root_window_rect(id)
+        screenshot_func = self._display_component.take_external_screenshot
+        return self._take_screenshot(screenshot_func)
 
 
     def get_external_resolution(self):
