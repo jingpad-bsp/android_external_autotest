@@ -16,6 +16,7 @@ from autotest_lib.client.common_lib.cros import chrome, retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import image_generator
+from telemetry.internal.browser import web_contents
 
 class TimeoutException(Exception):
     pass
@@ -509,7 +510,9 @@ class DisplayFacadeNative(object):
         """Moves the current window to the indicated display.
 
         @param display_index: The index of the indicated display.
-        @return True if success, False otherwise.
+        @return True if success.
+
+        @raise TimeoutException if it fails.
         """
         display_info = self.get_display_info()
         if (display_index is False or
@@ -534,15 +537,18 @@ class DisplayFacadeNative(object):
                         chrome.windows.WINDOW_ID_CURRENT,
                         {left: %d, top: %d, width: 0, height: 0,
                          state: 'normal'},
-                        function() { __status = 'Done'; });
+                        function(info) {
+                            if (info.left == %d && info.top == %d &&
+                                info.state == 'normal')
+                                __status = 'Done'; });
                 """
-                % (target_bounds['left'], target_bounds['top'])
+                % (target_bounds['left'], target_bounds['top'],
+                   target_bounds['left'], target_bounds['top'])
         )
-        utils.wait_for_value(lambda: (
-                extension.EvaluateJavaScript('__status') == 'Done'),
-                expected_value=True)
-        return extension.EvaluateJavaScript('__status') == 'Done'
-
+        extension.WaitForJavaScriptExpression(
+                "__status == 'Done'",
+                web_contents.DEFAULT_WEB_CONTENTS_TIMEOUT)
+        return True
 
     def toggle_fullscreen(self):
         """Toggles mirrored."""
