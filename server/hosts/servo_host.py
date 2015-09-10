@@ -671,6 +671,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
     @returns: A ServoHost object or None. See comments above.
 
     """
+    required_by_test = servo_args is not None
     if not utils.is_in_container():
         is_moblab = utils.is_moblab()
     else:
@@ -699,7 +700,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
                         'SSP', 'host_container_ip', type=str, default=None)
 
     if not is_in_lab:
-        if servo_args is None:
+        if not required_by_test:
             return None
         return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
     elif servo_args is not None or try_lab_servo:
@@ -718,6 +719,6 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
         host_is_up = ping_runner.PingRunner().ping(ping_config).received > 0
         if host_is_up:
             return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
-                             required_by_test=(servo_args is not None))
+                             required_by_test=required_by_test)
     else:
         return None
