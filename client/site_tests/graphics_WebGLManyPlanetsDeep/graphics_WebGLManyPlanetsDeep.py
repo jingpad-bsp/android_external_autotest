@@ -13,7 +13,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 
-
 class graphics_WebGLManyPlanetsDeep(test.test):
     """WebGL many planets deep graphics test."""
     version = 1
@@ -46,7 +45,7 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
-        tab.WaitForJavaScriptExpression('typeof start != "undefined"')
+        tab.WaitForJavaScriptExpression('typeof start != "undefined"', 10)
 
         # Wait 3 seconds for the page to stabilize.
         # TODO(ihf): Add a function that waits for low system load.

@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 
+
 class graphics_WebGLPerformance(test.test):
     """WebGL performance graphics test."""
     version = 1
@@ -50,7 +51,7 @@ class graphics_WebGLPerformance(test.test):
         tab.Activate()
 
         # Wait for test completion.
-        tab.WaitForJavaScriptExpression('time_ms_geom_mean > 0.0')
+        tab.WaitForJavaScriptExpression('time_ms_geom_mean > 0.0', 10)
 
         # Get the geometric mean of individual runtimes.
         time_ms_geom_mean = tab.EvaluateJavaScript(

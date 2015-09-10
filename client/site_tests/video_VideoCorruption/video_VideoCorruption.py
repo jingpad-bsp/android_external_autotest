@@ -7,7 +7,6 @@ import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 
-WAIT_TIMEOUT_S = 30
 
 class video_VideoCorruption(test.test):
     """This test verifies playing corrupted video in Chrome."""
@@ -28,5 +27,5 @@ class video_VideoCorruption(test.test):
             tab.EvaluateJavaScript(
                     'loadSourceAndRunCorruptionTest("%s")' % video)
             # Expect corruption being detected after playing corrupted video.
-            tab.WaitForJavaScriptExpression('corruptionDetected();')
+            tab.WaitForJavaScriptExpression('corruptionDetected();', 30)
 

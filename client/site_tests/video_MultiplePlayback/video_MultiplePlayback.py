@@ -13,7 +13,6 @@ from autotest_lib.client.cros.video import youtube_helper
 
 FLASH_PROCESS_NAME = 'chrome/chrome --type=ppapi'
 PLAYER_PLAYING_STATE = 'Playing'
-WAIT_TIMEOUT_S = 5
 PLAYBACK_TEST_TIME_S = 10
 
 
@@ -58,7 +57,7 @@ class video_MultiplePlayback(test.test):
                 os.path.join(self.bindir, 'video.html')))
 
         # Waiting for test video to load.
-        tab1.WaitForJavaScriptExpression('testvideo.currentTime < 1.0')
+        tab1.WaitForJavaScriptExpression('testvideo.currentTime < 1.0', 5)
 
         tab2 = browser.tabs.New()
         tab2.Navigate(browser.http_server.UrlOf(
