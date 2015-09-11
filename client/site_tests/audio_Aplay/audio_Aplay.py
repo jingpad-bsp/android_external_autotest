@@ -6,6 +6,7 @@ import re
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.audio import alsa_utils
 
 
 APLAY_FILE = '/dev/zero' # raw data
@@ -50,9 +51,10 @@ def _play_audio(duration=1):
     @return String output from the command (may be empty).
     @raises CmdError when cmd returns <> 0.
     """
+    device = alsa_utils.get_sysdefault_playback_device()
     cmd = ['aplay',
            '-v', # show verbose details
-           '-D hw',  # select default device
+           '-D %s' % device,  # select default device
            '-d %d' % duration,
            '-f cd', # format
            APLAY_FILE,
