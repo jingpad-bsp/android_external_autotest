@@ -4,6 +4,7 @@
 
 import logging, os
 
+from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils
 from telemetry.core import cros_interface, exceptions, util
 from telemetry.internal.browser import browser_finder, browser_options
@@ -96,10 +97,9 @@ class Chrome(object):
         b_options.username = self.username
         b_options.password = self.password
 
-        # TODO(dgarrett): Reenable, crbug.com/527144
         # Turn on collection of Chrome coredumps via creation of a magic file.
         # (Without this, Chrome coredumps are trashed.)
-        # open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
+        open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
 
         for i in range(num_tries):
             try:
