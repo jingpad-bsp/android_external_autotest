@@ -64,47 +64,34 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
 
 
     def suspend_resume(self, plugged_before_suspend, plugged_after_suspend,
-                                plugged_before_resume):
+                                plugged_before_resume, test_case):
         """Performs the mix of suspend/resume and plug/unplug
 
         @param plugged_before_suspend: plug state before suspend
         @param plugged_after_suspend: plug state after suspend
         @param plugged_before_resume: plug state before resume
+        @param test_case: string identifying test case sequence
 
         """
-        plugged_after_resume = True
-        # Reverse plugged states, when internal audio is tested
-        if self.is_internal:
-            plugged_after_resume = False
-            plugged_before_suspend = not plugged_before_suspend
-            plugged_after_suspend = not plugged_after_suspend
-            plugged_before_resume = not plugged_before_resume
-
-
-        logging.info('TEST CASE: %s > suspend > %s > %s > resume > %s',
-                        'plug' if plugged_before_suspend else 'unplug',
-                        'plug' if plugged_after_suspend else 'unplug',
-                        'plug' if plugged_before_resume else 'unplug',
-                        'plug' if plugged_after_resume else 'unplug')
-        # Plugged before suspended
-        self.action_plug_jack(plugged_before_suspend)
 
         # Suspend
         boot_id = self.host.get_boot_id()
         thread = threading.Thread(target=self.action_suspend)
         thread.start()
-        self.host.test_wait_for_sleep(self.SUSPEND_SECONDS / 3)
+        try:
+            self.host.test_wait_for_sleep(self.SUSPEND_SECONDS / 3)
+        except error.TestFail, ex:
+            self.errors.append("%s - %s" % (test_case, str(ex)))
 
         # Plugged after suspended
         self.action_plug_jack(plugged_after_suspend)
 
         # Plugged before resumed
         self.action_plug_jack(plugged_before_resume)
-
-        self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT_SECS)
-
-        # Active (plugged for external) state after resume
-        self.action_plug_jack(plugged_after_resume)
+        try:
+            self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT_SECS)
+        except error.TestFail, ex:
+            self.errors.append("%s - %s" % (test_case, str(ex)))
 
 
     def check_correct_audio_node_selected(self):
@@ -152,6 +139,8 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
 
         @param recorder_widget: recorder widget to save data from
 
+        @returns true if audio comparison is successful, false otherwise
+
         @raise error.TestFail: if comparison fails
 
         """
@@ -167,15 +156,14 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         # Removes noise by a lowpass filter.
         recorder_widget.lowpass_filter(self.low_pass_freq)
         recorded_file = os.path.join(self.resultsdir,
-                                        "recorded_filtered.raw")
+                                     "recorded_filtered.raw")
         logging.debug('Saving filtered data to %s', recorded_file)
         recorder_widget.save_file(recorded_file)
 
 
-        # Compares data by frequency.
-        if not chameleon_audio_helper.compare_recorded_result(
-                self.golden_file, recorder_widget, 'frequency'):
-            raise error.TestFail('Recorded and playback file do not match')
+        # Compares data by frequency and returns the result.
+        return chameleon_audio_helper.compare_recorded_result(
+            self.golden_file, recorder_widget, 'frequency')
 
 
     def run_once(self, host, audio_nodes, golden_data,
@@ -209,6 +197,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.host = host
         self.audio_nodes = audio_nodes
         self.is_internal=is_internal
+        self.errors = []
         self.golden_file, self.low_pass_freq = golden_data
         chameleon_board = self.host.chameleon
         self.factory = self.create_remote_facade_factory(self.host)
@@ -245,15 +234,45 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         else:
             plug_configs = self.PLUG_CONFIGS
 
+        test_index = 0
         for (plugged_before_suspend, plugged_after_suspend,
                  plugged_before_resume) in plug_configs:
+            plugged_after_resume = True
+            test_index += 1
+
+            # Reverse plugged states, when internal audio is tested
+            if self.is_internal:
+                plugged_after_resume = False
+                plugged_before_suspend = not plugged_before_suspend
+                plugged_after_suspend = not plugged_after_suspend
+                plugged_before_resume = not plugged_before_resume
+            test_case = ('TEST CASE %d: %s > suspend > %s > %s > resume > %s' %
+                (test_index, 'PLUG' if plugged_before_suspend else 'UNPLUG',
+                 'PLUG' if plugged_after_suspend else 'UNPLUG',
+                 'PLUG' if plugged_before_resume else 'UNPLUG',
+                 'PLUG' if plugged_after_resume else 'UNPLUG'))
+            logging.info(test_case)
+
+            # Plugged status before suspended
+            self.action_plug_jack(plugged_before_suspend)
+
             self.suspend_resume(plugged_before_suspend,
                                 plugged_after_suspend,
-                                plugged_before_resume)
+                                plugged_before_resume,
+                                test_case)
+
+            # Active (plugged for external) state after resume
+            self.action_plug_jack(plugged_after_resume)
+
             if binder_widget != None:
                 with chameleon_audio_helper.bind_widgets(binder_widget):
                     self.play_and_record(source_widget, recorder_widget)
             else:
                 self.play_and_record(source_widget, recorder_widget)
 
-            self.save_and_check_data(recorder_widget)
+            if not self.save_and_check_data(recorder_widget):
+                self.errors.append('%s: Recorded file does not match playback file' %
+                              test_case)
+
+        if self.errors:
+            raise error.TestFail('; '.join(set(self.errors)))
