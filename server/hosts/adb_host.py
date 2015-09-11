@@ -418,3 +418,25 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         """
         self._adb_run('log -t "%s" "%s"' % (tag, message), shell=True)
+
+
+    def get_autodir(self):
+        """Return the directory to install autotest for client side tests."""
+        return '/data/autotest'
+
+    def verify_software(self):
+        """Verify working software on an adb_host.
+
+        TODO: Actually implement this method.
+        """
+        return True
+
+    def verify_job_repo_url(self, tag=''):
+        """Make sure job_repo_url of this host is valid.
+
+        TODO: Actually implement this method.
+
+        @param tag: The tag from the server job, in the format
+                    <job_id>-<user>/<hostname>, or <hostless> for a server job.
+        """
+        return

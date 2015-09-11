@@ -65,8 +65,10 @@ class MoblabHost(cros_host.CrosHost):
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         try:
-            result = host.run('grep -q moblab /etc/lsb-release',
-                              ignore_status=True, timeout=timeout)
+            result = host.run(
+                    'grep -q moblab /etc/lsb-release && '
+                    '! test -f /mnt/stateful_partition/.android_tester',
+                    ignore_status=True, timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
         return result.exit_status == 0
