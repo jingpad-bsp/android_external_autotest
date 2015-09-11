@@ -153,6 +153,30 @@ def get_default_record_device():
     return 'plughw:%d' % card_id
 
 
+def _get_sysdefault(cmd):
+    p = cmd_utils.popen(shlex.split(cmd), stdout=cmd_utils.PIPE)
+    output, _ = p.communicate()
+    if p.wait() != 0:
+        raise RuntimeError('%s failed' % cmd)
+
+    for line in output.splitlines():
+        if 'sysdefault' in line:
+            return line
+    return None
+
+
+def get_sysdefault_playback_device():
+    '''Gets the sysdefault device from aplay -L output.'''
+
+    return _get_sysdefault(APLAY_PATH + ' -L')
+
+
+def get_sysdefault_record_device():
+    '''Gets the sysdefault device from arecord -L output.'''
+
+    return _get_sysdefault(ARECORD_PATH + ' -L')
+
+
 def playback(*args, **kwargs):
     '''A helper funciton to execute playback_cmd.
 
