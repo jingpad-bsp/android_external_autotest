@@ -441,21 +441,6 @@ class FirmwareTest(FAFTBase):
         command = 'status %s | grep start || start %s' % (service, service)
         self.faft_client.system.run_shell_command(command)
 
-    def _write_gbb_flags(self, new_flags):
-        """Write the GBB flags to the current firmware.
-
-        @param new_flags: The flags to write.
-        """
-        gbb_flags = self.faft_client.bios.get_gbb_flags()
-        if gbb_flags == new_flags:
-            return
-        logging.info('Changing GBB flags from 0x%x to 0x%x.',
-                     gbb_flags, new_flags)
-        self.faft_client.bios.set_gbb_flags(new_flags)
-        # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
-        if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
-            self.switcher.mode_aware_reboot()
-
     def clear_set_gbb_flags(self, clear_mask, set_mask):
         """Clear and set the GBB flags in the current flashrom.
 
@@ -464,7 +449,17 @@ class FirmwareTest(FAFTBase):
         """
         gbb_flags = self.faft_client.bios.get_gbb_flags()
         new_flags = gbb_flags & ctypes.c_uint32(~clear_mask).value | set_mask
-        self._write_gbb_flags(new_flags)
+        if new_flags != gbb_flags:
+            self._backup_gbb_flags = gbb_flags
+            logging.info('Changing GBB flags from 0x%x to 0x%x.',
+                         gbb_flags, new_flags)
+            self.faft_client.bios.set_gbb_flags(new_flags)
+            # If changing FORCE_DEV_SWITCH_ON flag, reboot to get a clear state
+            if ((gbb_flags ^ new_flags) & vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON):
+                self.switcher.mode_aware_reboot()
+        else:
+            logging.info('Current GBB flags look good for test: 0x%x.',
+                         gbb_flags)
 
     def check_ec_capability(self, required_cap=None, suppress_warning=False):
         """Check if current platform has required EC capabilities.
@@ -731,8 +726,6 @@ class FirmwareTest(FAFTBase):
         if self.check_setup_done('gbb_flags'):
             return
 
-        self._backup_gbb_flags = self.faft_client.bios.get_gbb_flags()
-
         logging.info('Set proper GBB flags for test.')
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DEV_SCREEN_SHORT_DELAY |
                                  vboot.GBB_FLAG_FORCE_DEV_SWITCH_ON |
@@ -752,7 +745,7 @@ class FirmwareTest(FAFTBase):
 
     def _restore_gbb_flags(self):
         """Restore GBB flags to their original state."""
-        if not self._backup_gbb_flags:
+        if self._backup_gbb_flags is None:
             return
         # Setting up and restoring the GBB flags take a lot of time. For
         # speed-up purpose, don't restore it.
