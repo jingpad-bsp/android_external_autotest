@@ -51,8 +51,9 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         # scroll's movement and fails the test if scroll occured in wrong direction.
         if (is_down_or_right and delta <= 0) or (not is_down_or_right and delta >= 0):
             raise error.TestFail('Page scroll was in wrong direction! '
-                                 'Delta=%d, Australian=%s'
-                                  % (delta, self._australian_state))
+                                 'Delta=%d, Australian=%s, Touchscreen=%s'
+                                  % (delta, self._australian_state,
+                                     self._has_touchscreen))
 
 
     def _center_cursor(self):
