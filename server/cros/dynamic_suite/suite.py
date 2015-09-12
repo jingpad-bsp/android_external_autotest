@@ -43,6 +43,8 @@ except ImportError:
     print '  - (not yet supported) be run after running '
     print '    ../utils/build_externals.py'
 
+_FILE_BUG_SUITES = ['au', 'bvt-.*', 'paygen_.*', 'sanity']
+
 class RetryHandler(object):
     """Maintain retry information.
 
@@ -914,12 +916,12 @@ class Suite(object):
         return n_scheduled
 
 
-    def should_file_bug(self, result):
+    def should_report(self, result):
         """
-        Returns True if this failure requires a bug.
+        Returns True if this failure requires to be reported.
 
         @param result: A result, encapsulating the status of the failed job.
-        @return: True if we should file bugs for this failure.
+        @return: True if we should report this failure.
         """
         if self._job_retry and self._retry_handler.has_following_retry(result):
             return False
@@ -933,6 +935,15 @@ class Suite(object):
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
+    def should_report_as_bug(self, suite):
+        """
+        Whether the test failures should be reported as bug.
+
+        @param suite: the suite name the failed tests belong to.
+        @return: True is reported as bug False if reported as email.
+        """
+        regrex = "(" + ")|(".join(_FILE_BUG_SUITES) + ")"
+        return bool(re.match(regrex, suite))
 
     def wait(self, record, bug_template={}):
         """
@@ -976,7 +987,7 @@ class Suite(object):
                 # TODO (fdeng): If the suite times out before a retry could
                 # finish, we would lose the chance to file a bug for the
                 # original job.
-                if self.should_file_bug(result):
+                if self.should_report(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
                     # Use the CrOS build for bug filing. If CrOS build is not
@@ -1002,19 +1013,26 @@ class Suite(object):
                                       'error: %s An empty bug template will '
                                       'be used.', e)
 
-                    bug_id, bug_count = bug_reporter.report(failure,
-                                                            merged_template)
+                    # File bug when failure is one of the _FILE_BUG_SUITES,
+                    # otherwise send an email to the owner anc cc.
+                    if self.should_report_as_bug(self._tag):
+                        bug_id, bug_count = bug_reporter.report(failure,
+                                                                merged_template)
 
-                    # We use keyvals to communicate bugs filed with run_suite.
-                    if bug_id is not None:
-                        bug_keyvals = tools.create_bug_keyvals(
-                                result.id, result.test_name,
-                                (bug_id, bug_count))
-                        try:
-                            utils.write_keyval(self._results_dir, bug_keyvals)
-                        except ValueError:
-                            logging.error('Unable to log bug keyval for:%s ',
-                                          result.test_name)
+                        # We use keyvals to communicate bugs filed with
+                        # run_suite.
+                        if bug_id is not None:
+                            bug_keyvals = tools.create_bug_keyvals(
+                                    result.id, result.test_name,
+                                    (bug_id, bug_count))
+                            try:
+                                utils.write_keyval(self._results_dir,
+                                                   bug_keyvals)
+                            except ValueError:
+                                logging.error('Unable to log bug keyval for:%s',
+                                              result.test_name)
+                    else:
+                        reporting.send_email(failure, merged_template)
 
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())

@@ -44,7 +44,7 @@ class SuiteTest(mox.MoxTestBase):
     _BOARD = 'board:board'
     _BUILDS = {provision.CROS_VERSION_PREFIX:'build_1',
                provision.FW_RW_VERSION_PREFIX:'fwrw_build_1'}
-    _TAG = 'suite_tag'
+    _TAG = 'au'
     _ATTR = {'attr:attr'}
     _DEVSERVER_HOST = 'http://dontcare:8080'
     _FAKE_JOB_ID = 10
@@ -783,8 +783,8 @@ class SuiteTest(mox.MoxTestBase):
                 test_to_retry, retry_for=self._FAKE_JOB_ID).AndRaise(
                 error.RPCException('Expected during test'))
         # Do not file a bug.
-        self.mox.StubOutWithMock(self.suite, 'should_file_bug')
-        self.suite.should_file_bug(mox.IgnoreArg()).AndReturn(False)
+        self.mox.StubOutWithMock(self.suite, 'should_report')
+        self.suite.should_report(mox.IgnoreArg()).AndReturn(False)
 
         self.mox.ReplayAll()
 
