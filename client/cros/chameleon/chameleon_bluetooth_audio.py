@@ -5,6 +5,7 @@
 """This module provides the utilities for bluetooth audio using chameleon."""
 
 import logging
+import time
 
 from autotest_lib.client.bin import utils
 
@@ -12,6 +13,7 @@ from autotest_lib.client.bin import utils
 _PIN = '0000'
 _SEARCH_TIMEOUT = 30.0
 _PAIRING_TIMEOUT = 5.0
+_CONNECT_TIMEOUT = 15.0
 
 
 class ChameleonBluetoothAudioError(Exception):
@@ -19,7 +21,7 @@ class ChameleonBluetoothAudioError(Exception):
     pass
 
 
-def connect_bluetooth_module(bt_adapter, target_mac_address,
+def connect_bluetooth_module_full_flow(bt_adapter, target_mac_address,
                              timeout=_SEARCH_TIMEOUT):
     """Controls Cros device to connect to bluetooth module on audio board.
 
@@ -70,9 +72,37 @@ def connect_bluetooth_module(bt_adapter, target_mac_address,
                 target_mac_address)
 
     # Connects to bluetooth module.
-    if not bt_adapter.connect_device(target_mac_address):
+    connect_bluetooth_module(bt_adapter, target_mac_address)
+
+    logging.info('Bluetooth module at %s is connected', target_mac_address)
+
+
+def connect_bluetooth_module(bt_adapter, target_mac_address,
+                             timeout=_CONNECT_TIMEOUT):
+    """Controls Cros device to connect to bluetooth module on audio board.
+
+    @param bt_adapter: A BluetoothDevice object to control bluetooth adapter
+                       on Cros device.
+    @param target_mac_address: The MAC address of bluetooth module to be
+                               connected.
+    @param timeout: Timeout in seconds to connect bluetooth module.
+
+    @raises: ChameleonBluetoothAudioError if Cros device fails to connect to
+             bluetooth module on audio board.
+
+    """
+    def _connect_device():
+        success = bt_adapter.connect_device(target_mac_address)
+        if not success:
+            logging.debug('Can not connect device, retry in 1 second.')
+            time.sleep(1)
+            return False
+        logging.debug('Connection established.')
+        return True
+
+    # Connects bluetooth module with given MAC address.
+    connected = utils.wait_for_value(_connect_device, True, timeout_sec=timeout)
+    if not connected:
         raise ChameleonBluetoothAudioError(
                 'Failed to let Cros device connect to bluetooth module %s' %
                 target_mac_address)
-
-    logging.info('Bluetooth module at %s is connected', target_mac_address)
