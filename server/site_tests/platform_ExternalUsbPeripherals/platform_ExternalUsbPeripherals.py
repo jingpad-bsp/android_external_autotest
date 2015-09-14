@@ -244,7 +244,7 @@ class platform_ExternalUsbPeripherals(test.test):
 
 
     def run_once(self, host, client_autotest, action_sequence, repeat,
-                 usb_list=None, usb_checks=None, crash_check=True):
+                 usb_list=None, usb_checks=None, crash_check=False):
         self.client_autotest = client_autotest
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
