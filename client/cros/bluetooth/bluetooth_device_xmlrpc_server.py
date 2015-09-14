@@ -696,7 +696,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           logging.info('Device is already connected')
           return True
         device.Connect()
-        return True
+        return self._is_connected(device)
+
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -718,7 +719,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           logging.info('Device is not connected')
           return True
         device.Disconnect()
-        return True
+        return not self._is_connected(device)
 
 
 if __name__ == '__main__':
