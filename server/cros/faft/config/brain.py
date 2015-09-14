@@ -13,3 +13,4 @@ class Values(veyron.Values):
     rec_button_dev_switch = True
     hold_pwr_button_poweroff = 7
     hold_pwr_button_poweron = 0.7
+    powerup_ready = 15
