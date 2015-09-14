@@ -394,7 +394,7 @@ class BluetoothWidgetLink(WidgetLink):
     """The abstraction for bluetooth link between Cros device and bt module."""
     # The delay after connection for cras to process the bluetooth connection
     # event and enumerate the bluetooth nodes.
-    _DELAY_AFTER_CONNECT_SECONDS = 2
+    _DELAY_AFTER_CONNECT_SECONDS = 5
 
     def __init__(self, bt_adapter, audio_board_bt_ctrl, mac_address):
         """Initializes a BluetoothWidgetLink.
