@@ -25,7 +25,7 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
     """
     version = 1
     DELAY_BEFORE_RECORD_SECONDS = 0.5
-    RECORD_SECONDS = 5
+    RECORD_SECONDS = 9
 
     def run_once(self, host):
         golden_file = audio_test_data.FREQUENCY_TEST_FILE
