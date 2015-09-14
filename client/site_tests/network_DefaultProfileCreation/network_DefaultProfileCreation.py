@@ -9,7 +9,7 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 class network_DefaultProfileCreation(test.test):
@@ -37,17 +37,12 @@ class network_DefaultProfileCreation(test.test):
 
     def run_once(self):
         """Test main loop."""
-        utils.run('stop shill')
-        try:
-            os.remove(self.DEFAULT_PROFILE_PATH)
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise e
-        finally:
-            # start shill before the exception (if any) propagates.
-            # Otherwise, the DUT will be offline, and autotest will
-            # time out.
-            utils.run('start shill')
+        with shill_context.stopped_shill():
+            try:
+                os.remove(self.DEFAULT_PROFILE_PATH)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise e
         shill = shill_proxy.ShillProxy.get_proxy()
         start_time = time.time()
         profile = None
