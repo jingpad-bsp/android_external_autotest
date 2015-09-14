@@ -98,6 +98,18 @@ class WidgetBinder(object):
         self._link.occupied = False
 
 
+    def get_link(self):
+        """Returns the link controlled by this binder.
+
+        The link provides more controls than binder so user can do
+        more complicated tests.
+
+        @returns: An object of subclass of WidgetLink.
+
+        """
+        return self._link
+
+
 class WidgetLinkError(Exception):
     """Error in WidgetLink."""
     pass
@@ -523,3 +535,12 @@ class WidgetBinderChain(object):
         """Asks all binders to release."""
         for binder in self._binders:
             binder.release()
+
+
+    def get_binders(self):
+        """Returns all the binders.
+
+        @returns: A list of binders.
+
+        """
+        return self._binders
