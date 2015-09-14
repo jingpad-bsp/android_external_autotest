@@ -413,7 +413,7 @@ class BluetoothWidgetLink(WidgetLink):
         @param sink: An AudioWidget object.
 
         """
-        self._enable_bluetooth_module()
+        self.enable_bluetooth_module()
         self._adapter_connect_sequence()
         time.sleep(self._DELAY_AFTER_CONNECT_SECONDS)
 
@@ -429,17 +429,17 @@ class BluetoothWidgetLink(WidgetLink):
         @param sink: An AudioWidget object.
 
         """
-        self._adapter_disconnect()
-        self._disable_bluetooth_module()
+        self._disable_adapter()
+        self.disable_bluetooth_module()
 
 
-    def _enable_bluetooth_module(self):
+    def enable_bluetooth_module(self):
         """Reset bluetooth module if it is not enabled."""
         if not self._audio_board_bt_ctrl.is_enabled():
             self._audio_board_bt_ctrl.reset()
 
 
-    def _disable_bluetooth_module(self):
+    def disable_bluetooth_module(self):
         """Disables bluetooth module if it is enabled."""
         if self._audio_board_bt_ctrl.is_enabled():
             self._audio_board_bt_ctrl.disable()
@@ -447,13 +447,23 @@ class BluetoothWidgetLink(WidgetLink):
 
     def _adapter_connect_sequence(self):
         """Scans, pairs, and connects bluetooth module to bluetooth adapter."""
-        chameleon_bluetooth_audio.connect_bluetooth_module(
+        chameleon_bluetooth_audio.connect_bluetooth_module_full_flow(
                 self._bt_adapter, self._mac_address)
 
 
-    def _adapter_disconnect(self):
+    def _disable_adapter(self):
         """Turns off bluetooth adapter."""
         self._bt_adapter.reset_off()
+
+
+    def adapter_connect_module(self):
+        """Controls adapter to connect bluetooth module."""
+        chameleon_bluetooth_audio.connect_bluetooth_module(
+                self._bt_adapter, self._mac_address)
+
+    def adapter_disconnect_module(self):
+        """Controls adapter to disconnect bluetooth module."""
+        self._bt_adapter.disconnect_device(self._mac_address)
 
 
 class BluetoothHeadphoneWidgetLink(BluetoothWidgetLink):
