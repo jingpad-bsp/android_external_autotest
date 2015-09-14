@@ -5,7 +5,7 @@
 import os
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 class network_RestartShill(test.test):
@@ -18,8 +18,7 @@ class network_RestartShill(test.test):
 
     def run_once(self, remove_profile):
         """Test main loop."""
-        utils.run('stop shill')
-        if remove_profile:
-            os.remove(self.DEFAULT_PROFILE_PATH)
-        utils.run('start shill')
+        with shill_context.stopped_shill():
+            if remove_profile:
+                os.remove(self.DEFAULT_PROFILE_PATH)
         shill = shill_proxy.ShillProxy.get_proxy()

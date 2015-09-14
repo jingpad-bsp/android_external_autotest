@@ -6,7 +6,7 @@ import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros.networking import shill_context
 from autotest_lib.client.cros.networking import shill_proxy
 
 class network_DefaultProfileServices(test.test):
@@ -26,9 +26,8 @@ class network_DefaultProfileServices(test.test):
 
     def run_once(self):
         """Test main loop."""
-        utils.run('stop shill')
-        os.remove(self.DEFAULT_PROFILE_PATH)
-        utils.run('start shill')
+        with shill_context.stopped_shill():
+            os.remove(self.DEFAULT_PROFILE_PATH)
         shill = shill_proxy.ShillProxy.get_proxy()
         if shill is None:
             raise error.TestFail('Could not connect to shill')
@@ -42,8 +41,10 @@ class network_DefaultProfileServices(test.test):
                 shill.SERVICE_PROPERTY_SECURITY_CLASS: 'none',
                 })
 
-        utils.run('stop shill')
-        utils.run('start shill')
+        with shill_context.stopped_shill():
+            # We don't actually need to do anything while shill is
+            # stopped. We just want shill to be restarted.
+            pass
         shill = shill_proxy.ShillProxy.get_proxy()
         if shill is None:
             raise error.TestFail('Could not connect to shill')
