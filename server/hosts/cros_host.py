@@ -1049,6 +1049,25 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       self.BOOT_TIMEOUT)
 
 
+    def _setup_servo(self):
+        """Try to force to create servo object if it's not set up yet.
+        """
+        if self.servo:
+            return
+
+        try:
+            # Setting servo_args to {} will force it to create the servo_host
+            # object if possible.
+            self._servo_host = servo_host.create_servo_host(
+                    dut=self.hostname, servo_args={})
+            if self._servo_host:
+                self.servo = self._servo_host.get_servo()
+            else:
+                logging.error('Failed to create servo_host object.')
+        except Exception as e:
+            logging.error('Failed to create servo object: %s', e)
+
+
     def _servo_repair_reinstall(self):
         """Reinstall the DUT utilizing servo and a test image.
 
@@ -1063,6 +1082,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 support.
 
         """
+        # To repair a DUT connected to a moblab, try to create a servo object if
+        # it was failed to be created earlier as there may be a servo_host host
+        # attribute for this host.
+        if utils.is_moblab():
+            self._setup_servo()
+
         if not self.servo:
             raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
                                                'DUT has no servo support.')
