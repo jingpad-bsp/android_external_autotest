@@ -2,10 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import hashlib, logging, os, time
 
 
-from autotest_lib.client.bin import site_utils, test
+from autotest_lib.client.bin import test
+from autotest_lib.client.common_lib import error, file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils, service_stopper
 
@@ -77,10 +78,14 @@ class audio_PlaybackPower(test.test):
 
 
     def run_once(self, test_file, checksum):
-
         local_path = os.path.join(self.bindir, '%s' % test_file)
-        site_utils.download_file(_DOWNLOAD_BASE + test_file,
-                                 local_path, checksum)
+        file_utils.download_file(_DOWNLOAD_BASE + test_file, local_path)
+        logging.info('Downloaded file: %s. Expected checksum: %s',
+                     local_path, checksum)
+        with open(local_path, 'r') as r:
+            md5sum = hashlib.md5(r.read()).hexdigest()
+            if md5sum != checksum:
+                raise error.TestError('unmatched md5 sum: %s' % md5sum)
         with chrome.Chrome() as cr:
             cr.browser.SetHTTPServerDirectories(self.bindir)
             url = cr.browser.http_server.UrlOf(local_path)
