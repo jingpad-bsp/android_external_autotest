@@ -85,22 +85,38 @@ class USBDeviceDriversManager(object):
         """Finds the bus ID of the USB device with the given product name.
 
         @param product_name: The product name of the USB device as it appears
-                             to the host. But it is case-insensitive in this
-                             method.
+                             to the host.
 
         @returns: The bus ID of the USB device if it is detected by the host
                   successfully; or None if there is no such device with the
                   given product name.
 
         """
-        devices_glob_search_path = '/sys/bus/usb/drivers/usb/usb?/'
-        product_name_lowercase = product_name.lower()
-        for path in glob.glob(devices_glob_search_path + '*/product'):
-            current_product_name = base_utils.read_one_line(path).lower()
-            if product_name_lowercase in current_product_name:
-                bus_id = path[len(devices_glob_search_path):]
-                bus_id = bus_id[:-len('/product')]
-                return bus_id
+        def product_matched(path):
+            """Checks if the product field matches expected product name.
+
+            @returns: True if the product name matches, False otherwise.
+
+            """
+            return base_utils.read_one_line(path) == product_name
+
+        # Find product field at these possible paths:
+        # '/sys/bus/usb/drivers/usb/usbX/X-Y/product' => bus id is X-Y.
+        # '/sys/bus/usb/drivers/usb/usbX/X-Y/X-Y.Z/product' => bus id is X-Y.Z.
+        glob_search_path = '/sys/bus/usb/drivers/usb/usb?/'
+
+        for search_root_path in glob.glob(glob_search_path):
+            for root, dirs, _ in os.walk(search_root_path):
+                for bus_id in dirs:
+                    product_path = os.path.join(root, bus_id, 'product')
+                    if not os.path.exists(product_path):
+                        continue
+                    if not product_matched(product_path):
+                        continue
+                    logging.debug(
+                            'Bus ID of %s found: %s', product_name, bus_id)
+                    return bus_id
+
         logging.error('Bus ID of %s not found', product_name)
         return None
 
