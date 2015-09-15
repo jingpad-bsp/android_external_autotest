@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 # TODO: delete teartest, it appears to be unused
-# TODO: delete synccontroltest when we no longer have any X platforms
 # TODO: when teartest and synccontroltest are gone, simplify this makefile,
 #       specifically the *_PORTABLE and *_X_ONLY bits
 
@@ -33,7 +32,6 @@ SOURCES_GL_BENCH += textureuploadtest.cc trianglesetuptest.cc fillratetest.cc
 SOURCES_GL_BENCH += windowmanagercompositingtest.cc
 SOURCES_GL_BENCH += md5.cc png_helper.cc utils.cc waffle_stuff.cc
 
-SOURCES_SYNCCONTROLTEST = synccontroltest.cc utils.cc xlib_window.cc
 SOURCES_TEARTEST = teartest.cc utils.cc xlib_window.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc utils.cc waffle_stuff.cc
 
@@ -51,7 +49,6 @@ LDLIBS = $(PC_LIBS) -lgflags
 #LDLIBS += -lbase_static -L$(HOME)/chromium/src/out/Release/obj.target/base
 
 GL_BENCH = ../glbench
-SYNCCONTROLTEST = ../synccontroltest
 TEARTEST = ../teartest
 WINDOWMANAGERTEST = ../windowmanagertest
 
@@ -65,23 +62,19 @@ PLATFORM_LIBS = $(shell $(PKG_CONFIG) --libs $(PLATFORM_PKGS))
 
 ifneq ($(USE_GLES),)
 CPPFLAGS += -DUSE_OPENGLES
-SOURCES_SYNCCONTROLTEST += synccontroltest_egl.cc egl_stuff.cc
 SOURCES_TEARTEST += teartest_egl.cc egl_stuff.cc
 LDLIBS += -lGLESv2 -lEGL
 else
 CPPFLAGS += -DUSE_OPENGL
-SOURCES_SYNCCONTROLTEST += synccontroltest_glx.cc glx_stuff.cc
 SOURCES_TEARTEST += teartest_glx.cc glx_stuff.cc
 LDLIBS += -lGL
 endif
 
 SOURCES_ALL = $(sort $(SOURCES_GL_BENCH) \
-                     $(SOURCES_SYNCCONTROLTEST) \
                      $(SOURCES_TEARTEST) \
                      $(SOURCES_WINDOWMANAGERTEST))
 
 OBJS_GL_BENCH = $(SOURCES_GL_BENCH:.cc=.o)
-OBJS_SYNCCONTROLTEST = $(SOURCES_SYNCCONTROLTEST:.cc=.o)
 OBJS_TEARTEST = $(SOURCES_TEARTEST:.cc=.o)
 OBJS_WINDOWMANAGERTEST = $(SOURCES_WINDOWMANAGERTEST:.cc=.o)
 OBJS_ALL = $(SOURCES_ALL:.cc=.o)
@@ -91,21 +84,20 @@ DEPS_ALL = $(SOURCES_ALL:.cc=.d)
 
 EXE_PORTABLE = $(GL_BENCH) $(WINDOWMANAGERTEST)
 OBJ_PORTABLE = $(sort $(OBJS_GL_BENCH) $(OBJS_WINDOWMANAGERTEST))
-EXE_X_ONLY = $(SYNCCONTROLTEST) $(TEARTEST)
-OBJ_X_ONLY := $(sort $(OBJS_SYNCCONTROLTEST) $(OBJS_TEARTEST))
+EXE_X_ONLY = $(TEARTEST)
+OBJ_X_ONLY := $(sort $(OBJS_TEARTEST))
 
 all:: $(EXE_PORTABLE)
 ifneq ($(USE_X),)
 all:: $(EXE_X_ONLY)
 endif
 
-$(SYNCCONTROLTEST): $(OBJS_SYNCCONTROLTEST)
 $(TEARTEST): $(OBJS_TEARTEST)
 $(GL_BENCH): $(OBJS_GL_BENCH)
 $(WINDOWMANAGERTEST): $(OBJS_WINDOWMANAGERTEST)
 
 clean:
-	$(RM) $(GL_BENCH) $(SYNCCONTROLTEST) $(TEARTEST) $(WINDOWMANAGERTEST)
+	$(RM) $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST)
 	$(RM) $(OBJS_ALL) $(DEPS_ALL)
 	$(RM) *.o *.d .version
 
