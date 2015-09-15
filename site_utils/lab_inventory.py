@@ -57,7 +57,7 @@ import time
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.server import frontend
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils import status_history
@@ -955,7 +955,7 @@ def main(argv):
         if arguments.pool_notify:
             logging.debug('Will include pool inventory')
 
-        afe = frontend.AFE(server=None)
+        afe = frontend_wrappers.RetryingAFE(server=None)
         inventory = _LabInventory.create_inventory(
                 afe, start_time, end_time, arguments.boardnames)
         logging.info('Found %d hosts across %d boards',
