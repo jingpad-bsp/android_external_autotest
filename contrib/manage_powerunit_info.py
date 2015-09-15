@@ -39,15 +39,17 @@ import sys
 
 import common
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils.rpm_control_system import utils as rpm_utils
-
 
 
 # The host attribute key name for get rpm hostname.
 POWERUNIT_KEYS = [rpm_utils.POWERUNIT_HOSTNAME_KEY,
                   rpm_utils.POWERUNIT_OUTLET_KEY,
                   rpm_utils.HYDRA_HOSTNAME_KEY]
+DEFAULT_SERVER = global_config.global_config.get_config_value(
+        'SERVER', 'hostname', default=None)
 
 
 def add_powerunit_info_to_host(afe, device, keyvals):
@@ -142,7 +144,8 @@ def parse_options():
     parser.add_argument('-m', type=str, dest='hostnames', default='',
                         help='A list of machine hostnames seperated by comma, '
                              'applicable to "list" command')
-    parser.add_argument('-s', '--server', type=str, dest='server', default=None,
+    parser.add_argument('-s', '--server', type=str, dest='server',
+                        default=DEFAULT_SERVER,
                         help='AFE server that the script will be talking to. '
                              'If not speicified, will default to using the '
                              'server in global_config.ini')
