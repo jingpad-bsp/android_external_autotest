@@ -20,6 +20,13 @@ class SystemFacadeNative(object):
     The methods inside this class only accept Python native types.
 
     """
+    SCALING_GOVERNOR_MODES = [
+            'interactive',
+            'performance',
+            'ondemand',
+            'powersave',
+            ]
+
     def set_scaling_governor_mode(self, index, mode):
         """Set mode of CPU scaling governor on one CPU.
 
@@ -31,7 +38,7 @@ class SystemFacadeNative(object):
         @returns: The original mode.
 
         """
-        if mode not in ['interactive', 'performance']:
+        if mode not in self.SCALING_GOVERNOR_MODES:
             raise SystemFacadeNativeError('mode %s is invalid' % mode)
 
         governor_path = os.path.join(
