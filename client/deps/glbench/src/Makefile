@@ -2,25 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: when teartest and synccontroltest are gone, simplify this makefile,
-#       specifically the *_PORTABLE and *_X_ONLY bits
-
-USE_X = $(filter X, $(USE))
 ifeq ($(GRAPHICS_BACKEND),OPENGLES)
     USE_GLES = y
 else
     USE_GLES = $(filter opengles, $(USE))
 endif
 
-ifneq ($(USE_X),)
-    ifneq ($(USE_GLES),)
-        PLATFORM = PLATFORM_X11_EGL
-    else
-        PLATFORM = PLATFORM_GLX
-    endif
-else
-    PLATFORM = PLATFORM_NULL
-endif
+PLATFORM = PLATFORM_NULL
 
 SOURCES_GL_BENCH = main.cc yuvtest.cc testbase.cc
 SOURCES_GL_BENCH += glinterfacetest.cc contexttest.cc swaptest.cc
@@ -50,9 +38,6 @@ GL_BENCH = ../glbench
 WINDOWMANAGERTEST = ../windowmanagertest
 
 PLATFORM_PKGS = waffle-1
-ifeq ($(PLATFORM),PLATFORM_GLX)
-    PLATFORM_PKGS += x11
-endif
 PLATFORM_CFLAGS = -DPLATFORM=$(PLATFORM)
 PLATFORM_CFLAGS += $(shell $(PKG_CONFIG) --cflags $(PLATFORM_PKGS))
 PLATFORM_LIBS = $(shell $(PKG_CONFIG) --libs $(PLATFORM_PKGS))
@@ -75,13 +60,10 @@ DEPS_ALL = $(SOURCES_ALL:.cc=.d)
 
 .PHONY: all clean
 
-EXE_PORTABLE = $(GL_BENCH) $(WINDOWMANAGERTEST)
-OBJ_PORTABLE = $(sort $(OBJS_GL_BENCH) $(OBJS_WINDOWMANAGERTEST))
+EXE = $(GL_BENCH) $(WINDOWMANAGERTEST)
+OBJ = $(sort $(OBJS_GL_BENCH) $(OBJS_WINDOWMANAGERTEST))
 
-all:: $(EXE_PORTABLE)
-ifneq ($(USE_X),)
-all:: $(EXE_X_ONLY)
-endif
+all:: $(EXE)
 
 $(GL_BENCH): $(OBJS_GL_BENCH)
 $(WINDOWMANAGERTEST): $(OBJS_WINDOWMANAGERTEST)
@@ -91,16 +73,10 @@ clean:
 	$(RM) $(OBJS_ALL) $(DEPS_ALL)
 	$(RM) *.o *.d .version
 
-$(EXE_PORTABLE):
+$(EXE):
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) $(PLATFORM_LIBS)
 
-$(EXE_X_ONLY):
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) -lX11 -lrt
-
-$(OBJ_PORTABLE): %.o: %.cc
+$(OBJ): %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(PLATFORM_CFLAGS) -c $< -o $@ -MMD
-
-$(OBJS_X_ONLY): %.o: %.cc
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@ -MMD
 
 -include $(DEPS_ALL)
