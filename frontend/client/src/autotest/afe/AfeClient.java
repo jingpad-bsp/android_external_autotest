@@ -20,6 +20,7 @@ import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.user.client.Window.Location;
 
 
 public class AfeClient implements EntryPoint {
@@ -69,6 +70,8 @@ public class AfeClient implements EntryPoint {
             "is_moblab").isBoolean().booleanValue();
         if (is_moblab) {
             Document.get().getElementById("moblab_setup").removeClassName("hidden");
+            Document.get().getElementById("mobmonitor_link").setAttribute("href",
+                "http://" + Location.getHostName() + ":9991");
         }
 
         jobList = new JobListView(new JobSelectListener() {
