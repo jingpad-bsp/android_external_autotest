@@ -104,7 +104,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
-            raise error.TestError('No touchpad found on this %d' % self._device)
+            raise error.TestError('No touchpad found on this %s' % self._device)
 
         return True
 
