@@ -7,6 +7,7 @@ import os
 import re
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
@@ -15,6 +16,9 @@ from autotest_lib.server import utils
 
 CRASH_SERVER_OVERLOAD = 'crash_server_overload'
 CRASH_SERVER_FOUND = 'crash_server_found'
+SYMBOLICATE_TIMEDOUT = 'symbolicate_timedout'
+
+timer = autotest_stats.Timer('crash_collect')
 
 def generate_minidump_stacktrace(minidump_path):
     """
@@ -32,6 +36,7 @@ def generate_minidump_stacktrace(minidump_path):
                      (minidump_path, symbol_dir, minidump_path))
 
 
+@timer.decorate
 def symbolicate_minidump_with_devserver(minidump_path, resultdir):
     """
     Generates a stack trace for the specified minidump by consulting devserver.
@@ -100,8 +105,16 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
             # If that did not succeed, try to symbolicate using the dev server.
             try:
                 minidumps.append(minidump)
-                symbolicate_minidump_with_devserver(minidump, host_resultdir)
-                logging.info('Generated stack trace for dump %s', minidump)
+                is_timeout, _ = retry.timeout(
+                        symbolicate_minidump_with_devserver,
+                        args=(minidump, host_resultdir),
+                        timeout_sec=1200)
+                if is_timeout:
+                    logging.warn('Generating stack trace is timed out for dump '
+                                 '%s', minidump)
+                    autotest_stats.Counter(SYMBOLICATE_TIMEDOUT).increment()
+                else:
+                    logging.info('Generated stack trace for dump %s', minidump)
                 continue
             except dev_server.DevServerException as e:
                 logging.warning('Failed to generate stack trace on devserver for '
