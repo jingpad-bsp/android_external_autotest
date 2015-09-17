@@ -51,7 +51,7 @@ class RetryingAFE(frontend.AFE):
         # exc_retry: We retry if this exception is raised.
         # blacklist: Exceptions that we raise immediately if caught.
         exc_retry = Exception
-        blacklist = (ImportError, error.RPCException, proxy.ValidationError)
+        blacklist = (ImportError, error.RPCException, proxy.JSONRPCException)
         backoff = 2
         max_retry = convert_timeout_to_retry(backoff, self.timeout_min,
                                              self.delay_sec)
