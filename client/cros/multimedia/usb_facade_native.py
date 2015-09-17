@@ -7,6 +7,7 @@
 import glob
 import logging
 import os
+import time
 
 from autotest_lib.client.common_lib import base_utils
 
@@ -26,6 +27,7 @@ class USBFacadeNative(object):
 
     """
     _DEFAULT_DEVICE_PRODUCT_NAME = 'Linux USB Audio Gadget'
+    _DELAY_AFTER_RESETTING_HOST_CONTROLLER = 3
 
     def __init__(self):
         """Initializes the USB facade.
@@ -33,8 +35,15 @@ class USBFacadeNative(object):
         The _drivers_manager is set with a USBDeviceDriversManager, which is
         used to control the visibility and availability of a USB device on a
         host Cros device.
+
         """
         self._drivers_manager = USBDeviceDriversManager()
+
+
+    def _reenumerate_usb_devices(self):
+        """Resets host controller to re-enumerate usb devices."""
+        self._drivers_manager.reset_host_controller()
+        time.sleep(self._DELAY_AFTER_RESETTING_HOST_CONTROLLER)
 
 
     def plug(self):
@@ -42,8 +51,17 @@ class USBFacadeNative(object):
 
         The USB device is initially set to one with the default product name,
         which is assumed to be the name of the USB audio gadget on Chameleon.
+
         """
-        self._drivers_manager.set_usb_device(self._DEFAULT_DEVICE_PRODUCT_NAME)
+        # Only supports controlling one USB device of default name.
+        device_name = self._DEFAULT_DEVICE_PRODUCT_NAME
+
+        # If driver manager has not found device yet, re-enumerate USB devices.
+        # The correct USB driver will be binded automatically.
+        if not self._drivers_manager.has_found_device(device_name):
+            self._reenumerate_usb_devices()
+            self._drivers_manager.find_usb_device(device_name)
+            return
         self._drivers_manager.bind_usb_drivers()
 
 
@@ -57,12 +75,54 @@ class USBDeviceDriversManagerError(Exception):
     pass
 
 
+class HostControllerDriver(object):
+    """Abstract a host controller driver.
+
+    This class stores id and path like:
+    path: /sys/bus/pci/drivers/echi_hcd
+    id: 0000:00:1a.0
+    Then, it can bind/unbind driver by writing
+    0000:00:1a.0 to /sys/bus/pci/drivers/echi_hcd/bind
+    and /sys/bus/pci/drivers/echi_hcd/unbind.
+
+    """
+    def __init__(self, hcd_id, hcd_path):
+        """Inits an HostControllerDriver object.
+
+        @param hcd_id: The HCD id, e.g. 0000:00:1a.0
+        @param hcd_path: The path to HCD, e.g. /sys/bus/pci/drivers/echi_hcd.
+
+        """
+        self._hcd_id = hcd_id
+        self._hcd_path = hcd_path
+
+
+    def reset(self):
+        """Resets HCD by unbinding and binding driver."""
+        base_utils.open_write_close(
+            os.path.join(self._hcd_path, 'unbind'), self._hcd_id)
+        base_utils.open_write_close(
+            os.path.join(self._hcd_path, 'bind'), self._hcd_id)
+
+
 class USBDeviceDriversManager(object):
     """The class to control the USB drivers associated with a USB device.
+
+    By binding/unbinding certain USB driver, we can emulate the plug/unplug
+    action on that bus. However, this method only applies when the USB driver
+    has already been binded once.
+    To solve above problem, we can unbind then bind USB host controller driver
+    (HCD), then, HCD will re-enumerate all the USB devices. This method has
+    a side effect that all the USB devices will be disconnected for several
+    seconds, so we should only do it if needed.
+    Note that there might be multiple HCDs, e.g. 0000:00:1a.0 for bus1 and
+    0000:00:1b.0 for bus2.
 
     Properties:
         _device_product_name: The product name given to the USB device.
         _device_bus_id: The bus ID of the USB device in the host.
+        _hcd_ids: The host controller driver IDs.
+        _hcds: A list of HostControllerDrivers.
 
     """
     # The file to write to bind USB drivers of specified device
@@ -71,14 +131,111 @@ class USBDeviceDriversManager(object):
     _USB_UNBIND_FILE_PATH = '/sys/bus/usb/drivers/usb/unbind'
     # The file path that exists when drivers are bound for current device
     _USB_BOUND_DRIVERS_FILE_PATH = '/sys/bus/usb/drivers/usb/%s/driver'
+    # The pattern to glob usb drivers
+    _USB_DRIVER_GLOB_PATTERN = '/sys/bus/usb/drivers/usb/usb?/'
+    # The path to search for HCD on PCI or platform bus.
+    # The HCD id should be filled in the end.
+    _HCD_GLOB_PATTERNS = [
+            '/sys/bus/pci/drivers/*/%s',
+            '/sys/bus/platform/drivers/*/%s']
 
     def __init__(self):
         """Initializes the manager.
 
         _device_product_name and _device_bus_id are initially set to None.
+
         """
         self._device_product_name = None
         self._device_bus_id = None
+        self._hcd_ids = None
+        self._hcds = None
+        self._find_hcd_ids()
+        self._create_hcds()
+
+
+    def _find_hcd_ids(self):
+        """Finds host controller driver ids for USB.
+
+        We can find the HCD id for USB from driver's realpath.
+        E.g. On ARM device:
+        /sys/bus/usb/drivers/usb/usb1 links to
+        /sys/devices/soc0/70090000.usb/xhci-hcd.0.auto/usb1
+        => HCD id is xhci-hcd.0.auto
+
+        E.g. On X86 device:
+        /sys/bus/usb/drivers/usb/usb1 links to
+        /sys/devices/pci0000:00/0000:00:14.0/usb1
+        => HCD id is 0000:00:14.0
+
+        There might be multiple HCD ids like 0000:00:1a.0 for usb1,
+        and 0000:00:1d.0 for usb2.
+
+        @raises: USBDeviceDriversManagerError if HCD id can not be found.
+
+        """
+        def _get_dir_name(path):
+            return os.path.basename(os.path.dirname(path))
+
+        hcd_ids = set()
+        for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
+            hcd_ids.add(_get_dir_name(os.path.realpath(search_root_path)))
+
+        if not hcd_ids:
+            raise USBDeviceDriversManagerError('Can not find HCD id')
+
+        self._hcd_ids = hcd_ids
+        logging.debug('Found HCD ids: %s', self._hcd_ids)
+
+
+    def _create_hcds(self):
+        """Finds HCD paths from HCD id and create HostControllerDrivers.
+
+        HCD is under /sys/bus/pci/drivers/ for x86 boards, and under
+        /sys/bus/platform/drivers/ for ARM boards.
+
+        For each HCD id, finds HCD by checking HCD id under it, e.g.
+        /sys/bus/pci/drivers/ehci_hcd has 0000:00:1a.0 under it.
+        Then, create a HostControllerDriver and store it in self._hcds.
+
+        @raises: USBDeviceDriversManagerError if there are multiple
+                 HCD path found for a given HCD id.
+
+        @raises: USBDeviceDriversManagerError if no HostControllerDriver is found.
+
+        """
+        self._hcds = []
+
+        for hcd_id in self._hcd_ids:
+            for glob_pattern in self._HCD_GLOB_PATTERNS:
+                glob_pattern = glob_pattern % hcd_id
+                hcd_id_paths = glob.glob(glob_pattern)
+                if not hcd_id_paths:
+                    continue
+                if len(hcd_id_paths) > 1:
+                    raise USBDeviceDriversManagerError(
+                            'More than 1 HCD id path found: %s' % hcd_id_paths)
+                hcd_id_path = hcd_id_paths[0]
+
+                # Gets /sys/bus/pci/drivers/echi_hcd from
+                # /sys/bus/pci/drivers/echi_hcd/0000:00:1a.0
+                hcd_path = os.path.dirname(hcd_id_path)
+                self._hcds.append(
+                        HostControllerDriver(hcd_id=hcd_id, hcd_path=hcd_path))
+
+        if not self._hcds:
+            raise USBDeviceDriversManagerError('Can not find any HCD')
+
+
+    def reset_host_controller(self):
+        """Resets host controller by unbinding then binding HCD.
+
+        @raises: USBDeviceDriversManagerError if there is no HCD to control.
+
+        """
+        if not self._hcds:
+            raise USBDeviceDriversManagerError('HCD is not found yet')
+        for hcd in self._hcds:
+            hcd.reset()
 
 
     def _find_usb_device_bus_id(self, product_name):
@@ -103,9 +260,8 @@ class USBDeviceDriversManager(object):
         # Find product field at these possible paths:
         # '/sys/bus/usb/drivers/usb/usbX/X-Y/product' => bus id is X-Y.
         # '/sys/bus/usb/drivers/usb/usbX/X-Y/X-Y.Z/product' => bus id is X-Y.Z.
-        glob_search_path = '/sys/bus/usb/drivers/usb/usb?/'
 
-        for search_root_path in glob.glob(glob_search_path):
+        for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
             for root, dirs, _ in os.walk(search_root_path):
                 for bus_id in dirs:
                     product_path = os.path.join(root, bus_id, 'product')
@@ -121,7 +277,19 @@ class USBDeviceDriversManager(object):
         return None
 
 
-    def set_usb_device(self, product_name):
+    def has_found_device(self, product_name):
+        """Checks if the device has been found.
+
+        @param product_name: The product name of the USB device as it appears
+                             to the host.
+
+        @returns: True if device has been found, False otherwise.
+
+        """
+        return self._device_product_name == product_name
+
+
+    def find_usb_device(self, product_name):
         """Sets _device_product_name and _device_bus_id if it can be found.
 
         @param product_name: The product name of the USB device as it appears
