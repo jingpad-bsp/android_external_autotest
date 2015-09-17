@@ -350,6 +350,10 @@ class graphics_dEQP(test.test):
         logging.info('ChromeOS GPU family = %s', self._gpu_type)
         logging.info('dEQP test filter = %s', self._filter)
 
+        if self._gpu_type == 'pinetrail':
+            raise error.TestWarn('dEQP not implemented on pinetrail. '
+                                 'crbug.com/532691')
+
         # Determine module from test_names or filter.
         if self._test_names:
             test_prefix = self._test_names.split('.')[0]
