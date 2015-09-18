@@ -56,7 +56,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
             # microphone priority.
             _, input_nodes = audio_facade.get_selected_node_types()
             if input_nodes != ['INTERNAL_MIC']:
-                raise error.TestError(
+                raise error.TestFail(
                         '%s rather than internal mic is selected on Cros '
                         'device' % input_nodes)
 
@@ -66,7 +66,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
             # Checks the input node selected by Cras is bluetooth microphone.
             _, input_nodes = audio_facade.get_selected_node_types()
             if input_nodes != ['BLUETOOTH']:
-                raise error.TestError(
+                raise error.TestFail(
                         '%s rather than bluetooth is selected on Cros '
                         'device' % input_nodes)
 

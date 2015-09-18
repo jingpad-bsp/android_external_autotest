@@ -73,7 +73,7 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                 chameleon_board, display_facade)
         hdmi_port = finder.find_port('HDMI')
         if not hdmi_port:
-            raise error.TestError(
+            raise error.TestFail(
                     'Can not find HDMI port, perhaps HDMI is not connected?')
         with hdmi_port.use_edid_file(edid_path):
             with chameleon_audio_helper.bind_widgets(binder):

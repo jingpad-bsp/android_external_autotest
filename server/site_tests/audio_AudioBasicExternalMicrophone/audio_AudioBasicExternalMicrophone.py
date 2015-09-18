@@ -51,7 +51,7 @@ class audio_AudioBasicExternalMicrophone(audio_test.AudioTest):
             audio_facade = factory.create_audio_facade()
             _, input_nodes = audio_facade.get_selected_node_types()
             if input_nodes != ['MIC']:
-                raise error.TestError(
+                raise error.TestFail(
                         '%s rather than external mic is selected on Cros '
                         'device' % input_nodes)
 

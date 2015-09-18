@@ -51,7 +51,7 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
             audio_facade = factory.create_audio_facade()
             output_nodes, _ = audio_facade.get_selected_node_types()
             if output_nodes != ['HEADPHONE']:
-                raise error.TestError(
+                raise error.TestFail(
                         '%s rather than headphone is selected on Cros '
                         'device' % output_nodes)
 

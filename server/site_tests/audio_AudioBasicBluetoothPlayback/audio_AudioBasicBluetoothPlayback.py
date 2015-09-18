@@ -54,7 +54,7 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
             # Checks the node selected by Cras is correct.
             output_nodes, _ = audio_facade.get_selected_node_types()
             if output_nodes != ['BLUETOOTH']:
-                raise error.TestError(
+                raise error.TestFail(
                         '%s rather than bluetooth is selected on Cros '
                         'device' % output_nodes)
 

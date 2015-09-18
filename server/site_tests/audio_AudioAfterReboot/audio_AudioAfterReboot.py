@@ -108,10 +108,10 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         curr_out_nodes, curr_in_nodes = audio_facade.get_selected_node_types()
         out_audio_nodes, in_audio_nodes = self.audio_nodes
         if len(set(curr_in_nodes).difference(set(in_audio_nodes))) !=0:
-            raise error.TestError('Wrong input node(s) selected %s '
+            raise error.TestFail('Wrong input node(s) selected %s '
                     'instead %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
         if len(set(curr_out_nodes).difference(set(out_audio_nodes))) !=0:
-            raise error.TestError('Wrong output node(s) selected %s '
+            raise error.TestFail('Wrong output node(s) selected %s '
                     'instead %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
 
 

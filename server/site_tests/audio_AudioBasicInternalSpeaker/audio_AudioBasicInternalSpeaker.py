@@ -49,7 +49,7 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
         # Checks the node selected by cras is correct.
         output_nodes, _ = audio_facade.get_selected_node_types()
         if output_nodes != ['INTERNAL_SPEAKER']:
-            raise error.TestError(
+            raise error.TestFail(
                     '%s rather than internal speaker is selected on Cros '
                     'device' % output_nodes)
 
