@@ -31,6 +31,7 @@ CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
 RELEASE_FILE = 'ro.build.version.release'
+TMP_DIR = '/data/local/tmp'
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
@@ -430,7 +431,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def verify_software(self):
         """Verify working software on an adb_host.
 
-        TODO: Actually implement this method.
+        TODO (crbug.com/532222): Actually implement this method.
         """
         return True
 
@@ -438,7 +439,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def verify_job_repo_url(self, tag=''):
         """Make sure job_repo_url of this host is valid.
 
-        TODO: Actually implement this method.
+        TODO (crbug.com/532223): Actually implement this method.
 
         @param tag: The tag from the server job, in the format
                     <job_id>-<user>/<hostname>, or <hostless> for a server job.
@@ -530,3 +531,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         """
         return self.run_output('getprop %s' % RELEASE_FILE)
+
+
+    def get_tmp_dir(self, parent=''):
+        """Return a suitable temporary directory on the host.
+
+        For adb_host we ensure this is a subdirectory of /data/local/tmp
+
+        @param parent: Parent directory of the returned tmp dir.
+
+        @returns: Path to the temp directory on the host.
+        """
+        if not parent.startswith(TMP_DIR):
+            parent = os.path.join(TMP_DIR, parent.lstrip(os.path.sep))
+        return super(ADBHost, self).get_tmp_dir(parent=parent)
