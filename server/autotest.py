@@ -146,6 +146,10 @@ class BaseAutotest(installable_object.InstallableObject):
                 return path
             except error.AutoservRunError:
                 logging.debug('Failed to create %s', path)
+        metadata = {'_type': 'AutoservInstallError',
+                    'hostname': host.hostname}
+        autotest_stats.Counter('AutoservInstallError',
+                               metadata=metadata).increment()
         raise error.AutoservInstallError(
                 'Unable to find a place to install Autotest; tried %s' %
                 ', '.join(client_autodir_paths))
