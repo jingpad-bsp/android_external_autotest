@@ -274,6 +274,35 @@ class Servo(object):
         self.set('lid_open', 'no')
         time.sleep(Servo.SLEEP_DELAY)
 
+    def volume_up(self, timeout=300):
+        """Simulate pushing the volume down button"""
+        self.set_get_all(['volume_up:yes',
+                          'sleep:%.4f' % self.SERVO_KEY_PRESS_DELAY,
+                          'volume_up:no'])
+        # we need to wait for commands to take effect before moving on
+        time_left = float(timeout)
+        while time_left > 0.0:
+            value = self.get('volume_up')
+            if value == 'no':
+                return
+            time.sleep(self.SHORT_DELAY)
+            time_left = time_left - self.SHORT_DELAY
+        raise error.TestFail("Failed setting volume_up to no")
+
+    def volume_down(self, timeout=300):
+        """Simulate pushing the volume down button"""
+        self.set_get_all(['volume_down:yes',
+                          'sleep:%.4f' % self.SERVO_KEY_PRESS_DELAY,
+                          'volume_down:no'])
+        # we need to wait for commands to take effect before moving on
+        time_left = float(timeout)
+        while time_left > 0.0:
+            value = self.get('volume_down')
+            if value == 'no':
+                return
+            time.sleep(self.SHORT_DELAY)
+            time_left = time_left - self.SHORT_DELAY
+        raise error.TestFail("Failed setting volume_down to no")
 
     def ctrl_d(self, press_secs=''):
         """Simulate Ctrl-d simultaneous button presses.
