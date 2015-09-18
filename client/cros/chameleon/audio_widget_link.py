@@ -268,6 +268,26 @@ class AudioBusLink(WidgetLink):
                 self._audio_bus.bus_index, widget.audio_port)
 
 
+    def disconnect_audio_bus(self):
+        """Disconnects all audio ports from audio bus.
+
+        A snapshot of audio bus is retained so we can reconnect audio bus
+        later.
+        This method is useful when user wants to let Cros device detects
+        audio jack after this link is connected. Some Cros devices
+        have sensitive audio jack detection mechanism such that plugger of
+        audio board can only be detected when audio bus is disconnected.
+
+        """
+        self._audio_bus_snapshot = self._audio_bus.get_snapshot()
+        self._audio_bus.clear()
+
+
+    def reconnect_audio_bus(self):
+        """Reconnects audio ports to audio bus using snapshot."""
+        self._audio_bus.restore_snapshot(self._audio_bus_snapshot)
+
+
 class AudioBusToChameleonLink(AudioBusLink):
     """The abstraction for bus on audio board that is connected to Chameleon."""
     # This is the default channel map for 2-channel data recorded on
