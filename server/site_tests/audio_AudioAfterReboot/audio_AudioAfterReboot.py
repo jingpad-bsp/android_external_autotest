@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import audio_widget_link
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
@@ -123,11 +124,25 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         """
         self.check_correct_audio_node_selected()
         self.play_and_record(source_widget)
+
+        # Disconnecs audio bus so Cros device can detects plugger correctly
+        # when the test involes plugger.
+        # For case where audio bus is used but no plugger is used, it is no
+        # harm to disconnect audio bus and reconnect it.
+        if self.use_audio_bus:
+            logging.info('Disconnecting audio bus before reboot')
+            self.widget_link.disconnect_audio_bus()
+
         self.host.reboot()
         utils.poll_for_condition(condition=self.factory.ready,
                                  timeout=self.PRC_RECONNECT_TIMEOUT,)
         logging.debug('After reboot')
         self.check_correct_audio_node_selected()
+
+        if self.use_audio_bus:
+            logging.info('Reconnecting audio bus after reboot before playback')
+            self.widget_link.reconnect_audio_bus()
+
         self.play_and_record(source_widget, recorder_widget)
 
 
@@ -159,6 +174,8 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 self.factory, host)
         self.audio_board = chameleon_board.get_audio_board()
+        self.widget_link = None
+        self.use_audio_bus = False
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None
@@ -169,6 +186,9 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
             bind_to_widget = widget_factory.create_widget(bind_to)
             binder_widget = widget_factory.create_binder(bind_from_widget,
                                                          bind_to_widget)
+            self.widget_link = binder_widget.get_link()
+            if isinstance(self.widget_link, audio_widget_link.AudioBusLink):
+                self.use_audio_bus = True
 
         # Additional widgets that could be part of the factory
         if source == None:
