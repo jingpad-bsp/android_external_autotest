@@ -95,6 +95,18 @@ class AudioBus(object):
             ids.PeripheralIds.BLUETOOTH_DATA_TX:
                     'Bluetooth module input'}
 
+
+    class AudioBusSnapshot(object):
+        """Abstracts the snapshot of AudioBus for user to restore it later."""
+        def __init__(self, endpoints):
+            """Initializes an AudioBusSnapshot.
+
+            @param endpoints: A set of endpoints to keep a copy.
+
+            """
+            self._endpoints = endpoints.copy()
+
+
     def __init__(self, bus_index, chameleon_connection):
         """Constructs an AudioBus.
 
@@ -104,6 +116,7 @@ class AudioBus(object):
         """
         self.bus_index = bus_index
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
+        self._connected_endpoints = set()
 
 
     def _get_endpoint_name(self, port_id):
@@ -118,6 +131,32 @@ class AudioBus(object):
         return self._PORT_ID_AUDIO_BUS_ENDPOINT_MAP[port_id]
 
 
+    def _connect_endpoint(self, endpoint):
+        """Connects an endpoint to audio bus.
+
+        @param endpoint: An endpoint name in _PORT_ID_AUDIO_BUS_ENDPOINT_MAP.
+
+        """
+        logging.debug(
+                'Audio bus %s is connecting endpoint %s',
+                self.bus_index, endpoint)
+        self._chameleond_proxy.AudioBoardConnect(self.bus_index, endpoint)
+        self._connected_endpoints.add(endpoint)
+
+
+    def _disconnect_endpoint(self, endpoint):
+        """Disconnects an endpoint from audio bus.
+
+        @param endpoint: An endpoint name in _PORT_ID_AUDIO_BUS_ENDPOINT_MAP.
+
+        """
+        logging.debug(
+                'Audio bus %s is disconnecting endpoint %s',
+                self.bus_index, endpoint)
+        self._chameleond_proxy.AudioBoardDisconnect(self.bus_index, endpoint)
+        self._connected_endpoints.remove(endpoint)
+
+
     def connect(self, port_id):
         """Connects an audio port to this audio bus.
 
@@ -126,7 +165,7 @@ class AudioBus(object):
 
         """
         endpoint = self._get_endpoint_name(port_id)
-        self._chameleond_proxy.AudioBoardConnect(self.bus_index, endpoint)
+        self._connect_endpoint(endpoint)
 
 
     def disconnect(self, port_id):
@@ -137,7 +176,39 @@ class AudioBus(object):
 
         """
         endpoint = self._get_endpoint_name(port_id)
-        self._chameleond_proxy.AudioBoardDisconnect(self.bus_index, endpoint)
+        self._disconnect_endpoint(endpoint)
+
+
+    def clear(self):
+        """Disconnects all audio port from this audio bus."""
+        self._disconnect_all_endpoints()
+
+
+    def _disconnect_all_endpoints(self):
+        """Disconnects all endpoints from this audio bus."""
+        for endpoint in self._connected_endpoints.copy():
+            self._disconnect_endpoint(endpoint)
+
+
+    def get_snapshot(self):
+        """Gets the snapshot of AudioBus so user can restore it later.
+
+        @returns: An AudioBus.AudioBusSnapshot object.
+
+        """
+        return self.AudioBusSnapshot(self._connected_endpoints)
+
+
+    def restore_snapshot(self, snapshot):
+        """Restore the snapshot.
+
+        @param: An AudioBus.AudioBusSnapshot object got from get_snapshot.
+
+        """
+        self._disconnect_all_endpoints()
+        logging.debug('Restoring snapshot with %s', snapshot._endpoints)
+        for endpoint in snapshot._endpoints:
+            self._connect_endpoint(endpoint)
 
 
 class AudioJackPluggerException(Exception):
