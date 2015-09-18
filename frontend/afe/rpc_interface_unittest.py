@@ -458,7 +458,7 @@ class RpcInterfaceTest(unittest.TestCase,
             self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
-                    server=shard_hostname)
+                    server=shard_hostname, user=None)
             mock_afe2.run.expect_call('modify_host_local', id=host.id,
                     locked=True, lock_reason='_modify_host_helper lock')
         elif on_shard:
@@ -467,7 +467,7 @@ class RpcInterfaceTest(unittest.TestCase,
             self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
-                    server=rpc_utils.get_global_afe_hostname())
+                    server=rpc_utils.get_global_afe_hostname(), user=None)
             mock_afe2.run.expect_call('modify_host', id=host.id,
                     locked=True, lock_reason='_modify_host_helper lock')
 
@@ -523,14 +523,16 @@ class RpcInterfaceTest(unittest.TestCase,
         # will be affected no matter what his status is.
         filters_to_use = {'status': 'Ready'}
 
-        mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(server='shard2')
+        mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
+                server='shard2', user=None)
         mock_afe2.run.expect_call(
             'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
                          'lock_reason': 'Testing forward to shard'})
 
-        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(server='shard1')
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(
+                server='shard1', user=None)
         mock_afe1.run.expect_call(
             'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
@@ -561,7 +563,8 @@ class RpcInterfaceTest(unittest.TestCase,
                                                  'MockAFE')
         self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
-        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(server='shard1')
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(
+                server='shard1', user=None)
         mock_afe1.run.expect_call('delete_host', id=host1.id)
 
         rpc_interface.delete_host(id=host1.id)

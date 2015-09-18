@@ -12,6 +12,8 @@ import inspect
 import os
 import sys
 import django.http
+
+from autotest_lib.frontend import thread_local
 from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
@@ -1257,7 +1259,8 @@ def run_rpc_on_multiple_hostnames(rpc_call, shard_hostnames, **kwargs):
     # Make sure this function is not called on shards but only on master.
     assert not server_utils.is_shard()
     for shard_hostname in shard_hostnames:
-        afe = frontend_wrappers.RetryingAFE(server=shard_hostname)
+        afe = frontend_wrappers.RetryingAFE(server=shard_hostname,
+                                            user=thread_local.get_user())
         afe.run(rpc_call, **kwargs)
 
 
@@ -1335,7 +1338,8 @@ def route_rpc_to_master(func):
 
         if server_utils.is_shard():
             afe = frontend_wrappers.RetryingAFE(
-                    server=get_global_afe_hostname())
+                    server=get_global_afe_hostname(),
+                    user=thread_local.get_user())
             return afe.run(func.func_name, **kwargs)
         return func(**kwargs)
     return replacement
