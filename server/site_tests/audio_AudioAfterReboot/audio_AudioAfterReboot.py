@@ -126,6 +126,8 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         self.host.reboot()
         utils.poll_for_condition(condition=self.factory.ready,
                                  timeout=self.PRC_RECONNECT_TIMEOUT,)
+        logging.debug('After reboot')
+        self.check_correct_audio_node_selected()
         self.play_and_record(source_widget, recorder_widget)
 
 
