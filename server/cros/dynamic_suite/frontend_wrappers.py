@@ -2,13 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common
 import math
+
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.server import frontend
 from chromite.lib import retry_util
+from chromite.lib import timeout_util
 
 
 def convert_timeout_to_retry(backoff, timeout_min, delay_sec):
@@ -51,7 +53,8 @@ class RetryingAFE(frontend.AFE):
         # exc_retry: We retry if this exception is raised.
         # blacklist: Exceptions that we raise immediately if caught.
         exc_retry = Exception
-        blacklist = (ImportError, error.RPCException, proxy.JSONRPCException)
+        blacklist = (ImportError, error.RPCException, proxy.JSONRPCException,
+                     timeout_util.TimeoutError)
         backoff = 2
         max_retry = convert_timeout_to_retry(backoff, self.timeout_min,
                                              self.delay_sec)
@@ -75,8 +78,9 @@ class RetryingAFE(frontend.AFE):
         dargs['sleep'] = self.delay_sec
         dargs['backoff_factor'] = backoff
 
-        return retry_util.GenericRetry(handler, max_retry, _run,
-                                       self, call, **dargs)
+        with timeout_util.Timeout(self.timeout_min * 60):
+            return retry_util.GenericRetry(handler, max_retry, _run,
+                                           self, call, **dargs)
 
 
 class RetryingTKO(frontend.TKO):

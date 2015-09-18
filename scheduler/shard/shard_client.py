@@ -24,6 +24,7 @@ from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from chromite.lib import timeout_util
 from django.db import transaction
 
 """
@@ -300,14 +301,17 @@ class ShardClient(object):
 
         try:
             response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
-        except urllib2.HTTPError, e:
+        except urllib2.HTTPError as e:
             self._heartbeat_failure("HTTPError %d: %s" % (e.code, e.reason))
             return
-        except urllib2.URLError, e:
+        except urllib2.URLError as e:
             self._heartbeat_failure("URLError: %s" % e.reason)
             return
-        except httplib.HTTPException, e:
+        except httplib.HTTPException as e:
             self._heartbeat_failure("HTTPException: %s" % e)
+            return
+        except timeout_util.TimeoutError as e:
+            self._heartbeat_failure("TimeoutError: %s" % e)
             return
 
         autotest_stats.Gauge(STATS_KEY).send(
