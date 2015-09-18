@@ -209,7 +209,10 @@ class ControlData(object):
 
 
     def set_attributes(self, val):
+        # Add subsystem:default if subsystem is not specified.
         self._set_set('attributes', val)
+        if not any(a.startswith('subsystem') for a in self.attributes):
+            self.attributes.add('subsystem:default')
 
 
 def _extract_const(expr):

@@ -25,7 +25,7 @@ TEST_CATEGORY='Stress'
 TEST_TYPE='client'
 RETRIES = 5
 REQUIRE_SSP = False
-ATTRIBUTES = "suite:smoke, suite:bvt, interval:daily"
+ATTRIBUTES = "suite:smoke, suite:bvt"
 """
 
 
@@ -55,7 +55,8 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.test_type, "client")
         self.assertEquals(cd.retries, 5)
         self.assertEquals(cd.require_ssp, False)
-        self.assertEquals(cd.attributes, set(["suite:smoke","suite:bvt","interval:daily"]))
+        self.assertEquals(cd.attributes,
+                          set(["suite:smoke","suite:bvt","subsystem:default"]))
 
 
 class ParseControlFileBugTemplate(unittest.TestCase):
@@ -211,6 +212,16 @@ class SetMethodTests(unittest.TestCase):
                           'foo', [], options)
         self.assertRaises(ValueError, cd._set_option,
                           'foo', None, options)
+
+
+    def test_set_attributes(self):
+        cd = ControlData({}, 'filename')
+        cd.set_attributes('suite:bvt')
+        self.assertEquals(cd.attributes, set(['suite:bvt',
+                                              'subsystem:default']))
+        cd.set_attributes('suite:bvt, subsystem:network')
+        self.assertEquals(cd.attributes, set(['suite:bvt',
+                                              'subsystem:network']))
 
 
     def test_get_test_time_index(self):
