@@ -28,7 +28,7 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
     RECORD_SECONDS = 8
 
     def run_once(self, host):
-        golden_file = audio_test_data.SIMPLE_FREQUENCY_TEST_FILE
+        golden_file = audio_test_data.SIMPLE_FREQUENCY_SPEAKER_TEST_FILE
 
         chameleon_board = host.chameleon
         factory = remote_facade_factory.RemoteFacadeFactory(host)
