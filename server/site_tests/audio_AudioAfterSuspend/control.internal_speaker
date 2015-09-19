@@ -31,6 +31,7 @@ def run(machine):
                  golden_data=(audio_test_data.SIMPLE_FREQUENCY_SPEAKER_TEST_FILE, 1000),
                  recorder=chameleon_audio_ids.ChameleonIds.MIC,
                  source=chameleon_audio_ids.CrosIds.SPEAKER,
+                 audio_nodes=(['INTERNAL_SPEAKER'], ['INTERNAL_MIC']),
                  is_internal=True)
 
 parallel_simple(run, machines)

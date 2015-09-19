@@ -106,6 +106,12 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.action_plug_jack(plugged_after_resume)
 
 
+    def check_correct_audio_node_selected(self):
+        """Checks the node selected by Cras is correct."""
+        audio_facade = self.factory.create_audio_facade()
+        audio_test_utils.check_audio_nodes(audio_facade, self.audio_nodes)
+
+
     def play_and_record(self, source_widget, recorder_widget):
         """Plays and records audio
 
@@ -113,6 +119,8 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         @param recorder_widget: widget to do the recording
 
         """
+        self.check_correct_audio_node_selected()
+
         # Play, wait for some time, and then start recording.
         # This is to avoid artifact caused by codec initialization.
         source_widget.set_playback_data(self.golden_file)
@@ -161,11 +169,13 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
             raise error.TestFail('Recorded and playback file do not match')
 
 
-    def run_once(self, host, golden_data, bind_from=None, bind_to=None,
+    def run_once(self, host, audio_nodes, golden_data,
+                 bind_from=None, bind_to=None,
                  source=None, recorder=None, is_internal=False):
         """Runs the test main workflow
 
         @param host: A host object representing the DUT.
+        @param audio_nodes: audio nodes supposed to be selected.
         @param golden_data: audio file and low pass filter frequency
            the audio file should be test data defined in audio_test_data
         @param bind_from: audio originating entity to be binded
@@ -181,6 +191,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         """
 
         self.host = host
+        self.audio_nodes = audio_nodes
         self.is_internal=is_internal
         self.golden_file, self.low_pass_freq = golden_data
         chameleon_board = self.host.chameleon

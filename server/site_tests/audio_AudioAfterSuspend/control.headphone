@@ -30,6 +30,7 @@ def run(machine):
     job.run_test("audio_AudioAfterSuspend", host=host,
                  golden_data=(audio_test_data.SIMPLE_FREQUENCY_TEST_FILE, 2000),
                  bind_from=chameleon_audio_ids.CrosIds.HEADPHONE,
-                 bind_to=chameleon_audio_ids.ChameleonIds.LINEIN)
+                 bind_to=chameleon_audio_ids.ChameleonIds.LINEIN,
+                 audio_nodes=(['HEADPHONE'],[ 'MIC']))
 
 parallel_simple(run, machines)
