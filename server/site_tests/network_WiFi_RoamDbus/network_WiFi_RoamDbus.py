@@ -7,10 +7,8 @@ import time
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
-from autotest_lib.client.cros.networking import shill_proxy
 from autotest_lib.server.cros.network import hostap_config
 from autotest_lib.server.cros.network import wifi_cell_test_base
-from autotest_lib.server.cros.network import wifi_client
 
 class network_WiFi_RoamDbus(wifi_cell_test_base.WiFiCellTestBase):
     """Tests an intentional client-driven roam between APs
