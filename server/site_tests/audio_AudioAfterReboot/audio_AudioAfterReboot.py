@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import audio_widget_link
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.server.cros.audio import audio_test
@@ -102,17 +103,9 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
 
 
     def check_correct_audio_node_selected(self):
-        """Checks the node selected by cras is correct."""
-
+        """Checks the node selected by Cras is correct."""
         audio_facade = self.factory.create_audio_facade()
-        curr_out_nodes, curr_in_nodes = audio_facade.get_selected_node_types()
-        out_audio_nodes, in_audio_nodes = self.audio_nodes
-        if len(set(curr_in_nodes).difference(set(in_audio_nodes))) !=0:
-            raise error.TestFail('Wrong input node(s) selected %s '
-                    'instead %s!' % (str(curr_in_nodes), str(in_audio_nodes)))
-        if len(set(curr_out_nodes).difference(set(out_audio_nodes))) !=0:
-            raise error.TestFail('Wrong output node(s) selected %s '
-                    'instead %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
+        audio_test_utils.check_audio_nodes(audio_facade, self.audio_nodes)
 
 
     def play_reboot_play_and_record (self, source_widget, recorder_widget):
