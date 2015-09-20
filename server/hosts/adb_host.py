@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import logging
+import os
 import re
 import time
 
@@ -29,6 +30,7 @@ DEVICE_FINDER_REGEX = ('^(?P<SERIAL>([\w]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' 
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
+RELEASE_FILE = 'ro.build.version.release'
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
@@ -424,12 +426,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Return the directory to install autotest for client side tests."""
         return '/data/autotest'
 
+
     def verify_software(self):
         """Verify working software on an adb_host.
 
         TODO: Actually implement this method.
         """
         return True
+
 
     def verify_job_repo_url(self, tag=''):
         """Make sure job_repo_url of this host is valid.
@@ -440,3 +444,89 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     <job_id>-<user>/<hostname>, or <hostless> for a server job.
         """
         return
+
+
+    def _get_adb_host_tmpdir(self):
+        """Creates a tmp dir for staging on the adb_host.
+
+        @returns the path of the tmp dir created.
+
+        @raises: AutoservError if there is an error creating the tmp dir.
+        """
+        try:
+            tmp_dir = self.host_run("mktemp -d").stdout.strip()
+        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            raise error.AutoservError(
+                    'Failed to create tmp dir on adb_host: %s' % e)
+        return tmp_dir
+
+
+    def send_file(self, source, dest, delete_dest=False):
+        """Copy files from the drone to the device.
+
+        @param source: The file/directory on the drone to send to the device.
+        @param dest: The destination path on the device to copy to.
+        @param delete_dest: A flag set to choose whether or not to delete
+                            dest on the device if it exists.
+        """
+        tmp_dir = ''
+        src_path = source
+        # Stage the files on the adb_host if we're not running on localhost.
+        if not self._local_adb:
+            tmp_dir = self._get_adb_host_tmpdir()
+            src_path = os.path.join(tmp_dir, os.path.basename(dest))
+            # Now copy the file over to the adb_host so you can reference the
+            # file in the push command.
+            super(ADBHost, self).send_file(source, src_path)
+
+        if delete_dest:
+            self._adb_run('rm -rf %s' % dest, shell=True)
+
+        self._adb_run('push %s %s' % (src_path, dest))
+
+        # If we're not local, cleanup the adb_host.
+        if not self._local_adb:
+            try:
+                self.host_run('rm -rf %s' % tmp_dir)
+            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+
+
+    def get_file(self, source, dest, delete_dest=False):
+        """Copy files from the device to the drone.
+
+        @param source: The file/directory on the device to copy back to the
+                       drone.
+        @param dest: The destination path on the drone to copy to.
+        @param delete_dest: A flag set to choose whether or not to delete
+                            dest on the drone if it exists.
+        """
+        tmp_dir = ''
+        dest_path = dest
+        # Stage the files on the adb_host if we're not local.
+        if not self._local_adb:
+            tmp_dir = self._get_adb_host_tmpdir()
+            dest_path = os.path.join(tmp_dir, os.path.basename(source))
+
+        if delete_dest:
+            utils.run('rm -rf %s' % dest)
+
+        # Pull the file off the device.
+        self._adb_run('pull %s %s' % (source, dest_path))
+
+        # If we're not local, copy over the file from the adb_host and clean up.
+        if not self._local_adb:
+            super(ADBHost, self).get_file(dest_path, dest)
+            try:
+                self.host_run('rm -rf %s' % tmp_dir)
+            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+
+
+    def get_release_version(self):
+        """Get the release version from the RELEASE_FILE on the device.
+
+        @returns The release string in the RELEASE_FILE.
+
+        """
+        return self.run_output('getprop %s' % RELEASE_FILE)
