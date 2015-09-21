@@ -21,7 +21,6 @@ This test uses servo to connect/disconnect servo USB hub before and
 after events like reboot, login, suspend, resume etc.
 
 The test fails if
-- crash files are generated
 - device is pingable when suspended
 - wrong action passed through action_sequence flag
 - USB detected peripherals are different than expected
@@ -42,7 +41,6 @@ def run(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
 
     repeat = int(args_dict.get("repeat", 2))
-    crash_check = args_dict.get("crash_check", "true").upper() == "TRUE"
 
     default_actions = str("reboot,unplug,plug,login,unplug,plug,"
                           "suspend,resume,unplug,suspend,plug,resume,"
@@ -80,7 +78,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks,
-                 crash_check=crash_check)
+                 usb_list=usb_list, usb_checks=usb_checks)
 
 parallel_simple(run, machines)
