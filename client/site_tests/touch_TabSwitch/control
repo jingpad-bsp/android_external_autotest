@@ -15,6 +15,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "touch"
 TEST_TYPE = "client"
+DEPENDENCIES = "touchpad"
 
 DOC = """
 Plays back touchpad gestures (if present) and checks for tab switching.
