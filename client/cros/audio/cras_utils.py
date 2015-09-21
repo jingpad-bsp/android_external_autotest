@@ -269,8 +269,9 @@ def node_type_is_plugged(node_type, nodes_info):
 
 # Cras node types reported from Cras DBus control API.
 CRAS_OUTPUT_NODE_TYPES = ['HEADPHONE', 'INTERNAL_SPEAKER', 'HDMI', 'USB',
-                          'BLUETOOTH']
-CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH']
+                          'BLUETOOTH', 'UNKNOWN']
+CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH',
+                         'POST_DSP_LOOPBACK', 'POST_MIX_LOOPBACK', 'UNKNOWN']
 CRAS_NODE_TYPES = CRAS_OUTPUT_NODE_TYPES + CRAS_INPUT_NODE_TYPES
 
 
