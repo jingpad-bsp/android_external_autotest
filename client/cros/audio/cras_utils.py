@@ -274,18 +274,22 @@ CRAS_INPUT_NODE_TYPES = ['MIC', 'INTERNAL_MIC', 'USB', 'BLUETOOTH']
 CRAS_NODE_TYPES = CRAS_OUTPUT_NODE_TYPES + CRAS_INPUT_NODE_TYPES
 
 
-def get_selected_node_types():
-    """Returns the pair of active output node types and input node types.
+def get_filtered_node_types(callback):
+    """Returns the pair of filtered output node types and input node types.
+
+    @param callback: A callback function which takes a node as input parameter
+                     and filter the node based on its return value.
 
     @returns: A tuple (output_node_types, input_node_types) where each
-              field is a list of selected node types defined in CRAS_NODE_TYPES.
+              field is a list of node types defined in CRAS_NODE_TYPES,
+              and their 'attribute_name' is True.
 
     """
     output_node_types = []
     input_node_types = []
     nodes = get_cras_nodes()
     for node in nodes:
-        if node['Active']:
+        if callback(node):
             node_type = str(node['Type'])
             if node_type not in CRAS_NODE_TYPES:
                 raise RuntimeError(
@@ -295,6 +299,50 @@ def get_selected_node_types():
             else:
                 output_node_types.append(node_type)
     return (output_node_types, input_node_types)
+
+
+def get_selected_node_types():
+    """Returns the pair of active output node types and input node types.
+
+    @returns: A tuple (output_node_types, input_node_types) where each
+              field is a list of selected node types defined in CRAS_NODE_TYPES.
+
+    """
+    def is_selected(node):
+        """Checks if a node is selected.
+
+        A node is selected if its Active attribute is True.
+
+        @returns: True is a node is selected, False otherwise.
+
+        """
+        return node['Active']
+
+    return get_filtered_node_types(is_selected)
+
+
+def get_plugged_node_types():
+    """Returns the pair of plugged output node types and input node types.
+
+    @returns: A tuple (output_node_types, input_node_types) where each
+              field is a list of plugged node types defined in CRAS_NODE_TYPES.
+
+    """
+    def is_plugged(node):
+        """Checks if a node is plugged and is not unknown node.
+
+        Cras DBus API only reports plugged node, so every node reported by Cras
+        DBus API is plugged. However, we filter out UNKNOWN node here because
+        the existence of unknown node depends on the number of redundant
+        playback/record audio device created on audio card. Also, the user of
+        Cras will ignore unknown nodes.
+
+        @returns: True if a node is plugged and is not an UNKNOWN node.
+
+        """
+        return node['Type'] != 'UNKNOWN'
+
+    return get_filtered_node_types(is_plugged)
 
 
 def set_selected_node_types(output_node_types, input_node_types):
