@@ -18,13 +18,8 @@ from autotest_lib.client.common_lib.cros import dev_server
 # Local stateful update path is relative to the CrOS source directory.
 LOCAL_STATEFUL_UPDATE_PATH = 'src/platform/dev/stateful_update'
 LOCAL_CHROOT_STATEFUL_UPDATE_PATH = '/usr/bin/stateful_update'
-REMOTE_STATEUL_UPDATE_PATH = '/usr/local/bin/stateful_update'
-STATEFUL_UPDATE = '/tmp/stateful_update'
-UPDATER_BIN = '/usr/bin/update_engine_client'
 UPDATER_IDLE = 'UPDATE_STATUS_IDLE'
 UPDATER_NEED_REBOOT = 'UPDATE_STATUS_UPDATED_NEED_REBOOT'
-UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
-UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
 # A list of update engine client states that occur after an update is triggered.
 UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
                              'UPDATE_STATUS_UPDATE_AVAILABLE',
@@ -125,6 +120,12 @@ def list_image_dir_contents(update_url):
 
 class ChromiumOSUpdater():
     """Helper class used to update DUT with image of desired version."""
+    REMOTE_STATEUL_UPDATE_PATH = '/usr/local/bin/stateful_update'
+    UPDATER_BIN = '/usr/bin/update_engine_client'
+    STATEFUL_UPDATE = '/tmp/stateful_update'
+    UPDATED_MARKER = '/var/run/update_engine_autoupdate_completed'
+    UPDATER_LOGS = ['/var/log/messages', '/var/log/update_engine']
+
     KERNEL_A = {'name': 'KERN-A', 'kernel': 2, 'root': 3}
     KERNEL_B = {'name': 'KERN-B', 'kernel': 4, 'root': 5}
     # Time to wait for new kernel to be marked successful after
@@ -146,13 +147,13 @@ class ChromiumOSUpdater():
     def check_update_status(self):
         """Return current status from update-engine."""
         update_status = self._run(
-            '%s -status 2>&1 | grep CURRENT_OP' % UPDATER_BIN)
+            '%s -status 2>&1 | grep CURRENT_OP' % self.UPDATER_BIN)
         return update_status.stdout.strip().split('=')[-1]
 
 
     def reset_update_engine(self):
         """Resets the host to prepare for a clean update regardless of state."""
-        self._run('rm -f %s' % UPDATED_MARKER)
+        self._run('rm -f %s' % self.UPDATED_MARKER)
         self._run('stop ui || true')
         self._run('stop update-engine || true')
         self._run('start update-engine')
@@ -242,11 +243,12 @@ class ChromiumOSUpdater():
         if not os.path.exists(stateful_update_path):
             logging.warning('Could not chroot stateful_update script, falling '
                             'back on client copy.')
-            statefuldev_script = REMOTE_STATEUL_UPDATE_PATH
+            statefuldev_script = self.REMOTE_STATEUL_UPDATE_PATH
         else:
             self.host.send_file(
-                    stateful_update_path, STATEFUL_UPDATE, delete_dest=True)
-            statefuldev_script = STATEFUL_UPDATE
+                    stateful_update_path, self.STATEFUL_UPDATE,
+                    delete_dest=True)
+            statefuldev_script = self.STATEFUL_UPDATE
 
         return statefuldev_script
 
@@ -272,7 +274,7 @@ class ChromiumOSUpdater():
 
         """
         autoupdate_cmd = '%s --check_for_update --omaha_url=%s' % (
-            UPDATER_BIN, self.update_url)
+            self.UPDATER_BIN, self.update_url)
         logging.info('Triggering update via: %s', autoupdate_cmd)
         try:
             self._run(autoupdate_cmd)
@@ -327,7 +329,7 @@ class ChromiumOSUpdater():
             build_number = 0
 
         if build_number >= 5772:
-            can_rollback_cmd = '%s --can_rollback' % (UPDATER_BIN)
+            can_rollback_cmd = '%s --can_rollback' % self.UPDATER_BIN
             logging.info('Checking for rollback.')
             try:
                 self._run(can_rollback_cmd)
@@ -335,7 +337,7 @@ class ChromiumOSUpdater():
                 raise RootFSUpdateError("Rollback isn't possible on %s: %s" %
                                         (self.host.hostname, str(e)))
 
-        rollback_cmd = '%s --rollback --follow' % (UPDATER_BIN)
+        rollback_cmd = '%s --rollback --follow' % self.UPDATER_BIN
         if not powerwash:
           rollback_cmd += ' --nopowerwash'
 
@@ -353,7 +355,7 @@ class ChromiumOSUpdater():
         """Run the standard command to force an update."""
         try:
             autoupdate_cmd = '%s --update --omaha_url=%s 2>&1' % (
-                UPDATER_BIN, self.update_url)
+                    self.UPDATER_BIN, self.update_url)
             self._run(autoupdate_cmd, timeout=1200)
         except error.AutoservRunError:
             list_image_dir_contents(self.update_url)
@@ -454,8 +456,8 @@ class ChromiumOSUpdater():
             if self.host.job:
                 logging.info('Collecting update engine logs...')
                 self.host.get_file(
-                    UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
-                    preserve_perm=False)
+                        self.UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
+                        preserve_perm=False)
             list_image_dir_contents(self.update_url)
             raise
         finally:
