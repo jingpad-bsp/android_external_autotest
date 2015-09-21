@@ -56,7 +56,6 @@ class firmware_UpdateFirmwareDataKeyVersion(FirmwareTest):
             host, cmdline_args)
         self.backup_firmware()
         updater_path = self.setup_firmwareupdate_shellball(self.use_shellball)
-        self.faft_client.updater.setup(updater_path)
 
         # Update firmware if needed
         if updater_path:

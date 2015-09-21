@@ -70,7 +70,6 @@ class firmware_UpdateKernelDataKeyVersion(FirmwareTest):
         logging.info('KERN-B will update to version %s', self._update_version)
 
         self.setup_kernel('a')
-        self.faft_client.updater.setup()
         self.resign_kernel_datakey_version(host)
 
     def cleanup(self):

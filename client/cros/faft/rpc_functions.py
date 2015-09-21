@@ -654,21 +654,11 @@ class RPCFunctions(object):
             if attr:
                 self._cgpt_handler.set_partition(rootdev, 'KERN-%s' % p, attr)
 
-    def _updater_setup(self, shellball=None):
-        """Setup the updater.
-
-        @param shellball: Path of provided shellball. Use default shellball
-                          if None,
-        """
-        self._updater.setup(self._os_if, shellball)
-
     def _updater_cleanup(self):
         self._updater.cleanup_temp_dir()
 
     def _updater_get_fwid(self):
         """Retrieve shellball's fwid.
-
-        This method should be called after updater_setup.
 
         @return: Shellball's fwid.
         """
