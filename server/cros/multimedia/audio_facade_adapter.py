@@ -142,6 +142,17 @@ class AudioFacadeRemoteAdapter(object):
         return self._audio_proxy.get_selected_node_types()
 
 
+    def get_plugged_node_types(self):
+        """Gets the plugged output and input node types on DUT.
+
+        @returns: A tuple (output_node_types, input_node_types) where each
+                  field is a list of plugged node types defined in
+                  cras_utils.CRAS_NODE_TYPES.
+
+        """
+        return self._audio_proxy.get_plugged_node_types()
+
+
     def dump_diagnostics(self, file_path):
         """Dumps audio diagnostics results to a file.
 
