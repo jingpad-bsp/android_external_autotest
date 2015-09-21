@@ -383,9 +383,9 @@ class TestAutoUpdater(mox.MoxTestBase):
 
     def testTriggerUpdate(self):
         """Tests that we correctly handle updater errors."""
-        self.mox.StubOutWithMock(autoupdater.ChromiumOSUpdater, '_run')
         update_url = 'http://server/test/url'
         host = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(host, 'run')
         host.hostname = 'test_host'
 
         expected_cmd = ('/usr/bin/update_engine_client --check_for_update '
@@ -394,28 +394,28 @@ class TestAutoUpdater(mox.MoxTestBase):
         updater = autoupdater.ChromiumOSUpdater(update_url, host=host)
 
         # Test with success.
-        autoupdater.ChromiumOSUpdater._run(expected_cmd)
+        host.run(expected_cmd)
 
         # SSH Timeout
-        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+        host.run(expected_cmd).AndRaise(
                 error.AutoservSSHTimeout("ssh timed out", 255))
 
         # SSH Permission Error
-        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+        host.run(expected_cmd).AndRaise(
                 error.AutoservSshPermissionDeniedError("ssh timed out", 255))
 
         # Command Failed Error
         cmd_result_1 = self.mox.CreateMockAnything()
         cmd_result_1.exit_status = 1
 
-        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+        host.run(expected_cmd).AndRaise(
                 error.AutoservRunError("ssh timed out", cmd_result_1))
 
         # Generic SSH Error (maybe)
         cmd_result_255 = self.mox.CreateMockAnything()
         cmd_result_255.exit_status = 255
 
-        autoupdater.ChromiumOSUpdater._run(expected_cmd).AndRaise(
+        host.run(expected_cmd).AndRaise(
                 error.AutoservRunError("Sometimes SSH specific result.",
                                        cmd_result_255))
 

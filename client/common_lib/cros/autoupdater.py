@@ -28,17 +28,18 @@ UPDATER_PROCESSING_UPDATE = ['UPDATE_STATUS_CHECKING_FORUPDATE',
 
 class ChromiumOSError(error.InstallError):
     """Generic error for ChromiumOS-specific exceptions."""
-    pass
+
+
+class BrilloError(error.InstallError):
+    """Generic error for Brillo-specific exceptions."""
 
 
 class RootFSUpdateError(ChromiumOSError):
     """Raised when the RootFS fails to update."""
-    pass
 
 
 class StatefulUpdateError(ChromiumOSError):
     """Raised when the stateful partition fails to update."""
-    pass
 
 
 def url_to_version(update_url):
@@ -118,7 +119,110 @@ def list_image_dir_contents(update_url):
         logging.warning('%s: %s', error_msg, e)
 
 
-class ChromiumOSUpdater():
+# TODO(garnold) This implements shared updater functionality needed for
+# supporting the autoupdate_EndToEnd server-side test. We should probably
+# migrate more of the existing ChromiumOSUpdater functionality to it as we
+# expand non-CrOS support in other tests.
+class BaseUpdater(object):
+    """Platform-agnostic DUT update functionality."""
+
+    def __init__(self, updater_ctrl_bin, update_url, host):
+        """Initializes the object.
+
+        @param updater_ctrl_bin: Path to update_engine_client.
+        @param update_url: The URL we want the update to use.
+        @param host: A client.common_lib.hosts.Host implementation.
+        """
+        self.updater_ctrl_bin = updater_ctrl_bin
+        self.update_url = update_url
+        self.host = host
+        self._update_error_queue = multiprocessing.Queue(2)
+
+
+    def check_update_status(self):
+        """Returns the current update engine state.
+
+        We use the `update_engine_client -status' command and parse the line
+        indicating the update state, e.g. "CURRENT_OP=UPDATE_STATUS_IDLE".
+        """
+        update_status = self.host.run(
+            '%s -status 2>&1 | grep CURRENT_OP' % self.updater_ctrl_bin)
+        return update_status.stdout.strip().split('=')[-1]
+
+
+    def trigger_update(self):
+        """Triggers a background update.
+
+        @raise RootFSUpdateError if anything went wrong.
+        """
+        autoupdate_cmd = ('%s --check_for_update --omaha_url=%s' %
+                          (self.updater_ctrl_bin, self.update_url))
+        err_msg = 'Failed to trigger an update on %s.' % self.host.hostname
+        logging.info('Triggering update via: %s', autoupdate_cmd)
+        try:
+            self.host.run(autoupdate_cmd)
+        except (error.AutoservSshPermissionDeniedError,
+                error.AutoservSSHTimeout) as e:
+            err_msg += ' SSH reports an error: %s' % type(e).__name__
+            raise RootFSUpdateError(err_msg)
+        except error.AutoservRunError as e:
+            # Check if the exit code is 255, if so it's probably a generic
+            # SSH error.
+            result = e.args[1]
+            if result.exit_status == 255:
+                err_msg += (' SSH reports a generic error (255), which could '
+                            'indicate a problem with underlying connectivity '
+                            'layers.')
+                raise RootFSUpdateError(err_msg)
+
+            # We have ruled out all SSH cases, the error code is from
+            # update_engine_client, though we still don't know why.
+            list_image_dir_contents(self.update_url)
+            err_msg += (' It could be that the devserver is unreachable, the '
+                        'payload unavailable, or there is a bug in the update '
+                        'engine (unlikely). Reported error: %s' %
+                        type(e).__name__)
+            raise RootFSUpdateError(err_msg)
+
+
+    def _verify_update_completed(self):
+        """Verifies that an update has completed.
+
+        @raise RootFSUpdateError: if verification fails.
+        """
+        status = self.check_update_status()
+        if status != UPDATER_NEED_REBOOT:
+            raise RootFSUpdateError('Update did not complete with correct '
+                                    'status. Expecting %s, actual %s' %
+                                    (UPDATER_NEED_REBOOT, status))
+
+
+    def update_image(self):
+        """Updates the device image and verifies success."""
+        try:
+            autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
+                              (self.updater_ctrl_bin, self.update_url))
+            self.host.run(autoupdate_cmd, timeout=1200)
+        except error.AutoservRunError:
+            list_image_dir_contents(self.update_url)
+            update_error = RootFSUpdateError(
+                    'Failed to install device image using update engine on %s' %
+                    self.host.hostname)
+            self._update_error_queue.put(update_error)
+            raise update_error
+        except Exception as e:
+            # Don't allow other exceptions to not be caught.
+            self._update_error_queue.put(e)
+            raise e
+
+        try:
+            self._verify_update_completed()
+        except RootFSUpdateError as e:
+            self._update_error_queue.put(e)
+            raise
+
+
+class ChromiumOSUpdater(BaseUpdater):
     """Helper class used to update DUT with image of desired version."""
     REMOTE_STATEUL_UPDATE_PATH = '/usr/local/bin/stateful_update'
     UPDATER_BIN = '/usr/bin/update_engine_client'
@@ -134,21 +238,13 @@ class ChromiumOSUpdater():
 
 
     def __init__(self, update_url, host=None, local_devserver=False):
-        self.host = host
-        self.update_url = update_url
-        self._update_error_queue = multiprocessing.Queue(2)
+        super(ChromiumOSUpdater, self).__init__(self.UPDATER_BIN, update_url,
+                                                host)
         self.local_devserver = local_devserver
         if not local_devserver:
           self.update_version = url_to_version(update_url)
         else:
           self.update_version = None
-
-
-    def check_update_status(self):
-        """Return current status from update-engine."""
-        update_status = self._run(
-            '%s -status 2>&1 | grep CURRENT_OP' % self.UPDATER_BIN)
-        return update_status.stdout.strip().split('=')[-1]
 
 
     def reset_update_engine(self):
@@ -267,52 +363,6 @@ class ChromiumOSUpdater():
         return self._run('/postinst %s 2>&1' % part)
 
 
-    def trigger_update(self):
-        """Triggers a background update on a test image.
-
-        @raise RootFSUpdateError if anything went wrong.
-
-        """
-        autoupdate_cmd = '%s --check_for_update --omaha_url=%s' % (
-            self.UPDATER_BIN, self.update_url)
-        err_msg = 'Failed to trigger rootfs update on %s.' % self.host.hostname
-        logging.info('Triggering update via: %s', autoupdate_cmd)
-        try:
-            self._run(autoupdate_cmd)
-        except (error.AutoservSshPermissionDeniedError,
-                error.AutoservSSHTimeout) as e:
-            err_msg += ' SSH reports an error: %s' % type(e).__name__
-            raise RootFSUpdateError(err_msg)
-        except error.AutoservRunError as e:
-            # Check if the exit code is 255, if so it's probably a generic
-            # SSH error.
-            result = e.args[1]
-            if result.exit_status == 255:
-                err_msg += ' SSH reports a generic error (255).'
-                raise RootFSUpdateError(err_msg)
-
-            # We have ruled out all SSH cases, the error code is from
-            # update_engine_client, though we still don't know why.
-            list_image_dir_contents(self.update_url)
-            err_msg += (' It could be that the devserver is unreachable, the '
-                        'payload unavailable, or there is a bug in the update '
-                        'engine (unlikely). Reported error: %s' %
-                        type(e).__name__)
-            raise RootFSUpdateError(err_msg)
-
-
-    def _verify_update_completed(self):
-        """Verifies that an update has completed.
-
-        @raise RootFSUpdateError: if verification fails.
-        """
-        status = self.check_update_status()
-        if status != UPDATER_NEED_REBOOT:
-            raise RootFSUpdateError('Update did not complete with correct '
-                                    'status. Expecting %s, actual %s' %
-                                    (UPDATER_NEED_REBOOT, status))
-
-
     def rollback_rootfs(self, powerwash):
         """Triggers rollback and waits for it to complete.
 
@@ -353,29 +403,11 @@ class ChromiumOSUpdater():
         self._verify_update_completed()
 
 
+    # TODO(garnold) This is here for backward compatibility and should be
+    # deprecated once we shift to using update_image() everywhere.
     def update_rootfs(self):
         """Run the standard command to force an update."""
-        try:
-            autoupdate_cmd = '%s --update --omaha_url=%s 2>&1' % (
-                    self.UPDATER_BIN, self.update_url)
-            self._run(autoupdate_cmd, timeout=1200)
-        except error.AutoservRunError:
-            list_image_dir_contents(self.update_url)
-            update_error = RootFSUpdateError(
-                    'Failed to install rootfs image using update engine on %s' %
-                    self.host.hostname)
-            self._update_error_queue.put(update_error)
-            raise update_error
-        except Exception as e:
-            # Don't allow other exceptions to not be caught.
-            self._update_error_queue.put(e)
-            raise e
-
-        try:
-            self._verify_update_completed()
-        except RootFSUpdateError as e:
-            self._update_error_queue.put(e)
-            raise
+        return self.update_image()
 
 
     def update_stateful(self, clobber=True):
@@ -609,3 +641,16 @@ class ChromiumOSUpdater():
                     'After update and reboot, %s '
                     'within %d seconds' % (event,
                                            self.KERNEL_UPDATE_TIMEOUT))
+
+
+class BrilloUpdater(BaseUpdater):
+    """Helper class for updating a Brillo DUT."""
+
+    def __init__(self, update_url, host=None):
+        """Initialize the object.
+
+        @param update_url: The URL we want the update to use.
+        @param host: A client.common_lib.hosts.Host implementation.
+        """
+        super(ChromiumOSUpdater, self).__init__(
+                '/system/bin/update_engine_client', update_url, host)
