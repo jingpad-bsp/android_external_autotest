@@ -142,6 +142,7 @@ class ChromiumOSUpdater():
         else:
           self.update_version = None
 
+
     def check_update_status(self):
         """Return current status from update-engine."""
         update_status = self._run(
@@ -234,13 +235,13 @@ class ChromiumOSUpdater():
 
         if not os.path.exists(stateful_update_path):
             logging.warning('Could not find Chrome OS source location for '
-                         'stateful_update script at %s, falling back to chroot '
-                         'copy.', stateful_update_path)
+                            'stateful_update script at %s, falling back to '
+                            'chroot copy.', stateful_update_path)
             stateful_update_path = LOCAL_CHROOT_STATEFUL_UPDATE_PATH
 
         if not os.path.exists(stateful_update_path):
             logging.warning('Could not chroot stateful_update script, falling '
-                         'back on client copy.')
+                            'back on client copy.')
             statefuldev_script = REMOTE_STATEUL_UPDATE_PATH
         else:
             self.host.send_file(
@@ -280,7 +281,6 @@ class ChromiumOSUpdater():
             raise RootFSUpdateError('SSH on %s is seeing %s' %
                                     (self.host.hostname, type(e).__name__))
         except error.AutoservRunError as e:
-
             # Check if the exit code is 255, if so it's probably a generic
             # SSH error.
             result = e.args[1]
@@ -306,7 +306,7 @@ class ChromiumOSUpdater():
         if status != UPDATER_NEED_REBOOT:
             raise RootFSUpdateError('Update did not complete with correct '
                                     'status. Expecting %s, actual %s' %
-                                            (UPDATER_NEED_REBOOT, status))
+                                    (UPDATER_NEED_REBOOT, status))
 
 
     def rollback_rootfs(self, powerwash):
