@@ -30,7 +30,6 @@ from autotest_lib.frontend.afe import models
 _HOST_LABEL_TYPE = 'host_labels'
 _HOST_LABEL_TIME_INDEX_TYPE = 'host_labels_time_index'
 
-
 def get_all_boards(labels=None):
     """Get a list of boards from host labels.
 
@@ -111,7 +110,8 @@ def collect_info():
                 'labels': [label.name for label in host.labels.all()],
                 'time_index': time_index}
         data_list.append(info)
-    autotest_es.bulk_post(data_list, log_time_recorded=False)
+    if not autotest_es.bulk_post(data_list, log_time_recorded=False):
+        raise Exception('Failed to upload host label info.')
 
     # After all host label information is logged, save the time stamp.
     autotest_es.post(use_http=True, type_str=_HOST_LABEL_TIME_INDEX_TYPE,

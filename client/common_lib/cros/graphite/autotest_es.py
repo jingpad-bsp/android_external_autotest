@@ -91,6 +91,7 @@ if not INDEX_METADATA:
 # 3 Seconds before connection to esdb timeout.
 DEFAULT_TIMEOUT = 3
 
+DEFAULT_BULK_POST_RETRIES = 5
 
 def post(use_http=ES_USE_HTTP, host=METADATA_ES_SERVER, port=ES_PORT,
          timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA, udp_port=ES_UDP_PORT,
@@ -106,7 +107,8 @@ def post(use_http=ES_USE_HTTP, host=METADATA_ES_SERVER, port=ES_PORT,
 
 
 def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
-              timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA, *args, **kwargs):
+              timeout=DEFAULT_TIMEOUT, index=INDEX_METADATA,
+              retries=DEFAULT_BULK_POST_RETRIES, *args, **kwargs):
     """This function takes a series of arguments which are passed to the
     es_utils.ESMetadata constructor, and a list of metadata, then upload to
     Elasticsearch server using Elasticsearch bulk API. This can greatly nhance
@@ -116,7 +118,11 @@ def bulk_post(data_list, host=METADATA_ES_SERVER, port=ES_PORT,
     esmd = es_utils.ESMetadata(use_http=True, host=host, port=port,
                                timeout=timeout, index=index,
                                udp_port=ES_UDP_PORT)
-    return esmd.bulk_post(data_list, *args, **kwargs)
+    # bulk post may fail due to the amount of data, retry several times.
+    for _ in range(retries):
+        if esmd.bulk_post(data_list, *args, **kwargs):
+            return True
+    return False
 
 
 def execute_query(host=METADATA_ES_SERVER, port=ES_PORT,
