@@ -33,6 +33,8 @@ class kernel_ConfigVerify(test.test):
         'NET_NS',
         # Security; perform additional validation of credentials.
         'DEBUG_CREDENTIALS',
+        # Security; make sure the Chrome OS LSM is in use.
+        'SECURITY_CHROMIUMOS',
     ]
     IS_MODULE = [
         # Sanity checks; should be present in builds as modules.
@@ -198,6 +200,9 @@ class kernel_ConfigVerify(test.test):
 
             if arch == 'aarch64':
                 config.has_builtin('DEBUG_ALIGN_RODATA')
+
+        # NaCl; allow mprotect+PROT_EXEC on noexec mapped files.
+        config.has_value('MMAP_NOEXEC_TAINT', ['0'])
 
         # Kernel: make sure port 0xED is the one used for I/O delay
         if self.is_x86_family(arch):
