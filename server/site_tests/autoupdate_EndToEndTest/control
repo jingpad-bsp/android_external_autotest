@@ -44,7 +44,8 @@ Values pertaining to the test case include:
   source_release=REL      source image release version (e.g. 2672.0.0)
   target_release=REL      target image release version (e.g. 2673.0.0)
   source_image_uri=URI    URI of the source image / payload. Image must be used
-                          if use_servo specified.
+                          if use_servo specified. None means don't install a
+                          source image (assume it's preinstalled).
   source_archive_uri=URI  (optional) URI of where the artifacts for the source
                           image (e.g.  stateful update) are located. If not
                           provided, the test will attempt using the same

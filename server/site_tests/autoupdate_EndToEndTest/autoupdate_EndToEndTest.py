@@ -1039,35 +1039,42 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('Staging images onto autotest devserver (%s)',
                      autotest_devserver.url())
 
-        source_image_uri = test_conf['source_image_uri']
-
         staged_source_url = None
-        source_stateful_uri = None
         staged_source_stateful_url = None
-        if self._use_servo:
-            staged_source_url = self._stage_image(
-                    autotest_devserver, source_image_uri)
-            # Test image already contains a stateful update, leave
-            # staged_source_stateful_url untouhced.
-        else:
-            staged_source_url = self._stage_payload_by_uri(
-                    autotest_devserver, source_image_uri)
-
-            # In order to properly install the source image using a full
-            # payload we'll also need the stateful update that comes with it.
-            # In general, tests may have their source artifacts in a different
-            # location than their payloads. This is determined by whether or
-            # not the source_archive_uri attribute is set; if it isn't set,
-            # then we derive it from the dirname of the source payload.
-            source_archive_uri = test_conf.get('source_archive_uri')
-            if source_archive_uri:
-                source_stateful_uri = self._get_stateful_uri(source_archive_uri)
+        source_image_uri = test_conf['source_image_uri']
+        if source_image_uri:
+            if self._use_servo:
+                staged_source_url = self._stage_image(
+                        autotest_devserver, source_image_uri)
+                # Test image already contains a stateful update, leave
+                # staged_source_stateful_url untouhced.
             else:
-                source_stateful_uri = self._payload_to_stateful_uri(
-                        source_image_uri)
+                staged_source_url = self._stage_payload_by_uri(
+                        autotest_devserver, source_image_uri)
 
-            staged_source_stateful_url = self._stage_payload_by_uri(
-                    autotest_devserver, source_stateful_uri)
+                # In order to properly install the source image using a full
+                # payload we'll also need the stateful update that comes with it.
+                # In general, tests may have their source artifacts in a different
+                # location than their payloads. This is determined by whether or
+                # not the source_archive_uri attribute is set; if it isn't set,
+                # then we derive it from the dirname of the source payload.
+                source_archive_uri = test_conf.get('source_archive_uri')
+                if source_archive_uri:
+                    source_stateful_uri = self._get_stateful_uri(source_archive_uri)
+                else:
+                    source_stateful_uri = self._payload_to_stateful_uri(
+                            source_image_uri)
+
+                staged_source_stateful_url = self._stage_payload_by_uri(
+                        autotest_devserver, source_stateful_uri)
+
+                # Log source image URLs.
+                logging.info('Source %s from %s staged at %s',
+                             'image' if self._use_servo else 'full payload',
+                             source_image_uri, staged_source_url)
+                if staged_source_stateful_url:
+                    logging.info('Source stateful update from %s staged at %s',
+                                 source_stateful_uri, staged_source_stateful_url)
 
         target_payload_uri = test_conf['target_payload_uri']
         staged_target_url = self._stage_payload_by_uri(
@@ -1090,13 +1097,7 @@ class autoupdate_EndToEndTest(test.test):
             staged_target_stateful_url = self._stage_payload_by_uri(
                     autotest_devserver, target_stateful_uri)
 
-        # Log all the urls.
-        logging.info('Source %s from %s staged at %s',
-                     'image' if self._use_servo else 'full payload',
-                     source_image_uri, staged_source_url)
-        if staged_source_stateful_url:
-            logging.info('Source stateful update from %s staged at %s',
-                         source_stateful_uri, staged_source_stateful_url)
+        # Log target payload URLs.
         logging.info('%s test payload from %s staged at %s',
                      test_conf['update_type'], target_payload_uri,
                      staged_target_url)
@@ -1431,9 +1432,10 @@ class autoupdate_EndToEndTest(test.test):
                 autotest_devserver, test_conf)
 
         # Install the source version onto the DUT.
-        self.install_source_version(devserver_hostname,
-                                    staged_urls.source_url,
-                                    staged_urls.source_stateful_url)
+        if staged_urls.source_url:
+            self.install_source_version(devserver_hostname,
+                                        staged_urls.source_url,
+                                        staged_urls.source_stateful_url)
 
         self._omaha_devserver = OmahaDevserver(
                 devserver_hostname, self._devserver_dir, staged_urls.target_url)

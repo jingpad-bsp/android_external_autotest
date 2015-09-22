@@ -98,7 +98,7 @@ class TestConfig(object):
         @param is_delta_update: whether this is a delta update test (Boolean)
         @param source_release: the source image version (e.g. '2672.0.0')
         @param target_release: the target image version (e.g. '2673.0.0')
-        @param source_image_uri: source image URI ('gs://...')
+        @param source_image_uri: source image URI ('gs://...') or None
         @param target_payload_uri: target payload URI ('gs://...')
         @param suite_name: the name of the test suite (default: 'au')
         @param source_archive_uri: location of source build artifacts
@@ -175,12 +175,13 @@ class TestConfig(object):
             ('update_type', self.get_update_type()),
             ('source_release', self.source_release),
             ('target_release', self.target_release),
-            ('source_image_uri', self.source_image_uri),
             ('target_payload_uri', self.target_payload_uri),
             ('SUITE', self.suite_name)
         ]
+        if self.source_image_uri:
+            arg_values.append(('source_image_uri', self.source_image_uri))
         if self.source_archive_uri:
-          arg_values.append(('source_archive_uri', self.source_archive_uri))
+            arg_values.append(('source_archive_uri', self.source_archive_uri))
 
         return delim.join(
                 [template % (key, assign, val) for key, val in arg_values])
