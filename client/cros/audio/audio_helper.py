@@ -830,6 +830,8 @@ def compare_one_channel_frequency(test_data, test_data_format,
               golden_data_frequency: golden data frequency.
               equal: A bool containing comparing result.
 
+    @raises: ValueError if the test data RMS is too small to be meaningful.
+
     """
     result_dict = dict()
     golden_data_stat = get_one_channel_stat(golden_data, golden_data_format)
@@ -843,11 +845,10 @@ def compare_one_channel_frequency(test_data, test_data_format,
             abs(result_dict['test_data_frequency'] -
                 result_dict['golden_data_frequency']) < _FREQUENCY_DIFF_THRESHOLD
             ) else False
-    if test_data_stat.rms < _MEANINGFUL_RMS_THRESHOLD:
-        logging.error('Recorded RMS %f is too small to be meaningful.',
-                      test_data_stat.rms)
-        result_dict['equal'] = False
     logging.debug('result_dict: %r', result_dict)
+    if test_data_stat.rms < _MEANINGFUL_RMS_THRESHOLD:
+        raise ValueError('Recorded RMS %f is too small to be meaningful.',
+                         test_data_stat.rms)
     return result_dict
 
 
