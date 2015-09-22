@@ -58,12 +58,7 @@ def connect_bluetooth_module_full_flow(bt_adapter, target_mac_address,
                 'Can not find bluetooth module with MAC address %s' %
                 target_mac_address)
 
-    # Pairs the bluetooth adapter with bluetooth module.
-    if not bt_adapter.pair_legacy_device(
-            target_mac_address, _PIN, _PAIRING_TIMEOUT):
-        raise ChameleonBluetoothAudioError(
-                'Failed to pair Cros device and bluetooth module %s' %
-                target_mac_address)
+    pair_legacy_bluetooth_module(bt_adapter, target_mac_address)
 
     # Disconnects from bluetooth module to clean up the state.
     if not bt_adapter.disconnect_device(target_mac_address):
@@ -106,3 +101,33 @@ def connect_bluetooth_module(bt_adapter, target_mac_address,
         raise ChameleonBluetoothAudioError(
                 'Failed to let Cros device connect to bluetooth module %s' %
                 target_mac_address)
+
+
+def pair_legacy_bluetooth_module(bt_adapter, target_mac_address, pin=_PIN,
+                                 pairing_timeout=_PAIRING_TIMEOUT, retries=3):
+    """Pairs Cros device bluetooth adapter with legacy bluetooth module.
+
+    @param bt_adapter: A BluetoothDevice object to control bluetooth adapter
+                       on Cros device.
+    @param target_mac_address: The MAC address of bluetooth module to be
+                               paired.
+    @param pin: The pin for legacy pairing.
+    @param timeout: Timeout in seconds to pair bluetooth module in a trial.
+    @param retries: Number of retries if pairing fails.
+
+    @raises: ChameleonBluetoothAudioError if Cros device fails to pair
+             bluetooth module on audio board after all the retries.
+
+    """
+    # Pairs the bluetooth adapter with bluetooth module.
+    for trial in xrange(retries):
+        if bt_adapter.pair_legacy_device(
+            target_mac_address, pin, pairing_timeout):
+                logging.debug('Pairing to %s succeeded', target_mac_address)
+                return
+        elif trial == retries - 1:
+            raise ChameleonBluetoothAudioError(
+                    'Failed to pair Cros device and bluetooth module %s' %
+                    target_mac_address)
+
+        logging.debug('Retry for pairing...')
