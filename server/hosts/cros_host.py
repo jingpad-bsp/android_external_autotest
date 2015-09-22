@@ -1178,6 +1178,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.verify()
 
 
+    def confirm_servo(self):
+        """Confirm servo is initialized and verified.
+
+        @raise AutoservError: If servo is not initialized and verified.
+        """
+        if self._servo_host.required_by_test and self.servo:
+            return
+
+        # Force to re-create the servo object to make sure servo is verified.
+        logging.debug('Rebuilding the servo object.')
+        self.servo = None
+        self._servo_host = None
+        self._setup_servo()
+        if not self.servo:
+            raise error.AutoservError('Failed to create servo object.')
+
+
     def repair_full(self):
         """Repair a host for repair level NO_PROTECTION.
 

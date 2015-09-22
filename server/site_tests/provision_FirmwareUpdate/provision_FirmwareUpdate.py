@@ -27,6 +27,7 @@ class provision_FirmwareUpdate(test.test):
                       e.g. 'link-firmware/R22-2695.1.144'.
         """
         try:
+            host.confirm_servo()
             host.firmware_install(build=value)
         except Exception as e:
             logging.error(e)

@@ -132,6 +132,7 @@ class ServoHost(ssh_host.SSHHost):
         # Create a cache of Servo object. This must be called at the end of
         # _initialize to make sure all attributes are set.
         self._servo = None
+        self.required_by_test = required_by_test
         try:
             self.verify()
         except Exception:
