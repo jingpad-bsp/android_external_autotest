@@ -88,6 +88,32 @@ class ShillProxy(object):
     SERVICE_PROPERTY_EAP_PASSWORD = 'EAP.Password'
     SERVICE_PROPERTY_EAP_CA_CERT_PEM = 'EAP.CACertPEM'
 
+    # OpenVPN related properties.
+    SERVICE_PROPERTY_OPENVPN_CA_CERT_PEM = 'OpenVPN.CACertPEM'
+    SERVICE_PROPERTY_OPENVPN_PASSWORD = 'OpenVPN.Password'
+    SERVICE_PROPERTY_OPENVPN_PKCS11_ID = 'OpenVPN.Pkcs11.ID'
+    SERVICE_PROPERTY_OPENVPN_PKCS11_PIN = 'OpenVPN.Pkcs11.PIN'
+    SERVICE_PROPERTY_OPENVPN_PROVIDER_HOST = 'Provider.Host'
+    SERVICE_PROPERTY_OPENVPN_PROVIDER_TYPE = 'Provider.Type'
+    SERVICE_PROPERTY_OPENVPN_REMOTE_CERT_EKU = 'OpenVPN.RemoteCertEKU'
+    SERVICE_PROPERTY_OPENVPN_USER = 'OpenVPN.User'
+    SERVICE_PROPERTY_OPENVPN_VERB = 'OpenVPN.Verb'
+    SERVICE_PROPERTY_OPENVPN_VERIFY_HASH = 'OpenVPN.VerifyHash'
+    SERVICE_PROPERTY_OPENVPN_VERIFY_X509_NAME = 'OpenVPN.VerifyX509Name'
+    SERVICE_PROPERTY_OPENVPN_VERIFY_X509_TYPE = 'OpenVPN.VerifyX509Type'
+    SERVICE_PROPERTY_OPENVPN_VPN_DOMAIN = 'VPN.Domain'
+
+    # L2TP VPN related properties.
+    SERVICE_PROPERTY_L2TP_CA_CERT_PEM = 'L2TPIPsec.CACertPEM'
+    SERVICE_PROPERTY_L2TP_CLIENT_CERT_ID = 'L2TPIPsec.ClientCertID'
+    SERVICE_PROPERTY_L2TP_CLIENT_CERT_SLOT = 'L2TPIPsec.ClientCertSlot'
+    SERVICE_PROPERTY_L2TP_PASSWORD = 'L2TPIPsec.Password'
+    SERVICE_PROPERTY_L2TP_PIN = 'L2TPIPsec.PIN'
+    SERVICE_PROPERTY_L2TP_PSK = 'L2TPIPsec.PSK'
+    SERVICE_PROPERTY_L2TP_USER = 'L2TPIPsec.User'
+    SERVICE_PROPERTY_L2TP_XAUTH_PASSWORD = 'L2TPIPsec.XauthPassword'
+    SERVICE_PROPERTY_L2TP_XAUTH_USER = 'L2TPIPsec.XauthUser'
+
     # Mapping of service property to its dbus type.
     SERVICE_PROPERTY_MAP = {
         SERVICE_PROPERTY_AUTOCONNECT: dbus.Boolean,
@@ -111,7 +137,31 @@ class ShillProxy(object):
         SERVICE_PROPERTY_EAP_INNER_EAP: dbus.String,
         SERVICE_PROPERTY_EAP_IDENTITY: dbus.String,
         SERVICE_PROPERTY_EAP_PASSWORD: dbus.String,
-        SERVICE_PROPERTY_EAP_CA_CERT_PEM: dbus.Array
+        SERVICE_PROPERTY_EAP_CA_CERT_PEM: dbus.Array,
+
+        SERVICE_PROPERTY_OPENVPN_CA_CERT_PEM: dbus.Array,
+        SERVICE_PROPERTY_OPENVPN_PASSWORD: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_PKCS11_ID: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_PKCS11_PIN: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_PROVIDER_HOST: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_PROVIDER_TYPE: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_REMOTE_CERT_EKU: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_USER: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_VERB: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_VERIFY_HASH: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_VERIFY_X509_NAME: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_VERIFY_X509_TYPE: dbus.String,
+        SERVICE_PROPERTY_OPENVPN_VPN_DOMAIN: dbus.String,
+
+        SERVICE_PROPERTY_L2TP_CA_CERT_PEM: dbus.Array,
+        SERVICE_PROPERTY_L2TP_CLIENT_CERT_ID: dbus.String,
+        SERVICE_PROPERTY_L2TP_CLIENT_CERT_SLOT: dbus.String,
+        SERVICE_PROPERTY_L2TP_PASSWORD: dbus.String,
+        SERVICE_PROPERTY_L2TP_PIN: dbus.String,
+        SERVICE_PROPERTY_L2TP_PSK: dbus.String,
+        SERVICE_PROPERTY_L2TP_USER: dbus.String,
+        SERVICE_PROPERTY_L2TP_XAUTH_PASSWORD: dbus.String,
+        SERVICE_PROPERTY_L2TP_XAUTH_USER: dbus.String
     }
 
     SERVICE_CONNECTED_STATES = ['portal', 'online']
@@ -478,7 +528,8 @@ class ShillProxy(object):
         @return DBus object interface representing a service.
 
         """
-        path = self.manager.GetService(params)
+        dbus_params = self.service_properties_to_dbus_types(params)
+        path = self.manager.GetService(dbus_params)
         return self.get_dbus_object(self.DBUS_TYPE_SERVICE, path)
 
 
