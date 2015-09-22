@@ -7,6 +7,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome, session_manager
+from autotest_lib.client.cros import asan
 
 
 class login_LoginSuccess(test.test):
@@ -15,6 +16,10 @@ class login_LoginSuccess(test.test):
 
     _SESSION_START_TIMEOUT = 10
     _SESSION_STOP_TIMEOUT = 60
+    # TODO(afakhry): Remove this timeout increase for asan bots once we figure
+    # out why logging out is taking so long. See crbug.com/488291
+    if asan.running_on_asan():
+      _SESSION_STOP_TIMEOUT *= 2
 
 
     def initialize(self):
