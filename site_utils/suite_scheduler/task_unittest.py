@@ -214,7 +214,8 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -228,7 +229,8 @@ class TaskTest(TaskTestBase):
                                  None, expected_sharding, None, None,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(mytask.Run(self.sched, self._MAP, self._BOARD))
 
@@ -239,7 +241,8 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -283,7 +286,8 @@ class TaskTest(TaskTestBase):
                                  None, None, None, None,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
@@ -294,7 +298,8 @@ class TaskTest(TaskTestBase):
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None, self._PRIORITY,
             self._TIMEOUT, False, file_bugs=self._FILE_BUGS,
-            firmware_rw_build=None, test_source_build=None).AndRaise(
+            firmware_rw_build=None, test_source_build=None,
+            job_retry=False).AndRaise(
                     deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
@@ -306,7 +311,8 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  True, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD, True))
 
@@ -337,7 +343,8 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, False,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -348,7 +355,8 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, False,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(False)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(False)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -359,7 +367,8 @@ class OneShotTaskTest(TaskTestBase):
         self.sched.ScheduleSuite(
             self._SUITE, self._BOARD, self._BUILD, None, None,
             None, None, False, file_bugs=self._FILE_BUGS,
-            firmware_rw_build=None, test_source_build=None).AndRaise(
+            firmware_rw_build=None, test_source_build=None,
+            job_retry=False).AndRaise(
                 deduping_scheduler.ScheduleException('Simulated Failure'))
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
@@ -371,7 +380,8 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, True,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
                                        force=True))
@@ -382,7 +392,8 @@ class OneShotTaskTest(TaskTestBase):
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, True,
                                  file_bugs=True, firmware_rw_build=None,
-                                 test_source_build=None).AndReturn(True)
+                                 test_source_build=None,
+                                 job_retry=False).AndReturn(True)
         self.mox.ReplayAll()
         self.task._file_bugs = True
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,

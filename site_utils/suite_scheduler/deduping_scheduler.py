@@ -85,7 +85,7 @@ class DedupingScheduler(object):
 
     def _Schedule(self, suite, board, build, pool, num, priority, timeout,
                   file_bugs=False, firmware_rw_build=None,
-                  test_source_build=None):
+                  test_source_build=None, job_retry=False):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -106,6 +106,8 @@ class DedupingScheduler(object):
         @param test_source_build: Build that contains the server-side test code.
                                   Default to None to use the ChromeOS build
                                   (defined by `build`).
+        @param job_retry: Set to True to enable job-level retry. Default is
+                          False.
 
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
@@ -122,7 +124,8 @@ class DedupingScheduler(object):
                         builds=builds, check_hosts=False, num=num, pool=pool,
                         priority=priority, timeout=timeout, file_bugs=file_bugs,
                         wait_for_results=file_bugs,
-                        test_source_build=test_source_build) is not None:
+                        test_source_build=test_source_build,
+                        job_retry=job_retry) is not None:
                 return True
             else:
                 raise ScheduleException(
@@ -147,7 +150,7 @@ class DedupingScheduler(object):
 
     def ScheduleSuite(self, suite, board, build, pool, num, priority, timeout,
                       force=False, file_bugs=False, firmware_rw_build=None,
-                      test_source_build=None):
+                      test_source_build=None, job_retry=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -169,6 +172,8 @@ class DedupingScheduler(object):
                                   to None.
         @param test_source_build: Build with the source of tests. Default to
                                   None to use the ChromeOS build.
+        @param job_retry: Set to True to enable job-level retry. Default is
+                          False.
 
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
@@ -180,7 +185,8 @@ class DedupingScheduler(object):
             return self._Schedule(suite, board, build, pool, num, priority,
                                   timeout, file_bugs=file_bugs,
                                   firmware_rw_build=firmware_rw_build,
-                                  test_source_build=test_source_build)
+                                  test_source_build=test_source_build,
+                                  job_retry=job_retry)
         return False
 
 

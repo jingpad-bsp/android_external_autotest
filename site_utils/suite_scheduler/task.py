@@ -156,7 +156,7 @@ class Task(object):
 
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
-                       'firmware_rw_build_spec', 'test_source'])
+                       'firmware_rw_build_spec', 'test_source', 'job_retry'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -177,6 +177,7 @@ class Task(object):
         firmware_rw_build_spec = config.getstring(
                 section, 'firmware_rw_build_spec')
         test_source = config.getstring(section, 'test_source')
+        job_retry = config.getboolean(section, 'job_retry')
         for klass in driver.Driver.EVENT_CLASSES:
             if klass.KEYWORD == keyword:
                 priority = klass.PRIORITY
@@ -202,7 +203,7 @@ class Task(object):
                              file_bugs=file_bugs if file_bugs else False,
                              cros_build_spec=cros_build_spec,
                              firmware_rw_build_spec=firmware_rw_build_spec,
-                             test_source=test_source)
+                             test_source=test_source, job_retry=job_retry)
 
 
     @staticmethod
@@ -235,7 +236,7 @@ class Task(object):
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
                  boards=None, priority=None, timeout=None, file_bugs=False,
                  cros_build_spec=None, firmware_rw_build_spec=None,
-                 test_source=None):
+                 test_source=None, job_retry=False):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -301,6 +302,8 @@ class Task(object):
         @param test_source: The source of test code when firmware will be
                             updated in the test. The value can be `firmware_rw`
                             or `cros`.
+        @param job_retry: Set to True to enable job-level retry. Default is
+                          False.
         """
         self._name = name
         self._suite = suite
@@ -313,6 +316,7 @@ class Task(object):
         self._cros_build_spec = cros_build_spec
         self._firmware_rw_build_spec = firmware_rw_build_spec
         self._test_source = test_source
+        self._job_retry = job_retry
 
         if ((self._firmware_rw_build_spec or cros_build_spec) and
             not self.test_source in [Builds.FIRMWARE_RW, Builds.CROS]):
@@ -674,7 +678,8 @@ class Task(object):
                         self._priority, self._timeout, force,
                         file_bugs=self._file_bugs,
                         firmware_rw_build=firmware_rw_build,
-                        test_source_build=test_source_build):
+                        test_source_build=test_source_build,
+                        job_retry=self._job_retry):
                     logging.info('Skipping scheduling %s on %s for %s',
                                  self._suite, builds, board)
             except deduping_scheduler.DedupingSchedulerException as e:
