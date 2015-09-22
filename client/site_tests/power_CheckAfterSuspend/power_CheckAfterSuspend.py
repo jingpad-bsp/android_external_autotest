@@ -52,10 +52,10 @@ class power_CheckAfterSuspend(test.test):
             test_tag = ''
             if self._enable_baseline:
                 for t in self._tests:
-                    self.job.run_test(t, tag=test_tag+'preSuspend')
+                    self.job.run_test(t, tag=test_tag+'preSuspend', disable_sysinfo=True)
 
         time.sleep(random.randint(0, 3))
         sys_power.do_suspend(max(self._min_suspend_s, MIN_ALLOWED_SUSPEND_S))
 
         for t in self._tests:
-            self.job.run_test(t, tag=test_tag+'postSuspend')
+            self.job.run_test(t, tag=test_tag+'postSuspend', disable_sysinfo=True)
