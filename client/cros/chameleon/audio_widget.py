@@ -295,7 +295,7 @@ class ChameleonWidgetHandler(WidgetHandler):
     # the recorded value up, otherwise, the recorded value will be
     # too small and will be falsely judged as not meaningful in the
     # processing, even when the recorded audio is clear.
-    _DEFAULT_MIC_SCALE = 300.0
+    _DEFAULT_MIC_SCALE = 50.0
 
     def __init__(self, chameleon_board, interface):
         """Initializes a ChameleonWidgetHandler.
