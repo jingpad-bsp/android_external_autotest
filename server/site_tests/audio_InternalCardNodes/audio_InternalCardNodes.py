@@ -24,7 +24,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
 
     """
     version = 1
-    DELAY_AFTER_BINDING = 0.5
+    DELAY_AFTER_PLUGGING = 2
 
     def run_once(self, host):
         chameleon_board = host.chameleon
@@ -61,6 +61,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
 
         try:
             jack_plugger.plug()
+            time.sleep(self.DELAY_AFTER_PLUGGING)
 
             audio_test_utils.check_plugged_nodes(
                     audio_facade, expected_plugged_nodes_with_audio_jack)
