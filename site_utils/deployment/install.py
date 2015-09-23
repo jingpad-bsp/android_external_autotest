@@ -45,13 +45,14 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
+from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 from autotest_lib.site_utils.deployment import commandline
-from autotest_lib.site_utils.suite_scheduler import constants
+from autotest_lib.site_utils.suite_scheduler.constants import Labels
 
 
 _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 
-_DEFAULT_POOL = constants.Labels.POOL_PREFIX + 'suites'
+_DEFAULT_POOL = Labels.POOL_PREFIX + 'suites'
 
 _DIVIDER = '\n============\n'
 
@@ -243,11 +244,15 @@ def _install_dut(arguments, hostname):
             return 'Failed to add host to AFE'
     # Must re-query to get state changes, especially label changes.
     afe_host = afe.get_hosts([hostname])[0]
-    have_board = any([label.startswith(constants.Labels.BOARD_PREFIX)
+    have_board = any([label.startswith(Labels.BOARD_PREFIX)
                          for label in afe_host.labels])
     if not have_board:
         afe_host.delete()
         return 'Failed to add labels to host'
+    version = [label for label in afe_host.labels
+                   if label.startswith(VERSION_PREFIX)]
+    if version:
+        afe_host.remove_labels(version)
     return None
 
 
@@ -298,7 +303,7 @@ def _report_results(afe, hostnames, results):
         afe.reverify_hosts(hostnames=success_hosts)
         for h in afe.get_hosts(hostnames=success_hosts):
             for label in h.labels:
-                if label.startswith(constants.Labels.POOL_PREFIX):
+                if label.startswith(Labels.POOL_PREFIX):
                     success_reports.append(
                             (h.hostname, 'Host already in %s' % label))
                     break
