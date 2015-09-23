@@ -4,8 +4,8 @@
 
 """FAFT config setting overrides for Ultima."""
 
-from autotest_lib.server.cros.faft.config import cyan
+from autotest_lib.server.cros.faft.config import strago
 
-class Values(cyan.Values):
-    """Inherit overrides from Cyan."""
+class Values(strago.Values):
+    """Inherit overrides from Strago."""
     pass
