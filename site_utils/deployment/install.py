@@ -53,6 +53,8 @@ _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 
 _DEFAULT_POOL = constants.Labels.POOL_PREFIX + 'suites'
 
+_DIVIDER = '\n============\n'
+
 
 def _create_host(hostname, board):
     """Create a CrosHost object for a DUT to be installed.
@@ -101,9 +103,10 @@ def _check_servo(host):
     # Stop servod, ignoring failures, then restart with the proper
     # board.
     #
-    # There's a time delay between completion of `start servod` and
-    # and servod actually being up and serving, so add a delay to
-    # make sure the verify() call doesn't fail.
+    # There's a lag between when `start servod` completes and when
+    # servod is actually up and serving.  The call to time.sleep()
+    # below gives time to make sure that the verify() call won't
+    # fail.
     host._servo_host.run('stop servod || :')
     host._servo_host.run('start servod BOARD=%s' %
                          host._get_board_from_afe())
@@ -248,6 +251,69 @@ def _install_dut(arguments, hostname):
     return None
 
 
+def _report_hosts(heading, host_results_list):
+    """Report results for a list of hosts.
+
+    To improve visibility, results are preceded by a header line,
+    followed by a divider line.  Then results are printed, one host
+    per line.
+
+    @param heading            The header string to be printed before
+                              results.
+    @param host_results_list  A list of (hostname, message) tuples
+                              to be printed one per line.
+    """
+    if not host_results_list:
+        return
+    sys.stdout.write(heading)
+    sys.stdout.write(_DIVIDER)
+    for t in host_results_list:
+        sys.stdout.write('%-30s %s\n' % t)
+    sys.stdout.write('\n')
+
+
+def _report_results(afe, hostnames, results):
+    """Gather and report a summary of results from installation.
+
+    Segregate results into successes and failures, reporting
+    each separately.  At the end, report the total of successes
+    and failures.
+
+    @param afe        AFE object for RPC calls.
+    @param hostnames  List of the hostnames that were tested.
+    @param results    List of error messages, in the same order
+                      as the hostnames.  `None` means the
+                      corresponding host succeeded.
+    """
+    success_hosts = []
+    success_reports = []
+    failure_reports = []
+    for r, h in zip(results, hostnames):
+        if r is None:
+            success_hosts.append(h)
+        else:
+            failure_reports.append((h, r))
+    if success_hosts:
+        afe_host_list = afe.get_hosts(hostnames=success_hosts)
+        afe.reverify_hosts(hostnames=success_hosts)
+        for h in afe.get_hosts(hostnames=success_hosts):
+            for label in h.labels:
+                if label.startswith(constants.Labels.POOL_PREFIX):
+                    success_reports.append(
+                            (h.hostname, 'Host already in %s' % label))
+                    break
+            else:
+                h.add_labels([_DEFAULT_POOL])
+                success_reports.append(
+                        (h.hostname, 'Host added to %s' % _DEFAULT_POOL))
+    sys.stdout.write(_DIVIDER)
+    _report_hosts('Successes', success_reports)
+    _report_hosts('Failures', failure_reports)
+    sys.stdout.write('Installation complete:  '
+                     '%d successes, %d failures.\n' %
+                         (len(success_reports), len(failure_reports)))
+
+
 def main(argv):
     """Standard main routine.
 
@@ -270,33 +336,13 @@ def main(argv):
                 board=arguments.board)
     install_pool = multiprocessing.Pool(len(arguments.hostnames))
     install_function = functools.partial(_install_dut, arguments)
-    results = install_pool.map(install_function, arguments.hostnames)
-    successful = []
-    for r, h in zip(results, arguments.hostnames):
-        if r is None:
-            successful.append(h)
-        else:
-            sys.stdout.write('%-30s %s\n' % (h, r))
-    if successful:
-        if successful == arguments.hostnames:
-            sys.stdout.write('All hosts passed, scheduling verify.\n')
-        else:
-            sys.stdout.write('\nScheduling verify for successful hosts.\n')
-        afe.reverify_hosts(hostnames=successful)
-        for h in afe.get_hosts(hostnames=successful):
-            havepool = False
-            for label in h.labels:
-                if label.startswith(constants.Labels.POOL_PREFIX):
-                    sys.stdout.write('%-30s already in %s.\n' %
-                                     (h.hostname, label))
-                    havepool = True
-                    break
-            if not havepool:
-                sys.stdout.write('%-30s adding to %s.\n' %
-                                 (h.hostname, _DEFAULT_POOL))
-                h.add_labels([_DEFAULT_POOL])
-    else:
-        sys.stdout.write('Installation failed for all DUTs.\n')
+    results_list = install_pool.map(install_function,
+                                    arguments.hostnames)
+    current_build = afe.run('get_stable_version',
+                            board=arguments.board)
+    sys.stderr.write('\nRepair version for board %s is now %s.\n' %
+                         (arguments.board, current_build))
+    _report_results(afe, arguments.hostnames, results_list)
 
     # MacDuff:
     #   [ ... ]
