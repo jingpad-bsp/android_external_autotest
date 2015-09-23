@@ -7,11 +7,14 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import power_status, power_utils, service_stopper
 
-
 class power_BatteryCharge(test.test):
+    """class power_BatteryCharge."""
     version = 1
 
     def initialize(self):
+        if not power_utils.has_battery():
+            raise error.TestNAError('DUT has no battery. Test Skipped')
+
         self.status = power_status.get_status()
 
         if not self.status.on_ac():
@@ -77,9 +80,9 @@ class power_BatteryCharge(test.test):
         if target_charge > self.charge_capacity:
             target_charge = self.charge_capacity
 
-        logging.info('max_run_time: %d' % self.max_run_time)
-        logging.info('initial_charge: %f' % self.initial_charge)
-        logging.info('target_charge: %f' % target_charge)
+        logging.info('max_run_time: %d', self.max_run_time)
+        logging.info('initial_charge: %f', self.initial_charge)
+        logging.info('target_charge: %f', target_charge)
 
         while self.remaining_time and current_charge < target_charge:
             if time_to_sleep > self.remaining_time:
@@ -94,11 +97,11 @@ class power_BatteryCharge(test.test):
                       'This test needs to be run with the AC power online')
 
             new_charge = self.status.battery[0].charge_now
-            logging.info('time_to_sleep: %d' % time_to_sleep)
-            logging.info('charge_added: %f' % (new_charge - current_charge))
+            logging.info('time_to_sleep: %d', time_to_sleep)
+            logging.info('charge_added: %f', (new_charge - current_charge))
 
             current_charge = new_charge
-            logging.info('current_charge: %f' % current_charge)
+            logging.info('current_charge: %f', current_charge)
 
             if self.status.battery[0].status == 'Full':
                 logging.info('Battery full, aborting!')

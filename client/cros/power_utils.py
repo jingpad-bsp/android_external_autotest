@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import glob, logging, os, re, shutil
-from autotest_lib.client.bin import utils
+from autotest_lib.client.bin import site_utils, utils
 from autotest_lib.client.common_lib import error
 
 
@@ -92,6 +92,58 @@ def call_chrome_dbus_method(method_name, args=''):
                       path='/org/chromium/LibCrosService',
                       interface='org.chomium.LibCrosServiceInterface',
                       method_name=method_name, args=args)
+
+def get_power_supply():
+    """
+    Determine what type of power supply the host has.
+
+    Copied from server/host/cros_hosts.py
+
+    @returns a string representing this host's power supply.
+             'power:battery' when the device has a battery intended for
+                    extended use
+             'power:AC_primary' when the device has a battery not intended
+                    for extended use (for moving the machine, etc)
+             'power:AC_only' when the device has no battery at all.
+    """
+    try:
+        psu = utils.system_output('mosys psu type')
+    except Exception:
+        # The psu command for mosys is not included for all platforms. The
+        # assumption is that the device will have a battery if the command
+        # is not found.
+        return 'power:battery'
+
+    psu_str = psu.strip()
+    if psu_str == 'unknown':
+        return None
+
+    return 'power:%s' % psu_str
+
+def has_battery():
+    """Determine if DUT has a battery.
+
+    Returns:
+        Boolean, False if known not to have battery, True otherwise.
+    """
+    rv = True
+    power_supply = get_power_supply()
+    if power_supply == 'power:battery':
+        # TODO(tbroch) if/when 'power:battery' param is reliable
+        # remove board type logic.  Also remove verbose mosys call.
+        _NO_BATTERY_BOARD_TYPE = ['CHROMEBOX', 'CHROMEBIT']
+        board_type = site_utils.get_board_type()
+        if board_type in _NO_BATTERY_BOARD_TYPE:
+            logging.warn('Do NOT believe type %s has battery. '
+                         'See debug for mosys details', board_type)
+            psu = utils.system_output('mosys -vvvv psu type',
+                                      ignore_status=True)
+            logging.debug(psu)
+            rv = False
+    elif power_supply == 'power:AC_only':
+        rv = False
+
+    return rv
 
 
 class BacklightException(Exception):
