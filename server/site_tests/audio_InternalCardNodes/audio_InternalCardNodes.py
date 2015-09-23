@@ -45,6 +45,17 @@ class audio_InternalCardNodes(audio_test.AudioTest):
                 ['INTERNAL_MIC', 'MIC', 'POST_DSP_LOOPBACK',
                  'POST_MIX_LOOPBACK'])
 
+        # Modify expected nodes for special boards.
+        board_name = host.get_board().split(':')[1]
+
+        if board_name == 'link':
+            expected_plugged_nodes_without_audio_jack[1].append('KEYBOARD_MIC')
+            expected_plugged_nodes_with_audio_jack[1].append('KEYBOARD_MIC')
+
+        if board_name == 'samus':
+            expected_plugged_nodes_without_audio_jack[1].append('AOKR')
+            expected_plugged_nodes_with_audio_jack[1].append('AOKR')
+
         audio_test_utils.check_plugged_nodes(
                 audio_facade, expected_plugged_nodes_without_audio_jack)
 
