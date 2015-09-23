@@ -353,10 +353,48 @@ def set_selected_node_types(output_node_types, input_node_types):
     @param input_node_types: A list of input node types. None to skip setting.
 
     """
-    if output_node_types:
+    if len(output_node_types) == 1:
+        set_single_selected_output_node(output_node_types[0])
+    elif output_node_types:
         set_selected_output_nodes(output_node_types)
-    if input_node_types:
+    if len(input_node_types) == 1:
+        set_single_selected_input_node(input_node_types[0])
+    elif input_node_types:
         set_selected_input_nodes(input_node_types)
+
+
+def set_single_selected_output_node(node_type):
+    """Sets one selected output node.
+
+    Note that Chrome UI uses SetActiveOutputNode of Cras DBus API
+    to select one output node.
+
+    @param node_type: A node type.
+
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if node['IsInput']:
+            continue
+        if node['Type'] == node_type:
+            set_active_output_node(node['Id'])
+
+
+def set_single_selected_input_node(node_type):
+    """Sets one selected input node.
+
+    Note that Chrome UI uses SetActiveInputNode of Cras DBus API
+    to select one input node.
+
+    @param node_type: A node type.
+
+    """
+    nodes = get_cras_nodes()
+    for node in nodes:
+        if not node['IsInput']:
+            continue
+        if node['Type'] == node_type:
+            set_active_input_node(node['Id'])
 
 
 def set_selected_output_nodes(types):
@@ -397,6 +435,24 @@ def set_selected_input_nodes(types):
             add_active_input_node(node['Id'])
         elif node['Active']:
             remove_active_input_node(node['Id'])
+
+
+def set_active_input_node(node_id):
+    """Sets one active input node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().SetActiveInputNode(node_id)
+
+
+def set_active_output_node(node_id):
+    """Sets one active output node.
+
+    @param node_id: node id.
+
+    """
+    get_cras_control_interface().SetActiveOutputNode(node_id)
 
 
 def add_active_output_node(node_id):
