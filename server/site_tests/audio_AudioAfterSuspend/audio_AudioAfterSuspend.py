@@ -11,6 +11,7 @@ import threading
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -195,10 +196,10 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.is_internal=is_internal
         self.golden_file, self.low_pass_freq = golden_data
         chameleon_board = self.host.chameleon
-        factory = remote_facade_factory.RemoteFacadeFactory(self.host)
+        self.factory = remote_facade_factory.RemoteFacadeFactory(self.host)
         chameleon_board.reset()
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
-                factory, host)
+                self.factory, host)
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None
