@@ -210,7 +210,8 @@ def _install_dut(arguments, hostname):
     try:
         host = _create_host(hostname, arguments.board)
         _check_servo(host)
-        host._servo_repair_reinstall()
+        if not arguments.noinstall:
+            host._servo_repair_reinstall()
     except error.AutoservRunError as re:
         logging.exception('Failed to install: %s', re)
         if unlock_on_failure and not _try_unlock_host(afe_host):

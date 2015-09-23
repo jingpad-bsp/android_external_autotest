@@ -393,6 +393,8 @@ def _parse(argv):
                         help='directory for logs')
     parser.add_argument('-i', '--build',
                         help='set stable test build version')
+    parser.add_argument('-n', '--noinstall', action='store_true',
+                        help='skip install for script testing')
     parser.add_argument('board', nargs='?', metavar='BOARD',
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
