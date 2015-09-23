@@ -254,6 +254,7 @@ def _start_servod(machine):
     if not utils.is_moblab():
         return
 
+    logging.debug('Trying to start servod.')
     try:
         afe = frontend.AFE()
         board = server_utils.get_board_from_afe(machine, afe)
@@ -261,6 +262,8 @@ def _start_servod(machine):
         servo_host = hosts[0].attributes.get('servo_host', None)
         servo_port = hosts[0].attributes.get('servo_port', 9999)
         if not servo_host in ['localhost', '127.0.0.1']:
+            logging.warn('Starting servod is aborted. The dut\'s servo_host '
+                         'attribute is not set to localhost.')
             return
     except (urllib2.HTTPError, urllib2.URLError):
         # Ignore error if RPC failed to get board
