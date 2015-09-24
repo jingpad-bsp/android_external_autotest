@@ -14,8 +14,8 @@ This test will fail if following requrements are met:
 1. fwid does not match shellball's (/usr/sbin/chromeos-firmwareupdate) fwid
 2. Kernel subkey version does not match original kernel subkey version.
 """
-ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_normal, suite:faft_lv5"
-SUITE = "faft,faft_bios,faft_normal,faft_lv5"
+ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv5"
+SUITE = "faft,faft_bios,faft_dev,faft_lv5"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
@@ -34,7 +34,8 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_updatekernelsubkeyversion(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test("firmware_UpdateKernelSubkeyVersion",
-                 host=host, cmdline_args=args, disable_sysinfo=True)
+    job.run_test("firmware_UpdateKernelSubkeyVersion", host=host,
+                 cmdline_args=args, disable_sysinfo=True, dev_mode=True,
+                 tag="dev")
 
 parallel_simple(run_updatekernelsubkeyversion, machines)
