@@ -947,20 +947,28 @@ class autoupdate_EndToEndTest(test.test):
         staged_target_url = self._stage_payload_by_uri(
                 autotest_devserver, target_payload_uri)
         target_stateful_uri = None
+        staged_target_stateful_url = None
         target_archive_uri = test_conf.get('target_archive_uri')
-        if not target_archive_uri and self._job_repo_url:
-            _, devserver_label = tools.get_devserver_build_from_package_url(
-                    self._job_repo_url)
-            staged_target_stateful_url = self._stage_payload(
-                    autotest_devserver, devserver_label,
-                    self._STATEFUL_UPDATE_FILENAME)
+        if target_archive_uri:
+            target_stateful_uri = self._get_stateful_uri(target_archive_uri)
         else:
-            if target_archive_uri:
-                target_stateful_uri = self._get_stateful_uri(target_archive_uri)
-            else:
+            # Attempt to get the job_repo_url to find the stateful payload for
+            # the target image.
+            try:
+                job_repo_url = self._host.lookup_job_repo_url()
+            except KeyError:
+                # If this failed, assume the stateful update is next to the
+                # update payload.
                 target_stateful_uri = self._payload_to_stateful_uri(
                     target_payload_uri)
+            else:
+                _, devserver_label = tools.get_devserver_build_from_package_url(
+                        job_repo_url)
+                staged_target_stateful_url = self._stage_payload(
+                        autotest_devserver, devserver_label,
+                        self._STATEFUL_UPDATE_FILENAME)
 
+        if not staged_target_stateful_url and target_stateful_uri:
             staged_target_stateful_url = self._stage_payload_by_uri(
                     autotest_devserver, target_stateful_uri)
 
@@ -981,7 +989,6 @@ class autoupdate_EndToEndTest(test.test):
         self._host = None
         self._omaha_devserver = None
 
-        self._job_repo_url = None
         self._devserver_dir = global_config.global_config.get_config_value(
                 'CROS', 'devserver_dir', default=None)
         if self._devserver_dir is None:
@@ -1224,14 +1231,6 @@ class autoupdate_EndToEndTest(test.test):
         if not test_conf['target_release']:
             raise RequiredArgumentMissing(
                     'target_release is a required argument.')
-
-        # Attempt to get the job_repo_url to find the stateful payload for the
-        # target image.
-        try:
-            self._job_repo_url = host.lookup_job_repo_url()
-        except KeyError:
-            logging.warning('Job Repo URL not found. Assuming stateful '
-                            'payload can be found along with the target update')
 
         self._host = host
 
