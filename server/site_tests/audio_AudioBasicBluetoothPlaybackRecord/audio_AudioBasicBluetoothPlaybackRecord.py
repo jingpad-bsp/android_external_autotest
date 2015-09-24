@@ -76,6 +76,13 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                             '%s rather than internal mic is selected on Cros '
                             'device' % input_nodes)
 
+                audio_facade.set_selected_output_volume(80)
+
+                # Selecting input nodes needs to be after setting volume because
+                # after setting volume, Cras notifies Chrome there is changes
+                # in nodes, and Chrome selects the output/input nodes based
+                # on its preference again. See crbug.com/535643.
+
                 # Selects bluetooth mic to be the active input node.
                 audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
@@ -85,8 +92,6 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                     raise error.TestFail(
                             '(%s, %s) rather than (bluetooth, bluetooth) are '
                             'selected on Cros device' % (o_nodes, i_nodes))
-
-                audio_facade.set_selected_output_volume(80)
 
                 # Setup the playback data. This step is time consuming.
                 playback_source.set_playback_data(golden_file)
