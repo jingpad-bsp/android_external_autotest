@@ -117,7 +117,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private CheckBoxImpl require_ssp = new CheckBoxImpl();
     private ToolTip require_sspToolTip = new ToolTip(
         "?",
-        "Check to force a server side test to use server-side packaging.");
+        "Check to force a server side test to use server-side packaging. This " +
+        "option has no effect on suite job. Test jobs created by a suite job " +
+        "will use SSP if enable_ssp_container is set to True in global config " +
+        "and there exists a drone supporting SSP.");
     private TextBox pool = new TextBox();
     private ToolTip poolToolTip = new ToolTip(
         "?",
