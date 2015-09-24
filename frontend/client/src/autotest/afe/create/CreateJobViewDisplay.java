@@ -63,7 +63,8 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private ToolTip image_urlToolTip = new ToolTip(
         "?",
         "Name of the test image to use. Example: \"x86-alex-release/R27-3837.0.0\". " +
-        "If no image is specified, the latest ToT image is used.");
+        "If no image is specified, regular tests will use current image on the Host. " +
+        "Please note that an image is required to run a test suite.");
     private Button fetchImageTestsButton = new Button("Fetch Tests from Build");
     private TextBox timeout = new TextBox();
     private ToolTip timeoutToolTip = new ToolTip(
