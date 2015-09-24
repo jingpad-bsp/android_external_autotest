@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import subprocess
 import tempfile
 
@@ -22,7 +21,6 @@ class network_WiFi_RegDomain(test.test):
     version = 1
 
 
-    DEBUG_DIR = 'debug'
     MISSING_SSID = "MissingSsid"
     # TODO(quiche): Shrink or remove the repeat count, once we've
     # figured out why tcpdump sometimes misses data. crbug.com/477536
@@ -178,13 +176,11 @@ class network_WiFi_RegDomain(test.test):
                 # SSIDs do not cause probe requests to be sent.
                 client.scan(
                     [scan_freq], [cls.MISSING_SSID], require_match=False)
-            pcap_src = router.stop_capture()[0].pcap_path
-            pcap_dest = os.path.join(cls.DEBUG_DIR, os.path.basename(pcap_src))
-            router.host.get_file(pcap_src, pcap_dest)
+            pcap_path = router.stop_capture()[0].local_pcap_path
             dut_frames = subprocess.check_output(
                 [cls.TSHARK_COMMAND,
                  cls.TSHARK_DISABLE_NAME_RESOLUTION,
-                 cls.TSHARK_READ_FILE, pcap_dest,
+                 cls.TSHARK_READ_FILE, pcap_path,
                  cls.TSHARK_SRC_FILTER % client.wifi_mac])
             if len(dut_frames):
                 raise error.TestFail('Saw unexpected frames from DUT.')
