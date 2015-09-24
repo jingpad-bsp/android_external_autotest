@@ -4,16 +4,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import glob, hashlib, logging, os, platform, re, signal, tempfile, time
-import uuid, urllib2
+import glob
+import logging
+import os
+import platform
+import re
+import signal
+import tempfile
+import time
+import uuid
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_utils
 
-from contextlib import closing
-
 _UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
+
 
 class TimeoutError(error.TestError):
     """Error raised when we time out when waiting on a condition."""
@@ -49,7 +55,7 @@ class Crossystem(object):
         The call crossystemobject.name() will return the crossystem reported
         string.
         """
-        return lambda : self.cros_system_data[name]
+        return lambda: self.cros_system_data[name]
 
 
 def get_oldest_pid_by_name(name):
@@ -80,7 +86,8 @@ def get_oldest_pid_by_name(name):
       ValueError if pgrep returns something odd.
     """
     str_pid = utils.system_output(
-        'pgrep -o ^%s$' % name, ignore_status=True).rstrip()
+        'pgrep -o ^%s$' % name,
+        ignore_status=True).rstrip()
     if str_pid:
         return int(str_pid)
 
@@ -106,7 +113,7 @@ def get_chrome_remote_debugging_port():
     Parse chrome process's command line argument to get the remote debugging
     port.
     """
-    pid, command = get_oldest_by_name('chrome')
+    _, command = get_oldest_by_name('chrome')
     matches = re.search('--remote-debugging-port=([0-9]+)', command)
     if matches:
         return int(matches.group(1))
@@ -143,7 +150,8 @@ def get_process_list(name, command_line=None):
     flag = '-x' if not command_line else '-f'
     name = '\'%s.*%s\'' % (name, command_line) if command_line else name
     str_pid = utils.system_output(
-            'pgrep %s %s' % (flag, name), ignore_status=True).rstrip()
+        'pgrep %s %s' % (flag, name),
+        ignore_status=True).rstrip()
     return str_pid.split()
 
 
@@ -195,8 +203,8 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
                        timeout=timeout_sec)
 
 
-def poll_for_condition(
-    condition, exception=None, timeout=10, sleep_interval=0.1, desc=None):
+def poll_for_condition(condition, exception=None, timeout=10,
+                       sleep_interval=0.1, desc=None):
     """Poll until a condition becomes true.
 
     Arguments:
@@ -337,14 +345,15 @@ def target_is_pie():
       False otherwise.
     """
 
-
     command = 'echo | ${CC} -E -dD -P - | grep -i pie'
-    result = utils.system_output(command, retain_output=True,
+    result = utils.system_output(command,
+                                 retain_output=True,
                                  ignore_status=True)
     if re.search('#define __PIE__', result):
         return True
     else:
         return False
+
 
 def target_is_x86():
     """Returns whether the toolchain produces an x86 object
@@ -357,25 +366,29 @@ def target_is_x86():
       False otherwise.
     """
 
-
     command = 'echo | ${CC} -E -dD -P - | grep -i 86'
-    result = utils.system_output(command, retain_output=True,
+    result = utils.system_output(command,
+                                 retain_output=True,
                                  ignore_status=True)
     if re.search('__i386__', result) or re.search('__x86_64__', result):
         return True
     else:
         return False
 
+
 def mounts():
     ret = []
     for line in file('/proc/mounts'):
-        m = re.match(r'(?P<src>\S+) (?P<dest>\S+) (?P<type>\S+) (?P<opts>\S+).*', line)
+        m = re.match(
+            r'(?P<src>\S+) (?P<dest>\S+) (?P<type>\S+) (?P<opts>\S+).*', line)
         if m:
             ret.append(m.groupdict())
     return ret
 
+
 def is_mountpoint(path):
-    return path in [ m['dest'] for m in mounts() ]
+    return path in [m['dest'] for m in mounts()]
+
 
 def require_mountpoint(path):
     """
@@ -383,6 +396,7 @@ def require_mountpoint(path):
     """
     if not is_mountpoint(path):
         raise error.TestFail('Path not mounted: "%s"' % path)
+
 
 def random_username():
     return str(uuid.uuid4()) + '@example.com'
@@ -426,8 +440,8 @@ def parse_cmd_output(command, run_method=utils.run):
     cmd_result = run_method(command, stdout_tee=None, stderr_tee=None)
     for line in cmd_result.stdout.splitlines():
         # Lines are of the format "<key>     = <value>      # <comment>"
-        key_value = re.match('^\s*(?P<key>[^ ]+)\s*=\s*(?P<value>[^ ]+)'
-                             '(?:\s*#.*)?$', line)
+        key_value = re.match(r'^\s*(?P<key>[^ ]+)\s*=\s*(?P<value>[^ '
+                             r']+)(?:\s*#.*)?$', line)
         if key_value:
             result[key_value.group('key')] = key_value.group('value')
     return result
@@ -488,16 +502,16 @@ def compute_active_cpu_time(cpu_usage_start, cpu_usage_end):
     This function should be invoked using before/after values from calls to
     get_cpu_usage().
     """
-    time_active_end = (cpu_usage_end['user'] + cpu_usage_end['nice'] +
-                                                  cpu_usage_end['system'])
+    time_active_end = (
+        cpu_usage_end['user'] + cpu_usage_end['nice'] + cpu_usage_end['system'])
     time_active_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
-                                                      cpu_usage_start['system'])
+                         cpu_usage_start['system'])
     total_time_end = (cpu_usage_end['user'] + cpu_usage_end['nice'] +
                       cpu_usage_end['system'] + cpu_usage_end['idle'])
     total_time_start = (cpu_usage_start['user'] + cpu_usage_start['nice'] +
                         cpu_usage_start['system'] + cpu_usage_start['idle'])
     return ((float(time_active_end) - time_active_start) /
-                    (total_time_end - total_time_start))
+            (total_time_end - total_time_start))
 
 
 def is_pgo_mode():
@@ -538,7 +552,7 @@ def wait_for_idle_cpu(timeout, utilization):
 
             return False
     logging.info('Wait for idle CPU took %.1fs (utilization = %.3f).',
-                              time_passed, fraction_active_time)
+                 time_passed, fraction_active_time)
     return True
 
 
@@ -669,8 +683,9 @@ def get_temperature_critical():
         temperature = _get_float_from_file(path, 0, None, None) * 0.001
         # Today typical for Intel is 98'C to 105'C while ARM is 85'C. Clamp to
         # the lowest known value.
-        if ((min_temperature < 60.0) or min_temperature > 150.0):
-            logging.warning('Critical temperature of %.1fC was reset to 85.0C.')
+        if (min_temperature < 60.0) or min_temperature > 150.0:
+            logging.warning('Critical temperature of %.1fC was reset to 85.0C.',
+                            min_temperature)
             min_temperature = 85.0
 
         min_temperature = min(temperature, min_temperature)
@@ -697,7 +712,7 @@ def get_thermal_zone_temperatures():
     for path in glob.glob('/sys/class/thermal/thermal_zone*/temp'):
         try:
             temperatures.append(
-                    _get_float_from_file(path, 0, None, None) * 0.001)
+                _get_float_from_file(path, 0, None, None) * 0.001)
         except IOError:
             # Some devices (e.g. Veyron) may have reserved thermal zones that
             # are not active. Trying to read the temperature value would cause a
