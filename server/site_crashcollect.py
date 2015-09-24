@@ -104,11 +104,12 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
 
             # If that did not succeed, try to symbolicate using the dev server.
             try:
+                logging.info('Generating stack trace for %s', minidump)
                 minidumps.append(minidump)
                 is_timeout, _ = retry.timeout(
                         symbolicate_minidump_with_devserver,
                         args=(minidump, host_resultdir),
-                        timeout_sec=1200)
+                        timeout_sec=600)
                 if is_timeout:
                     logging.warn('Generating stack trace is timed out for dump '
                                  '%s', minidump)

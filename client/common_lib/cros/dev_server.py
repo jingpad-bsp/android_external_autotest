@@ -437,9 +437,11 @@ class CrashServer(DevServer):
         except ImportError:
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
-
-        autotest_stats.Counter('CrashServer.symbolicate_dump').increment()
-        timer = autotest_stats.Timer('CrashServer.symbolicate_dump')
+        server_name = self.get_server_name(self.url())
+        server_name = server_name.replace('.', '_')
+        stats_key = 'CrashServer.%s.symbolicate_dump' % server_name
+        autotest_stats.Counter(stats_key).increment()
+        timer = autotest_stats.Timer(stats_key)
         timer.start()
         # Symbolicate minidump.
         call = self.build_call('symbolicate_dump',
