@@ -70,8 +70,6 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
 
         # Skip run on invalid touch inputs.
         self.device = utils.get_board()
-        if self.device.find('freon') >= 0:
-            self.device = self.device[:-len('_freon')]
         if self.device in self._INVALID_BOARDS:
             logging.info('This touchpad is not supported for this test.')
             return

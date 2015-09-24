@@ -46,8 +46,6 @@ class platform_KernelVersionByBoard(test.test):
     def run_once(self):
         """ Compare expected and actual kernel versions. """
         board = utils.get_current_board()
-        if board.find('freon') > 0:
-            board = board[:-len("_freon")]
         actual = self._actual_kernel(board)
         expected = self._expected_kernel(board)
         if not actual.startswith(expected):

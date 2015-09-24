@@ -97,8 +97,6 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         # Check that touchpad is a wake source for all but the excepted boards.
         if self._has_touchpad:
             device = utils.get_board()
-            if device.find('freon') >= 0:
-                device = device[:-len('_freon')]
             if device not in self._INVALID_BOARDS:
                 if device in self._NO_TOUCHPAD_WAKE:
                     if self._is_wake_source('touchpad'):
