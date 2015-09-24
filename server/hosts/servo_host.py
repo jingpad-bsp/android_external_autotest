@@ -414,11 +414,16 @@ class ServoHost(ssh_host.SSHHost):
             the host, and the host is a cros_host.
 
         """
-        #TODO(beeps): Remove this check once all servo hosts are using chromeos.
+        # servod could be running in a Ubuntu workstation.
         if not self._is_cros_host():
             logging.info('Not attempting an update, either %s is not running '
                          'chromeos or we cannot find enough information about '
                          'the host.', self.hostname)
+            return
+
+        if lsbrelease_utils.is_moblab():
+            logging.info('Not attempting an update, %s is running moblab.',
+                         self.hostname)
             return
 
         board = _CONFIG.get_config_value(
