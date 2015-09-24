@@ -121,8 +121,8 @@ def CheckSuitesAttrMatch(ctrl_data, whitelist, test_name):
     """
     Check whether ATTRIBUTES match to SUITE and also in the whitelist.
 
-    Throw a ControlFileCheckerError if ATTRIBUTES doesn't match to SUITE. This
-    check is needed until SUITE is eliminated from control files.
+    Throw a ControlFileCheckerError if suite tags in ATTRIBUTES doesn't match to
+    SUITE. This check is needed until SUITE is eliminated from control files.
 
     @param ctrl_data: The control_data object for a test.
     @param whitelist: whitelist set parsed from the attribute_whitelist file.
@@ -136,21 +136,23 @@ def CheckSuitesAttrMatch(ctrl_data, whitelist, test_name):
         raise ControlFileCheckerError(
             'Attribute(s): %s not in the whitelist in control file for test'
             'named %s.' % (attribute_diff, test_name))
+    suite_in_attr = set(
+            [a for a in ctrl_data.attributes if a.startswith('suite:')])
     # unmatch case 2: ctrl_data has suite, but not match to attributes.
     if hasattr(ctrl_data, 'suite'):
         target_attrs = set(
             'suite:' + x.strip() for x in ctrl_data.suite.split(',')
             if x.strip())
-        if target_attrs != ctrl_data.attributes:
+        if target_attrs != suite_in_attr:
             raise ControlFileCheckerError(
-                'ATTRIBUTES = %s does not match to SUITE = %s in the control '
-                'file for %s.' % (ctrl_data.attributes, ctrl_data.suite,
-                                  test_name))
-    # unmatch case 3: ctrl_data doesn't have suite, and attributes is not empty.
-    elif ctrl_data.attributes:
+                'suite tags in ATTRIBUTES : %s does not match to SUITE : %s in '
+                'the control file for %s.' % (suite_in_attr, ctrl_data.suite,
+                                              test_name))
+    # unmatch case 3: ctrl_data doesn't have suite, suite_in_attr is not empty.
+    elif suite_in_attr:
         raise ControlFileCheckerError(
             'SUITE does not exist in the control file %s, ATTRIBUTES = %s'
-            'should be empty.' % (test_name, ctrl_data.attributes))
+            'should not have suite tags.' % (test_name, ctrl_data.attributes))
 
 
 def CheckRetry(ctrl_data, test_name):
