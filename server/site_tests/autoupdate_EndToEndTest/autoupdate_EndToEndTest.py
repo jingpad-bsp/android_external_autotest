@@ -638,25 +638,18 @@ class autoupdate_EndToEndTest(test.test):
     """Complete update test between two Chrome OS releases.
 
     Performs an end-to-end test of updating a ChromeOS device from one version
-    to another. This script requires a running (possibly remote) servod
-    instance connected to an actual servo board, which controls the DUT. It
-    also assumes that a corresponding target (update) image was staged for
-    download on a central staging devserver.
+    to another. The test performs the following steps:
 
-    The test performs the following steps:
-
-      0. Stages the source image and target update payload on the central
-         Lorry/devserver.
-      1. Spawns a private Omaha/devserver instance, configured to return the
-         target (update) image URL in response for an update check.
-      2. Connects to servod.
-         a. Resets the DUT to a known initial state.
-         b. Installs a source image on the DUT via recovery.
-      3. Reboots the DUT with the new image.
-      4. Triggers an update check at the DUT.
-      5. Watches as the DUT obtains an update and applies it.
-      6. Repeats 3-5, ensuring that the next update check shows the new image
-         version.
+      1. Stages the source (full) and target update payload on the central
+         devserver.
+      2. Spawns a private Omaha-like devserver instance, configured to return
+         the target (update) payload URL in response for an update check.
+      3. Reboots the DUT.
+      4. Installs a source image on the DUT (if provided) and reboots to it.
+      5. Triggers an update check at the DUT.
+      6. Watches as the DUT obtains an update and applies it.
+      7. Reboots and repeats steps 5-6, ensuring that the next update check
+         shows the new image version.
 
     Some notes on naming:
       devserver: Refers to a machine running the Chrome OS Update Devserver.
@@ -726,71 +719,6 @@ class autoupdate_EndToEndTest(test.test):
              'target_stateful_url'])
 
 
-    def _servo_dut_power_up(self):
-        """Powers up the DUT, optionally simulating a Ctrl-D key press."""
-        self._host.servo.power_short_press()
-        if self._dev_mode:
-            self._host.servo.pass_devmode()
-
-
-    def _servo_dut_reboot(self, disconnect_usbkey=False):
-        """Reboots a DUT.
-
-        @param disconnect_usbkey: detach USB flash device from the DUT before
-               powering it back up; this is useful when (for example) a USB
-               booted device need not see the attached USB key after the
-               reboot.
-
-        @raise error.TestFail if DUT fails to reboot.
-
-        """
-        logging.info('Rebooting dut')
-        self._host.servo.power_long_press()
-        _wait(self._WAIT_AFTER_SHUTDOWN_SECONDS, 'after shutdown')
-        if disconnect_usbkey:
-            self._host.servo.switch_usbkey('host')
-
-        self._servo_dut_power_up()
-        if not self._host.wait_up(timeout=self._host.BOOT_TIMEOUT):
-            raise error.TestFail(
-                    'DUT %s failed to boot after %d secs' %
-                    (self._host.ip, self._host.BOOT_TIMEOUT))
-
-
-    def _install_test_image_with_servo(self, staged_image_url):
-        """Installs a test image on a DUT, booted via recovery.
-
-        @param staged_image_url: URL of the image on the devserver
-        @param is_dev_nmode: whether or not the DUT is in dev mode
-
-        @raise error.TestFail if DUT cannot boot the test image from USB;
-               AutotestHostRunError if failed to run the install command on the
-               DUT.
-
-        """
-        logging.info('Installing source test image via recovery: %s',
-                     staged_image_url)
-        self._host.servo.install_recovery_image(staged_image_url)
-        logging.info('Waiting for image to boot')
-        if not self._host.wait_up(timeout=self._host.USB_BOOT_TIMEOUT):
-            raise error.TestFail(
-                    'DUT %s boot from usb timed out after %d secs' %
-                    (self._host, self._host.USB_BOOT_TIMEOUT))
-        logging.info('Installing new image onto ssd')
-        try:
-            cmd_result = self._host.run(
-                    'chromeos-install --yes',
-                    timeout=self._WAIT_FOR_USB_INSTALL_SECONDS,
-                    stdout_tee=None, stderr_tee=None)
-        except error.AutotestHostRunError:
-            # Dump stdout (with stderr) to the error log.
-            logging.error('Command failed, stderr:\n' + cmd_result.stderr)
-            raise
-
-        # Reboot the DUT after installation.
-        self._servo_dut_reboot(disconnect_usbkey=True)
-
-
     def _trigger_test_update(self, omaha_devserver):
         """Trigger an update check on a test image.
 
@@ -813,30 +741,6 @@ class autoupdate_EndToEndTest(test.test):
 
         """
         return self._host.run('rootdev -s').stdout.strip()
-
-
-    def _stage_image(self, autotest_devserver, image_uri):
-        """Stage a Chrome OS image onto a staging devserver.
-
-        @param autotest_devserver: instance of client.common_lib.dev_server to
-                                   use to stage the image.
-        @param image_uri: The uri of the image.
-        @return URL of the staged image on the staging devserver.
-
-        @raise error.TestError if there's a problem with staging.
-
-        """
-        # For this call, we just need the URL path up to the image.zip file
-        # (exclusive).
-        image_uri_path = urlparse.urlsplit(image_uri).path.partition(
-                'image.zip')[0].strip('/')
-        try:
-            autotest_devserver.stage_artifacts(image_uri_path,
-                                               ['test_image'])
-            return autotest_devserver.get_test_image_url(image_uri_path)
-        except dev_server.DevServerException, e:
-            raise error.TestError(
-                    'Failed to stage source test image: %s' % e)
 
 
     @staticmethod
@@ -974,25 +878,21 @@ class autoupdate_EndToEndTest(test.test):
         @param stateful_url: If set, the specified url to find the stateful
                              payload.
         """
-        if self._use_servo:
-            # Install source image (test vs MP).
-            self._install_test_image_with_servo(image_url)
-        else:
-            try:
-                # Reboot to get us into a clean state.
-                self._host.reboot()
-                # Since we are installing the source image of the test, clobber
-                # stateful.
-                self.update_via_test_payloads(devserver_hostname, image_url,
-                                              stateful_url, clobber=True)
-                self._host.reboot()
-            except error.AutoservRunError:
-                logging.fatal('Error re-imaging the machine with the source '
-                              'image %s', image_url)
-                raise error.TestError('Could not update to pre-conditions of '
-                                      'the test: we failed to start the '
-                                      'private devserver, connect to the host '
-                                      'and/or make it reboot.')
+        try:
+            # Reboot to get us into a clean state.
+            self._host.reboot()
+            # Since we are installing the source image of the test, clobber
+            # stateful.
+            self.update_via_test_payloads(devserver_hostname, image_url,
+                                          stateful_url, clobber=True)
+            self._host.reboot()
+        except error.AutoservRunError:
+            logging.fatal('Error re-imaging the machine with the source '
+                          'image %s', image_url)
+            raise error.TestError('Could not update to pre-conditions of '
+                                  'the test: we failed to start the '
+                                  'private devserver, connect to the host '
+                                  'and/or make it reboot.')
 
 
     def stage_artifacts_onto_devserver(self, autotest_devserver, test_conf):
@@ -1010,43 +910,33 @@ class autoupdate_EndToEndTest(test.test):
 
         staged_source_url = None
         staged_source_stateful_url = None
-        source_image_uri = test_conf['source_image_uri']
-        if source_image_uri:
-            if self._use_servo:
-                staged_source_url = self._stage_image(
-                        autotest_devserver, source_image_uri)
-                # Test image already contains a stateful update, leave
-                # staged_source_stateful_url untouhced.
+        source_payload_uri = test_conf['source_payload_uri']
+        if source_payload_uri:
+            staged_source_url = self._stage_payload_by_uri(
+                    autotest_devserver, source_payload_uri)
+
+            # In order to properly install the source image using a full
+            # payload we'll also need the stateful update that comes with it.
+            # In general, tests may have their source artifacts in a different
+            # location than their payloads. This is determined by whether or
+            # not the source_archive_uri attribute is set; if it isn't set,
+            # then we derive it from the dirname of the source payload.
+            source_archive_uri = test_conf.get('source_archive_uri')
+            if source_archive_uri:
+                source_stateful_uri = self._get_stateful_uri(source_archive_uri)
             else:
-                staged_source_url = self._stage_payload_by_uri(
-                        autotest_devserver, source_image_uri)
+                source_stateful_uri = self._payload_to_stateful_uri(
+                        source_payload_uri)
 
-                # In order to properly install the source image using a full
-                # payload we'll also need the stateful update that comes with
-                # it.  In general, tests may have their source artifacts in a
-                # different location than their payloads. This is determined by
-                # whether or not the source_archive_uri attribute is set; if it
-                # isn't set, then we derive it from the dirname of the source
-                # payload.
-                source_archive_uri = test_conf.get('source_archive_uri')
-                if source_archive_uri:
-                    source_stateful_uri = self._get_stateful_uri(
-                            source_archive_uri)
-                else:
-                    source_stateful_uri = self._payload_to_stateful_uri(
-                            source_image_uri)
+            staged_source_stateful_url = self._stage_payload_by_uri(
+                    autotest_devserver, source_stateful_uri)
 
-                staged_source_stateful_url = self._stage_payload_by_uri(
-                        autotest_devserver, source_stateful_uri)
-
-                # Log source image URLs.
-                logging.info('Source %s from %s staged at %s',
-                             'image' if self._use_servo else 'full payload',
-                             source_image_uri, staged_source_url)
-                if staged_source_stateful_url:
-                    logging.info('Source stateful update from %s staged at %s',
-                                 source_stateful_uri,
-                                 staged_source_stateful_url)
+            # Log source image URLs.
+            logging.info('Source full payload from %s staged at %s',
+                         source_payload_uri, staged_source_url)
+            if staged_source_stateful_url:
+                logging.info('Source stateful update from %s staged at %s',
+                             source_stateful_uri, staged_source_stateful_url)
 
         target_payload_uri = test_conf['target_payload_uri']
         staged_target_url = self._stage_payload_by_uri(
@@ -1084,8 +974,6 @@ class autoupdate_EndToEndTest(test.test):
     def initialize(self):
         """Sets up variables that will be used by test."""
         self._host = None
-        self._use_servo = False
-        self._dev_mode = False
         self._omaha_devserver = None
 
         self._job_repo_url = None
@@ -1103,13 +991,6 @@ class autoupdate_EndToEndTest(test.test):
             self._omaha_devserver.stop_devserver()
 
         self._omaha_devserver = None
-
-
-    def _verify_preconditions(self):
-        """Validate input args make sense."""
-        if self._use_servo and not self._host.servo:
-            raise error.AutotestError('Servo use specified but no servo '
-                                      'attached to host object.')
 
 
     def _run_login_test(self, release_string):
@@ -1130,15 +1011,14 @@ class autoupdate_EndToEndTest(test.test):
 
     def _dump_update_engine_log(self):
         """Dumps relevant AU error log."""
-        if not self._use_servo:
-            logging.error('Test failed -- dumping snippet of update_engine log')
-            try:
-                error_log = self._host.run_output(
-                        'tail -n 40 /var/log/update_engine.log')
-                logging.error(error_log)
-            except Exception:
-                # Mute any exceptions we get printing debug logs.
-                pass
+        logging.error('Test failed -- dumping snippet of update_engine log')
+        try:
+            error_log = self._host.run_output(
+                    'tail -n 40 /var/log/update_engine.log')
+            logging.error(error_log)
+        except Exception:
+            # Mute any exceptions we get printing debug logs.
+            pass
 
 
     def _start_perf_mon(self):
@@ -1280,15 +1160,12 @@ class autoupdate_EndToEndTest(test.test):
             if perf_data:
                 self._report_perf_data(perf_data)
 
+        # Only update the stateful partition (the test updated the rootfs).
+        self.update_via_test_payloads(
+                None, None, staged_urls.target_stateful_url, clobber=False)
+
         # Reboot the DUT after the update.
-        if self._use_servo:
-            self._servo_dut_reboot()
-        else:
-            # Only update the stateful partition since the test has updated the
-            # rootfs.
-            self.update_via_test_payloads(
-                    None, None, staged_urls.target_stateful_url, clobber=False)
-            self._host.reboot()
+        self._host.reboot()
 
         # Trigger a second update check (again, test vs MP).
         self._trigger_test_update(self._omaha_devserver)
@@ -1325,12 +1202,11 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('Update successful, test completed')
 
 
-    def run_once(self, host, test_conf, use_servo):
+    def run_once(self, host, test_conf):
         """Performs a complete auto update test.
 
         @param host: a host object representing the DUT
         @param test_conf: a dictionary containing test configuration values
-        @param use_servo: True whether we should use servo.
 
         @raise error.TestError if anything went wrong with setting up the test;
                error.TestFail if any part of the test has failed.
@@ -1350,12 +1226,6 @@ class autoupdate_EndToEndTest(test.test):
                             'payload can be found along with the target update')
 
         self._host = host
-        self._use_servo = use_servo
-        if self._use_servo:
-            self._dev_mode = self._host.servo.get('dev_mode') == 'on'
-
-        # Verify that our arguments are sane.
-        self._verify_preconditions()
 
         # Find a devserver to use. We first try to pick a devserver with the
         # least load. In case all devservers' load are higher than threshold,

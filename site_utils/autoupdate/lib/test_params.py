@@ -27,10 +27,9 @@ class TestEnv(object):
 
         # Distill environment arguments from all input arguments.
         self._env_args = {}
-        for key in ('servo_host', 'servo_port', 'omaha_host'):
-            val = vars(args).get(key)
-            if val is not None:
-                self._env_args[key] = val
+        omaha_host = vars(args).get('omaha_host')
+        if omaha_host is not None:
+            self._env_args['omaha_host'] = omaha_host
 
 
     def is_var_set(self, var):
