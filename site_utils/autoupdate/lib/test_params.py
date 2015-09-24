@@ -86,15 +86,13 @@ class TestConfig(object):
     Stores and generates arguments for running autotest_EndToEndTest.
 
     """
-    def __init__(self, board, name, use_mp_images, is_delta_update,
-                 source_release, target_release, source_image_uri,
-                 target_payload_uri, suite_name=_DEFAULT_AU_SUITE_NAME,
-                 source_archive_uri=None):
+    def __init__(self, board, name, is_delta_update, source_release,
+                 target_release, source_image_uri, target_payload_uri,
+                 suite_name=_DEFAULT_AU_SUITE_NAME, source_archive_uri=None):
         """Initialize a test configuration.
 
         @param board: the board being tested (e.g. 'x86-alex')
         @param name: a descriptive name of the test
-        @param use_mp_images: whether or not we're using test images (Boolean)
         @param is_delta_update: whether this is a delta update test (Boolean)
         @param source_release: the source image version (e.g. '2672.0.0')
         @param target_release: the target image version (e.g. '2673.0.0')
@@ -106,7 +104,6 @@ class TestConfig(object):
         """
         self.board = board
         self.name = name
-        self.use_mp_images = use_mp_images
         self.is_delta_update = is_delta_update
         self.source_release = source_release
         self.target_release = target_release
@@ -114,10 +111,6 @@ class TestConfig(object):
         self.target_payload_uri = target_payload_uri
         self.suite_name = suite_name
         self.source_archive_uri = source_archive_uri
-
-
-    def get_image_type(self):
-        return 'mp' if self.use_mp_images else 'test'
 
 
     def get_update_type(self):
@@ -154,10 +147,9 @@ class TestConfig(object):
 
     def __str__(self):
         """Short textual representation w/o image/payload URIs."""
-        return ('[%s/%s/%s/%s/%s -> %s]' %
-                (self.board, self.name, self.get_image_type(),
-                 self.get_update_type(), self.source_release,
-                 self.target_release))
+        return ('[%s/%s/%s/%s -> %s]' %
+                (self.board, self.name, self.get_update_type(),
+                 self.source_release, self.target_release))
 
 
     def __repr__(self):
@@ -171,7 +163,6 @@ class TestConfig(object):
         template = "%s%s'%s'" if is_quote_val else "%s%s%s"
         arg_values = [
             ('name', self.name),
-            ('image_type', self.get_image_type()),
             ('update_type', self.get_update_type()),
             ('source_release', self.source_release),
             ('target_release', self.target_release),

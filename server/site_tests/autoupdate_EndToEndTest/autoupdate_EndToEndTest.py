@@ -751,32 +751,10 @@ class autoupdate_EndToEndTest(test.test):
             self._host.servo.switch_usbkey('host')
 
         self._servo_dut_power_up()
-        if self._use_test_image:
-            if not self._host.wait_up(timeout=self._host.BOOT_TIMEOUT):
-                raise error.TestFail(
-                        'DUT %s failed to boot after %d secs' %
-                        (self._host.ip, self._host.BOOT_TIMEOUT))
-        else:
-            # TODO(garnold) chromium-os:33766: implement waiting for MP-signed
-            # images; ideas include waiting for a ping reply, or using a GPIO
-            # signal.
-            pass
-
-
-    def _install_mp_image(self, staged_image_url):
-        """Installs an MP-signed recovery image on a DUT.
-
-        @param staged_image_url: URL of the image on a Lorry/devserver
-        """
-        # Flash DUT with source image version, using recovery.
-        logging.info('Installing source mp-signed image via recovery: %s',
-                     staged_image_url)
-        self._host.servo.install_recovery_image(
-                staged_image_url,
-                wait_timeout=self._WAIT_FOR_MP_RECOVERY_SECONDS)
-
-        # Reboot the DUT after installation.
-        self._servo_dut_reboot(disconnect_usbkey=True)
+        if not self._host.wait_up(timeout=self._host.BOOT_TIMEOUT):
+            raise error.TestFail(
+                    'DUT %s failed to boot after %d secs' %
+                    (self._host.ip, self._host.BOOT_TIMEOUT))
 
 
     def _install_test_image_with_servo(self, staged_image_url):
@@ -848,22 +826,17 @@ class autoupdate_EndToEndTest(test.test):
         @raise error.TestError if there's a problem with staging.
 
         """
-        if self._use_test_image:
-            # For this call, we just need the URL path up to the image.zip file
-            # (exclusive).
-            image_uri_path = urlparse.urlsplit(image_uri).path.partition(
-                    'image.zip')[0].strip('/')
-            try:
-                autotest_devserver.stage_artifacts(image_uri_path,
-                                                   ['test_image'])
-                return autotest_devserver.get_test_image_url(image_uri_path)
-            except dev_server.DevServerException, e:
-                raise error.TestError(
-                        'Failed to stage source test image: %s' % e)
-        else:
-            # TODO(garnold) chromium-os:33766: implement staging of MP-signed
-            # images.
-            raise NotImplementedError()
+        # For this call, we just need the URL path up to the image.zip file
+        # (exclusive).
+        image_uri_path = urlparse.urlsplit(image_uri).path.partition(
+                'image.zip')[0].strip('/')
+        try:
+            autotest_devserver.stage_artifacts(image_uri_path,
+                                               ['test_image'])
+            return autotest_devserver.get_test_image_url(image_uri_path)
+        except dev_server.DevServerException, e:
+            raise error.TestError(
+                    'Failed to stage source test image: %s' % e)
 
 
     @staticmethod
@@ -1003,11 +976,7 @@ class autoupdate_EndToEndTest(test.test):
         """
         if self._use_servo:
             # Install source image (test vs MP).
-            if self._use_test_image:
-                self._install_test_image_with_servo(image_url)
-            else:
-                self._install_mp_image(image_url)
-
+            self._install_test_image_with_servo(image_url)
         else:
             try:
                 # Reboot to get us into a clean state.
@@ -1053,14 +1022,16 @@ class autoupdate_EndToEndTest(test.test):
                         autotest_devserver, source_image_uri)
 
                 # In order to properly install the source image using a full
-                # payload we'll also need the stateful update that comes with it.
-                # In general, tests may have their source artifacts in a different
-                # location than their payloads. This is determined by whether or
-                # not the source_archive_uri attribute is set; if it isn't set,
-                # then we derive it from the dirname of the source payload.
+                # payload we'll also need the stateful update that comes with
+                # it.  In general, tests may have their source artifacts in a
+                # different location than their payloads. This is determined by
+                # whether or not the source_archive_uri attribute is set; if it
+                # isn't set, then we derive it from the dirname of the source
+                # payload.
                 source_archive_uri = test_conf.get('source_archive_uri')
                 if source_archive_uri:
-                    source_stateful_uri = self._get_stateful_uri(source_archive_uri)
+                    source_stateful_uri = self._get_stateful_uri(
+                            source_archive_uri)
                 else:
                     source_stateful_uri = self._payload_to_stateful_uri(
                             source_image_uri)
@@ -1074,7 +1045,8 @@ class autoupdate_EndToEndTest(test.test):
                              source_image_uri, staged_source_url)
                 if staged_source_stateful_url:
                     logging.info('Source stateful update from %s staged at %s',
-                                 source_stateful_uri, staged_source_stateful_url)
+                                 source_stateful_uri,
+                                 staged_source_stateful_url)
 
         target_payload_uri = test_conf['target_payload_uri']
         staged_target_url = self._stage_payload_by_uri(
@@ -1116,7 +1088,6 @@ class autoupdate_EndToEndTest(test.test):
         self._dev_mode = False
         self._omaha_devserver = None
 
-        self._use_test_image = True
         self._job_repo_url = None
         self._devserver_dir = global_config.global_config.get_config_value(
                 'CROS', 'devserver_dir', default=None)
@@ -1139,9 +1110,6 @@ class autoupdate_EndToEndTest(test.test):
         if self._use_servo and not self._host.servo:
             raise error.AutotestError('Servo use specified but no servo '
                                       'attached to host object.')
-
-        if not self._use_test_image and not self._use_servo:
-            raise error.TestError('Cannot install mp image without servo.')
 
 
     def _run_login_test(self, release_string):
@@ -1244,21 +1212,15 @@ class autoupdate_EndToEndTest(test.test):
 
         # On test images, record the active root partition.
         source_rootfs_partition = None
-        if self._use_test_image:
-            source_rootfs_partition = self._get_rootdev()
-            logging.info('Source image rootfs partition: %s',
-                         source_rootfs_partition)
+        source_rootfs_partition = self._get_rootdev()
+        logging.info('Source image rootfs partition: %s',
+                     source_rootfs_partition)
 
         # Start the performance monitoring process on the DUT.
         perf_mon_pid = self._start_perf_mon()
         try:
             # Trigger an update.
-            if self._use_test_image:
-                self._trigger_test_update(self._omaha_devserver)
-            else:
-                # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
-                # update.
-                pass
+            self._trigger_test_update(self._omaha_devserver)
 
             # Track update progress.
             omaha_netloc = self._omaha_devserver.get_netloc()
@@ -1329,12 +1291,7 @@ class autoupdate_EndToEndTest(test.test):
             self._host.reboot()
 
         # Trigger a second update check (again, test vs MP).
-        if self._use_test_image:
-            self._trigger_test_update(self._omaha_devserver)
-        else:
-            # TODO(garnold) chromium-os:33766: use GPIOs to trigger an
-            # update.
-            pass
+        self._trigger_test_update(self._omaha_devserver)
 
         # Observe post-reboot update check, which should indicate that the
         # image version has been updated.
@@ -1356,16 +1313,14 @@ class autoupdate_EndToEndTest(test.test):
 
         # On test images, make sure we're using a different partition after
         # the update.
-        if self._use_test_image:
-            target_rootfs_partition = self._get_rootdev()
-            if target_rootfs_partition == source_rootfs_partition:
-                raise error.TestFail(
-                        'Rootfs partition did not change (%s)' %
-                        target_rootfs_partition)
-
-            logging.info(
-                    'Target image rootfs partition changed as expected: %s',
+        target_rootfs_partition = self._get_rootdev()
+        if target_rootfs_partition == source_rootfs_partition:
+            raise error.TestFail(
+                    'Rootfs partition did not change (%s)' %
                     target_rootfs_partition)
+
+        logging.info('Target image rootfs partition changed as expected: %s',
+                     target_rootfs_partition)
 
         logging.info('Update successful, test completed')
 
@@ -1395,7 +1350,6 @@ class autoupdate_EndToEndTest(test.test):
                             'payload can be found along with the target update')
 
         self._host = host
-        self._use_test_image = test_conf.get('image_type') != 'mp'
         self._use_servo = use_servo
         if self._use_servo:
             self._dev_mode = self._host.servo.get('dev_mode') == 'on'

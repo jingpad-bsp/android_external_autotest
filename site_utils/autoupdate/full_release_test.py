@@ -66,7 +66,7 @@ class TestConfigGenerator(object):
     """Class for generating test configs."""
 
     def __init__(self, board, tested_release, test_nmo, test_npo,
-                 src_as_payload, use_mp_images, archive_url=None):
+                 src_as_payload, archive_url=None):
         """
         @param board: the board under test
         @param tested_release: the tested release version
@@ -74,7 +74,6 @@ class TestConfigGenerator(object):
         @param test_npo: whether we should infer N+1 tests
         @param src_as_payload: if True, use the full payload as the src image as
                opposed to using the test image (the latter requires servo).
-        @param use_mp_images: use mp images/payloads.
         @param archive_url: optional gs url to find payloads.
 
         """
@@ -83,7 +82,6 @@ class TestConfigGenerator(object):
         self.test_nmo = test_nmo
         self.test_npo = test_npo
         self.src_as_payload = src_as_payload
-        self.use_mp_images = use_mp_images
         if archive_url:
             self.archive_url = archive_url
         else:
@@ -129,40 +127,6 @@ class TestConfigGenerator(object):
                 _build_version % dict(branch=branch, release=release))
 
 
-    def generate_mp_image_npo_nmo_list(self):
-        """Generates N+1/N-1 test configurations with MP-signed images.
-
-        Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
-        given tested release and board.
-
-        @return A pair of TestConfig objects corresponding to the N+1 and N-1
-                tests.
-
-        @raise FullReleaseTestError if something went wrong
-
-        """
-        # TODO(garnold) generate N+/-1 configurations for MP-signed images.
-        raise NotImplementedError(
-                'generation of mp-signed test configs not implemented')
-
-
-    def generate_mp_image_specific_list(self, specific_source_releases):
-        """Generates specific test configurations with MP-signed images.
-
-        Returns a list of test configurations from a given list of source
-        releases to the given tested release and board.
-
-        @param specific_source_releases: list of source releases to test
-
-        @return List of TestConfig objects corresponding to the given source
-                releases.
-
-        """
-        # TODO(garnold) generate specific configurations for MP-signed images.
-        raise NotImplementedError(
-            'generation of mp-signed test configs not implemented')
-
-
     def generate_test_image_config(self, name, is_delta_update, source_release,
                                    payload_uri, source_uri):
         """Constructs a single test config with given arguments.
@@ -189,8 +153,8 @@ class TestConfigGenerator(object):
         target_version = _version_re.match(self.tested_release).group(
                 'base_version')
         return test_params.TestConfig(
-                self.board, name, self.use_mp_images, is_delta_update,
-                source_version, target_version, source_uri, payload_uri)
+                self.board, name, is_delta_update, source_version,
+                target_version, source_uri, payload_uri)
 
 
     @staticmethod
@@ -245,8 +209,8 @@ class TestConfigGenerator(object):
         return match.group('s_version'), match.group('t_version')
 
 
-    def generate_test_image_npo_nmo_list(self):
-        """Generates N+1/N-1 test configurations with test images.
+    def generate_npo_nmo_list(self):
+        """Generates N+1/N-1 test configurations.
 
         Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
         given tested release and board. This is done by scanning of the test
@@ -319,85 +283,6 @@ class TestConfigGenerator(object):
         return test_list
 
 
-    def generate_test_image_full_update_list(self, source_releases, name):
-        """Generates test configurations of full updates with test images.
-
-        Returns a list of test configurations from a given list of source
-        releases to the given tested release and board.
-
-        @param sources_releases: list of source release versions
-        @param name: name for generated test configurations
-
-        @return List of TestConfig objects corresponding to the source/target
-                pairs for the given board.
-
-        """
-        # If there are no source releases, there's nothing to do.
-        if not source_releases:
-            logging.warning("no '%s' source release provided for %s, %s; no "
-                            "tests generated",
-                            name, self.board, self.tested_release)
-            return []
-
-        # Find the full payload for the target release.
-        tested_payload_uri = test_image.find_payload_uri(
-                self.archive_url, single=True)
-        if not tested_payload_uri:
-            logging.warning("cannot find full payload for %s, %s; no '%s' tests"
-                            " generated", self.board, self.tested_release, name)
-            return []
-
-        # Construct test list.
-        test_list = []
-        for source_release in source_releases:
-            source_uri = self._get_source_uri_from_release(source_release)
-            if not source_uri:
-                logging.warning('cannot find source for %s, %s', self.board,
-                                source_release)
-                continue
-
-            test_list.append(self.generate_test_image_config(
-                    name, False, source_release, tested_payload_uri,
-                    source_uri))
-
-        return test_list
-
-
-    def generate_test_image_specific_list(self, specific_source_releases):
-        """Generates specific test configurations with test images.
-
-        Returns a list of test configurations from a given list of source
-        releases to the given tested release and board.
-
-        @param specific_source_releases: list of source releases to test
-
-        @return List of TestConfig objects corresponding to the given source
-                releases.
-
-        """
-        return self.generate_test_image_full_update_list(
-                specific_source_releases, 'specific')
-
-
-    def generate_npo_nmo_list(self):
-        """Generates N+1/N-1 test configurations.
-
-        Computes a list of N+1 (npo) and/or N-1 (nmo) test configurations for a
-        given tested release and board.
-
-        @return List of TestConfig objects corresponding to the requested test
-                types.
-
-        @raise FullReleaseTestError if something went wrong
-
-        """
-        # Return N+1/N-1 test configurations.
-        if self.use_mp_images:
-            return self.generate_mp_image_npo_nmo_list()
-        else:
-            return self.generate_test_image_npo_nmo_list()
-
-
     def generate_specific_list(self, specific_source_releases, generated_tests):
         """Generates test configurations for a list of specific source releases.
 
@@ -416,12 +301,32 @@ class TestConfigGenerator(object):
                 test_config.source_release for test_config in generated_tests]
         filtered_source_releases = [rel for rel in specific_source_releases
                                     if rel not in generated_source_releases]
-        if self.use_mp_images:
-            return self.generate_mp_image_specific_list(
-                    filtered_source_releases)
-        else:
-            return self.generate_test_image_specific_list(
-                    filtered_source_releases)
+        if not filtered_source_releases:
+            return []
+
+        # Find the full payload for the target release.
+        tested_payload_uri = test_image.find_payload_uri(
+                self.archive_url, single=True)
+        if not tested_payload_uri:
+            logging.warning("cannot find full payload for %s, %s; no specific "
+                            "tests generated",
+                            self.board, self.tested_release)
+            return []
+
+        # Construct test list.
+        test_list = []
+        for source_release in filtered_source_releases:
+            source_uri = self._get_source_uri_from_release(source_release)
+            if not source_uri:
+                logging.warning('cannot find source for %s, %s', self.board,
+                                source_release)
+                continue
+
+            test_list.append(self.generate_test_image_config(
+                    'specific', False, source_release, tested_payload_uri,
+                    source_uri))
+
+        return test_list
 
 
 def generate_test_list(args):
@@ -445,7 +350,7 @@ def generate_test_list(args):
         generator = TestConfigGenerator(
                 board, args.tested_release,
                 args.test_nmo, args.test_npo, src_as_payload,
-                args.use_mp_images, args.archive_url)
+                args.archive_url)
 
         # Configure N-1-to-N and N-to-N+1 tests.
         if args.test_nmo or args.test_npo:
@@ -539,8 +444,6 @@ def parse_args(argv):
     parser.add_option('--omaha_host', metavar='ADDR',
                       help='Optional host where Omaha server will be spawned.'
                       'If not set, localhost is used.')
-    parser.add_option('--mp_images', dest='use_mp_images', action='store_true',
-                      help='use MP-signed images')
     parser.add_option('-n', '--dry_run', action='store_true',
                       help='do not invoke actual test runs')
     parser.add_option('--log', metavar='LEVEL', dest='log_level',
