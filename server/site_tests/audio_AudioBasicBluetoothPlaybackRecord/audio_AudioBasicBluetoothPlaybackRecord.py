@@ -9,10 +9,12 @@ board.
 
 import logging
 import os
-import time
+import time, threading
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.server.cros.audio import audio_test
@@ -29,8 +31,35 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
     version = 1
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 5
+    SUSPEND_SECONDS = 30
+    RESUME_TIMEOUT_SECS = 60
+    PRC_RECONNECT_TIMEOUT = 60
 
-    def run_once(self, host):
+    def action_suspend(self, suspend_time=SUSPEND_SECONDS):
+        """Calls the host method suspend.
+
+        @param suspend_time: time to suspend the device for.
+
+        """
+        self.host.suspend(suspend_time=suspend_time)
+
+
+    def suspend_resume(self):
+        """Performs the suspend/resume"""
+
+        boot_id = self.host.get_boot_id()
+        thread = threading.Thread(target=self.action_suspend)
+        logging.info("Suspending...")
+        thread.start()
+        self.host.test_wait_for_sleep(self.SUSPEND_SECONDS / 3)
+        logging.info("DUT suspended! Waiting to resume...")
+        self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT_SECS)
+        logging.info("DUT resumed!")
+
+
+    def run_once(self, host, suspend=False):
+        self.host = host
+
         # Bluetooth HSP/HFP profile only supports one channel
         # playback/recording. So we should use simple frequency
         # test file which contains identical sine waves in two
@@ -70,11 +99,8 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
                 # microphone priority.
-                _, input_nodes = audio_facade.get_selected_node_types()
-                if input_nodes != ['INTERNAL_MIC']:
-                    raise error.TestFail(
-                            '%s rather than internal mic is selected on Cros '
-                            'device' % input_nodes)
+                audio_test_utils.check_audio_nodes(audio_facade,
+                                                   (None, ['INTERNAL_MIC']))
 
                 audio_facade.set_selected_output_volume(80)
 
@@ -87,23 +113,29 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
                 # Checks the node selected by Cras is correct.
-                o_nodes, i_nodes = audio_facade.get_selected_node_types()
-                if o_nodes != ['BLUETOOTH'] or i_nodes != ['BLUETOOTH']:
-                    raise error.TestFail(
-                            '(%s, %s) rather than (bluetooth, bluetooth) are '
-                            'selected on Cros device' % (o_nodes, i_nodes))
+                audio_test_utils.check_audio_nodes(audio_facade,
+                                                   (['BLUETOOTH'],
+                                                    ['BLUETOOTH']))
 
                 # Setup the playback data. This step is time consuming.
                 playback_source.set_playback_data(golden_file)
-                logging.info('Start playing %s on Cros device',
-                             golden_file.path)
                 record_source.set_playback_data(golden_file)
-                logging.info('Start playing %s on Chameleon device',
-                             golden_file.path)
+                if suspend:
+                    self.suspend_resume()
+                utils.poll_for_condition(condition=factory.ready,
+                                         timeout=self.PRC_RECONNECT_TIMEOUT,)
+                # Checks the node selected by Cras is correct again.
+                audio_test_utils.check_audio_nodes(audio_facade,
+                                                   (['BLUETOOTH'],
+                                                    ['BLUETOOTH']))
 
                 # Starts playing, waits for some time, and then starts recording.
                 # This is to avoid artifact caused by codec initialization.
+                logging.info('Start playing %s on Cros device',
+                             golden_file.path)
                 playback_source.start_playback()
+                logging.info('Start playing %s on Chameleon device',
+                             golden_file.path)
                 record_source.start_playback()
 
                 time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
