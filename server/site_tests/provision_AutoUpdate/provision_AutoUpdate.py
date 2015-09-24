@@ -115,7 +115,7 @@ class provision_AutoUpdate(test.test):
         # fetch autotest in the background here, and then wait on it after
         # reimaging finishes or at some other point in the provisioning.
         try:
-            ds = dev_server.ImageServer.resolve(image, host.hostname)
+            ds = dev_server.ImageServer.resolve(image)
             ds.stage_artifacts(image, ['full_payload', 'stateful',
                                        'autotest_packages'])
         except dev_server.DevServerException as e:
