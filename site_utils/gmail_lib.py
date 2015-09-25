@@ -26,6 +26,7 @@ from email.mime.text import MIMEText
 
 import common
 from autotest_lib.client.common_lib import global_config
+from chromite.lib import retry_util
 
 try:
   from apiclient.discovery import build as apiclient_build
@@ -38,6 +39,12 @@ except ImportError as e:
 
 DEFAULT_GMAIL_CREDS_PATH = global_config.global_config.get_config_value(
         'NOTIFICATIONS', 'gmail_api_credentials', default='')
+RETRY_DELAY = 5
+RETRY_BACKOFF_FACTOR = 1.5
+MAX_RETRY = 10
+RETRIABLE_MSGS = [
+        # User-rate limit exceeded
+        r'HttpError 429',]
 
 class GmailApiException(Exception):
     """Exception raised in accessing Gmail API."""
@@ -90,18 +97,22 @@ class GmailApiClient():
         self._service = apiclient_build('gmail', 'v1', http=http)
 
 
-    def send_message(self, message):
-      """Send an email message.
+    def send_message(self, message, ignore_error=True):
+        """Send an email message.
 
-      @param message: Message to be sent.
-      """
-      try:
-        # 'me' represents the default authorized user.
-        message = self._service.users().messages().send(
-                userId='me', body=message.get_payload()).execute()
-        logging.debug('Email sent: %s' , message['id'])
-      except apiclient_errors.HttpError as error:
-        logging.error('Failed to send email: %s', error)
+        @param message: Message to be sent.
+        @param ignore_error: If True, will ignore any HttpError.
+        """
+        try:
+            # 'me' represents the default authorized user.
+            message = self._service.users().messages().send(
+                    userId='me', body=message.get_payload()).execute()
+            logging.debug('Email sent: %s' , message['id'])
+        except apiclient_errors.HttpError as error:
+            if ignore_error:
+                logging.error('Failed to send email: %s', error)
+            else:
+                raise
 
 
 def get_default_creds_abspath():
@@ -131,7 +142,29 @@ def send_email(to, subject, message_text):
         return
     client = GmailApiClient(oauth_credentials=auth_creds)
     m = Message(to, subject, message_text)
-    client.send_message(message=m)
+
+    def _run():
+        """Send the message."""
+        client.send_message(m, ignore_error=False)
+
+    def handler(exc):
+        """Check if exc is an HttpError and is retriable.
+
+        @param exc: An exception.
+
+        @return: True if is an retriable HttpError.
+        """
+        if not isinstance(exc, apiclient_errors.HttpError):
+            return False
+
+        error_msg = str(exc)
+        should_retry = any([msg in error_msg for msg in RETRIABLE_MSGS])
+        if should_retry:
+            logging.warning('Will retry error %s', exc)
+        return should_retry
+
+    retry_util.GenericRetry(handler, MAX_RETRY, _run, sleep=RETRY_DELAY,
+                            backoff_factor=RETRY_BACKOFF_FACTOR)
 
 
 if __name__ == '__main__':
