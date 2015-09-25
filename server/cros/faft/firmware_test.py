@@ -554,6 +554,7 @@ class FirmwareTest(FAFTBase):
                         from_part=self.OTHER_KERNEL_MAP[part],
                         to_part=part)
             self.reset_and_prioritize_kernel(part)
+            self.switcher.mode_aware_reboot()
 
     def set_hardware_write_protect(self, enable):
         """Set hardware write protect pin.
