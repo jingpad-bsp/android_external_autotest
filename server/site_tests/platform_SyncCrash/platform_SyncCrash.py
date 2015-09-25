@@ -57,7 +57,7 @@ class platform_SyncCrash(test.test):
         """
         logging.info('Crash: %s', self.client.hostname)
         try:
-            cmd = '( %s %s ) &' % (self._Testsync, args)
+            cmd = '%s %s' % (self._Testsync, args)
             logging.info('Crash: %s', cmd)
             self.client.reboot(reboot_cmd=cmd)
         except error.AutoservRebootError as e:

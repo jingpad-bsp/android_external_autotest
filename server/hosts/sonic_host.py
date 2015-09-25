@@ -273,7 +273,7 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
         self._setup_for_recovery(update_url)
 
         current_boot_id = self.get_boot_id()
-        self.run('reboot recovery &')
+        self.run_background('reboot recovery')
         self.wait_for_restart(timeout=self.REBOOT_TIME,
                               old_boot_id=current_boot_id)
         new_build_number = self.get_build_number()

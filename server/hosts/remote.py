@@ -85,11 +85,11 @@ class RemoteHost(base_classes.Host):
 
 
     def sysrq_reboot(self):
-        self.run('echo b > /proc/sysrq-trigger &')
+        self.run_background('echo b > /proc/sysrq-trigger')
 
 
     def halt(self, timeout=DEFAULT_HALT_TIMEOUT, wait=True):
-        self.run('/sbin/halt')
+        self.run_background('sleep 1 ; halt')
         if wait:
             self.wait_down(timeout=timeout)
 
@@ -130,6 +130,13 @@ class RemoteHost(base_classes.Host):
             if kernel_args:
                 self.bootloader.add_args(label, kernel_args)
 
+        if not reboot_cmd:
+            reboot_cmd = ('sync & sleep 5; '
+                          'reboot & sleep 60; '
+                          'reboot -f & sleep 10; '
+                          'reboot -nf & sleep 10; '
+                          'telinit 6')
+
         def reboot():
             self.record("GOOD", None, "reboot.start")
             try:
@@ -140,17 +147,7 @@ class RemoteHost(base_classes.Host):
                 if not fastsync:
                     self.run('sync; sync', timeout=timeout, ignore_status=True)
 
-                if reboot_cmd:
-                    self.run(reboot_cmd)
-                else:
-                  # Try several methods of rebooting in increasing harshness.
-                    self.run('(('
-                             ' sync &'
-                             ' sleep 5; reboot &'
-                             ' sleep 60; reboot -f &'
-                             ' sleep 10; reboot -nf &'
-                             ' sleep 10; telinit 6 &'
-                             ') </dev/null >/dev/null 2>&1 &)')
+                self.run_background(reboot_cmd)
             except error.AutoservRunError:
                 self.record("ABORT", None, "reboot.start",
                               "reboot command failed")
@@ -177,7 +174,7 @@ class RemoteHost(base_classes.Host):
         def suspend():
             self.record("GOOD", None, "suspend.start for %d seconds" % (timeout))
             try:
-                self.run(suspend_cmd)
+                self.run_background(suspend_cmd)
             except error.AutoservRunError:
                 self.record("ABORT", None, "suspend.start",
                             "suspend command failed")

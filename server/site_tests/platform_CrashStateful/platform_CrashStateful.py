@@ -87,7 +87,7 @@ class platform_CrashStateful(test.test):
             3) without a sleep delay, the reboot may close the connection with
                an error
             """
-            wrapped_cmd = '(sleep 1; %s) </dev/null >/dev/null 2>&1 &'
+            wrapped_cmd = 'sleep 1; %s'
             self.client.reboot(reboot_cmd=wrapped_cmd % cmd)
         except error.AutoservRebootError as e:
             raise error.TestFail('%s.\nTest failed with error %s' % (

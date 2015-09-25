@@ -1025,9 +1025,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         timer = autotest_stats.Timer(install_timer_key)
         timer.start()
         logging.info('Installing image through chromeos-install.')
-        self.run('chromeos-install --yes',
-                 timeout=install_timeout)
-        self.run('( sleep 1 ; halt ) </dev/null >/dev/null 2>&1 &')
+        self.run('chromeos-install --yes', timeout=install_timeout)
+        self.halt()
         timer.stop()
 
         logging.info('Power cycling DUT through servo.')
@@ -1716,9 +1715,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         if 'reboot_cmd' not in dargs:
             reboot_timeout = dargs.get('reboot_timeout', 10)
-            dargs['reboot_cmd'] = ('((reboot & sleep %d; reboot -f &)'
-                                   ' </dev/null >/dev/null 2>&1 &)' %
-                                   reboot_timeout)
+            dargs['reboot_cmd'] = ('sleep 1; '
+                                   'reboot & sleep %d; '
+                                   'reboot -f' % reboot_timeout)
         # Enable fastsync to avoid running extra sync commands before reboot.
         if 'fastsync' not in dargs:
             dargs['fastsync'] = True
@@ -1739,11 +1738,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         suspend_time = dargs.get('suspend_time', 60)
         dargs['timeout'] = suspend_time
         if 'suspend_cmd' not in dargs:
-            cmd = ' && '.join(['echo 0 > /sys/class/rtc/rtc0/wakealarm',
+            dargs['suspend_cmd'] = ' && '.join([
+                'echo 0 > /sys/class/rtc/rtc0/wakealarm',
                 'echo +%d > /sys/class/rtc/rtc0/wakealarm' % suspend_time,
-                'powerd_dbus_suspend --delay=0 &'])
-            dargs['suspend_cmd'] = ('(( %s )'
-                '< /dev/null >/dev/null 2>&1 &)' % cmd)
+                'powerd_dbus_suspend --delay=0'])
         super(CrosHost, self).suspend(**dargs)
 
 
@@ -1969,8 +1967,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # below is necessary, because 'ssh' won't terminate until
         # background child processes close stdin, stdout, and
         # stderr.
-        remote_cmd = '%s </dev/null >%s 2>&1 & echo $!' % (command, logfile)
-        remote_pid = self.run(remote_cmd).stdout.rstrip('\n')
+        remote_cmd = '%s >%s 2>&1' % (command, logfile)
+        remote_pid = self.run_background(remote_cmd)
         logging.debug('Started XMLRPC server on host %s, pid = %s',
                       self.hostname, remote_pid)
 

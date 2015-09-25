@@ -167,6 +167,34 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservRunError(timeout_message, cmderr.args[1])
 
 
+    def run_background(self, command, verbose=True):
+        """Start a command on the host in the background.
+
+        The command is started on the host in the background, and
+        this method call returns immediately without waiting for the
+        command's completion.  The PID of the process on the host is
+        returned as a string.
+
+        The command may redirect its stdin, stdout, or stderr as
+        necessary.  Without redirection, all input and output will
+        use /dev/null.
+
+        @param command The command to run in the background
+        @param verbose As for `self.run()`
+
+        @return Returns the PID of the remote background process
+                as a string.
+        """
+        # Redirection here isn't merely hygienic; it's a functional
+        # requirement.  sshd won't terminate until stdin, stdout,
+        # and stderr are all closed.
+        #
+        # The subshell is needed to do the right thing in case the
+        # passed in command has its own I/O redirections.
+        cmd_fmt = '( %s ) </dev/null >/dev/null 2>&1 & echo -n $!'
+        return self.run(cmd_fmt % command, verbose=verbose).stdout
+
+
     def run_short(self, command, **kwargs):
         """
         Calls the run() command with a short default timeout.

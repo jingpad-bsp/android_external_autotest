@@ -446,8 +446,7 @@ class ServoHost(ssh_host.SSHHost):
             logging.info('Rebooting beaglebone host %s with build %s',
                          self.hostname, current_build_number)
             kwargs = {
-                'reboot_cmd': ('((reboot & sleep 10; reboot -f &) '
-                               '</dev/null >/dev/null 2>&1 &)'),
+                'reboot_cmd': 'sleep 1 ; reboot & sleep 10; reboot -f',
                 'fastsync': True,
                 'label': None,
                 'wait': False,
