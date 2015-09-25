@@ -11,6 +11,7 @@ Upon successful copy, the local results directory is deleted.
 """
 
 import datetime
+import errno
 import logging
 import logging.handlers
 import os
@@ -289,6 +290,13 @@ def get_offload_dir_func(gs_uri, multiprocessing):
       logging.error('Offloading %s timed out after waiting %d seconds.',
                     dir_entry, OFFLOAD_TIMEOUT_SECS)
       error = True
+    except OSError as e:
+      # The wrong file permission can lead call `shutil.rmtree(dir_entry)`
+      # to raise OSError with message 'Permission denied'. Details can be found
+      # in crbug.com/536151
+      if e.errno == errno.EACCES:
+          logging.warn('Try to correct file permission of %s.', dir_entry)
+          correct_results_folder_permission(dir_entry)
     finally:
       signal.alarm(0)
       if error:
