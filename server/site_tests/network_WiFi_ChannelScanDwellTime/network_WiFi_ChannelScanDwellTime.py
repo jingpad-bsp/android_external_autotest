@@ -160,7 +160,7 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         # We don't filter for SSID prefix here, because the pcap only
         # contains data from this run.
         beacon_frames = tcpdump_analyzer.get_frames(
-            pcap_path, tcpdump_analyzer.WLAN_BEACON_FILTER)
+            pcap_path, tcpdump_analyzer.WLAN_BEACON_ACCEPTOR, bad_fcs='include')
         return self._get_dwell_time(result_list, beacon_frames)
 
 

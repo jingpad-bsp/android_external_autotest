@@ -14,6 +14,7 @@ FRAME_FIELD_WLAN_MGMT_SSID = 'wlan_mgt.ssid'
 RADIOTAP_KNOWN_BAD_FCS_REJECTOR = (
     'not radiotap.flags.badfcs or radiotap.flags.badfcs==0')
 WLAN_BEACON_FRAME_TYPE = '0x08'
+WLAN_BEACON_ACCEPTOR = 'wlan.fc.type_subtype==0x08'
 WLAN_PROBE_REQ_FRAME_TYPE = '0x04'
 WLAN_PROBE_REQ_ACCEPTOR = 'wlan.fc.type_subtype==0x04'
 PYSHARK_BROADCAST_SSID = 'SSID: '
