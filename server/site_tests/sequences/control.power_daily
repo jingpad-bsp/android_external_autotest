@@ -25,23 +25,19 @@ def _run_client_test(machine):
     client_attributes = site_host_attributes.HostAttributes(machine)
     client_at = autotest.Autotest(client)
 
-    if client.has_power():
-        client.power_on()
-    else:
-        raise error.TestNAError("No power switch configured")
+    job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
 
     # Charge the battery to at least 50% in preparation for the consumption
     # test. Charging the battery from empty to full can take up to 4 hours.
     client_at.run_test('power_BatteryCharge', percent_target_charge=50,
                        max_run_time=60*60*4, tag='CHARGE_50')
 
-    # Turn off power and run power_Consumption test.
-    client.power_off()
+    job.run_test('power_RPMTest', verify=True, host=client, power_on=False)
 
     try:
         client_at.run_test('power_Consumption')
     finally:
-        client.power_on()
+        job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
 
     # Charge the battery to at least 99% in preparation for the load
     # test. Charging the battery from empty to full can take up to 4 hours.
@@ -53,7 +49,7 @@ def _run_client_test(machine):
     # TODO (snanda):
     # 1. Make the test login automatically to facebook and gmail
     # 2. Add audiovideo_V4L2 webcam test
-    client.power_off()
+    job.run_test('power_RPMTest', verify=True, host=client, power_on=False)
 
     try:
         client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
@@ -70,7 +66,7 @@ def _run_client_test(machine):
                                wifi_sec=wifi_sec, wifi_pw=wifi_pw,
                                tag='WIFI_1hr')
     finally:
-        client.power_on()
+        job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
 
 
 job.parallel_on_machines(_run_client_test, machines)
