@@ -9,7 +9,7 @@ from autotest_lib.client.common_lib import error
 
 _CHROME_PATH = '/opt/google/chrome/chrome'
 _LONG_TIMEOUT = 120
-_DO_NOT_RUN_ON_TYPE = ['CHROMEBOX', 'CHROMEBIT']
+_DO_NOT_RUN_ON_TYPE = ['CHROMEBOX', 'CHROMEBIT', 'OTHER']
 _DO_NOT_RUN_ON_BOARD = ['monroe']
 
 class platform_InternalDisplay(test.test):
@@ -33,7 +33,7 @@ class platform_InternalDisplay(test.test):
 
         board_type = self.host.get_board_type()
         if board_type in _DO_NOT_RUN_ON_TYPE:
-            raise error.TestNAError('DUT is %s. Test Skipped' %board_type)
+            raise error.TestNAError('DUT is %s type. Test Skipped' %board_type)
 
         board = self.host.get_board().split(':')[-1]
         logging.info(board)
