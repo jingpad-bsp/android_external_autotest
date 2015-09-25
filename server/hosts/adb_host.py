@@ -462,13 +462,18 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return tmp_dir
 
 
-    def send_file(self, source, dest, delete_dest=False):
+    def send_file(self, source, dest, delete_dest=False,
+                  preserve_symlinks=False):
         """Copy files from the drone to the device.
 
         @param source: The file/directory on the drone to send to the device.
         @param dest: The destination path on the device to copy to.
         @param delete_dest: A flag set to choose whether or not to delete
                             dest on the device if it exists.
+        @param preserve_symlinks: Controls if symlinks on the source will be
+                                  copied as such on the destination or
+                                  transformed into the referenced
+                                  file/directory.
         """
         tmp_dir = ''
         src_path = source
@@ -478,7 +483,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             src_path = os.path.join(tmp_dir, os.path.basename(dest))
             # Now copy the file over to the adb_host so you can reference the
             # file in the push command.
-            super(ADBHost, self).send_file(source, src_path)
+            super(ADBHost, self).send_file(source, src_path,
+                                           preserve_symlinks=preserve_symlinks)
 
         if delete_dest:
             self._adb_run('rm -rf %s' % dest, shell=True)
@@ -493,7 +499,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
 
-    def get_file(self, source, dest, delete_dest=False):
+    def get_file(self, source, dest, delete_dest=False, preserve_perm=True,
+                 preserve_symlinks=False):
         """Copy files from the device to the drone.
 
         @param source: The file/directory on the device to copy back to the
@@ -501,6 +508,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param dest: The destination path on the drone to copy to.
         @param delete_dest: A flag set to choose whether or not to delete
                             dest on the drone if it exists.
+        @param preserve_perm: Tells get_file() to try to preserve the sources
+                              permissions on files and dirs.
+        @param preserve_symlinks: Try to preserve symlinks instead of
+                                  transforming them into files/dirs on copy.
+        TODO (crbug.com/536096): Implement preserve_perm,preserve_symlinks.
         """
         tmp_dir = ''
         dest_path = dest
@@ -545,3 +557,36 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not parent.startswith(TMP_DIR):
             parent = os.path.join(TMP_DIR, parent.lstrip(os.path.sep))
         return super(ADBHost, self).get_tmp_dir(parent=parent)
+
+
+    def get_platform(self):
+        """Determine the correct platform label for this host.
+
+        TODO (crbug.com/536250): Figure out what we want to do for adb_host's
+                       get_plaftom.
+
+        @returns a string representing this host's platform.
+        """
+        return 'adb'
+
+
+    def get_labels(self):
+        """Return a list of labels for this given host.
+
+        TODO (crbug.com/536250): Implement the label generation for adb_host.
+
+        @returns: a list of this host's labels.
+        """
+        return []
+
+
+    def collect_logs(self, remote_src_dir, local_dest_dir, ignore_errors=True):
+        """Copy log directories from a host to a local directory.
+
+        @param remote_src_dir: A destination directory on the host.
+        @param local_dest_dir: A path to a local destination directory.
+            If it doesn't exist it will be created.
+        @param ignore_errors: If True, ignore exceptions.
+
+        """
+        # TODO (crbug.com/536120): Implement collect_logs.
