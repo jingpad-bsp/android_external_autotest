@@ -18,20 +18,24 @@ class touch_playback_test_base(test.test):
     _INPUTCONTROL = '/opt/google/input/inputcontrol'
     _DEFAULT_SCROLL = 5000
 
+
     @property
     def _has_touchpad(self):
         """True if device under test has a touchpad; else False."""
         return self.player.has('touchpad')
+
 
     @property
     def _has_touchscreen(self):
         """True if device under test has a touchscreen; else False."""
         return self.player.has('touchscreen')
 
+
     @property
     def _has_mouse(self):
         """True if device under test has or emulates a USB mouse; else False."""
         return self.player.has('mouse')
+
 
     def warmup(self, mouse_props=None):
         """Test setup.
@@ -53,17 +57,26 @@ class touch_playback_test_base(test.test):
         self._autotest_ext = None
         self._has_inputcontrol = os.path.isfile(self._INPUTCONTROL)
 
+
     def _emulate_mouse(self, property_file=None):
+        """Emulate a mouse with the given property file.
+
+        player will use default mouse if no file is provided.
+
+        """
         self.player.emulate(input_type='mouse', property_file=property_file)
         self.player.find_connected_inputs()
+
 
     def _playback(self, filepath, touch_type='touchpad'):
         """Playback a given input file on the given input."""
         self.player.playback(filepath, touch_type)
 
+
     def _blocking_playback(self, filepath, touch_type='touchpad'):
         """Playback a given input file on the given input; block until done."""
         self.player.blocking_playback(filepath, touch_type)
+
 
     def _set_touch_setting_by_inputcontrol(self, setting, value):
         """Set a given touch setting the given value by inputcontrol.
@@ -75,6 +88,7 @@ class touch_playback_test_base(test.test):
         cmd_value = 1 if value else 0
         utils.run('%s --%s %d' % (self._INPUTCONTROL, setting, cmd_value))
         logging.info('%s turned %s.', setting, 'on' if value else 'off')
+
 
     def _set_touch_setting(self, inputcontrol_setting, autotest_ext_setting,
                            value):
@@ -97,6 +111,7 @@ class touch_playback_test_base(test.test):
           raise error.TestFail('Both inputcontrol and the autotest '
                                'extension are not availble.')
 
+
     def _set_australian_scrolling(self, value):
         """Set australian scrolling to the given value.
 
@@ -104,6 +119,7 @@ class touch_playback_test_base(test.test):
 
         """
         self._set_touch_setting('australian_scrolling', 'NaturalScroll', value)
+
 
     def _set_tap_to_click(self, value):
         """Set tap-to-click to the given value.
@@ -113,6 +129,7 @@ class touch_playback_test_base(test.test):
         """
         self._set_touch_setting('tapclick', 'TapToClick', value)
 
+
     def _set_tap_dragging(self, value):
         """Set tap dragging to the given value.
 
@@ -120,6 +137,7 @@ class touch_playback_test_base(test.test):
 
         """
         self._set_touch_setting('tapdrag', 'TapDragging', value)
+
 
     def _reload_page(self):
         """Reloads test page.  Presuposes self._tab.
@@ -129,6 +147,8 @@ class touch_playback_test_base(test.test):
         """
         self._tab.Navigate(self._tab.url)
         self._tab.WaitForDocumentReadyStateToBeComplete()
+        self._wait_for_page_ready()
+
 
     def _set_autotest_ext(self, ext):
         """Set the autotest extension.
@@ -137,6 +157,46 @@ class touch_playback_test_base(test.test):
 
         """
         self._autotest_ext = ext
+
+
+    def _open_test_page(self, cr, filename='test_page.html'):
+        """Prepare test page for testing.  Set self._tab with page.
+
+        @param cr: chrome.Chrome() object
+        @param filename: name of file in self.bindir to open
+
+        """
+        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
+        self._tab = cr.browser.tabs[0]
+        self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
+                os.path.join(self.bindir, filename)))
+        self._tab.WaitForDocumentReadyStateToBeComplete()
+        self._wait_for_page_ready()
+
+
+    def _wait_for_page_ready(self):
+        """Wait for a variable pageReady on the test page to be true.
+
+        Presuposes self._tab and a pageReady variable.
+
+        @raises error.TestError if page is not ready after timeout.
+
+        """
+        utils.poll_for_condition(
+                lambda: self._tab.EvaluateJavaScript('pageReady'),
+                exception=error.TestError('Test page is not ready!'))
+
+
+    def _center_cursor(self):
+        """Playback mouse movement and check whether cursor moved as recorded.
+
+        Requres that self._emulate_mouse() has been called.
+
+        """
+        self._reload_page()
+        self.player.blocking_playback_of_default_file(
+                'mouse_center_cursor_gesture')
+
 
     def _set_default_scroll_position(self, scroll_vertical=True):
         """Set scroll position of page to default.  Presuposes self._tab.
@@ -152,6 +212,7 @@ class touch_playback_test_base(test.test):
             self._tab.EvaluateJavaScript(
                 'document.body.scrollLeft=%s' % self._DEFAULT_SCROLL)
 
+
     def _get_scroll_position(self, scroll_vertical=True):
         """Return current scroll position of page.  Presuposes self._tab.
 
@@ -164,6 +225,7 @@ class touch_playback_test_base(test.test):
         else:
             return int(self._tab.EvaluateJavaScript('document.body.scrollLeft'))
 
+
     def _wait_for_default_scroll_position(self, scroll_vertical=True):
         """Wait for page to be at the default scroll position.
 
@@ -174,8 +236,10 @@ class touch_playback_test_base(test.test):
 
         """
         utils.poll_for_condition(
-            lambda: self._get_scroll_position(scroll_vertical) == self._DEFAULT_SCROLL,
-                    exception=error.TestError('Page not set to default scroll!'))
+                lambda: self._get_scroll_position(
+                        scroll_vertical) == self._DEFAULT_SCROLL,
+                exception=error.TestError('Page not set to default scroll!'))
+
 
     def _wait_for_scroll_position_to_settle(self, scroll_vertical=True):
         """Wait for page to move and then stop moving.
@@ -188,7 +252,8 @@ class touch_playback_test_base(test.test):
         """
         # Wait until page starts moving.
         utils.poll_for_condition(
-            lambda: self._get_scroll_position(scroll_vertical) != self._DEFAULT_SCROLL,
+                lambda: self._get_scroll_position(
+                        scroll_vertical) != self._DEFAULT_SCROLL,
                 exception=error.TestError('No scrolling occurred!'), timeout=30)
 
         # Wait until page has stopped moving.
@@ -203,6 +268,7 @@ class touch_playback_test_base(test.test):
                 lambda: _movement_stopped(), sleep_interval=1,
                 exception=error.TestError('Page did not stop moving!'),
                 timeout=30)
+
 
     def cleanup(self):
         self.player.close()

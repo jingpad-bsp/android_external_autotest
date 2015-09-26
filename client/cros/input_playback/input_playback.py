@@ -283,6 +283,25 @@ class InputPlayback(object):
         time.sleep(sleep_time)
 
 
+    def blocking_playback_of_default_file(self, filename, input_type='mouse'):
+        """Playback a default file and sleep for duration.
+
+        Use a default gesture file for the default keyboard/mouse, saved in
+        this folder.
+        Device should be emulated first.
+
+        @param filename: the name of the file (path is to this folder).
+        @param input_type: name of device type; 'mouse' by default.
+                           Types are returned by the _determine_input_type()
+                           function.
+                           input_type must be in self.nodes. Check using has().
+
+        """
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        gesture_file = os.path.join(current_dir, filename)
+        self.blocking_playback(gesture_file, input_type=input_type)
+
+
     def close(self):
         """Kill emulation if necessary."""
         if self._device_emulation_process:

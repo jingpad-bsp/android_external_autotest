@@ -59,7 +59,8 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         name = direction + '_1'
         expected_direction = self._EXPECTED_DIRECTION[direction]
         expected_value = self._EXPECTED_VALUE_1 * expected_direction
-        delta = self._get_scroll_delta(name, expected_direction, scroll_vertical)
+        delta = self._get_scroll_delta(name, expected_direction,
+                                       scroll_vertical)
 
         if delta != expected_value:
             raise error.TestFail('One tick scroll was wrong size: actual=%d, '
@@ -96,15 +97,12 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         self._gest_file_path = {}
         gestures_dir = os.path.join(self.bindir, 'gestures')
         for filename in os.listdir(gestures_dir):
-            self._gest_file_path[filename] = os.path.join(gestures_dir, filename)
+            self._gest_file_path[filename] = os.path.join(gestures_dir,
+                                                          filename)
 
         with chrome.Chrome() as cr:
             # Open test page.
-            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-            self._tab = cr.browser.tabs[0]
-            self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
-                    os.path.join(self.bindir, 'long_page.html')))
-            self._tab.WaitForDocumentReadyStateToBeComplete()
+            self._open_test_page(cr)
 
             # Emulate mouse with vertical scroll feature.
             mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)

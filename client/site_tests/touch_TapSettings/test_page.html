@@ -8,7 +8,6 @@ var pageReady = false;
 var startX;
 var startY;
 var movementOccurred = false;
-var cursorOnPage = false;
 var clickCount = 0;
 
 function onLoad() {
@@ -21,9 +20,8 @@ function mouseUp(e) {
     var deltaX = e.pageX - startX;
     var deltaY = e.pageY - startY;
     movementOccurred = ((deltaX != 0) || (deltaY != 0));
-    cursorOnPage = ((e.pageX !=0) || (e.pageY !=0))
     clickCount = clickCount + 1;
-    console.log(movementOccurred, deltaX, deltaY, clickCount, cursorOnPage)
+    console.log(movementOccurred, deltaX, deltaY, clickCount)
 }
 
 function mouseDown(e) {
