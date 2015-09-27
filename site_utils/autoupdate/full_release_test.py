@@ -66,12 +66,14 @@ class TestConfigGenerator(object):
     """Class for generating test configs."""
 
     def __init__(self, board, tested_release, test_nmo, test_npo,
-                 archive_url=None):
+                 src_as_payload, archive_url=None):
         """
         @param board: the board under test
         @param tested_release: the tested release version
         @param test_nmo: whether we should infer N-1 tests
         @param test_npo: whether we should infer N+1 tests
+        @param src_as_payload: if True, use the full payload as the src image as
+               opposed to using the test image (the latter requires servo).
         @param archive_url: optional gs url to find payloads.
 
         """
@@ -79,6 +81,7 @@ class TestConfigGenerator(object):
         self.tested_release = tested_release
         self.test_nmo = test_nmo
         self.test_npo = test_npo
+        self.src_as_payload = src_as_payload
         if archive_url:
             self.archive_url = archive_url
         else:
@@ -107,7 +110,10 @@ class TestConfigGenerator(object):
             archive_url = test_image.get_archive_url_from_prefix(
                     self.archive_prefix, build_version)
 
-        return test_image.find_payload_uri(archive_url, single=True)
+        if self.src_as_payload:
+            return test_image.find_payload_uri(archive_url, single=True)
+        else:
+            return test_image.find_image_uri(archive_url)
 
 
     def _get_source_uri_from_release(self, release):
@@ -335,11 +341,15 @@ def generate_test_list(args):
     """
     # Initialize test list.
     test_list = []
+    # Use the full payload of the source image as the src URI rather than the
+    # test image when not using servo.
+    src_as_payload = args.servo_host == None
 
     for board in args.tested_board_list:
         test_list_for_board = []
         generator = TestConfigGenerator(
-                board, args.tested_release, args.test_nmo, args.test_npo,
+                board, args.tested_release,
+                args.test_nmo, args.test_npo, src_as_payload,
                 args.archive_url)
 
         # Configure N-1-to-N and N-to-N+1 tests.
@@ -375,7 +385,9 @@ def run_test_afe(test, env, control_code, afe, dry_run):
     # Create the job.
     meta_hosts = ['board:%s' % test.board]
 
-    dependencies = ['pool:suites']
+    # Only set servo arguments if servo is in the environment.
+    dependencies = ['servo'] if env.is_var_set('servo_host') else []
+    dependencies += ['pool:suites']
     logging.debug('scheduling afe test: meta_hosts=%s dependencies=%s',
                   meta_hosts, dependencies)
     if not dry_run:
@@ -423,6 +435,10 @@ def parse_args(argv):
     parser.add_option('--specific', metavar='LIST',
                       help='comma-separated list of source releases to '
                            'generate test configurations from')
+    parser.add_option('--servo_host', metavar='ADDR',
+                      help='host running servod. Servo used only if set.')
+    parser.add_option('--servo_port', metavar='PORT',
+                      help='servod port [servod default]')
     parser.add_option('--skip_boards', dest='skip_boards',
                       help='boards to skip, separated by comma.')
     parser.add_option('--omaha_host', metavar='ADDR',
