@@ -95,7 +95,6 @@ class buffet_BasicDBusAPI(test.test):
         shill = wifi_proxy.WifiProxy.get_proxy()
         shill.remove_all_wifi_entries()
 
-        check('disabled', buffet.wi_fi_bootstrap_state)
         check({}, buffet.pairing_info)
 
         # But we should still be able to pair.
@@ -121,14 +120,6 @@ class buffet_BasicDBusAPI(test.test):
         # pairing information exposed.
         helper.privet_auth()
         check({}, buffet.pairing_info)
-
-        buffet_config.BuffetConfig(options={
-            'device_whitelist': 'None',
-            'wifi_auto_setup_enabled': 'true',
-        }).restart_with_config()
-
-        buffet = buffet_dbus_helper.BuffetDBusHelper()
-        check('waiting', buffet.wi_fi_bootstrap_state)
 
     def cleanup(self):
         """Clean up processes altered during the test."""
