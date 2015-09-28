@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "chromeos-chameleon"
-NAME = "audio_AudioBasicBluetoothPlaybackRecordSuspend"
+NAME = "audio_AudioBasicBluetoothPlaybackRecord.suspend"
 PURPOSE = "Remotely controlled bluetooth playback/record audio test."
 CRITERIA = "This test will fail if the captured audio does not match original file."
 TIME = "SHORT"
@@ -26,6 +26,6 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
     job.run_test("audio_AudioBasicBluetoothPlaybackRecord", host=host,
-                 suspend=True)
+                 suspend=True, tag = "suspend")
 
 parallel_simple(run, machines)
