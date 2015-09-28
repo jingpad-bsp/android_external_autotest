@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import itertools
-import os
 import logging
+import os
 import time
 
 from autotest_lib.client.bin import utils
@@ -17,7 +17,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     """Toggles tap-to-click and tap dragging settings to ensure correctness."""
     version = 1
 
-    _test_timeout = 1 # Number of seconds the test will wait for a click.
+    _test_timeout = 1  # Number of seconds the test will wait for a click.
     _MOUSE_DESCRIPTION = 'apple_mouse.prop'
 
 
