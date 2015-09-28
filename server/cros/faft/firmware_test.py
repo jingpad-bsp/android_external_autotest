@@ -6,6 +6,7 @@ import ast
 import ctypes
 import logging
 import os
+import pprint
 import re
 import time
 import uuid
@@ -172,11 +173,15 @@ class FirmwareTest(FAFTBase):
 
         This info is used by generate_test_report later.
         """
-        self.write_attr_keyval({
+        system_info = {
             'fw_version': self.faft_client.ec.get_version(),
             'hwid': self.faft_client.system.get_crossystem_value('hwid'),
             'fwid': self.faft_client.system.get_crossystem_value('fwid'),
-        })
+            'servod_version': self._client._servo_host.run(
+                'servod --version').stdout.strip(),
+        }
+        logging.info('System info:\n' + pprint.pformat(system_info))
+        self.write_attr_keyval(system_info)
 
     def invalidate_firmware_setup(self):
         """Invalidate all firmware related setup state.
