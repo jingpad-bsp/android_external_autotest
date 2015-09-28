@@ -5,8 +5,13 @@
 
 """Install an initial test image on a set of DUTs.
 
-The target DUTs are newly deployed, and are normally in a slightly
-anomalous state:
+The methods in this module are meant for two nominally distinct use
+cases that share a great deal of code internally.  The first use
+case is for deployment of DUTs that have just been placed in the lab
+for the first time.  The second use case is for use after repairing
+a servo.
+
+Newly deployed DUTs may be in a somewhat anomalous state:
   * The DUTs are running a production base image, not a test image.
     By extension, the DUTs aren't reachable over SSH.
   * The DUTs are not necessarily in the AFE database.  DUTs that
@@ -15,18 +20,31 @@ anomalous state:
   * The servos for the DUTs need not be configured with the proper
     board.
 
+More broadly, it's not expected that the DUT will be working at the
+start of this operation.  If the DUT isn't working at the end of the
+operation, an error will be reported.
+
+The script performs the following functions:
+  * Configure the servo for the target board, and test that the
+    servo is generally in good order.
+  * For the full deployment case, install dev-signed RO firmware
+    from the designated stable test image for the DUTs.
+  * For both cases, use servo to install the stable test image from
+    USB.
+  * If the DUT isn't in the AFE database, add it.
+
 The script imposes these preconditions:
   * Every DUT has a properly connected servo.
-  * Every DUT and servo has proper DHCP and DNS configurations.
+  * Every DUT and servo have proper DHCP and DNS configurations.
   * Every servo host is up and running, and accessible via SSH.
   * There is a known, working test image that can be staged and
     installed on the target DUTs via servo.
   * Every DUT has the same board.
+  * For the full deployment case, every DUT must be in dev mode,
+    and configured to allow boot from USB with ctrl+U.
 
-Installation is done using the standard servo repair process (that
-is, boot and install a test image from USB).  The implementation
-uses the `multiprocessing` module to run all installations in
-parallel, separate processes.
+The implementation uses the `multiprocessing` module to run all
+installations in parallel, separate processes.
 
 """
 
@@ -180,6 +198,50 @@ def _try_unlock_host(afe_host):
     return True
 
 
+def _install_firmware(host):
+    """Install dev-signed firmware after removing write-protect.
+
+    At start, it's assumed that hardware write-protect is disabled,
+    the DUT is in dev mode, and the servo's USB stick already has a
+    test image installed.
+
+    The firmware is installed by powering on and typing ctrl+U on
+    the keyboard in order to boot the the test image from USB.  Once
+    the DUT is booted, we run a series of commands to install the
+    read-only firmware from the test image.  Then we clear debug
+    mode, and shut down.
+
+    @param host   Host instance to use for servo and ssh operations.
+    """
+    servo = host.servo
+    # First power on.  We sleep to allow the firmware plenty of time
+    # to display the dev-mode screen; some boards take their time to
+    # be ready for the ctrl+U after power on.
+    servo.get_power_state_controller().power_off()
+    servo.switch_usbkey('dut')
+    servo.get_power_state_controller().power_on()
+    time.sleep(10)
+    # Dev mode screen should be up now:  type ctrl+U and wait for
+    # boot from USB to finish.
+    servo.ctrl_u()
+    if not host.wait_up(timeout=host.USB_BOOT_TIMEOUT):
+        raise Exception('DUT failed to boot in dev mode for '
+                        'firmware update')
+    # Disable software-controlled write-protect for both FPROMs, and
+    # install the RO firmware.
+    for fprom in ['host', 'ec']:
+        host.run('flashrom -p %s --wp-disable' % fprom,
+                 ignore_status=True)
+    host.run('chromeos-firmwareupdate --mode=factory')
+    # Get us out of dev-mode and clear GBB flags.  GBB flags are
+    # non-zero because boot from USB was enabled.
+    host.run('/usr/share/vboot/bin/set_gbb_flags.sh 0',
+             ignore_status=True)
+    host.run('crossystem disable_dev_request=1',
+             ignore_status=True)
+    host.halt()
+
+
 def _install_test_image(hostname, arguments):
     """Install a test image to the DUT.
 
@@ -194,7 +256,12 @@ def _install_test_image(hostname, arguments):
     _check_servo(host)
     try:
         if not arguments.noinstall:
-            host._servo_repair_reinstall()
+            if not arguments.nostage:
+                host.servo.install_recovery_image(
+                        host.stage_image_for_servo())
+            if arguments.full_deploy:
+                _install_firmware(host)
+            host.servo_install()
     except error.AutoservRunError as e:
         logging.exception('Failed to install: %s', e)
         raise Exception('chromeos-install failed')
@@ -355,10 +422,18 @@ def _report_results(afe, hostnames, results):
                          (len(success_reports), len(failure_reports)))
 
 
-def main(argv):
-    """Standard main routine.
+def install_duts(argv, full_deploy):
+    """Install a test image on DUTs, and deploy them.
 
-    @param argv  Command line arguments including `sys.argv[0]`.
+    This handles command line parsing for both the repair and
+    deployment commands.  The two operations are largely identical;
+    the main difference is that full deployment includes flashing
+    dev-signed firmware on the DUT prior to installing the test
+    image.
+
+    @param argv         Command line arguments to be parsed.
+    @param full_deploy  If true, do the full deployment that includes
+                        flashing dev-signed RO firmware onto the DUT.
     """
     # Override tempfile.tempdir.  Some of the autotest code we call
     # will create temporary files that don't get cleaned up.  So, we
@@ -366,7 +441,7 @@ def main(argv):
     # clean up everything in one fell swoop.
     tempfile.tempdir = tempfile.mkdtemp()
 
-    arguments = commandline.parse_command(argv)
+    arguments = commandline.parse_command(argv, full_deploy)
     if not arguments:
         sys.exit(1)
     sys.stderr.write('Installation output logs in %s\n' % arguments.dir)
@@ -391,14 +466,3 @@ def main(argv):
     #   What, all my pretty chickens and their dam
     #   At one fell swoop?
     shutil.rmtree(tempfile.tempdir)
-
-
-if __name__ == '__main__':
-    try:
-        main(sys.argv)
-    except KeyboardInterrupt:
-        pass
-    except EnvironmentError as e:
-        sys.stderr.write('Unexpected OS error:\n    %s\n' % e)
-    except Exception as e:
-        sys.stderr.write('Unexpected exception:\n    %s\n' % e)

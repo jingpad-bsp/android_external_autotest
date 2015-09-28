@@ -394,7 +394,9 @@ def _parse(argv):
     parser.add_argument('-i', '--build',
                         help='set stable test build version')
     parser.add_argument('-n', '--noinstall', action='store_true',
-                        help='skip install for script testing')
+                        help='skip install (for script testing)')
+    parser.add_argument('-s', '--nostage', action='store_true',
+                        help='skip staging test image (for script testing)')
     parser.add_argument('board', nargs='?', metavar='BOARD',
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
@@ -402,7 +404,7 @@ def _parse(argv):
     return parser.parse_args(argv[1:])
 
 
-def parse_command(argv):
+def parse_command(argv, full_deploy):
     """Get arguments for install from `argv` or the user.
 
     Create an argument parser for this command's syntax, parse the
@@ -413,12 +415,15 @@ def parse_command(argv):
     user to read the arguments from `sys.stdin`.  Fill in the
     return value with the values read prior to returning.
 
-    @param argv Standard command line argument vector; argv[0] is
-                assumed to be the command name.
-    @return Result, as returned by ArgumentParser.parse_args().
+    @param argv         Standard command line argument vector;
+                        argv[0] is assumed to be the command name.
+    @param full_deploy  Whether this is for full deployment or
+                        repair.
 
+    @return Result, as returned by ArgumentParser.parse_args().
     """
     arguments = _parse(argv)
+    arguments.full_deploy = full_deploy
     if arguments.board is None:
         _read_arguments(sys.stdin, arguments)
     elif not _validate_arguments(arguments):
