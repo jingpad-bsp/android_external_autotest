@@ -31,6 +31,6 @@ def run(machine):
                  golden_data=(audio_test_data.SIMPLE_FREQUENCY_TEST_FILE, 2000),
                  bind_from=chameleon_audio_ids.ChameleonIds.LINEOUT,
                  bind_to=chameleon_audio_ids.CrosIds.EXTERNAL_MIC,
-                 audio_nodes=(['HEADPHONE'], ['MIC']))
+                 audio_nodes=(['HEADPHONE'], ['MIC']), tag = "external_mic")
 
 parallel_simple(run, machines)

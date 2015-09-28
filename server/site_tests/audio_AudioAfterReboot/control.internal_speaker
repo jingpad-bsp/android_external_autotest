@@ -32,6 +32,6 @@ def run(machine):
                  recorder=chameleon_audio_ids.ChameleonIds.MIC,
                  source=chameleon_audio_ids.CrosIds.SPEAKER,
                  audio_nodes=(['INTERNAL_SPEAKER'], ['INTERNAL_MIC']),
-                 is_internal=True)
+                 is_internal=True, tag = "internal_speaker")
 
 parallel_simple(run, machines)

@@ -33,6 +33,6 @@ def run(machine):
                  bind_to=chameleon_audio_ids.PeripheralIds.SPEAKER,
                  recorder=chameleon_audio_ids.CrosIds.INTERNAL_MIC,
                  audio_nodes=(['INTERNAL_SPEAKER'], ['INTERNAL_MIC']),
-                 is_internal=True)
+                 is_internal=True, tag = "internal_mic")
 
 parallel_simple(run, machines)
