@@ -5,7 +5,6 @@
 import ConfigParser
 import functools
 import httplib
-import json
 import logging
 import os
 import re
@@ -1648,71 +1647,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('The host has wrong cros-version label.')
 
 
-    def verify_tpm_status(self):
-        """ Verify the host's TPM is in a good state.
-
-        @raise error.AutoservError: If state is not good.
-        """
-        # This cryptohome command emits status information in JSON format. It
-        # looks something like this:
-        # {
-        #    "installattrs": {
-        #       "first_install": false,
-        #       "initialized": true,
-        #       "invalid": false,
-        #       "lockbox_index": 536870916,
-        #       "lockbox_nvram_version": 2,
-        #       "secure": true,
-        #       "size": 0,
-        #       "version": 1
-        #    },
-        #    "mounts": [ {
-        #       "enterprise": false,
-        #       "keysets": [ {
-        #          "current": true,
-        #          "index": 0,
-        #          "last_activity": 1330111359,
-        #          "ok": true,
-        #          "scrypt": true,
-        #          "tpm": false
-        #       } ],
-        #       "mounted": true,
-        #       "owner": "dbb3dd34edb181245130e136be51fa08478d3909"
-        #    } ],
-        #    "tpm": {
-        #       "being_owned": false,
-        #       "can_connect": true,
-        #       "can_decrypt": false,
-        #       "can_encrypt": false,
-        #       "can_load_srk": true,
-        #       "can_load_srk_pubkey": true,
-        #       "enabled": true,
-        #       "has_context": true,
-        #       "has_cryptohome_key": false,
-        #       "has_key_handle": false,
-        #       "last_error": 0,
-        #       "owned": true
-        #    }
-        # }
-        output = self.run('cryptohome --action=status').stdout.strip()
-        try:
-            status = json.loads(output)
-        except ValueError:
-            logging.error('TPM_VERIFY: Cryptohome did not return valid status.')
-            return
-        try:
-            tpm = status['tpm']
-            if (not tpm['enabled'] or not tpm['can_connect'] or
-                (tpm['owned'] and not tpm['can_load_srk']) or
-                (tpm['can_load_srk'] and not tpm['can_load_srk_pubkey'])):
-                logging.error('TPM_VERIFY: The host TPM is in a bad state.')
-                raise error.AutoservError('The host TPM is in a bad state.')
-            else:
-                logging.debug('TPM_VERIFY: The host TPM is in a good state.')
-        except KeyError:
-            logging.error('TPM_VERIFY: Cryptohome did not return valid status.')
-
-
     def cleanup(self):
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
@@ -1833,8 +1767,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.run('python -c "import cPickle"')
 
         self.verify_cros_version_label()
-
-        self.verify_tpm_status()
 
 
     def verify_hardware(self):
