@@ -85,8 +85,8 @@ EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
                                'dummy_Fail.NAError': 'TEST_NA',}
 
 EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_canary_test_delta.*': 'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_canary_test_full.*':  'GOOD',
+         'autoupdate_EndToEndTest.paygen_au_canary_delta.*': 'GOOD',
+         'autoupdate_EndToEndTest.paygen_au_canary_full.*':  'GOOD',
          }
 
 # Anchor for the auto-filed bug for dummy_Fail tests.
