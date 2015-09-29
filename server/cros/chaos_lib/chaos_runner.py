@@ -11,6 +11,7 @@ import time
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ap_constants
+from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
@@ -70,6 +71,30 @@ class ChaosRunner(object):
                     lock_manager, hostname=capturer_hostname)
             capturer = site_linux_system.LinuxSystem(capture_host, {},
                                                      'packet_capturer')
+
+            # Cleanup and reboot packet capturer before the test.
+            utils.sanitize_client(capture_host)
+
+            # Run iw scan and abort if more than allowed number of APs are up.
+            iw_command = iw_runner.IwRunner(capture_host)
+            start_time = time.time()
+            logging.info('Performing a scan with a max timeout of 30 seconds.')
+            while time.time() - start_time <= ap_constants.MAX_SCAN_TIMEOUT:
+                networks = iw_command.scan('wlan0')
+                if networks is None:
+                    if (time.time() - start_time ==
+                            ap_constants.MAX_SCAN_TIMEOUT):
+                        raise error.TestError(
+                            'Packet capturer is not responding to scans. Check'
+                            'device and re-run test')
+                    continue
+                elif len(networks) < ap_constants.MAX_SSID_COUNT:
+                    break
+                elif len(networks) >= ap_constants.MAX_SSID_COUNT:
+                    raise error.TestError(
+                        'Probably someone is already running a'
+                        'chaos test?!')
+
             if conn_worker is not None:
                 work_client_machine = utils.allocate_packet_capturer(
                         lock_manager, hostname=work_client_hostname)
