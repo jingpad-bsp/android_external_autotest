@@ -120,8 +120,20 @@ def _check_servo(host):
         raise Exception('No USB stick detected on Servo host')
 
 
-def _configure_install_logging():
-    """Configure the logging module for `_install_dut()`."""
+def _configure_install_logging(log_name):
+    """Configure the logging module for `_install_dut()`.
+
+    @param log_name  Name of the log file for all output.
+    """
+    # In some cases, autotest code that we call during install may
+    # put stuff onto stdout with 'print' statements.  Most notably,
+    # the AFE frontend may print 'FAILED RPC CALL' (boo, hiss).  We
+    # want nothing from this subprocess going to the output we
+    # inherited from our parent, so redirect stdout and stderr here,
+    # before we make any AFE calls.  Note that this does what we
+    # want only because we're in a subprocess.
+    sys.stdout = open(log_name, 'w')
+    sys.stderr = sys.stdout
     handler = logging.StreamHandler(sys.stderr)
     formatter = logging.Formatter(_LOG_FORMAT, time_utils.TIME_FMT)
     handler.setFormatter(formatter)
@@ -168,32 +180,43 @@ def _try_unlock_host(afe_host):
     return True
 
 
-def _install_dut(arguments, hostname):
-    """Install the initial test image on one DUT using servo.
+def _install_test_image(hostname, arguments):
+    """Install a test image to the DUT.
 
-    Implementation note: This function is expected to run in a
-    subprocess created by a multiprocessing Pool object.  As such,
-    it can't (shouldn't) write to shared files like `sys.stdout`.
+    Install a stable test image on the DUT using the full servo
+    repair flow.
 
     @param hostname   Host name of the DUT to install on.
     @param arguments  Parsed results from
                       ArgumentParser.parse_args().
-    @return On success, return `None`.  On failure, return a string
-            with an error message.
     """
-    # In some cases, autotest code that we're calling below may put
-    # stuff onto stdout with 'print' statements.  Most notably, the
-    # AFE frontend may print 'FAILED RPC CALL' (boo, hiss).  We want
-    # nothing from this subprocess going to the output we inherited
-    # from our parent, so redirect stdout and stderr here, before
-    # we make any AFE calls.  Note that this does what we want only
-    # because we're in a subprocess.
-    log_name = os.path.join(arguments.dir, hostname + '.log')
-    sys.stdout = open(log_name, 'w')
-    sys.stderr = sys.stdout
-    _configure_install_logging()
+    host = _create_host(hostname, arguments.board)
+    _check_servo(host)
+    try:
+        if not arguments.noinstall:
+            host._servo_repair_reinstall()
+    except error.AutoservRunError as e:
+        logging.exception('Failed to install: %s', e)
+        raise Exception('chromeos-install failed')
+    finally:
+        host.close()
 
-    afe = frontend.AFE(server=arguments.web)
+
+def _install_and_record(afe, hostname, arguments):
+    """Perform all installation and AFE updates.
+
+    First, lock the host if it exists and is unlocked.  Then,
+    install the test image on the DUT.  At the end, unlock the
+    DUT, unless the installation failed and the DUT was locked
+    before we started.
+
+    If installation succeeds, make sure the DUT is in the AFE,
+    and make sure that it has basic labels.
+
+    @param afe          AFE object for RPC calls.
+    @param hostname     Host name of the DUT.
+    @param arguments    Command line arguments with options.
+    """
     hostlist = afe.get_hosts([hostname])
     unlock_on_failure = False
     if hostlist:
@@ -202,36 +225,25 @@ def _install_dut(arguments, hostname):
             if _try_lock_host(afe_host):
                 unlock_on_failure = True
             else:
-                return 'Failed to lock host'
+                raise Exception('Failed to lock host')
         if (afe_host.status != 'Ready' and
                  afe_host.status != 'Repair Failed'):
             if unlock_on_failure and not _try_unlock_host(afe_host):
-                return 'Host is in use, and failed to unlock it'
-            return 'Host is in use by Autotest'
+                raise Exception('Host is in use, and failed to unlock it')
+            raise Exception('Host is in use by Autotest')
     else:
         afe_host = None
 
     try:
-        host = _create_host(hostname, arguments.board)
-        _check_servo(host)
-        if not arguments.noinstall:
-            host._servo_repair_reinstall()
-    except error.AutoservRunError as re:
-        logging.exception('Failed to install: %s', re)
-        if unlock_on_failure and not _try_unlock_host(afe_host):
-            logging.error('Failed to unlock host!')
-        return 'chromeos-install failed'
+        _install_test_image(hostname, arguments)
     except Exception as e:
-        logging.exception('Failed to install: %s', e)
         if unlock_on_failure and not _try_unlock_host(afe_host):
             logging.error('Failed to unlock host!')
-        return str(e)
-    finally:
-        host.close()
+        raise
 
     if afe_host is not None:
         if not _try_unlock_host(afe_host):
-            return 'Failed to unlock after successful install'
+            raise Exception('Failed to unlock after successful install')
     else:
         logging.debug('Creating host in AFE.')
         atest_path = os.path.join(
@@ -241,18 +253,42 @@ def _install_dut(arguments, hostname):
                 [atest_path, 'host', 'create', hostname])
         if status != 0:
             logging.error('Host creation failed, status = %d', status)
-            return 'Failed to add host to AFE'
+            raise Exception('Failed to add host to AFE')
     # Must re-query to get state changes, especially label changes.
     afe_host = afe.get_hosts([hostname])[0]
     have_board = any([label.startswith(Labels.BOARD_PREFIX)
                          for label in afe_host.labels])
     if not have_board:
         afe_host.delete()
-        return 'Failed to add labels to host'
+        raise Exception('Failed to add labels to host')
     version = [label for label in afe_host.labels
                    if label.startswith(VERSION_PREFIX)]
     if version:
         afe_host.remove_labels(version)
+
+
+def _install_dut(arguments, hostname):
+    """Deploy or repair a single DUT.
+
+    Implementation note: This function is expected to run in a
+    subprocess created by a multiprocessing Pool object.  As such,
+    it can't (shouldn't) write to shared files like `sys.stdout`.
+
+    @param hostname   Host name of the DUT to install on.
+    @param arguments  Parsed results from
+                      ArgumentParser.parse_args().
+
+    @return On success, return `None`.  On failure, return a string
+            with an error message.
+    """
+    _configure_install_logging(
+            os.path.join(arguments.dir, hostname + '.log'))
+    afe = frontend.AFE(server=arguments.web)
+    try:
+        _install_and_record(afe, hostname, arguments)
+    except Exception as e:
+        logging.exception('Original exception: %s', e)
+        return str(e)
     return None
 
 
