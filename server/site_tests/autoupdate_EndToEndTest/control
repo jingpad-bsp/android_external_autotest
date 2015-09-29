@@ -31,7 +31,7 @@ configuration, it will perform an end-to-end test of a Chrome OS update
 payload. A test configuration can be given as command-line arguments (see
 below) or instantiated inline as local varibles.
 
-To invoke this test locally with an attached servo board:
+To invoke this test locally:
 
   test_that --args="<ARGLIST>" <DUT-IPADDR> autoupdate_EndToEndTest
 
@@ -42,13 +42,12 @@ Values pertaining to the test case include:
   update_type=full|delta  type of update being applied, either 'full' or 'delta'
   source_release=REL      source image release version (e.g. 2672.0.0)
   target_release=REL      target image release version (e.g. 2673.0.0)
-  source_image_uri=URI    URI of the source image / payload. Image must be used
-                          if use_servo specified. None means don't install a
-                          source image (assume it's preinstalled).
+  source_payload_uri=URI  URI of the source full payload. None means don't
+                          install a source image (assume it's preinstalled).
   source_archive_uri=URI  (optional) URI of where the artifacts for the source
                           image (e.g.  stateful update) are located. If not
                           provided, the test will attempt using the same
-                          location as source_image_uri.  This is required for
+                          location as source_payload_uri.  This is required for
                           any test where the location of the full (source)
                           payload is separate from that of its build artifacts
                           (e.g. it is in gs://chromeos-releases/).
@@ -61,11 +60,6 @@ Values pertaining to the test case include:
                           only needed for local (non-AFE) runs where the
                           payload location is separate from that of the build
                           artifacts (e.g. it is in gs://chromeos-releases).
-
-Other values pertaining to the test environment include:
-
-  servo_host=HOST         host running servod (if not set, servo won't be used)
-  servo_port=PORT         servod's IP port (default: servod's default port)
 
 Please note, this test spawns omaha server instances (devserver) on a devserver
 configured in your global_config using autotest's ssh mechanism. This means that
@@ -113,32 +107,28 @@ To run locally:
     cros_sdk
     test_that <dut_ip> autoupdate_EndToEndTest \
       --args="target_release=<Target Build Id> \
-              source_image_uri=<Full Payload URI> \
-              target_payload_uri=<Delta Payload URI>"
+              source_payload_uri=<Full Payload URI> \
+              target_payload_uri=<Tested Payload URI>"
 
-  Sample Full URL:
+  Sample full payload URL:
     gs://chromeos-image-archive/lumpy-release/R30-4462.0.0/
     chromeos_R30-4462.0.0_lumpy_full_dev.bin
 
   Sample target build id:
     4463.0.0
 
-  Sample Delta URL:
+  Sample test payload URL:
     gs://chromeos-image-archive/lumpy-release/R30-4463.0.0/
     chromeos_R30-4462.0.0_R30-4463.0.0_lumpy_delta_dev.bin
 """
 
 TEST_CONF_KEYS = (
     'name', 'update_type', 'source_release', 'target_release',
-    'source_image_uri', 'source_archive_uri', 'target_payload_uri',
+    'source_payload_uri', 'source_archive_uri', 'target_payload_uri',
     'target_archive_uri')
 
 
 args_dict = utils.args_to_dict(args)
-use_servo = args_dict.get('servo_host', False)
-servo_args = None
-if use_servo:
-    servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 # Create test configuration based on command-line arguments (higher precedence,
 # for test_that invocation) and local variables (lower precedence,
@@ -150,14 +140,14 @@ for key in TEST_CONF_KEYS:
 
 def run_test(machine):
     """Execute a test configuration on a given machine."""
-    host = hosts.create_host(machine, servo_args=servo_args)
+    host = hosts.create_host(machine)
     # Save preserved log after autoupdate is completed.
     job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
     try:
         job.run_test(
                 "autoupdate_EndToEndTest",
                 tag='%s_%s' % (test_conf['name'], test_conf['update_type']),
-                host=host, test_conf=test_conf, use_servo=use_servo)
+                host=host, test_conf=test_conf)
     except Exception as e:
         if not issubclass(type(e), error.TestBaseException):
             error_msg = 'Received test error: %s' % e
