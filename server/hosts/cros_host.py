@@ -2894,3 +2894,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if device_type:
             return device_type.split('=')[-1].strip()
         return ''
+
+
+    def get_os_type(self):
+        return 'cros'

@@ -770,3 +770,11 @@ class AbstractSSHHost(remote.RemoteHost):
                       ' remote = %d, pid = %d',
                       local_port, port, tunnel_proc.pid)
         return tunnel_proc
+
+
+    def get_os_type(self):
+        """Returns the host OS descriptor (to be implemented in subclasses).
+
+        @return A string describing the OS type.
+        """
+        raise NotImplementedError

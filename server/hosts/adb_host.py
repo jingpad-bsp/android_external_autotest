@@ -590,3 +590,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         """
         # TODO (crbug.com/536120): Implement collect_logs.
+
+
+    def get_os_type(self):
+        if self.run_output('getprop ro.product.brand', shell=True) == 'Brillo':
+            return 'brillo'
+        return 'android'
