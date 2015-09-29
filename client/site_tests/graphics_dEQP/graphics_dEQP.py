@@ -21,6 +21,8 @@ class graphics_dEQP(test.test):
     _services = None
     _hasty = False
     _hasty_batch_size = 100  # Batch size in hasty mode.
+    _shard_number = 0
+    _shard_count = 1
     _board = None
     _cpu_type = None
     _gpu_type = None
@@ -102,13 +104,28 @@ class graphics_dEQP(test.test):
 
         return test_results
 
+    def _load_not_passing_cases(self, test_filter):
+        """Load all test cases that are in non-'Pass' expectations."""
+        not_passing_cases = []
+        expectations_dir = os.path.join(self.bindir, 'expectations',
+                                        self._gpu_type)
+        subset_spec = '%s.*' % test_filter
+        subset_paths = glob.glob(os.path.join(expectations_dir, subset_spec))
+        for subset_file in subset_paths:
+            # Filter against extra hasty failures only in hasty mode.
+            if (not '.Pass.bz2' in subset_file and
+                (self._hasty or '.hasty.' not in subset_file)):
+                not_passing_cases.extend(
+                    bz2.BZ2File(subset_file).read().splitlines())
+        not_passing_cases.sort()
+        return not_passing_cases
+
     def _bootstrap_new_test_cases(self, executable, test_filter):
         """Ask dEQP for all test cases and removes non-Pass'ing ones.
 
-        This function assumes that the '*.Pass' file does not exist and that
-        everything else found in the directory should be removed from the tests
-        to run. This can be used incrementally updating failing/hangin tests
-        over several runs.
+        This function will query dEQP for test cases and remove all cases that
+        are not in 'Pass'ing expectations from the list. This can be used
+        incrementally updating failing/hangin tests over several runs.
 
         @param executable: location '/usr/local/deqp/modules/gles2/deqp-gles2'.
         @param test_filter: string like 'dEQP-GLES2.info', 'dEQP-GLES3.stress'.
@@ -116,7 +133,7 @@ class graphics_dEQP(test.test):
         @return: List of dEQP tests to run.
         """
         test_cases = []
-        not_passing_cases = []
+        not_passing_cases = self._load_not_passing_cases(test_filter)
         # We did not find passing cases in expectations. Assume everything else
         # that is there should not be run this time.
         expectations_dir = os.path.join(self.bindir, 'expectations',
@@ -164,9 +181,7 @@ class graphics_dEQP(test.test):
         test_cases = list(set(test_cases) - set(not_passing_cases))
         if not test_cases:
             raise error.TestError('Unable to bootstrap %s!' % test_filter)
-        # TODO(ihf): Sorting is nice but can introduce errors due to changed
-        # ordering and state leakage. Consider deleting this if it causes
-        # too much problems.
+
         test_cases.sort()
         return test_cases
 
@@ -190,9 +205,14 @@ class graphics_dEQP(test.test):
         subset_name = '%s.%s.bz2' % (test_filter, subset)
         subset_path = os.path.join(expectations_dir, subset_name)
         if not os.path.isfile(subset_path):
+            if subset == 'NotPass':
+                # TODO(ihf): Running hasty and NotPass together is an invitation
+                # for trouble (stability). Decide if it should be disallowed.
+                return self._load_not_passing_cases(test_filter)
             if subset != 'Pass':
                 raise error.TestError('No subset file found for %s!' %
                                       subset_path)
+            # Ask dEQP for all cases and remove the failing ones.
             return self._bootstrap_new_test_cases(executable, test_filter)
 
         test_cases = bz2.BZ2File(subset_path).read().splitlines()
@@ -327,10 +347,10 @@ class graphics_dEQP(test.test):
                                        # dEQP-GLES2.functional,
                                        # dEQP-GLES3.accuracy.texture, etc.
                        timeout=self._timeout,
-                       subset_to_run='Pass',  # Pass, Fail, Timeout etc.
+                       subset_to_run='Pass',  # Pass, Fail, Timeout, NotPass...
                        hasty='False',
-                       shard=1,  # TODO(ihf): Support sharding for bvt-cq.
-                       shards=1)
+                       shard_number='0',
+                       shard_count='1')
         if opts is None:
             opts = []
         options.update(utils.args_to_dict(opts))
@@ -339,6 +359,8 @@ class graphics_dEQP(test.test):
         self._hasty = (options['hasty'] == 'True')
         self._timeout = int(options['timeout'])
         self._test_names = options['test_names']
+        self._shard_number = int(options['shard_number'])
+        self._shard_count = int(options['shard_count'])
         if not self._test_names:
             self._filter = options['filter']
             if not self._filter:

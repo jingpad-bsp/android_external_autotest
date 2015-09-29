@@ -1,0 +1,26 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NAME = 'graphics_dEQP.gles2.functional.NotPass'
+AUTHOR = 'chromeos-gfx'
+PURPOSE = 'Run the drawElements Quality Program test suite.'
+CRITERIA = """
+This runs the known to be non-passing tests to verify if the expectations
+in the git repo are still current. The logs from this test run can be
+used to update the expectations if needed.
+"""
+ATTRIBUTES = "suite:graphics_per-day"
+SUITE = 'graphics_per-day'
+TIME = 'LENGTHY'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'graphics'
+TEST_TYPE = 'client'
+
+DOC = """
+This test runs the drawElements Quality Program test suite.
+"""
+
+job.run_test('graphics_dEQP', opts = args + ['filter=dEQP-GLES2.functional',
+                                             'hasty=False',
+                                             'subset_to_run=NotPass'])
