@@ -26,6 +26,10 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
 
     """
     version = 1
+    DELAY_AFTER_DISABLING_MODULE_SECONDS = 30
+    DELAY_AFTER_DISCONNECT_SECONDS = 5
+    DELAY_AFTER_ENABLING_MODULE_SECONDS = 10
+    DELAY_AFTER_RECONNECT_SECONDS = 5
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 9
     SUSPEND_SECONDS = 30
@@ -54,12 +58,59 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
         logging.info("DUT resumed!")
 
 
-    def run_once(self, host, suspend=False):
+    def disconnect_connect_bt(self, link):
+        """Performs disconnect and connect BT module
+
+        @param link: binder link to control BT adapter
+
+        """
+
+        logging.info("Disconnecting BT module...")
+        link.adapter_disconnect_module()
+        time.sleep(self.DELAY_AFTER_DISCONNECT_SECONDS)
+        audio_test_utils.check_audio_nodes(self.audio_facade,
+                                           (['INTERNAL_SPEAKER'], None))
+        logging.info("Connecting BT module...")
+        link.adapter_connect_module()
+        time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
+
+
+    def disable_enable_bt(self, link):
+        """Performs turn off and then on BT module
+
+        @param link: binder link to control BT adapter
+
+        """
+
+        logging.info("Turning off BT module...")
+        link.disable_bluetooth_module()
+        time.sleep(self.DELAY_AFTER_DISABLING_MODULE_SECONDS)
+        audio_test_utils.check_audio_nodes(self.audio_facade,
+                                           (['INTERNAL_SPEAKER'], None))
+        logging.info("Turning on BT module...")
+        link.enable_bluetooth_module()
+        time.sleep(self.DELAY_AFTER_ENABLING_MODULE_SECONDS)
+        logging.info("Connecting BT module...")
+        link.adapter_connect_module()
+        time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
+
+
+    def run_once(self, host, suspend=False,
+                 disable=False, disconnect=False):
+        """Running Bluetooth basic audio tests
+
+        @param host: device under test host
+        @param suspend: suspend flag to enable suspend before play/record
+        @param disable: disable flag to disable BT module before play/record
+        @param disconnect: disconnect flag to disconnect BT module
+            before play/record
+
+        """
         self.host = host
         golden_file = audio_test_data.FREQUENCY_TEST_FILE
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
-        audio_facade = factory.create_audio_facade()
+        self.audio_facade = factory.create_audio_facade()
 
         chameleon_board = host.chameleon
         chameleon_board.reset()
@@ -80,21 +131,28 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
         with chameleon_audio_helper.bind_widgets(binder):
 
             # Checks the node selected by Cras is correct.
-            audio_test_utils.check_audio_nodes(audio_facade,
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['BLUETOOTH'], None))
 
-            audio_facade.set_selected_output_volume(80)
+            self.audio_facade.set_selected_output_volume(80)
 
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by codec initialization.
             source.set_playback_data(golden_file)
 
+            # Create link to control BT adapter.
+            link = binder.get_binders()[0].get_link()
+
+            if disable:
+                self.disable_enable_bt(link)
+            if disconnect:
+                self.disconnect_connect_bt(link)
             if suspend:
                 self.suspend_resume()
             utils.poll_for_condition(condition=factory.ready,
                                      timeout=self.PRC_RECONNECT_TIMEOUT,)
             # Checks the node selected by Cras is correct again.
-            audio_test_utils.check_audio_nodes(audio_facade,
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['BLUETOOTH'], None))
 
             logging.info('Start playing %s on Cros device',

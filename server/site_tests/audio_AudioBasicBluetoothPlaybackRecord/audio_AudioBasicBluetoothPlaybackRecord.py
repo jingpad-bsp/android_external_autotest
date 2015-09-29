@@ -29,6 +29,10 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
 
     """
     version = 1
+    DELAY_AFTER_DISABLING_MODULE_SECONDS = 30
+    DELAY_AFTER_DISCONNECT_SECONDS = 5
+    DELAY_AFTER_ENABLING_MODULE_SECONDS = 10
+    DELAY_AFTER_RECONNECT_SECONDS = 5
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 5
     SUSPEND_SECONDS = 30
@@ -57,7 +61,56 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         logging.info("DUT resumed!")
 
 
-    def run_once(self, host, suspend=False):
+    def disconnect_connect_bt(self, link):
+        """Performs disconnect and connect BT module
+
+        @param link: binder link to control BT adapter
+
+        """
+
+        logging.info("Disconnecting BT module...")
+        link.adapter_disconnect_module()
+        time.sleep(self.DELAY_AFTER_DISCONNECT_SECONDS)
+        audio_test_utils.check_audio_nodes(self.audio_facade,
+                                           (['INTERNAL_SPEAKER'],
+                                            ['INTERNAL_MIC']))
+        logging.info("Connecting BT module...")
+        link.adapter_connect_module()
+        time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
+
+
+    def disable_enable_bt(self, link):
+        """Performs turn off and then on BT module
+
+        @param link: binder playback link to control BT adapter
+
+        """
+
+        logging.info("Turning off BT module...")
+        link.disable_bluetooth_module()
+        time.sleep(self.DELAY_AFTER_DISABLING_MODULE_SECONDS)
+        audio_test_utils.check_audio_nodes(self.audio_facade,
+                                           (['INTERNAL_SPEAKER'],
+                                            ['INTERNAL_MIC']))
+        logging.info("Turning on BT module...")
+        link.enable_bluetooth_module()
+        time.sleep(self.DELAY_AFTER_ENABLING_MODULE_SECONDS)
+        logging.info("Connecting BT module...")
+        link.adapter_connect_module()
+        time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
+
+
+    def run_once(self, host, suspend=False,
+                 disable=False, disconnect=False):
+        """Running Bluetooth basic audio tests
+
+        @param host: device under test host
+        @param suspend: suspend flag to enable suspend before play/record
+        @param disable: disable flag to disable BT module before play/record
+        @param disconnect: disconnect flag to disconnect BT module
+            before play/record
+
+        """
         self.host = host
 
         # Bluetooth HSP/HFP profile only supports one channel
@@ -67,7 +120,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         golden_file = audio_test_data.SIMPLE_FREQUENCY_TEST_FILE
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
-        audio_facade = factory.create_audio_facade()
+        self.audio_facade = factory.create_audio_facade()
 
         chameleon_board = host.chameleon
         chameleon_board.reset()
@@ -99,10 +152,10 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
                 # microphone priority.
-                audio_test_utils.check_audio_nodes(audio_facade,
+                audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (None, ['INTERNAL_MIC']))
 
-                audio_facade.set_selected_output_volume(80)
+                self.audio_facade.set_selected_output_volume(80)
 
                 # Selecting input nodes needs to be after setting volume because
                 # after setting volume, Cras notifies Chrome there is changes
@@ -110,22 +163,34 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # on its preference again. See crbug.com/535643.
 
                 # Selects bluetooth mic to be the active input node.
-                audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+                self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
                 # Checks the node selected by Cras is correct.
-                audio_test_utils.check_audio_nodes(audio_facade,
+                audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (['BLUETOOTH'],
                                                     ['BLUETOOTH']))
 
                 # Setup the playback data. This step is time consuming.
                 playback_source.set_playback_data(golden_file)
                 record_source.set_playback_data(golden_file)
+
+                # Create links to control disconnect and off/on BT adapter.
+                link = playback_binder.get_binders()[0].get_link()
+
+                if disable:
+                    self.disable_enable_bt(link)
+                if disconnect:
+                    self.disconnect_connect_bt(link)
                 if suspend:
                     self.suspend_resume()
                 utils.poll_for_condition(condition=factory.ready,
                                          timeout=self.PRC_RECONNECT_TIMEOUT,)
+
+                # Select again BT input, as default input node is INTERNAL_MIC
+                self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+
                 # Checks the node selected by Cras is correct again.
-                audio_test_utils.check_audio_nodes(audio_facade,
+                audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (['BLUETOOTH'],
                                                     ['BLUETOOTH']))
 
