@@ -9,6 +9,7 @@ import time
 
 import common
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
@@ -42,22 +43,28 @@ def get_job_id_or_task_id(result_dir):
             For special task:
             /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
 
-    @returns: integer representing the job id or task id.
+    @returns: integer representing the job id or task id. Returns None if fail
+              to parse job or task id from the result_dir.
     """
     if not result_dir:
         return
     result_dir = os.path.abspath(result_dir)
     special_task_pattern = '.*/hosts/[^/]+/(\d+)-[^/]+'
     job_pattern = '.*/(\d+)-[^/]+'
+    # Result folder for job running inside container has only job id.
+    ssp_job_pattern = '.*/(\d+)$'
     # Try to get the job ID from the last pattern of number-text. This avoids
     # issue with path like 123-results/456-debug_user, in which 456 is the real
     # job ID.
-    m = re.findall(job_pattern, result_dir)
-    if m:
-        return int(m[-1])
-    else:
-        m = re.match(special_task_pattern, result_dir)
-        return int(m.group(1)) if m else None
+    m_job = re.findall(job_pattern, result_dir)
+    if m_job:
+        return int(m_job[-1])
+    m_special_task = re.match(special_task_pattern, result_dir)
+    if m_special_task:
+        return int(m_special_task.group(1))
+    m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
+    if m_ssp_job_pattern and utils.is_in_container():
+        return int(m_ssp_job_pattern.group(1))
 
 
 class _JobDirectory(object):
