@@ -910,7 +910,12 @@ class autoupdate_EndToEndTest(test.test):
 
         staged_source_url = None
         staged_source_stateful_url = None
-        source_payload_uri = test_conf['source_payload_uri']
+        try:
+            source_payload_uri = test_conf['source_payload_uri']
+        except KeyError:
+            # TODO(garnold) Remove legacy key support once control files on all
+            # release branches have caught up.
+            source_payload_uri = test_conf['source_image_uri']
         if source_payload_uri:
             staged_source_url = self._stage_payload_by_uri(
                     autotest_devserver, source_payload_uri)
@@ -1202,6 +1207,8 @@ class autoupdate_EndToEndTest(test.test):
         logging.info('Update successful, test completed')
 
 
+    # TODO(garnold) Remove the use_servo argument once control files on all
+    # release branches have caught up.
     def run_once(self, host, test_conf, use_servo=False):
         """Performs a complete auto update test.
 
