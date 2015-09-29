@@ -40,7 +40,7 @@ This script exits with one of the following codes:
 
 
 import datetime as datetime_base
-import getpass, json, logging, optparse, os, sys, time
+import ast, getpass, json, logging, optparse, os, re, sys, time
 from datetime import datetime
 
 import common
@@ -291,6 +291,25 @@ def get_pretty_status(status):
     elif status == 'TEST_NA':
         return '[  INFO  ]'
     return '[ FAILED ]'
+
+
+def get_original_suite_name(suite_name, suite_args):
+    """Get the original suite name when running suite_attr_wrapper.
+
+    @param suite_name: the name of the suite launched in afe. When it is
+                       suite_attr_wrapper, the suite that actually running is
+                       specified in the suite_args.
+    @param suite_args: the parsed option which contains the original suite name.
+
+    @returns: the original suite name.
+
+    """
+    if suite_name == 'suite_attr_wrapper':
+        attrs = ast.literal_eval(suite_args).get('attr_filter', '')
+        suite_list = ([x[6:] for x in re.split('[() ]', attrs)
+                       if x and x.startswith('suite:')])
+        return suite_list[0] if suite_list else suite_name
+    return suite_name
 
 
 def GetBuildbotStepLink(anchor_text, url):
@@ -963,6 +982,9 @@ class ResultCollector(object):
     @var _suite_name: The suite name, e.g. 'bvt', 'dummy'.
     @var _suite_job_id: The job id of the suite for which we are going to
                         collect results.
+    @var _original_suite_name: The suite name we record timing would be
+                               different from _suite_name when running
+                               suite_attr_wrapper.
     @var _suite_views: A list of TestView objects, representing relevant
                        test views of the suite job.
     @var _child_views: A list of TestView objects, representing test views
@@ -983,7 +1005,7 @@ class ResultCollector(object):
 
 
     def __init__(self, instance_server, afe, tko, build, board,
-                 suite_name, suite_job_id):
+                 suite_name, suite_job_id, original_suite_name=None):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
@@ -991,6 +1013,7 @@ class ResultCollector(object):
         self._board = board
         self._suite_name = suite_name
         self._suite_job_id = suite_job_id
+        self._original_suite_name = original_suite_name or suite_name
         self._suite_views = []
         self._child_views = []
         self._test_views = []
@@ -1338,7 +1361,7 @@ class ResultCollector(object):
         """Collect timing related statistics."""
         # Send timings to statsd.
         self.timings.SendResultsToStatsd(
-                self._suite_name, self._build, self._board)
+                self._original_suite_name, self._build, self._board)
 
         # Record suite runtime in metadata db.
         # Some failure modes can leave times unassigned, report sentinel value
@@ -1511,12 +1534,16 @@ def main_without_exception_handling(options):
         # Note the timeout will have no sense when using -m option.
         is_suite_timeout = job_timer.is_suite_timeout()
 
+        # Extract the original suite name to record timing.
+        original_suite_name = get_original_suite_name(options.name,
+                                                      options.suite_args)
         # Start collecting test results.
         collector = ResultCollector(instance_server=instance_server,
                                     afe=afe, tko=TKO, build=options.build,
                                     board=options.board,
                                     suite_name=options.name,
-                                    suite_job_id=job_id)
+                                    suite_job_id=job_id,
+                                    original_suite_name=original_suite_name)
         collector.run()
         # Dump test outputs into json.
         output_dict = collector.get_results_dict()
