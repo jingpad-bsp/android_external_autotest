@@ -6,8 +6,11 @@
 Adds ability to schedule jobs on given machines.
 """
 
+import logging
+
 import common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
 
@@ -24,12 +27,12 @@ class SequenceJob(object):
 
     CONTROL_FILE = """
 def run(machine):
-    job.run_test('%s', client_ip=machine, %s)
+    job.run_test('%s', host=hosts.create_host(machine), client_ip=machine%s)
 
 parallel_simple(run, machines)
 """
 
-    def __init__(self, name, args, iteration=1, duration=None):
+    def __init__(self, name, args=None, iteration=1, duration=None):
         """
         Constructor
 
@@ -88,7 +91,7 @@ parallel_simple(run, machines)
 
         @returns a fully built control file to be use for the child job.
         """
-        child_args = []
+        child_args = ['',]
         for arg, value in self._args.iteritems():
             child_args.append('%s=%s' % (arg, repr(value)))
         if self._duration:
@@ -116,12 +119,15 @@ parallel_simple(run, machines)
         afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                             user=job.user, debug=False)
         current_job_id = job_directories.get_job_id_or_task_id(job.resultdir)
+        logging.debug('Current job id: %s', current_job_id)
         runtime_mins = self.child_job_timeout()
 
         for i in xrange(0, self._iteration):
+            child_job_name = self.child_job_name(machine, i)
+            logging.debug('Creating job: %s', child_job_name)
             afe.create_job(
                     self.child_control_file(),
-                    name=self.child_job_name(machine, i),
+                    name=child_job_name,
                     priority='Medium',
                     control_type=control_data.CONTROL_TYPE.SERVER,
                     hosts=[machine], meta_hosts=(), one_time_hosts=(),
@@ -134,7 +140,7 @@ parallel_simple(run, machines)
                     hostless=False, keyvals=None,
                     drone_set=None, image=None,
                     parent_job_id=current_job_id, test_retry=0, run_reset=False,
-                    require_ssp=None)
+                    require_ssp=utils.is_in_container())
         return runtime_mins * self._iteration
 
 
