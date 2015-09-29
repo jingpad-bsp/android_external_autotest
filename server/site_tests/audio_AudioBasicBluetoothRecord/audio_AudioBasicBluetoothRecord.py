@@ -84,7 +84,6 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
             # microphone priority.
             audio_test_utils.check_audio_nodes(audio_facade,
                                                (None, ['INTERNAL_MIC']))
-            self.check_correct_input_node_selected(['INTERNAL_MIC'])
 
             # Selects bluetooth mic to be the active input node.
             audio_facade.set_selected_node_types([], ['BLUETOOTH'])
@@ -101,7 +100,8 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
                 self.suspend_resume()
             utils.poll_for_condition(condition=factory.ready,
                                      timeout=self.PRC_RECONNECT_TIMEOUT,)
-            self.check_correct_input_node_selected(['BLUETOOTH'])
+            audio_test_utils.check_audio_nodes(audio_facade,
+                                               (None, ['BLUETOOTH']))
 
             logging.info('Start playing %s on Chameleon',
                          golden_file.path)
