@@ -71,14 +71,14 @@ class logging_UdevCrash(crash_test.CrashTest):
         # ACTION=="change", SUBSYSTEM=="i2c", DRIVER=="atmel_mxt_ts",
         # ENV{ERROR}=="1" RUN+="/sbin/crash_reporter
         # --udev=SUBSYSTEM=i2c-atmel_mxt_ts:ACTION=change"
-        utils.system('/sbin/udevadm control --property=ERROR=1',
+        utils.system('udevadm control --property=ERROR=1',
                      ignore_status=True)
-        utils.system('/sbin/udevadm trigger '
+        utils.system('udevadm trigger '
                      '--action=change '
                      '--subsystem-match=i2c '
                      '--attr-match=driver=atmel_mxt_ts',
                      ignore_status=True)
-        utils.system('/sbin/udevadm control --property=ERROR=0',
+        utils.system('udevadm control --property=ERROR=0',
                      ignore_status=True)
 
         utils.poll_for_condition(

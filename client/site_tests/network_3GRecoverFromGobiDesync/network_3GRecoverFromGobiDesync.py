@@ -180,7 +180,7 @@ class GobiDesyncEventLoop(TestEventLoop):
   def RegisterForUdevMonitor(self):
     # have udevadm output to a pty so it will line buffer
     (master, slave) = pty.openpty()
-    monitor = self.Popen(['/sbin/udevadm', 'monitor'],
+    monitor = self.Popen(['udevadm', 'monitor'],
                          stdout=os.fdopen(slave),
                          bufsize=1)
 
