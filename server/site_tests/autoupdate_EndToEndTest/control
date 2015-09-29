@@ -156,7 +156,7 @@ def run_test(machine):
     try:
         job.run_test(
                 "autoupdate_EndToEndTest",
-                tag='%s__%s' % (test_conf['name'], test_conf['update_type']),
+                tag='%s_%s' % (test_conf['name'], test_conf['update_type']),
                 host=host, test_conf=test_conf, use_servo=use_servo)
     except Exception as e:
         if not issubclass(type(e), error.TestBaseException):
