@@ -19,6 +19,7 @@ RAW_PAGE_WALK_EVENT_CODES = {
     'Haswell': 'r1085',
     'IvyBridge': 'r0485',
     'SandyBridge': 'r0485',
+    'Silvermont': 'r0305',
 }
 
 class hardware_TLBMissCost(test.test):
@@ -34,9 +35,11 @@ class hardware_TLBMissCost(test.test):
         self.events = events
 
     def setup(self):
-        os.chdir(self.srcdir)
-        utils.make('clean')
-        utils.make()
+        chost = os.getenv('CHOST', '')
+        if chost == 'x86_64-cros-linux-gnu':
+            os.chdir(self.srcdir)
+            utils.make('clean')
+            utils.make()
 
     def warmup(self):
         uarch = utils.get_intel_cpu_uarch()
