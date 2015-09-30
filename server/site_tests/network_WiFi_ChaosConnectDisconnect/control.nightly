@@ -8,7 +8,7 @@ TIME = 'LONG'
 TEST_TYPE = 'server'
 ATTRIBUTES = 'suite:wifi_interop'
 SUITE = 'wifi_interop'
-DEPENDENCIES = 'chaos_dut, chaos_nightly'
+DEPENDENCIES = 'chaos_nightly, chaos_dut'
 
 DOC = """
 This control file runs a combination of DUTs and APs in a nightly run of
