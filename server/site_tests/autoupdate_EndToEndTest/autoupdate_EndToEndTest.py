@@ -48,6 +48,23 @@ EVENT_RESULT_SUCCESS = '1'
 EVENT_RESULT_SUCCESS_REBOOT = '2'
 EVENT_RESULT_UPDATE_DEFERRED = '9'
 
+# Omaha event types/results, from update_engine/omaha_request_action.h
+# These are stored in dict form in order to easily print out the keys.
+EVENT_TYPE_DICT = {
+        EVENT_TYPE_DOWNLOAD_COMPLETE: 'download_complete',
+        EVENT_TYPE_INSTALL_COMPLETE: 'install_complete',
+        EVENT_TYPE_UPDATE_COMPLETE: 'update_complete',
+        EVENT_TYPE_DOWNLOAD_STARTED: 'download_started',
+        EVENT_TYPE_DOWNLOAD_FINISHED: 'download_finished'
+}
+
+EVENT_RESULT_DICT = {
+        EVENT_RESULT_ERROR: 'error',
+        EVENT_RESULT_SUCCESS: 'success',
+        EVENT_RESULT_SUCCESS_REBOOT: 'success_reboot',
+        EVENT_RESULT_UPDATE_DEFERRED: 'update_deferred'
+}
+
 
 def snippet(text):
     """Returns the text with start/end snip markers around it.
@@ -66,30 +83,13 @@ def snippet(text):
 class ExpectedUpdateEvent(object):
     """Defines an expected event in an update process."""
 
-    # Omaha event types/results, from update_engine/omaha_request_action.h
-    # These are stored in dict form in order to easily print out the keys.
-    _EVENT_TYPE_DICT = {
-            EVENT_TYPE_DOWNLOAD_COMPLETE: 'download_complete',
-            EVENT_TYPE_INSTALL_COMPLETE: 'install_complete',
-            EVENT_TYPE_UPDATE_COMPLETE: 'update_complete',
-            EVENT_TYPE_DOWNLOAD_STARTED: 'download_started',
-            EVENT_TYPE_DOWNLOAD_FINISHED: 'download_finished'
-    }
-
-    _EVENT_RESULT_DICT = {
-            EVENT_RESULT_ERROR: 'error',
-            EVENT_RESULT_SUCCESS: 'success',
-            EVENT_RESULT_SUCCESS_REBOOT: 'success_reboot',
-            EVENT_RESULT_UPDATE_DEFERRED: 'update_deferred'
-    }
-
     _ATTR_NAME_DICT_MAP = {
-            'event_type': _EVENT_TYPE_DICT,
-            'event_result': _EVENT_RESULT_DICT,
+            'event_type': EVENT_TYPE_DICT,
+            'event_result': EVENT_RESULT_DICT,
     }
 
-    _VALID_TYPES = set(_EVENT_TYPE_DICT.keys())
-    _VALID_RESULTS = set(_EVENT_RESULT_DICT.keys())
+    _VALID_TYPES = set(EVENT_TYPE_DICT.keys())
+    _VALID_RESULTS = set(EVENT_RESULT_DICT.keys())
 
     def __init__(self, event_type=None, event_result=None, version=None,
                  previous_version=None, on_error=None):
@@ -1345,11 +1345,17 @@ class autoupdate_EndToEndTest(test.test):
     _WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS = 15 * 60
     _DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS = 30
 
+    # Logs and their whereabouts.
+    _WHERE_UPDATE_LOG = ('update_engine log (in sysinfo or on the DUT, also '
+                         'included in the test log)')
+    _WHERE_OMAHA_LOG = 'Omaha-devserver log (included in the test log)'
+
 
     def initialize(self):
         """Sets up variables that will be used by test."""
         self._host = None
         self._omaha_devserver = None
+        self._source_image_installed = False
 
         self._devserver_dir = global_config.global_config.get_config_value(
                 'CROS', 'devserver_dir', default=None)
@@ -1399,6 +1405,106 @@ class autoupdate_EndToEndTest(test.test):
                             'update_engine_performance_monitor.py')
 
 
+    def _error_initial_check(self, expected, actual, mismatched_attrs):
+        if 'version' in mismatched_attrs:
+            err_msg = ('Initial update check was received but the reported '
+                       'version is different from what was expected.')
+            if self._source_image_installed:
+                err_msg += (' The source payload we installed was probably '
+                            'incorrect or corrupt.')
+            else:
+                err_msg += (' The DUT is probably not running the correct '
+                            'source image.')
+            return err_msg
+
+        return 'A test bug occurred; inspect the test log.'
+
+
+    def _error_intermediate(self, expected, actual, mismatched_attrs, action,
+                            problem):
+        if 'event_result' in mismatched_attrs:
+            return ('The updater reported an unexpected result code (%s). This '
+                    'could be an updater bug or a connectivity problem; check '
+                    'the %s. For a detailed log of update events, check the '
+                    '%s.' %
+                    (EVENT_RESULT_DICT[actual['event_result']],
+                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+        if 'event_type' in mismatched_attrs:
+            return ('Expected the updater to %s (%s) but received a different '
+                    'notification (%s). This could be an updater %s; check the '
+                    '%s. For a detailed log of update events, check the %s.' %
+                    (action, EVENT_TYPE_DICT[expected['event_type']],
+                     EVENT_TYPE_DICT[actual['event_type']], problem
+                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+        if 'version' in mismatched_attrs:
+            return ('The updater reported an unexpected version despite '
+                    'previously reporting the correct one. This is most likely '
+                    'a bug in update engine; check the %s.' %
+                    self._WHERE_UPDATE_LOG)
+
+        return 'A test bug occurred; inspect the test log.'
+
+
+    def _error_download_started(self, expected, actual, mismatched_attrs):
+        return self._error_intermediate(expected, actual, mismatched_attrs,
+                                        'begin downloading',
+                                        'bug, crash or provisioning error')
+
+
+    def _error_download_finished(self, expected, actual, mismatched_attrs):
+        return self._error_intermediate(expected, actual, mismatched_attrs,
+                                        'finish downloading', 'bug or crash')
+
+
+    def _error_update_complete(self, expected, actual, mismatched_attrs):
+        return self._error_intermediate(expected, actual, mismatched_attrs,
+                                        'complete the update', 'bug or crash')
+
+
+    def _error_reboot_after_update(self, expected, actual,
+                                        mismatched_attrs):
+        if 'event_result' in mismatched_attrs:
+            return ('The updater was expected to reboot (%s) but reported '
+                    'a different result code instead (%s). This could be '
+                    'a failure to reboot, an updater bug or a connectivity '
+                    'problem; check the %s and the system log. For a detailed '
+                    'log of update events, check the %s.' %
+                    (EVENT_RESULT_DICT[expected['event_result']],
+                     EVENT_RESULT_DICT[actual['event_result']],
+                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+        if 'event_type' in mismatched_attrs:
+            return ('Expected to successfully reboot into the new image (%s) '
+                    'but received a different notification (%s). This probably '
+                    'means that the new image failed to verify after reboot, '
+                    'possibly because the payload is corrupt. This might also '
+                    'be an updater bug or crash; check the %s. For a detailed '
+                    'log of update events, check the %s.' %
+                    (EVENT_TYPE_DICT[expected['event_type']],
+                     EVENT_TYPE_DICT[actual['event_type']],
+                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+        if 'version' in mismatched_attrs:
+            return ('The DUT rebooted after the update but reports a different '
+                    'image version than the one expected. This probably means '
+                    'that the payload we applied was incorrect or corrupt.')
+        if 'previous_version' in mismatched_attrs:
+            return ('The DUT rebooted after the update and reports the '
+                    'expected version. However, it reports a previous version '
+                    'that is different from the one previously reported. This '
+                    'is most likely a bug in update engine; check the %s.' %
+                    self._WHERE_UPDATE_LOG)
+
+        return 'A test bug occurred; inspect the test log.'
+
+
+    def _timeout_err(self, desc, timeout, event_type=None):
+        if event_type is not None:
+            desc += ' (%s)' % EVENT_TYPE_DICT[event_type]
+        return ('Failed to receive %s within %d seconds. This could be a '
+                'problem with the updater or a connectivity issue. For more '
+                'details, check the %s.' %
+                (desc, timeout, self._WHERE_UPDATE_LOG))
+
+
     def run_update_test(self, test_platform, test_conf):
         """Runs the actual update test once preconditions are met.
 
@@ -1435,41 +1541,44 @@ class autoupdate_EndToEndTest(test.test):
             chain.add_event(
                     ExpectedUpdateEvent(
                         version=test_conf['source_release'],
-                        on_error=(
-                                'Failed to receive initial update check. '
-                                'Check Omaha devserver log in this output.')),
-                    self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS)
+                        on_error=self._error_initial_check),
+                    self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
+                    on_timeout=self._timeout_err(
+                            'an initial update check',
+                            self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS))
             chain.add_event(
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_DOWNLOAD_STARTED,
                         event_result=EVENT_RESULT_SUCCESS,
                         version=test_conf['source_release'],
-                        on_error=(
-                                'Failed to start the download of the update '
-                                'payload from the staging server. Check both '
-                                'the omaha log and update_engine.log in '
-                                'sysinfo (or on the DUT).')),
-                    self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS)
+                        on_error=self._error_download_started),
+                    self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
+                    on_timeout=self._timeout_err(
+                            'a download started notification',
+                            self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
+                            event_type=EVENT_TYPE_DOWNLOAD_STARTED))
             chain.add_event(
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
                         event_result=EVENT_RESULT_SUCCESS,
                         version=test_conf['source_release'],
-                        on_error=(
-                                'Failed to finish download from devserver. '
-                                'Check the update_engine.log in sysinfo (or '
-                                'on the DUT).')),
-                    self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS)
+                        on_error=self._error_download_finished),
+                    self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
+                    on_timeout=self._timeout_err(
+                            'a download finished notification',
+                            self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
+                            event_type=EVENT_TYPE_DOWNLOAD_FINISHED))
             chain.add_event(
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_UPDATE_COMPLETE,
                         event_result=EVENT_RESULT_SUCCESS,
                         version=test_conf['source_release'],
-                        on_error=(
-                                'Failed to complete update before reboot. '
-                                'Check the update_engine.log in sysinfo (or '
-                                'on the DUT).')),
-                    self._WAIT_FOR_UPDATE_COMPLETED_SECONDS)
+                        on_error=self._error_update_complete),
+                    self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
+                    on_timeout=self._timeout_err(
+                            'an update complete notification',
+                            self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
+                            event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
             log_verifier.verify_expected_event_chain(chain)
 
@@ -1499,13 +1608,12 @@ class autoupdate_EndToEndTest(test.test):
                     event_result=EVENT_RESULT_SUCCESS_REBOOT,
                     version=test_conf['target_release'],
                     previous_version=test_conf['source_release'],
-                    on_error=(
-                            'Failed to reboot into the target version after '
-                            'an update. Check the sysinfo logs. This probably '
-                            'means that the updated image failed to verify '
-                            'after reboot and might mean that the update '
-                            'payload is bad')),
-                self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS)
+                    on_error=self._error_reboot_after_update),
+                self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                on_timeout=self._timeout_err(
+                        'a successful reboot notification',
+                        self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
+                        event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
         log_verifier.verify_expected_event_chain(chain)
 
@@ -1580,6 +1688,7 @@ class autoupdate_EndToEndTest(test.test):
 
         # Stage source images and update payloads onto a devserver.
         staged_urls = test_platform.prep_artifacts(test_conf)
+        self._source_image_installed = bool(staged_urls.source_url)
 
         # Prepare the DUT (install source version etc).
         test_platform.prep_device_for_update(test_conf['source_release'])
