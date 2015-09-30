@@ -178,7 +178,11 @@ class USBDeviceDriversManager(object):
 
         hcd_ids = set()
         for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
-            hcd_ids.add(_get_dir_name(os.path.realpath(search_root_path)))
+            hcd_id = _get_dir_name(os.path.realpath(search_root_path))
+            # Skip auto HCD for issue crbug.com/537513
+            if hcd_id.endswith('.auto'):
+                continue
+            hcd_ids.add(hcd_id)
 
         if not hcd_ids:
             raise USBDeviceDriversManagerError('Can not find HCD id')
