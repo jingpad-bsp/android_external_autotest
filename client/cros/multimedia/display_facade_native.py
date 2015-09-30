@@ -550,11 +550,6 @@ class DisplayFacadeNative(object):
                 web_contents.DEFAULT_WEB_CONTENTS_TIMEOUT)
         return True
 
-    def toggle_fullscreen(self):
-        """Toggles mirrored."""
-        graphics_utils.screen_toggle_fullscreen()
-        return True
-
 
     def is_fullscreen_enabled(self):
         """Checks the fullscreen state.
@@ -570,12 +565,26 @@ class DisplayFacadeNative(object):
         @param is_fullscreen: True or False to indicate fullscreen state.
         @return True if success, False otherwise.
         """
-        # TODO: Do some experiments to minimize waiting time after toggling.
-        retries = 3
-        while self.is_fullscreen_enabled() != is_fullscreen and retries > 0:
-            self.toggle_fullscreen()
-            time.sleep(3)
-            retries -= 1
+        extension = self._chrome.autotest_ext
+        if not extension:
+            raise RuntimeError('Autotest extension not found')
+
+        if is_fullscreen:
+            window_state = "fullscreen"
+        else:
+            window_state = "normal"
+        extension.ExecuteJavaScript(
+                """
+                var __status = 'Running';
+                chrome.windows.update(
+                        chrome.windows.WINDOW_ID_CURRENT,
+                        {state: '%s'},
+                        function() { __status = 'Done'; });
+                """
+                % window_state)
+        utils.wait_for_value(lambda: (
+                extension.EvaluateJavaScript('__status') == 'Done'),
+                expected_value=True)
         return self.is_fullscreen_enabled() == is_fullscreen
 
 
