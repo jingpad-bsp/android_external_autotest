@@ -65,6 +65,10 @@ class graphics_GpuReset(test.test):
       if need_restart_ui:
         summary += 'initctl stop ui\n'
         utils.system('initctl stop ui', ignore_status=True)
+        # TODO(ihf): Remove this code if no improvement for issue 409019.
+        logging.info('Make sure chrome is dead before triggering hang.')
+        utils.system('killall -9 chrome', ignore_status=True)
+        time.sleep(3)
       try:
         summary += utils.system_output(cmd, retain_output=True)
         summary += '\n'
