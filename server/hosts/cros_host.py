@@ -52,10 +52,6 @@ CONFIG = global_config.global_config
 
 LUCID_SLEEP_BOARDS = ['samus', 'lulu']
 
-# A file to indicate provision failure and require Repair job to powerwash the
-# dut.
-PROVISION_FAILED = '/var/tmp/provision_failed'
-
 class FactoryImageCheckerException(error.AutoservError):
     """Exception raised when an image is a factory image."""
     pass
@@ -728,7 +724,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         if not update_url and not self._parser.options.image:
             raise error.AutoservError(
-                    'There is no update URL, nor a method to get one.')
+                 'There is no update URL, nor a method to get one.')
 
         if not update_url and self._parser.options.image:
             # This is the base case where we have no given update URL i.e.
@@ -738,7 +734,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             if not requested_build.startswith('http://'):
                 logging.debug('Update will be staged for this installation')
                 update_url, devserver = self._stage_image_for_update(
-                        requested_build)
+                         requested_build)
             else:
                 update_url = requested_build
 
@@ -746,10 +742,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Remove cros-version and job_repo_url host attribute from host.
         self.clear_cros_version_labels_and_job_repo_url()
-
-        # Create a file to indicate if provision fails. The file will be removed
-        # by stateful update or full install.
-        self.run('touch %s' % PROVISION_FAILED)
 
         update_complete = False
         updater = autoupdater.ChromiumOSUpdater(
@@ -759,7 +751,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 # If the DUT is already running the same build, try stateful
                 # update first as it's much quicker than a full re-image.
                 update_complete = self._try_stateful_update(
-                        update_url, force_update, updater)
+                         update_url, force_update, updater)
             except Exception as e:
                 logging.exception(e)
 
@@ -785,7 +777,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                             devserver is None or
                             dev_server.DevServer.devserver_healthy(
                                     devserver.url())):
-                        raise
+                         raise
 
                     logging.warn('Devserver looks unhealthy. Trying another')
                     update_url, devserver = self._stage_image_for_update(
@@ -1201,17 +1193,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('Failed to create servo object.')
 
 
-    def _is_last_provision_failed(self):
-        """Checks if the last provision job failed.
-
-        @return: True if there exists file /var/tmp/provision_failed, which
-                 indicates the last provision job failed.
-                 False otherwise.
-        """
-        result = self.run('[ -f %s ]' % PROVISION_FAILED, ignore_status=True)
-        return result.exit_status == 0
-
-
     def repair_full(self):
         """Repair a host for repair level NO_PROTECTION.
 
@@ -1265,17 +1246,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
-        if self._is_last_provision_failed():
-            logging.info('Last provision failed, try powerwash first.')
-            repair_funcs = [self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
-        else:
-            repair_funcs = [self._reboot_repair,
-                            self._servo_repair_power,
-                            self._powercycle_to_repair,
-                            self._install_repair,
-                            self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
+        repair_funcs = [self._reboot_repair,
+                        self._servo_repair_power,
+                        self._powercycle_to_repair,
+                        self._install_repair,
+                        self._install_repair_with_powerwash,
+                        self._servo_repair_reinstall]
         errors = []
         board = self._get_board_from_afe()
         for repair_func in repair_funcs:
