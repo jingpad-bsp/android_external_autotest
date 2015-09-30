@@ -164,10 +164,6 @@ class security_OpenFDs(test.test):
                    r'0[57]00 /dev/urandom',
                    r'0300 /var/log/chrome/chrome_.*',
                    r'0[37]00 /var/log/ui/ui.*',
-                   # Font files can be kept open in renderers
-                   # for performance reasons.
-                   # See crbug.com/452227.
-                   r'0500 /usr/share/fonts/.*',
                   ]
 
         # Whitelist fd-type check, suitable for Chrome processes.
@@ -195,6 +191,13 @@ class security_OpenFDs(test.test):
                         # See crbug.com/475170.
                         r'0500 /opt/google/chrome/natives_blob.bin',
                         r'0500 /opt/google/chrome/snapshot_blob.bin',
+                        # Font files can be kept open in renderers
+                        # for performance reasons.
+                        # See crbug.com/452227.
+                        r'0500 /usr/share/fonts/.*',
+                        # Renderers have access to GPU render nodes.
+                        # See crbug.com/537474.
+                        r'0700 /dev/dri/renderD129',
                        ])
         passes.append(self.check_process('chrome', 'type=renderer', filters,
                                          allowed_fd_type_check))
