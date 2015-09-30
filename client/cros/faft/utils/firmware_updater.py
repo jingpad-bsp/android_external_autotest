@@ -78,7 +78,7 @@ class FirmwareUpdater(object):
         Args:
             version: new firmware version number.
         """
-        ro_normal = 1
+        ro_normal = 0
         self.os_if.run_shell_command(
                 '/usr/share/vboot/bin/resign_firmwarefd.sh '
                 '%s %s %s %s %s %s %s %d %d' % (
