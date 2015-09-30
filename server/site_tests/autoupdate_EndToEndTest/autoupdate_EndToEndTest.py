@@ -50,14 +50,7 @@ EVENT_RESULT_UPDATE_DEFERRED = '9'
 
 
 class ExpectedUpdateEvent(object):
-    """Defines an expected event in a host update process.
-
-    Attrs:
-        _expected_attrs: Dictionary of attributes that should match events
-                         received. If attribute is not provided, assumes match.
-        error_message: What we should error out with if we fail to verify this
-                       expected event.
-    """
+    """Defines an expected event in an update process."""
 
     # Omaha event types/results, from update_engine/omaha_request_action.h
     # These are stored in dict form in order to easily print out the keys.
@@ -85,7 +78,20 @@ class ExpectedUpdateEvent(object):
     _VALID_RESULTS = set(_EVENT_RESULT_DICT.keys())
 
     def __init__(self, event_type=None, event_result=None, version=None,
-                 previous_version=None, error_message=None):
+                 previous_version=None, on_error=None):
+        """Initializes an event expectation.
+
+        @param event_type: Expected event type.
+        @param event_result: Expected event result code.
+        @param version: Expected reported image version.
+        @param previous_version: Expected reported previous image version.
+        @param on_error: This is either an object to be returned when a received
+                         event mismatches the expectation, or a callable used
+                         for generating one. In the latter case, takes as
+                         input two attribute dictionaries (expected and actual)
+                         and an iterable of mismatched keys. If None, a generic
+                         message is returned.
+        """
         if event_type and event_type not in self._VALID_TYPES:
             raise ValueError('event_type %s is not valid.' % event_type)
 
@@ -98,7 +104,7 @@ class ExpectedUpdateEvent(object):
             'version': version,
             'previous_version': previous_version,
         }
-        self.error_message = error_message
+        self._on_error = on_error
 
 
     @staticmethod
@@ -131,11 +137,14 @@ class ExpectedUpdateEvent(object):
         return attr_name, expected_attr_val_str, actual_attr_val_str
 
 
-    def __str__(self):
+    def _attrs_to_str(self, attrs_dict):
         return ' '.join(['%s=%s' %
                          self._attr_name_and_values(attr_name, attr_val)[0:2]
-                         for attr_name, attr_val
-                         in self._expected_attrs.iteritems()])
+                         for attr_name, attr_val in attrs_dict.iteritems()])
+
+
+    def __str__(self):
+        return self._attrs_to_str(self._expected_attrs)
 
 
     def verify(self, actual_event):
@@ -143,13 +152,24 @@ class ExpectedUpdateEvent(object):
 
         @param actual_event: a dictionary containing event attributes
 
-        @return True if all attributes as expected, False otherwise.
+        @return An error message, or None if all attributes as expected.
 
         """
-        return all([self._verify_attr(attr_name, expected_attr_val,
-                                      actual_event.get(attr_name))
-                    for attr_name, expected_attr_val
-                    in self._expected_attrs.iteritems() if expected_attr_val])
+        mismatched_attrs = [
+                attr_name for attr_name, expected_attr_val
+                in self._expected_attrs.iteritems()
+                if (expected_attr_val and
+                    not self._verify_attr(attr_name, expected_attr_val,
+                                          actual_event.get(attr_name)))]
+        if not mismatched_attrs:
+            return None
+        if callable(self._on_error):
+            return self._on_error(self._expected_attrs, actual_event,
+                                  mismatched_attrs)
+        if self._on_error is None:
+            return ('Received event (%s) does not match expectation (%s)' %
+                    (self._attrs_to_str(actual_event), self))
+        return self._on_error
 
 
     def _verify_attr(self, attr_name, expected_attr_val, actual_attr_val):
@@ -193,33 +213,40 @@ class ExpectedUpdateEvent(object):
         return True
 
 
+    def get_attrs(self):
+        """Returns a dictionary of expected attributes."""
+        return dict(self._expected_attrs)
+
+
 class ExpectedUpdateEventChain(object):
     """Defines a chain of expected update events."""
-    def __init__(self, *expected_event_chain_args):
-        """Initialize the chain object.
+    def __init__(self):
+        self._expected_event_chain = []
 
-        @param expected_event_chain_args: list of tuples arguments, each
-               containing a timeout (in seconds) and an ExpectedUpdateEvent
-               object.
 
+    def add_event(self, expected_event, timeout, on_timeout=None):
+        """Adds an expected event to the chain.
+
+        @param expected_event: The event to add.
+        @param timeout: A timeout (in seconds) to wait for the event.
+        @param on_timeout: An error string to use if the event times out. If
+                           None, a generic message is used.
         """
-        self._expected_event_chain = expected_event_chain_args
+        self._expected_event_chain.append((expected_event, timeout, on_timeout))
 
 
     @staticmethod
-    def _format_event_with_timeout(timeout, expected_event):
+    def _format_event_with_timeout(expected_event, timeout):
         """Returns a string representation of the event, with timeout."""
-        return ('%s %s' %
-                (expected_event,
-                 ('within %s seconds' % timeout) if timeout
-                 else 'indefinitely'))
+        until = 'within %s seconds' % timeout if timeout else 'indefinitely'
+        return '%s %s' % (expected_event, until)
 
 
     def __str__(self):
         return ('[%s]' %
                 ', '.join(
-                    [self._format_event_with_timeout(timeout, expected_event)
-                     for timeout, expected_event
+                    [self._format_event_with_timeout(expected_event, timeout)
+                     for expected_event, timeout, _
                      in self._expected_event_chain]))
 
 
@@ -235,27 +262,28 @@ class ExpectedUpdateEventChain(object):
         @raises ExpectedUpdateEventChainFailed if we failed to verify an event.
 
         """
-        for timeout, expected_event in self._expected_event_chain:
+        for expected_event, timeout, on_timeout in self._expected_event_chain:
             logging.info('Expecting %s',
-                         self._format_event_with_timeout(timeout,
-                                                         expected_event))
-            if not self._verify_event_with_timeout(
-                    timeout, expected_event, get_next_event):
-                logging.error('Failed expected event: %s',
-                              expected_event.error_message)
-                raise ExpectedUpdateEventChainFailed(
-                        expected_event.error_message)
+                         self._format_event_with_timeout(expected_event,
+                                                         timeout))
+            err_msg = self._verify_event_with_timeout(
+                    expected_event, timeout, on_timeout, get_next_event)
+            if err_msg is not None:
+                logging.error('Failed expected event: %s', err_msg)
+                raise ExpectedUpdateEventChainFailed(err_msg)
 
 
     @staticmethod
-    def _verify_event_with_timeout(timeout, expected_event, get_next_event):
+    def _verify_event_with_timeout(expected_event, timeout, on_timeout,
+                                   get_next_event):
         """Verify an expected event occurs within a given timeout.
 
-        @param timeout: specified in seconds
         @param expected_event: an expected event specification
+        @param timeout: specified in seconds
+        @param on_timeout: A string to return if timeout occurs, or None.
         @param get_next_event: function returning the next event in a stream
 
-        @return True if event complies, False otherwise.
+        @return None if event complies, an error string otherwise.
 
         """
         base_timestamp = curr_timestamp = time.time()
@@ -273,7 +301,10 @@ class ExpectedUpdateEventChain(object):
             curr_timestamp = time.time()
 
         logging.error('Timeout expired')
-        return False
+        if on_timeout is None:
+            return ('Waiting for event %s timed out after %d seconds' %
+                    (expected_event, timeout))
+        return on_timeout
 
 
 class UpdateEventLogVerifier(object):
@@ -1286,41 +1317,45 @@ class autoupdate_EndToEndTest(test.test):
                     self._DEVSERVER_HOSTLOG_REQUEST_TIMEOUT_SECONDS)
 
             # Verify chain of events in a successful update process.
-            chain = ExpectedUpdateEventChain(
-                    (self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
-                     ExpectedUpdateEvent(
-                         version=test_conf['source_release'],
-                         error_message=('Failed to receive initial update '
-                                        'check. Check Omaha devserver log in '
-                                        'this output.'))),
-                    (self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
-                     ExpectedUpdateEvent(
-                         event_type=EVENT_TYPE_DOWNLOAD_STARTED,
-                         event_result=EVENT_RESULT_SUCCESS,
-                         version=test_conf['source_release'],
-                         error_message=(
-                                 'Failed to start the download of the update '
-                                 'payload from the staging server. Check both '
-                                 'the omaha log and update_engine.log in '
-                                 'sysinfo (or on the DUT).'))),
-                    (self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
-                     ExpectedUpdateEvent(
-                         event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
-                         event_result=EVENT_RESULT_SUCCESS,
-                         version=test_conf['source_release'],
-                         error_message=(
-                                 'Failed to finish download from devserver. '
-                                 'Check the update_engine.log in sysinfo (or '
-                                 'on the DUT).'))),
-                    (self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
-                     ExpectedUpdateEvent(
-                         event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                         event_result=EVENT_RESULT_SUCCESS,
-                         version=test_conf['source_release'],
-                         error_message=(
-                                 'Failed to complete update before reboot. '
-                                 'Check the update_engine.log in sysinfo (or '
-                                 'on the DUT).'))))
+            chain = ExpectedUpdateEventChain()
+            chain.add_event(
+                    ExpectedUpdateEvent(
+                        version=test_conf['source_release'],
+                        on_error=(
+                                'Failed to receive initial update check. '
+                                'Check Omaha devserver log in this output.')),
+                    self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS)
+            chain.add_event(
+                    ExpectedUpdateEvent(
+                        event_type=EVENT_TYPE_DOWNLOAD_STARTED,
+                        event_result=EVENT_RESULT_SUCCESS,
+                        version=test_conf['source_release'],
+                        on_error=(
+                                'Failed to start the download of the update '
+                                'payload from the staging server. Check both '
+                                'the omaha log and update_engine.log in '
+                                'sysinfo (or on the DUT).')),
+                    self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS)
+            chain.add_event(
+                    ExpectedUpdateEvent(
+                        event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
+                        event_result=EVENT_RESULT_SUCCESS,
+                        version=test_conf['source_release'],
+                        on_error=(
+                                'Failed to finish download from devserver. '
+                                'Check the update_engine.log in sysinfo (or '
+                                'on the DUT).')),
+                    self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS)
+            chain.add_event(
+                    ExpectedUpdateEvent(
+                        event_type=EVENT_TYPE_UPDATE_COMPLETE,
+                        event_result=EVENT_RESULT_SUCCESS,
+                        version=test_conf['source_release'],
+                        on_error=(
+                                'Failed to complete update before reboot. '
+                                'Check the update_engine.log in sysinfo (or '
+                                'on the DUT).')),
+                    self._WAIT_FOR_UPDATE_COMPLETED_SECONDS)
 
             log_verifier.verify_expected_event_chain(chain)
 
@@ -1343,19 +1378,20 @@ class autoupdate_EndToEndTest(test.test):
 
         # Observe post-reboot update check, which should indicate that the
         # image version has been updated.
-        chain = ExpectedUpdateEventChain(
-                (self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
-                 ExpectedUpdateEvent(
-                     event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                     event_result=EVENT_RESULT_SUCCESS_REBOOT,
-                     version=test_conf['target_release'],
-                     previous_version=test_conf['source_release'],
-                     error_message=(
-                             'Failed to reboot into the target version after '
-                             'an update. Check the sysinfo logs. This probably '
-                             'means that the updated image failed to verify '
-                             'after reboot and might mean that the update '
-                             'payload is bad'))))
+        chain = ExpectedUpdateEventChain()
+        chain.add_event(
+                ExpectedUpdateEvent(
+                    event_type=EVENT_TYPE_UPDATE_COMPLETE,
+                    event_result=EVENT_RESULT_SUCCESS_REBOOT,
+                    version=test_conf['target_release'],
+                    previous_version=test_conf['source_release'],
+                    on_error=(
+                            'Failed to reboot into the target version after '
+                            'an update. Check the sysinfo logs. This probably '
+                            'means that the updated image failed to verify '
+                            'after reboot and might mean that the update '
+                            'payload is bad')),
+                self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS)
 
         log_verifier.verify_expected_event_chain(chain)
 
