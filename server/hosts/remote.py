@@ -1,6 +1,6 @@
 """This class defines the Remote host class."""
 
-import os, logging, urllib, time
+import os, logging, urllib, time, functools
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import base_classes
@@ -25,8 +25,11 @@ class RemoteHost(base_classes.Host):
     DEFAULT_REBOOT_TIMEOUT = base_classes.Host.DEFAULT_REBOOT_TIMEOUT
     LAST_BOOT_TAG = object()
     DEFAULT_HALT_TIMEOUT = 2 * 60
+    _LABEL_FUNCTIONS = []
+    _DETECTABLE_LABELS = []
 
     VAR_LOG_MESSAGES_COPY_PATH = "/var/tmp/messages.autotest_start"
+
 
     def _initialize(self, hostname, autodir=None, *args, **dargs):
         super(RemoteHost, self)._initialize(*args, **dargs)
@@ -317,3 +320,26 @@ class RemoteHost(base_classes.Host):
             if exit_status == 0:
                 return True
         return False
+
+
+    def get_labels(self):
+        """Return a list of labels for this given host.
+
+        This is the main way to retrieve all the automatic labels for a host
+        as it will run through all the currently implemented label functions.
+        """
+        labels = []
+        for label_function in self._LABEL_FUNCTIONS:
+            try:
+                label = label_function(self)
+            except Exception as e:
+                logging.error('Label function %s failed; ignoring it.',
+                              label_function.__name__)
+                logging.exception(e)
+                label = None
+            if label:
+                if type(label) is str:
+                    labels.append(label)
+                elif type(label) is list:
+                    labels.extend(label)
+        return labels

@@ -435,6 +435,9 @@ class host_create(host):
                                      ', '.join('"%s"' % p
                                                for p in self.protections)),
                                choices=self.protections)
+        self.parser.add_option('-s', '--serials',
+                               help=('Comma separated list of adb-based device '
+                                     'serials'))
 
 
     def parse(self):
@@ -452,6 +455,12 @@ class host_create(host):
         self._parse_lock_options(options)
         self.locked = options.lock
         self.platform = getattr(options, 'platform', None)
+        self.serials = getattr(options, 'serials', None)
+        if self.serials:
+            if len(self.hosts) > 1:
+                raise topic_common.CliError('Can not specify serials with '
+                                            'multiple hosts')
+            self.serials = self.serials.split(',')
         if options.protection:
             self.data['protection'] = options.protection
         return (options, leftover)

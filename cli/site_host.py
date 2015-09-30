@@ -8,6 +8,7 @@ import inspect, new, socket, sys
 from autotest_lib.client.bin import utils
 from autotest_lib.cli import host, rpc
 from autotest_lib.server import hosts
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.client.common_lib import error, host_protections
 
 
@@ -91,6 +92,11 @@ class site_host_create(site_host, host.host_create):
         if len(labels):
             self.execute_rpc('host_add_labels', id=host, labels=list(labels))
 
+        if self.serials:
+            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+            afe.set_host_attribute('serials', ','.join(self.serials),
+                                   hostname=host)
+
 
     def execute(self):
         # Check to see if the platform or any other labels can be grabbed from
@@ -99,7 +105,7 @@ class site_host_create(site_host, host.host_create):
         for host in self.hosts:
             try:
                 if utils.ping(host, tries=1, deadline=1) == 0:
-                    ssh_host = hosts.create_host(host)
+                    ssh_host = hosts.create_host(host, serials=self.serials)
                     host_info = host_information(host,
                                                  ssh_host.get_platform(),
                                                  ssh_host.get_labels())

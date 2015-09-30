@@ -61,26 +61,6 @@ class FactoryImageCheckerException(error.AutoservError):
     pass
 
 
-def add_label_detector(label_function_list, label_list=None, label=None):
-    """Decorator used to group functions together into the provided list.
-    @param label_function_list: List of label detecting functions to add
-                                decorated function to.
-    @param label_list: List of detectable labels to add detectable labels to.
-                       (Default: None)
-    @param label: Label string that is detectable by this detection function
-                  (Default: None)
-    """
-    def add_func(func):
-        """
-        @param func: The function to be added as a detector.
-        """
-        label_function_list.append(func)
-        if label and label_list is not None:
-            label_list.append(label)
-        return func
-    return add_func
-
-
 class CrosHost(abstract_ssh.AbstractSSHHost):
     """Chromium OS specific subclass of Host."""
 
@@ -156,7 +136,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
     _LABEL_FUNCTIONS = []
     _DETECTABLE_LABELS = []
-    label_decorator = functools.partial(add_label_detector, _LABEL_FUNCTIONS,
+    label_decorator = functools.partial(server_utils.add_label_detector,
+                                        _LABEL_FUNCTIONS,
                                         _DETECTABLE_LABELS)
 
     # Constants used in ping_wait_up() and ping_wait_down().
@@ -2848,29 +2829,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
         return 'lucidsleep' if board in LUCID_SLEEP_BOARDS else None
-
-
-    def get_labels(self):
-        """Return a list of labels for this given host.
-
-        This is the main way to retrieve all the automatic labels for a host
-        as it will run through all the currently implemented label functions.
-        """
-        labels = []
-        for label_function in self._LABEL_FUNCTIONS:
-            try:
-                label = label_function(self)
-            except Exception as e:
-                logging.error('Label function %s failed; ignoring it.',
-                              label_function.__name__)
-                logging.exception(e)
-                label = None
-            if label:
-                if type(label) is str:
-                    labels.append(label)
-                elif type(label) is list:
-                    labels.extend(label)
-        return labels
 
 
     def is_boot_from_usb(self):

@@ -1,6 +1,7 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import functools
 import logging
 import os
 import re
@@ -11,6 +12,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import utils
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 
 
@@ -31,11 +33,18 @@ CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
 RELEASE_FILE = 'ro.build.version.release'
+BOARD_FILE = 'ro.product.device'
 TMP_DIR = '/data/local/tmp'
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
+
+    _LABEL_FUNCTIONS = []
+    _DETECTABLE_LABELS = []
+    label_decorator = functools.partial(utils.add_label_detector,
+                                        _LABEL_FUNCTIONS,
+                                        _DETECTABLE_LABELS)
 
 
     @staticmethod
@@ -61,19 +70,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.exit_status == 0
 
 
-    def _initialize(self, hostname='localhost', serial=None,
+    def _initialize(self, hostname='localhost', serials=None,
                     device_hostname=None, *args, **dargs):
         """Initialize an ADB Host.
 
         This will create an ADB Host. Hostname should always refer to the
         host machine connected to an android device. This will either be the
         only android device connected or if there are multiple, serial must be
-        specified. If device_hostname is supplied then all ADB commands will
-        run over TCP/IP.
+        specified. Currently only one serial being passed in is supported.
+        Multiple serial support will be coming soon (TODO(kevcheng)).  If
+        device_hostname is supplied then all ADB commands will run over TCP/IP.
 
         @param hostname: Hostname of the machine running ADB.
-        @param serial: Serial number of the android device we want to interact
-                       with.
+        @param serials: List of serial number of the android device we want to
+                        interact with.
         @param device_hostname: Hostname or IP of the android device we want to
                                 interact with. If supplied all ADB interactions
                                 run over TCP/IP.
@@ -81,16 +91,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         super(ADBHost, self)._initialize(hostname=hostname, *args, **dargs)
         logging.debug('Initializing ADB Host running on host: %s.', hostname)
-        logging.debug('Android Device: Serial:%s, Hostname: %s',
-                      serial, device_hostname)
+        logging.debug('Android Device: Serials:%s, Hostname: %s',
+                      serials, device_hostname)
+        self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
         self._local_adb = False
         if hostname == 'localhost':
             self._local_adb = True
 
-        self._serial = serial
-        if not self._serial:
+        # TODO(kevcheng): Revamp this so we can properly reference multiple
+        #                 serials for one ADBHost.
+        self._serials = serials
+        if not self._serials:
             logging.debug('Serial not provided determining...')
             # Ensure only one device is attached to this host.
             devices = self.adb_devices()
@@ -98,8 +111,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 raise error.AutoservError('No ADB devices attached.')
             if len(devices) > 1:
                 raise error.AutoservError('Multiple ADB devices attached.')
-            self._serial = devices[0]
-            logging.debug('Using serial: %s', self._serial)
+            self._serials = devices
+            logging.debug('Using serial: %s', self._serials[0])
 
         if self._device_hostname:
             logging.debug('Device Hostname provided. Connecting over TCP/IP')
@@ -172,8 +185,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         cmd = 'adb '
         if self._use_tcpip and not use_serial:
             cmd += '-s %s:5555 ' % self._device_hostname
-        elif self._serial and self._serial != DEVICE_NO_SERIAL_TAG:
-            cmd += '-s %s ' % self._serial
+        elif self._serials and self._serials[0] != DEVICE_NO_SERIAL_TAG:
+            cmd += '-s %s ' % self._serials[0]
         if shell:
             cmd += '%s ' % SHELL_CMD
         cmd += command
@@ -195,8 +208,18 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     connect_timeout=connect_timeout, args=args)
 
 
+    @label_decorator()
     def get_board(self):
-        return 'adb'
+        """Determine the correct board label for the device.
+
+        @returns a string representing this device's board.
+        """
+        # TODO(kevcheng): with multiple hosts, switch this to return a list.
+        board = self.run_output('getprop %s' % BOARD_FILE)
+        board_os = self.get_os_type()
+        board_num = str(self._num_of_boards.get(board, 0) + 1)
+        self._num_of_boards[board] = int(board_num)
+        return constants.BOARD_PREFIX + '-'.join([board_os, board, board_num])
 
 
     def job_start(self):
@@ -390,7 +413,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns True if the device is detectable but ADB, False otherwise.
 
         """
-        return self._serial in self.adb_devices()
+        return self._serials[0] in self.adb_devices()
 
 
     def close(self):
@@ -552,7 +575,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @param parent: Parent directory of the returned tmp dir.
 
-        @returns: Path to the temp directory on the host.
+        @returns a path to the temp directory on the host.
         """
         if not parent.startswith(TMP_DIR):
             parent = os.path.join(TMP_DIR, parent.lstrip(os.path.sep))
@@ -570,16 +593,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return 'adb'
 
 
-    def get_labels(self):
-        """Return a list of labels for this given host.
-
-        TODO (crbug.com/536250): Implement the label generation for adb_host.
-
-        @returns: a list of this host's labels.
-        """
-        return []
-
-
     def collect_logs(self, remote_src_dir, local_dest_dir, ignore_errors=True):
         """Copy log directories from a host to a local directory.
 
@@ -593,6 +606,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def get_os_type(self):
-        if self.run_output('getprop ro.product.brand', shell=True) == 'Brillo':
+        if self.run_output('getprop ro.product.brand') == 'Brillo':
             return 'brillo'
         return 'android'
