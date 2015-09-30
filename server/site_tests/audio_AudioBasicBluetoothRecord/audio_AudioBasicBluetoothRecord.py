@@ -90,7 +90,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
             # Checks the node selected by Cras is correct again.
             audio_test_utils.check_audio_nodes(audio_facade,
-                                               (None, ['BLUETOOTH'])
+                                               (None, ['BLUETOOTH']))
 
             # Starts playing, waits for some time, and then starts recording.
             # This is to avoid artifact caused by codec initialization.
