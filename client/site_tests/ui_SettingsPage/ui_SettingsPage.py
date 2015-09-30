@@ -38,17 +38,6 @@ class ui_SettingsPage(ui_test_base.ui_TestBase):
             if not tab.screenshot_supported:
                 raise error.TestError('Tab did not support taking screenshots')
 
-            #TODO(dhaddock): remove this after investigation
-            # crbug.com/482209
-            # Screenshots aren't matching expected behaviour from initial check
-            # Test if modem status is different here
-            modem_status = utils.system_output('modem status')
-            if modem_status:
-                logging.info('Modem found')
-                logging.info(modem_status)
-            else:
-                logging.info('Modem not found')
-
             screenshot = tab.Screenshot()
             if screenshot is None:
                 raise error.TestFailure('Could not capture screenshot')
