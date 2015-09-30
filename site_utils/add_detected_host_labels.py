@@ -32,6 +32,11 @@ from autotest_lib.server import frontend
 from autotest_lib.client.common_lib import error
 
 
+# A list of label prefix that each dut should only have one of such label with
+# the given prefix, e.g., a dut can't have both labels of power:battery and
+# power:AC_only.
+SINGLETON_LABEL_PREFIX = ['power:']
+
 def add_missing_labels(afe, hostname):
     """
     Queries the detectable labels supported by the given host,
@@ -59,9 +64,24 @@ def add_missing_labels(afe, hostname):
         if host:
             host.close()
 
+    afe_host = afe.get_hosts(hostname=hostname)[0]
+
     label_matches = afe.get_labels(name__in=labels)
 
     for label in label_matches:
+        singleton_prefixes = [p for p in SINGLETON_LABEL_PREFIX
+                              if label.name.startswith(p)]
+        if len(singleton_prefixes) == 1:
+            singleton_prefix = singleton_prefixes[0]
+            # Delete existing label with `singleton_prefix`
+            labels_to_delete = [l for l in afe_host.labels
+                                if l.startswith(singleton_prefix) and
+                                not l in labels]
+            if labels_to_delete:
+                logging.warning('Removing label %s', labels_to_delete)
+                afe_labels_to_delete = afe.get_labels(name__in=labels_to_delete)
+                for afe_label in afe_labels_to_delete:
+                    afe_label.remove_hosts(hosts=[hostname])
         label.add_hosts(hosts=[hostname])
 
     missing_labels = set(labels) - set([l.name for l in label_matches])
