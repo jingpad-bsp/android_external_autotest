@@ -50,17 +50,17 @@ class video_MultiplePlayback(test.test):
         @param browser: The Browser object to run the test with.
 
         """
-        browser.SetHTTPServerDirectories(self.bindir)
+        browser.platform.SetHTTPServerDirectories(self.bindir)
         tab1 = browser.tabs.New()
         # Verifying <video> support.
-        tab1.Navigate(browser.http_server.UrlOf(
+        tab1.Navigate(browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'video.html')))
 
         # Waiting for test video to load.
         tab1.WaitForJavaScriptExpression('testvideo.currentTime < 1.0', 5)
 
         tab2 = browser.tabs.New()
-        tab2.Navigate(browser.http_server.UrlOf(
+        tab2.Navigate(browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube5.html')))
         yh = youtube_helper.YouTubeHelper(tab2)
         # Waiting for test video to load.
@@ -72,7 +72,7 @@ class video_MultiplePlayback(test.test):
             raise error.TestFail('Tab2: Running YouTube in Flash mode.')
 
         tab3 = browser.tabs.New()
-        tab3.Navigate(browser.http_server.UrlOf(
+        tab3.Navigate(browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube.html')))
         yh1 = youtube_helper.YouTubeHelper(tab3)
         # Waiting for test video to load.

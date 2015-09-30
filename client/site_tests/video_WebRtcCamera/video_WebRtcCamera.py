@@ -32,10 +32,10 @@ class video_WebRtcCamera(test.test):
 
         @param cr: Autotest Chrome instance.
         """
-        cr.browser.SetHTTPServerDirectories(self.bindir)
+        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
 
         self.tab = cr.browser.tabs[0]
-        self.tab.Navigate(cr.browser.http_server.UrlOf(
+        self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
 

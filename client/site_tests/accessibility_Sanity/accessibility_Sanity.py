@@ -111,10 +111,10 @@ class accessibility_Sanity(test.test):
 
             # Open test page.
             self._tab = cr.browser.tabs[0]
-            cr.browser.SetHTTPServerDirectories(
+            cr.browser.platform.SetHTTPServerDirectories(
                     os.path.join(os.path.dirname(__file__)))
             page_path = os.path.join(self.bindir, 'page.html')
-            self._url = cr.browser.http_server.UrlOf(page_path)
+            self._url = cr.browser.platform.http_server.UrlOf(page_path)
             self._tab.Navigate(self._url)
 
             # Check specific features.

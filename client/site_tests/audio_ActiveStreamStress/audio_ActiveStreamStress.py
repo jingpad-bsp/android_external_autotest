@@ -40,7 +40,7 @@ class audio_ActiveStreamStress(test.test):
         self._existing_cras_reports = self.collect_cras_crash()
 
         with chrome.Chrome() as self._cr:
-            self._cr.browser.SetHTTPServerDirectories(self.bindir)
+            self._cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.push_new_stream(self._cr.browser.tabs[0])
             # TODO(rohitbm): decide whether to perform verification on each
             # open/close or at end of the iteration.
@@ -88,7 +88,7 @@ class audio_ActiveStreamStress(test.test):
         @param tab: tab to open an audio stream.
         """
         self._tab_count += 1
-        tab.Navigate(self._cr.browser.http_server.UrlOf(
+        tab.Navigate(self._cr.browser.platform.http_server.UrlOf(
                     os.path.join(self.bindir,
                                  self._streams[self.get_stream_index()])))
         tab.ExecuteJavaScript(

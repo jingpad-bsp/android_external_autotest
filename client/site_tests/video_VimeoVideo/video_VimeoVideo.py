@@ -68,7 +68,7 @@ class video_VimeoVideo(test.test):
 
         """
         self._tab = browser.tabs[0]
-        self._tab.Navigate(browser.http_server.UrlOf(
+        self._tab.Navigate(browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'vimeo.html')))
         self._wait_for_player()
         self._wait_for_player_status(self._PLAYER_PLAY_STATE)
@@ -114,5 +114,5 @@ class video_VimeoVideo(test.test):
         args = wpr_wrapper.chrome_flags_for_wpr
 
         with chrome.Chrome(extra_browser_args=args) as cr, wpr_wrapper:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.run_vimeo_tests(cr.browser)

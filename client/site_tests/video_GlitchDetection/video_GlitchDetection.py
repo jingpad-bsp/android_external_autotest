@@ -434,7 +434,7 @@ class video_GlitchDetection(test.test):
         with chrome.Chrome(extra_browser_args=browser_args,
                            extension_paths=ext_paths,
                            autotest_ext=True) as cr, wpr_server:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
 
             self.factory = media_test_factory.MediaTestFactory(
                     chrome=cr,

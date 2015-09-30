@@ -23,13 +23,13 @@ class platform_MemoryPressure(test.test):
         # Open tabs until a tab discard notification arrives, or a time limit
         # is reached.
         with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             while time.time() <= time_limit and not err:
                 tab = cr.browser.tabs.New()
                 n_tabs += 1
                 # The program in js-bloat.html allocates a few large arrays and
                 # forces them in memory by touching some of their elements.
-                tab.Navigate(cr.browser.http_server.UrlOf(
+                tab.Navigate(cr.browser.platform.http_server.UrlOf(
                         os.path.join(self.bindir, 'js-bloat.html')))
                 tab.WaitForDocumentReadyStateToBeComplete()
                 time.sleep(tab_open_secs)

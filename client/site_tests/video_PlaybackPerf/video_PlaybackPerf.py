@@ -74,10 +74,10 @@ class video_PlaybackPerf(test.test):
         @param cr: Autotest Chrome instance.
         @param local_path: path to the local video file to play.
         """
-        cr.browser.SetHTTPServerDirectories(self.bindir)
+        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
 
         tab = cr.browser.tabs[0]
-        tab.Navigate(cr.browser.http_server.UrlOf(local_path))
+        tab.Navigate(cr.browser.platform.http_server.UrlOf(local_path))
         tab.WaitForDocumentReadyStateToBeComplete()
         tab.EvaluateJavaScript("document.getElementsByTagName('video')[0]."
                                "loop=true")

@@ -50,7 +50,7 @@ class audio_CrasSanity(test.test):
         cras_pid_1 = utils.get_oldest_pid_by_name('/usr/bin/cras')
 
         with chrome.Chrome() as self._cr:
-            self._cr.browser.SetHTTPServerDirectories(self.bindir)
+            self._cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             for test_file in self._audio:
                 url = _DOWNLOAD_BASE + 'audio_test/' + test_file
                 self.push_new_stream(self._cr.browser.tabs.New(), url)

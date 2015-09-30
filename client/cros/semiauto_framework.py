@@ -27,9 +27,9 @@ class semiauto_test(test.test):
         """
         self._browser = chrome.Chrome().browser
         self._tab = self._browser.tabs[0]
-        self._browser.SetHTTPServerDirectories(
+        self._browser.platform.SetHTTPServerDirectories(
                 os.path.join(self.bindir, '..', '..', 'cros'))
-        self._tab.Navigate(self._browser.http_server.UrlOf(
+        self._tab.Navigate(self._browser.platform.http_server.UrlOf(
                 '/semiauto_shell.html'))
 
     def close_browser(self):

@@ -26,9 +26,9 @@ class video_ChromeVidResChangeHWDecode(test.test):
         @param video_file: test video file.
         """
         with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab1 = cr.browser.tabs[0]
-            tab1.Navigate(cr.browser.http_server.UrlOf(
+            tab1.Navigate(cr.browser.platform.http_server.UrlOf(
                     os.path.join(self.bindir, 'video.html')))
             tab1.WaitForDocumentReadyStateToBeComplete()
             tab1.EvaluateJavaScript(

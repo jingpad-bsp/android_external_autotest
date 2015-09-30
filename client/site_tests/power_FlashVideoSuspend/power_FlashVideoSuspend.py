@@ -19,9 +19,9 @@ class power_FlashVideoSuspend(test.test):
     def run_once(self, video_url=None):
         utils.verify_flash_installed()
         with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
-            tab.Navigate(cr.browser.http_server.UrlOf(
+            tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube.html')))
             self.suspend_with_youtube(cr.browser.tabs[0], video_url)
 

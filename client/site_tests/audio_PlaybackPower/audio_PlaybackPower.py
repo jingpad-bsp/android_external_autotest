@@ -87,8 +87,8 @@ class audio_PlaybackPower(test.test):
             if md5sum != checksum:
                 raise error.TestError('unmatched md5 sum: %s' % md5sum)
         with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
-            url = cr.browser.http_server.UrlOf(local_path)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
+            url = cr.browser.platform.http_server.UrlOf(local_path)
             self.play_audio(cr.browser.tabs[0], url)
             self.run_power_test(url.split('.')[-1])
 

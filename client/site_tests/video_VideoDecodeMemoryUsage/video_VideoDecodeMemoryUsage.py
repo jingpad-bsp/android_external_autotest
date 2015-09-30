@@ -157,7 +157,7 @@ class MemoryTest(object):
     def _open_new_tab(self, page_to_open):
         tab = self.browser.tabs.New()
         tab.Activate()
-        tab.Navigate(self.browser.http_server.UrlOf(
+        tab.Navigate(self.browser.platform.http_server.UrlOf(
                 os.path.join(self._bindir, page_to_open)))
         tab.WaitForDocumentReadyStateToBeComplete()
         return tab
@@ -381,7 +381,7 @@ class video_VideoDecodeMemoryUsage(test.test):
         logging.getLogger().addFilter(TelemetryFilter())
 
         with chrome.Chrome() as cr:
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             for class_name, videos in testcases:
                 name = _get_testcase_name(class_name, videos)
                 logging.info('run: %s - %s', name, videos)

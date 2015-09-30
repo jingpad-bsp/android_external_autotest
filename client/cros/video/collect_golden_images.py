@@ -73,15 +73,16 @@ def main():
     with chrome.Chrome() as cr:
         bindir = '/usr/local/autotest/cros/video'
 
-        cr.browser.SetHTTPServerDirectories(bindir)
+        cr.browser.platform.SetHTTPServerDirectories(bindir)
 
-        factory = media_test_factory.MediaTestFactory(cr.browser.tabs[0],
-                                                      cr.browser.http_server,
-                                                      bindir,
-                                                      'dev',
-                                                      args.name,
-                                                      args.format,
-                                                      args.definition)
+        factory = media_test_factory.MediaTestFactory(
+                      cr.browser.tabs[0],
+                      cr.browser.platform.http_server,
+                      bindir,
+                      'dev',
+                      args.name,
+                      args.format,
+                      args.definition)
 
         # if stop time is not specified, use the length of the video
         if args.stop is None:

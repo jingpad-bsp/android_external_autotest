@@ -49,9 +49,9 @@ class desktopui_AudioFeedback(audio_helper.chrome_rms_test):
 
     def run_once(self):
         """Entry point of this test."""
-        self.chrome.browser.SetHTTPServerDirectories(self.bindir)
+        self.chrome.browser.platform.SetHTTPServerDirectories(self.bindir)
 
-        video_url = self.chrome.browser.http_server.UrlOf(
+        video_url = self.chrome.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'youtube.html'))
         logging.info('Playing back youtube media file %s.', video_url)
         noise_file = os.path.join(self.resultsdir, "noise.wav")

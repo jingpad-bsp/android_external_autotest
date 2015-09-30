@@ -105,9 +105,9 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
 
         """
         # Open test page.
-        cr.browser.SetHTTPServerDirectories(self.bindir)
+        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
         self._tab = cr.browser.tabs[0]
-        self._tab.Navigate(cr.browser.http_server.UrlOf(
+        self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'test_page.html')))
         self._tab.WaitForDocumentReadyStateToBeComplete()
         self._wait_for_page_ready()

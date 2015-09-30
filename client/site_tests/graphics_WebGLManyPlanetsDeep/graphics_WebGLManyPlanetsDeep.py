@@ -113,9 +113,9 @@ class graphics_WebGLManyPlanetsDeep(test.test):
 
         with chrome.Chrome(logged_in=False, extension_paths=ext_paths) as cr:
             websrc_dir = os.path.join(self.autodir, 'deps', 'webgl_mpd', 'src')
-            if not cr.browser.SetHTTPServerDirectories(websrc_dir):
+            if not cr.browser.platform.SetHTTPServerDirectories(websrc_dir):
                 raise error.TestError('Unable to start HTTP server')
-            test_url = cr.browser.http_server.UrlOf(
+            test_url = cr.browser.platform.http_server.UrlOf(
                     os.path.join(websrc_dir, 'ManyPlanetsDeep.html'))
             self.run_many_planets_deep_test(cr.browser, test_url)
 

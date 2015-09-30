@@ -29,9 +29,9 @@ class desktopui_MediaAudioFeedback(audio_helper.chrome_rms_test):
         sox_utils.noise_profile(noise_file, noiseprof_file.name)
 
         # Open the test page
-        self.chrome.browser.SetHTTPServerDirectories(self.bindir)
+        self.chrome.browser.platform.SetHTTPServerDirectories(self.bindir)
         tab = self.chrome.browser.tabs[0]
-        tab.Navigate(self.chrome.browser.http_server.UrlOf(
+        tab.Navigate(self.chrome.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'play.html')))
         tab.WaitForDocumentReadyStateToBeComplete()
 

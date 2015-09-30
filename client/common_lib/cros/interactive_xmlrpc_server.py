@@ -36,10 +36,11 @@ class InteractiveXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         self._chrome = chrome.Chrome()
-        self._chrome.browser.SetHTTPServerDirectories(
+        self._chrome.browser.platform.SetHTTPServerDirectories(
                 os.path.dirname(sys.argv[0]))
         self._tab = self._chrome.browser.tabs[0]
-        self._tab.Navigate(self._chrome.browser.http_server.UrlOf('shell.html'))
+        self._tab.Navigate(
+                self._chrome.browser.platform.http_server.UrlOf('shell.html'))
 
         return True
 

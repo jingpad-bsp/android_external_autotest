@@ -247,8 +247,8 @@ class graphics_WebGLAquarium(test.test):
         self.test_setting_num_fishes = test_setting_num_fishes
 
         with chrome.Chrome(logged_in=False) as cr:
-            cr.browser.SetHTTPServerDirectories(self.srcdir)
-            test_url = cr.browser.http_server.UrlOf(
+            cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
+            test_url = cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.srcdir, 'aquarium.html'))
             if not utils.wait_for_cool_machine():
                 raise error.TestFail('Could not get cold machine.')

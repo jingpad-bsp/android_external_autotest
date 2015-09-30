@@ -33,7 +33,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         @param cr: Autotest Chrome instance.
         """
         tab = cr.browser.tabs[0]
-        tab.Navigate(cr.browser.http_server.UrlOf(
+        tab.Navigate(cr.browser.platform.http_server.UrlOf(
             os.path.join(self.bindir, 'loopback.html')))
         tab.WaitForDocumentReadyStateToBeComplete()
 
@@ -48,7 +48,7 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page.
-            cr.browser.SetHTTPServerDirectories(self.bindir)
+            cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.start_loopback(cr)
 
             # Make sure decode is hardware accelerated.

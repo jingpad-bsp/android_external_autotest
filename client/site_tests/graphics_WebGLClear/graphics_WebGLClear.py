@@ -97,9 +97,9 @@ class graphics_WebGLClear(test.test):
 
         with chrome.Chrome(logged_in=False, extra_browser_args=browser_args) as cr:
             clearsrc = os.path.join(self.autodir, 'deps', 'webgl_clear', 'src')
-            if not cr.browser.SetHTTPServerDirectories(clearsrc):
+            if not cr.browser.platform.SetHTTPServerDirectories(clearsrc):
                 raise error.TestError('Unable to start HTTP server')
-            test_url = cr.browser.http_server.UrlOf(
+            test_url = cr.browser.platform.http_server.UrlOf(
                 os.path.join(clearsrc, 'WebGLClear.html'))
             self.run_clear_test(cr.browser, test_url)
 

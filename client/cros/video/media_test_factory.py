@@ -74,7 +74,7 @@ class MediaTestFactory(object):
         """
         self.chrome = chrome
         self.tab = chrome.browser.tabs[0]
-        self.http_server = chrome.browser.http_server
+        self.http_server = chrome.browser.platform.http_server
         self.bin_dir = bin_dir
 
         self.channel = channel
