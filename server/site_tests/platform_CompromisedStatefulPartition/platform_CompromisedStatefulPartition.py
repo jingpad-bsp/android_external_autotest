@@ -28,6 +28,8 @@ class platform_CompromisedStatefulPartition(test.test):
         Test fails if not able to recover the device with corrupted
         stateful partition.
         """
+        if host.get_board_type() == 'OTHER':
+            raise error.TestNAError('Test can not processed on OTHER board type devices')
         autotest_client = autotest.Autotest(host)
         host.reboot()
         autotest_client.run_test(client_autotest,
