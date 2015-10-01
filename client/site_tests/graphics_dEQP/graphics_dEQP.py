@@ -436,19 +436,27 @@ class graphics_dEQP(test.test):
 
         test_count = 0
         test_failures = 0
+        test_passes = 0
         for result in test_results:
             test_count += test_results[result]
+            if result.lower() in ['pass']:
+                test_passes += test_results[result]
             if result.lower() not in ['pass', 'notsupported', 'internalerror']:
                 test_failures += test_results[result]
         # The text "Completed all tests." is used by the process_log.py script
         # and should always appear at the end of a completed test run.
-        logging.info('Completed all tests. Saw %d tests and %d failures.',
-                     test_count, test_failures)
-
-        if test_failures:
-            raise error.TestFail('%d/%d tests failed.' %
-                                 (test_failures, test_count))
+        logging.info(
+            'Completed all tests. Saw %d tests, %d passes and %d failures.',
+            test_count, test_passes, test_failures)
 
         if test_count == 0:
             raise error.TestError('No test cases found for filter: %s!' %
                                   self._filter)
+
+        if options['subset_to_run'] == 'NotPass':
+            if test_passes:
+                raise error.TestFail(
+                    '%d formerly failing tests are passing now.' % test_passes)
+        elif test_failures:
+            raise error.TestFail('%d/%d tests failed.' %
+                                 (test_failures, test_count))
