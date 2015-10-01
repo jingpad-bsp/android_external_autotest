@@ -9,16 +9,14 @@
 
 import os
 import argparse
-import datetime as datetime_base
 from datetime import datetime
-import logging
 import re
+import subprocess
 import sys
+import urllib2
 
 import common
 from autotest_lib.client.common_lib import global_config
-#from autotest_lib.contrib import sheriff_servo
-import sheriff_servo
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.tko import models as tko_models
@@ -33,10 +31,37 @@ JOB_URL = LOG_BASE_URL + '%(job_id)s-%(owner)s/%(hostname)s'
 LOG_PATH_FMT = 'hosts/%(hostname)s/%(task_id)d-%(taskname)s'
 TASK_URL = LOG_BASE_URL + LOG_PATH_FMT
 AUTOSERV_DEBUG_LOG = 'debug/autoserv.DEBUG'
-HYPERLINK = '=HYPERLINK("""%s""","""%0.1f""")'
+HYPERLINK = '=HYPERLINK("%s","%0.1f")'
+
+GS_URI =  'gs://chromeos-autotest-results'
 
 # A cache of special tasks, hostname:[task]
 tasks_cache = {}
+
+def get_debug_log(autoserv_log_url, autoserv_log_path):
+    """Get a list of strings or a stream for autoserv.DEBUG log file.
+
+    @param autoserv_log_url: Url to the repair job's autoserv.DEBUG log.
+    @param autoserv_log_path: Path to autoserv.DEBUG log, e.g.,
+                        hosts/hostname/job_id-repair/debug/autoserv.DEBUG.
+    @return: A list of string if debug log was moved to GS already, or a
+             stream of the autoserv.DEBUG file.
+    """
+    url = urllib2.urlopen(autoserv_log_url).geturl()
+    if not 'accounts.google.com' in url:
+        return urllib2.urlopen(url)
+    else:
+        # The file was moved to Google storage already, read the file from GS.
+        debug_log_link = '%s/%s' % (GS_URI, autoserv_log_path)
+        cmd = 'gsutil cat %s' % debug_log_link
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
+        if proc.returncode == 0:
+            return stdout.split(os.linesep)
+        else:
+            print 'Failed to read %s: %s' % (debug_log_link, stderr)
+
 
 class task_runtime(object):
     """Details about the task run time.
@@ -58,8 +83,7 @@ class task_runtime(object):
         autoserv_log_url = '%s/%s' % (self.log, AUTOSERV_DEBUG_LOG)
         log_path = LOG_PATH_FMT % task_info
         autoserv_log_path = '%s/%s' % (log_path, AUTOSERV_DEBUG_LOG)
-        debug_log = sheriff_servo.Failure.get_debug_log(autoserv_log_url,
-                                                        autoserv_log_path)
+        debug_log = get_debug_log(autoserv_log_url, autoserv_log_path)
         lines = [line for line in debug_log if line]
         # Task start time
         self.start_time = _get_timestamp(lines[0])
@@ -168,34 +192,34 @@ class job_runtime(object):
 
 
     def get_total_time(self):
-       return (self.get_last_task_end_time() -
-               self.get_first_task_start_time()).total_seconds()
+        return (self.get_last_task_end_time() -
+                self.get_first_task_start_time()).total_seconds()
 
 
     def get_time_on_tasks(self):
-       time = 0
-       for task in self.tasks_before + self.tasks_after:
-           time += task.time_used.total_seconds()
-       return time
+        time = 0
+        for task in self.tasks_before + self.tasks_after:
+            time += task.time_used.total_seconds()
+        return time
 
 
     def get_time_on_tasks_from_db(self):
-       time = 0
-       for task in self.tasks_before + self.tasks_after:
-           time += task.time_used_db.total_seconds()
-       return time
+        time = 0
+        for task in self.tasks_before + self.tasks_after:
+            time += task.time_used_db.total_seconds()
+        return time
 
 
     def get_time_on_wait(self):
-       return (self.get_total_time() -
-               self.get_time_on_tasks() -
-               self.time_used.total_seconds())
+        return (self.get_total_time() -
+                self.get_time_on_tasks() -
+                self.time_used.total_seconds())
 
 
     def get_time_on_wait_from_db(self):
-       return (self.get_total_time() -
-               self.get_time_on_tasks_from_db() -
-               self.time_used.total_seconds())
+        return (self.get_total_time() -
+                self.get_time_on_tasks_from_db() -
+                self.time_used.total_seconds())
 
 
     def get_time_per_task_type(self, task_type):
