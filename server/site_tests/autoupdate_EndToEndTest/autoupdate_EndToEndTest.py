@@ -31,8 +31,8 @@ def _wait(secs, desc=None):
 class ExpectedUpdateEventChainFailed(error.TestFail):
     """Raised if we fail to receive an expected event in a chain."""
 
-class RequiredArgumentMissing(error.TestFail):
-    """Raised if we fail to receive an expected event in a chain."""
+class RequiredArgumentMissing(error.TestError):
+    """Raised if the test is missing a required argument."""
 
 
 # Update event types.
