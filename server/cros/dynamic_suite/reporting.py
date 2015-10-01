@@ -175,8 +175,14 @@ class TestBug(Bug):
             board = site_utils.ParseBuildName(self.build)[0]
         except site_utils.ParseBuildNameException as e:
             logging.error(str(e))
-        reason = (self.reason.replace(board, 'BOARD_PLACEHOLDER') if board
-                  else self.reason)
+
+        # Substitute the board name for a placeholder. We try both build and
+        # release board name variants.
+        reason = self.reason
+        if board:
+            for b in (board, board.replace('_', '-')):
+                reason = reason.replace(b, 'BOARD_PLACEHOLDER')
+
         return "%s(%s,%s,%s)" % ('Test%s' % self.status, self.suite,
                                  self.name, reason)
 
