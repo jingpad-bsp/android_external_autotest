@@ -275,28 +275,30 @@ class ChromiumOSUpdater():
         """
         autoupdate_cmd = '%s --check_for_update --omaha_url=%s' % (
             self.UPDATER_BIN, self.update_url)
+        err_msg = 'Failed to trigger rootfs update on %s.' % self.host.hostname
         logging.info('Triggering update via: %s', autoupdate_cmd)
         try:
             self._run(autoupdate_cmd)
         except (error.AutoservSshPermissionDeniedError,
                 error.AutoservSSHTimeout) as e:
-            raise RootFSUpdateError('SSH on %s is seeing %s' %
-                                    (self.host.hostname, type(e).__name__))
+            err_msg += ' SSH reports an error: %s' % type(e).__name__
+            raise RootFSUpdateError(err_msg)
         except error.AutoservRunError as e:
             # Check if the exit code is 255, if so it's probably a generic
             # SSH error.
             result = e.args[1]
             if result.exit_status == 255:
-              raise RootFSUpdateError('SSH on %s is seeing a generic error.' %
-                                      self.host.hostname)
+                err_msg += ' SSH reports a generic error (255).'
+                raise RootFSUpdateError(err_msg)
 
             # We have ruled out all SSH cases, the error code is from
             # update_engine_client, though we still don't know why.
             list_image_dir_contents(self.update_url)
-            raise RootFSUpdateError(
-                    'devserver unreachable, payload unavailable, '
-                    'or AU bug (unlikely) on %s: %s' %
-                    (self.host.hostname, type(e).__name__))
+            err_msg += (' It could be that the devserver is unreachable, the '
+                        'payload unavailable, or there is a bug in the update '
+                        'engine (unlikely). Reported error: %s' %
+                        type(e).__name__)
+            raise RootFSUpdateError(err_msg)
 
 
     def _verify_update_completed(self):
@@ -359,8 +361,9 @@ class ChromiumOSUpdater():
             self._run(autoupdate_cmd, timeout=1200)
         except error.AutoservRunError:
             list_image_dir_contents(self.update_url)
-            update_error = RootFSUpdateError('update-engine failed on %s' %
-                                             self.host.hostname)
+            update_error = RootFSUpdateError(
+                    'Failed to install rootfs image using update engine on %s' %
+                    self.host.hostname)
             self._update_error_queue.put(update_error)
             raise update_error
         except Exception as e:
@@ -394,8 +397,9 @@ class ChromiumOSUpdater():
         try:
             self._run(' '.join(statefuldev_cmd), timeout=600)
         except error.AutoservRunError:
-            update_error = StatefulUpdateError('stateful_update failed on %s' %
-                                               self.host.hostname)
+            update_error = StatefulUpdateError(
+                    'Failed to perform stateful update on %s' %
+                    self.host.hostname)
             self._update_error_queue.put(update_error)
             raise update_error
         except Exception as e:
