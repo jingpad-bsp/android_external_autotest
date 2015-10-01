@@ -382,7 +382,7 @@ def get_report(t_start, t_end, hosts=None, board=None, pool=None,
     hosts_intervals = get_intervals_for_hosts(t_start, t_end, hosts, board,
                                               pool)
     history = {}
-    pool = multiprocessing.pool.ThreadPool(processes=8)
+    pool = multiprocessing.pool.ThreadPool(processes=16)
     args = []
     for hostname,intervals in hosts_intervals.items():
         args.append({'t_start': t_start,

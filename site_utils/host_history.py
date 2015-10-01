@@ -255,7 +255,6 @@ def main():
                           start_time=start_time,
                           end_time=end_time,
                           verbose=options.verbose)
-    time.sleep(3)
     labels = []
     if options.board:
         labels.append('board:%s' % (options.board))
