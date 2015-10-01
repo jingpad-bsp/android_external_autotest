@@ -81,7 +81,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # SHUTDOWN_TIMEOUT: Time to allow for shut down.
     # BOOT_TIMEOUT: Time to allow for boot from power off.  Among
     #   other things, this must account for the 30 second dev-mode
-    #   screen delay and time to start the network.
+    #   screen delay, time to start the network on the DUT, and the
+    #   ssh timeout of 120 seconds.
     # USB_BOOT_TIMEOUT: Time to allow for boot from a USB device,
     #   including the 30 second dev-mode delay and time to start the
     #   network.
@@ -92,7 +93,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     SLEEP_TIMEOUT = 2
     RESUME_TIMEOUT = 10
     SHUTDOWN_TIMEOUT = 10
-    BOOT_TIMEOUT = 60
+    BOOT_TIMEOUT = 150
     USB_BOOT_TIMEOUT = 300
     INSTALL_TIMEOUT = 480
     POWERWASH_BOOT_TIMEOUT = 60
