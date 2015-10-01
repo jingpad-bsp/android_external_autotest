@@ -947,13 +947,17 @@ class ChromiumOSTestPlatform(TestPlatform):
             self._update_via_test_payloads(devserver_hostname, image_url,
                                            stateful_url, True)
             self._host.reboot()
-        except error.AutoservRunError:
-            logging.fatal('Error re-imaging the machine with the source '
-                          'image %s', image_url)
-            raise error.TestError('Could not update to pre-conditions of '
-                                  'the test: we failed to start the '
-                                  'private devserver, connect to the host '
-                                  'and/or make it reboot.')
+        except OmahaDevserverFailedToStart as e:
+            logging.fatal('Failed to start private devserver for installing '
+                          'the source image (%s) on the DUT', image_url)
+            raise error.TestError(
+                    'Failed to start private devserver for installing the '
+                    'source image on the DUT: %s' % e)
+        except error.AutoservRunError as e:
+            logging.fatal('Error re-imaging the DUT with the source image %s',
+                          image_url)
+            raise error.TestError('Failed to install the source image or '
+                                  'reboot the DUT: %s' % e)
 
 
     def _stage_artifacts_onto_devserver(self, test_conf):
@@ -1398,8 +1402,17 @@ class autoupdate_EndToEndTest(test.test):
         # Make sure we're using a different slot after the update.
         target_active_slot = test_platform.get_active_slot()
         if target_active_slot == source_active_slot:
-            raise error.TestFail('Active slot not change (%s)' %
-                                 target_active_slot)
+            err_msg = 'The active image slot did not change after the update.'
+            if test_conf['source_release'] == test_conf['target_release']:
+                err_msg += (' Given that the source and target versions are '
+                            'identical, the DUT likely rebooted into the old '
+                            'image. This probably means that the payload we '
+                            'applied was corrupt.')
+            else:
+                err_msg += (' This is strange since the DUT reported the '
+                            'correct target version. This is probably a system '
+                            'bug; check the DUT system log.')
+            raise error.TestFail(err_msg)
 
         logging.info('Target active slot changed as expected: %s',
                      target_active_slot)
