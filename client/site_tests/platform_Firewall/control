@@ -12,8 +12,8 @@ when the lifeline file descriptors are closed.
 NAME = "platform_Firewall"
 TIME="SHORT"
 TEST_TYPE = "client"
-ATTRIBUTES = "suite:bvt-perbuild"
-SUITE = "bvt-perbuild"
+ATTRIBUTES = "suite:bvt-inline"
+SUITE = "bvt-inline"
 JOB_RETRIES = 2
 
 job.run_test("platform_Firewall")
