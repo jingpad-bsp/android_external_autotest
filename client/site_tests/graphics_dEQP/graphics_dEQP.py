@@ -306,9 +306,24 @@ class graphics_dEQP(test.test):
         # All tests combined less than 1h in hasty.
         batch_timeout = min(3600, self._timeout * self._hasty_batch_size)
         num_test_cases = len(test_cases)
-        # We are trying to handle all errors by parsing the log file.
-        for batch in xrange(0, num_test_cases, self._hasty_batch_size):
-            batch_to = min(batch + self._hasty_batch_size, num_test_cases)
+
+        # We are dividing the number of tests into several shards but run them
+        # in smaller batches. We start and end at multiples of batch_size
+        # boundaries.
+        shard_start = self._hasty_batch_size * (
+            (self._shard_number *
+             (num_test_cases / self._shard_count)) / self._hasty_batch_size)
+        shard_end = self._hasty_batch_size * (
+            ((self._shard_number + 1) *
+             (num_test_cases / self._shard_count)) / self._hasty_batch_size)
+        # The last shard will be slightly larger than the others. Extend it to
+        # cover all test cases avoiding rounding problems with the integer
+        # arithmetics done to compute shard_start and shard_end.
+        if self._shard_number + 1 == self._shard_count:
+            shard_end = num_test_cases
+
+        for batch in xrange(shard_start, shard_end, self._hasty_batch_size):
+            batch_to = min(batch + self._hasty_batch_size, shard_end)
             batch_cases = '\n'.join(test_cases[batch:batch_to])
             command = ('%s '
                        '--deqp-stdin-caselist '
@@ -320,8 +335,8 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d ' % (executable, width,
                                                       height))
 
-            log_file = os.path.join(log_path, '%s_hasty_%d.log' %
-                                    (self._filter, batch))
+            log_file = os.path.join(log_path,
+                                    '%s_hasty_%d.log' % (self._filter, batch))
 
             command += '--deqp-log-filename=' + log_file
             logging.info('Running tests %d...%d out of %d:\n%s\n%s', batch + 1,
@@ -337,6 +352,7 @@ class graphics_dEQP(test.test):
                           stderr_tee=utils.TEE_TO_LOGS)
             except Exception:
                 pass
+            # We are trying to handle all errors by parsing the log file.
             results = self._parse_test_results(log_file, results)
             logging.info(results)
         return results
