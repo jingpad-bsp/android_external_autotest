@@ -112,13 +112,9 @@ suite:wifi_flaky
 suite:wifi_interop
 suite:wifi_lucidsleep
 suite:wifi_matfunc
-suite:wifi_matfunc_bcm4356
-suite:wifi_matfunc_intel7265
-suite:wifi_matfunc_marvell8897
+suite:wifi_matfunc_bcm4371
 suite:wifi_perf
-suite:wifi_perf_bcm4356
-suite:wifi_perf_intel7265
-suite:wifi_perf_marvell8897
+suite:wifi_perf_bcm4371
 suite:wifi_release
 suite:wifi_update_router
 suite:wificell-pre-cq

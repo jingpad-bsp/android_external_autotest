@@ -6,9 +6,8 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_Roam.wifi_roam1xTLS'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-ATTRIBUTES = "suite:wifi_matfunc, suite:wifi_matfunc_bcm4356, suite:wifi_matfunc_intel7265, suite:wifi_matfunc_marvell8897"
-SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
-         'wifi_matfunc_intel7265')
+ATTRIBUTES = 'suite:wifi_matfunc, suite:wifi_matfunc_bcm4371'
+SUITE = 'wifi_matfunc, wifi_matfunc_bcm4371'
 DEPENDENCIES = 'wificell'
 
 DOC = """

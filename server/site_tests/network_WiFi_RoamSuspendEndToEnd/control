@@ -6,11 +6,9 @@ AUTHOR = 'bmahadev, krisr, harpreet'
 TIME = 'SHORT'
 NAME = 'network_WiFi_RoamSuspendEndToEnd'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_bcm4356,'
-              'suite:wifi_matfunc_intel7265, suite:wifi_matfunc_marvell8897,'
+ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_bcm4371, '
               'suite:wificell-pre-cq')
-SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
-         'wifi_matfunc_intel7265, wificell-pre-cq')
+SUITE = 'wifi_matfunc, wifi_matfunc_bcm4371, wificell-pre-cq'
 DEPENDENCIES = 'servo, wificell'
 
 DOC = """

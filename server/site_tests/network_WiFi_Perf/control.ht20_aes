@@ -4,9 +4,8 @@
 
 AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_Perf.ht20_aes'
-ATTRIBUTES = "suite:wifi_perf, suite:wifi_perf_bcm4356, suite:wifi_perf_intel7265, suite:wifi_perf_marvell8897"
-SUITE = ('wifi_perf, wifi_perf_bcm4356, wifi_perf_marvell8897,'
-         'wifi_perf_intel7265')
+ATTRIBUTES = 'suite:wifi_perf, suite:wifi_perf_bcm4371'
+SUITE = 'wifi_perf, wifi_perf_bcm4371'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell'

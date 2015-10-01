@@ -6,13 +6,10 @@ AUTHOR = 'wiley, pstew, quiche'
 NAME = 'network_WiFi_SimpleConnect.wifi_check11g'
 TIME = 'SHORT'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_matfunc,'
-              'suite:wifi_matfunc_bcm4356, suite:wifi_matfunc_intel7265,'
-              'suite:wifi_matfunc_marvell8897, suite:wifi_release,'
-              'suite:wificell-pre-cq')
-SUITE = ('wifi_matfunc, wifi_matfunc_bcm4356, wifi_matfunc_marvell8897,'
-         'wifi_matfunc_intel7265, wifi_correctness_cros_core, wifi_release,'
-         'wificell-pre-cq')
+ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_matfunc, suite:wifi_matfunc_bcm4371,'
+              'suite:wifi_release, suite:wificell-pre-cq')
+SUITE = ('wifi_matfunc, wifi_matfunc_bcm4371, wifi_correctness_cros_core, '
+         'wifi_release, wificell-pre-cq')
 DEPENDENCIES = 'wificell'
 
 DOC = """
