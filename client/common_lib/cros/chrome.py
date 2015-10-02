@@ -26,7 +26,7 @@ class Chrome(object):
                  clear_enterprise_policy=True, dont_override_profile=False,
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
-                 username=None, password=None):
+                 username=None, password=None, gaia_id=None):
         """
         Constructor of telemetry wrapper.
 
@@ -51,7 +51,8 @@ class Chrome(object):
                            Useful if you need to examine oobe.
         @param gaia_login: Logs in to real gaia.
         @param username: Log in using this username instead of the default.
-        @param username: Log in using this password instead of the default.
+        @param password: Log in using this password instead of the default.
+        @param gaia_id: Log in using this gaia_id instead of the default.
         """
         self._autotest_ext_path = None
         if autotest_ext:
@@ -96,6 +97,12 @@ class Chrome(object):
         self.password = b_options.password if password is None else password
         b_options.username = self.username
         b_options.password = self.password
+        # gaia_id will be added to telemetry code in chromium repository later
+        try:
+            self.gaia_id = b_options.gaia_id if gaia_id is None else gaia_id
+            b_options.gaia_id = self.gaia_id
+        except AttributeError:
+            pass
 
         # Turn on collection of Chrome coredumps via creation of a magic file.
         # (Without this, Chrome coredumps are trashed.)

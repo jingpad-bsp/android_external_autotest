@@ -17,6 +17,7 @@ class login_OwnershipNotRetaken(test.test):
 
     _TEST_USER = 'example@chromium.org'
     _TEST_PASS = 'testme'
+    _TEST_GAIAID = '7583'
 
 
     def initialize(self):
@@ -43,7 +44,8 @@ class login_OwnershipNotRetaken(test.test):
         # Sign in/sign out as a second user.
         with chrome.Chrome(clear_enterprise_policy=False,
                            username=self._TEST_USER,
-                           password=self._TEST_PASS) as cr:
+                           password=self._TEST_PASS,
+                           gaia_id=self._TEST_GAIAID) as cr:
             pass
 
         # Checking mtime to see if key file was touched during second sign in.
