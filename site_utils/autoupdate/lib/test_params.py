@@ -86,7 +86,7 @@ class TestConfig(object):
 
     """
     def __init__(self, board, name, is_delta_update, source_release,
-                 target_release, source_image_uri, target_payload_uri,
+                 target_release, source_payload_uri, target_payload_uri,
                  suite_name=_DEFAULT_AU_SUITE_NAME, source_archive_uri=None):
         """Initialize a test configuration.
 
@@ -95,7 +95,7 @@ class TestConfig(object):
         @param is_delta_update: whether this is a delta update test (Boolean)
         @param source_release: the source image version (e.g. '2672.0.0')
         @param target_release: the target image version (e.g. '2673.0.0')
-        @param source_image_uri: source image URI ('gs://...') or None
+        @param source_payload_uri: source payload URI ('gs://...') or None
         @param target_payload_uri: target payload URI ('gs://...')
         @param suite_name: the name of the test suite (default: 'au')
         @param source_archive_uri: location of source build artifacts
@@ -106,7 +106,7 @@ class TestConfig(object):
         self.is_delta_update = is_delta_update
         self.source_release = source_release
         self.target_release = target_release
-        self.source_image_uri = source_image_uri
+        self.source_payload_uri = source_payload_uri
         self.target_payload_uri = target_payload_uri
         self.suite_name = suite_name
         self.source_archive_uri = source_archive_uri
@@ -154,7 +154,7 @@ class TestConfig(object):
     def __repr__(self):
         """Full textual representation w/ image/payload URIs."""
         return '\n'.join([str(self),
-                          'source image   : %s' % self.source_image_uri,
+                          'source payload : %s' % self.source_payload_uri,
                           'target payload : %s' % self.target_payload_uri])
 
 
@@ -168,8 +168,8 @@ class TestConfig(object):
             ('target_payload_uri', self.target_payload_uri),
             ('SUITE', self.suite_name)
         ]
-        if self.source_image_uri:
-            arg_values.append(('source_image_uri', self.source_image_uri))
+        if self.source_payload_uri:
+            arg_values.append(('source_payload_uri', self.source_payload_uri))
         if self.source_archive_uri:
             arg_values.append(('source_archive_uri', self.source_archive_uri))
 
