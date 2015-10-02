@@ -42,9 +42,17 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
           }
         ]
       """
+    SUPPORTING_POLICIES = {
+        'BookmarkBarEnabled': True,
+        'ManagedBookmarks': BOOKMARKS
+    }
 
     # List of named test cases.
-    TEST_CASES = ['True', 'False', 'NotSet']
+    TEST_CASES = {
+        'True': 'true',
+        'False': 'false',
+        'NotSet': None
+    }
 
     def _test_edit_bookmarks_enabled(self, policy_value, policies_json):
         """
@@ -119,24 +127,16 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
 
         # Otherwise, set expected |policy_value| and setup |policies_json|
         # data to the defaults required by the test |case|.
-        elif case == 'True':
-            policy_value = 'true'
-            policies_json = {'EditBookmarksEnabled': True,
-                             'BookmarkBarEnabled': True,
-                             'ManagedBookmarks': self.BOOKMARKS
-                            }
-        elif case == 'False':
-            policy_value = 'false'
-            policies_json = {'EditBookmarksEnabled': False,
-                             'BookmarkBarEnabled': True,
-                             'ManagedBookmarks': self.BOOKMARKS
-                            }
-        elif case == 'NotSet':
-            policy_value = None
-            policies_json = {'EditBookmarksEnabled': None,
-                             'BookmarkBarEnabled': True,
-                             'ManagedBookmarks': self.BOOKMARKS
-                            }
+        else:
+            policy_value = self.TEST_CASES[case]
+            policies_json = self.SUPPORTING_POLICIES.copy()
+            if case == 'True':
+                policy_json = {'EditBookmarksEnabled': True}
+            elif case == 'False':
+                policy_json = {'EditBookmarksEnabled': False}
+            elif case == 'NotSet':
+                policy_json = {'EditBookmarksEnabled': None}
+            policies_json.update(policy_json)
 
         # Run test using values configured for the test case.
         self._test_edit_bookmarks_enabled(policy_value, policies_json)
@@ -150,8 +150,8 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
             self._run_test_case(self.case)
         elif self.mode == 'list':
             logging.info('List Test Cases:')
-            for case in self.TEST_CASES:
-                logging.info('  %s', case)
+            for case, value in self.TEST_CASES.items():
+                logging.info('  case=%s, value="%s"', case, value)
         else:
             raise error.TestError('Run mode %s is not valid.' % self.mode)
 
