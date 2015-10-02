@@ -826,8 +826,8 @@ class ChromiumOSTestPlatform(TestPlatform):
         """
         archive_url, _, filename = payload_uri.rpartition('/')
         devserver_label = urlparse.urlsplit(archive_url).path.strip('/')
-        return self._stage_payload(self._autotest_devserver, devserver_label,
-                                   filename, archive_url=archive_url)
+        return self._stage_payload(devserver_label, filename,
+                                   archive_url=archive_url)
 
 
     @staticmethod
@@ -914,7 +914,7 @@ class ChromiumOSTestPlatform(TestPlatform):
             # Since we are installing the source image of the test, clobber
             # stateful.
             self._update_via_test_payloads(devserver_hostname, image_url,
-                                           stateful_url, clobber=True)
+                                           stateful_url, True)
             self._host.reboot()
         except error.AutoservRunError:
             logging.fatal('Error re-imaging the machine with the source '
@@ -944,8 +944,7 @@ class ChromiumOSTestPlatform(TestPlatform):
             # release branches have caught up.
             source_payload_uri = test_conf['source_image_uri']
         if source_payload_uri:
-            staged_source_url = self._stage_payload_by_uri(
-                    self._autotest_devserver, source_payload_uri)
+            staged_source_url = self._stage_payload_by_uri(source_payload_uri)
 
             # In order to properly install the source image using a full
             # payload we'll also need the stateful update that comes with it.
@@ -961,7 +960,7 @@ class ChromiumOSTestPlatform(TestPlatform):
                         source_payload_uri)
 
             staged_source_stateful_url = self._stage_payload_by_uri(
-                    self._autotest_devserver, source_stateful_uri)
+                    source_stateful_uri)
 
             # Log source image URLs.
             logging.info('Source full payload from %s staged at %s',
@@ -971,8 +970,7 @@ class ChromiumOSTestPlatform(TestPlatform):
                              source_stateful_uri, staged_source_stateful_url)
 
         target_payload_uri = test_conf['target_payload_uri']
-        staged_target_url = self._stage_payload_by_uri(
-                self._autotest_devserver, target_payload_uri)
+        staged_target_url = self._stage_payload_by_uri(target_payload_uri)
         target_stateful_uri = None
         staged_target_stateful_url = None
         target_archive_uri = test_conf.get('target_archive_uri')
@@ -992,12 +990,11 @@ class ChromiumOSTestPlatform(TestPlatform):
                 _, devserver_label = tools.get_devserver_build_from_package_url(
                         job_repo_url)
                 staged_target_stateful_url = self._stage_payload(
-                        self._autotest_devserver, devserver_label,
-                        self._STATEFUL_UPDATE_FILENAME)
+                        devserver_label, self._STATEFUL_UPDATE_FILENAME)
 
         if not staged_target_stateful_url and target_stateful_uri:
             staged_target_stateful_url = self._stage_payload_by_uri(
-                    self._autotest_devserver, target_stateful_uri)
+                    target_stateful_uri)
 
         # Log target payload URLs.
         logging.info('%s test payload from %s staged at %s',
@@ -1121,8 +1118,7 @@ class ChromiumOSTestPlatform(TestPlatform):
 
     def finalize_update(self):
         self._update_via_test_payloads(
-                None, None, self._staged_urls.target_stateful_url,
-                clobber=False)
+                None, None, self._staged_urls.target_stateful_url, False)
 
 
     def get_update_log(self, num_lines):
