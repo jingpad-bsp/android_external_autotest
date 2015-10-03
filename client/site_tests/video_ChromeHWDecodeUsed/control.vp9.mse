@@ -1,10 +1,10 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeHWDecodeUsed.vp8.mse"
-PURPOSE = "Verify that VP8 decode acceleration works for MSE videos in Chrome"
+NAME = "video_ChromeHWDecodeUsed.vp9.mse"
+PURPOSE = "Verify that VP9 decode acceleration works for MSE videos in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to an MSE webm file.
 """
@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "hw_video_acc_vp8"
+DEPENDENCIES = "hw_video_acc_vp9"
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
@@ -22,8 +22,8 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This test verifies VP8 decode acceleration works for MSE videos.
+This test verifies VP9 decode acceleration works for MSE videos.
 """
 
-video = 'http://crosvideo.appspot.com/?codec=vp8&cycle=true&mute=true'
+video = 'http://crosvideo.appspot.com/?codec=vp9&cycle=true&mute=true'
 job.run_test('video_ChromeHWDecodeUsed', video_file=video)

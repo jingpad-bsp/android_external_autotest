@@ -25,5 +25,6 @@ DOC = """
 This test verifies VP9 video decode acceleration works.
 """
 
-video = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/video_VideoSeek/video.vp9.webm'
+video = str('http://commondatastorage.googleapis.com/'
+            'chromiumos-test-assets-public/Shaka-Dash/720.webm')
 job.run_test('video_ChromeHWDecodeUsed', video_file=video)

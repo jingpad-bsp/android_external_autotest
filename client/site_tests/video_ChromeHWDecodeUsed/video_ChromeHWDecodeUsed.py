@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import time
+
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -33,6 +35,9 @@ class video_ChromeHWDecodeUsed(test.test):
             tab1 = cr.browser.tabs[0]
             tab1.Navigate(video_file)
             tab1.WaitForDocumentReadyStateToBeComplete()
+            # Running the test longer to check errors and longer playback for
+            # MSE videos.
+            time.sleep(30)
 
             # Waits for histogram updated for the test video.
             parser = histogram_parser.HistogramParser(cr, MEDIA_GVD_INIT_STATUS)
