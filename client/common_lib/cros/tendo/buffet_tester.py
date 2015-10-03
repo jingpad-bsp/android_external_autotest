@@ -174,17 +174,17 @@ class BuffetTester(object):
             cmds = [interfaces[buffet_dbus_helper.COMMAND_INTERFACE]
                     for path, interfaces in objects.iteritems()
                     if buffet_dbus_helper.COMMAND_INTERFACE in interfaces]
+            messages = [cmd['Parameters'][TEST_COMMAND_PARAM] for cmd in cmds
+                        if (cmd['Category'] == TEST_COMMAND_CATEGORY and
+                            cmd['Name'] == '%s.%s' % (TEST_COMMAND_CATEGORY,
+                                                      TEST_COMMAND_NAME))]
             # |cmds| is a list of property sets
-            if len(cmds) != len(self._expected_messages):
+            if len(messages) != len(self._expected_messages):
                 # Still waiting for our pending command to show up.
                 time.sleep(polling_interval_seconds)
                 continue
             logging.debug('Finally saw the right number of commands over '
                           'DBus: %r', cmds)
-            messages = [cmd['Parameters'][TEST_COMMAND_PARAM] for cmd in cmds
-                        if (cmd['Category'] == TEST_COMMAND_CATEGORY and
-                            cmd['Name'] == '%s.%s' % (TEST_COMMAND_CATEGORY,
-                                                      TEST_COMMAND_NAME))]
             if sorted(messages) != sorted(self._expected_messages):
                 raise error.TestFail(
                         'Expected commands with messages=%r but got %r.' %
