@@ -31,7 +31,10 @@ class login_LoginSuccess(test.test):
                 gobject.MainLoop())
 
 
-    def run_once(self):
+    def run_once(self, stress_run=False):
+        # For stress runs, we are extending timeout to find other problems
+        if stress_run:
+            self._SESSION_STOP_TIMEOUT *= 2
         self._listener.listen_for_session_state_change('started')
         with chrome.Chrome():
             self._listener.wait_for_signals(desc='Session started.',
