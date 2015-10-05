@@ -16,7 +16,8 @@ TEXT_BOX_LIST = {'min_video_bitrate': 'minVideoBitrate',
 RADIO_BUTTON_LIST = {'tab_casting_quality':
                          {'extreme': 'ql-highest',
                           'high': 'ql-high',
-                          'standard': 'ql-low'},
+                          'standard': 'ql-low',
+                          'auto': 'ql-auto'},
                      'resolution':
                          {'854x480': '854x480',
                           '1280x720': '1280x720',

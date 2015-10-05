@@ -11,10 +11,14 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chromedriver
+from autotest_lib.client.cros.video import histogram_verifier
 
 import config_manager
 import test_utils
 
+#histogram fields to be verified
+MEDIA_GVD_INIT_STATUS = 'Cast.Sender.VideoEncodeAcceleratorInitializeSuccess'
+MEDIA_GVD_BUCKET = 1
 
 class desktopui_SonicExtension(test.test):
     """Test loading the sonic extension through chromedriver."""
@@ -154,3 +158,7 @@ class desktopui_SonicExtension(test.test):
                 json.dump(cpu_usage, open(cpu_json_file, 'wb'))
                 json.dump(cpu_bound, open(cpu_bound_json_file, 'wb'))
             time.sleep(self.wait_time)
+            #To cehck encoder acceleration used while casting
+            histogram_verifier.verify(
+                 chromedriver_instance.chrome_instance,
+                 MEDIA_GVD_INIT_STATUS, MEDIA_GVD_BUCKET)
