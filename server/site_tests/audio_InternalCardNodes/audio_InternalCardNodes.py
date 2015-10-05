@@ -36,14 +36,26 @@ class audio_InternalCardNodes(audio_test.AudioTest):
         jack_plugger = chameleon_board.get_audio_board().get_jack_plugger()
 
         expected_plugged_nodes_without_audio_jack = (
-                ['INTERNAL_SPEAKER'],
-                ['INTERNAL_MIC', 'POST_DSP_LOOPBACK',
+                [],
+                ['POST_DSP_LOOPBACK',
                  'POST_MIX_LOOPBACK'])
 
         expected_plugged_nodes_with_audio_jack = (
-                ['INTERNAL_SPEAKER', 'HEADPHONE'],
-                ['INTERNAL_MIC', 'MIC', 'POST_DSP_LOOPBACK',
+                ['HEADPHONE'],
+                ['MIC', 'POST_DSP_LOOPBACK',
                  'POST_MIX_LOOPBACK'])
+
+        if audio_test_utils.has_internal_speaker(host):
+            expected_plugged_nodes_without_audio_jack[0].append(
+                    'INTERNAL_SPEAKER')
+            expected_plugged_nodes_with_audio_jack[0].append(
+                    'INTERNAL_SPEAKER')
+
+        if audio_test_utils.has_internal_microphone(host):
+            expected_plugged_nodes_without_audio_jack[1].append(
+                    'INTERNAL_MIC')
+            expected_plugged_nodes_with_audio_jack[1].append(
+                    'INTERNAL_MIC')
 
         # Modify expected nodes for special boards.
         board_name = host.get_board().split(':')[1]

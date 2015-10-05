@@ -152,8 +152,9 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
                 # microphone priority.
-                audio_test_utils.check_audio_nodes(self.audio_facade,
-                                                   (None, ['INTERNAL_MIC']))
+                if audio_test_utils.has_internal_microphone(host):
+                    audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                       (None, ['INTERNAL_MIC']))
 
                 self.audio_facade.set_selected_output_volume(80)
 
@@ -163,7 +164,8 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # on its preference again. See crbug.com/535643.
 
                 # Selects bluetooth mic to be the active input node.
-                self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+                if audio_test_utils.has_internal_microphone(host):
+                    self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
                 # Checks the node selected by Cras is correct.
                 audio_test_utils.check_audio_nodes(self.audio_facade,
