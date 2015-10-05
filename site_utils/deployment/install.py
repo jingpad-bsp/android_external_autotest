@@ -316,8 +316,12 @@ def _install_and_record(afe, hostname, arguments):
         atest_path = os.path.join(
                 os.path.dirname(os.path.abspath(sys.argv[0])),
                 'atest')
+        # Logging configuration reset sys.stdout to the log file,
+        # but apparently subprocess.call() uses FD 0, which is
+        # still our parent's stdout.  So, explicitly redirect.
         status = subprocess.call(
-                [atest_path, 'host', 'create', hostname])
+                [atest_path, 'host', 'create', hostname],
+                stdout=sys.stdout, stderr=subprocess.STDOUT)
         if status != 0:
             logging.error('Host creation failed, status = %d', status)
             raise Exception('Failed to add host to AFE')
