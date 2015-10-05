@@ -27,7 +27,9 @@ import time
 from optparse import OptionParser
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.site_utils import job_directories
 
 try:
     # Does not exist, nor is needed, on moblab.
@@ -99,6 +101,12 @@ USE_RSYNC_ENABLED = global_config.global_config.get_config_value(
 # According to https://cloud.google.com/storage/docs/bucket-naming#objectnames
 INVALID_GS_CHARS = ['[', ']', '*', '?', '#']
 INVALID_GS_CHAR_RANGE = [(0x00, 0x1F), (0x7F, 0x84), (0x86, 0xFF)]
+
+# Maximum number of files in the folder.
+MAX_FILE_COUNT = 500
+FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs']
+LIMIT_FILE_COUNT = global_config.global_config.get_config_value(
+    'CROS', 'gs_offloader_limit_file_count', type=bool, default=False)
 
 class TimeoutException(Exception):
   """Exception raised by the timeout_handler."""
@@ -205,6 +213,52 @@ def sanitize_dir(dir_entry):
     shutil.move(src, dest)
 
 
+def limit_file_count(dir_entry):
+  """Limit the number of files in given directory.
+
+  The method checks the total number of files in the given directory. If the
+  number is greater than MAX_FILE_COUNT, the method will compress each folder
+  in the given directory, except folders in FOLDERS_NEVER_ZIP.
+
+  @param dir_entry: Directory entry to be checked.
+  """
+  count = utils.run('find "%s" | wc -l' % dir_entry,
+                    ignore_status=True).stdout.strip()
+  try:
+    count = int(count)
+  except ValueError, TypeError:
+    logging.warn('Fail to get the file count in folder %s.', dir_entry)
+    return
+  if count < MAX_FILE_COUNT:
+    return
+
+  # For test job, zip folders in a second level, e.g., 123-debug/host1.
+  # This is to allow autoserv debug folder still be accessible.
+  # For special task, it does not need to dig one level deeper.
+  is_special_task = re.match(job_directories.SPECIAL_TASK_PATTERN, dir_entry)
+
+  folders = [os.path.join(dir_entry, d) for d in os.listdir(dir_entry)
+             if (not os.path.isfile(os.path.join(dir_entry, d)) and
+                 not d in FOLDERS_NEVER_ZIP)]
+  if not is_special_task:
+    subfolders = []
+    for folder in folders:
+      subfolders.extend([os.path.join(folder, d) for d in os.listdir(folder)
+                         if (not os.path.isfile(os.path.join(folder, d)) and
+                             not d in FOLDERS_NEVER_ZIP)])
+    folders = subfolders
+
+  for folder in folders:
+    try:
+      zip_name = '%s.tgz' % folder
+      utils.run('tar -cz -C "%s" -f "%s" "%s"' %
+                (os.path.dirname(folder), zip_name, os.path.basename(folder)))
+    except error.CmdError as e:
+      logging.error('Fail to compress folder %s. Error: %s', folder, e)
+      continue
+    shutil.rmtree(folder)
+
+
 def correct_results_folder_permission(dir_entry):
     """Make sure the results folder has the right permission settings.
 
@@ -248,6 +302,9 @@ def get_offload_dir_func(gs_uri, multiprocessing):
       counter.increment('jobs_offload_started')
 
       sanitize_dir(dir_entry)
+
+      if LIMIT_FILE_COUNT:
+        limit_file_count(dir_entry)
 
       error = False
       stdout_file = tempfile.TemporaryFile('w+')

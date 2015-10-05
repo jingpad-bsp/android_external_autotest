@@ -19,8 +19,9 @@ import common
 import gs_offloader
 import job_directories
 
-from autotest_lib.client.common_lib import utils, time_utils
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
 
 
@@ -827,6 +828,46 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                         self.assertFalse(ord(c) >= r[0] and ord(c) <= r[1])
         self.assertTrue(os.path.exists(good_file))
         shutil.rmtree(results_folder)
+
+
+    def check_limit_file_count(self, is_test_job=True):
+        """Test that folder with too many files can be compressed.
+
+        @param is_test_job: True to check the method with test job result
+                            folder. Set to False for special task folder.
+        """
+        results_folder = tempfile.mkdtemp()
+        host_folder = os.path.join(
+                results_folder,
+                'lab1-host1' if is_test_job else 'hosts/lab1-host1/1-repair')
+        debug_folder = os.path.join(host_folder, 'debug')
+        sysinfo_folder = os.path.join(host_folder, 'sysinfo')
+        for folder in [debug_folder, sysinfo_folder]:
+            os.makedirs(folder)
+            for i in range(10):
+                with open(os.path.join(folder, str(i)), 'w') as f:
+                    f.write('test')
+
+        gs_offloader.MAX_FILE_COUNT = 100
+        gs_offloader.limit_file_count(
+                results_folder if is_test_job else host_folder)
+        self.assertTrue(os.path.exists(sysinfo_folder))
+
+        gs_offloader.MAX_FILE_COUNT = 10
+        gs_offloader.limit_file_count(
+                results_folder if is_test_job else host_folder)
+        self.assertFalse(os.path.exists(sysinfo_folder))
+        self.assertTrue(os.path.exists(sysinfo_folder + '.tgz'))
+        self.assertTrue(os.path.exists(debug_folder))
+
+        shutil.rmtree(results_folder)
+
+
+    def test_limit_file_count(self):
+        """Test that folder with too many files can be compressed.
+        """
+        self.check_limit_file_count(is_test_job=True)
+        self.check_limit_file_count(is_test_job=False)
 
 
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):

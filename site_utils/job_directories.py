@@ -16,6 +16,9 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 _AFE = frontend_wrappers.RetryingAFE()
 
+SPECIAL_TASK_PATTERN = '.*/hosts/[^/]+/(\d+)-[^/]+'
+JOB_PATTERN = '.*/(\d+)-[^/]+'
+
 def _is_job_expired(age_limit, timestamp):
   """Check whether a job timestamp is older than an age limit.
 
@@ -49,17 +52,15 @@ def get_job_id_or_task_id(result_dir):
     if not result_dir:
         return
     result_dir = os.path.abspath(result_dir)
-    special_task_pattern = '.*/hosts/[^/]+/(\d+)-[^/]+'
-    job_pattern = '.*/(\d+)-[^/]+'
     # Result folder for job running inside container has only job id.
     ssp_job_pattern = '.*/(\d+)$'
     # Try to get the job ID from the last pattern of number-text. This avoids
     # issue with path like 123-results/456-debug_user, in which 456 is the real
     # job ID.
-    m_job = re.findall(job_pattern, result_dir)
+    m_job = re.findall(JOB_PATTERN, result_dir)
     if m_job:
         return int(m_job[-1])
-    m_special_task = re.match(special_task_pattern, result_dir)
+    m_special_task = re.match(SPECIAL_TASK_PATTERN, result_dir)
     if m_special_task:
         return int(m_special_task.group(1))
     m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
