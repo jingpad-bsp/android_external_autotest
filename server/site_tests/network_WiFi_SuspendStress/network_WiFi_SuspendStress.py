@@ -79,7 +79,8 @@ class network_WiFi_SuspendStress(wifi_cell_test_base.WiFiCellTestBase):
         self._host = self.context.client.host
 
         if not self._host.servo:
-            raise error.TestNAError('Does the cell have a servo?')
+            raise error.TestNAError(
+                'Servo object returned None. Check if servo is missing or bad')
 
         # If the DUT is up and cold_reset is set to on, that means the DUT does
         # not support cold_reset.  We can't run the test, because it may get

@@ -4,6 +4,7 @@
 
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import hostap_config
@@ -61,6 +62,10 @@ class network_WiFi_RoamSuspendEndToEnd(wifi_cell_test_base.WiFiCellTestBase):
                 [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP])
         self.context.router.deconfig()
         self._host = host
+
+        if not self._host.servo:
+            raise error.TestNAError(
+                'Servo object returned None. Check if servo is missing or bad')
 
         # Configure first AP with channel 5 and mode G and default ssid.
         self._config_ap(5, hostap_config.HostapConfig.MODE_11G)
