@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.server.cros.audio import audio_test
@@ -28,6 +29,10 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
     RECORD_SECONDS = 8
 
     def run_once(self, host):
+
+        if not audio_test_utils.has_internal_speaker(host):
+            return
+
         golden_file = audio_test_data.SIMPLE_FREQUENCY_SPEAKER_TEST_FILE
 
         chameleon_board = host.chameleon

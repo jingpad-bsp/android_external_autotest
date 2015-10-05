@@ -13,6 +13,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import audio_widget_link
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
+from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -158,6 +159,14 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         @param is_internal: whether internal audio is tested flag
 
         """
+        if (recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC and
+            not audio_test_utils.has_internal_microphone(host)):
+            return
+
+        if (source == chameleon_audio_ids.CrosIds.SPEAKER and
+            not audio_test_utils.has_internal_speaker(host)):
+            return
+
         self.host = host
         self.audio_nodes = audio_nodes
         self.golden_file, self.low_pass_freq = golden_data
