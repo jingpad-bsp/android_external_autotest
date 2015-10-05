@@ -9,8 +9,7 @@ from autotest_lib.server.cros.faft.config import auron
 
 class Values(auron.Values):
     """Inherit overrides from auron."""
-    ec_capability = ['x86', 'usb']
+    ec_capability = ['adc_ectemp', 'x86', 'usb', 'peci']
     has_lid = False
     has_keyboard = False
-    keyboard_dev = True
     rec_button_dev_switch = True
