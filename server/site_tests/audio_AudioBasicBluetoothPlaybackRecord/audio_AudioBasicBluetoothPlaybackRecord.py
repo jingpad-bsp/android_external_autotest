@@ -35,6 +35,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
     DELAY_AFTER_RECONNECT_SECONDS = 5
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 5
+    SLEEP_AFTER_RECORD_SECONDS = 5
     SUSPEND_SECONDS = 30
     RESUME_TIMEOUT_SECS = 60
     PRC_RECONNECT_TIMEOUT = 60
@@ -217,6 +218,10 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 logging.info('Stopped recording from Chameleon.')
                 record_recorder.stop_recording()
                 logging.info('Stopped recording from Cros device.')
+
+                # Sleeps until playback data ends to prevent audio from
+                # going to internal speaker.
+                time.sleep(self.SLEEP_AFTER_RECORD_SECONDS)
 
                 # Gets the recorded data. This step is time consuming.
                 playback_recorder.read_recorded_binary()
