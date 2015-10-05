@@ -698,6 +698,8 @@ class TestPlatform(object):
         os_type = host.get_os_type()
         if os_type == 'cros':
             return ChromiumOSTestPlatform(host)
+        if os_type == 'brillo':
+            return BrilloTestPlatform(host)
 
         raise error.TestError('Unknown OS type reported by host: %s' % os_type)
 
@@ -1158,12 +1160,103 @@ class ChromiumOSTestPlatform(TestPlatform):
 
     def get_update_log(self, num_lines):
         return self._host.run_output(
-                'tail -n %s /var/log/update_engine.log' % num_lines)
+                'tail -n %d /var/log/update_engine.log' % num_lines)
 
 
     def check_device_after_update(self, target_release):
         # Make sure we can login after update.
         self._run_login_test(target_release)
+
+
+class BrilloTestPlatform(TestPlatform):
+    """A TestPlatform implementation for Brillo."""
+
+    def __init__(self, host):
+        self._host = host
+        self._forwarding_ports = set()
+
+
+    def _add_forwarding(self, url, default_port=80):
+        """Configures port forwarding and adjusts the given URL.
+
+        @param url: The URL for which we need to establish forwarding.
+        @param default_port: The default port to use if URL doesn't specify one.
+
+        @return: The adjusted URL for use on the DUT.
+        """
+        if not url:
+            return url
+
+        host, _, port = urlparse.urlsplit(url).netloc.partition(':')
+        if not port:
+            port = '%d' % default_port
+        self._forwarding_ports.add(port)
+        return url.replace(host, '127.0.0.1', 1)
+
+
+    def _install_forwarding(self):
+        """Installs all configured forwarding rules via ADB."""
+        for port in self._forwarding_ports:
+            port_spec = 'tcp:%s' % port
+            self._host.add_forwarding(port_spec, port_spec, reverse=True)
+
+
+    # Interface overrides.
+    #
+    def initialize(self, autotest_devserver, devserver_dir):
+        pass
+
+
+    def reboot_device(self):
+        self._host.reboot()
+        self._install_forwarding()
+
+
+    def prep_artifacts(self, test_conf):
+        # TODO(garnold) Currently we don't stage anything and assume that the
+        # provided URLs are of pre-staged payloads. We should implement staging
+        # support once a release scheme for Brillo is finalized.
+        return self.StagedURLs(
+                self._add_forwarding(test_conf['source_payload_uri']), None,
+                self._add_forwarding(test_conf['target_payload_uri']), None)
+
+
+    def prep_device_for_update(self, source_release):
+        # TODO(garnold) Currently we do not implement source image install,
+        # although in general we should be able to.
+        pass
+
+
+    def get_active_slot(self):
+        return self._host.run('rootdev -s /system').stdout.strip()
+
+
+    def start_update_perf(self, bindir):
+        pass
+
+
+    def stop_update_perf(self):
+        pass
+
+
+    def trigger_update(self, omaha_devserver):
+        url = self._add_forwarding(omaha_devserver.get_update_url())
+        self._install_forwarding()
+        updater = autoupdater.BrilloUpdater(url, host=self._host)
+        updater.trigger_update()
+
+
+    def finalize_update(self):
+        pass
+
+
+    def get_update_log(self, num_lines):
+        return self._host.run_output(
+                'logcat -d -s update_engine | tail -n %d' % num_lines)
+
+
+    def check_device_after_update(self, target_release):
+        self._host.remove_forwarding(reverse=True)
 
 
 class autoupdate_EndToEndTest(test.test):
