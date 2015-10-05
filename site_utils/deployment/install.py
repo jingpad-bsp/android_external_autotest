@@ -257,7 +257,7 @@ def _install_test_image(hostname, arguments):
     try:
         if not arguments.noinstall:
             if not arguments.nostage:
-                host.servo.install_recovery_image(
+                host.servo.image_to_servo_usb(
                         host.stage_image_for_servo())
             if arguments.full_deploy:
                 _install_firmware(host)
