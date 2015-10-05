@@ -689,6 +689,32 @@ class FirmwareTest(FAFTBase):
             self.check_ec_capability(['usbpd_uart'], suppress_warning=True)):
             self.servo.set('usbpd_uart_capture', 'off')
 
+    def _get_power_state(self, power_state):
+        """
+        Return the current power state of the AP
+        """
+        return self.ec.send_command_get_output("powerinfo", [power_state])
+
+    def wait_power_state(self, power_state, retries):
+        """
+        Wait for certain power state.
+
+        @param power_state: power state you are expecting
+        @param retries: retries.  This is necessary if AP is powering down
+        and transitioning through different states.
+        """
+        logging.info('Checking power state "%s" maximum %d times.',
+                     power_state, retries)
+        while retries > 0:
+            logging.info("try count: %d" % retries)
+            try:
+                retries = retries - 1
+                ret = self._get_power_state(power_state)
+                return True
+            except error.TestFail:
+                pass
+        return False
+
     def _fetch_servo_log(self):
         """Fetch the servo log."""
         cmd = '[ -e %s ] && cat %s || echo NOTFOUND' % ((self._SERVOD_LOG,) * 2)

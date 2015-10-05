@@ -30,27 +30,10 @@ class firmware_ECPowerG3(FirmwareTest):
         self.ec.send_command("chan 0xffffffff")
         super(firmware_ECPowerG3, self).cleanup()
 
-    def wait_power(self, reg_ex, retries):
-        """
-        Wait for certain power state.
-
-        @param reg_ex: Acceptable "powerinfo" response. Can be a regex.
-        @param retries: retries.
-        """
-        logging.info('Checking for "%s" maximum %d times.', reg_ex, retries)
-        while retries > 0:
-            try:
-                retries = retries - 1
-                self.ec.send_command_get_output("powerinfo", [reg_ex])
-                return True
-            except error.TestFail:
-                pass
-        return False
-
     def check_G3(self):
         """Shutdown the system and check if X86 drop into G3 correctly."""
         self.faft_client.system.run_shell_command("shutdown -P now")
-        if not self.wait_power("power state 0 = G3", self.G3_RETRIES):
+        if not self.wait_power_state("G3", self.G3_RETRIES):
             logging.error("EC fails to drop into G3")
             self._failed = True
         self.servo.power_short_press()
