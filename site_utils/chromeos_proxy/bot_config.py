@@ -40,7 +40,7 @@ CMD_WHITELIST = {'/usr/local/autotest/site_utils/run_suite.py',
                  '/usr/local/autotest/site_utils/abort_suite.py'}
 
 
-def get_dimensions():
+def get_dimensions(bot=None):
     """Returns dict with the bot's dimensions.
 
     The dimensions are what are used to select the bot that can run each task.
@@ -69,7 +69,7 @@ def get_dimensions():
     return d
 
 
-def get_state():
+def get_state(bot=None):
     """Returns dict with a state of the bot reported to the server with each poll.
 
     It is only for dynamic state that changes while bot is running for information
