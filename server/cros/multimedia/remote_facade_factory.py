@@ -136,7 +136,8 @@ class RemoteFacadeProxy(object):
                     ),
                     ready_test_name=(
                         constants.MULTIMEDIA_XMLRPC_SERVER_READY_METHOD),
-                    timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT)
+                    timeout_seconds=self.XMLRPC_CONNECT_TIMEOUT,
+                    logfile=constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE)
 
         logging.info('Setup the connection to RPC server, with retries...')
         connect_with_retries(reconnect)

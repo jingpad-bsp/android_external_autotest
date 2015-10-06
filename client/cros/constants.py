@@ -169,6 +169,7 @@ MULTIMEDIA_XMLRPC_SERVER_RESTART_COMMAND = (
         './multimedia_xmlrpc_server.py --restart')
 MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN = 'multimedia_xmlrpc_server'
 MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
+MULTIMEDIA_XMLRPC_SERVER_LOG_FILE= '/var/log/multimedia_xmlrpc_server.log'
 
 DISPLAY_TEST_EXTENSION = (
         '/usr/local/autotest/cros/multimedia/display_test_extension')
