@@ -157,7 +157,7 @@ class firmware_Mosys(FirmwareTest):
         device_info = 'adb devices -l'
         lines = self.faft_client.host.run_shell_command_get_output(device_info)
         logging.info(lines)
-        pattern = re.compile(fieldname + ':(.*)\s+')
+        pattern = re.compile(fieldname + ':(\S+)\s+')
         logging.info(pattern)
         for line in lines:
             matched = pattern.search(line)
@@ -208,7 +208,7 @@ class firmware_Mosys(FirmwareTest):
         command = 'mosys platform name'
         output = self.run_cmd(command)[0]
         if self.faft_client.system.has_host():
-            self.check_adb_devices(command, 'model', output)
+            self.check_adb_devices(command, 'product', output)
         else:
             self.check_lsb_info(command, 'CHROMEOS_RELEASE_BOARD', output)
 
