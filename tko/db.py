@@ -106,9 +106,13 @@ class db_sql(object):
             self.con.close()
             self.con = None
 
-        # create the db connection and cursor
-        self.con = self.connect(self.host, self.database,
-                                self.user, self.password, self.port)
+        try:
+            # create the db connection and cursor
+            self.con = self.connect(self.host, self.database,
+                                    self.user, self.password, self.port)
+        except:
+            autotest_stats.Counter('tko_db_con_error').increment()
+            raise
         self.cur = self.con.cursor()
 
 
