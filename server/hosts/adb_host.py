@@ -609,3 +609,45 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if self.run_output('getprop ro.product.brand') == 'Brillo':
             return 'brillo'
         return 'android'
+
+
+    def _forward(self, reverse, args):
+        """Execute a forwarding command.
+
+        @param reverse: Whether this is reverse forwarding (Boolean).
+        @param args: List of command arguments.
+        """
+        cmd = '%s %s' % ('reverse' if reverse else 'forward', ' '.join(args))
+        self._adb_run(cmd)
+
+
+    def add_forwarding(self, src, dst, reverse=False, rebind=True):
+        """Forward a port between the ADB host and device.
+
+        Port specifications are any strings accepted as such by ADB, for
+        example 'tcp:8080'.
+
+        @param src: Port specification to forward from.
+        @param dst: Port specification to forward to.
+        @param reverse: Do reverse forwarding from device to host (Boolean).
+        @param rebind: Allow rebinding an already bound port (Boolean).
+        """
+        args = []
+        if not rebind:
+            args.append('--no-rebind')
+        args += [src, dst]
+        self._forward(reverse, args)
+
+
+    def remove_forwarding(self, src=None, reverse=False):
+        """Removes forwarding on port.
+
+        @param src: Port specification, or None to remove all forwarding.
+        @param reverse: Whether this is reverse forwarding (Boolean).
+        """
+        args = []
+        if src is None:
+            args.append('--remove-all')
+        else:
+            args += ['--remove', src]
+        self._forward(reverse, args)
