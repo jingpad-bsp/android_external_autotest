@@ -106,16 +106,13 @@ class ChaosRunner(object):
             # If a test is cancelled or aborted the VM may be left on.  Always
             # turn of the VM to return it to a clean state.
             try:
+                logging.info('Always power off VM %s', webdriver_instance)
                 utils.power_off_VM(webdriver_master, webdriver_instance)
             except:
                 logging.debug('VM was already off, ignoring.')
 
-            try:
-                logging.info('Starting up VM %s', webdriver_instance)
-                utils.power_on_VM(webdriver_master, webdriver_instance)
-            except:
-                err = 'Is VM already on, or are all instances in use?'
-                raise error.TestError(err)
+            logging.info('Starting up VM %s', webdriver_instance)
+            utils.power_on_VM(webdriver_master, webdriver_instance)
 
             batch_locker = ap_batch_locker.ApBatchLocker(
                     lock_manager, self._ap_spec,
@@ -125,6 +122,7 @@ class ChaosRunner(object):
                 # Work around crbug.com/358716
                 utils.sanitize_client(self._host)
                 healthy_dut = True
+
                 with contextlib.closing(wifi_client.WiFiClient(
                     hosts.create_host(self._host.hostname),
                     './debug')) as client:
