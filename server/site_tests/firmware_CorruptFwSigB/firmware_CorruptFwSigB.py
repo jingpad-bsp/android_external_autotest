@@ -5,6 +5,7 @@
 import logging
 
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.faft.firmware_test import ConnectionError
 
 
 class firmware_CorruptFwSigB(FirmwareTest):
@@ -20,7 +21,10 @@ class firmware_CorruptFwSigB(FirmwareTest):
         self.setup_usbkey(usbkey=False)
 
     def cleanup(self):
-        self.restore_firmware()
+        try:
+            self.restore_firmware()
+        except ConnectionError:
+            logging.error("ERROR: DUT did not come up.  Need to cleanup!")
         super(firmware_CorruptFwSigB, self).cleanup()
 
     def run_once(self):
