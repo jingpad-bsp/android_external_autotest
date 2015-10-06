@@ -37,6 +37,7 @@ from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import chameleon_host
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
@@ -2872,3 +2873,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def get_os_type(self):
         return 'cros'
+
+
+    def enable_adb_testing(self):
+        """Mark this host as an adb tester."""
+        self.run('touch %s' % adb_host.ANDROID_TESTER_FILEFLAG)

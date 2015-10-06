@@ -7,10 +7,12 @@ Adds ability to schedule jobs on given machines.
 """
 
 import logging
+import os
 
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.server import utils
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
 
@@ -32,19 +34,24 @@ def run(machine):
 parallel_simple(run, machines)
 """
 
-    def __init__(self, name, args=None, iteration=1, duration=None):
+    def __init__(self, name, args=None, iteration=1, duration=None,
+                 fetch_control_file=False):
         """
         Constructor
 
-        @param name: name of the sever test to run.
+        @param name: name of the server test to run.
         @param args: arguments needed by the server test.
         @param iteration: number of copy of this test to sechudle
         @param duration: expected duration of the test (in seconds).
+        @param fetch_control_file: If True, fetch the control file contents
+                                   from disk. Otherwise uses the template
+                                   control file.
         """
         self._name = name
         self._args = args or {}
         self._iteration = iteration
         self._duration = duration
+        self._fetch_control_file = fetch_control_file
 
 
     def child_job_name(self, machine, iteration_number):
@@ -81,16 +88,24 @@ parallel_simple(run, machines)
 
     def child_control_file(self):
         """
-        Populate the template control file.
+        Generate the child job's control file.
 
-        Populate it with the test name and expand the arguments
-        list.
+        If not fetching the contents, use the template control file and
+        populate the template control file with the test name and expand the
+        arguments list.
 
         @param test: name of the test to run
         @param args: dictionary of argument for this test.
 
         @returns a fully built control file to be use for the child job.
         """
+        if self._fetch_control_file:
+            # TODO (sbasi): Add arg support.
+            cntl_file_getter = control_file_getter.FileSystemGetter(
+                    [os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  '..')])
+            return cntl_file_getter.get_control_file_contents_by_name(
+                    self._name)
         child_args = ['',]
         for arg, value in self._args.iteritems():
             child_args.append('%s=%s' % (arg, repr(value)))

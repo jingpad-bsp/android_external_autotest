@@ -86,7 +86,7 @@ def _detect_host(connectivity_class, hostname, **args):
 
 def create_host(
     hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
-    netconsole=False, **args):
+    netconsole=False, host_class=None, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
@@ -103,6 +103,8 @@ def create_host(
                          remote paths to monitor.
     @param pattern_paths: A list, passed to LogfileMonitorMixin,
                           local paths to alert pattern definition files.
+    @param host_class: Host class to use, if None, will attempt to detect
+                       the correct class.
     @param netconsole: A boolean value, if True, will mix NetconsoleHost in.
     @param args: Args that will be passed to the constructor of
                  the new host class.
@@ -131,8 +133,11 @@ def create_host(
                                   "on autotest's global_config.ini file." %
                                   SSH_ENGINE)
 
-    classes = [_detect_host(connectivity_class, hostname, **args),
-               connectivity_class]
+    if not host_class:
+        classes = [_detect_host(connectivity_class, hostname, **args),
+                   connectivity_class]
+    else:
+        classes = [host_class, connectivity_class]
     # by default mix in run_test support
     classes.append(autotest.AutotestHostMixin)
 

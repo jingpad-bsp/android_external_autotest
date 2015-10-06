@@ -43,6 +43,7 @@ class MoblabHost(cros_host.CrosHost):
     def _initialize(self, *args, **dargs):
         super(MoblabHost, self)._initialize(*args, **dargs)
         self.afe = frontend_wrappers.RetryingAFE(timeout_min=1,
+                                                 user='moblab',
                                                  server=self.hostname)
         # Clear the Moblab Image Storage so that staging an image is properly
         # tested.
@@ -156,6 +157,17 @@ class MoblabHost(cros_host.CrosHost):
                 self.run('ping %s -w 1' % ip, ignore_status=True)
 
 
+    def add_dut(self, hostname):
+        """Add a DUT hostname to the AFE.
+
+        @param hostname: DUT hostname to add.
+        """
+        result = self.run_as_moblab('%s host create %s' % (ATEST_PATH,
+                                                           hostname))
+        logging.debug('atest host create output for host %s:\n%s',
+                      hostname, result.stdout)
+
+
     def find_and_add_duts(self):
         """Discover DUTs on the testing subnet and add them to the AFE.
 
@@ -171,10 +183,7 @@ class MoblabHost(cros_host.CrosHost):
                 dut_hostname = match.group('ip')
                 if dut_hostname in existing_hosts:
                     break
-                result = self.run_as_moblab('%s host create %s' %
-                                            (ATEST_PATH, dut_hostname))
-                logging.debug('atest host create output for host %s:\n%s',
-                              dut_hostname, result.stdout)
+                self.add_dut(dut_hostname)
 
 
     def verify_software(self):

@@ -35,6 +35,7 @@ CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
 RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
 TMP_DIR = '/data/local/tmp'
+ANDROID_TESTER_FILEFLAG = '/mnt/stateful_partition/.android_tester'
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
@@ -63,7 +64,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         try:
             result = host.run(
-                    'test -f /mnt/stateful_partition/.android_tester',
+                    'test -f %s' % ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
