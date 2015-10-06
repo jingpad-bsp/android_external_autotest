@@ -9,6 +9,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils
 
 
@@ -139,6 +140,9 @@ class USBDeviceDriversManager(object):
             '/sys/bus/pci/drivers/*/%s',
             '/sys/bus/platform/drivers/*/%s']
 
+    # Skips auto HCD for issue crbug.com/537513.
+    _SKIP_AUTO_HCD_BLACKLIST = ['daisy', 'peach_pit', 'peach_pi']
+
     def __init__(self):
         """Initializes the manager.
 
@@ -176,11 +180,29 @@ class USBDeviceDriversManager(object):
         def _get_dir_name(path):
             return os.path.basename(os.path.dirname(path))
 
+        def _skip_hcd(hcd_id):
+            """Checks if this HCD needs to be skipped.
+
+            Skips controlloing HCD if this is a HCD with auto id
+            (ends with .auto), and this is on board in the blacklist.
+
+            @param hcd_id: The HCD ID.
+
+            @returns: True if this HCD should be skipped. False otherwise.
+
+            """
+            board = utils.get_board()
+            if (board in self._SKIP_AUTO_HCD_BLACKLIST and
+                hcd_id.endswith('.auto')):
+                logging.info('Skip HCD %s on board %s', hcd_id, board)
+                return True
+            return False
+
         hcd_ids = set()
         for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
             hcd_id = _get_dir_name(os.path.realpath(search_root_path))
             # Skip auto HCD for issue crbug.com/537513
-            if hcd_id.endswith('.auto'):
+            if _skip_hcd(hcd_id):
                 continue
             hcd_ids.add(hcd_id)
 
