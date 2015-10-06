@@ -175,8 +175,7 @@ class BuffetTester(object):
                     for path, interfaces in objects.iteritems()
                     if buffet_dbus_helper.COMMAND_INTERFACE in interfaces]
             messages = [cmd['Parameters'][TEST_COMMAND_PARAM] for cmd in cmds
-                        if (cmd['Category'] == TEST_COMMAND_CATEGORY and
-                            cmd['Name'] == '%s.%s' % (TEST_COMMAND_CATEGORY,
+                        if (cmd['Name'] == '%s.%s' % (TEST_COMMAND_CATEGORY,
                                                       TEST_COMMAND_NAME))]
             # |cmds| is a list of property sets
             if len(messages) != len(self._expected_messages):
