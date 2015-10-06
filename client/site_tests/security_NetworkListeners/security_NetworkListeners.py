@@ -60,9 +60,11 @@ class security_NetworkListeners(test.test):
         sockets_to_ignore = set([])
         for line in lsof_lines:
             fields = line.split()
-            if (fields[_LSOF_COMMAND] == 'autotest' or
+            if (fields[_LSOF_COMMAND] == 'autotest' or (
+                fields[_LSOF_COMMAND] == 'python' and
+                fields[_LSOF_NAME].startswith('127.0.0.1:')) or
                 fields[_LSOF_NAME] == '127.0.0.1:%d' %
-                        utils.get_chrome_remote_debugging_port()):
+                utils.get_chrome_remote_debugging_port()):
                 sockets_to_ignore.add(fields[_LSOF_DEVICE])
 
         # Now that we know which ones to ignore, iterate the output again.
