@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from telemetry.testing import run_chromeos_tests
@@ -21,8 +22,15 @@ class telemetry_UnitTests(test.test):
         @param perf_tests: list of perf unit tests to run, [''] is all tests,
                            [] is no tests.
         """
-        error_str = run_chromeos_tests.RunTestsForChromeOS(browser_type,
-                                                           unit_tests,
-                                                           perf_tests)
+        tests_to_run = []
+        tools_dir = '/usr/local/telemetry/src/tools/'
+        if unit_tests:
+            tests_to_run.append((os.path.join(tools_dir, 'telemetry'),
+                                 unit_tests))
+        if perf_tests:
+            tests_to_run.append((os.path.join(tools_dir, 'perf'),
+                                 perf_tests))
+        error_str = run_chromeos_tests.RunChromeOSTests(browser_type,
+                                                        tests_to_run)
         if error_str:
             raise error.TestFail(error_str)
