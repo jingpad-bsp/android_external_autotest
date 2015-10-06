@@ -13,3 +13,5 @@ class Values(rambi.Values):
     has_lid = False
     has_keyboard = False
     rec_button_dev_switch = True
+    firmware_screen = 10
+    confirm_screen = 6
