@@ -12,16 +12,34 @@ from autotest_lib.server import test
 
 
 NATIVE_TESTS_PATH = '/data/nativetest'
+WHITELIST_FILE = '/data/nativetest/tests.txt'
 
 class brillo_Gtests(test.test):
     """Run one or more native gTest Suites."""
     version = 1
 
-    def _find_all_gtestsuites(self):
-        """Find all the gTest Suites installed on the DUT."""
-        nativetests_contents = self.host.run_output(
-                'ls -d -1 %s/*/*' % NATIVE_TESTS_PATH)
-        gtestSuites = nativetests_contents.splitlines()
+    def _find_all_gtestsuites(self, use_whitelist=False):
+        """Find all the gTest Suites installed on the DUT.
+
+        @param use_whitelist: Only whitelisted tests found on the system will
+                              be used.
+        """
+        if use_whitelist:
+            test_folders = self.host.run_output(
+                    'cat %s' % WHITELIST_FILE).splitlines()
+        else:
+            test_folders = ['*']
+
+        gtestSuites = []
+        for test_folder in test_folders:
+            try:
+                test_folder = os.path.join(NATIVE_TESTS_PATH, test_folder)
+                gtestSuites.extend(
+                        self.host.run_output('ls -d -1 %s/*' %
+                                             test_folder).splitlines())
+            except error.AutoservRunError:
+                logging.error('Skipping test folder: %s as '
+                              'it does not exist.', test_folder)
         if not gtestSuites:
             raise error.TestWarn('No gTest executables found on the DUT!')
         logging.debug('gTest executables found:\n%s', '\n'.join(gtestSuites))
@@ -77,16 +95,20 @@ class brillo_Gtests(test.test):
         return True
 
 
-    def run_once(self, host=None, gtestSuites=None):
+    def run_once(self, host=None, gtestSuites=None, use_whitelist=False):
         """Run gTest Suites on the DUT.
 
         @param host: host object representing the device under test.
         @param gtestSuites: List of gTest suites to run. Default is to run
                             every gTest suite on the host.
+        @param use_whitelist: If gTestSuites is not passed in and use_whitelist
+                              is true, only whitelisted tests found on the
+                              system will be used.
         """
         self.host = host
         if not gtestSuites:
-            gtestSuites = self._find_all_gtestsuites()
+            gtestSuites = self._find_all_gtestsuites(
+                    use_whitelist=use_whitelist)
 
         failed_gtestSuites = []
         for gtestSuite in gtestSuites:
