@@ -754,7 +754,7 @@ class TestPlatform(object):
     def prep_device_for_update(self, source_release):
         """Prepares the device for update.
 
-        @param source_release: Source release version (string).
+        @param source_release: Source release version (string), or None.
 
         @raise error.TestError on failure.
         """
@@ -808,7 +808,7 @@ class TestPlatform(object):
     def check_device_after_update(self, target_release):
         """Runs final sanity checks.
 
-        @param target_release: Target release version (string).
+        @param target_release: Target release version (string), or None.
 
         @raise error.TestError on failure.
         """
@@ -1065,7 +1065,9 @@ class ChromiumOSTestPlatform(TestPlatform):
         # Only do login tests with recent builds, since they depend on
         # some binary compatibility with the build itself.
         # '5116.0.0' -> ('5116', '0', '0') -> 5116
-        if int(release_string.split('.')[0]) > self._LOGINABLE_MINIMUM_RELEASE:
+        if not release_string:
+            logging.info('No release provided, skipping login test.')
+        elif int(release_string.split('.')[0]) > self._LOGINABLE_MINIMUM_RELEASE:
             # Login, to prove we can before/after the update.
             logging.info('Attempting to login (release %s).', release_string)
 
@@ -1519,6 +1521,9 @@ class autoupdate_EndToEndTest(test.test):
         source_active_slot = test_platform.get_active_slot()
         logging.info('Source active slot: %s', source_active_slot)
 
+        source_release = test_conf['source_release']
+        target_release = test_conf['target_release']
+
         # Start the performance monitoring process on the DUT.
         test_platform.start_update_perf(self.bindir)
         try:
@@ -1540,7 +1545,7 @@ class autoupdate_EndToEndTest(test.test):
             chain = ExpectedUpdateEventChain()
             chain.add_event(
                     ExpectedUpdateEvent(
-                        version=test_conf['source_release'],
+                        version=source_release,
                         on_error=self._error_initial_check),
                     self._WAIT_FOR_INITIAL_UPDATE_CHECK_SECONDS,
                     on_timeout=self._timeout_err(
@@ -1550,7 +1555,7 @@ class autoupdate_EndToEndTest(test.test):
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_DOWNLOAD_STARTED,
                         event_result=EVENT_RESULT_SUCCESS,
-                        version=test_conf['source_release'],
+                        version=source_release,
                         on_error=self._error_download_started),
                     self._WAIT_FOR_DOWNLOAD_STARTED_SECONDS,
                     on_timeout=self._timeout_err(
@@ -1561,7 +1566,7 @@ class autoupdate_EndToEndTest(test.test):
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_DOWNLOAD_FINISHED,
                         event_result=EVENT_RESULT_SUCCESS,
-                        version=test_conf['source_release'],
+                        version=source_release,
                         on_error=self._error_download_finished),
                     self._WAIT_FOR_DOWNLOAD_COMPLETED_SECONDS,
                     on_timeout=self._timeout_err(
@@ -1572,7 +1577,7 @@ class autoupdate_EndToEndTest(test.test):
                     ExpectedUpdateEvent(
                         event_type=EVENT_TYPE_UPDATE_COMPLETE,
                         event_result=EVENT_RESULT_SUCCESS,
-                        version=test_conf['source_release'],
+                        version=source_release,
                         on_error=self._error_update_complete),
                     self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
                     on_timeout=self._timeout_err(
@@ -1606,8 +1611,8 @@ class autoupdate_EndToEndTest(test.test):
                 ExpectedUpdateEvent(
                     event_type=EVENT_TYPE_UPDATE_COMPLETE,
                     event_result=EVENT_RESULT_SUCCESS_REBOOT,
-                    version=test_conf['target_release'],
-                    previous_version=test_conf['source_release'],
+                    version=target_release,
+                    previous_version=source_release,
                     on_error=self._error_reboot_after_update),
                 self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
                 on_timeout=self._timeout_err(
@@ -1621,7 +1626,12 @@ class autoupdate_EndToEndTest(test.test):
         target_active_slot = test_platform.get_active_slot()
         if target_active_slot == source_active_slot:
             err_msg = 'The active image slot did not change after the update.'
-            if test_conf['source_release'] == test_conf['target_release']:
+            if None in (source_release, target_release):
+                err_msg += (' The DUT likely rebooted into the old image, which '
+                            'probably means that the payload we applied was '
+                            'corrupt. But since we did not check the source '
+                            'and/or target version we cannot say for sure.')
+            elif source_release == target_release:
                 err_msg += (' Given that the source and target versions are '
                             'identical, the DUT likely rebooted into the old '
                             'image. This probably means that the payload we '
@@ -1651,10 +1661,6 @@ class autoupdate_EndToEndTest(test.test):
                error.TestFail if any part of the test has failed.
 
         """
-
-        if not test_conf['target_release']:
-            raise RequiredArgumentMissing(
-                    'target_release is a required argument.')
 
         self._host = host
 
