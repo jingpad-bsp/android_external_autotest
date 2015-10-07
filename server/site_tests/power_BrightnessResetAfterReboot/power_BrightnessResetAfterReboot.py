@@ -18,8 +18,9 @@ class power_BrightnessResetAfterReboot(test.test):
         """This test verify that user should get default brightness
         after rebooting the device with maximum brigntness level.
         """
-        if host.get_board_type() == 'CHROMEBOX':
-            raise error.TestNAError('Test can not processed on chrome boxes')
+        if host.has_internal_display() is None:
+            raise error.TestNAError('Test can not processed on '
+                                    'devices without internal display')
         self.is_freon_build(host)
         autotest_client = autotest.Autotest(host)
         host.reboot()
