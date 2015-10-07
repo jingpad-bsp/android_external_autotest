@@ -203,9 +203,6 @@ class ExpectedUpdateEvent(object):
                                                       expected_attr_val)[0:2])
             return False
 
-        # Convert actual value to a string.
-        actual_attr_val = str(actual_attr_val)
-
         if not actual_attr_val == expected_attr_val:
             # We allow expected version numbers (e.g. 2940.0.0) to be contained
             # in actual values (2940.0.0-a1); this is necessary for the test to
@@ -373,7 +370,10 @@ class UpdateEventLogVerifier(object):
 
         # Return next new event, if one is found.
         if len(self._event_log) > self._num_consumed_events:
-            new_event = self._event_log[self._num_consumed_events]
+            new_event = {
+                    key: str(val) for key, val
+                    in self._event_log[self._num_consumed_events].iteritems()
+            }
             self._num_consumed_events += 1
             logging.info('Consumed new event: %s', new_event)
             return new_event
