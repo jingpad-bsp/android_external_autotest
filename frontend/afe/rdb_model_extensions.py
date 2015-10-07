@@ -179,6 +179,7 @@ class AbstractHostModel(dbmodels.Model, ModelValidators):
         protection: indicates what can be done to this host during repair
         lock_time: DateTime at which the host was locked
         dirty: true if the host has been used without being rebooted
+        lock_reason: The reason for locking the host.
     """
     Status = host_states.Status
     hostname = dbmodels.CharField(max_length=255, unique=True)
@@ -196,10 +197,9 @@ class AbstractHostModel(dbmodels.Model, ModelValidators):
                                             default=host_protections.default)
     lock_time = dbmodels.DateTimeField(null=True, blank=True, editable=False)
     dirty = dbmodels.BooleanField(default=True, editable=settings.FULL_ADMIN)
-    lock_reason = dbmodels.CharField(max_length=255, blank=True, default='')
+    lock_reason = dbmodels.CharField(null=True, max_length=255, blank=True,
+                                     default='')
 
 
     class Meta:
         abstract = True
-
-
