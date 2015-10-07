@@ -632,7 +632,8 @@ class OmahaDevserver(object):
 
     def _get_devserver_file_content(self, filename):
         """Returns the content of a file on the devserver."""
-        return self._devserver_ssh.run_output('cat %s' % filename)
+        return self._devserver_ssh.run_output('cat %s' % filename,
+                                              stdout_tee=None)
 
 
     def _get_devserver_log(self):
@@ -650,10 +651,10 @@ class OmahaDevserver(object):
 
         @param logging_level: logging level (from logging) to log the output.
         """
-        logging.log(logging_level, "devserver stdout and stderr:\n" +
-                    self._get_devserver_stdout())
-        logging.log(logging_level, "devserver logfile:\n" +
-                    self._get_devserver_log())
+        logging.log(logging_level, "Devserver stdout and stderr:\n" +
+                    snippet(self._get_devserver_stdout()))
+        logging.log(logging_level, "Devserver log file:\n" +
+                    snippet(self._get_devserver_log()))
 
 
     @staticmethod
