@@ -49,6 +49,20 @@ EVENT_RESULT_SUCCESS_REBOOT = '2'
 EVENT_RESULT_UPDATE_DEFERRED = '9'
 
 
+def snippet(text):
+    """Returns the text with start/end snip markers around it.
+
+    @param text: The snippet text.
+
+    @return The text with start/end snip markers around it.
+    """
+    snip = '---8<---' * 10
+    start = '-- START -'
+    end = '-- END -'
+    return ('%s%s\n%s\n%s%s' %
+            (start, snip[len(start):], text, end, snip[len(end):]))
+
+
 class ExpectedUpdateEvent(object):
     """Defines an expected event in an update process."""
 
@@ -1160,7 +1174,8 @@ class ChromiumOSTestPlatform(TestPlatform):
 
     def get_update_log(self, num_lines):
         return self._host.run_output(
-                'tail -n %d /var/log/update_engine.log' % num_lines)
+                'tail -n %d /var/log/update_engine.log' % num_lines,
+                stdout_tee=None)
 
 
     def check_device_after_update(self, target_release):
@@ -1252,7 +1267,8 @@ class BrilloTestPlatform(TestPlatform):
 
     def get_update_log(self, num_lines):
         return self._host.run_output(
-                'logcat -d -s update_engine | tail -n %d' % num_lines)
+                'logcat -d -s update_engine | tail -n %d' % num_lines,
+                stdout_tee=None)
 
 
     def check_device_after_update(self, target_release):
@@ -1352,10 +1368,10 @@ class autoupdate_EndToEndTest(test.test):
 
     def _dump_update_engine_log(self, test_platform):
         """Dumps relevant AU error log."""
-        logging.error('Test failed -- dumping snippet of update_engine log')
         try:
-            error_log = test_platform.get_update_log(40)
-            logging.error(error_log)
+            error_log = test_platform.get_update_log(80)
+            logging.error('Dumping snippet of update_engine log:\n%s',
+                          snippet(error_log))
         except Exception:
             # Mute any exceptions we get printing debug logs.
             pass
