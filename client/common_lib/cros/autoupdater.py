@@ -652,5 +652,5 @@ class BrilloUpdater(BaseUpdater):
         @param update_url: The URL we want the update to use.
         @param host: A client.common_lib.hosts.Host implementation.
         """
-        super(ChromiumOSUpdater, self).__init__(
+        super(BrilloUpdater, self).__init__(
                 '/system/bin/update_engine_client', update_url, host)
