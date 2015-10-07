@@ -183,7 +183,7 @@ class ExpectedUpdateEvent(object):
 
         """
         # None values are assumed to be missing and non-matching.
-        if not actual_attr_val:
+        if actual_attr_val is None:
             logging.error('No value found for %s (expected %s)',
                           *self._attr_name_and_values(attr_name,
                                                       expected_attr_val)[0:2])
