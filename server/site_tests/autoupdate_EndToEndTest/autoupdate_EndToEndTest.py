@@ -1594,7 +1594,7 @@ class autoupdate_EndToEndTest(test.test):
         test_platform.finalize_update()
 
         # Reboot the DUT after the update.
-        test_platform.reboot()
+        test_platform.reboot_device()
 
         # Trigger a second update check (again, test vs MP).
         test_platform.trigger_update(self._omaha_devserver)
