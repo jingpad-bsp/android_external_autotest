@@ -11,6 +11,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.cros.audio import cras_utils
 
 
 class USBFacadeNativeError(Exception):
@@ -28,7 +29,8 @@ class USBFacadeNative(object):
 
     """
     _DEFAULT_DEVICE_PRODUCT_NAME = 'Linux USB Audio Gadget'
-    _DELAY_AFTER_RESETTING_HOST_CONTROLLER = 3
+    _DELAY_BEFORE_FINDING_USB_DEVICE_SECS = 1
+    _TIMEOUT_CRAS_NODES_CHANGE_SECS = 30
 
     def __init__(self):
         """Initializes the USB facade.
@@ -44,7 +46,6 @@ class USBFacadeNative(object):
     def _reenumerate_usb_devices(self):
         """Resets host controller to re-enumerate usb devices."""
         self._drivers_manager.reset_host_controller()
-        time.sleep(self._DELAY_AFTER_RESETTING_HOST_CONTROLLER)
 
 
     def plug(self):
@@ -52,23 +53,41 @@ class USBFacadeNative(object):
 
         The USB device is initially set to one with the default product name,
         which is assumed to be the name of the USB audio gadget on Chameleon.
+        This method blocks until Cras emits signal for nodes change within a
+        timeout specified in _wait_for_nodes_changed.
 
         """
         # Only supports controlling one USB device of default name.
         device_name = self._DEFAULT_DEVICE_PRODUCT_NAME
 
-        # If driver manager has not found device yet, re-enumerate USB devices.
-        # The correct USB driver will be binded automatically.
-        if not self._drivers_manager.has_found_device(device_name):
+        if self._drivers_manager.has_found_device(device_name):
+            self._drivers_manager.bind_usb_drivers()
+            self._wait_for_nodes_changed()
+        else:
+            # If driver manager has not found device yet, re-enumerate USB
+            # devices. The correct USB driver will be binded automatically.
             self._reenumerate_usb_devices()
+            self._wait_for_nodes_changed()
+            # Wait some time for paths and fields in sysfs to be created.
+            time.sleep(self._DELAY_BEFORE_FINDING_USB_DEVICE_SECS)
             self._drivers_manager.find_usb_device(device_name)
-            return
-        self._drivers_manager.bind_usb_drivers()
 
 
     def unplug(self):
         """Unplugs the USB device from the host."""
         self._drivers_manager.unbind_usb_drivers()
+
+
+    def _wait_for_nodes_changed(self):
+        """Waits for Cras emits signal for nodes change within a timeout.
+
+        Waits for NodesChanged signal twice (input node change and output node
+        change).
+
+        """
+        cras_utils.CrasDBusMonitor().wait_for_nodes_changed(
+                target_signal_count=2,
+                timeout_secs=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
 
 
 class USBDeviceDriversManagerError(Exception):
