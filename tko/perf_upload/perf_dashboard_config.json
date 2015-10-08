@@ -295,6 +295,46 @@
     "dashboard_test_name": "network_WiFi_SimpleConnect"
   },
   {
+    "autotest_name": "network_WiFi_SuspendStress.5HT40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.11a",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.11b",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.11g",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.24HT40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.Hidden",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.WEP40",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
+    "autotest_name": "network_WiFi_SuspendStress.WPA2",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_SuspendStress"
+  },
+  {
     "autotest_name": "platform_BootPerfServer",
     "master_name": "ChromeOSPerf"
   },
