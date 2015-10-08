@@ -6,9 +6,9 @@ AUTHOR = 'harpreet, krisr, wiley'
 TIME = 'SHORT'
 NAME = 'network_WiFi_ChromeEndToEnd.enableDisableWiFi'
 TEST_TYPE = 'Server'
-ATTRIBUTES = ('suite:wifi_matfunc, suite:wifi_matfunc_bcm4371, '
+ATTRIBUTES = ('suite:wifi_endtoend, suite:wifi_matfunc_bcm4371, '
               'suite:wifi_release')
-SUITE = 'wifi_matfunc, wifi_matfunc_bcm4371, wifi_release'
+SUITE = 'wifi_endtoend, wifi_matfunc_bcm4371, wifi_release'
 DEPENDENCIES = 'wificell'
 
 DOC = """
