@@ -47,7 +47,6 @@ TELEMETRY_AFDO_BENCHMARKS = (
     ('page_cycler.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
     ('page_cycler.intl_ko_th_vi', ('--pageset-repeat=1',)),
     ('page_cycler.intl_hi_ru', ('--pageset-repeat=1',)),
-    ('page_cycler.dhtml', ('--pageset-repeat=1',)),
     ('octane',),
     ('kraken',),
     ('speedometer',),
