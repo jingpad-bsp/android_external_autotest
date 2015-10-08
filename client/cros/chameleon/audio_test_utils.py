@@ -98,3 +98,20 @@ def has_internal_microphone(host):
         logging.info('Board %s does not have internal microphone.', board_name)
         return False
     return True
+
+
+_BOARDS_WITH_DEDICATED_HDMI = ['panther']
+
+def has_dedicated_hdmi(host):
+    """Checks if the Cros device has a dedicated HDMI output plugged.
+
+    @param host: The CrosHost object.
+
+    @returns: True if Cros device has HDMI plugged. False otherwise.
+
+    """
+    board_name = _get_board_name(host)
+    if board_name in _BOARDS_WITH_DEDICATED_HDMI:
+        logging.info('Board %s has HDMI plugged.', board_name)
+        return True
+    return False

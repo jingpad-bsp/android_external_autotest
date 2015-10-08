@@ -52,6 +52,12 @@ class audio_InternalCardNodes(audio_test.AudioTest):
             expected_plugged_nodes_with_audio_jack[0].append(
                     'INTERNAL_SPEAKER')
 
+        if audio_test_utils.has_dedicated_hdmi(host):
+            expected_plugged_nodes_without_audio_jack[0].append(
+                    'HDMI')
+            expected_plugged_nodes_with_audio_jack[0].append(
+                    'HDMI')
+
         if audio_test_utils.has_internal_microphone(host):
             expected_plugged_nodes_without_audio_jack[1].append(
                     'INTERNAL_MIC')
