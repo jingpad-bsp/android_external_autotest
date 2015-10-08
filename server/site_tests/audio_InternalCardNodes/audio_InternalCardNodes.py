@@ -25,6 +25,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
     """
     version = 1
     DELAY_AFTER_PLUGGING = 2
+    DELAY_AFTER_UNPLUGGING = 2
 
     def run_once(self, host):
         chameleon_board = host.chameleon
@@ -80,6 +81,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
 
         finally:
             jack_plugger.unplug()
+            time.sleep(self.DELAY_AFTER_UNPLUGGING)
 
         audio_test_utils.check_plugged_nodes(
                 audio_facade, expected_plugged_nodes_without_audio_jack)
