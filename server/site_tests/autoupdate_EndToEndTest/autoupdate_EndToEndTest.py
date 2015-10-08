@@ -1434,7 +1434,7 @@ class autoupdate_EndToEndTest(test.test):
                     'notification (%s). This could be an updater %s; check the '
                     '%s. For a detailed log of update events, check the %s.' %
                     (action, EVENT_TYPE_DICT[expected['event_type']],
-                     EVENT_TYPE_DICT[actual['event_type']], problem
+                     EVENT_TYPE_DICT[actual['event_type']], problem,
                      self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
         if 'version' in mismatched_attrs:
             return ('The updater reported an unexpected version despite '
