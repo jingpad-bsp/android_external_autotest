@@ -94,6 +94,7 @@ class HostControllerDriver(object):
         @param hcd_path: The path to HCD, e.g. /sys/bus/pci/drivers/echi_hcd.
 
         """
+        logging.debug('hcd id: %s, hcd path: %s', hcd_id, hcd_path)
         self._hcd_id = hcd_id
         self._hcd_path = hcd_path
 
@@ -281,16 +282,22 @@ class USBDeviceDriversManager(object):
             @returns: True if the product name matches, False otherwise.
 
             """
-            return base_utils.read_one_line(path) == product_name
+            read_product_name = base_utils.read_one_line(path)
+            logging.debug('Read product at %s = %s', path, read_product_name)
+            return read_product_name == product_name
 
         # Find product field at these possible paths:
         # '/sys/bus/usb/drivers/usb/usbX/X-Y/product' => bus id is X-Y.
         # '/sys/bus/usb/drivers/usb/usbX/X-Y/X-Y.Z/product' => bus id is X-Y.Z.
 
         for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
+            logging.debug('search_root_path: %s', search_root_path)
             for root, dirs, _ in os.walk(search_root_path):
+                logging.debug('root: %s', root)
                 for bus_id in dirs:
+                    logging.debug('bus_id: %s', bus_id)
                     product_path = os.path.join(root, bus_id, 'product')
+                    logging.debug('product_path: %s', product_path)
                     if not os.path.exists(product_path):
                         continue
                     if not product_matched(product_path):
