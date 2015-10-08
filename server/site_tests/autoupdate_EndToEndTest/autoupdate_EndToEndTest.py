@@ -1227,7 +1227,6 @@ class BrilloTestPlatform(TestPlatform):
 
     def reboot_device(self):
         self._host.reboot()
-        self._install_forwarding()
 
 
     def prep_artifacts(self, test_conf):
