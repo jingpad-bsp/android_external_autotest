@@ -1275,7 +1275,11 @@ class BrilloTestPlatform(TestPlatform):
 
 
     def check_device_after_update(self, target_release):
-        self._host.remove_forwarding(reverse=True)
+        # TODO(garnold) Removal of forwarding rules fails due to an ADB bug
+        # (b/24771474).  Instead we reboot the device, which has the
+        # side-effect of flushing all forwarding rules. Once fixed, this should
+        # be replaced with self._host.remove_forwarding(reverse=True).
+        self.reboot_device()
 
 
 class autoupdate_EndToEndTest(test.test):
