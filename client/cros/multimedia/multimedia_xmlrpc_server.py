@@ -12,6 +12,7 @@ import xmlrpclib
 import traceback
 import common   # pylint: disable=unused-import
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import logging_config
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import xmlrpc_server
@@ -68,6 +69,12 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             return traceback.format_exc()
 
 
+def config_logging():
+    """Configs logging to be verbose and use console handler."""
+    config = logging_config.LoggingConfig()
+    config.configure_logging(use_console=True, verbose=True)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', required=False,
@@ -83,7 +90,7 @@ if __name__ == '__main__':
                                   constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
         code.interact(local=locals())
     else:
-        logging.basicConfig(level=logging.DEBUG)
+        config_logging()
         logging.debug('multimedia_xmlrpc_server main...')
 
         extra_browser_args = ['--enable-gpu-benchmarking']
