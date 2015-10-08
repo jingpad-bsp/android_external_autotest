@@ -7,12 +7,16 @@ NAME = 'graphics_dEQP.gles2.functional.hasty.5'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Run the drawElements Quality Program test suite in hasty mode.'
 CRITERIA = 'All of the individual tests must pass.'
-ATTRIBUTES = "suite:graphics_per-day, suite:graphics_system, suite:bvt-perbuild"
+ATTRIBUTES = 'suite:graphics_per-day, suite:graphics_system, suite:bvt-perbuild'
 SUITE = 'graphics_per-day, graphics_system, bvt-perbuild'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
+DEPENDENCIES = ('cleanup-reboot, gpu_family:rogue, gpu_family:sandybridge, '
+                'gpu_family:ivybridge, gpu_family:haswell, '
+                'gpu_family:baytrail, gpu_family:broadwell, '
+                'gpu_family:braswell, gpu_family:skylake')
 
 DOC = """
 This test runs the drawElements Quality Program test suite. Unlike the
