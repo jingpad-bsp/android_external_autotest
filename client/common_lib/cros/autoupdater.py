@@ -203,11 +203,12 @@ class BaseUpdater(object):
             autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
                               (self.updater_ctrl_bin, self.update_url))
             self.host.run(autoupdate_cmd, timeout=1200)
-        except error.AutoservRunError:
+        except error.AutoservRunError as e:
             list_image_dir_contents(self.update_url)
             update_error = RootFSUpdateError(
-                    'Failed to install device image using update engine on %s' %
-                    self.host.hostname)
+                    'Failed to install device image using payload at %s '
+                    'on %s: %s' %
+                    (self.update_url, self.host.hostname, e))
             self._update_error_queue.put(update_error)
             raise update_error
         except Exception as e:
