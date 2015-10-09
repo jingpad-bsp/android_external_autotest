@@ -971,8 +971,8 @@ class ChromiumOSTestPlatform(TestPlatform):
                     'Failed to start private devserver for installing the '
                     'source image on the DUT: %s' % e)
         except error.AutoservRunError as e:
-            logging.fatal('Error re-imaging the DUT with the source image %s',
-                          image_url)
+            logging.fatal('Error re-imaging or rebooting the DUT with the '
+                          'source image from %s', image_url)
             raise error.TestError('Failed to install the source image or '
                                   'reboot the DUT: %s' % e)
 
@@ -1136,6 +1136,7 @@ class ChromiumOSTestPlatform(TestPlatform):
     def prep_device_for_update(self, source_release):
         # Install the source version onto the DUT.
         if self._staged_urls.source_url:
+            logging.info('Installing a source image on the DUT')
             devserver_hostname = urlparse.urlparse(
                     self._autotest_devserver.url()).hostname
             self._install_source_version(devserver_hostname,
@@ -1191,6 +1192,9 @@ class BrilloTestPlatform(TestPlatform):
 
     def __init__(self, host):
         self._host = host
+        self._autotest_devserver = None
+        self._devserver_dir = None
+        self._staged_urls = None
         self._forwarding_ports = set()
 
 
@@ -1212,6 +1216,17 @@ class BrilloTestPlatform(TestPlatform):
         return url.replace(host, '127.0.0.1', 1)
 
 
+    def _delete_forwarding(self, url):
+        """Deletes a port forwarding that was added for the given URL.
+
+        @param url: The URL for which forwarding was established.
+        """
+        if url:
+            port = urlparse.urlsplit(url).netloc.partition(':')[-1]
+            if port:
+                self._forwarding_ports.discard(port)
+
+
     def _install_forwarding(self):
         """Installs all configured forwarding rules via ADB."""
         for port in self._forwarding_ports:
@@ -1219,10 +1234,48 @@ class BrilloTestPlatform(TestPlatform):
             self._host.add_forwarding(port_spec, port_spec, reverse=True)
 
 
+    def _install_source_version(self, devserver_hostname, payload_url):
+        """Installs a source version onto the test device.
+
+        @param devserver_hostname: Redirect updates through this host.
+        @param payload_url: URL of staged payload for installing a source image.
+        """
+        try:
+            # Start a private Omaha server and update the DUT.
+            temp_devserver = None
+            try:
+                temp_devserver = OmahaDevserver(
+                        devserver_hostname, self._devserver_dir, payload_url)
+                temp_devserver.start_devserver()
+                url = self._add_forwarding(temp_devserver.get_update_url())
+                self._install_forwarding()
+                updater = autoupdater.BrilloUpdater(url, host=self._host)
+                updater.update_image()
+                self._delete_forwarding(url)
+            finally:
+                if temp_devserver:
+                    temp_devserver.stop_devserver()
+
+            # Reboot the DUT.
+            self.reboot_device()
+        except OmahaDevserverFailedToStart as e:
+            logging.fatal('Failed to start private devserver for installing '
+                          'the source payload (%s) on the DUT', payload_url)
+            raise error.TestError(
+                    'Failed to start private devserver for installing the '
+                    'source image on the DUT: %s' % e)
+        except error.AutoservRunError as e:
+            logging.fatal('Error re-imaging or rebooting the DUT with the '
+                          'source image from %s', payload_url)
+            raise error.TestError('Failed to install the source image or '
+                                  'reboot the DUT: %s' % e)
+
+
     # Interface overrides.
     #
     def initialize(self, autotest_devserver, devserver_dir):
-        pass
+        self._autotest_devserver = autotest_devserver
+        self._devserver_dir = devserver_dir
 
 
     def reboot_device(self):
@@ -1233,15 +1286,20 @@ class BrilloTestPlatform(TestPlatform):
         # TODO(garnold) Currently we don't stage anything and assume that the
         # provided URLs are of pre-staged payloads. We should implement staging
         # support once a release scheme for Brillo is finalized.
-        return self.StagedURLs(
+        self._staged_urls = self.StagedURLs(
                 self._add_forwarding(test_conf['source_payload_uri']), None,
                 self._add_forwarding(test_conf['target_payload_uri']), None)
+        return self._staged_urls
 
 
     def prep_device_for_update(self, source_release):
-        # TODO(garnold) Currently we do not implement source image install,
-        # although in general we should be able to.
-        pass
+        # Install the source version onto the DUT.
+        if self._staged_urls.source_url:
+            logging.info('Installing a source image on the DUT')
+            devserver_hostname = urlparse.urlparse(
+                    self._autotest_devserver.url()).hostname
+            self._install_source_version(devserver_hostname,
+                                         self._staged_urls.source_url)
 
 
     def get_active_slot(self):
