@@ -923,7 +923,7 @@ class ChromiumOSTestPlatform(TestPlatform):
                 if is_stateful:
                     updater.update_stateful(clobber=clobber)
                 else:
-                    updater.update_rootfs()
+                    updater.update_image()
 
         # We create a OmahaDevserver to redirect blah.bin to update/. This
         # allows us to use any payload filename to serve an update.
