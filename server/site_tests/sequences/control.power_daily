@@ -25,19 +25,22 @@ def _run_client_test(machine):
     client_attributes = site_host_attributes.HostAttributes(machine)
     client_at = autotest.Autotest(client)
 
-    job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
+    job.run_test('power_RPMTest', verify=True, host=client,
+                 power_sequence=[True])
 
     # Charge the battery to at least 50% in preparation for the consumption
     # test. Charging the battery from empty to full can take up to 4 hours.
     client_at.run_test('power_BatteryCharge', percent_target_charge=50,
                        max_run_time=60*60*4, tag='CHARGE_50')
 
-    job.run_test('power_RPMTest', verify=True, host=client, power_on=False)
+    job.run_test('power_RPMTest', verify=True, host=client,
+                 power_sequence=[False])
 
     try:
         client_at.run_test('power_Consumption')
     finally:
-        job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
+        job.run_test('power_RPMTest', verify=True, host=client,
+                     power_sequence=[True])
 
     # Charge the battery to at least 99% in preparation for the load
     # test. Charging the battery from empty to full can take up to 4 hours.
@@ -49,7 +52,8 @@ def _run_client_test(machine):
     # TODO (snanda):
     # 1. Make the test login automatically to facebook and gmail
     # 2. Add audiovideo_V4L2 webcam test
-    job.run_test('power_RPMTest', verify=True, host=client, power_on=False)
+    job.run_test('power_RPMTest', verify=True, host=client,
+                 power_sequence=[False])
 
     try:
         client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
@@ -66,7 +70,8 @@ def _run_client_test(machine):
                                wifi_sec=wifi_sec, wifi_pw=wifi_pw,
                                tag='WIFI_1hr')
     finally:
-        job.run_test('power_RPMTest', verify=True, host=client, power_on=True)
+        job.run_test('power_RPMTest', verify=True, host=client,
+                     power_sequence=[True])
 
 
 job.parallel_on_machines(_run_client_test, machines)

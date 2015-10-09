@@ -35,12 +35,12 @@ class power_RPMTest(test.test):
             self._host_at.run_test('power_CheckAC', power_on=power_on)
 
 
-    def run_once(self, power_on=True):
-        """Run the test.
+    def run_once(self, power_sequence=[True]):
+        """Run the test.i
 
-        @param power_on: True to turn the power on and False for off
+        @param power_sequence: Sequence of values to set the power state to in
+            order
         """
-        if self._verify:
-            self._set_power(not power_on)
 
-        self._set_power(power_on)
+        for val in power_sequence:
+            self._set_power(val)
