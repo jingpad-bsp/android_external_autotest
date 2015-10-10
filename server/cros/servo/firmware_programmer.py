@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import site
+import time
 import xml.etree.ElementTree
 
 from autotest_lib.client.common_lib import error
@@ -38,6 +39,8 @@ class _BaseProgrammer(object):
       _servo_prog_state: a tuple of strings of "<control>:<value>" pairs,
                          listing servo controls and their required values for
                          programming
+      _servo_prog_state_delay: time in second to wait after changing servo
+                               controls for programming.
       _servo_saved_state: a list of the same elements as _servo_prog_state,
                           those which need to be restored after programming
       _program_cmd: a string, the shell command to run on the servo host
@@ -53,6 +56,7 @@ class _BaseProgrammer(object):
         """
         self._servo = servo
         self._servo_prog_state = ()
+        self._servo_prog_state_delay = 0
         self._servo_saved_state = []
         self._program_cmd = ''
         try:
@@ -73,10 +77,15 @@ class _BaseProgrammer(object):
         logging.debug("Setting servo state for programming")
         for item in self._servo_prog_state:
             key, value = item.split(':')
-            present = self._servo.get(key)
+            try:
+                present = self._servo.get(key)
+            except error.TestFail:
+                logging.warn('Missing servo control: %s', key)
+                continue
             if present != value:
                 self._servo_saved_state.append('%s:%s' % (key, present))
             self._servo.set(key, value)
+        time.sleep(self._servo_prog_state_delay)
 
 
     def _restore_servo_state(self):
@@ -178,12 +187,14 @@ class FlashromProgrammer(_BaseProgrammer):
         """
         faft_config = FAFTConfig(self._servo.get_board())
         self._fw_path = path
+        self._servo_prog_state_delay = faft_config.servo_prog_state_delay
         self._servo_prog_state = (
             'spi2_vref:%s' % faft_config.spi_voltage,
             'spi2_buf_en:on',
             'spi2_buf_on_flex_en:on',
             'spi_hold:off',
             'cold_reset:on',
+            'usbpd_reset:on',
             )
 
 

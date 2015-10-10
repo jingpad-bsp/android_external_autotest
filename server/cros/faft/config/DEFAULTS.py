@@ -101,3 +101,6 @@ class Values(object):
 
     # Delay after /sbin/shutdown before pressing power button
     powerup_ready = 10
+
+    # Time in second to wait after changing servo state for programming
+    servo_prog_state_delay = 0
