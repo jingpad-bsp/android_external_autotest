@@ -1190,6 +1190,9 @@ class ChromiumOSTestPlatform(TestPlatform):
 class BrilloTestPlatform(TestPlatform):
     """A TestPlatform implementation for Brillo."""
 
+    _URL_DEFAULT_PORT = 80
+    _DUT_LOCALHOST = '127.0.0.1'
+
     def __init__(self, host):
         self._host = host
         self._autotest_devserver = None
@@ -1198,40 +1201,69 @@ class BrilloTestPlatform(TestPlatform):
         self._forwarding_ports = set()
 
 
-    def _add_forwarding(self, url, default_port=80):
-        """Configures port forwarding and adjusts the given URL.
+    @classmethod
+    def _get_host_port(cls, url):
+        """Returns the host and port values from a given URL.
+
+        @param url: The URL from which the values are extracted.
+
+        @return A pair consisting of the host and port strings.
+        """
+        host, _, port = urlparse.urlsplit(url).netloc.partition(':')
+        return host, port or str(cls._URL_DEFAULT_PORT)
+
+
+    def _install_rev_forwarding(self, port=None):
+        """Installs reverse forwarding rules via ADB.
+
+        @param port: The TCP port we want forwarded; if None, installs all
+                     previously configured ports.
+        """
+        ports = self._forwarding_ports if port is None else [port]
+        for port in ports:
+            port_spec = 'tcp:%s' % port
+            self._host.add_forwarding(port_spec, port_spec, reverse=True)
+
+
+    def _add_rev_forwarding(self, url):
+        """Configures reverse port forwarding and adjusts the given URL.
+
+        This extracts the port from the URL, adds it to the set of configured
+        forwarding ports, installs it to the DUT, then returns the adjusted URL
+        for use by the DUT.
 
         @param url: The URL for which we need to establish forwarding.
-        @param default_port: The default port to use if URL doesn't specify one.
 
         @return: The adjusted URL for use on the DUT.
         """
-        if not url:
-            return url
-
-        host, _, port = urlparse.urlsplit(url).netloc.partition(':')
-        if not port:
-            port = '%d' % default_port
-        self._forwarding_ports.add(port)
-        return url.replace(host, '127.0.0.1', 1)
-
-
-    def _delete_forwarding(self, url):
-        """Deletes a port forwarding that was added for the given URL.
-
-        @param url: The URL for which forwarding was established.
-        """
         if url:
-            port = urlparse.urlsplit(url).netloc.partition(':')[-1]
-            if port:
-                self._forwarding_ports.discard(port)
+            host, port = self._get_host_port(url)
+            if port not in self._forwarding_ports:
+                self._forwarding_ports.add(port)
+                self._install_rev_forwarding(port=port)
+            url = url.replace(host, self._DUT_LOCALHOST, 1)
+        return url
 
 
-    def _install_forwarding(self):
-        """Installs all configured forwarding rules via ADB."""
-        for port in self._forwarding_ports:
-            port_spec = 'tcp:%s' % port
-            self._host.add_forwarding(port_spec, port_spec, reverse=True)
+    def _remove_rev_forwarding(self, url=None):
+        """Removes a reverse port forwarding.
+
+        @param url: The URL for which forwarding was established; if None,
+                    removes all previously configured ports.
+        """
+        ports = set()
+        if url is None:
+            ports.update(self._forwarding_ports)
+        else:
+            _, port = self._get_host_port(url)
+            if port in self._forwarding_ports:
+                ports.add(port)
+
+        # TODO(garnold) Enable once ADB port removal is fixed (b/24771474):
+        # for port in ports:
+        #     self._host.remove_forwarding(src='tcp:%s' % port, reverse=True)
+
+        self._forwarding_ports.difference_update(ports)
 
 
     def _install_source_version(self, devserver_hostname, payload_url):
@@ -1243,16 +1275,17 @@ class BrilloTestPlatform(TestPlatform):
         try:
             # Start a private Omaha server and update the DUT.
             temp_devserver = None
+            url = None
             try:
                 temp_devserver = OmahaDevserver(
                         devserver_hostname, self._devserver_dir, payload_url)
                 temp_devserver.start_devserver()
-                url = self._add_forwarding(temp_devserver.get_update_url())
-                self._install_forwarding()
+                url = self._add_rev_forwarding(temp_devserver.get_update_url())
                 updater = autoupdater.BrilloUpdater(url, host=self._host)
                 updater.update_image()
-                self._delete_forwarding(url)
             finally:
+                if url:
+                    self._remove_rev_forwarding(url)
                 if temp_devserver:
                     temp_devserver.stop_devserver()
 
@@ -1280,6 +1313,7 @@ class BrilloTestPlatform(TestPlatform):
 
     def reboot_device(self):
         self._host.reboot()
+        self._install_rev_forwarding()
 
 
     def prep_artifacts(self, test_conf):
@@ -1287,8 +1321,8 @@ class BrilloTestPlatform(TestPlatform):
         # provided URLs are of pre-staged payloads. We should implement staging
         # support once a release scheme for Brillo is finalized.
         self._staged_urls = self.StagedURLs(
-                self._add_forwarding(test_conf['source_payload_uri']), None,
-                self._add_forwarding(test_conf['target_payload_uri']), None)
+                self._add_rev_forwarding(test_conf['source_payload_uri']), None,
+                self._add_rev_forwarding(test_conf['target_payload_uri']), None)
         return self._staged_urls
 
 
@@ -1315,8 +1349,7 @@ class BrilloTestPlatform(TestPlatform):
 
 
     def trigger_update(self, omaha_devserver):
-        url = self._add_forwarding(omaha_devserver.get_update_url())
-        self._install_forwarding()
+        url = self._add_rev_forwarding(omaha_devserver.get_update_url())
         updater = autoupdater.BrilloUpdater(url, host=self._host)
         updater.trigger_update()
 
@@ -1332,10 +1365,10 @@ class BrilloTestPlatform(TestPlatform):
 
 
     def check_device_after_update(self, target_release):
-        # TODO(garnold) Removal of forwarding rules fails due to an ADB bug
-        # (b/24771474).  Instead we reboot the device, which has the
-        # side-effect of flushing all forwarding rules. Once fixed, this should
-        # be replaced with self._host.remove_forwarding(reverse=True).
+        self._remove_rev_forwarding()
+        # TODO(garnold) Port forwarding removal is broken in ADB (b/24771474).
+        # Instead we reboot the device, which has the side-effect of flushing
+        # all forwarding rules. Once fixed, the following should be removed.
         self.reboot_device()
 
 
