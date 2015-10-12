@@ -84,6 +84,26 @@ def ParseBuildName(name):
     raise ParseBuildNameException('%s is a malformed build name.' % name)
 
 
+def get_labels_from_afe(hostname, label_prefix, afe):
+    """Retrieve a host's specific labels from the AFE.
+
+    Looks for the host labels that have the form <label_prefix>:<value>
+    and returns the "<value>" part of the label. None is returned
+    if there is not a label matching the pattern
+
+    @param hostname: hostname of given DUT.
+    @param label_prefix: prefix of label to be matched, e.g., |board:|
+    @param afe: afe instance.
+
+    @returns A list of labels that match the prefix or 'None'
+
+    """
+    labels = afe.get_labels(name__startswith=label_prefix,
+                            host__hostname__in=[hostname])
+    if labels:
+        return [l.name.split(label_prefix, 1)[1] for l in labels]
+
+
 def get_label_from_afe(hostname, label_prefix, afe):
     """Retrieve a host's specific label from the AFE.
 
@@ -97,10 +117,9 @@ def get_label_from_afe(hostname, label_prefix, afe):
     @returns the label that matches the prefix or 'None'
 
     """
-    labels = afe.get_labels(name__startswith=label_prefix,
-                            host__hostname__in=[hostname])
+    labels = get_labels_from_afe(hostname, label_prefix, afe)
     if labels and len(labels) == 1:
-        return labels[0].name.split(label_prefix, 1)[1]
+        return labels[0]
 
 
 def get_board_from_afe(hostname, afe):

@@ -307,8 +307,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.chameleon = None
 
 
-    def get_repair_image_name(self):
+    def get_repair_image_name(self, image_type='cros'):
         """Generate a image_name from variables in the global config.
+
+        image_type is used to differentiate different images. Default is CrOS,
+        in which case, repair image's name follows the naming convention defined
+        in global setting CROS/stable_build_pattern.
+        If the image_type is not `cros`, the repair image will be looked up
+        using key `board_name/image_type`, e.g., daisy_spring/firmware.
+
+        @param image_type: Type of the image. Default is `cros`.
 
         @returns a str of $board-version/$BUILD.
 
@@ -317,10 +325,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if board is None:
             raise error.AutoservError('DUT has no board attribute, '
                                       'cannot be repaired.')
+        if image_type != 'cros':
+            board = '%s/%s' % (board, image_type)
         stable_version = self._AFE.run('get_stable_version', board=board)
-        build_pattern = CONFIG.get_config_value(
-                'CROS', 'stable_build_pattern')
-        return build_pattern % (board, stable_version)
+        if image_type == 'cros':
+            build_pattern = CONFIG.get_config_value(
+                    'CROS', 'stable_build_pattern')
+            stable_version = build_pattern % (board, stable_version)
+        return stable_version
 
 
     def _host_in_AFE(self):
@@ -835,7 +847,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
-            build = self.get_repair_image_name()
+            build = self.get_repair_image_name(image_type='firmware')
+            if not build:
+                raise error.TestError(
+                        'Failed to find stable firmware build for %s.',
+                        self.hostname)
+            logging.info('Will install firmware from build %s.', build)
 
         config = FAFTConfig(board)
         if config.use_u_boot:
@@ -1072,6 +1089,57 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.servo_install(image_url)
 
 
+    def _firmware_repair(self):
+        """Reinstall the firmware image using servo.
+
+        This repair function attempts to install the stable firmware specified
+        by the stable firmware version.
+        Then reset the DUT and try to verify it. If verify fails, it will try to
+        install the CrOS image using servo.
+
+        Note that the firmware repair is only applicable to DUTs in pools listed
+        in global config CROS/pools_support_firmware_repair.
+        """
+        logging.info('Checking if host %s can be repaired with firmware '
+                     'repair.', self.hostname)
+        pools = server_utils.get_labels_from_afe(self.hostname, 'pool:',
+                                                 self._AFE)
+        pools_support_firmware_repair = CONFIG.get_config_value('CROS',
+                'pools_support_firmware_repair', type=str).split(',')
+        if (not pools or not pools_support_firmware_repair or
+            not set(pools).intersection(set(pools_support_firmware_repair))):
+            logging.info('Host %s is not in pools that support firmware repair.'
+                         ' pools supporting firmware repair are: %s.',
+                         self.hostname, pools_support_firmware_repair)
+            raise error.AutoservRepairMethodNA(
+                    'Firmware repair is not applicable to host %s.' %
+                    self.hostname)
+
+        # To repair a DUT connected to a moblab, try to create a servo object if
+        # it was failed to be created earlier as there may be a servo_host host
+        # attribute for this host.
+        if utils.is_moblab():
+            self._setup_servo()
+
+        if not self.servo:
+            raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
+                                               'DUT has no servo support.')
+
+        logging.info('Attempting to recovery servo enabled device with '
+                     'firmware_repair.')
+        self.firmware_install()
+
+        logging.info('Firmware repaired. Check if the DUT can boot. If not, '
+                     'reinstall the CrOS using servo.')
+        try:
+            self.servo.reset()
+            self.verify()
+        except Exception as e:
+            logging.warn('Failed to verify DUT, error: %s. Will try to repair '
+                         'the DUT with servo_repair_reinstall.', e)
+            self._servo_repair_reinstall()
+
+
     def _servo_repair_power(self):
         """Attempt to repair DUT using an attached Servo.
 
@@ -1243,14 +1311,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             autotest_stats.Counter(
                     'repair_force_powerwash.TOTAL').increment()
             repair_funcs = [self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
+                            self._servo_repair_reinstall,
+                            self._firmware_repair]
         else:
             repair_funcs = [self._reboot_repair,
                             self._servo_repair_power,
                             self._powercycle_to_repair,
                             self._install_repair,
                             self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
+                            self._servo_repair_reinstall,
+                            self._firmware_repair]
         errors = []
         board = self._get_board_from_afe()
         for repair_func in repair_funcs:
