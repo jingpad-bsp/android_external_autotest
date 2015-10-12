@@ -85,6 +85,12 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
         # recording.
         recorder.remove_head(0.5)
 
+        # Removes noise by a lowpass filter.
+        recorder.lowpass_filter(4000)
+        recorded_file = os.path.join(self.resultsdir, "recorded_filtered.raw")
+        logging.info('Saving filtered data to %s', recorded_file)
+        recorder.save_file(recorded_file)
+
         # Compares data by frequency. Headphone audio signal has gone through
         # analog processing. This suffers from codec artifacts and noise on the
         # path. Comparing data by frequency is more robust than comparing by
