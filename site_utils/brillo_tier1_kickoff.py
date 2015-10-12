@@ -8,6 +8,8 @@ import httplib
 import logging
 import os
 import sys
+import tempfile
+import time
 import urllib2
 
 import common
@@ -15,6 +17,7 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.server import hosts
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.site_utils import run_suite
 
 
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -23,6 +26,10 @@ MOBLAB_TMP_DIR = os.path.join(MOBLAB_STATIC_DIR, 'tmp')
 TARGET_IMAGE_NAME = 'brillo/target'
 DEVSERVER_STAGE_URL_TEMPLATE = ('http://%(moblab)s:8080/stage?local_path='
                                 '%(staged_dir)s&artifacts=full_payload')
+AFE_JOB_PAGE_TEMPLATE = ('http://%(moblab)s/afe/#tab_id=view_job&object_id='
+                         '%(job_id)s')
+AFE_HOST_PAGE_TEMPLATE = ('http://%(moblab)s/afe/#tab_id=view_host&object_id='
+                          '%(host_id)s')
 
 
 class KickOffException(Exception):
@@ -104,16 +111,101 @@ def schedule_pts(moblab, host):
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param host: Hostname of the DUT.
+
+    @returns autotest_lib.server.frontend.Job object representing the scheduled
+             job.
     """
     getter = control_file_getter.FileSystemGetter(
             [os.path.dirname(os.path.dirname(os.path.realpath(__file__)))])
     pts_controlfile_conts = getter.get_control_file_contents_by_name(
             'control.brillo_pts')
-    job_id = moblab.afe.create_job(
+    job = moblab.afe.create_job(
             pts_controlfile_conts, name='brillo pts sequence',
             control_type=control_data.CONTROL_TYPE_NAMES.SERVER,
             hosts=[host], require_ssp=False)
-    return job_id
+    logging.info('\nBrillo PTS Scheduled. Please wait for results.')
+    job_page = AFE_JOB_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
+                                            job_id=job.id)
+    logging.info('Progress can be monitored at %s', job_page)
+    logging.info('Please note the main job will complete quickly, links to '
+                 'child jobs will appear shortly at the bottom on the page '
+                 '(Hit Refresh).')
+    return job
+
+
+def get_all_jobs(moblab, pts_job):
+    """Generate a list of the pts_job and it's subjobs.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    @param host: Hostname of the DUT.
+    @param pts_job: autotest_lib.server.frontend.Job object representing the
+                    pts job.
+
+    @returns list of autotest_lib.server.frontend.Job objects.
+    """
+    jobs_list = moblab.afe.get_jobs(id=pts_job.id)
+    jobs_list.extend(moblab.afe.get_jobs(parent_job=pts_job.id))
+    return jobs_list
+
+
+def wait_for_pts_completion(moblab, host, pts_job):
+    """Wait for the Brillo PTS job and it's subjobs to complete.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    @param host: Hostname of the DUT.
+    @param pts_job: autotest_lib.server.frontend.Job object representing the
+                    pts job.
+    """
+    # Wait for the sequence job and it's sub-jobs to finish, while monitoring
+    # the DUT state. As long as the DUT does not go into 'Repair Failed' the
+    # tests will complete.
+    while (moblab.afe.get_jobs(id=pts_job.id, not_yet_run=True, running=True)
+           or moblab.afe.get_jobs(parent_job=pts_job.id, not_yet_run=True,
+                                  running=True)):
+        afe_host = moblab.afe.get_hosts(hostnames=(host,))[0]
+        if afe_host.status == 'Repair Failed':
+            moblab.afe.abort_jobs(
+                [j.id for j in get_all_jobs(moblab, pts_job)])
+            host_page = AFE_HOST_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
+                                                      host_id=afe_host.id)
+            raise KickOffException(
+                    'ADB dut %s has become Repair Failed. More information '
+                    'can be found at %s' % (host, host_page))
+        time.sleep(10)
+
+
+def output_results(moblab, pts_job):
+    """Output the Brillo PTS and it's subjobs results.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    @param pts_job: autotest_lib.server.frontend.Job object representing the
+                    pts job.
+    """
+    rc = run_suite.ResultCollector(moblab.hostname, moblab.afe, moblab.tko,
+                                   None, None, 'brillo_pts', pts_job.id,
+                                   user='moblab')
+    rc.run()
+    rc.output_results()
+
+
+def copy_results(moblab, pts_job):
+    """Copy job results locally.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    @param pts_job: autotest_lib.server.frontend.Job object representing the
+                    pts job.
+
+    @returns Temporary directory path.
+    """
+    tempdir = tempfile.mkdtemp(prefix='brillo_pts_results')
+    for job in get_all_jobs(moblab, pts_job):
+        moblab.get_file('/usr/local/autotest/results/%d-moblab' % job.id,
+                        tempdir)
+    return tempdir
 
 
 def main(args):
@@ -141,9 +233,17 @@ def main(args):
     # Stage the payload if provided.
     if args.payload:
         stage_payload(moblab, args.payload)
-    # Launch PTS.
-    sequence_jobid = schedule_pts(moblab, adb_host)
-    # TODO (sbasi): Add job monitoring, and result collection.
+    # Schedule the PTS Job.
+    sequence_job = schedule_pts(moblab, adb_host)
+    try:
+        wait_for_pts_completion(moblab, adb_host, sequence_job)
+    except KickOffException as e:
+        logging.error(e)
+        return 1
+    local_results_folder = copy_results(moblab, sequence_job)
+    output_results(moblab, sequence_job)
+    logging.info('Results have also been copied locally to %s',
+                 local_results_folder)
     return 0
 
 

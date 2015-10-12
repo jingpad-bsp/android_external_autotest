@@ -45,6 +45,9 @@ class MoblabHost(cros_host.CrosHost):
         self.afe = frontend_wrappers.RetryingAFE(timeout_min=1,
                                                  user='moblab',
                                                  server=self.hostname)
+        self.tko = frontend_wrappers.RetryingTKO(timeout_min=1,
+                                                 user='moblab',
+                                                 server=self.hostname)
         # Clear the Moblab Image Storage so that staging an image is properly
         # tested.
         self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)

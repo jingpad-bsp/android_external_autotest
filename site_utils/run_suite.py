@@ -617,7 +617,7 @@ class TestView(object):
     INFRA_TESTS = ['provision']
 
 
-    def __init__(self, view, afe_job, suite_name, build):
+    def __init__(self, view, afe_job, suite_name, build, user):
         """Init a TestView object representing a tko test view.
 
         @param view: A dictionary representing a tko test view.
@@ -626,6 +626,7 @@ class TestView(object):
         @param suite_name: The name of the suite
                            that the test belongs to.
         @param build: The build for which the test is run.
+        @param user: The user for which the test is run.
         """
         self.view = view
         self.afe_job = afe_job
@@ -634,6 +635,7 @@ class TestView(object):
         self.is_suite_view = afe_job.parent_job is None
         # This is the test name that will be shown in the output.
         self.testname = None
+        self.user = user
 
         # The case that a job was aborted before it got a chance to run
         # usually indicates suite has timed out (unless aborted by user).
@@ -871,7 +873,7 @@ class TestView(object):
         @returns: A string which looks like 135036-username
 
         """
-        return '%s-%s' % (self.view['afe_job_id'], getpass.getuser())
+        return '%s-%s' % (self.view['afe_job_id'], self.user)
 
 
     def get_bug_info(self, suite_job_keyvals):
@@ -1005,7 +1007,8 @@ class ResultCollector(object):
 
 
     def __init__(self, instance_server, afe, tko, build, board,
-                 suite_name, suite_job_id, original_suite_name=None):
+                 suite_name, suite_job_id, original_suite_name=None,
+                 user=None):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
@@ -1026,6 +1029,7 @@ class ResultCollector(object):
         self.return_message = ''
         self.is_aborted = None
         self.timings = None
+        self._user = user or getpass.getuser()
 
 
     def _fetch_relevant_test_views_of_suite(self):
@@ -1061,7 +1065,7 @@ class ResultCollector(object):
                               afe_job_id=self._suite_job_id)
         relevant_views = []
         for v in views:
-            v = TestView(v, suite_job, self._suite_name, self._build)
+            v = TestView(v, suite_job, self._suite_name, self._build, self._user)
             if v.is_relevant_suite_view():
                 relevant_views.append(v)
         return relevant_views
@@ -1101,7 +1105,7 @@ class ResultCollector(object):
         if child_jobs:
             self._num_child_jobs = len(child_jobs)
         for job in child_jobs:
-            views = [TestView(v, job, self._suite_name, self._build)
+            views = [TestView(v, job, self._suite_name, self._build, self._user)
                      for v in self._tko.run(
                          call='get_detailed_test_views', afe_job_id=job.id,
                          invalid=0)]

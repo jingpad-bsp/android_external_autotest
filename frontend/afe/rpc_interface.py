@@ -1077,7 +1077,6 @@ def get_jobs(not_yet_run=False, running=False, finished=False,
     all hosts have completed.
     -finished: Include only jobs for which all hosts have completed (or
     aborted).
-    At most one of these three fields should be specified.
 
     Extra type filter args for get_jobs:
     -suite: Include only jobs with child jobs.

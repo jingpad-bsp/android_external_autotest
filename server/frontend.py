@@ -775,6 +775,17 @@ class AFE(RpcClient):
         return True
 
 
+    def abort_jobs(self, jobs):
+        """Abort a list of jobs.
+
+        Already completed jobs will not be affected.
+
+        @param jobs: List of job ids to abort.
+        """
+        for job in jobs:
+            self.run('abort_host_queue_entries', job_id=job)
+
+
 class TestResults(object):
     """
     Container class used to hold the results of the tests for a job

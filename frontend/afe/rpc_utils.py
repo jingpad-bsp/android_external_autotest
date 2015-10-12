@@ -116,32 +116,27 @@ def gather_unique_dicts(dict_iterable):
 def extra_job_status_filters(not_yet_run=False, running=False, finished=False):
     """\
     Generate a SQL WHERE clause for job status filtering, and return it in
-    a dict of keyword args to pass to query.extra().  No more than one of
-    the parameters should be passed as True.
+    a dict of keyword args to pass to query.extra().
     * not_yet_run: all HQEs are Queued
     * finished: all HQEs are complete
     * running: everything else
     """
-    assert not ((not_yet_run and running) or
-                (not_yet_run and finished) or
-                (running and finished)), ('Cannot specify more than one '
-                                          'filter to this function')
-
+    if not (not_yet_run or running or finished):
+        return {}
     not_queued = ('(SELECT job_id FROM afe_host_queue_entries '
                   'WHERE status != "%s")'
                   % models.HostQueueEntry.Status.QUEUED)
     not_finished = ('(SELECT job_id FROM afe_host_queue_entries '
                     'WHERE not complete)')
 
+    where = []
     if not_yet_run:
-        where = ['id NOT IN ' + not_queued]
-    elif running:
-        where = ['(id IN %s) AND (id IN %s)' % (not_queued, not_finished)]
-    elif finished:
-        where = ['id NOT IN ' + not_finished]
-    else:
-        return {}
-    return {'where': where}
+        where.append('id NOT IN ' + not_queued)
+    if running:
+        where.append('(id IN %s) AND (id IN %s)' % (not_queued, not_finished))
+    if finished:
+        where.append('id NOT IN ' + not_finished)
+    return {'where': [' OR '.join(['(%s)' % x for x in where])]}
 
 
 def extra_job_type_filters(extra_args, suite=False,

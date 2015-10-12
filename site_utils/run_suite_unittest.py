@@ -5,7 +5,6 @@
 
 import datetime as datetime_base
 from datetime import datetime
-import getpass
 import mock
 import time
 import unittest
@@ -209,19 +208,19 @@ class ResultCollectorUnittest(unittest.TestCase):
         suite_job_view = run_suite.TestView(
                 self._build_view(
                     20, 'Suite prep', '----', 'GOOD', suite_job_id),
-                fake_job, suite_name, build)
+                fake_job, suite_name, build, 'chromeos-test')
         good_test = run_suite.TestView(
                 self._build_view(
                     21, 'test_Pass', 'fake/subdir', 'GOOD', 101),
-                fake_job, suite_name, build)
+                fake_job, suite_name, build, 'chromeos-test')
         bad_test = run_suite.TestView(
                 self._build_view(
                     23, 'test_Fail', 'fake/subdir', 'FAIL', 102),
-                fake_job, suite_name, build)
+                fake_job, suite_name, build, 'chromeos-test')
 
         collector = run_suite.ResultCollector(
                 'fake_server', self.afe, self.tko,
-                build, board, suite_name, suite_job_id)
+                build, board, suite_name, suite_job_id, user='chromeos-test')
         collector._suite_views = [suite_job_view]
         collector._test_views = [suite_job_view, good_test, bad_test]
         collector._max_testname_width = max(
@@ -233,7 +232,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         expected_web_links = [
                  (v.get_testname().ljust(collector._max_testname_width),
                   URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], getpass.getuser())))
+                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views]
         # Verify web links are generated correctly.
         for i in range(len(collector._web_links)):
@@ -244,7 +243,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         expected_buildbot_links = [
                  (v.get_testname().ljust(collector._max_testname_width),
                   URL_PATTERN % ('fake_server',
-                                '%s-%s' % (v['afe_job_id'], getpass.getuser())))
+                                '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views if v['status'] != 'GOOD']
         # Verify buildbot links are generated correctly.
         for i in range(len(collector._buildbot_links)):
