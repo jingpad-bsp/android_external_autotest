@@ -493,6 +493,7 @@ class _RyuSwitcher(_BaseModeSwitcher):
     RECOVERY_TIMEOUT = 2400
     RECOVERY_SETUP = 60
     ANDROID_BOOTUP = 600
+    FWTOOL_STARTUP_DELAY = 30
 
     def wait_for_client(self, timeout=180):
         """Wait for the client to come back online.
@@ -505,6 +506,11 @@ class _RyuSwitcher(_BaseModeSwitcher):
         """
         if not self.faft_client.system.wait_for_client(timeout):
             raise ConnectionError()
+
+        # there's a conflict between fwtool and crossystem trying to access
+        # the nvram after the OS boots up.  Temporarily put a hard wait of
+        # 30 seconds to try to wait for fwtool to finish up.
+        time.sleep(self.FWTOOL_STARTUP_DELAY)
 
 
     def wait_for_client_offline(self, timeout=60, orig_boot_id=None):
