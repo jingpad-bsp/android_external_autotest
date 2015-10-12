@@ -67,8 +67,9 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         logging.info("Disconnecting BT module...")
         link.adapter_disconnect_module()
         time.sleep(self.DELAY_AFTER_DISCONNECT_SECONDS)
-        audio_test_utils.check_audio_nodes(self.audio_facade,
-                                           (None, ['INTERNAL_MIC']))
+        if audio_test_utils.has_internal_microphone(self.host):
+            audio_test_utils.check_audio_nodes(self.audio_facade,
+                                               (None, ['INTERNAL_MIC']))
         logging.info("Connecting BT module...")
         link.adapter_connect_module()
         time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
@@ -84,8 +85,9 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         logging.info("Turning off BT module...")
         link.disable_bluetooth_module()
         time.sleep(self.DELAY_AFTER_DISABLING_MODULE_SECONDS)
-        audio_test_utils.check_audio_nodes(self.audio_facade,
-                                           (None, ['INTERNAL_MIC']))
+        if audio_test_utils.has_internal_microphone(host):
+             audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                (None, ['INTERNAL_MIC']))
         logging.info("Turning on BT module...")
         link.enable_bluetooth_module()
         time.sleep(self.DELAY_AFTER_ENABLING_MODULE_SECONDS)
@@ -137,8 +139,8 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
                 audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (None, ['INTERNAL_MIC']))
 
-                # Selects bluetooth mic to be the active input node.
-                self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+            # Selects bluetooth mic to be the active input node.
+            self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
             # Checks the node selected by Cras is correct again.
             audio_test_utils.check_audio_nodes(self.audio_facade,
