@@ -34,7 +34,7 @@ Options:
     of any e-mail sent will also be logged in a timestamped file in
     this directory.
 
---print
+--debug
     Suppress all logging and sending e-mail.  Instead, write the
     output that would be generated onto stdout.
 
@@ -753,7 +753,7 @@ def _send_email(arguments, tag, subject, recipients, body):
             'To: %s' % all_recipients,
             'Subject: %s' % subject,
             '', body, ''])
-    if arguments.print_:
+    if arguments.debug:
         print report_body
     else:
         filename = os.path.join(arguments.logdir, tag)
@@ -790,14 +790,35 @@ def _verify_arguments(arguments):
     Join comma separated e-mail addresses for `--board-notify` and
     `--pool-notify` in separate option arguments into a single list.
 
+    For non-debug uses, require that notification be requested for
+    at least one report.  For debug, if notification isn't specified,
+    treat it as "run all the reports."
+
+    The return value indicates success or failure; in the case of
+    failure, we also write an error message to stderr.
+
     @param arguments  Command-line arguments as returned by
                       `ArgumentParser`
+    @return True if the arguments are semantically good, or False
+            if the arguments don't meet requirements.
 
     """
     arguments.board_notify = _separate_email_addresses(
             arguments.board_notify)
     arguments.pool_notify = _separate_email_addresses(
             arguments.pool_notify)
+    if not arguments.board_notify and not arguments.pool_notify:
+        if not arguments.debug:
+            sys.stderr.write('Must specify at least one of '
+                             '--board-notify or --pool-notify\n')
+            return False
+        else:
+            # We want to run all the reports.  An empty notify list
+            # will cause a report to be skipped, so make sure the
+            # lists are non-empty.
+            arguments.board_notify = ['']
+            arguments.pool_notify = ['']
+    return True
 
 
 def _get_logdir(script):
@@ -846,7 +867,7 @@ def _parse_command(argv):
                         help=('Specify how many DUTs should be '
                               'recommended for repair (default: no '
                               'recommendation)'))
-    parser.add_argument('--print', dest='print_', action='store_true',
+    parser.add_argument('--debug', action='store_true',
                         help='Print e-mail messages on stdout '
                              'without sending them.')
     parser.add_argument('--logdir', default=_get_logdir(argv[0]),
@@ -856,7 +877,8 @@ def _parse_command(argv):
                         help='names of boards to report on '
                              '(default: all boards)')
     arguments = parser.parse_args(argv[1:])
-    _verify_arguments(arguments)
+    if not _verify_arguments(arguments):
+        return None
     return arguments
 
 
@@ -878,7 +900,7 @@ def _configure_logging(arguments):
 
     """
     root_logger = logging.getLogger()
-    if arguments.print_:
+    if arguments.debug:
         root_logger.setLevel(logging.INFO)
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter())
@@ -941,6 +963,8 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
     """
     arguments = _parse_command(argv)
+    if not arguments:
+        sys.exit(1)
     _configure_logging(arguments)
     try:
         end_time = int(time.time())
@@ -962,24 +986,23 @@ def main(argv):
                          inventory.get_num_duts(),
                          inventory.get_num_boards())
 
-        if arguments.print_:
+        if arguments.debug:
             _populate_board_counts(inventory)
 
-        if arguments.print_ or arguments.board_notify:
+        if arguments.board_notify:
             if arguments.recommend:
                 recommend_message = _generate_repair_recommendation(
                         inventory, arguments.recommend) + '\n\n\n'
             else:
                 recommend_message = ''
             board_message = _generate_board_inventory_message(inventory)
-            full_message = recommend_message + board_message
             _send_email(arguments,
                         'boards-%s.txt' % timestamp,
                         'DUT board inventory %s' % timestamp,
                         arguments.board_notify,
-                        full_message)
+                        recommend_message + board_message)
 
-        if arguments.print_ or arguments.pool_notify:
+        if arguments.pool_notify:
             _send_email(arguments,
                         'pools-%s.txt' % timestamp,
                         'DUT pool inventory %s' % timestamp,

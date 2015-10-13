@@ -978,6 +978,8 @@ class PoolInventoryTests(unittest.TestCase):
 class CommandParsingTests(unittest.TestCase):
     """Tests for command line argument parsing in `_parse_command()`."""
 
+    _NULL_NOTIFY = ['--board-notify=', '--pool-notify=']
+
     def setUp(self):
         dirpath = '/usr/local/fubar'
         self._command_path = os.path.join(dirpath,
@@ -986,21 +988,35 @@ class CommandParsingTests(unittest.TestCase):
         self._logdir = os.path.join(dirpath, lab_inventory._LOGDIR)
 
 
-    def _parse_arguments(self, argv):
-        full_argv = [self._command_path] + argv
+    def _parse_arguments(self, argv, notify=_NULL_NOTIFY):
+        full_argv = [self._command_path] + argv + notify
         return lab_inventory._parse_command(full_argv)
+
+
+    def _check_non_notify_defaults(self, notify_option):
+        arguments = self._parse_arguments([], notify=[notify_option])
+        self.assertEqual(arguments.duration,
+                         lab_inventory._DEFAULT_DURATION)
+        self.assertFalse(arguments.debug)
+        self.assertEqual(arguments.logdir, self._logdir)
+        self.assertEqual(arguments.boardnames, [])
+        return arguments
+
+
+    def test_empty_arguments(self):
+        """Test that an empty argument list is an error."""
+        arguments = self._parse_arguments([], notify=[])
+        self.assertIsNone(arguments)
 
 
     def test_argument_defaults(self):
         """Test that option defaults match expectations."""
-        arguments = self._parse_arguments([])
-        self.assertEqual(arguments.duration,
-                         lab_inventory._DEFAULT_DURATION)
-        self.assertEqual(arguments.board_notify, [])
+        arguments = self._check_non_notify_defaults(self._NULL_NOTIFY[0])
+        self.assertEqual(arguments.board_notify, [''])
         self.assertEqual(arguments.pool_notify, [])
-        self.assertFalse(arguments.print_)
-        self.assertEqual(arguments.logdir, self._logdir)
-        self.assertEqual(arguments.boardnames, [])
+        arguments = self._check_non_notify_defaults(self._NULL_NOTIFY[1])
+        self.assertEqual(arguments.board_notify, [])
+        self.assertEqual(arguments.pool_notify, [''])
 
 
     def test_board_arguments(self):
@@ -1010,10 +1026,10 @@ class CommandParsingTests(unittest.TestCase):
         self.assertEqual(arguments.boardnames, boardlist)
 
 
-    def test_print_option(self):
-        """Test parsing of the `--print` option."""
-        arguments = self._parse_arguments(['--print'])
-        self.assertTrue(arguments.print_)
+    def test_debug_option(self):
+        """Test parsing of the `--debug` option."""
+        arguments = self._parse_arguments(['--debug'])
+        self.assertTrue(arguments.debug)
 
 
     def test_duration(self):
@@ -1046,17 +1062,19 @@ class CommandParsingTests(unittest.TestCase):
         """
         a1 = 'mumble@mumbler.com'
         a2 = 'bumble@bumbler.org'
-        arguments = self._parse_arguments([option, a1])
+        arguments = self._parse_arguments([option, a1], notify=[])
         self.assertEqual(getlist(arguments), [a1])
-        arguments = self._parse_arguments([option, ' ' + a1 + ' '])
+        arguments = self._parse_arguments([option, ' ' + a1 + ' '],
+                                          notify=[])
         self.assertEqual(getlist(arguments), [a1])
-        arguments = self._parse_arguments([option, a1, option, a2])
+        arguments = self._parse_arguments([option, a1, option, a2],
+                                          notify=[])
         self.assertEqual(getlist(arguments), [a1, a2])
         arguments = self._parse_arguments(
-                [option, ','.join([a1, a2])])
+                [option, ','.join([a1, a2])], notify=[])
         self.assertEqual(getlist(arguments), [a1, a2])
         arguments = self._parse_arguments(
-                [option, ', '.join([a1, a2])])
+                [option, ', '.join([a1, a2])], notify=[])
         self.assertEqual(getlist(arguments), [a1, a2])
 
 
