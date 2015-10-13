@@ -22,9 +22,12 @@ class security_mprotect(test.test):
 
 
     def run_once(self):
-        tmp = tempfile.NamedTemporaryFile(prefix='%s-' % (self.executable),
-                                          dir='/run')
-        r = utils.run("%s/%s %s" % (self.srcdir, self.executable, tmp.name),
+        with tempfile.NamedTemporaryFile(prefix='%s-' % (self.executable),
+                                         dir='/run', delete=True) as temp:
+            temp_file_name = temp.name
+
+        r = utils.run("%s/%s %s" % (self.srcdir, self.executable,
+                                    temp_file_name),
                       stdout_tee=utils.TEE_TO_LOGS,
                       stderr_tee=utils.TEE_TO_LOGS,
                       ignore_status=True)
