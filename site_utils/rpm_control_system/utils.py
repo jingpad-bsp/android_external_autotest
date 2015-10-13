@@ -8,8 +8,9 @@
 
 import collections
 import csv
-import os
 import logging
+import os
+import time
 
 import common
 
@@ -26,7 +27,7 @@ MAPPING_FILE = os.path.join(
 POWERUNIT_HOSTNAME_KEY = 'powerunit_hostname'
 POWERUNIT_OUTLET_KEY = 'powerunit_outlet'
 HYDRA_HOSTNAME_KEY = 'hydra_hostname'
-
+DEFAULT_EXPIRATION_SECS = 60 * 30
 
 class PowerUnitInfo(object):
     """A class that wraps rpm/poe information of a device."""
@@ -74,9 +75,18 @@ class LRUCache(object):
     """A simple implementation of LRU Cache."""
 
 
-    def __init__(self, size):
+    def __init__(self, size, expiration_secs=DEFAULT_EXPIRATION_SECS):
+        """Initialize.
+
+        @param size: Size of the cache.
+        @param expiration_secs: The items expire after |expiration_secs|
+                                Set to None so that items never expire.
+                                Default to DEFAULT_EXPIRATION_SECS.
+        """
         self.size = size
         self.cache = collections.OrderedDict()
+        self.timestamps = {}
+        self.expiration_secs = expiration_secs
 
 
     def __getitem__(self, key):
@@ -93,12 +103,19 @@ class LRUCache(object):
         if key in self.cache:
             self.cache.pop(key)
         elif len(self.cache) == self.size:
-            self.cache.popitem(last=False)
+            removed_key, _ = self.cache.popitem(last=False)
+            self.timestamps.pop(removed_key)
         self.cache[key] = value
+        self.timestamps[key] = time.time()
 
 
     def __contains__(self, key):
         """Check whether a key is in the cache."""
+        if (self.expiration_secs is not None and
+            key in self.timestamps and
+            time.time() - self.timestamps[key] > self.expiration_secs):
+            self.cache.pop(key)
+            self.timestamps.pop(key)
         return key in self.cache
 
 
