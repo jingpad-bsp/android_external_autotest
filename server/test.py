@@ -59,6 +59,13 @@ job.record('GOOD', '', 'sysinfo.iteration.%s')
 def install_autotest_and_run(func):
     def wrapper(self, mytest):
         host, at, outputdir = self._install()
+        # TODO(kevcheng): remove when host client install is supported for
+        # ADBHost. crbug.com/543702
+        if not host.is_client_install_supported:
+            logging.debug('host client install not supported, skipping %s:',
+                          func.__name__)
+            return
+
         try:
             host.erase_dir_contents(outputdir)
             func(self, mytest, host, at, outputdir)
@@ -92,6 +99,10 @@ class _sysinfo_logger(object):
             from autotest_lib.server import hosts, autotest
             self.host = hosts.create_host(self.job.machines[0],
                                           auto_monitor=False)
+            # TODO(kevcheng): remove when host client install is supported for
+            # ADBHost. crbug.com/543702
+            if not self.host.is_client_install_supported:
+                return self.host, None, None
             try:
                 tmp_dir = self.host.get_tmp_dir(parent="/tmp/sysinfo")
                 self.autotest = autotest.Autotest(self.host)
@@ -108,17 +119,20 @@ class _sysinfo_logger(object):
                 self.autotest = None
                 raise
         else:
-            host = self.host
+            # TODO(kevcheng): remove when host client install is supported for
+            # ADBHost. crbug.com/543702
+            if not self.host.is_client_install_supported:
+                return self.host, None, None
 
             # if autotest client dir does not exist, reinstall (it may have
             # been removed by the test code)
-            autodir = host.get_autodir()
-            if not autodir or not host.path_exists(autodir):
+            autodir = self.host.get_autodir()
+            if not autodir or not self.host.path_exists(autodir):
                 self.autotest.install(autodir=autodir)
 
             # if the output dir does not exist, recreate it
-            if not host.path_exists(self.outputdir):
-                host.run('mkdir -p %s' % self.outputdir)
+            if not self.host.path_exists(self.outputdir):
+                self.host.run('mkdir -p %s' % self.outputdir)
 
         return self.host, self.autotest, self.outputdir
 
