@@ -55,6 +55,8 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
             None to skip recording.
 
         """
+        self.check_correct_audio_node_selected()
+
         # Play, wait for some time, and then start recording if needed.
         source_widget.set_playback_data(self.golden_file)
         logging.debug('Start playing %s', self.golden_file.path)
@@ -120,7 +122,6 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         @param recorder_widget: recorder widget to record with
 
         """
-        self.check_correct_audio_node_selected()
         self.play_and_record(source_widget)
 
         # Disconnecs audio bus so Cros device can detects plugger correctly
