@@ -39,6 +39,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
     SUSPEND_SECONDS = 30
     RESUME_TIMEOUT_SECS = 60
     PRC_RECONNECT_TIMEOUT = 60
+    BLUETOOTH_RECONNECT_TIMEOUT_SECS = 30
 
     def action_suspend(self, suspend_time=SUSPEND_SECONDS):
         """Calls the host method suspend.
@@ -99,6 +100,15 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         logging.info("Connecting BT module...")
         link.adapter_connect_module()
         time.sleep(self.DELAY_AFTER_RECONNECT_SECONDS)
+
+
+    def bluetooth_nodes_plugged(self):
+        """Checks if bluetooth nodes are plugged.
+
+        @returns: True if bluetooth nodes are plugged. False otherwise.
+
+        """
+        return audio_test_utils.bluetooth_nodes_plugged(self.audio_facade)
 
 
     def run_once(self, host, suspend=False,
@@ -188,6 +198,12 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                     self.suspend_resume()
                 utils.poll_for_condition(condition=factory.ready,
                                          timeout=self.PRC_RECONNECT_TIMEOUT,)
+
+                # Gives DUT some time to auto-reconnect bluetooth after resume.
+                if suspend:
+                    utils.poll_for_condition(
+                            condition=self.bluetooth_nodes_plugged,
+                            timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS)
 
                 # Select again BT input, as default input node is INTERNAL_MIC
                 self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
