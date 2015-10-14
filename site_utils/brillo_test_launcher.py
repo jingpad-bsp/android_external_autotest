@@ -14,6 +14,7 @@ import urllib2
 
 import common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
@@ -24,12 +25,22 @@ LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 MOBLAB_STATIC_DIR = '/mnt/moblab/static'
 MOBLAB_TMP_DIR = os.path.join(MOBLAB_STATIC_DIR, 'tmp')
 TARGET_IMAGE_NAME = 'brillo/target'
-DEVSERVER_STAGE_URL_TEMPLATE = ('http://%(moblab)s:8080/stage?local_path='
+DEVSERVER_STAGE_URL_TEMPLATE = ('http://%(moblab)s:%(port)s/stage?local_path='
                                 '%(staged_dir)s&artifacts=full_payload')
 AFE_JOB_PAGE_TEMPLATE = ('http://%(moblab)s/afe/#tab_id=view_job&object_id='
                          '%(job_id)s')
 AFE_HOST_PAGE_TEMPLATE = ('http://%(moblab)s/afe/#tab_id=view_host&object_id='
                           '%(host_id)s')
+
+# Running against a virtual machine has several intricacies that we need to
+# adjust for. Namely SSH requires the use of 'localhost' while HTTP requires
+# the use of '127.0.0.1'. Also because we are forwarding the ports from the VM
+# to the host system, the ports to use for these services are also different
+# from running on a physical machine.
+VIRT_MACHINE_SSH_ADDR = 'localhost:9222'
+VIRT_MACHINE_AFE_ADDR = '127.0.0.1:8888'
+VIRT_MACHINE_DEVSERVER_PORT = '7777'
+PHYS_MACHINE_DEVSERVER_PORT = '8888'
 
 
 class KickOffException(Exception):
@@ -39,7 +50,7 @@ class KickOffException(Exception):
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true',
+    parser.add_argument('-d', '--debug', action='store_true',
                         help='Print log statements.')
     parser.add_argument('-p', '--payload',
                         help='Path to the update payload for autoupdate '
@@ -50,7 +61,12 @@ def parse_args():
                              "brillo_Gtests or a specific control file's "
                              "filename e.g. control.brillo_GtestsWhitelist.")
     parser.add_argument('-m', '--moblab_host',
-                        help='MobLab hostname or IP to launch tests.')
+                        help='MobLab hostname or IP to launch tests. If this '
+                             'argument is not provided, the test launcher '
+                             'will attempt to test a local virtual machine '
+                             'instance of MobLab.')
+    parser.add_argument('-v', '--virtual_machine', action='store_true',
+                        help='MobLab is running locally on a virtual machine.')
     parser.add_argument('-a', '--adb_host',
                         help='Hostname or IP of the adb_host connected to the '
                              'Brillo DUT. Default is to assume it is connected '
@@ -75,7 +91,7 @@ def add_adbhost(moblab, adb_hostname):
     return adb_hostname
 
 
-def stage_payload(moblab, payload):
+def stage_payload(moblab, payload, vm):
     """Stage the payload on the MobLab.
 
     # TODO (sbasi): Add support to stage source payloads.
@@ -83,6 +99,7 @@ def stage_payload(moblab, payload):
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param payload: Path to the Brillo payload that will be staged.
+    @param vm: Boolean if True means we are running in a VM.
     """
     if not os.path.exists(payload):
         raise KickOffException('FATAL: payload %s does not exist!')
@@ -94,9 +111,12 @@ def stage_payload(moblab, payload):
     moblab.run('chown -R moblab:moblab %s' % MOBLAB_TMP_DIR)
     # Remove any artifacts that were previously staged.
     moblab.run('rm -rf %s' % stage_dest_dir)
+    port = VIRT_MACHINE_DEVSERVER_PORT if vm else PHYS_MACHINE_DEVSERVER_PORT
     try:
         stage_url = DEVSERVER_STAGE_URL_TEMPLATE % dict(
-                moblab=moblab.hostname, staged_dir=stage_tmp_dir)
+                moblab=moblab.web_address,
+                port=port,
+                staged_dir=stage_tmp_dir)
         res = urllib2.urlopen(stage_url).read()
     except (urllib2.HTTPError, httplib.HTTPException, urllib2.URLError) as e:
         logging.error('Unable to stage payload on moblab. Error: %s', e)
@@ -129,7 +149,7 @@ def schedule_test(moblab, host, test):
             control_type=control_data.CONTROL_TYPE_NAMES.SERVER,
             hosts=[host], require_ssp=False)
     logging.info('Tests Scheduled. Please wait for results.')
-    job_page = AFE_JOB_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
+    job_page = AFE_JOB_PAGE_TEMPLATE % dict(moblab=moblab.web_address,
                                             job_id=job.id)
     logging.info('Progress can be monitored at %s', job_page)
     logging.info('Please note tests that launch other tests (e.g. sequences) '
@@ -174,8 +194,8 @@ def wait_for_test_completion(moblab, host, parent_job):
         if afe_host.status == 'Repair Failed':
             moblab.afe.abort_jobs(
                 [j.id for j in get_all_jobs(moblab, parent_job)])
-            host_page = AFE_HOST_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
-                                                      host_id=afe_host.id)
+            host_page = AFE_HOST_PAGE_TEMPLATE % dict(
+                    moblab=moblab.web_address, host_id=afe_host.id)
             raise KickOffException(
                     'ADB dut %s has become Repair Failed. More information '
                     'can be found at %s' % (host, host_page))
@@ -191,7 +211,7 @@ def output_results(moblab, parent_job):
                        test job.
     """
     solo_test_run = len(moblab.afe.get_jobs(parent_job=parent_job.id)) == 0
-    rc = run_suite.ResultCollector(moblab.hostname, moblab.afe, moblab.tko,
+    rc = run_suite.ResultCollector(moblab.web_address, moblab.afe, moblab.tko,
                                    None, None, parent_job.name, parent_job.id,
                                    user='moblab', solo_test_run=solo_test_run)
     rc.run()
@@ -215,34 +235,62 @@ def copy_results(moblab, parent_job):
     return tempdir
 
 
-def main(args):
-    """main"""
-    args = parse_args()
-    level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(level=level, format=LOGGING_FORMAT)
-    if not args.moblab_host:
-        logging.error('FATAL: a MobLab IP/Hostname is required.')
-        return 1
+def setup_moblab_host(args):
+    """Setup the MobLab Host Object.
 
+    @params args: argparse.Namespace object representing the parsed args.
+
+    @returns Tuple of (moblab_host.MoblabHost, boolean indicating if the
+                       MobLab is running in a virtual machine).
+    """
+    is_vm = False
+    web_address = args.moblab_host
+    if not args.moblab_host:
+        logging.info('MobLab host name was not provided. Attempting to '
+                     'launch the test against a local virtual machine.')
+        is_vm = True
+        args.moblab_host = VIRT_MACHINE_SSH_ADDR
+        web_address = VIRT_MACHINE_AFE_ADDR
     # Create a MoblabHost to interact with the Moblab device.
-    moblab = hosts.create_host(args.moblab_host,
-                               host_class=moblab_host.MoblabHost)
+    try:
+        moblab = hosts.create_host(args.moblab_host,
+                                   host_class=moblab_host.MoblabHost,
+                                   web_address=web_address)
+    except error.AutoservRunError:
+        logging.error('Unable to connect to the MobLab.')
+        raise
 
     try:
         moblab.afe.get_hosts()
     except Exception as e:
         logging.error("Unable to communicate with the MobLab's web frontend. "
                       "Please verify the MobLab and its web frontend are up "
-                      "running at http://%s/\nException:%s", args.moblab_host,
-                      e)
+                      "running at http://%s/\nException:%s",
+                      moblab.web_address, e)
+        raise e
+    return (moblab, is_vm)
+
+
+def main(args):
+    """main"""
+    args = parse_args()
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=level, format=LOGGING_FORMAT)
+
+    try:
+        moblab, is_vm = setup_moblab_host(args)
+    except Exception as e:
+        logging.error(e)
         return 1
+
     # Add the adb host object to the MobLab.
     adb_host = add_adbhost(moblab, args.adb_host)
     # Stage the payload if provided.
     if args.payload:
-        stage_payload(moblab, args.payload)
+        stage_payload(moblab, args.payload, is_vm)
     # Schedule the test job.
     test_job = schedule_test(moblab, adb_host, args.test_name)
+
     try:
         wait_for_test_completion(moblab, adb_host, test_job)
     except KickOffException as e:
