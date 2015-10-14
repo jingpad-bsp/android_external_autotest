@@ -620,7 +620,7 @@ class CrashTest(test.test):
     def initialize(self):
         """Initalize the test."""
         test.test.initialize(self)
-        self._log_reader = cros_logging.LogReader()
+        self._log_reader = cros_logging.make_system_log_reader()
         self._leave_crash_sending = True
         self._automatic_consent_saving = True
         self.enable_crash_filtering('none')

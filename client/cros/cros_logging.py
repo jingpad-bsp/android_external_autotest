@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, time
+import abc, logging, os, re, time
+import subprocess
 
 import common
 from autotest_lib.client.bin import utils
@@ -43,20 +44,12 @@ def extract_kernel_timestamp(msg):
     raise error.TestError('Could not extract timestamp from message: ' + msg)
 
 
-class LogReader(object):
-    """
-    A class to read system log files.
-    """
+class AbstractLogReader(object):
 
-    def __init__(self, filename='/var/log/messages', include_rotated_logs=True):
+    def __init__(self):
         self._start_line = 1
-        self._filename = filename
-        self._include_rotated_logs = include_rotated_logs
-        if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
-            raise error.TestError('LogReader created without ' +
-                                  CLEANUP_LOGS_PAUSED_FILE)
 
-
+    @abc.abstractmethod
     def read_all_logs(self):
         """Read all content from log files.
 
@@ -67,27 +60,7 @@ class LogReader(object):
         .send(offset). Must iterate over the peeked line before you can
         peek again.
         """
-        log_files = []
-        line_number = 0
-        if self._include_rotated_logs:
-            log_files.extend(utils.system_output(
-                'ls -tr1 %s.*' % self._filename,
-                ignore_status=True).splitlines())
-        log_files.append(self._filename)
-        for log_file in log_files:
-            f = open(log_file)
-            for line in f:
-                line_number += 1
-                if line_number < self._start_line:
-                    continue
-                peek = yield line
-                if peek:
-                  buf = [f.next() for _ in xrange(peek)]
-                  yield buf[-1]
-                  while buf:
-                    yield buf.pop(0)
-            f.close()
-
+        pass
 
     def set_start_by_regexp(self, index, regexp):
         """Set the start of logs based on a regular expression.
@@ -235,3 +208,66 @@ class LogRotationPauser(object):
         else:
             logging.info('Leaving existing %s file' % CLEANUP_LOGS_PAUSED_FILE)
         self._begun = False
+
+
+class LogReader(AbstractLogReader):
+    """Class to read traditional text log files.
+
+    Be default reads all logs from /var/log/messages.
+    """
+
+    def __init__(self, filename='/var/log/messages', include_rotated_logs=True):
+        AbstractLogReader.__init__(self)
+        self._filename = filename
+        self._include_rotated_logs = include_rotated_logs
+        if not os.path.exists(CLEANUP_LOGS_PAUSED_FILE):
+            raise error.TestError('LogReader created without ' +
+                                  CLEANUP_LOGS_PAUSED_FILE)
+
+    def read_all_logs(self):
+        log_files = []
+        line_number = 0
+        if self._include_rotated_logs:
+            log_files.extend(utils.system_output(
+                'ls -tr1 %s.*' % self._filename,
+                ignore_status=True).splitlines())
+        log_files.append(self._filename)
+        for log_file in log_files:
+            f = open(log_file)
+            for line in f:
+                line_number += 1
+                if line_number < self._start_line:
+                    continue
+                peek = yield line
+                if peek:
+                  buf = [f.next() for _ in xrange(peek)]
+                  yield buf[-1]
+                  while buf:
+                    yield buf.pop(0)
+            f.close()
+
+
+class JournalLogReader(AbstractLogReader):
+    """A class to read logs stored by systemd-journald.
+    """
+
+    def read_all_logs(self):
+      proc = subprocess.Popen(['journalctl'], stdout=subprocess.PIPE)
+      line_number = 0
+      for line in proc.stdout:
+          line_number += 1
+          if line_number < self._start_line:
+              continue
+          yield line
+      proc.terminate()
+
+def make_system_log_reader():
+    """Create a system log reader.
+
+    This will create JournalLogReader() or LogReader() depending on
+    whether the system is configured with systemd.
+    """
+    if os.path.exists("/var/log/journal"):
+        return JournalLogReader()
+    else:
+        return LogReader()
