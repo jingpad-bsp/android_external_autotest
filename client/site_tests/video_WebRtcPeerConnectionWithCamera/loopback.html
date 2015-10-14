@@ -233,7 +233,6 @@ CameraTest.prototype = {
 
       this.previousFrame = imageData.data;
       this.results.frameStats.numFrames++;
-      setTimeout(this.checkVideoFrame.bind(this), 20);
   },
 
   isBlackFrame: function(data, length) {
