@@ -446,15 +446,21 @@ class _LabInventory(dict):
             of spares, less the number of broken DUTs).
           * broken - The number of broken DUTs.
           * working - The number of working DUTs.
-          * spares - The number of DUTs in the spares pool.
+          * spares - The number of DUTs in the spares pool, working
+            or not.
           * total - The the total number of DUTs.
+
+        Note that the definitions of the data members implies some
+        specific relationships:
+          * total = broken + working
+          * buffer = spares - broken
+          * 0 < spares < total
 
         Boards with no DUTs in the spares pool or no DUTs in a
         critical pool will be excluded from the listed counts.
 
         The ordering of the boards is unspecified.
 
-        @param inventory The inventory to be summarized.
         @return A list of tuples with board data.
 
         """
@@ -599,9 +605,9 @@ def _generate_repair_recommendation(inventory, num_recommend):
     """
     logging.debug('Creating DUT repair recommendations')
     board_counts = inventory.get_board_counts()
-    # t[0] - board name
-    # t[1] - size of spares buffer
-    # t[2] - number of broken devices
+    # Board counts tuple layout:
+    #      t[0]  t[1]  t[2]  t[3]  t[4]  t[5]
+    #     board avail   bad  good spare total
     board_buffer_counts = {t[0]: t[1] for t in board_counts
                                     if t[2] != 0}
     search_boards = board_buffer_counts.keys()
@@ -669,13 +675,37 @@ def _generate_board_inventory_message(inventory):
 
     """
     logging.debug('Creating board inventory')
-    message = ['Full board inventory:\n',
-               '%-22s %5s %5s %5s %5s %5s' % (
-                       'Board', 'Avail', 'Bad', 'Good',
-                       'Spare', 'Total')]
     data_list = inventory.get_board_counts()
+    nworking = 0
+    nbroken = 0
+    nbroken_boards = 0
+    # Board counts tuple layout:
+    #      t[0]  t[1]  t[2]  t[3]  t[4]  t[5]
+    #     board avail   bad  good spare total
+    for t in data_list:
+        nbroken += t[2]
+        nworking += t[3]
+        if t[2]:
+            nbroken_boards += 1
+    ntotal = nworking + nbroken
     data_list = sorted(sorted(data_list, key=lambda t: -t[2]),
                        key=lambda t: t[1])
+    broken_percent = int(round(100.0 * nbroken / ntotal))
+    working_percent = 100 - broken_percent
+    message = ['Summary of DUTs in inventory:',
+               '%10s %10s %6s' % ('Bad', 'Good', 'Total'),
+               '%5d %3d%% %5d %3d%% %6d' % (
+                   nbroken, broken_percent,
+                   nworking, working_percent,
+                   ntotal),
+               '',
+               'Boards with failures: %d' % nbroken_boards,
+               'Boards in inventory:  %d' % len(data_list),
+               '', '',
+               'Full board inventory:\n',
+                    '%-22s %5s %5s %5s %5s %5s' % (
+                        'Board', 'Avail', 'Bad', 'Good',
+                        'Spare', 'Total')]
     message.extend(
             ['%-22s %5d %5d %5d %5d %5d' % t for t in data_list])
     return '\n'.join(message)
