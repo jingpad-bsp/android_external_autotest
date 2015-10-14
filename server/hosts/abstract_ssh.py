@@ -409,6 +409,20 @@ class AbstractSSHHost(remote.RemoteHost):
                 logging.debug('skipping scp for empty source list')
 
 
+    def verify_ssh_user_access(self):
+        """Verify ssh access to this host.
+
+        @returns False if ssh_ping fails due to Permissions error, True
+                 otherwise.
+        """
+        try:
+            self.ssh_ping()
+        except (error.AutoservSshPermissionDeniedError,
+                error.AutoservSshPingHostError):
+            return False
+        return True
+
+
     def ssh_ping(self, timeout=60, base_cmd='true'):
         """
         Pings remote host via ssh.

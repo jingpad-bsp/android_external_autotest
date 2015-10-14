@@ -63,6 +63,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         try:
+            if not host.verify_ssh_user_access():
+                host.user = 'adb'
             result = host.run(
                     'test -f %s' % ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
@@ -90,7 +92,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                 run over TCP/IP.
 
         """
-        super(ADBHost, self)._initialize(hostname=hostname, *args, **dargs)
         logging.debug('Initializing ADB Host running on host: %s.', hostname)
         logging.debug('Android Device: Serials:%s, Hostname: %s',
                       serials, device_hostname)
@@ -100,6 +101,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._local_adb = False
         if hostname == 'localhost':
             self._local_adb = True
+        super(ADBHost, self)._initialize(hostname=hostname, *args, **dargs)
+        try:
+            self.host_run('true')
+        except error.AutoservRunError as e:
+            # Some hosts may not have root access, in this case try user adb.
+            logging.debug('Switching to user adb.')
+            self.user = 'adb'
 
         # TODO(kevcheng): Revamp this so we can properly reference multiple
         #                 serials for one ADBHost.
