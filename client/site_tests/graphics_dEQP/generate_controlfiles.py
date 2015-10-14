@@ -21,11 +21,7 @@ TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
-DEPENDENCIES = ('cleanup-reboot, gpu_family:rogue, gpu_family:sandybridge, '
-                'gpu_family:ivybridge, gpu_family:haswell, '
-                'gpu_family:baytrail, gpu_family:broadwell, '
-                'gpu_family:braswell, gpu_family:skylake')
-
+DEPENDENCIES = 'cleanup-reboot'
 DOC = \"\"\"
 This test runs the drawElements Quality Program test suite. Unlike the
 normal version it batches many tests in a single run to reduce testing

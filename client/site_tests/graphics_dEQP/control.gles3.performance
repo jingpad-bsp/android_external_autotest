@@ -10,10 +10,7 @@ All of the individual tests must pass.
 """
 ATTRIBUTES = "suite:graphics_per-day, suite:graphics_system"
 SUITE = 'graphics_per-day, graphics_system'
-DEPENDENCIES = ('cleanup-reboot, gpu_family:rogue, gpu_family:sandybridge, '
-                'gpu_family:ivybridge, gpu_family:haswell, '
-                'gpu_family:baytrail, gpu_family:broadwell, '
-                'gpu_family:braswell, gpu_family:skylake')
+DEPENDENCIES = 'cleanup-reboot'
 TIME = 'LENGTHY'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'graphics'
