@@ -18,8 +18,9 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
 
-ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
-SUITE = 'graphics_per-day, graphics, graphics_system'
+#TODO(ihf): Port to frecon and enable again (crbug.com/413088).
+#ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
+#SUITE = 'graphics_per-day, graphics, graphics_system'
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],
 }
