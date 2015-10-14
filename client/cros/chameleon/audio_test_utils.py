@@ -59,6 +59,20 @@ def check_plugged_nodes(audio_facade, audio_nodes):
                 'instead %s!' % (str(curr_out_nodes), str(out_audio_nodes)))
 
 
+def bluetooth_nodes_plugged(audio_facade):
+    """Checks bluetooth nodes are plugged.
+
+    @param audio_facade: A RemoteAudioFacade to access audio functions on
+                         Cros device.
+
+    @raises: error.TestFail if either input or output bluetooth node is
+             not plugged.
+
+    """
+    curr_out_nodes, curr_in_nodes = audio_facade.get_plugged_node_types()
+    return 'BLUETOOTH' in curr_out_nodes and 'BLUETOOTH' in curr_in_nodes
+
+
 def _get_board_name(host):
     """Gets the board name.
 
