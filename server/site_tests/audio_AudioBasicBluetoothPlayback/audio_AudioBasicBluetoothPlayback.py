@@ -37,28 +37,6 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
     PRC_RECONNECT_TIMEOUT = 60
     BLUETOOTH_RECONNECT_TIMEOUT_SECS = 30
 
-    def action_suspend(self, suspend_time=SUSPEND_SECONDS):
-        """Calls the host method suspend.
-
-        @param suspend_time: time to suspend the device for.
-
-        """
-        self.host.suspend(suspend_time=suspend_time)
-
-
-    def suspend_resume(self):
-        """Performs the suspend/resume"""
-
-        boot_id = self.host.get_boot_id()
-        thread = threading.Thread(target=self.action_suspend)
-        logging.info("Suspending...")
-        thread.start()
-        self.host.test_wait_for_sleep(self.SUSPEND_SECONDS / 3)
-        logging.info("DUT suspended! Waiting to resume...")
-        self.host.test_wait_for_resume(boot_id, self.RESUME_TIMEOUT_SECS)
-        logging.info("DUT resumed!")
-
-
     def disconnect_connect_bt(self, link):
         """Performs disconnect and connect BT module
 
@@ -158,7 +136,8 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
             if disconnect:
                 self.disconnect_connect_bt(link)
             if suspend:
-                self.suspend_resume()
+                audio_test_utils.suspend_resume(host, self.SUSPEND_SECONDS)
+
             utils.poll_for_condition(condition=factory.ready,
                                      timeout=self.PRC_RECONNECT_TIMEOUT,)
 
