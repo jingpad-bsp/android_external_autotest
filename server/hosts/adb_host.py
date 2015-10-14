@@ -101,7 +101,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._local_adb = False
         if hostname == 'localhost':
             self._local_adb = True
-        super(ADBHost, self)._initialize(hostname=hostname, *args, **dargs)
+        super(ADBHost, self)._initialize(hostname=hostname,
+                                         is_client_install_supported=False,
+                                         *args, **dargs)
         try:
             self.host_run('true')
         except error.AutoservRunError as e:

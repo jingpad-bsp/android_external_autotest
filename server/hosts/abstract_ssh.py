@@ -23,7 +23,7 @@ class AbstractSSHHost(remote.RemoteHost):
     """
 
     def _initialize(self, hostname, user="root", port=22, password="",
-                    *args, **dargs):
+                    is_client_install_supported=True, *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
         # IP address is retrieved only on demand. Otherwise the host
@@ -32,6 +32,7 @@ class AbstractSSHHost(remote.RemoteHost):
         self.user = user
         self.port = port
         self.password = password
+        self._is_client_install_supported = is_client_install_supported
         self._use_rsync = None
         self.known_hosts_file = tempfile.mkstemp()[1]
 
@@ -55,6 +56,15 @@ class AbstractSSHHost(remote.RemoteHost):
         if not self._ip:
             self._ip = socket.getaddrinfo(self.hostname, None)[0][4][0]
         return self._ip
+
+
+    @property
+    def is_client_install_supported(self):
+        """"
+        Returns True if the host supports autotest client installs, False
+        otherwise.
+        """
+        return self._is_client_install_supported
 
 
     def make_ssh_command(self, user="root", port=22, opts='',
