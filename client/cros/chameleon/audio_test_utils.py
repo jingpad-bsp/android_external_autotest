@@ -8,6 +8,7 @@
 # to this module.
 
 import logging
+import multiprocessing
 
 from autotest_lib.client.common_lib import error
 
@@ -129,3 +130,26 @@ def has_dedicated_hdmi(host):
         logging.info('Board %s has HDMI plugged.', board_name)
         return True
     return False
+
+
+def suspend_resume(host, suspend_time_secs, resume_network_timeout_secs=50):
+    """Performs the suspend/resume on Cros device.
+
+    @param suspend_time_secs: Time in seconds to let Cros device suspend.
+    @resume_network_timeout_secs: Time in seconds to let Cros device resume and
+                                  obtain network.
+    """
+    def action_suspend():
+        """Calls the host method suspend."""
+        host.suspend(suspend_time=suspend_time_secs)
+
+    boot_id = host.get_boot_id()
+    proc = multiprocessing.Process(target=action_suspend)
+    logging.info("Suspending...")
+    proc.daemon = True
+    proc.start()
+    host.test_wait_for_sleep(suspend_time_secs / 3)
+    logging.info("DUT suspended! Waiting to resume...")
+    host.test_wait_for_resume(
+            boot_id, suspend_time_secs + resume_network_timeout_secs)
+    logging.info("DUT resumed!")
