@@ -401,34 +401,37 @@ class _LabInventory(dict):
             self[h.host_board].record_host(h)
 
 
-    def get_working_list(self):
-        """Return a list of all working DUTs in the inventory.
+    def get_working_list(self, boards):
+        """Return a list of working DUTs for given boards.
 
-        Go through all HostJobHistory objects in the inventory,
-        selecting the ones where the last diagnosis is `WORKING`.
+        For every board in the list, select all HostJobHistory
+        objects where the last diagnosis is `WORKING`.
 
+        @param boards   The list of boards to be searched for working
+                        DUTs.
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for counts in self.values():
-            l.extend(counts.get_working_list())
+        for b in boards:
+            l.extend(self[b].get_working_list())
         return l
 
 
-    def get_broken_list(self):
-        """Return a list of all broken DUTs in the inventory.
+    def get_broken_list(self, boards):
+        """Return a list of broken DUTs for given boards.
 
-        Go through all HostJobHistory objects in the inventory,
-        selecting the ones where the last diagnosis is not
-        `WORKING`.
+        For every board in the list, select all HostJobHistory
+        objects where the last diagnosis is not `WORKING`.
 
+        @param boards   The list of boards to be searched for broken
+                        DUTs.
         @return A list of HostJobHistory objects.
 
         """
         l = []
-        for counts in self.values():
-            l.extend(counts.get_broken_list())
+        for b in boards:
+            l.extend(self[b].get_broken_list())
         return l
 
 
@@ -601,9 +604,9 @@ def _generate_repair_recommendation(inventory, num_recommend):
     # t[2] - number of broken devices
     board_buffer_counts = {t[0]: t[1] for t in board_counts
                                     if t[2] != 0}
-    recommendation = None
-    best_score = None
-    # N.B. The logic of this loop may seem complicated, but
+    search_boards = board_buffer_counts.keys()
+    broken_list = inventory.get_broken_list(search_boards)
+    # N.B. The logic inside this loop may seem complicated, but
     # simplification is hard:
     #   * Calculating an initial recommendation outside of
     #     the loop likely would make things more complicated,
@@ -611,7 +614,9 @@ def _generate_repair_recommendation(inventory, num_recommend):
     #   * It's necessary to calculate an initial lab slice once per
     #     lab _before_ the while loop, in case the number of broken
     #     DUTs in a lab is less than `num_recommend`.
-    for lab_duts in _sort_by_location(inventory.get_broken_list()):
+    recommendation = None
+    best_score = None
+    for lab_duts in _sort_by_location(broken_list):
         start = 0
         end = num_recommend
         lab_slice = lab_duts[start : end]

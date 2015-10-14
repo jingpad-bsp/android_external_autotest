@@ -531,8 +531,8 @@ class LabInventoryTests(_InventoryTests):
         @param data Inventory data as for `self.create_inventory()`.
 
         """
-        working_count = 0
-        broken_count = 0
+        working_total = 0
+        broken_total = 0
         for b in self.inventory:
             c = self.inventory[b]
             calculated_counts = (
@@ -541,18 +541,24 @@ class LabInventoryTests(_InventoryTests):
                 (c.get_working(self._SPARE_POOL),
                  c.get_broken(self._SPARE_POOL)))
             self.assertEqual(data[b], calculated_counts)
-            working_count += data[b][0][0] + data[b][1][0]
-            broken_count += data[b][0][1] + data[b][1][1]
-        self.assertEqual(set(self.inventory.keys()),
-                         set(data.keys()))
+            nworking = data[b][0][0] + data[b][1][0]
+            board_working_list = self.inventory.get_working_list([b])
+            self.assertEqual(nworking, len(board_working_list))
+            nbroken = data[b][0][1] + data[b][1][1]
+            board_broken_list = self.inventory.get_broken_list([b])
+            self.assertEqual(nbroken, len(board_broken_list))
+            working_total += nworking
+            broken_total += nbroken
+        board_list = self.inventory.keys()
+        self.assertEqual(set(board_list), set(data.keys()))
         self.assertEqual(self.inventory.get_num_duts(),
                          self.num_duts)
         self.assertEqual(self.inventory.get_num_boards(),
                          len(data))
-        working_list = self.inventory.get_working_list()
-        broken_list = self.inventory.get_broken_list()
-        self.assertEqual(len(working_list), working_count)
-        self.assertEqual(len(broken_list), broken_count)
+        working_list = self.inventory.get_working_list(board_list)
+        broken_list = self.inventory.get_broken_list(board_list)
+        self.assertEqual(len(working_list), working_total)
+        self.assertEqual(len(broken_list), broken_total)
 
 
     def test_empty(self):
