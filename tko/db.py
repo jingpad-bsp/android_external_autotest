@@ -375,7 +375,9 @@ class db_sql(object):
         job.machine_idx = self.lookup_machine(job.machine)
         if not job.machine_idx:
             job.machine_idx = self.insert_machine(job, commit=commit)
-        else:
+        elif job.machine:
+            # Only try to update tko_machines record if machine is set. This
+            # prevents unnecessary db writes for suite jobs.
             self.update_machine_information(job, commit=commit)
 
         afe_job_id = utils.get_afe_job_id(tag)
