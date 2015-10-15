@@ -46,7 +46,8 @@ class Config(object):
         self._precedence_list = [DEFAULTS.Values()]
         # Overrides are optional, and not an error.
         try:
-            overrides = __import__("%s" % platform.lower(), globals(), locals())
+            config_name = platform.rsplit('_', 1)[-1].lower()
+            overrides = __import__(config_name, globals(), locals())
             overrides = overrides.Values()
             # Add overrides to the first position in the list
             self._precedence_list.insert(0, overrides)
