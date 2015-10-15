@@ -237,6 +237,11 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         # recording.
         playback_recorder.remove_head(0.5)
 
+        # Removes the beginning of recorded data. This is to avoid artifact
+        # caused by bluetooth module initialization in the beginning of
+        # its playback.
+        record_recorder.remove_head(0.5)
+
         # Removes noise by a lowpass filter.
         playback_recorder.lowpass_filter(2500)
         recorded_file = os.path.join(self.resultsdir, "playback_filtered.raw")

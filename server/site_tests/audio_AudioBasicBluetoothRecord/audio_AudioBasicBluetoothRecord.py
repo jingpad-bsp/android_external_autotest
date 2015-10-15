@@ -185,6 +185,11 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         logging.info('Saving recorded data to %s', recorded_file)
         recorder.save_file(recorded_file)
 
+        # Removes the beginning of recorded data. This is to avoid artifact
+        # caused by bluetooth module initialization in the beginning of
+        # its playback.
+        recorder.remove_head(0.5)
+
         # Removes noise by a lowpass filter.
         recorder.lowpass_filter(2000)
         recorded_file = os.path.join(self.resultsdir, "recorded_filtered.raw")
