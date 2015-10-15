@@ -7,5 +7,6 @@
 
 class Values(object):
     """FAFT config values for Veyron."""
+    spi_voltage = 'pp3300'
     wp_voltage = 'pp3300'
     confirm_screen = 6
