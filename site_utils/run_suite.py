@@ -617,7 +617,8 @@ class TestView(object):
     INFRA_TESTS = ['provision']
 
 
-    def __init__(self, view, afe_job, suite_name, build, user):
+    def __init__(self, view, afe_job, suite_name, build, user,
+                 solo_test_run=False):
         """Init a TestView object representing a tko test view.
 
         @param view: A dictionary representing a tko test view.
@@ -627,12 +628,13 @@ class TestView(object):
                            that the test belongs to.
         @param build: The build for which the test is run.
         @param user: The user for which the test is run.
+        @param solo_test_run: This is a solo test run not part of a suite.
         """
         self.view = view
         self.afe_job = afe_job
         self.suite_name = suite_name
         self.build = build
-        self.is_suite_view = afe_job.parent_job is None
+        self.is_suite_view = afe_job.parent_job is None and not solo_test_run
         # This is the test name that will be shown in the output.
         self.testname = None
         self.user = user
@@ -682,7 +684,8 @@ class TestView(object):
         1) A test view is for the suite job's SERVER_JOB.
            In this case, this method will return 'Suite prep'.
 
-        2) A test view is of a child job and for a SERVER_JOB or CLIENT_JOB.
+        2) A test view is of a child job or a solo test run not part of a
+           suite, and for a SERVER_JOB or CLIENT_JOB.
            In this case, we will take the job name, remove the build/suite
            prefix from the job name, and append the rest to 'SERVER_JOB'
            or 'CLIENT_JOB' as a prefix. So the names returned by this
@@ -948,7 +951,7 @@ class TestView(object):
 
 
 class ResultCollector(object):
-    """Collect test results of a suite.
+    """Collect test results of a suite or a single test run.
 
     Once a suite job has finished, use this class to collect test results.
     `run` is the core method that is to be called first. Then the caller
@@ -996,6 +999,7 @@ class ResultCollector(object):
     @var _web_links: A list of web links pointing to the results of jobs.
     @var _buildbot_links: A list of buildbot links for non-passing tests.
     @var _max_testname_width: Max width of all test names.
+    @var _solo_test_run: True if this is a single test run.
     @var return_code: The exit code that should be returned by run_suite.
     @var return_message: Any message that should be displayed to explain
                          the return code.
@@ -1008,7 +1012,7 @@ class ResultCollector(object):
 
     def __init__(self, instance_server, afe, tko, build, board,
                  suite_name, suite_job_id, original_suite_name=None,
-                 user=None):
+                 user=None, solo_test_run=False):
         self._instance_server = instance_server
         self._afe = afe
         self._tko = tko
@@ -1030,6 +1034,7 @@ class ResultCollector(object):
         self.is_aborted = None
         self.timings = None
         self._user = user or getpass.getuser()
+        self._solo_test_run = solo_test_run
 
 
     def _fetch_relevant_test_views_of_suite(self):
@@ -1065,7 +1070,8 @@ class ResultCollector(object):
                               afe_job_id=self._suite_job_id)
         relevant_views = []
         for v in views:
-            v = TestView(v, suite_job, self._suite_name, self._build, self._user)
+            v = TestView(v, suite_job, self._suite_name, self._build, self._user,
+                         solo_test_run=self._solo_test_run)
             if v.is_relevant_suite_view():
                 relevant_views.append(v)
         return relevant_views
@@ -1089,7 +1095,7 @@ class ResultCollector(object):
         return count
 
 
-    def _fetch_test_views_of_child_jobs(self):
+    def _fetch_test_views_of_child_jobs(self, jobs=None):
         """Fetch test views of child jobs.
 
         @returns: A tuple (child_views, retry_counts)
@@ -1101,7 +1107,7 @@ class ResultCollector(object):
         """
         child_views = []
         retry_counts = {}
-        child_jobs = self._afe.get_jobs(parent_job_id=self._suite_job_id)
+        child_jobs = jobs or self._afe.get_jobs(parent_job_id=self._suite_job_id)
         if child_jobs:
             self._num_child_jobs = len(child_jobs)
         for job in child_jobs:
@@ -1133,7 +1139,10 @@ class ResultCollector(object):
         self._web_links = []
         self._buildbot_links = []
         # Bug info are stored in the suite job's keyvals.
-        suite_job_keyvals = self._suite_views[0]['job_keyvals']
+        if self._solo_test_run:
+            suite_job_keyvals = {}
+        else:
+            suite_job_keyvals = self._suite_views[0]['job_keyvals']
         for v in self._test_views:
             retry_count = self._retry_counts.get(v['test_idx'], 0)
             bug_info = v.get_bug_info(suite_job_keyvals)
@@ -1340,10 +1349,15 @@ class ResultCollector(object):
             Compute return code based on the test result.
 
         """
-        self._suite_views = self._fetch_relevant_test_views_of_suite()
-        self._child_views, self._retry_counts = (
-                self._fetch_test_views_of_child_jobs())
-        self._test_views = self._suite_views + self._child_views
+        if self._solo_test_run:
+            self._test_views, self.retry_count = (
+                  self._fetch_test_views_of_child_jobs(
+                          jobs=self._afe.get_jobs(id=self._suite_job_id)))
+        else:
+            self._suite_views = self._fetch_relevant_test_views_of_suite()
+            self._child_views, self._retry_counts = (
+                    self._fetch_test_views_of_child_jobs())
+            self._test_views = self._suite_views + self._child_views
         # For hostless job in Starting status, there is no test view associated.
         # This can happen when a suite job in Starting status is aborted. When
         # the scheduler hits some limit, e.g., max_hostless_jobs_per_drone,

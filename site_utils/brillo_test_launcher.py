@@ -44,6 +44,11 @@ def parse_args():
     parser.add_argument('-p', '--payload',
                         help='Path to the update payload for autoupdate '
                              'testing.')
+    parser.add_argument('-t', '--test_name',
+                        help="Name of the test to run. This is either the "
+                             "name in the test's default control file e.g. "
+                             "brillo_Gtests or a specific control file's "
+                             "filename e.g. control.brillo_GtestsWhitelist.")
     parser.add_argument('-m', '--moblab_host',
                         help='MobLab hostname or IP to launch tests.')
     parser.add_argument('-a', '--adb_host',
@@ -105,69 +110,70 @@ def stage_payload(moblab, payload):
         moblab.run('rm -rf %s' % stage_tmp_dir)
 
 
-def schedule_pts(moblab, host):
-    """Schedule the Brillo PTS Sequence.
+def schedule_test(moblab, host, test):
+    """Schedule a Brillo test.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param host: Hostname of the DUT.
+    @param test: Test name.
 
     @returns autotest_lib.server.frontend.Job object representing the scheduled
              job.
     """
     getter = control_file_getter.FileSystemGetter(
             [os.path.dirname(os.path.dirname(os.path.realpath(__file__)))])
-    pts_controlfile_conts = getter.get_control_file_contents_by_name(
-            'control.brillo_pts')
+    controlfile_conts = getter.get_control_file_contents_by_name(test)
     job = moblab.afe.create_job(
-            pts_controlfile_conts, name='brillo pts sequence',
+            controlfile_conts, name=test,
             control_type=control_data.CONTROL_TYPE_NAMES.SERVER,
             hosts=[host], require_ssp=False)
-    logging.info('\nBrillo PTS Scheduled. Please wait for results.')
+    logging.info('Tests Scheduled. Please wait for results.')
     job_page = AFE_JOB_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
                                             job_id=job.id)
     logging.info('Progress can be monitored at %s', job_page)
-    logging.info('Please note the main job will complete quickly, links to '
-                 'child jobs will appear shortly at the bottom on the page '
-                 '(Hit Refresh).')
+    logging.info('Please note tests that launch other tests (e.g. sequences) '
+                 'might complete quickly, but links to child jobs will appear '
+                 'shortly at the bottom on the page (Hit Refresh).')
     return job
 
 
-def get_all_jobs(moblab, pts_job):
-    """Generate a list of the pts_job and it's subjobs.
+def get_all_jobs(moblab, parent_job):
+    """Generate a list of the parent_job and it's subjobs.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param host: Hostname of the DUT.
-    @param pts_job: autotest_lib.server.frontend.Job object representing the
-                    pts job.
+    @param parent_job: autotest_lib.server.frontend.Job object representing the
+                       parent job.
 
     @returns list of autotest_lib.server.frontend.Job objects.
     """
-    jobs_list = moblab.afe.get_jobs(id=pts_job.id)
-    jobs_list.extend(moblab.afe.get_jobs(parent_job=pts_job.id))
+    jobs_list = moblab.afe.get_jobs(id=parent_job.id)
+    jobs_list.extend(moblab.afe.get_jobs(parent_job=parent_job.id))
     return jobs_list
 
 
-def wait_for_pts_completion(moblab, host, pts_job):
-    """Wait for the Brillo PTS job and it's subjobs to complete.
+def wait_for_test_completion(moblab, host, parent_job):
+    """Wait for the parent job and it's subjobs to complete.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param host: Hostname of the DUT.
-    @param pts_job: autotest_lib.server.frontend.Job object representing the
-                    pts job.
+    @param parent_job: autotest_lib.server.frontend.Job object representing the
+                       test job.
     """
     # Wait for the sequence job and it's sub-jobs to finish, while monitoring
     # the DUT state. As long as the DUT does not go into 'Repair Failed' the
     # tests will complete.
-    while (moblab.afe.get_jobs(id=pts_job.id, not_yet_run=True, running=True)
-           or moblab.afe.get_jobs(parent_job=pts_job.id, not_yet_run=True,
+    while (moblab.afe.get_jobs(id=parent_job.id, not_yet_run=True,
+                               running=True)
+           or moblab.afe.get_jobs(parent_job=parent_job.id, not_yet_run=True,
                                   running=True)):
         afe_host = moblab.afe.get_hosts(hostnames=(host,))[0]
         if afe_host.status == 'Repair Failed':
             moblab.afe.abort_jobs(
-                [j.id for j in get_all_jobs(moblab, pts_job)])
+                [j.id for j in get_all_jobs(moblab, parent_job)])
             host_page = AFE_HOST_PAGE_TEMPLATE % dict(moblab=moblab.hostname,
                                                       host_id=afe_host.id)
             raise KickOffException(
@@ -176,33 +182,34 @@ def wait_for_pts_completion(moblab, host, pts_job):
         time.sleep(10)
 
 
-def output_results(moblab, pts_job):
+def output_results(moblab, parent_job):
     """Output the Brillo PTS and it's subjobs results.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
-    @param pts_job: autotest_lib.server.frontend.Job object representing the
-                    pts job.
+    @param parent_job: autotest_lib.server.frontend.Job object representing the
+                       test job.
     """
+    solo_test_run = len(moblab.afe.get_jobs(parent_job=parent_job.id)) == 0
     rc = run_suite.ResultCollector(moblab.hostname, moblab.afe, moblab.tko,
-                                   None, None, 'brillo_pts', pts_job.id,
-                                   user='moblab')
+                                   None, None, parent_job.name, parent_job.id,
+                                   user='moblab', solo_test_run=solo_test_run)
     rc.run()
     rc.output_results()
 
 
-def copy_results(moblab, pts_job):
+def copy_results(moblab, parent_job):
     """Copy job results locally.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
-    @param pts_job: autotest_lib.server.frontend.Job object representing the
-                    pts job.
+    @param parent_job: autotest_lib.server.frontend.Job object representing the
+                       parent job.
 
     @returns Temporary directory path.
     """
-    tempdir = tempfile.mkdtemp(prefix='brillo_pts_results')
-    for job in get_all_jobs(moblab, pts_job):
+    tempdir = tempfile.mkdtemp(prefix='brillo_test_results')
+    for job in get_all_jobs(moblab, parent_job):
         moblab.get_file('/usr/local/autotest/results/%d-moblab' % job.id,
                         tempdir)
     return tempdir
@@ -220,6 +227,7 @@ def main(args):
     # Create a MoblabHost to interact with the Moblab device.
     moblab = hosts.create_host(args.moblab_host,
                                host_class=moblab_host.MoblabHost)
+
     try:
         moblab.afe.get_hosts()
     except Exception as e:
@@ -233,15 +241,15 @@ def main(args):
     # Stage the payload if provided.
     if args.payload:
         stage_payload(moblab, args.payload)
-    # Schedule the PTS Job.
-    sequence_job = schedule_pts(moblab, adb_host)
+    # Schedule the test job.
+    test_job = schedule_test(moblab, adb_host, args.test_name)
     try:
-        wait_for_pts_completion(moblab, adb_host, sequence_job)
+        wait_for_test_completion(moblab, adb_host, test_job)
     except KickOffException as e:
         logging.error(e)
         return 1
-    local_results_folder = copy_results(moblab, sequence_job)
-    output_results(moblab, sequence_job)
+    local_results_folder = copy_results(moblab, test_job)
+    output_results(moblab, test_job)
     logging.info('Results have also been copied locally to %s',
                  local_results_folder)
     return 0
