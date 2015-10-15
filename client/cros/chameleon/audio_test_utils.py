@@ -9,6 +9,7 @@
 
 import logging
 import multiprocessing
+import os
 
 from autotest_lib.client.common_lib import error
 
@@ -153,3 +154,24 @@ def suspend_resume(host, suspend_time_secs, resume_network_timeout_secs=50):
     host.test_wait_for_resume(
             boot_id, suspend_time_secs + resume_network_timeout_secs)
     logging.info("DUT resumed!")
+
+
+def dump_cros_audio_logs(host, audio_facade, directory, suffix=''):
+    """Dumps logs for audio debugging from Cros device.
+
+    @param host: The CrosHost object.
+    @param audio_facade: A RemoteAudioFacade to access audio functions on
+                         Cros device.
+    @directory: The directory to dump logs.
+
+    """
+    audio_diagnostics_file_name = (
+            'audio_diagnostics.txt.%s' % suffix
+            if suffix else 'audio_diagnostics.txt')
+    audio_diagnostics_file = os.path.join(
+            directory, audio_diagnostics_file_name)
+    audio_facade.dump_diagnostics(audio_diagnostics_file)
+
+    system_log_file_name = 'messages.%s' % suffix if suffix else 'messages'
+    system_log_file = os.path.join(directory, system_log_file_name)
+    host.get_file('/var/log/messages', system_log_file)
