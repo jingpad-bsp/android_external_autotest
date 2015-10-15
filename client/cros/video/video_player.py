@@ -48,7 +48,7 @@ class VideoPlayer(object):
 
         """
         self.tab.Navigate(self.full_url)
-        self._wait_for_page_to_load()
+        self.tab.WaitForDocumentReadyStateToBeComplete()
         self.inject_source_file()
         self.wait_for_video_ready()
 
@@ -101,31 +101,6 @@ class VideoPlayer(object):
 
         # it usually takes a little while before new frame renders, so wait
         time.sleep(1)
-
-
-    @method_logger.log
-    def _wait_for_page_to_load(self):
-        """
-         Waits for javascript objects to be defined.
-
-         When we a valid video object we say the page is ready to accept more
-         commands.
-
-        """
-        def has_page_loaded():
-            """
-            Uses javascript to check if page objects have been defined.
-
-            If objects are defined then we know we are able to execute further
-            commands in the page.
-
-            """
-            result = self.tab.EvaluateJavaScript('typeof %s' %self.video_id)
-            return result != 'undefined'
-
-        exception_msg = '%s did not load.' % self.full_url
-
-        self._wait_for_event(has_page_loaded, exception_msg)
 
 
     @method_logger.log
