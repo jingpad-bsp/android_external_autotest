@@ -51,6 +51,9 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
 
         audio_facade = factory.create_audio_facade()
 
+        audio_test_utils.dump_cros_audio_logs(
+                host, audio_facade, self.resultsdir, 'start')
+
         # Checks the node selected by cras is correct.
         output_nodes, _ = audio_facade.get_selected_node_types()
         if output_nodes != ['INTERNAL_SPEAKER']:
@@ -77,6 +80,9 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
 
         recorder.stop_recording()
         logging.info('Stopped recording from Chameleon.')
+
+        audio_test_utils.dump_cros_audio_logs(
+                host, audio_facade, self.resultsdir, 'after_recording')
 
         recorder.read_recorded_binary()
         logging.info('Read recorded binary from Chameleon.')

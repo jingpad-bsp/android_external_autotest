@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -48,9 +49,6 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         golden_file = audio_test_data.SWEEP_TEST_FILE
 
         # Dump audio diagnostics data for debugging.
-        audio_diagnostics_file = os.path.join(
-                self.resultsdir, 'audio_diagnostics.txt')
-
         chameleon_board = host.chameleon
         factory = remote_facade_factory.RemoteFacadeFactory(host)
 
@@ -78,6 +76,10 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         with hdmi_port.use_edid_file(edid_path):
             with chameleon_audio_helper.bind_widgets(binder):
                 audio_facade = factory.create_audio_facade()
+
+                audio_test_utils.dump_cros_audio_logs(
+                        host, audio_facade, self.resultsdir, 'after_binding')
+
                 output_nodes, _ = audio_facade.get_selected_node_types()
                 if output_nodes != ['HDMI']:
                     raise error.TestFail(
@@ -101,7 +103,8 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
                              golden_file.path)
                 time.sleep(self.DELAY_AFTER_PLAYBACK)
 
-                audio_facade.dump_diagnostics(audio_diagnostics_file)
+                audio_test_utils.dump_cros_audio_logs(
+                        host, audio_facade, self.resultsdir, 'after_recording')
 
                 recorder.stop_recording()
                 logging.info('Stopped recording from Chameleon.')

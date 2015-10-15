@@ -121,6 +121,9 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
         with chameleon_audio_helper.bind_widgets(binder):
 
+            audio_test_utils.dump_cros_audio_logs(
+                    host, self.audio_facade, self.resultsdir, 'after_binding')
+
             if audio_test_utils.has_internal_microphone(host):
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
@@ -153,6 +156,11 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
                                      timeout=self.PRC_RECONNECT_TIMEOUT,
                                      desc='multimedia server reconnect')
 
+            if disable or disconnect or suspend:
+                audio_test_utils.dump_cros_audio_logs(
+                        host, self.audio_facade, self.resultsdir,
+                        'after_action')
+
             # Gives DUT some time to auto-reconnect bluetooth after resume.
             if suspend:
                 utils.poll_for_condition(
@@ -177,6 +185,9 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
             recorder.stop_recording()
             logging.info('Stopped recording from Cros device.')
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, self.audio_facade, self.resultsdir, 'after_recording')
 
             recorder.read_recorded_binary()
             logging.info('Read recorded binary from Chameleon.')

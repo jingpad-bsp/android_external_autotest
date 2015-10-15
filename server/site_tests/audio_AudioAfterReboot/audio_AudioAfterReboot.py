@@ -69,6 +69,11 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
 
             recorder_widget.stop_recording()
             logging.debug('Stopped recording.')
+
+            audio_test_utils.dump_cros_audio_logs(
+                    self.host, self.audio_facade, self.resultsdir,
+                    'after_recording')
+
             recorder_widget.read_recorded_binary()
         else:
             time.sleep(self.RECORD_SECONDS)
@@ -105,8 +110,7 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
 
     def check_correct_audio_node_selected(self):
         """Checks the node selected by Cras is correct."""
-        audio_facade = self.factory.create_audio_facade()
-        audio_test_utils.check_audio_nodes(audio_facade, self.audio_nodes)
+        audio_test_utils.check_audio_nodes(self.audio_facade, self.audio_nodes)
 
 
     def play_reboot_play_and_record (self, source_widget, recorder_widget):
@@ -131,11 +135,20 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         utils.poll_for_condition(condition=self.factory.ready,
                                  timeout=self.PRC_RECONNECT_TIMEOUT,)
         logging.debug('After reboot')
+
+        audio_test_utils.dump_cros_audio_logs(
+                self.host, self.audio_facade, self.resultsdir,
+                'after_reboot')
+
         self.check_correct_audio_node_selected()
 
         if self.use_audio_bus:
             logging.info('Reconnecting audio bus after reboot before playback')
             self.widget_link.reconnect_audio_bus()
+
+        audio_test_utils.dump_cros_audio_logs(
+                self.host, self.audio_facade, self.resultsdir,
+                'after_bus_reconnect')
 
         self.play_and_record(source_widget, recorder_widget)
 
@@ -172,6 +185,7 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         self.golden_file, self.low_pass_freq = golden_data
         chameleon_board = self.host.chameleon
         self.factory = remote_facade_factory.RemoteFacadeFactory(self.host)
+        self.audio_facade = self.factory.create_audio_facade()
         chameleon_board.reset()
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 self.factory, host)

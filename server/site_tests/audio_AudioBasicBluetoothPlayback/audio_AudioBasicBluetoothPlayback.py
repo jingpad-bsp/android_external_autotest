@@ -118,6 +118,9 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
 
         with chameleon_audio_helper.bind_widgets(binder):
 
+            audio_test_utils.dump_cros_audio_logs(
+                    host, self.audio_facade, self.resultsdir, 'after_binding')
+
             # Checks the node selected by Cras is correct.
             audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['BLUETOOTH'], None))
@@ -142,6 +145,11 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
                                      timeout=self.PRC_RECONNECT_TIMEOUT,
                                      desc='multimedia server reconnect')
 
+            if disable or disconnect or suspend:
+                audio_test_utils.dump_cros_audio_logs(
+                        host, self.audio_facade, self.resultsdir,
+                        'after_action')
+
             # Gives DUT some time to auto-reconnect bluetooth after resume.
             if suspend:
                 utils.poll_for_condition(
@@ -165,6 +173,9 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
 
             recorder.stop_recording()
             logging.info('Stopped recording from Chameleon.')
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, self.audio_facade, self.resultsdir, 'after_recording')
 
             recorder.read_recorded_binary()
             logging.info('Read recorded binary from Chameleon.')

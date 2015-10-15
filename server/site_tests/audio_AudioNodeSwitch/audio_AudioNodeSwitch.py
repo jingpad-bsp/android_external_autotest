@@ -40,9 +40,15 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
             jack_plugger = audio_board.get_jack_plugger()
             jack_plugger.plug()
             time.sleep(self._PLUG_DELAY)
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir)
+
             audio_test_utils.check_audio_nodes(audio_facade,
                                                (['HEADPHONE'], ['MIC']))
+
             jack_plugger.unplug()
+
         time.sleep(self._PLUG_DELAY)
         audio_test_utils.check_audio_nodes(audio_facade,
                                            (['INTERNAL_SPEAKER'],

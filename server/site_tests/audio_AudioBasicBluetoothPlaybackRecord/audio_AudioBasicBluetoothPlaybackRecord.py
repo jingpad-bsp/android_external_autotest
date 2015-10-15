@@ -137,6 +137,10 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         with chameleon_audio_helper.bind_widgets(playback_binder):
             with chameleon_audio_helper.bind_widgets(record_binder):
 
+                audio_test_utils.dump_cros_audio_logs(
+                        host, self.audio_facade, self.resultsdir,
+                        'after_binding')
+
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
                 # microphone priority.
@@ -173,6 +177,11 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                     self.disconnect_connect_bt(link)
                 if suspend:
                     audio_test_utils.suspend_resume(host, self.SUSPEND_SECONDS)
+
+                if disable or disconnect or suspend:
+                    audio_test_utils.dump_cros_audio_logs(
+                            host, self.audio_facade, self.resultsdir,
+                            'after_action')
 
                 utils.poll_for_condition(condition=factory.ready,
                                          timeout=self.PRC_RECONNECT_TIMEOUT,
@@ -214,6 +223,10 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 logging.info('Stopped recording from Chameleon.')
                 record_recorder.stop_recording()
                 logging.info('Stopped recording from Cros device.')
+
+                audio_test_utils.dump_cros_audio_logs(
+                        host, self.audio_facade, self.resultsdir,
+                        'after_recording')
 
                 # Sleeps until playback data ends to prevent audio from
                 # going to internal speaker.

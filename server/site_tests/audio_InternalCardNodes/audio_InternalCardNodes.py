@@ -82,6 +82,9 @@ class audio_InternalCardNodes(audio_test.AudioTest):
             jack_plugger.plug()
             time.sleep(self.DELAY_AFTER_PLUGGING)
 
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir)
+
             audio_test_utils.check_plugged_nodes(
                     audio_facade, expected_plugged_nodes_with_audio_jack)
 

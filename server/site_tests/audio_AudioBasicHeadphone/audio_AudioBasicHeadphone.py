@@ -10,6 +10,7 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
+from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.server.cros.audio import audio_test
@@ -49,6 +50,10 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
             audio_facade = factory.create_audio_facade()
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir, 'after_binding')
+
             output_nodes, _ = audio_facade.get_selected_node_types()
             if output_nodes != ['HEADPHONE']:
                 raise error.TestFail(
@@ -72,6 +77,9 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
 
             recorder.stop_recording()
             logging.info('Stopped recording from Chameleon.')
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir, 'after_recording')
 
             recorder.read_recorded_binary()
             logging.info('Read recorded binary from Chameleon.')

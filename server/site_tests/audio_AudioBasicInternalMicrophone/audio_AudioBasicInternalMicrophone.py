@@ -56,6 +56,10 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
             audio_facade = factory.create_audio_facade()
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir, 'after_binding')
+
             _, input_nodes = audio_facade.get_selected_node_types()
             if input_nodes != ['INTERNAL_MIC']:
                 raise error.TestFail(
@@ -80,6 +84,9 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
 
             recorder.stop_recording()
             logging.info('Stopped recording from Cros device.')
+
+            audio_test_utils.dump_cros_audio_logs(
+                    host, audio_facade, self.resultsdir, 'after_recording')
 
             recorder.read_recorded_binary()
             logging.info('Read recorded binary from Cros device.')
