@@ -2059,19 +2059,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.rpc_disconnect(port)
 
 
-    def poor_mans_rpc(self, fun):
-        """
-        Calls a function from client utils on the host and returns a string.
-
-        @param fun function in client utils namespace.
-        @return output string from calling fun.
-        """
-        script = 'cd %s/bin; ' % autotest.Autotest.get_installed_autodir(self)
-        script += 'python -c "import common; import utils;'
-        script += 'print utils.%s"' % fun
-        return script
-
-
     def _ping_check_status(self, status):
         """Ping the host once, and return whether it has a given status.
 
@@ -2427,19 +2414,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return board_format_string % '-'.join(board.split('-')[0:2])
 
 
-    @label_decorator('board_freq_mem')
-    def get_board_with_frequency_and_memory(self):
-        """
-        Determines the board name with frequency and memory.
-
-        @returns a more detailed string representing the board. Examples are
-        butterfly_1.1GHz_2GB, link_1.8GHz_4GB, x86-zgb_1.7GHz_2GB
-        """
-        board = self.run(self.poor_mans_rpc(
-                         'get_board_with_frequency_and_memory()')).stdout
-        return 'board_freq_mem:%s' % str.strip(board)
-
-
     @label_decorator('lightsensor')
     def has_lightsensor(self):
         """Determine the correct board label for this host.
@@ -2476,35 +2450,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # test exited with a return code 1 meaning the directory did not
             # exist.
             return None
-
-
-    @label_decorator('gpu_family')
-    def get_gpu_family(self):
-        """
-        Determine GPU family.
-
-        @returns a string representing the gpu family. Examples are mali, tegra,
-        pinetrail, sandybridge, ivybridge, haswell and baytrail.
-        """
-        gpu_family = self.run(self.poor_mans_rpc('get_gpu_family()')).stdout
-        return 'gpu_family:%s' % str.strip(gpu_family)
-
-
-    @label_decorator('graphics')
-    def get_graphics(self):
-        """
-        Determine the correct board label for this host.
-
-        @returns a string representing this host's graphics. For now ARM boards
-        return graphics:gles while all other boards return graphics:gl. This
-        may change over time, but for robustness reasons this should avoid
-        executing code in actual graphics libraries (which may not be ready and
-        is tested by graphics_GLAPICheck).
-        """
-        uname = self.run('uname -a').stdout.lower()
-        if 'arm' in uname:
-            return 'graphics:gles'
-        return 'graphics:gl'
 
 
     @label_decorator('ec')
