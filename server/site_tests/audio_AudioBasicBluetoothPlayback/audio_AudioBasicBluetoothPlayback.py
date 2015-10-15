@@ -139,13 +139,15 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
                 audio_test_utils.suspend_resume(host, self.SUSPEND_SECONDS)
 
             utils.poll_for_condition(condition=factory.ready,
-                                     timeout=self.PRC_RECONNECT_TIMEOUT,)
+                                     timeout=self.PRC_RECONNECT_TIMEOUT,
+                                     desc='multimedia server reconnect')
 
             # Gives DUT some time to auto-reconnect bluetooth after resume.
             if suspend:
                 utils.poll_for_condition(
                         condition=self.bluetooth_nodes_plugged,
-                        timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS)
+                        timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS,
+                        desc='bluetooth node auto-reconnect after suspend')
 
             # Checks the node selected by Cras is correct again.
             audio_test_utils.check_audio_nodes(self.audio_facade,

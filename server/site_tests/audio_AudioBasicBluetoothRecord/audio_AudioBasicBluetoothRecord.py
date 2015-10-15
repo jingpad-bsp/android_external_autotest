@@ -150,13 +150,15 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
                 audio_test_utils.suspend_resume(host, self.SUSPEND_SECONDS)
 
             utils.poll_for_condition(condition=factory.ready,
-                                     timeout=self.PRC_RECONNECT_TIMEOUT,)
+                                     timeout=self.PRC_RECONNECT_TIMEOUT,
+                                     desc='multimedia server reconnect')
 
             # Gives DUT some time to auto-reconnect bluetooth after resume.
             if suspend:
                 utils.poll_for_condition(
                         condition=self.bluetooth_nodes_plugged,
-                        timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS)
+                        timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS,
+                        desc='bluetooth node auto-reconnect after suspend')
 
             # Select again BT input as default input node is INTERNAL_MIC
             self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
