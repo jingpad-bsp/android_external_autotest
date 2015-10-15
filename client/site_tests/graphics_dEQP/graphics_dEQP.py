@@ -389,8 +389,14 @@ class graphics_dEQP(test.test):
         logging.info('dEQP test filter = %s', self._filter)
 
         if self._gpu_type == 'pinetrail':
-            raise error.TestWarn('dEQP not implemented on pinetrail. '
-                                 'crbug.com/532691')
+            raise error.TestNAError('dEQP not implemented on pinetrail. '
+                                          'crbug.com/532691')
+        if self._gpu_type == 'mali':
+            raise error.TestNAError('dEQP not implemented on mali. '
+                                          'crbug.com/543372')
+        if self._gpu_type == 'tegra':
+            raise error.TestNAError('dEQP not implemented on tegra. '
+                                          'crbug.com/543373')
 
         # Determine module from test_names or filter.
         if self._test_names:
