@@ -4,9 +4,10 @@
 
 import collections
 import logging
+import os
 import re
 
-IW_REMOTE_EVENT_LOG_FILE = '/tmp/iw_event.log'
+IW_REMOTE_EVENT_LOG_FILE_NAME = 'iw_event.log'
 
 LogEntry = collections.namedtuple('LogEntry', ['timestamp',
                                                'interface',
@@ -17,6 +18,8 @@ class IwEventLogger(object):
     def __init__(self, host, command_iw, local_file):
         self._host = host
         self._command_iw = command_iw
+        self._iw_event_log_path = os.path.join(self._host.get_tmp_dir(),
+                                               IW_REMOTE_EVENT_LOG_FILE_NAME)
         self._local_file = local_file
         self._pid = None
         self._start_time = 0
@@ -60,7 +63,7 @@ class IwEventLogger(object):
 
         """
         command = 'nohup %s event -t </dev/null >%s 2>&1 & echo $!' % (
-                self._command_iw, IW_REMOTE_EVENT_LOG_FILE)
+                self._command_iw, self._iw_event_log_path)
         command += ';date +%s'
         out_lines = self._host.run(command).stdout.splitlines()
         self._pid = int(out_lines[0])
@@ -80,7 +83,7 @@ class IwEventLogger(object):
         self._host.run('kill %d' % self._pid, ignore_status=True)
         self._pid = None
         # Copy iw event log file from remote host
-        self._host.get_file(IW_REMOTE_EVENT_LOG_FILE, self._local_file)
+        self._host.get_file(self._iw_event_log_path, self._local_file)
         logging.info('iw event log saved to %s', self._local_file)
 
 
