@@ -83,7 +83,7 @@ class RPCProxy(object):
         """Connect the RPC server."""
         # Make sure Autotest dependency is there.
         autotest.Autotest(self._client).install()
-        self._faft_client = self._client.xmlrpc_connect(
+        self._faft_client = self._client.rpc_server_tracker.xmlrpc_connect(
                 self._client_config.rpc_command,
                 self._client_config.rpc_port,
                 command_name=self._client_config.rpc_command_short,
@@ -95,5 +95,5 @@ class RPCProxy(object):
 
     def disconnect(self):
         """Disconnect the RPC server."""
-        self._client.rpc_disconnect(self._client_config.rpc_port)
+        self._client.rpc_server_tracker.disconnect(self._client_config.rpc_port)
         self._faft_client = None

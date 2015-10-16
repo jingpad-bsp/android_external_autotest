@@ -20,7 +20,7 @@ def get_xmlrpc_proxy(host):
     client_at = autotest.Autotest(host)
     client_at.install()
     # Start up the XMLRPC proxy on the device.
-    proxy = host.xmlrpc_connect(
+    proxy = host.rcp_server_tracker.xmlrpc_connect(
             constants.APMANAGER_XMLRPC_SERVER_COMMAND,
             constants.APMANAGER_XMLRPC_SERVER_PORT,
             command_name=constants.APMANAGER_XMLRPC_SERVER_CLEANUP_PATTERN,

@@ -128,7 +128,7 @@ class RemoteFacadeProxy(object):
             else:
                 command = constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND
 
-            self._xmlrpc_proxy = self._client.xmlrpc_connect(
+            self._xmlrpc_proxy = self._client.rpc_server_tracker.xmlrpc_connect(
                     command,
                     constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
                     command_name=(
@@ -145,7 +145,7 @@ class RemoteFacadeProxy(object):
 
     def __del__(self):
         """Destructor of RemoteFacadeFactory."""
-        self._client.rpc_disconnect(
+        self._client.rpc_server_tracker.disconnect(
                 constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
 
 

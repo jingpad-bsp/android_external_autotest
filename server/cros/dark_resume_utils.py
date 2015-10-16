@@ -153,7 +153,7 @@ class DarkResumeUtils(object):
         client_at = autotest.Autotest(self._host)
         client_at.install()
         # Start up the XMLRPC proxy on the client
-        proxy = self._host.xmlrpc_connect(
+        proxy = self._host.rpc_server_tracker.xmlrpc_connect(
                 constants.DARK_RESUME_XMLRPC_SERVER_COMMAND,
                 constants.DARK_RESUME_XMLRPC_SERVER_PORT,
                 command_name=

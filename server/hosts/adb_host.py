@@ -162,7 +162,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def _adb_run(self, command, shell=False, use_serial=False, timeout=3600,
                  ignore_status=False, ignore_timeout=False,
                  stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
-                 connect_timeout=30, options='', stdin=None, args=()):
+                 connect_timeout=30, options='', stdin=None, verbose=True,
+                 args=()):
         """Runs an adb command.
 
         This command may launch on the adb device or on the adb host.
@@ -204,7 +205,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         for arg in args:
             cmd += '%s ' % utils.sh_escape(arg)
-        logging.debug('Command: %s', cmd)
+        if verbose:
+            logging.debug('Command: %s', cmd)
 
         if self._local_adb:
             return utils.run(
@@ -245,7 +247,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def run(self, command, timeout=3600, ignore_status=False,
             ignore_timeout=False, stdout_tee=utils.TEE_TO_LOGS,
             stderr_tee=utils.TEE_TO_LOGS, connect_timeout=30, options='',
-            stdin=None, args=()):
+            stdin=None, verbose=True, args=()):
         """Run a command on the adb device.
 
         The command given will be ran directly on the adb device; for example
@@ -283,7 +285,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 ignore_status=ignore_status, ignore_timeout=ignore_timeout,
                 stdout=stdout_tee, stderr=stderr_tee,
                 connect_timeout=connect_timeout, options=options, stdin=stdin,
-                args=args)
+                verbose=verbose, args=args)
         if not result:
             # In case of timeouts.
             return None
@@ -662,3 +664,35 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         else:
             args += ['--remove', src]
         self._forward(reverse, args)
+
+
+    def rpc_port_forward(self, port, local_port):
+        """
+        Forwards a port securely through a tunnel process from the server
+        to the DUT for RPC server connection.
+        Add a 'ADB forward' rule to forward the RPC packets from the AdbHost
+        to the DUT.
+
+        @param port: remote port on the DUT.
+        @param local_port: local forwarding port.
+
+        @return: the tunnel process.
+        """
+        self.add_forwarding('tcp:%s' % port, 'tcp:%s' % port)
+        return super(ADBHost, self).rpc_port_forward(port, local_port)
+
+
+    def rpc_port_disconnect(self, tunnel_proc, port):
+        """
+        Disconnects a previously forwarded port from the server to the DUT for
+        RPC server connection.
+        Remove the previously added 'ADB forward' rule to forward the RPC
+        packets from the AdbHost to the DUT.
+
+        @param tunnel_proc: the original tunnel process returned from
+                            |rpc_port_forward|.
+        @param port: remote port on the DUT.
+
+        """
+        self.remove_forwarding('tcp:%s' % port)
+        super(ADBHost, self).rpc_port_disconnect(tunnel_proc, port)

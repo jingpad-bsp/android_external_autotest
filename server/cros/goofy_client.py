@@ -146,7 +146,8 @@ class GoofyProxy(object):
         # that will lead to significant overhead incurred over many reboots.
         self._host.ping_wait_up(timeout_min)
         logging.info('Host is pingable, creating goofy client proxy')
-        self._client = self._host.jsonrpc_connect(GOOFY_JSONRPC_SERVER_PORT)
+        self._client = self._host.rpc_server_tracker.jsonrpc_connect(
+                GOOFY_JSONRPC_SERVER_PORT)
 
 
     @retry.retry((httplib.BadStatusLine, socket.error),

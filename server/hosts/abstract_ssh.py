@@ -5,6 +5,7 @@ from multiprocessing import Lock
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
 from autotest_lib.server.hosts import remote
+from autotest_lib.server.hosts import rpc_server_tracker
 from autotest_lib.client.common_lib.global_config import global_config
 
 # pylint: disable-msg=C0111
@@ -35,6 +36,7 @@ class AbstractSSHHost(remote.RemoteHost):
         self._is_client_install_supported = is_client_install_supported
         self._use_rsync = None
         self.known_hosts_file = tempfile.mkstemp()[1]
+        self._rpc_server_tracker = rpc_server_tracker.RpcServerTracker(self);
 
         """
         Master SSH connection background job, socket temp directory and socket
@@ -65,6 +67,14 @@ class AbstractSSHHost(remote.RemoteHost):
         otherwise.
         """
         return self._is_client_install_supported
+
+
+    @property
+    def rpc_server_tracker(self):
+        """"
+        @return The RPC server tracker associated with this host.
+        """
+        return self._rpc_server_tracker
 
 
     def make_ssh_command(self, user="root", port=22, opts='',
@@ -643,6 +653,7 @@ class AbstractSSHHost(remote.RemoteHost):
         super(AbstractSSHHost, self).close()
         self._cleanup_master_ssh()
         os.remove(self.known_hosts_file)
+        self.rpc_server_tracker.disconnect_all()
 
 
     def _cleanup_master_ssh(self):
@@ -794,6 +805,37 @@ class AbstractSSHHost(remote.RemoteHost):
                       ' remote = %d, pid = %d',
                       local_port, port, tunnel_proc.pid)
         return tunnel_proc
+
+
+    def rpc_port_forward(self, port, local_port):
+        """
+        Forwards a port securely through a tunnel process from the server
+        to the DUT for RPC server connection.
+
+        @param port: remote port on the DUT.
+        @param local_port: local forwarding port.
+
+        @return: the tunnel process.
+        """
+        return self._create_ssh_tunnel(port, local_port)
+
+
+    def rpc_port_disconnect(self, tunnel_proc, port):
+        """
+        Disconnects a previously forwarded port from the server to the DUT for
+        RPC server connection.
+
+        @param tunnel_proc: the original tunnel process returned from
+                            |rpc_port_forward|.
+        @param port: remote port on the DUT.
+
+        """
+        if tunnel_proc.poll() is None:
+            tunnel_proc.terminate()
+            logging.debug('Terminated tunnel, pid %d', tunnel_proc.pid)
+        else:
+            logging.debug('Tunnel pid %d terminated early, status %d',
+                          tunnel_proc.pid, tunnel_proc.returncode)
 
 
     def get_os_type(self):

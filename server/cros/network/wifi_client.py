@@ -63,7 +63,7 @@ def get_xmlrpc_proxy(host):
     client_at = autotest.Autotest(host)
     client_at.install()
     # Start up the XMLRPC proxy on the client
-    proxy = host.xmlrpc_connect(
+    proxy = host.rpc_server_tracker.xmlrpc_connect(
             constants.SHILL_XMLRPC_SERVER_COMMAND,
             constants.SHILL_XMLRPC_SERVER_PORT,
             command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
