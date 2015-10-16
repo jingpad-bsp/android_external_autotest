@@ -45,6 +45,7 @@ ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
+BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
 
 def get_xmlrpc_proxy(host):
     """Get a shill XMLRPC proxy for |host|.
@@ -60,16 +61,25 @@ def get_xmlrpc_proxy(host):
     """
     # Make sure the client library is on the device so that the proxy
     # code is there when we try to call it.
-    client_at = autotest.Autotest(host)
-    client_at.install()
+    if host.is_client_install_supported:
+        client_at = autotest.Autotest(host)
+        client_at.install()
+    if host.get_os_type() == 'brillo':
+        xmlrpc_server_command = constants.SHILL_BRILLO_XMLRPC_SERVER_COMMAND
+        log_path = BRILLO_XMLRPC_LOG_PATH
+        command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
+    else:
+        xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
+        log_path = XMLRPC_LOG_PATH
+        command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
     # Start up the XMLRPC proxy on the client
     proxy = host.rpc_server_tracker.xmlrpc_connect(
-            constants.SHILL_XMLRPC_SERVER_COMMAND,
+            xmlrpc_server_command,
             constants.SHILL_XMLRPC_SERVER_PORT,
-            command_name=constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN,
+            command_name=command_name,
             ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
             timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS,
-            logfile=XMLRPC_LOG_PATH
+            logfile=log_path
       )
     return proxy
 
@@ -295,7 +305,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._conductive = None
         self._client_hostname = client_host.hostname
 
-        if isinstance(self.host, adb_host.ADBHost):
+        if self.host.get_os_type() == 'android':
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')
             devs = [dev for dev in devs
