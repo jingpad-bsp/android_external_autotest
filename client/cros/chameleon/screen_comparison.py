@@ -113,3 +113,9 @@ class ScreenComparer(object):
                             '%s-%s.png' % (prefix_str, tags[i]))
                     logging.info('Output the image %d to %s', i, file_path)
                     images[i].save(file_path)
+
+                file_path = os.path.join(
+                        self._output_dir, '%s-diff.png' % prefix_str)
+                logging.info('Output the diff image to %s', file_path)
+                diff_image = ImageChops.difference(*images)
+                diff_image.convert('L').save(file_path)
