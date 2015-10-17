@@ -3,7 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable-msg=W0311
+
 from collections import namedtuple
+import argparse
 import glob
 import json
 import os
@@ -12,7 +15,6 @@ import re
 import subprocess
 
 _EXPECTATIONS_DIR = 'expectations'
-_RESULTID_WILDCARD = '4143*'
 _AUTOTEST_RESULT_TEMPLATE = 'gs://chromeos-autotest-results/%s-chromeos-test/chromeos*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
 
 _BOARD_REGEX = re.compile(r'ChromeOS BOARD = (.+)')
@@ -25,9 +27,9 @@ _HASTY_MODE_REGEX = re.compile(r'\'hasty\': \'True\'|Running in hasty mode.')
 #04/23 07:30:21.840 INFO |graphics_d:0261| Result: Pass
 _TEST_RESULT_REGEX = re.compile(r'TestCase: (.+?)$\n.+? Result: (.+?)$',
                                 re.MULTILINE)
-_HASTY_TEST_RESULT_REGEX = re.compile(r'\[stdout\] Test case \'(.+?)\'..$\n'
-                                      r'.+?\[stdout\]   (Pass|Fail) \((.+)\)',
-                                      re.MULTILINE)
+_HASTY_TEST_RESULT_REGEX = re.compile(
+    r'\[stdout\] Test case \'(.+?)\'..$\n'
+    r'.+?\[stdout\]   (Pass|Fail|QualityWarning) \((.+)\)', re.MULTILINE)
 Logfile = namedtuple('Logfile', 'job_id name gs_path')
 
 
@@ -87,7 +89,6 @@ def get_not_passing_tests(text):
   for test, result in re.findall(_TEST_RESULT_REGEX, text):
     if not (result == 'Pass' or result == 'NotSupported'):
       not_passing.append((test, result))
-  print text
   for test, result, details in re.findall(_HASTY_TEST_RESULT_REGEX, text):
     if result != 'Pass':
       not_passing.append((test, result))
@@ -132,7 +133,8 @@ def save_expectation_dict(expectation_path, expectation_dict):
     os.remove(file_name)
   # Dump json for next iteration.
   with open(expectation_path + '.json', 'w') as f:
-    json.dump(expectation_dict, f,
+    json.dump(expectation_dict,
+              f,
               sort_keys=True,
               indent=4,
               separators=(',', ': '))
@@ -158,8 +160,7 @@ def process_flaky(status_dict):
     for key2 in status_dict.keys():
       if key1 != key2:
         flaky |= status_dict[key1] & status_dict[key2]
-  if flaky:
-    print('Flaky tests = %s.' % pprint.pformat(flaky))
+
   # Remove Flaky tests from other status and convert to dict of list.
   for key in status_dict.keys():
     if key != 'Flaky':
@@ -206,7 +207,8 @@ def load_log(name):
         'TestCase: ' in line or 'Result: ' in line or
         'Test Options: ' in line or 'Running in hasty mode.' in line or
         # For hasty logs we have:
-        ' Pass (' in line or ' Fail (' in line or ' Test case \'' in line):
+        ' Pass (' in line or ' Fail (' in line or 'QualityWarning (' in line or
+        ' Test case \'' in line):
       text += line + '\n'
   # TODO(ihf): Warn about or reject log files missing the end marker.
   return text
@@ -231,14 +233,21 @@ def process_logs(logs):
           expectation_path = os.path.join(output_path, filter + '.hasty')
         merge_expectation_list(expectation_path, tests)
 
+
+argparser = argparse.ArgumentParser(
+    description='Download from GS and process dEQP logs into expectations.')
+argparser.add_argument(
+    'result_ids',
+    metavar='result_id',
+    nargs='+',  # At least one result_id needs to be specified.
+    help='List of result log IDs (wildcards for gsutil like 5678* are ok).')
+args = argparser.parse_args()
+
+print pprint.pformat(args)
 # This is somewhat optional. Remove existing expectations to start clean, but
 # feel free to process them incrementally.
 execute(['rm', '-rf', _EXPECTATIONS_DIR])
-# You can choose to download logs manually or search for them on GS.
-# TODO(ihf): Just parse the result ids/wild card from command line and add
-# a usage/help option.
-ids = [_RESULTID_WILDCARD, '42331770']
-for id in ids:
+for id in args.result_ids:
   gs_path = _AUTOTEST_RESULT_TEMPLATE % id
   logs = get_logs_from_gs(gs_path)
 
