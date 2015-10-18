@@ -30,6 +30,7 @@ from autotest_lib.server import hosts
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import run_suite
 
 
@@ -84,6 +85,9 @@ def parse_args():
                              "name in the test's default control file e.g. "
                              "brillo_Gtests or a specific control file's "
                              "filename e.g. control.brillo_GtestsWhitelist.")
+    parser.add_argument('-A', '--test_arg', metavar='NAME=VAL',
+                        dest='test_args', default=[], action='append',
+                        help='An argument to pass to the test.')
     parser.add_argument('-m', '--moblab_host',
                         help='MobLab hostname or IP to launch tests. If this '
                              'argument is not provided, the test launcher '
@@ -95,6 +99,7 @@ def parse_args():
                         help='Hostname or IP of the adb_host connected to the '
                              'Brillo DUT. Default is to assume it is connected '
                              'directly to the MobLab.')
+
     return parser.parse_args()
 
 
@@ -156,13 +161,15 @@ def stage_payload(moblab, payload, vm):
         moblab.run('rm -rf %s' % stage_tmp_dir)
 
 
-def schedule_test(moblab, host, test):
+def schedule_test(moblab, host, test, test_args):
     """Schedule a Brillo test.
 
     @param moblab: MoblabHost representing the MobLab being used to launch the
                    testing.
     @param host: Hostname of the DUT.
     @param test: Test name.
+    @param test_args: Iterable of 'NAME=VAL' (strings) encoding argument
+                      assignments for the test.
 
     @returns autotest_lib.server.frontend.Job object representing the scheduled
              job.
@@ -170,6 +177,13 @@ def schedule_test(moblab, host, test):
     getter = control_file_getter.FileSystemGetter(
             [os.path.dirname(os.path.dirname(os.path.realpath(__file__)))])
     controlfile_conts = getter.get_control_file_contents_by_name(test)
+
+    # TODO(garnold) This should be removed and arguments injected by feeding
+    # args=test_args to create_jobs() directly once crbug.com/545572 is fixed.
+    if test_args:
+        controlfile_conts = tools.inject_vars({'args': test_args},
+                                              controlfile_conts)
+
     job = moblab.afe.create_job(
             controlfile_conts, name=test,
             control_type=control_data.CONTROL_TYPE_NAMES.SERVER,
@@ -344,7 +358,7 @@ def main(args):
         stage_payload(moblab, args.payload, is_vm)
 
     # Schedule the test job.
-    test_job = schedule_test(moblab, adb_host, args.test_name)
+    test_job = schedule_test(moblab, adb_host, args.test_name, args.test_args)
     wait_for_test_completion(moblab, adb_host, test_job)
 
     # Gather and report the test results.
