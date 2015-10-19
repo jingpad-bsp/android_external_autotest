@@ -41,6 +41,7 @@ class USBFacadeNative(object):
 
         """
         self._drivers_manager = USBDeviceDriversManager()
+        self._reenumerate_usb_devices()
 
 
     def _reenumerate_usb_devices(self):
