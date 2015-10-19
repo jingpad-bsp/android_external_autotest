@@ -29,7 +29,7 @@ class USBFacadeNative(object):
 
     """
     _DEFAULT_DEVICE_PRODUCT_NAME = 'Linux USB Audio Gadget'
-    _DELAY_BEFORE_FINDING_USB_DEVICE_SECS = 1
+    _TIMEOUT_FINDING_USB_DEVICE_SECS = 10
     _TIMEOUT_CRAS_NODES_CHANGE_SECS = 30
 
     def __init__(self):
@@ -61,6 +61,19 @@ class USBFacadeNative(object):
         # Only supports controlling one USB device of default name.
         device_name = self._DEFAULT_DEVICE_PRODUCT_NAME
 
+        def find_usb_device():
+            """Find USB device with name device_name.
+
+            @returns: True if succeed to find the device, False otherwise.
+
+            """
+            try:
+                self._drivers_manager.find_usb_device(device_name)
+                return True
+            except USBDeviceDriversManagerError:
+                logging.debug('Can not find %s yet' % device_name)
+                return False
+
         if self._drivers_manager.has_found_device(device_name):
             self._drivers_manager.bind_usb_drivers()
             self._wait_for_nodes_changed()
@@ -70,8 +83,10 @@ class USBFacadeNative(object):
             self._reenumerate_usb_devices()
             self._wait_for_nodes_changed()
             # Wait some time for paths and fields in sysfs to be created.
-            time.sleep(self._DELAY_BEFORE_FINDING_USB_DEVICE_SECS)
-            self._drivers_manager.find_usb_device(device_name)
+            utils.poll_for_condition(
+                    condition=find_usb_device,
+                    desc='Find USB device',
+                    timeout=self._TIMEOUT_FINDING_USB_DEVICE_SECS)
 
 
     def unplug(self):
