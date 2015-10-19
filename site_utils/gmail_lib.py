@@ -26,6 +26,7 @@ from email.mime.text import MIMEText
 
 import common
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from chromite.lib import retry_util
 
 try:
@@ -37,6 +38,7 @@ except ImportError as e:
   logging.debug("API client for gmail disabled. %s", e)
 
 
+EMAIL_COUNT_KEY = 'emails.%s'
 DEFAULT_GMAIL_CREDS_PATH = global_config.global_config.get_config_value(
         'NOTIFICATIONS', 'gmail_api_credentials', default='')
 RETRY_DELAY = 5
@@ -125,12 +127,13 @@ def get_default_creds_abspath():
             os.path.join(common.autotest_dir, auth_creds))
 
 
-def send_email(to, subject, message_text):
+def send_email(to, subject, message_text, retry=True):
     """Send email.
 
     @param to: The recipients, separated by comma.
     @param subject: Subject of the email.
     @param message_text: Text to send.
+    @param retry: If retry on retriable failures as defined in RETRIABLE_MSGS.
     """
     auth_creds = get_default_creds_abspath()
     if not os.path.isfile(auth_creds):
@@ -142,6 +145,7 @@ def send_email(to, subject, message_text):
         return
     client = GmailApiClient(oauth_credentials=auth_creds)
     m = Message(to, subject, message_text)
+    retry_count = MAX_RETRY if retry else 0
 
     def _run():
         """Send the message."""
@@ -163,8 +167,14 @@ def send_email(to, subject, message_text):
             logging.warning('Will retry error %s', exc)
         return should_retry
 
-    retry_util.GenericRetry(handler, MAX_RETRY, _run, sleep=RETRY_DELAY,
-                            backoff_factor=RETRY_BACKOFF_FACTOR)
+    autotest_stats.Counter(EMAIL_COUNT_KEY % 'total').increment()
+    try:
+        retry_util.GenericRetry(
+                handler, retry_count, _run, sleep=RETRY_DELAY,
+                backoff_factor=RETRY_BACKOFF_FACTOR)
+    except Exception:
+        autotest_stats.Counter(EMAIL_COUNT_KEY % 'fail').increment()
+        raise
 
 
 if __name__ == '__main__':
