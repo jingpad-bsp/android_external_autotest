@@ -12,6 +12,7 @@ import multiprocessing
 import os
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants
 
 def check_audio_nodes(audio_facade, audio_nodes):
     """Checks the node selected by Cros device is correct.
@@ -165,13 +166,21 @@ def dump_cros_audio_logs(host, audio_facade, directory, suffix=''):
     @directory: The directory to dump logs.
 
     """
-    audio_diagnostics_file_name = (
-            'audio_diagnostics.txt.%s' % suffix
-            if suffix else 'audio_diagnostics.txt')
-    audio_diagnostics_file = os.path.join(
-            directory, audio_diagnostics_file_name)
-    audio_facade.dump_diagnostics(audio_diagnostics_file)
+    def get_file_path(name):
+        """Gets file path to dump logs.
 
-    system_log_file_name = 'messages.%s' % suffix if suffix else 'messages'
-    system_log_file = os.path.join(directory, system_log_file_name)
-    host.get_file('/var/log/messages', system_log_file)
+        @param name: The file name.
+
+        @returns: The file path with an optional suffix.
+
+        """
+        file_name = '%s.%s' % (name, suffix) if suffix else name
+        file_path = os.path.join(directory, file_name)
+        return file_path
+
+    audio_facade.dump_diagnostics(get_file_path('audio_diagnostics.txt'))
+
+    host.get_file('/var/log/messages', get_file_path('messages'))
+
+    host.get_file(constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
+                  get_file_path('multimedia_xmlrpc_server.log'))
