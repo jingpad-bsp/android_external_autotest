@@ -16,18 +16,12 @@ class ChameleonVideoCapturer(object):
     """
 
 
-    def __init__(self, chameleon_port, display_facade, dest_dir,
-                 image_format, timeout_input_stable_s=10,
-                 timeout_get_all_frames_s=60,
-                 box=None):
+    def __init__(self, chameleon_port, display_facade,
+                 timeout_get_all_frames_s=60):
 
         self.chameleon_port = chameleon_port
         self.display_facade = display_facade
-        self.dest_dir = dest_dir
-        self.image_format = image_format
-        self.timeout_input_stable_s = timeout_input_stable_s
         self.timeout_get_all_frames_s = timeout_get_all_frames_s
-        self.box = box
         self._checksums = []
 
         self.was_plugged = None
@@ -38,8 +32,7 @@ class ChameleonVideoCapturer(object):
 
         if not self.was_plugged:
             self.chameleon_port.plug()
-            self.chameleon_port.wait_video_input_stable(
-                    self.timeout_input_stable_s)
+            self.chameleon_port.wait_video_input_stable()
 
         return self
 
@@ -123,25 +116,23 @@ class ChameleonVideoCapturer(object):
 
 
 
-    def write_images(self, frame_indices, dest_dir=None):
+    def write_images(self, frame_indices, dest_dir, image_format):
         """
         Saves frames of given indices to disk. The filename of the frame will be
         index in the list.
         @param frame_indices: list of frame indices to save.
         @param dest_dir: path to the desired destination dir.
+        @param image_format: string, format to save the image as. e.g; PNG
         @return: list of file paths
 
         """
         if type(frame_indices) is not list:
             frame_indices = [frame_indices]
 
-        if not dest_dir:
-            dest_dir = self.dest_dir
-
         test_images = []
         curr_checksum = None
         for i, frame_index in enumerate(frame_indices):
-            path = os.path.join(dest_dir, str(i) + '.' + self.image_format)
+            path = os.path.join(dest_dir, str(i) + '.' + image_format)
             # previous is what was current in the previous iteration
             prev_checksum = curr_checksum
             curr_checksum = self.checksums[frame_index]

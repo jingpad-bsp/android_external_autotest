@@ -104,6 +104,18 @@ class ImageDiffPublisher(object):
         html_file_fullpath = os.path.join(self.results_folder, 'index.html')
         self._write_tags_to_html(tags, html_file_fullpath)
 
+
+    def publish(self, image_paths):
+        """
+        Saves images to GS and creates an html document for viewing such images.
+
+        @param image_paths: list of complete paths to images to be saved.
+
+        """
+
+        pass
+
+
     def _write_tags_to_html(self, tags, html_filename):
         """
         Writes tags to the HTML file

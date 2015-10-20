@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Mussa Kiroga"
-NAME = "video_GlitchDetection_chameleon_webm_480p"
+NAME = "video_GlitchDetection_chameleon_vp8_480p"
 PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
 CRITERIA = """
 
@@ -31,10 +31,9 @@ results.
 host = next(iter(job.hosts))
 
 job.run_test('video_GlitchDetection',
-              channel='dev',
-              video_name='bigbuck',
-              video_format='webm',
-              video_def='480p',
-              use_chameleon=True,
+              source_path=('https://storage.googleapis.com/'
+              'chromiumos-test-assets-public/Shaka-Dash/480_vp8.webm'),
+              codec='vp8',
+              resolution='480p',
               host=host,
               args=args)
