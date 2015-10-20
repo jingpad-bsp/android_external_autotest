@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-chameleon"
-NAME = "chameleon_dp_weekly"
-PURPOSE = "A Chameleon weekly test suite."
-CRITERIA = "All tests with SUITE=chameleon_dp_weekly must pass."
+NAME = "chameleon_dp_stress"
+PURPOSE = "A Chameleon stress test suite."
+CRITERIA = "All tests with SUITE=chameleon_dp_stress must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"

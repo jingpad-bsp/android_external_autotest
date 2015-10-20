@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-chameleon"
-NAME = "chameleon_hdmi_weekly"
-PURPOSE = "A Chameleon test weekly suite."
-CRITERIA = "All tests with SUITE=chameleon_hdmi_weekly must pass."
+NAME = "chameleon_hdmi_stress"
+PURPOSE = "A Chameleon test stress suite."
+CRITERIA = "All tests with SUITE=chameleon_hdmi_stress must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"
