@@ -13,6 +13,17 @@ import time
 import urllib2
 
 import common
+try:
+    # Ensure the chromite site-package is installed.
+    from chromite.lib import *
+except ImportError:
+    import subprocess
+    build_externals_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+            'utils', 'build_externals.py')
+    subprocess.check_call([build_externals_path, 'chromiterepo'])
+    # Restart the script so python now finds the autotest site-packages.
+    sys.exit(os.execv(__file__, sys.argv))
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
@@ -275,7 +286,15 @@ def main(args):
     """main"""
     args = parse_args()
     level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(level=level, format=LOGGING_FORMAT)
+    # Without a full site-packages, logging's root log handler needs to be
+    # manually setup.
+    logger = logging.getLogger()
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+    logger.setLevel(level)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
+    logger.addHandler(handler)
 
     try:
         moblab, is_vm = setup_moblab_host(args)
