@@ -11,6 +11,7 @@ from functools import wraps
 import inspect
 import os
 import sys
+import django.db.utils
 import django.http
 
 from autotest_lib.frontend import thread_local
@@ -25,6 +26,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 NULL_DATETIME = datetime.datetime.max
 NULL_DATE = datetime.date.max
+DUPLICATE_KEY_MSG = 'Duplicate entry'
 
 def prepare_for_serialization(objects):
     """
@@ -647,9 +649,17 @@ def _ensure_label_exists(name):
     try:
         models.Label.objects.get(name=name)
     except models.Label.DoesNotExist:
-        new_label = models.Label.objects.create(name=name)
-        new_label.save()
-        return True
+        try:
+            new_label = models.Label.objects.create(name=name)
+            new_label.save()
+            return True
+        except django.db.utils.IntegrityError as e:
+            # It is possible that another suite/test already
+            # created the label between the check and save.
+            if DUPLICATE_KEY_MSG in str(e):
+                return False
+            else:
+                raise
     return False
 
 
