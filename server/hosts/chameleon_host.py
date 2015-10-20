@@ -10,7 +10,14 @@ import logging
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.server.cros import dnsname_mangler
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import ssh_host
+
+
+# Names of the host attributes in the database that represent the values for
+# the chameleon_host and chameleon_port for a servo connected to the DUT.
+CHAMELEON_HOST_ATTR = 'chameleon_host'
+CHAMELEON_PORT_ATTR = 'chameleon_port'
 
 class ChameleonHostError(Exception):
     """Error in ChameleonHost."""
@@ -191,12 +198,25 @@ def create_chameleon_host(dut, chameleon_args):
     @returns: A ChameleonHost object or None.
 
     """
-    dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
-    if dut_is_hostname:
-        chameleon_hostname = chameleon.make_chameleon_hostname(dut)
-        if utils.host_is_in_lab_zone(chameleon_hostname):
-            return ChameleonHost(chameleon_host=chameleon_hostname)
-    if chameleon_args:
-        return ChameleonHost(**chameleon_args)
+    is_moblab = utils.is_moblab()
+    if not is_moblab:
+        dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
+        if dut_is_hostname:
+            chameleon_hostname = chameleon.make_chameleon_hostname(dut)
+            if utils.host_is_in_lab_zone(chameleon_hostname):
+                return ChameleonHost(chameleon_host=chameleon_hostname)
+        if chameleon_args:
+            return ChameleonHost(**chameleon_args)
+        else:
+            return None
     else:
-        return None
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        hosts = afe.get_hosts(hostname=dut)
+        if hosts and CHAMELEON_HOST_ATTR in hosts[0].attributes:
+            return ChameleonHost(
+                chameleon_host=hosts[0].attributes[CHAMELEON_HOST_ATTR],
+                chameleon_port=hosts[0].attributes.get(
+                    CHAMELEON_PORT_ATTR, 9992)
+            )
+        else:
+            return None
