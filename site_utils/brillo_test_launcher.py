@@ -63,6 +63,26 @@ def setup_parser(parser):
                         help='Rsync over modified Autotest code.')
 
 
+def quickmerge(moblab):
+    """Transfer over a subset of Autotest directories.
+
+    Quickmerge allows developers to do basic editting of tests and test
+    libraries on their workstation without requiring them to emerge and cros
+    deploy the autotest-server package.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    """
+    autotest_rootdir = os.path.dirname(
+            os.path.dirname(os.path.realpath(__file__)))
+    for item in _QUICKMERGE_LIST:
+        src = os.path.join(autotest_rootdir, item)
+        dest = ':'.join(['moblab@%s' % moblab.hostname,
+                         os.path.join(moblab_host.AUTOTEST_INSTALL_DIR, item)])
+        rsync_cmd = ['rsync', '-a', '--exclude', '*.pyc', src, dest]
+        utils.run(' '.join(rsync_cmd), timeout=120)
+
+
 def add_adb_host(moblab, adb_hostname):
     """Add the ADB host to the MobLab's host list.
 
@@ -158,21 +178,6 @@ def wait_for_test_completion(moblab, host, parent_job):
         time.sleep(10)
 
 
-def output_results(moblab, parent_job):
-    """Output the Brillo PTS and it's subjobs results.
-
-    @param moblab: MoblabHost representing the MobLab being used for testing.
-    @param parent_job: autotest_lib.server.frontend.Job object representing the
-                       test job.
-    """
-    solo_test_run = len(moblab.afe.get_jobs(parent_job=parent_job.id)) == 0
-    rc = run_suite.ResultCollector(moblab.web_address, moblab.afe, moblab.tko,
-                                   None, None, parent_job.name, parent_job.id,
-                                   user='moblab', solo_test_run=solo_test_run)
-    rc.run()
-    rc.output_results()
-
-
 def copy_results(moblab, parent_job):
     """Copy job results locally.
 
@@ -189,23 +194,19 @@ def copy_results(moblab, parent_job):
     return tempdir
 
 
-def quickmerge(moblab):
-    """Transfer over a subset of Autotest directories.
-
-    Quickmerge allows developers to do basic editting of tests and test
-    libraries on their workstation without requiring them to emerge and cros
-    deploy the autotest-server package.
+def output_results(moblab, parent_job):
+    """Output the Brillo PTS and it's subjobs results.
 
     @param moblab: MoblabHost representing the MobLab being used for testing.
+    @param parent_job: autotest_lib.server.frontend.Job object representing the
+                       test job.
     """
-    autotest_rootdir = os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__)))
-    for item in _QUICKMERGE_LIST:
-        src = os.path.join(autotest_rootdir, item)
-        dest = ':'.join(['moblab@%s' % moblab.hostname,
-                         os.path.join(moblab_host.AUTOTEST_INSTALL_DIR, item)])
-        rsync_cmd = ['rsync', '-a', '--exclude', '*.pyc', src, dest]
-        utils.run(' '.join(rsync_cmd), timeout=120)
+    solo_test_run = len(moblab.afe.get_jobs(parent_job=parent_job.id)) == 0
+    rc = run_suite.ResultCollector(moblab.web_address, moblab.afe, moblab.tko,
+                                   None, None, parent_job.name, parent_job.id,
+                                   user='moblab', solo_test_run=solo_test_run)
+    rc.run()
+    rc.output_results()
 
 
 def main(args):
