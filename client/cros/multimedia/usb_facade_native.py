@@ -11,6 +11,7 @@ import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.cros.audio import cras_dbus_utils
 from autotest_lib.client.cros.audio import cras_utils
 
 
@@ -105,7 +106,7 @@ class USBFacadeNative(object):
         input and output nodes and then sends one NodesChanged signal.
 
         """
-        cras_utils.CrasDBusMonitor().wait_for_nodes_changed(
+        cras_dbus_utils.CrasDBusMonitor().wait_for_nodes_changed(
                 target_signal_count=1,
                 timeout_secs=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
 
