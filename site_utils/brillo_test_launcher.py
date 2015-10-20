@@ -61,8 +61,12 @@ QUICKMERGE_LIST = ['client/',
                    'utils/']
 
 
-class KickOffException(Exception):
-    """Exception class for errors in the test kick off process."""
+class BrilloTestError(Exception):
+    """A general error during test invocation."""
+
+
+class PayloadStagingError(BrilloTestError):
+    """A failure that occurred while staging an update payload."""
 
 
 def parse_args():
@@ -120,9 +124,11 @@ def stage_payload(moblab, payload, vm):
                    testing.
     @param payload: Path to the Brillo payload that will be staged.
     @param vm: Boolean if True means we are running in a VM.
+
+    @raise PayloadStagingError: If we failed to stage the payload.
     """
     if not os.path.exists(payload):
-        raise KickOffException('FATAL: payload %s does not exist!')
+        raise PayloadStagingError('Payload file %s does not exist.' % payload)
     stage_tmp_dir = os.path.join(MOBLAB_TMP_DIR, TARGET_IMAGE_NAME)
     stage_dest_dir = os.path.join(MOBLAB_STATIC_DIR, TARGET_IMAGE_NAME)
     stage_tmp_file = os.path.join(stage_tmp_dir, 'target_full_.bin')
@@ -139,13 +145,13 @@ def stage_payload(moblab, payload, vm):
                 staged_dir=stage_tmp_dir)
         res = urllib2.urlopen(stage_url).read()
     except (urllib2.HTTPError, httplib.HTTPException, urllib2.URLError) as e:
-        logging.error('Unable to stage payload on moblab. Error: %s', e)
+        raise PayloadStagingError('Unable to stage payload on moblab: %s' % e)
     else:
         if res == 'Success':
             logging.debug('Payload is staged on Moblab as %s',
                           TARGET_IMAGE_NAME)
         else:
-            logging.error('Staging failed. Error Message: %s', res)
+            raise PayloadStagingError('Staging failed: %s' % res)
     finally:
         moblab.run('rm -rf %s' % stage_tmp_dir)
 
@@ -216,7 +222,7 @@ def wait_for_test_completion(moblab, host, parent_job):
                 [j.id for j in get_all_jobs(moblab, parent_job)])
             host_page = AFE_HOST_PAGE_TEMPLATE % dict(
                     moblab=moblab.web_address, host_id=afe_host.id)
-            raise KickOffException(
+            raise BrilloTestError(
                     'ADB dut %s has become Repair Failed. More information '
                     'can be found at %s' % (host, host_page))
         time.sleep(10)
@@ -262,6 +268,8 @@ def setup_moblab_host(args):
 
     @returns Tuple of (moblab_host.MoblabHost, boolean indicating if the
                        MobLab is running in a virtual machine).
+
+    @raise BrilloTestError: An error occurred while setting up the Moblab.
     """
     is_vm = False
     web_address = args.moblab_host
@@ -276,18 +284,16 @@ def setup_moblab_host(args):
         moblab = hosts.create_host(args.moblab_host,
                                    host_class=moblab_host.MoblabHost,
                                    web_address=web_address)
-    except error.AutoservRunError:
-        logging.error('Unable to connect to the MobLab.')
-        raise
+    except error.AutoservRunError as e:
+        raise BrilloTestError('Unable to connect to the MobLab: %s' % e)
 
     try:
         moblab.afe.get_hosts()
     except Exception as e:
-        logging.error("Unable to communicate with the MobLab's web frontend. "
-                      "Please verify the MobLab and its web frontend are up "
-                      "running at http://%s/\nException:%s",
-                      moblab.web_address, e)
-        raise e
+        raise BrilloTestError(
+                "Unable to communicate with the MobLab's web frontend, "
+                "please verify that it is up and running at http://%s/\n"
+                "Error: %s" % (moblab.web_address, e))
     return (moblab, is_vm)
 
 
@@ -312,7 +318,7 @@ def quickmerge(moblab):
 
 
 def main(args):
-    """main"""
+    """The main function."""
     args = parse_args()
     level = logging.DEBUG if args.debug else logging.INFO
     # Without a full site-packages, logging's root log handler needs to be
@@ -325,34 +331,34 @@ def main(args):
     handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
     logger.addHandler(handler)
 
-    try:
-        moblab, is_vm = setup_moblab_host(args)
-    except Exception as e:
-        logging.error(e)
-        return 1
+    moblab, is_vm = setup_moblab_host(args)
 
     if args.quickmerge:
         quickmerge(moblab)
 
     # Add the adb host object to the MobLab.
     adb_host = add_adbhost(moblab, args.adb_host)
+
     # Stage the payload if provided.
     if args.payload:
         stage_payload(moblab, args.payload, is_vm)
+
     # Schedule the test job.
     test_job = schedule_test(moblab, adb_host, args.test_name)
+    wait_for_test_completion(moblab, adb_host, test_job)
 
-    try:
-        wait_for_test_completion(moblab, adb_host, test_job)
-    except KickOffException as e:
-        logging.error(e)
-        return 1
+    # Gather and report the test results.
     local_results_folder = copy_results(moblab, test_job)
     output_results(moblab, test_job)
     logging.info('Results have also been copied locally to %s',
                  local_results_folder)
-    return 0
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    try:
+        main(sys.argv)
+        sys.exit(0)
+    except BrilloTestError as e:
+        logging.error('Error: %s', e)
+
+    sys.exit(1)
