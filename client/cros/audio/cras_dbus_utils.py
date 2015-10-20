@@ -52,7 +52,9 @@ class CrasDBusMonitor(object):
     """Monitor for DBus signal from Cras."""
     def __init__(self):
         _set_default_main_loop()
-        self._iface = cras_utils.get_cras_control_interface()
+        # Acquires a new Cras interface through a new dbus.SystemBus instance
+        # which has default main loop.
+        self._iface = cras_utils.get_cras_control_interface(private=True)
         self._loop = _get_gobject().MainLoop()
         self._count = 0
         self._target_signal_count = 0
