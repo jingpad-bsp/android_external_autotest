@@ -166,3 +166,22 @@ class AudioFacadeRemoteAdapter(object):
         self._audio_proxy.dump_diagnostics(remote_path)
         self._client.get_file(remote_path, file_path)
         return True
+
+
+    def start_counting_signal(self, signal_name):
+        """Starts counting DBus signal from Cras.
+
+        @param signal_name: Signal of interest.
+
+        """
+        self._audio_proxy.start_counting_signal(signal_name)
+
+
+    def stop_counting_signal(self):
+        """Stops counting DBus signal from Cras.
+
+        @returns: Number of signals counted starting from last
+                  start_counting_signal call.
+
+        """
+        return self._audio_proxy.stop_counting_signal()

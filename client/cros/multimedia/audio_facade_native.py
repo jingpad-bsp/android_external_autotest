@@ -12,6 +12,7 @@ import tempfile
 
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
+from autotest_lib.client.cros.audio import cras_dbus_utils
 from autotest_lib.client.cros.audio import cras_utils
 
 
@@ -39,6 +40,7 @@ class AudioFacadeNative(object):
         self._chrome = chrome
         self._browser = chrome.browser
         self._recorder = None
+        self._counter = None
 
 
     def cleanup(self):
@@ -186,6 +188,32 @@ class AudioFacadeNative(object):
         with open(file_path, 'w') as f:
             f.write(audio_helper.get_audio_diagnostics())
         return True
+
+
+    def start_counting_signal(self, signal_name):
+        """Starts counting DBus signal from Cras.
+
+        @param signal_name: Signal of interest.
+
+        """
+        if self._counter:
+            raise AudioFacadeNativeError('There is an ongoing counting.')
+        self._counter = cras_dbus_utils.CrasDBusBackgroundSignalCounter()
+        self._counter.start(signal_name)
+
+
+    def stop_counting_signal(self):
+        """Stops counting DBus signal from Cras.
+
+        @returns: Number of signals starting from last start_counting_signal
+                  call.
+
+        """
+        if not self._counter:
+            raise AudioFacadeNativeError('Should start counting signal first')
+        result = self._counter.stop()
+        self._counter = None
+        return result
 
 
 class RecorderError(Exception):
