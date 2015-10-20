@@ -111,7 +111,6 @@ class chromedriver(object):
                 self._browser.Close()
                 del self._browser
 
-
     def get_extension(self, extension_path):
         """Gets an extension by proxying to the browser.
 
@@ -120,6 +119,12 @@ class chromedriver(object):
         @return: A telemetry extension object representing the extension.
         """
         return self._chrome.get_extension(extension_path)
+
+
+    @property
+    def chrome_instance(self):
+        """ The chrome instance used by this chrome driver instance. """
+        return self._chrome
 
 
 class chromedriver_server(object):
