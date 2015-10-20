@@ -106,7 +106,7 @@ class USBFacadeNative(object):
         input and output nodes and then sends one NodesChanged signal.
 
         """
-        cras_dbus_utils.CrasDBusMonitor().wait_for_nodes_changed(
+        cras_dbus_utils.CrasDBusSignalListener().wait_for_nodes_changed(
                 target_signal_count=1,
                 timeout_secs=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
 

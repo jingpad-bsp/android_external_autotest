@@ -57,6 +57,12 @@ class CrasDBusMonitor(object):
         self._iface = cras_utils.get_cras_control_interface(private=True)
         self._loop = _get_gobject().MainLoop()
         self._count = 0
+
+
+class CrasDBusSignalListener(CrasDBusMonitor):
+    """Listener for certain signal."""
+    def __init__(self):
+        super(CrasDBusSignalListener, self).__init__()
         self._target_signal_count = 0
 
 
