@@ -253,3 +253,25 @@ class CrasDBusCounter(CrasDBusMonitor):
                     'Got _quit_main_loop after main loop quits. Ignore it')
 
             return False
+
+
+class CrasDBusMonitorUnexpectedNodesChanged(Exception):
+    """Error for unexpected nodes changed."""
+    pass
+
+
+def wait_for_unexpected_nodes_changed(timeout_secs):
+    """Waits for unexpected nodes changed signal in this blocking call.
+
+    @param timeout_secs: Timeout in seconds for waiting.
+
+    @raises CrasDBusMonitorUnexpectedNodesChanged if there is NodesChanged
+            signal
+
+    """
+    try:
+        CrasDBusSignalListener().wait_for_nodes_changed(1, timeout_secs)
+    except CrasDBusMonitorError:
+        logging.debug('There is no NodesChanged signal, as expected')
+        return
+    raise CrasDBusMonitorUnexpectedNodesChanged()
