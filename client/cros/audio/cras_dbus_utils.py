@@ -5,6 +5,7 @@
 """This module provides cras DBus audio utilities."""
 
 import logging
+import multiprocessing
 
 from autotest_lib.client.cros.audio import cras_utils
 
@@ -119,3 +120,136 @@ class CrasDBusSignalListener(CrasDBusMonitor):
                     'Got _quit_main_loop after main loop quits. Ignore it')
 
         return False
+
+
+class CrasDBusBackgroundSignalCounter(object):
+    """Controls signal counter which runs in background."""
+    def __init__(self):
+        self._proc = None
+        self._signal_name = None
+        self._counter = None
+        self._parent_conn = None
+        self._child_conn = None
+
+
+    def start(self, signal_name):
+        """Starts the signal counter in a subprocess.
+
+        @param signal_name: The name of the signal to count.
+
+        """
+        self._signal_name = signal_name
+        self._parent_conn, self._child_conn = multiprocessing.Pipe()
+        self._proc = multiprocessing.Process(
+                target=self._run, args=(self._child_conn,))
+        self._proc.daemon = True
+        self._proc.start()
+
+
+    def _run(self, child_conn):
+        """Runs CrasDBusCounter.
+
+        This should be called in a subprocess.
+        This blocks until parent_conn send stop command to the pipe.
+
+        """
+        self._counter = CrasDBusCounter(self._signal_name, child_conn)
+        self._counter.run()
+
+
+    def stop(self):
+        """Stops the CrasDBusCounter by sending stop command to parent_conn.
+
+        The result of CrasDBusCounter in its subproces can be obtained by
+        reading from parent_conn.
+
+        @returns: The count of the signal of interest.
+
+        """
+        self._parent_conn.send(CrasDBusCounter.STOP_CMD)
+        return self._parent_conn.recv()
+
+
+class CrasDBusCounter(CrasDBusMonitor):
+    """Counter for DBus signal sent from Cras"""
+
+    _CHECK_QUIT_PERIOD_SECS = 0.1
+    STOP_CMD = 'stop'
+
+    def __init__(self, signal_name, child_conn):
+        """Initializes a CrasDBusCounter.
+
+        @param signal_name: The name of the signal of interest.
+        @child_conn: A multiprocessing.Pipe which use to receive stop signal
+                     and to send the counting result.
+
+        """
+        super(CrasDBusCounter, self).__init__()
+        self._signal_name = signal_name
+        self._count = None
+        self._child_conn = child_conn
+
+
+    def run(self):
+        """Runs the gobject main loop and listens for the signal."""
+        self._count = 0
+
+        signal_match = self._iface.connect_to_signal(
+                self._signal_name, self._signal_handler)
+        _get_gobject().timeout_add(
+                 int(self._CHECK_QUIT_PERIOD_SECS * 1000),
+                 self._check_quit_main_loop)
+
+        logging.debug('Start counting for signal %s', self._signal_name)
+
+        # Blocks here until _check_quit_main_loop quits the loop.
+        self._loop.run()
+
+        signal_match.remove()
+
+        logging.debug('Count result: %s', self._count)
+        self._child_conn.send(self._count)
+
+
+    def _signal_handler(self):
+        """Handler for signal."""
+        if self._loop.is_running():
+            logging.debug('Got %s signal when loop is running.',
+                          self._signal_name)
+            self._count = self._count + 1
+            logging.debug('count = %d', self._count)
+        else:
+            logging.debug('Got %s signal when loop is not running.'
+                          ' Ignore it', self._signal_name)
+
+
+    def _should_stop(self):
+        """Checks if user wants to stop main loop."""
+        if self._child_conn.poll():
+            if self._child_conn.recv() == self.STOP_CMD:
+                logging.debug('Should stop')
+                return True
+        return False
+
+
+    def _check_quit_main_loop(self):
+        """Handler for timeout in main loop.
+
+        @returns: True so this callback will not be called again.
+                  False if user quits main loop.
+
+        """
+        if self._loop.is_running():
+            logging.debug('main loop is running in _check_quit_main_loop')
+            if self._should_stop():
+                logging.debug('Quit main loop because of stop command')
+                self._loop.quit()
+                return False
+            else:
+                logging.debug('No stop command, keep running')
+                return True
+        else:
+            logging.debug(
+                    'Got _quit_main_loop after main loop quits. Ignore it')
+
+            return False
