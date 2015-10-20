@@ -216,6 +216,16 @@ class AudioFacadeNative(object):
         return result
 
 
+    def wait_for_unexpected_nodes_changed(self, timeout_secs):
+        """Waits for unexpected nodes changed signal.
+
+        @param timeout_secs: Timeout in seconds for waiting.
+
+        """
+        cras_dbus_utils.wait_for_unexpected_nodes_changed(timeout_secs)
+
+
+
 class RecorderError(Exception):
     """Error in Recorder."""
     pass

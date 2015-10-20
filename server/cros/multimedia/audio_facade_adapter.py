@@ -185,3 +185,12 @@ class AudioFacadeRemoteAdapter(object):
 
         """
         return self._audio_proxy.stop_counting_signal()
+
+
+    def wait_for_unexpected_nodes_changed(self, timeout_secs):
+        """Waits for unexpected nodes changed signal.
+
+        @param timeout_secs: Timeout in seconds for waiting.
+
+        """
+        self._audio_proxy.wait_for_unexpected_nodes_changed(timeout_secs)
