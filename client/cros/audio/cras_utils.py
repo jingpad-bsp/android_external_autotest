@@ -151,8 +151,11 @@ def set_capture_gain(gain):
     get_cras_control_interface().SetInputGain(gain)
 
 
-def get_cras_control_interface():
+def get_cras_control_interface(private=False):
     """Gets Cras DBus control interface.
+
+    @param private: Set to True to use a new instance for dbus.SystemBus
+                    instead of the shared instance.
 
     @returns: A dBus.Interface object with Cras Control interface.
 
@@ -166,7 +169,7 @@ def get_cras_control_interface():
                 'Can not import dbus: %s. This method should only be '
                 'called on Cros device.', e)
         raise
-    bus = dbus.SystemBus()
+    bus = dbus.SystemBus(private=private)
     cras_object = bus.get_object('org.chromium.cras', '/org/chromium/cras')
     return dbus.Interface(cras_object, 'org.chromium.cras.Control')
 
