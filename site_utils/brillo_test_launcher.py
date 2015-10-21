@@ -27,6 +27,7 @@ except ImportError:
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
+from autotest_lib.server import utils
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.site_utils import run_suite
@@ -52,6 +53,12 @@ VIRT_MACHINE_SSH_ADDR = 'localhost:9222'
 VIRT_MACHINE_AFE_ADDR = '127.0.0.1:8888'
 VIRT_MACHINE_DEVSERVER_PORT = '7777'
 PHYS_MACHINE_DEVSERVER_PORT = '8888'
+QUICKMERGE_LIST = ['client/',
+                   'global_config.ini',
+                   'server/',
+                   'site_utils/',
+                   'test_suites/',
+                   'utils/']
 
 
 class KickOffException(Exception):
@@ -63,6 +70,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Print log statements.')
+    parser.add_argument('-q', '--quickmerge', action='store_true',
+                        help='Rsync over modified Autotest code.')
     parser.add_argument('-p', '--payload',
                         help='Path to the update payload for autoupdate '
                              'testing.')
@@ -282,6 +291,26 @@ def setup_moblab_host(args):
     return (moblab, is_vm)
 
 
+def quickmerge(moblab):
+    """Transfer over a subset of Autotest directories.
+
+    Quickmerge allows developers to do basic editting of tests and test
+    libraries on their workstation without requiring them to emerge and cros
+    deploy the autotest-server package.
+
+    @param moblab: MoblabHost representing the MobLab being used to launch the
+                   testing.
+    """
+    autotest_rootdir = os.path.dirname(
+            os.path.dirname(os.path.realpath(__file__)))
+    for item in QUICKMERGE_LIST:
+        src = os.path.join(autotest_rootdir,item)
+        dest = ':'.join(['moblab@%s' % moblab.hostname,
+                         os.path.join(moblab_host.AUTOTEST_INSTALL_DIR, item)])
+        rsync_cmd = ['rsync', '-a', '--exclude', '*.pyc', src, dest]
+        utils.run(' '.join(rsync_cmd), timeout=120)
+
+
 def main(args):
     """main"""
     args = parse_args()
@@ -301,6 +330,9 @@ def main(args):
     except Exception as e:
         logging.error(e)
         return 1
+
+    if args.quickmerge:
+        quickmerge(moblab)
 
     # Add the adb host object to the MobLab.
     adb_host = add_adbhost(moblab, args.adb_host)
