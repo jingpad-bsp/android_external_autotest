@@ -392,11 +392,14 @@ def _parse(argv):
     parser.add_argument('-d', '--dir',
                         help='directory for logs')
     parser.add_argument('-i', '--build',
-                        help='set stable test build version')
+                        help='select stable test build version')
     parser.add_argument('-n', '--noinstall', action='store_true',
                         help='skip install (for script testing)')
     parser.add_argument('-s', '--nostage', action='store_true',
                         help='skip staging test image (for script testing)')
+    parser.add_argument('-t', '--nostable', action='store_true',
+                        help='skip changing stable test image '
+                             '(for script testing)')
     parser.add_argument('board', nargs='?', metavar='BOARD',
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',

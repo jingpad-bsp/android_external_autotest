@@ -49,6 +49,7 @@ installations in parallel, separate processes.
 """
 
 import functools
+import json
 import logging
 import multiprocessing
 import os
@@ -61,6 +62,7 @@ import time
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
@@ -73,6 +75,80 @@ _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 _DEFAULT_POOL = Labels.POOL_PREFIX + 'suites'
 
 _DIVIDER = '\n============\n'
+
+_OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
+
+
+def _get_omaha_build(board):
+    """Get the currently preferred Beta channel build for `board`.
+
+    Open and read through the JSON file provided by GoldenEye that
+    describes what version Omaha is currently serving for all boards
+    on all channels.  Find the entry for `board` on the Beta channel,
+    and return that version string.
+
+    @param board  The board to look up from GoldenEye.
+
+    @return Returns a Chrome OS version string in standard form
+            R##-####.#.#.  Will return `None` if no Beta channel
+            entry is found.
+    """
+    omaha_board = board.replace('_', '-')
+    sp = subprocess.Popen(['gsutil', 'cat', _OMAHA_STATUS],
+                          stdout=subprocess.PIPE)
+    omaha_status = json.load(sp.stdout)
+    for e in omaha_status['omaha_data']:
+        if (e['channel'] == 'beta' and
+                e['board']['public_codename'] == omaha_board):
+            milestone = e['chrome_version'].split('.')[0]
+            build = e['chrome_os_version']
+            return 'R%s-%s' % (milestone, build)
+    return None
+
+
+def _update_build(afe, arguments):
+    """Update the stable_test_versions table.
+
+    This calls the `set_stable_version` RPC call to set the stable
+    test version selected by this run of the command.  The
+    version is selected from three possible versions:
+      * The stable test version currently in the AFE database.
+      * The version Omaha is currently serving as the Beta channel
+        build.
+      * The version supplied by the user.
+    The actual version selected will be whichever of these three is
+    the most up-to-date version.
+
+    This function will log information about the available versions
+    prior to selection.
+
+    @param afe          AFE object for RPC calls.
+    @param arguments    Command line arguments determining the
+                        target board and user-specified build
+                        (if any).
+    @return Returns the version selected.
+    """
+    afe_version = afe.run('get_stable_version',
+                          board=arguments.board)
+    omaha_version = _get_omaha_build(arguments.board)
+    sys.stdout.write('AFE   version is %s.\n' % afe_version)
+    sys.stdout.write('Omaha version is %s.\n' % omaha_version)
+    if (omaha_version is not None and
+            utils.compare_versions(afe_version, omaha_version) < 0):
+        version = omaha_version
+    else:
+        version = afe_version
+    if arguments.build:
+        if utils.compare_versions(arguments.build, version) >= 0:
+            version = arguments.build
+        else:
+            sys.stdout.write('Selected version %s is too old.\n' %
+                             arguments.build)
+    if version != afe_version and not arguments.nostable:
+        afe.run('set_stable_version',
+                version=version,
+                board=arguments.board)
+    return version
 
 
 def _create_host(hostname, board):
@@ -450,18 +526,14 @@ def install_duts(argv, full_deploy):
         sys.exit(1)
     sys.stderr.write('Installation output logs in %s\n' % arguments.dir)
     afe = frontend.AFE(server=arguments.web)
-    if arguments.build:
-        afe.run('set_stable_version',
-                version=arguments.build,
-                board=arguments.board)
+    current_build = _update_build(afe, arguments)
+    sys.stdout.write(_DIVIDER)
+    sys.stderr.write('Repair version for board %s is now %s.\n' %
+                     (arguments.board, current_build))
     install_pool = multiprocessing.Pool(len(arguments.hostnames))
     install_function = functools.partial(_install_dut, arguments)
     results_list = install_pool.map(install_function,
                                     arguments.hostnames)
-    current_build = afe.run('get_stable_version',
-                            board=arguments.board)
-    sys.stderr.write('\nRepair version for board %s is now %s.\n' %
-                         (arguments.board, current_build))
     _report_results(afe, arguments.hostnames, results_list)
 
     # MacDuff:
