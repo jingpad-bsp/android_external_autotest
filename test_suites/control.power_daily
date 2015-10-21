@@ -31,7 +31,8 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['dbasehore@chromium.org', 'snanda@chromium.org', 'tbroch@chromium.org']
+    'cc': ['dbasehore@chromium.org', 'msheets@chromium.org',
+           'tbroch@chromium.org']
 }
 
 args_dict['add_experimental'] = True
