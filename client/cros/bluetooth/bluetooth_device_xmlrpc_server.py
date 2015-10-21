@@ -699,6 +699,21 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._is_connected(device)
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def device_is_connected(self, address):
+        """Checks if a device is connected.
+
+        @param address: Address of the device to connect.
+
+        @returns: True if device is connected. False otherwise.
+
+        """
+        device = self._find_device(address)
+        if not device:
+            logging.error('Device not found')
+            return False
+        return self._is_connected(device)
+
 
     @xmlrpc_server.dbus_safe(False)
     def disconnect_device(self, address):

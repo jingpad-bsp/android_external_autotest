@@ -276,6 +276,17 @@ class BluetoothDevice(object):
         return self._proxy.connect_device(address)
 
 
+    def device_is_connected(self, address):
+        """Checks if a device is connected.
+
+        @param address: Address of the device to check if it is connected.
+
+        @returns: True if device is connected. False otherwise.
+
+        """
+        return self._proxy.device_is_connected(address)
+
+
     def disconnect_device(self, address):
         """Disconnects a device.
 
