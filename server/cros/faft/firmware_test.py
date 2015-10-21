@@ -11,6 +11,7 @@ import re
 import time
 import uuid
 
+from threading import Timer
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
@@ -58,6 +59,15 @@ class FirmwareTest(FAFTBase):
 
     CHROMEOS_MAGIC = "CHROMEOS"
     CORRUPTED_MAGIC = "CORRUPTD"
+
+    # Delay for waiting client to return before EC suspend
+    EC_SUSPEND_DELAY = 5
+
+    # Delay between EC suspend and wake
+    WAKE_DELAY = 10
+
+    # Delay between closing and opening lid
+    LID_DELAY = 1
 
     _SERVOD_LOG = '/var/log/servod.log'
 
@@ -714,6 +724,43 @@ class FirmwareTest(FAFTBase):
             except error.TestFail:
                 pass
         return False
+
+    def delayed(seconds):
+        logging.info("delaying %d seconds" % seconds)
+        def decorator(f):
+            def wrapper(*args, **kargs):
+                t = Timer(seconds, f, args, kargs)
+                t.start()
+            return wrapper
+        return decorator
+
+    @delayed(WAKE_DELAY)
+    def wake_by_power_button(self):
+        """Delay by WAKE_DELAY seconds and then wake DUT with power button."""
+        self.servo.power_normal_press()
+
+    @delayed(WAKE_DELAY)
+    def wake_by_lid_switch(self):
+        """Delay by WAKE_DELAY seconds and then wake DUT with lid switch."""
+        self.servo.set('lid_open', 'no')
+        time.sleep(self.LID_DELAY)
+        self.servo.set('lid_open', 'yes')
+
+    def suspend_as_reboot(self, wake_func):
+        """
+        Suspend DUT and also kill FAFT client so that this acts like a reboot.
+
+        Args:
+          wake_func: A function that is called to wake DUT. Note that this
+            function must delay itself so that we don't wake DUT before
+            suspend_as_reboot returns.
+        """
+        cmd = '(sleep %d; powerd_dbus_suspend) &' % self.EC_SUSPEND_DELAY
+        self.faft_client.system.run_shell_command(cmd)
+        self.faft_client.disconnect()
+        time.sleep(self.EC_SUSPEND_DELAY)
+        logging.info("wake function disabled")
+        wake_func()
 
     def _fetch_servo_log(self):
         """Fetch the servo log."""

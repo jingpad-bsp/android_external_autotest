@@ -2,21 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from threading import Timer
+#from threading import Timer
 import logging
 import time
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
-
-
-def delayed(seconds):
-    def decorator(f):
-        def wrapper(*args, **kargs):
-            t = Timer(seconds, f, args, kargs)
-            t.start()
-        return wrapper
-    return decorator
 
 
 class firmware_DevModeStress(FirmwareTest):
@@ -25,32 +16,6 @@ class firmware_DevModeStress(FirmwareTest):
     of this test performs 2 reboots and 3 checks.
     """
     version = 1
-
-    # Delay for waiting client to return before EC suspend
-    EC_SUSPEND_DELAY = 5
-
-    # Delay between EC suspend and wake
-    WAKE_DELAY = 5
-
-    @delayed(WAKE_DELAY)
-    def wake_by_power_button(self):
-        """Delay by WAKE_DELAY seconds and then wake DUT with power button."""
-        self.servo.power_normal_press()
-
-    def suspend_as_reboot(self, wake_func):
-        """
-        Suspend DUT and also kill FAFT client so that this acts like a reboot.
-
-        Args:
-          wake_func: A function that is called to wake DUT. Note that this
-            function must delay itself so that we don't wake DUT before
-            suspend_as_reboot returns.
-        """
-        cmd = '(sleep %d; powerd_dbus_suspend) &' % self.EC_SUSPEND_DELAY
-        self.faft_client.system.run_shell_command(cmd)
-        self.faft_client.disconnect()
-        time.sleep(self.EC_SUSPEND_DELAY)
-        wake_func()
 
     def initialize(self, host, cmdline_args):
         # Parse arguments from command line
