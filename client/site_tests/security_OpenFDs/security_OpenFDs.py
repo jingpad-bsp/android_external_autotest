@@ -195,11 +195,10 @@ class security_OpenFDs(test.test):
                         # for performance reasons.
                         # See crbug.com/452227.
                         r'0500 /usr/share/fonts/.*',
-                        # Renderers have access to GPU render nodes.
-                        # See crbug.com/537474.
-                        r'0700 /dev/dri/renderD12[89]',
                        ])
         try:
+            # Renderers have access to DRM vgem device for graphics tile upload.
+            # See crbug.com/537474.
             filters.append(r'0700 /dev/dri/%s' % os.readlink('/dev/dri/vgem'))
         except OSError:
             # /dev/dri/vgem doesn't exist.
