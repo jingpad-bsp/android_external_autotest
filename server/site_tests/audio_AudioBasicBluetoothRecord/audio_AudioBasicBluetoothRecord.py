@@ -170,31 +170,34 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
             # Select again BT input as default input node is INTERNAL_MIC
             self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
-            audio_test_utils.check_audio_nodes(self.audio_facade,
-                                               (None, ['BLUETOOTH']))
 
-            logging.info('Start playing %s on Chameleon',
-                         golden_file.path)
-            source.start_playback()
+            with audio_test_utils.monitor_no_nodes_changed(self.audio_facade):
+                audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                   (None, ['BLUETOOTH']))
 
-            time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
-            logging.info('Start recording from Cros device.')
-            recorder.start_recording()
+                logging.info('Start playing %s on Chameleon',
+                             golden_file.path)
+                source.start_playback()
 
-            time.sleep(self.RECORD_SECONDS)
+                time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
+                logging.info('Start recording from Cros device.')
+                recorder.start_recording()
 
-            recorder.stop_recording()
-            logging.info('Stopped recording from Cros device.')
+                time.sleep(self.RECORD_SECONDS)
 
-            audio_test_utils.dump_cros_audio_logs(
-                    host, self.audio_facade, self.resultsdir, 'after_recording')
+                recorder.stop_recording()
+                logging.info('Stopped recording from Cros device.')
 
-            recorder.read_recorded_binary()
-            logging.info('Read recorded binary from Chameleon.')
+                audio_test_utils.dump_cros_audio_logs(
+                        host, self.audio_facade, self.resultsdir,
+                        'after_recording')
 
-        recorded_file = os.path.join(self.resultsdir, "recorded.raw")
-        logging.info('Saving recorded data to %s', recorded_file)
-        recorder.save_file(recorded_file)
+                recorder.read_recorded_binary()
+                logging.info('Read recorded binary from Chameleon.')
+
+                recorded_file = os.path.join(self.resultsdir, "recorded.raw")
+                logging.info('Saving recorded data to %s', recorded_file)
+                recorder.save_file(recorded_file)
 
         # Removes the beginning of recorded data. This is to avoid artifact
         # caused by bluetooth module initialization in the beginning of

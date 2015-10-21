@@ -197,53 +197,60 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 # Select again BT input, as default input node is INTERNAL_MIC
                 self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
-                # Checks the node selected by Cras is correct again.
-                audio_test_utils.check_audio_nodes(self.audio_facade,
-                                                   (['BLUETOOTH'],
-                                                    ['BLUETOOTH']))
+                with audio_test_utils.monitor_no_nodes_changed(
+                        self.audio_facade):
+                    # Checks the node selected by Cras is correct again.
+                    audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                       (['BLUETOOTH'],
+                                                        ['BLUETOOTH']))
 
-                # Starts playing, waits for some time, and then starts recording.
-                # This is to avoid artifact caused by codec initialization.
-                logging.info('Start playing %s on Cros device',
-                             golden_file.path)
-                playback_source.start_playback()
-                logging.info('Start playing %s on Chameleon device',
-                             golden_file.path)
-                record_source.start_playback()
+                    # Starts playing, waits for some time, and then starts
+                    # recording. This is to avoid artifact caused by codec
+                    # initialization.
+                    logging.info('Start playing %s on Cros device',
+                                 golden_file.path)
+                    playback_source.start_playback()
+                    logging.info('Start playing %s on Chameleon device',
+                                 golden_file.path)
+                    record_source.start_playback()
 
-                time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
-                logging.info('Start recording from Chameleon.')
-                playback_recorder.start_recording()
-                logging.info('Start recording from Cros device.')
-                record_recorder.start_recording()
+                    time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
+                    logging.info('Start recording from Chameleon.')
+                    playback_recorder.start_recording()
+                    logging.info('Start recording from Cros device.')
+                    record_recorder.start_recording()
 
-                time.sleep(self.RECORD_SECONDS)
+                    time.sleep(self.RECORD_SECONDS)
 
-                playback_recorder.stop_recording()
-                logging.info('Stopped recording from Chameleon.')
-                record_recorder.stop_recording()
-                logging.info('Stopped recording from Cros device.')
+                    playback_recorder.stop_recording()
+                    logging.info('Stopped recording from Chameleon.')
+                    record_recorder.stop_recording()
+                    logging.info('Stopped recording from Cros device.')
 
-                audio_test_utils.dump_cros_audio_logs(
-                        host, self.audio_facade, self.resultsdir,
-                        'after_recording')
+                    audio_test_utils.dump_cros_audio_logs(
+                            host, self.audio_facade, self.resultsdir,
+                            'after_recording')
 
-                # Sleeps until playback data ends to prevent audio from
-                # going to internal speaker.
-                time.sleep(self.SLEEP_AFTER_RECORD_SECONDS)
+                    # Sleeps until playback data ends to prevent audio from
+                    # going to internal speaker.
+                    time.sleep(self.SLEEP_AFTER_RECORD_SECONDS)
 
-                # Gets the recorded data. This step is time consuming.
-                playback_recorder.read_recorded_binary()
-                logging.info('Read recorded binary from Chameleon.')
-                record_recorder.read_recorded_binary()
-                logging.info('Read recorded binary from Chameleon.')
+                    # Gets the recorded data. This step is time consuming.
+                    playback_recorder.read_recorded_binary()
+                    logging.info('Read recorded binary from Chameleon.')
+                    record_recorder.read_recorded_binary()
+                    logging.info('Read recorded binary from Chameleon.')
 
-        recorded_file = os.path.join(self.resultsdir, "playback_recorded.raw")
-        logging.info('Playback: Saving recorded data to %s', recorded_file)
-        playback_recorder.save_file(recorded_file)
-        recorded_file = os.path.join(self.resultsdir, "record_recorded.raw")
-        logging.info('Record: Saving recorded data to %s', recorded_file)
-        record_recorder.save_file(recorded_file)
+                    recorded_file = os.path.join(
+                            self.resultsdir, "playback_recorded.raw")
+                    logging.info('Playback: Saving recorded data to %s',
+                                 recorded_file)
+                    playback_recorder.save_file(recorded_file)
+                    recorded_file = os.path.join(
+                            self.resultsdir, "record_recorded.raw")
+                    logging.info('Record: Saving recorded data to %s',
+                                  recorded_file)
+                    record_recorder.save_file(recorded_file)
 
         # Removes the beginning of recorded data. This is to avoid artifact
         # caused by Chameleon codec initialization in the beginning of
