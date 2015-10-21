@@ -8,6 +8,7 @@
 import logging
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -18,6 +19,8 @@ from autotest_lib.server.hosts import ssh_host
 # the chameleon_host and chameleon_port for a servo connected to the DUT.
 CHAMELEON_HOST_ATTR = 'chameleon_host'
 CHAMELEON_PORT_ATTR = 'chameleon_port'
+
+_CONFIG = global_config.global_config
 
 class ChameleonHostError(Exception):
     """Error in ChameleonHost."""
@@ -198,7 +201,12 @@ def create_chameleon_host(dut, chameleon_args):
     @returns: A ChameleonHost object or None.
 
     """
-    is_moblab = utils.is_moblab()
+    if not utils.is_in_container():
+        is_moblab = utils.is_moblab()
+    else:
+        is_moblab = _CONFIG.get_config_value(
+                'SSP', 'is_moblab', type=bool, default=False)
+
     if not is_moblab:
         dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
         if dut_is_hostname:
