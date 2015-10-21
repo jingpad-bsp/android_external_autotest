@@ -86,7 +86,8 @@ class firmware_DevScreenTimeout(FirmwareTest):
         self.setup_usbkey(usbkey=False)
 
     def run_once(self):
-        if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
+        if (self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser' and
+                self.faft_config.fw_bypasser_type != 'broken_screen_bypasser'):
             raise error.TestNAError("This test is only valid on devices with "
                                     "screens.")
 

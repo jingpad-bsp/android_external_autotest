@@ -19,9 +19,10 @@ class ConnectionError(Exception):
 class _BaseFwBypasser(object):
     """Base class that controls bypass logic for firmware screens."""
 
-    def __init__(self, servo, faft_config):
-        self.servo = servo
-        self.faft_config = faft_config
+    def __init__(self, faft_framework):
+        self.servo = faft_framework.servo
+        self.faft_config = faft_framework.faft_config
+        self.client_host = faft_framework._client
 
 
     def bypass_dev_mode(self):
@@ -112,6 +113,24 @@ class _CtrlDBypasser(_BaseFwBypasser):
         self.servo.enter_key()
 
 
+class _BrokenScreenBypasser(_CtrlDBypasser):
+    """Controls bypass logic of broken screen"""
+
+    def press_recovery_switch(self):
+        if not self.client_host.ping_wait_up(
+                timeout=self.faft_config.delay_reboot_to_ping):
+            psc = self.servo.get_power_state_controller()
+            # No need to add any wait here.
+            # This function should be called after waiting for ping timeout.
+            psc.power_on(psc.REC_ON)
+
+
+    def bypass_rec_mode(self):
+        """Bypass the broken screen then recovery screen"""
+        self.servo.switch_usbkey('dut')
+        self.press_recovery_switch()
+
+
 class _JetstreamBypasser(_BaseFwBypasser):
     """Controls bypass logic of Jetstream devices."""
 
@@ -158,24 +177,25 @@ class _JetstreamBypasser(_BaseFwBypasser):
         raise NotImplementedError
 
 
-def _create_fw_bypasser(servo, faft_config):
+def _create_fw_bypasser(faft_framework):
     """Creates a proper firmware bypasser.
 
-    @param servo: A servo object controlling the servo device.
-    @param faft_config: A FAFT config object, which describes the type of
-                        firmware bypasser.
+    @param faft_framework: The main FAFT framework object.
     """
-    bypasser_type = faft_config.fw_bypasser_type
+    bypasser_type = faft_framework.faft_config.fw_bypasser_type
     if bypasser_type == 'ctrl_d_bypasser':
         logging.info('Create a CtrlDBypasser')
-        return _CtrlDBypasser(servo, faft_config)
+        return _CtrlDBypasser(faft_framework)
     elif bypasser_type == 'jetstream_bypasser':
         logging.info('Create a JetstreamBypasser')
-        return _JetstreamBypasser(servo, faft_config)
+        return _JetstreamBypasser(faft_framework)
     elif bypasser_type == 'ryu_bypasser':
         # FIXME Create an RyuBypasser
         logging.info('Create a CtrlDBypasser')
-        return _CtrlDBypasser(servo, faft_config)
+        return _CtrlDBypasser(faft_framework)
+    elif bypasser_type == 'broken_screen_bypasser':
+        logging.info('Create a BrokenScreenBypasser')
+        return _BrokenScreenBypasser(faft_framework)
     else:
         raise NotImplementedError('Not supported fw_bypasser_type: %s',
                                   bypasser_type)
@@ -191,7 +211,7 @@ class _BaseModeSwitcher(object):
         self.servo = faft_framework.servo
         self.faft_config = faft_framework.faft_config
         self.checkers = faft_framework.checkers
-        self.bypasser = _create_fw_bypasser(self.servo, self.faft_config)
+        self.bypasser = _create_fw_bypasser(faft_framework)
         self._backup_mode = None
 
 
@@ -238,13 +258,13 @@ class _BaseModeSwitcher(object):
         if to_mode == 'rec':
             self._enable_rec_mode_and_reboot(usb_state='dut')
             if wait_for_dut_up:
-                self.bypasser.bypass_rec_mode()
+                self.bypass_rec_mode()
                 self.wait_for_client()
 
         elif to_mode == 'dev':
             self._enable_dev_mode_and_reboot()
             if wait_for_dut_up:
-                self.bypasser.bypass_dev_mode()
+                self.bypass_dev_mode()
                 self.wait_for_client()
 
         elif to_mode == 'normal':
@@ -292,6 +312,8 @@ class _BaseModeSwitcher(object):
                 is_dev = self.checkers.mode_checker('dev')
             boot_id = self.faft_framework.get_bootid()
             self.faft_framework.blocking_sync()
+        logging.info("-[mode_aware_reboot]-[ is_normal=%s is_dev=%s ]-",
+                     is_normal, is_dev);
         reboot_method()
         if sync_before_boot:
             self.wait_for_client_offline(orig_boot_id=boot_id)
@@ -301,15 +323,11 @@ class _BaseModeSwitcher(object):
             # hard coded in tests. We keep this logic in this
             # mode_aware_reboot method.
             if not is_dev:
-                # In the normal/recovery boot flow, replugging USB does not
-                # affect the boot flow. But when something goes wrong, like
-                # firmware corrupted, it automatically leads to a recovery USB
-                # boot.
                 self.servo.switch_usbkey('host')
             if not is_normal:
-                self.bypasser.bypass_dev_mode()
+                self.bypass_dev_mode()
             if not is_dev:
-                self.bypasser.bypass_rec_mode()
+                self.bypass_rec_mode()
             self.wait_for_client()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
@@ -355,16 +373,19 @@ class _BaseModeSwitcher(object):
     # Redirects the following methods to FwBypasser
     def bypass_dev_mode(self):
         """Bypass the dev mode firmware logic to boot internal image."""
+        logging.info("-[bypass_dev_mode]-")
         self.bypasser.bypass_dev_mode()
 
 
     def bypass_dev_boot_usb(self):
         """Bypass the dev mode firmware logic to boot USB."""
+        logging.info("-[bypass_dev_boot_usb]-")
         self.bypasser.bypass_dev_boot_usb()
 
 
     def bypass_rec_mode(self):
         """Bypass the rec mode firmware logic to boot USB."""
+        logging.info("-[bypass_rec_mode]-")
         self.bypasser.bypass_rec_mode()
 
 
@@ -525,6 +546,7 @@ class _RyuSwitcher(_BaseModeSwitcher):
             raise ConnectionError()
 
     def print_recovery_warning(self):
+        """Print recovery warning"""
         logging.info("***")
         logging.info("*** Entering recovery mode.  This may take awhile ***")
         logging.info("***")
