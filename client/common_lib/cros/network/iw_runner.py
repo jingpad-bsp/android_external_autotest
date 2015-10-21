@@ -750,3 +750,17 @@ class IwRunner(object):
         if 'VHT Capabilities' in result:
             return True
         return False
+
+
+    def frequency_supported(self, frequency):
+        """Returns True if the given frequency is supported; False otherwise.
+
+        @param frequency: int Wifi frequency to check if it is supported by
+                          DUT.
+        """
+        phys = self.list_phys()
+        for phy in phys:
+            for band in phy.bands:
+                if frequency in band.frequencies:
+                    return True
+        return False

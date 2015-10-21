@@ -363,6 +363,15 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self.iw_runner.vht_supported()
 
 
+    def frequency_supported(self, frequency):
+        """Returns True if the given frequency is supported; False otherwise.
+
+        @param frequency: int Wifi frequency to check if it is supported by
+                          DUT.
+        """
+        return self.iw_runner.frequency_supported(frequency)
+
+
     def _supports_method(self, method_name):
         """Checks if |method_name| is supported on the remote XMLRPC proxy.
 
