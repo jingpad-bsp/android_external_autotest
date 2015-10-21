@@ -461,7 +461,7 @@ class graphics_dEQP(test.test):
 
         if options['subset_to_run'] == 'NotPass':
             if test_passes:
-                raise error.TestFail(
+                raise error.TestWarn(
                     '%d formerly failing tests are passing now.' % test_passes)
         elif test_failures:
             raise error.TestFail('%d/%d tests failed.' %
