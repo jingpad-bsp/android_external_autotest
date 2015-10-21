@@ -24,6 +24,23 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
     version = 1
     _PLUG_DELAY = 5
 
+    def check_default_nodes(self, host, audio_facade):
+        """Checks default audio nodes for devices with onboard audio support.
+
+        @param audio_facade: A RemoteAudioFacade to access audio functions on
+                             Cros device.
+
+        @param host: The CrosHost object.
+
+        """
+        if audio_test_utils.has_internal_microphone(host):
+            audio_test_utils.check_audio_nodes(audio_facade,
+                                               (None, ['INTERNAL_MIC']))
+        if audio_test_utils.has_internal_speaker(host):
+            audio_test_utils.check_audio_nodes(audio_facade,
+                                               (['INTERNAL_SPEAKER'], None))
+
+
     def run_once(self, host, jack_node=False):
         chameleon_board = host.chameleon
         audio_board = chameleon_board.get_audio_board()
@@ -32,9 +49,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         chameleon_board.reset()
         audio_facade = factory.create_audio_facade()
 
-        audio_test_utils.check_audio_nodes(audio_facade,
-                                           (['INTERNAL_SPEAKER'],
-                                            ['INTERNAL_MIC']))
+        self.check_default_nodes(host, audio_facade)
         if jack_node:
             jack_plugger = audio_board.get_jack_plugger()
             jack_plugger.plug()
@@ -49,6 +64,5 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
             jack_plugger.unplug()
 
         time.sleep(self._PLUG_DELAY)
-        audio_test_utils.check_audio_nodes(audio_facade,
-                                           (['INTERNAL_SPEAKER'],
-                                            ['INTERNAL_MIC']))
+        self.check_default_nodes(host, audio_facade)
+
