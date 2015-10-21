@@ -533,6 +533,7 @@ class LabInventoryTests(_InventoryTests):
         """
         working_total = 0
         broken_total = 0
+        managed_boards = set()
         for b in self.inventory:
             c = self.inventory[b]
             calculated_counts = (
@@ -542,23 +543,23 @@ class LabInventoryTests(_InventoryTests):
                  c.get_broken(self._SPARE_POOL)))
             self.assertEqual(data[b], calculated_counts)
             nworking = data[b][0][0] + data[b][1][0]
-            board_working_list = self.inventory.get_working_list([b])
-            self.assertEqual(nworking, len(board_working_list))
             nbroken = data[b][0][1] + data[b][1][1]
-            board_broken_list = self.inventory.get_broken_list([b])
-            self.assertEqual(nbroken, len(board_broken_list))
+            self.assertEqual(nworking, len(c.get_working_list()))
+            self.assertEqual(nbroken, len(c.get_broken_list()))
             working_total += nworking
             broken_total += nbroken
+            ncritical = data[b][0][0] + data[b][0][1]
+            nspare = data[b][1][0] + data[b][1][1]
+            if ncritical != 0 and nspare != 0:
+                managed_boards.add(b)
+        self.assertEqual(self.inventory.get_managed_boards(),
+                         managed_boards)
         board_list = self.inventory.keys()
         self.assertEqual(set(board_list), set(data.keys()))
         self.assertEqual(self.inventory.get_num_duts(),
                          self.num_duts)
         self.assertEqual(self.inventory.get_num_boards(),
                          len(data))
-        working_list = self.inventory.get_working_list(board_list)
-        broken_list = self.inventory.get_broken_list(board_list)
-        self.assertEqual(len(working_list), working_total)
-        self.assertEqual(len(broken_list), broken_total)
 
 
     def test_empty(self):

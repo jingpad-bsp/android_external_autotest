@@ -295,6 +295,8 @@ class _BoardCounts(object):
         @param pool  The pool to be counted.  If `None`, return the
                      total across all pools.
 
+        @return The total number of working DUTs in the selected
+                pool(s).
         """
         return self._count_pool(_PoolCounts.get_working, pool)
 
@@ -321,8 +323,23 @@ class _BoardCounts(object):
         @param pool  The pool to be counted.  If `None`, return the
                      total across all pools.
 
+        @return The total number of broken DUTs in the selected pool(s).
         """
         return self._count_pool(_PoolCounts.get_broken, pool)
+
+
+    def get_spares_buffer(self):
+        """Return the the nominal number of working spares.
+
+        Calculates and returns how many working spares there would
+        be in the spares pool if all broken DUTs were in the spares
+        pool.  This number may be negative, indicating a shortfall
+        in the critical pools.
+
+        @return The total number DUTs in the spares pool, less the total
+                number of broken DUTs in all pools.
+        """
+        return self.get_total(_SPARE_POOL) - self.get_broken()
 
 
     def get_total(self, pool=None):
@@ -331,6 +348,7 @@ class _BoardCounts(object):
         @param pool  The pool to be counted.  If `None`, return the
                      total across all pools.
 
+        @return The total number of DUTs in the selected pool(s).
         """
         return self._count_pool(_PoolCounts.get_total, pool)
 
@@ -396,89 +414,35 @@ class _LabInventory(dict):
         initval = { board: _BoardCounts() for board in boards }
         super(_LabInventory, self).__init__(initval)
         self._dut_count = len(histories)
-        self._board_counts = None
+        self._managed_boards = None
         for h in histories:
             self[h.host_board].record_host(h)
 
 
-    def get_working_list(self, boards):
-        """Return a list of working DUTs for given boards.
+    def get_managed_boards(self):
+        """Return the set of "managed" boards.
 
-        For every board in the list, select all HostJobHistory
-        objects where the last diagnosis is `WORKING`.
+        Operationally, saying a board is "managed" means that the
+        board will be included in the "board" and "repair
+        recommendations" reports.  That is, if there are failures in
+        the board's inventory then lab techs will be asked to fix
+        them without a separate ticket.
 
-        @param boards   The list of boards to be searched for working
-                        DUTs.
-        @return A list of HostJobHistory objects.
+        For purposes of implementation, a board is "managed" if it
+        has DUTs in both the spare and a non-spare (i.e. critical)
+        pool.
 
+        @return A set of all the boards that have both spare and
+                non-spare pools.
         """
-        l = []
-        for b in boards:
-            l.extend(self[b].get_working_list())
-        return l
-
-
-    def get_broken_list(self, boards):
-        """Return a list of broken DUTs for given boards.
-
-        For every board in the list, select all HostJobHistory
-        objects where the last diagnosis is not `WORKING`.
-
-        @param boards   The list of boards to be searched for broken
-                        DUTs.
-        @return A list of HostJobHistory objects.
-
-        """
-        l = []
-        for b in boards:
-            l.extend(self[b].get_broken_list())
-        return l
-
-
-    def get_board_counts(self):
-        """Calculate a summary of board counts.
-
-        The summary is a list of tuples.  The tuple elements, in
-        order, are:
-          * board - The name of the board associated with the
-            counts.
-          * buffer - The buffer of working spares (the total number
-            of spares, less the number of broken DUTs).
-          * broken - The number of broken DUTs.
-          * working - The number of working DUTs.
-          * spares - The number of DUTs in the spares pool, working
-            or not.
-          * total - The the total number of DUTs.
-
-        Note that the definitions of the data members implies some
-        specific relationships:
-          * total = broken + working
-          * buffer = spares - broken
-          * 0 < spares < total
-
-        Boards with no DUTs in the spares pool or no DUTs in a
-        critical pool will be excluded from the listed counts.
-
-        The ordering of the boards is unspecified.
-
-        @return A list of tuples with board data.
-
-        """
-        if self._board_counts is None:
-            self._board_counts = []
+        if self._managed_boards is None:
+            self._managed_boards = set()
             for board, counts in self.items():
-                logging.debug('Counting inventory for %s', board)
                 spares = counts.get_total(_SPARE_POOL)
                 total = counts.get_total()
-                if spares == 0 or spares == total:
-                    continue
-                working = counts.get_working()
-                broken = counts.get_broken()
-                spare_buffer = spares - broken
-                element = (board, spare_buffer, broken, working,
-                           spares, total)
-                self._board_counts.append(element)
-        return self._board_counts
+                if spares != 0 and spares != total:
+                    self._managed_boards.add(board)
+        return self._managed_boards
 
 
     def get_num_duts(self):
@@ -604,14 +568,14 @@ def _generate_repair_recommendation(inventory, num_recommend):
 
     """
     logging.debug('Creating DUT repair recommendations')
-    board_counts = inventory.get_board_counts()
-    # Board counts tuple layout:
-    #      t[0]  t[1]  t[2]  t[3]  t[4]  t[5]
-    #     board avail   bad  good spare total
-    board_buffer_counts = {t[0]: t[1] for t in board_counts
-                                    if t[2] != 0}
-    search_boards = board_buffer_counts.keys()
-    broken_list = inventory.get_broken_list(search_boards)
+    board_buffer_counts = {}
+    broken_list = []
+    for board in inventory.get_managed_boards():
+        logging.debug('Listing failed DUTs for %s', board)
+        counts = inventory[board]
+        if counts.get_broken() != 0:
+            board_buffer_counts[board] = counts.get_spares_buffer()
+            broken_list.extend(counts.get_broken_list())
     # N.B. The logic inside this loop may seem complicated, but
     # simplification is hard:
     #   * Calculating an initial recommendation outside of
@@ -675,21 +639,30 @@ def _generate_board_inventory_message(inventory):
 
     """
     logging.debug('Creating board inventory')
-    data_list = inventory.get_board_counts()
     nworking = 0
     nbroken = 0
     nbroken_boards = 0
-    # Board counts tuple layout:
-    #      t[0]  t[1]  t[2]  t[3]  t[4]  t[5]
-    #     board avail   bad  good spare total
-    for t in data_list:
-        nbroken += t[2]
-        nworking += t[3]
-        if t[2]:
+    summaries = []
+    for board in inventory.get_managed_boards():
+        logging.debug('Counting board inventory for %s', board)
+        counts = inventory[board]
+        # Summary elements laid out in the same order as the text
+        # headers:
+        #     Board Avail   Bad  Good Spare Total
+        #      e[0]  e[1]  e[2]  e[3]  e[4]  e[5]
+        element = (board,
+                   counts.get_spares_buffer(),
+                   counts.get_broken(),
+                   counts.get_working(),
+                   counts.get_total(_SPARE_POOL),
+                   counts.get_total())
+        summaries.append(element)
+        nbroken += element[2]
+        nworking += element[3]
+        if element[2]:
             nbroken_boards += 1
     ntotal = nworking + nbroken
-    data_list = sorted(sorted(data_list, key=lambda t: -t[2]),
-                       key=lambda t: t[1])
+    summaries = sorted(summaries, key=lambda e: (e[1], -e[2]))
     broken_percent = int(round(100.0 * nbroken / ntotal))
     working_percent = 100 - broken_percent
     message = ['Summary of DUTs in inventory:',
@@ -700,14 +673,14 @@ def _generate_board_inventory_message(inventory):
                    ntotal),
                '',
                'Boards with failures: %d' % nbroken_boards,
-               'Boards in inventory:  %d' % len(data_list),
+               'Boards in inventory:  %d' % len(summaries),
                '', '',
                'Full board inventory:\n',
-                    '%-22s %5s %5s %5s %5s %5s' % (
-                        'Board', 'Avail', 'Bad', 'Good',
-                        'Spare', 'Total')]
+               '%-22s %5s %5s %5s %5s %5s' % (
+                   'Board', 'Avail', 'Bad', 'Good',
+                   'Spare', 'Total')]
     message.extend(
-            ['%-22s %5d %5d %5d %5d %5d' % t for t in data_list])
+            ['%-22s %5d %5d %5d %5d %5d' % e for e in summaries])
     return '\n'.join(message)
 
 
