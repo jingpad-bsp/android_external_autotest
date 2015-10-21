@@ -559,7 +559,16 @@ class BluetoothWidgetLink(WidgetLink):
 
 
     def _adapter_connect_sequence(self):
-        """Scans, pairs, and connects bluetooth module to bluetooth adapter."""
+        """Scans, pairs, and connects bluetooth module to bluetooth adapter.
+
+        If the device is already connected, skip the connection sequence.
+
+        """
+        if self._bt_adapter.device_is_connected(self._mac_address):
+            logging.debug(
+                    '%s is already connected, skip the connection sequence',
+                    self._mac_address)
+            return
         chameleon_bluetooth_audio.connect_bluetooth_module_full_flow(
                 self._bt_adapter, self._mac_address)
 
