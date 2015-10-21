@@ -44,7 +44,6 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
         recorder = widget_factory.create_widget(
             chameleon_audio_ids.CrosIds.USBIN)
         binder = widget_factory.create_binder(source, recorder)
-        binder.connect()
 
         with chameleon_audio_helper.bind_widgets(binder):
             # Checks the node selected by cras is correct.
