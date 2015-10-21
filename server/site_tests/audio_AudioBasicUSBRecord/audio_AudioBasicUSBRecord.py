@@ -26,7 +26,6 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
     """
     version = 1
     RECORD_SECONDS = 5
-    DELAY_AFTER_BINDING = 3
 
     def run_once(self, host):
         golden_file = audio_test_data.SWEEP_TEST_FILE
@@ -47,7 +46,6 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
 
         with chameleon_audio_helper.bind_widgets(binder):
             # Checks the node selected by cras is correct.
-            time.sleep(self.DELAY_AFTER_BINDING)
             audio_facade = factory.create_audio_facade()
 
             audio_test_utils.dump_cros_audio_logs(
