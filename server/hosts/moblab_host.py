@@ -44,7 +44,8 @@ class MoblabHost(cros_host.CrosHost):
         super(MoblabHost, self)._initialize(*args, **dargs)
         # Clear the Moblab Image Storage so that staging an image is properly
         # tested.
-        self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
+        if dargs.get('retain_image_storage') is not True:
+            self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
         self._dhcpd_leasefile = None
         self.web_address = dargs.get('web_address', self.hostname)
         self.afe = frontend_wrappers.RetryingAFE(timeout_min=1,
