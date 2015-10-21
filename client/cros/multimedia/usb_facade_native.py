@@ -75,6 +75,8 @@ class USBFacadeNative(object):
                 return False
 
         if self._drivers_manager.has_found_device(device_name):
+            if self._drivers_manager.drivers_are_bound():
+                return
             self._drivers_manager.bind_usb_drivers()
             self._wait_for_nodes_changed()
         else:
@@ -376,7 +378,7 @@ class USBDeviceDriversManager(object):
             self._device_bus_id = device_bus_id
 
 
-    def _drivers_are_bound(self):
+    def drivers_are_bound(self):
         """Checks whether the drivers with the of current device are bound.
 
         If the drivers are already bound, calling bind_usb_drivers will be
@@ -386,6 +388,8 @@ class USBDeviceDriversManager(object):
                  are already bound. False otherwise.
 
         """
+        if self._device_bus_id is None:
+            raise USBDeviceDriversManagerError('USB Bus ID is not set yet.')
         driver_path = self._USB_BOUND_DRIVERS_FILE_PATH % self._device_bus_id
         return os.path.exists(driver_path)
 
@@ -402,7 +406,7 @@ class USBDeviceDriversManager(object):
         """
         if self._device_bus_id is None:
             raise USBDeviceDriversManagerError('USB Bus ID is not set yet.')
-        if self._drivers_are_bound():
+        if self.drivers_are_bound():
             return
         base_utils.open_write_close(self._USB_BIND_FILE_PATH,
                 self._device_bus_id)
@@ -420,7 +424,7 @@ class USBDeviceDriversManager(object):
         """
         if self._device_bus_id is None:
             raise USBDeviceDriversManagerError('USB Bus ID is not set yet.')
-        if not self._drivers_are_bound():
+        if not self.drivers_are_bound():
             return
         base_utils.open_write_close(self._USB_UNBIND_FILE_PATH,
                                     self._device_bus_id)
