@@ -197,8 +197,14 @@ class security_OpenFDs(test.test):
                         r'0500 /usr/share/fonts/.*',
                         # Renderers have access to GPU render nodes.
                         # See crbug.com/537474.
-                        r'0700 /dev/dri/renderD129',
+                        r'0700 /dev/dri/renderD12[89]',
                        ])
+        try:
+            filters.append(r'0700 /dev/dri/%s' % os.readlink('/dev/dri/vgem'))
+        except OSError:
+            # /dev/dri/vgem doesn't exist.
+            pass
+
         passes.append(self.check_process('chrome', 'type=renderer', filters,
                                          allowed_fd_type_check))
 
