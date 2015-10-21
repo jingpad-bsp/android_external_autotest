@@ -5,6 +5,7 @@ import functools
 import logging
 import os
 import re
+import stat
 import time
 
 import common
@@ -36,6 +37,15 @@ RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
 TMP_DIR = '/data/local/tmp'
 ANDROID_TESTER_FILEFLAG = '/mnt/stateful_partition/.android_tester'
+# Regex to pull out file type, perms and symlink. Example:
+# lrwxrwx--- 1 6 2015-09-12 19:21 blah_link -> ./blah
+FILE_INFO_REGEX = '^(?P<TYPE>[dl-])(?P<PERMS>[rwx-]{9})'
+FILE_SYMLINK_REGEX = '^.*-> (?P<SYMLINK>.+)'
+# List of the perm stats indexed by the order they are listed in the example
+# supplied above.
+FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
+                    stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP,
+                    stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH]
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
@@ -511,6 +521,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                   transformed into the referenced
                                   file/directory.
         """
+        # If we need to preserve symlinks, let's check if the source is a
+        # symlink itself and if so, just create it on the device.
+        if preserve_symlinks:
+            symlink_target = None
+            try:
+                symlink_target = os.readlink(source)
+            except OSError:
+                # Guess it's not a symlink.
+                pass
+
+            if symlink_target is not None:
+                # Once we create the symlink, let's get out of here.
+                self.run('ln -s %s %s' % (symlink_target, dest))
+                return
+
         tmp_dir = ''
         src_path = source
         # Stage the files on the adb_host if we're not running on localhost.
@@ -535,6 +560,37 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
 
+    def _get_file_info(self, dest):
+        """Get permission and possible symlink info about file on the device.
+
+        These files are on the device so we only have shell commands (via adb)
+        to get the info we want.  We'll use 'ls' to get it all.
+
+        @param dest: File to get info about.
+
+        @returns a dict of the file permissions and symlink.
+        """
+        # Grab file info but leave out the name/group for easier regexing.
+        file_info = self.run_output('ls -lgo %s' % dest)
+        symlink = None
+        perms = 0
+        match = re.match(FILE_INFO_REGEX, file_info)
+        if match:
+            # Check if it's a symlink and grab the linked dest if it is.
+            if match.group('TYPE') == 'l':
+                symlink_match = re.match(FILE_SYMLINK_REGEX, file_info)
+                if symlink_match:
+                    symlink = symlink_match.group('SYMLINK')
+
+            # Set the perms.
+            for perm, perm_flag in zip(match.group('PERMS'), FILE_PERMS_FLAGS):
+                if perm != '-':
+                    perms |= perm_flag
+
+        return {'perms': perms,
+                'symlink': symlink}
+
+
     def get_file(self, source, dest, delete_dest=False, preserve_perm=True,
                  preserve_symlinks=False):
         """Copy files from the device to the drone.
@@ -548,7 +604,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                               permissions on files and dirs.
         @param preserve_symlinks: Try to preserve symlinks instead of
                                   transforming them into files/dirs on copy.
-        TODO (crbug.com/536096): Implement preserve_perm,preserve_symlinks.
         """
         tmp_dir = ''
         dest_path = dest
@@ -560,16 +615,27 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if delete_dest:
             utils.run('rm -rf %s' % dest)
 
-        # Pull the file off the device.
-        self._adb_run('pull %s %s' % (source, dest_path))
+        source_info = {}
+        if preserve_symlinks or preserve_perm:
+            source_info = self._get_file_info(source)
 
-        # If we're not local, copy over the file from the adb_host and clean up.
-        if not self._local_adb:
-            super(ADBHost, self).get_file(dest_path, dest)
-            try:
-                self.host_run('rm -rf %s' % tmp_dir)
-            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+        # If we want to preserve symlinks, just create it here, otherwise pull
+        # the file off the device.
+        if preserve_symlinks and source_info['symlink']:
+            os.symlink(source_info['symlink'], dest)
+        else:
+            self._adb_run('pull %s %s' % (source, dest_path))
+
+            # If not local, copy over the file from the adb_host and clean up.
+            if not self._local_adb:
+                super(ADBHost, self).get_file(dest_path, dest)
+                try:
+                    self.host_run('rm -rf %s' % tmp_dir)
+                except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+                    logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+
+        if preserve_perm:
+            os.chmod(dest, source_info['perms'])
 
 
     def get_release_version(self):
