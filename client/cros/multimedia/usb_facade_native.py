@@ -99,12 +99,14 @@ class USBFacadeNative(object):
     def _wait_for_nodes_changed(self):
         """Waits for Cras emits signal for nodes change within a timeout.
 
-        Waits for NodesChanged signal twice (input node change and output node
-        change).
+        Waits for NodesChanged signal. Depends on the number of changes needed,
+        there may be more than one NodesChanged signal. Waiting for the first
+        one is enough for input and output nodes because Cras updates both
+        input and output nodes and then sends one NodesChanged signal.
 
         """
         cras_utils.CrasDBusMonitor().wait_for_nodes_changed(
-                target_signal_count=2,
+                target_signal_count=1,
                 timeout_secs=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
 
 
