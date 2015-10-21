@@ -10,6 +10,7 @@
 import logging
 import multiprocessing
 import os
+from contextlib import contextmanager
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
@@ -184,3 +185,30 @@ def dump_cros_audio_logs(host, audio_facade, directory, suffix=''):
 
     host.get_file(constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
                   get_file_path('multimedia_xmlrpc_server.log'))
+
+
+@contextmanager
+def monitor_no_nodes_changed(audio_facade):
+    """Context manager to monitor nodes changed signal on Cros device.
+
+    Starts the counter in the beginning. Stops the counter in the end to make
+    sure there is no NodesChanged signal during the try block.
+
+    E.g. with monitor_no_nodes_changed(audio_facade):
+             do something on playback/recording
+
+    @param audio_facade: A RemoteAudioFacade to access audio functions on
+                         Cros device.
+
+    @raises: error.TestFail if there is NodesChanged signal on
+             Cros device during the context.
+
+    """
+    try:
+        audio_facade.start_counting_signal('NodesChanged')
+        yield
+    finally:
+        count = audio_facade.stop_counting_signal()
+        if count:
+            raise error.TestFail(
+                    'Got %d unexpected NodesChanged signal' % count)
