@@ -37,6 +37,7 @@ _SPEC_GEN_LABEL = 'gen'
 _TEST_JOB_NAME = 'brillo_update_test'
 _TEST_NAME = 'autoupdate_EndToEndTest'
 _TEST_LAUNCH_SCRIPT = 'brillo_test_launcher.py'
+_DEFAULT_DEVSERVER_PORT = '8080'
 
 # Snippet of code that runs on the Moblab and returns the type of a payload
 # file. Result is either 'delta' or 'full', acordingly.
@@ -128,9 +129,10 @@ def stage_remote_payload(moblab, devserver_port, tmp_stage_file):
     moblab.run('rm -f %s && chown moblab:moblab %s' %
                (target_stage_file, tmp_stage_file))
     tmp_stage_dir, stage_file = os.path.split(tmp_stage_file)
+    devserver_host = moblab.web_address.split(':')[0]
     try:
         stage_url = _DEVSERVER_STAGE_URL_TEMPLATE % {
-                'moblab': moblab.web_address,
+                'moblab': devserver_host,
                 'port': devserver_port,
                 'stage_dir': tmp_stage_dir,
                 'stage_files': stage_file}
@@ -143,8 +145,8 @@ def stage_remote_payload(moblab, devserver_port, tmp_stage_file):
 
     logging.debug('Payload is staged on Moblab as %s', stage_rel_path)
     return _DEVSERVER_PAYLOAD_URI_TEMPLATE % {
-            'moblab': moblab.web_address,
-            'port': devserver_port,
+            'moblab': devserver_host,
+            'port': _DEFAULT_DEVSERVER_PORT,
             'stage_path': os.path.dirname(stage_rel_path)}
 
 
@@ -289,8 +291,9 @@ def get_command(moblab, test_args, do_quote):
         return "'%s'" % val if do_quote else val
 
     cmd = [os.path.join(os.path.dirname(__file__), _TEST_LAUNCH_SCRIPT),
-           '-t', quote(_TEST_NAME),
-           '-m', quote(moblab.hostname)]
+           '-t', quote(_TEST_NAME)]
+    if not moblab.hostname.startswith('localhost'):
+           cmd += ['-m', quote(moblab.hostname)]
     for arg_str in get_arg_strs(test_args):
         cmd += ['-A', quote(arg_str)]
     return cmd
