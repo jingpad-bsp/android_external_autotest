@@ -636,5 +636,5 @@ class DisplayFacadeNative(object):
         # (though it is not) and do nothing, which will break all the
         # following tests.
         self.set_fullscreen(False)
-        self._resource.close_tab(index)
+        self._resource.close_tab_by_index(index)
         return True

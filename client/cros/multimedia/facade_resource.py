@@ -118,11 +118,21 @@ class FacadeResource(object):
         return self.get_tabs()[index]
 
 
-    @retry_chrome_call
-    def close_tab(self, index=-1):
+    def close_tab_by_index(self, index=-1):
         """Closes the tab of the given index.
 
         @param index: The tab index to close. Defaults to the last tab.
 
         """
         self._browser.tabs[index].Close()
+        self.close_tab(self._browser.tabs[index])
+
+
+    @retry_chrome_call
+    def close_tab(self, tab):
+        """Closes the tab with retry.
+
+        @param tab: The tab to be closed.
+
+        """
+        tab.Close()

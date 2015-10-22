@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.multimedia import audio_facade_native
+from autotest_lib.client.cros.multimedia import browser_facade_native
 from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.multimedia import system_facade_native
 from autotest_lib.client.cros.multimedia import usb_facade_native
@@ -33,6 +34,7 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             'display': display_facade_native.DisplayFacadeNative(resource),
             'system': system_facade_native.SystemFacadeNative(),
             'usb': usb_facade_native.USBFacadeNative(),
+            'browser': browser_facade_native.BrowserFacadeNative(resource),
         }
 
 
