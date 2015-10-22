@@ -65,7 +65,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         logging.info("Turning off BT module...")
         link.disable_bluetooth_module()
         time.sleep(self.DELAY_AFTER_DISABLING_MODULE_SECONDS)
-        if audio_test_utils.has_internal_microphone(host):
+        if audio_test_utils.has_internal_microphone(self.host):
              audio_test_utils.check_audio_nodes(self.audio_facade,
                                                 (None, ['INTERNAL_MIC']))
         logging.info("Turning on BT module...")
