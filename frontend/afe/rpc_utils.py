@@ -1336,7 +1336,7 @@ def route_rpc_to_master(func):
         funcargs = inspect.getcallargs(func, *args, **kwargs)
         kwargs = dict()
         for k, v in funcargs.iteritems():
-            if argspec.keywords and k in argspec.keywords:
+            if argspec.keywords and k == argspec.keywords:
                 kwargs.update(v)
             else:
                 kwargs[k] = v
