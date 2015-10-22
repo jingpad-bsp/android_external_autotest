@@ -165,7 +165,7 @@ class WEPConfig(SecurityConfig):
 
     def get_wpa_cli_properties(self):
         properties = super(WEPConfig, self).get_wpa_cli_properties()
-        quote = lambda x: '\'\\"%s\\"\'' % x
+        quote = lambda x: '\\"%s\\"' % x
         for idx, key in enumerate(self.wep_keys):
             properties['wep_key%d' % idx] = self._format_key(key, quote)
         properties['wep_tx_keyidx'] = self.wep_default_key
@@ -280,7 +280,7 @@ class WPAConfig(SecurityConfig):
             protos.append('WPA')
         if self.wpa_mode & self.MODE_PURE_WPA2:
             protos.append('RSN')
-        properties.update({'psk': '\'\\"%s\\"\'' % self.psk,
+        properties.update({'psk': '\\"%s\\"' % self.psk,
                            'key_mgmt': 'WPA-PSK',
                            'proto': ' '.join(protos)})
         return properties
