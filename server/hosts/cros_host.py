@@ -571,7 +571,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.run('start autoreboot')
         updater.verify_boot_expectations(
                 expected_kernel, rollback_message=
-                'Build %s failed to boot on %s; system rolled back to previous'
+                'Build %s failed to boot on %s; system rolled back to previous '
                 'build' % (updater.update_version, self.hostname))
         # Check that we've got the build we meant to install.
         if not updater.check_version_to_confirm_install():
