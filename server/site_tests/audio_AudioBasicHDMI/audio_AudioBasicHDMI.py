@@ -15,7 +15,6 @@ from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.server.cros.audio import audio_test
-from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 class audio_AudioBasicHDMI(audio_test.AudioTest):
@@ -50,7 +49,7 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
 
         # Dump audio diagnostics data for debugging.
         chameleon_board = host.chameleon
-        factory = remote_facade_factory.RemoteFacadeFactory(host)
+        factory = self.create_remote_facade_factory(host)
 
         self._system_facade = factory.create_system_facade()
         self.set_high_performance_mode()
