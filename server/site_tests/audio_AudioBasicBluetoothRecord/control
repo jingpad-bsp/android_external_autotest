@@ -15,6 +15,7 @@ TEST_TYPE = "server"
 SUITE = "chameleon_audio"
 ATTRIBUTES = "suite:chameleon_audio"
 DEPENDENCIES = "chameleon, audio_board"
+JOB_RETRIES = 2
 
 DOC = """
 This test remotely tests bluetooth playback audio function.

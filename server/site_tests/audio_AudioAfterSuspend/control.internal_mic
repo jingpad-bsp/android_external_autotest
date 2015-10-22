@@ -17,6 +17,7 @@ TEST_TYPE = "server"
 SUITE = "chameleon_audio"
 ATTRIBUTES = "suite:chameleon_audio"
 DEPENDENCIES = "chameleon, audio_board, audio_box"
+JOB_RETRIES = 2
 
 DOC = """
 This test remotely tests internal_mic audio function against DUT after suspend.
