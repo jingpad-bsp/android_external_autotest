@@ -45,16 +45,19 @@ def get_moblab_and_devserver_port(moblab_hostname):
     if moblab_hostname:
         web_address = moblab_hostname
         devserver_port = _PHYS_MACHINE_DEVSERVER_PORT
+        rpc_timeout_min = 2
     else:
         moblab_hostname = _VIRT_MACHINE_SSH_ADDR
         web_address = _VIRT_MACHINE_AFE_ADDR
         devserver_port = _VIRT_MACHINE_DEVSERVER_PORT
+        rpc_timeout_min = 5
 
     try:
         host = hosts.create_host(moblab_hostname,
                                  host_class=moblab_host.MoblabHost,
                                  web_address=web_address,
-                                 retain_image_storage=True)
+                                 retain_image_storage=True,
+                                 rpc_timeout_min=rpc_timeout_min)
     except error.AutoservRunError as e:
         raise BrilloMoblabInitializationError(
                 'Unable to connect to the MobLab: %s' % e)

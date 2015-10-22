@@ -48,10 +48,11 @@ class MoblabHost(cros_host.CrosHost):
             self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
         self._dhcpd_leasefile = None
         self.web_address = dargs.get('web_address', self.hostname)
-        self.afe = frontend_wrappers.RetryingAFE(timeout_min=1,
+        timeout_min = dargs.get('rpc_timeout_min', 1)
+        self.afe = frontend_wrappers.RetryingAFE(timeout_min=timeout_min,
                                                  user='moblab',
                                                  server=self.web_address)
-        self.tko = frontend_wrappers.RetryingTKO(timeout_min=1,
+        self.tko = frontend_wrappers.RetryingTKO(timeout_min=timeout_min,
                                                  user='moblab',
                                                  server=self.web_address)
 
