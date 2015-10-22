@@ -3,11 +3,14 @@
 # found in the LICENSE file.
 
 import logging
+import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants
 from autotest_lib.server import site_utils
 from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 from autotest_lib.site_utils import lxc
 
 
@@ -51,3 +54,23 @@ class AudioTest(test.test):
             if site_utils.is_inside_chroot():
                 error_message += ' sudo emerge sox to install sox in chroot'
             raise error.TestError(error_message)
+
+
+    def create_remote_facade_factory(self, host):
+        """Creates a remote facade factory to access multimedia server.
+
+        @param host: A CrosHost object to access Cros device.
+
+        @returns: A RemoteFacadeFactory object to create different facade for
+                  different functionalities provided by multimedia server.
+
+        """
+        try:
+            factory = remote_facade_factory.RemoteFacadeFactory(host)
+        finally:
+            host.get_file(
+                    constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
+                    os.path.join(
+                            self.resultsdir,
+                            'multimedia_xmlrpc_server.log.init'))
+        return factory
