@@ -25,10 +25,16 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
     version = 1
 
     POLICY_NAME = 'RestoreOnStartupURLs'
-    TEST_CASES = ['1URL', '3URLs', 'NotSet']
     URLS1_DATA = ['chrome://settings']
     URLS3_DATA = ['chrome://policy', 'chrome://settings',
                   'chrome://histograms']
+
+    # Dictionary of named test cases and policy values.
+    TEST_CASES = {
+        '1URL': ','.join(URLS1_DATA),
+        '3URLs': ','.join(URLS3_DATA),
+        'NotSet': None
+    }
 
     def _test_StartupURLs(self, policy_value, policies_json):
         """
@@ -72,55 +78,49 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
         """
         if case not in self.TEST_CASES:
             raise error.TestError('Test case %s is not valid.' % case)
+        logging.info('Running test case: %s', case)
 
-        # If using the local fake DM Server, set policy JSON and expected
-        # value to the defaults required by the test |case|.
-        if self.env == 'dm-fake':
+        if self.is_value_given:
+            # If |value| was given by user, then set expected |policy_value|
+            # to the given value, and setup |policies_json| to None.
+            policy_value = self.value
+            policies_json = None
+        else:
+            # Otherwise, set expected |policy_value| and setup |policies_json|
+            # data to the defaults required by the test |case|.
+            policy_value = self.TEST_CASES[case]
             if case == '1URL':
                 policy_json = self.URLS1_DATA
-                policy_value = ','.join(self.URLS1_DATA)
             elif case == '3URLs':
                 policy_json = self.URLS3_DATA
-                policy_value = ','.join(self.URLS3_DATA)
             elif case == 'NotSet':
                 policy_json = None
-                policy_value = None
 
             # Add supporting policy data to policies JSON.
             if policy_json is None:
-                policies_json = {'RestoreOnStartupURLs': policy_json,
-                                 'RestoreOnStartup': None
-                                }
+                policies_json = {
+                    'RestoreOnStartupURLs': policy_json,
+                    'RestoreOnStartup': None
+                }
             else:
-                policies_json = {'RestoreOnStartupURLs': policy_json,
-                                 'RestoreOnStartup': 4
-                                }
-        # If using an external DM Server, set policy expected value to the
-        # given value (if any), or to the default required by the test |case|.
-        else:
-            policies_json = None
-            if self.is_value_given:
-                policy_value = self.value
-            elif case == '1URL':
-                policy_value = ','.join(self.URLS1_DATA)
-            elif case == '3URLs':
-                policy_value = ','.join(self.URLS3_DATA)
-            elif case == 'NotSet':
-                policy_value = None
+                policies_json = {
+                    'RestoreOnStartupURLs': policy_json,
+                    'RestoreOnStartup': 4
+                }
 
+        # Run test using values configured for the test case.
         self._test_StartupURLs(policy_value, policies_json)
 
     def run_once(self):
         """Main runner for the test cases."""
         if self.mode == 'all':
-            for case in self.TEST_CASES:
+            for case in sorted(self.TEST_CASES):
                 self._run_test_case(case)
         elif self.mode == 'single':
             self._run_test_case(self.case)
         elif self.mode == 'list':
             logging.info('List Test Cases:')
-            for case in self.TEST_CASES:
-                logging.info('  %s', case)
+            for case, value in sorted(self.TEST_CASES.items()):
+                logging.info('  case=%s, value="%s"', case, value)
         else:
             raise error.TestError('Run mode %s is not valid.' % self.mode)
-

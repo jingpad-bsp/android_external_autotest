@@ -47,7 +47,7 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         'ManagedBookmarks': BOOKMARKS
     }
 
-    # List of named test cases.
+    # Dictionary of named test cases and policy values.
     TEST_CASES = {
         'True': 'true',
         'False': 'false',
@@ -118,16 +118,16 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         """
         if case not in self.TEST_CASES:
             raise error.TestError('Test case %s is not valid.' % case)
+        logging.info('Running test case: %s', case)
 
-        # If |value| was given by user, then set expected |policy_value| to
-        # the given value, and setup |policies_json| to None.
         if self.is_value_given:
+            # If |value| was given by user, then set expected |policy_value|
+            # to the given value, and setup |policies_json| to None.
             policy_value = self.value
             policies_json = None
-
-        # Otherwise, set expected |policy_value| and setup |policies_json|
-        # data to the defaults required by the test |case|.
         else:
+            # Otherwise, set expected |policy_value| and setup |policies_json|
+            # data to the defaults required by the test |case|.
             policy_value = self.TEST_CASES[case]
             policies_json = self.SUPPORTING_POLICIES.copy()
             if case == 'True':
@@ -144,14 +144,13 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
     def run_once(self):
         """Main runner for the test cases."""
         if self.mode == 'all':
-            for case in self.TEST_CASES:
+            for case in sorted(self.TEST_CASES):
                 self._run_test_case(case)
         elif self.mode == 'single':
             self._run_test_case(self.case)
         elif self.mode == 'list':
             logging.info('List Test Cases:')
-            for case, value in self.TEST_CASES.items():
+            for case, value in sorted(self.TEST_CASES.items()):
                 logging.info('  case=%s, value="%s"', case, value)
         else:
             raise error.TestError('Run mode %s is not valid.' % self.mode)
-
