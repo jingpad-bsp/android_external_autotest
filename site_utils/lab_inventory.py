@@ -1024,5 +1024,13 @@ def main(argv):
         logging.exception('Unexpected exception: %s', e)
 
 
+def get_managed_boards(afe):
+    end_time = int(time.time())
+    start_time = end_time - 24 * 60 * 60
+    inventory = _LabInventory.create_inventory(
+            afe, start_time, end_time)
+    return inventory.get_managed_boards()
+
+
 if __name__ == '__main__':
     main(sys.argv)
