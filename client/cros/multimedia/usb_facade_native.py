@@ -55,8 +55,8 @@ class USBFacadeNative(object):
 
         The USB device is initially set to one with the default product name,
         which is assumed to be the name of the USB audio gadget on Chameleon.
-        This method blocks until Cras emits signal for nodes change within a
-        timeout specified in _wait_for_nodes_changed.
+        This method blocks until Cras enumerate USB nodes within a timeout
+        specified in _wait_for_nodes_changed.
 
         """
         # Only supports controlling one USB device of default name.
@@ -98,17 +98,26 @@ class USBFacadeNative(object):
 
 
     def _wait_for_nodes_changed(self):
-        """Waits for Cras emits signal for nodes change within a timeout.
+        """Waits for Cras to enumerate USB nodes.
 
-        Waits for NodesChanged signal. Depends on the number of changes needed,
-        there may be more than one NodesChanged signal. Waiting for the first
-        one is enough for input and output nodes because Cras updates both
-        input and output nodes and then sends one NodesChanged signal.
+        USB nodes will be plugged, but not necessarily selected.
 
         """
-        cras_dbus_utils.CrasDBusSignalListener().wait_for_nodes_changed(
-                target_signal_count=1,
-                timeout_secs=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
+        def find_usb_node():
+            """Checks if USB input and output nodes are plugged.
+
+            @returns: True if USB input and output nodes are plugged. False
+                      otherwise.
+            """
+            out_nodes, in_nodes = cras_utils.get_plugged_node_types()
+            logging.info('Cras nodes: output: %s, input: %s',
+                         out_nodes, in_nodes)
+            return 'USB' in out_nodes and 'USB' in in_nodes
+
+        utils.poll_for_condition(
+                condition=find_usb_node,
+                desc='Find USB node',
+                timeout=self._TIMEOUT_CRAS_NODES_CHANGE_SECS)
 
 
 class USBDeviceDriversManagerError(Exception):
