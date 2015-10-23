@@ -182,7 +182,9 @@ class USBDeviceDriversManager(object):
             '/sys/bus/platform/drivers/*/%s']
 
     # Skips auto HCD for issue crbug.com/537513.
-    _SKIP_AUTO_HCD_BLACKLIST = ['daisy', 'peach_pit', 'peach_pi']
+    # Skips s5p-echi for issue crbug.com/546651.
+    # This essentially means we can not control HCD on these boards.
+    _SKIP_HCD_BLACKLIST = ['daisy', 'peach_pit', 'peach_pi']
 
     def __init__(self):
         """Initializes the manager.
@@ -196,6 +198,15 @@ class USBDeviceDriversManager(object):
         self._hcds = None
         self._find_hcd_ids()
         self._create_hcds()
+
+
+    def _skip_hcd(self):
+        """Skips HCD controlling on some boards."""
+        board = utils.get_board()
+        if board in self._SKIP_HCD_BLACKLIST:
+            logging.info('Skip HCD controlling on board %s', board)
+            return True
+        return False
 
 
     def _find_hcd_ids(self):
@@ -221,30 +232,14 @@ class USBDeviceDriversManager(object):
         def _get_dir_name(path):
             return os.path.basename(os.path.dirname(path))
 
-        def _skip_hcd(hcd_id):
-            """Checks if this HCD needs to be skipped.
-
-            Skips controlloing HCD if this is a HCD with auto id
-            (ends with .auto), and this is on board in the blacklist.
-
-            @param hcd_id: The HCD ID.
-
-            @returns: True if this HCD should be skipped. False otherwise.
-
-            """
-            board = utils.get_board()
-            if (board in self._SKIP_AUTO_HCD_BLACKLIST and
-                hcd_id.endswith('.auto')):
-                logging.info('Skip HCD %s on board %s', hcd_id, board)
-                return True
-            return False
+        if self._skip_hcd():
+            self._hcd_ids = set()
+            return
 
         hcd_ids = set()
+
         for search_root_path in glob.glob(self._USB_DRIVER_GLOB_PATTERN):
             hcd_id = _get_dir_name(os.path.realpath(search_root_path))
-            # Skip auto HCD for issue crbug.com/537513
-            if _skip_hcd(hcd_id):
-                continue
             hcd_ids.add(hcd_id)
 
         if not hcd_ids:
@@ -289,9 +284,6 @@ class USBDeviceDriversManager(object):
                 self._hcds.append(
                         HostControllerDriver(hcd_id=hcd_id, hcd_path=hcd_path))
 
-        if not self._hcds:
-            raise USBDeviceDriversManagerError('Can not find any HCD')
-
 
     def reset_host_controller(self):
         """Resets host controller by unbinding then binding HCD.
@@ -299,7 +291,7 @@ class USBDeviceDriversManager(object):
         @raises: USBDeviceDriversManagerError if there is no HCD to control.
 
         """
-        if not self._hcds:
+        if not self._hcds and not self._skip_hcd():
             raise USBDeviceDriversManagerError('HCD is not found yet')
         for hcd in self._hcds:
             hcd.reset()
