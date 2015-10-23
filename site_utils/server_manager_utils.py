@@ -273,16 +273,6 @@ def change_attribute(server, attribute, value):
                (attribute, server.hostname, value))
 
 
-def get_drones():
-    """Get a list of drones in status primary.
-
-    @return: A list of drones in status primary.
-    """
-    servers = get_servers(role=server_models.ServerRole.ROLE.DRONE,
-                          status=server_models.Server.STATUS.PRIMARY)
-    return [s.hostname for s in servers]
-
-
 def get_shards():
     """Get a list of shards in status primary.
 
