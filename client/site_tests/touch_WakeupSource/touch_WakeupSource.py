@@ -18,9 +18,10 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
     _NO_TOUCHPAD_WAKE = ['clapper', 'glimmer', 'veyron_minnie']
 
     # Devices with Synaptics touchpads that do not report wake source,
-    # or reference platforms like Rambi which are broken but do not ship.
+    # or reference platforms like Rambi which are broken but do not ship,
+    # or devices like Cyan which don't report this way: crosbug.com/p/46019.
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
-                       'x86-mario', 'stout', 'rambi']
+                       'x86-mario', 'stout', 'rambi', 'sumo', 'cyan']
 
     def _find_wakeup_file(self, input_type):
         """Return path to wakeup file or None.

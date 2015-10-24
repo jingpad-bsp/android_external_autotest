@@ -21,7 +21,6 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     _MOUSE_DESCRIPTION = 'apple_mouse.prop'
 
 
-
     def _check_for_click(self, expected):
         """Playback and check whether tap-to-click occurred.  Fail if needed.
 
@@ -70,12 +69,18 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         self._drag_filepath = os.path.join(gest_dir, tap_drag_file)
         if not (os.path.exists(self._click_filepath) and
                 os.path.exists (self._drag_filepath)):
-            logging.info('Missing gesture files, Aborting test')
+            logging.info('Missing gesture files, Aborting test.')
             return False
 
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
             raise error.TestError('No touchpad found on this %s' % device)
+
+        # Except for some device specific conditions (see crbug.com/488282).
+        touchpad_name = self.player.names['touchpad']
+        if device == 'daisy' and touchpad_name.find('Atmel') > -1:
+            logging.info('Aborting test for Atmel daisy.')
+            return False
 
         return True
 

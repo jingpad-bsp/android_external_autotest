@@ -66,6 +66,8 @@ class touch_playback_test_base(test.test):
         """
         self.player.emulate(input_type='mouse', property_file=property_file)
         self.player.find_connected_inputs()
+        if not self._has_mouse:
+          raise error.TestError('Mouse emulation failed!')
 
 
     def _playback(self, filepath, touch_type='touchpad'):
