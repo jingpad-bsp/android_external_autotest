@@ -124,6 +124,10 @@ class IwRunnerTest(unittest.TestCase):
         '    HT operation:\n'
         '         * secondary channel offset: no secondary\n')
 
+    SCAN_TIME_OUTPUT = str('real 4.5\n'
+        'user 2.1\n'
+        'system 3.1\n')
+
     HIDDEN_SSID_IW_BSS = iw_runner.IwBss('ee:ee:ee:ee:ee:ee', 2462,
                                          None, iw_runner.SECURITY_OPEN,
                                          iw_runner.HT20, -70.00)
@@ -152,7 +156,7 @@ class IwRunnerTest(unittest.TestCase):
 
         Uses the runner to search for a network by bss.
         """
-        host = self.host(scan_output)
+        host = self.host(scan_output + self.SCAN_TIME_OUTPUT)
         runner = iw_runner.IwRunner(remote_host=host)
         network = runner.wait_for_scan_result('wlan0', bsses=[test_iw_bss.bss])
         self.verify_values(test_iw_bss, network)

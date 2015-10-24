@@ -62,9 +62,10 @@ IwPhy = collections.namedtuple(
 
 DEFAULT_COMMAND_IW = 'iw'
 
-# Time command to get elapsed time. Full path is used to avoid using the
-# built-in 'time' command from the bash shell
-IW_TIME_COMMAND = '/usr/local/bin/time -f "%e"'
+# Redirect stderr to stdout on Cros since adb commands cannot distinguish them
+# on Brillo.
+IW_TIME_COMMAND_FORMAT = '(time -p %s) 2>&1'
+IW_TIME_COMMAND_OUTPUT_START = 'real'
 
 IW_LINK_KEY_BEACON_INTERVAL = 'beacon int'
 IW_LINK_KEY_DTIM_PERIOD = 'dtim period'
@@ -149,6 +150,31 @@ class IwRunner(object):
         security = self.determine_security(supported_securities)
         bss_list.append(IwBss(bss, frequency, ssid, security, ht, signal))
         return bss_list
+
+
+    def _parse_scan_time(self, output):
+        """
+        Parse the scan time in seconds from the output of the 'time -p "scan"'
+        command.
+
+        'time -p' Command output format is below:
+        real     0.01
+        user     0.01
+        sys      0.00
+
+        @param output: string command output.
+
+        @returns float time in seconds.
+
+        """
+        output_lines = output.splitlines()
+        for line_num, line in enumerate(output_lines):
+            line = line.strip()
+            if (line.startswith(IW_TIME_COMMAND_OUTPUT_START) and
+                output_lines[line_num + 1].startswith('user') and
+                output_lines[line_num + 2].startswith('sys')):
+                return float(line.split()[1])
+        raise error.TestFail('Could not parse scan time.')
 
 
     def add_interface(self, phy, interface, interface_type):
@@ -550,19 +576,23 @@ class IwRunner(object):
         if ssids:
            ssid_param = ' ssid "%s"' % '" "'.join(ssids)
 
-        command = '%s %s dev %s scan%s%s' % (IW_TIME_COMMAND,
-                self._command_iw, interface, freq_param, ssid_param)
+        iw_command = '%s dev %s scan%s%s' % (self._command_iw,
+                interface, freq_param, ssid_param)
+        command = IW_TIME_COMMAND_FORMAT % iw_command
         scan = self._run(command, ignore_status=True)
         if scan.exit_status != 0:
             # The device was busy
             logging.debug('scan exit_status: %d', scan.exit_status)
             return None
         if not scan.stdout:
+            raise error.TestFail('Missing scan parse time')
+
+        if scan.stdout.startswith(IW_TIME_COMMAND_OUTPUT_START):
             logging.debug('Empty scan result')
             bss_list = []
         else:
             bss_list = self._parse_scan_results(scan.stdout)
-        scan_time = float(scan.stderr)
+        scan_time = self._parse_scan_time(scan.stdout)
         return IwTimedScan(scan_time, bss_list)
 
 
