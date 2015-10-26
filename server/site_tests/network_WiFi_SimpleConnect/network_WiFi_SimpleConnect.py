@@ -34,11 +34,6 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                         router_caps:
                     raise error.TestNAError('Router does not have AC support')
 
-            if not self.context.client.frequency_supported(
-                router_conf.frequency):
-                raise error.TestNAError('DUT does not support frequency: %s' %
-                                        router_conf.frequency)
-
             self.context.configure(router_conf)
             self.context.router.start_capture(
                     router_conf.frequency,
