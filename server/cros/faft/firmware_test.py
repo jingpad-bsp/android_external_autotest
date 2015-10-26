@@ -726,7 +726,6 @@ class FirmwareTest(FAFTBase):
         return False
 
     def delayed(seconds):
-        logging.info("delaying %d seconds" % seconds)
         def decorator(f):
             def wrapper(*args, **kargs):
                 t = Timer(seconds, f, args, kargs)
