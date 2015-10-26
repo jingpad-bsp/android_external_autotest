@@ -606,18 +606,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return 'adb'
 
 
-    def collect_logs(self, remote_src_dir, local_dest_dir, ignore_errors=True):
-        """Copy log directories from a host to a local directory.
-
-        @param remote_src_dir: A destination directory on the host.
-        @param local_dest_dir: A path to a local destination directory.
-            If it doesn't exist it will be created.
-        @param ignore_errors: If True, ignore exceptions.
-
-        """
-        # TODO (crbug.com/536120): Implement collect_logs.
-
-
     def get_os_type(self):
         if self.run_output('getprop ro.product.brand') == 'Brillo':
             return 'brillo'
