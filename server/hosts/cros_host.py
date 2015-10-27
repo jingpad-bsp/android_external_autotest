@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import ConfigParser
 import functools
 import logging
 import os
@@ -23,6 +22,7 @@ from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.input_playback import input_playback
+from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
@@ -2451,21 +2451,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @return: 'video_glitch_detection' if board is supported, None otherwise.
         """
-        parser = ConfigParser.SafeConfigParser()
-        filename = os.path.join(
-                common.autotest_dir, 'client/cros/video/device_spec.conf')
+        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
 
-        dut = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
+        if board in video_test_constants.SUPPORTED_BOARDS:
+            return 'video_glitch_detection'
 
-        try:
-            parser.read(filename)
-            supported_boards = parser.sections()
+        return None
 
-            return 'video_glitch_detection' if dut in supported_boards else None
-
-        except ConfigParser.error:
-            # something went wrong while parsing the conf file
-            return None
 
     @label_decorator('touch_labels')
     def get_touch(self):
