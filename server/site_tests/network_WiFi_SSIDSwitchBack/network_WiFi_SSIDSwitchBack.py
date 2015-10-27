@@ -53,7 +53,7 @@ class network_WiFi_SSIDSwitchBack(wifi_cell_test_base.WiFiCellTestBase):
         self.context.router.deconfig()
         success, state, elapsed_seconds = \
                 self.context.client.wait_for_service_states(
-                        network_WiFi_SSIDSwitchBack.SSID_1, ('idle'), 30)
+                        network_WiFi_SSIDSwitchBack.SSID_1, ['idle'], 30)
 
 
     def run_once(self):

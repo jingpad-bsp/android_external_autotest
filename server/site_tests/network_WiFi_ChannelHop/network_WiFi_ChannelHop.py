@@ -45,7 +45,7 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
             success, state, elapsed_seconds = \
                     self.context.client.wait_for_service_states(
                             network_WiFi_ChannelHop.TEST_SSID,
-                            ('idle'), 30)
+                            ['idle'], 30)
 
             # Change channels on the AP.  This happens in full view of the DUT
             # and the AP deauths everyone as it exits.
@@ -61,7 +61,7 @@ class network_WiFi_ChannelHop(wifi_cell_test_base.WiFiCellTestBase):
             success, state, elapsed_seconds = \
                     self.context.client.wait_for_service_states(
                             network_WiFi_ChannelHop.TEST_SSID,
-                            ('ready', 'portal', 'online'), 30)
+                            ['ready', 'portal', 'online'], 30)
             if not success:
                 raise error.TestFail(
                         'Failed to connect to "%s" in %f seconds (state=%s)' %

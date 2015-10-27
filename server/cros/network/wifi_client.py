@@ -115,7 +115,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
     WAKE_TO_SCAN_PERIOD = 'WakeToScanPeriodSeconds'
     FORCE_WAKE_TO_SCAN_TIMER = 'ForceWakeToScanTimer'
 
-    CONNECTED_STATES = 'ready', 'portal', 'online'
+    CONNECTED_STATES = ['ready', 'portal', 'online']
 
     @property
     def machine_id(self):
