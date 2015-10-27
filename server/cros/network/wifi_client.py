@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import math
 import re
 import time
 
@@ -968,7 +969,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         success = False
         while duration() < timeout_seconds:
             success, state, conn_time  = self.wait_for_service_states(
-                    ssid, self.CONNECTED_STATES, timeout_seconds - duration())
+                    ssid, self.CONNECTED_STATES,
+                    int(math.ceil(timeout_seconds - duration())))
             if not success:
                 time.sleep(POLLING_INTERVAL_SECONDS)
                 continue

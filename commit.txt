@@ -1,0 +1,17 @@
+autotest(wifi): Correct wait_for_service_states parameters.
+
+The |wait_for_service_states| RPC call expects an array of strings as
+the argument. Python's XML Rpc client converts single length tuple
+into a string instead of array of string which causes a type
+mismatch error on Brillo native proxy RPC server.
+Correcting this parameter type to array instead of tuple in all usages.
+This is already the case for some other tests like network_WiFi_ProfileBasic,
+etc.
+
+BUG=25323465
+TEST=`test_that $host --board=$BOARD network_WiFi_ChannelHop` and
+`test_that $host --board=$BOARD network_WiFi_RetryConnectHidden` on
+dragonboard.
+
+Change-Id: I89d9f2217c87fc76526375464c07d12227198d46
+
