@@ -1,11 +1,11 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "chromeos-chameleon"
-NAME = "chameleon_audio"
-PURPOSE = "A Chameleon audio test suite."
-CRITERIA = "All tests with SUITE=chameleon_audio must pass."
+NAME = "chameleon_hdmi_nightly"
+PURPOSE = "A Chameleon test suite."
+CRITERIA = "All tests with SUITE=chameleon_hdmi_nightly must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"
@@ -13,13 +13,9 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-Audio tests which require chameleon and audio boards connected.
-The Audio and Chameleon boards can emulate audio jack audio activity
-in order to test the Chrome OS audio stack.
-
-Together with DUT and external peripherals they are bundled in
-audio-box environment for end-to-end testing. Details on go/audioboard
-go/audiobox, go/ab-care-and-feed, and go/chameleon-audio-conf.
+Display tests which require Chameleon board connected via HDMI connection.
+The Chameleon board can emulate a monitor such that the test can control
+its behaviors in order to test the Chrome OS graphic stack.
 
 @param build: The name of the image to test.
               Ex: x86-mario-release/R17-1412.33.0-a1-b29
@@ -38,20 +34,19 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # filing bugs on tests that are a part of this suite. If left unspecified
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Audio', 'Chameleon'],
-    'owner': 'cychiang@chromium.org',
+    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Graphics', 'Chameleon'],
+    'owner': 'waihong@chromium.org',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['kalin@chromium.org', 'yuli@chromium.org', 'conradlo@chromium.org',
-           'chromeos-audio-bugs@google.com']
+    'cc': ['kalin@chromium.org', 'yuli@chromium.org', 'conradlo@chromium.org']
 }
 
+args_dict['suite_dependencies'] = 'chameleon:hdmi'
 args_dict['name'] = NAME
-args_dict['suite_dependencies'] = 'chameleon'
+args_dict['max_runtime_mins'] = 240
 args_dict['job'] = job
 args_dict['add_experimental'] = True
-args_dict['max_runtime_mins'] = 240
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['bug_template'] = _BUG_TEMPLATE
 
