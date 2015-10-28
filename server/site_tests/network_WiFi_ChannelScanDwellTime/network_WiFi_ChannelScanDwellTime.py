@@ -157,11 +157,14 @@ class network_WiFi_ChannelScanDwellTime(wifi_cell_test_base.WiFiCellTestBase):
         if result_list is None:
             raise error.TestFail('Failed to find any BSS for this test')
 
-        # We don't filter for SSID prefix here, because the pcap only
-        # contains data from this run.
         beacon_frames = tcpdump_analyzer.get_frames(
             pcap_path, tcpdump_analyzer.WLAN_BEACON_ACCEPTOR, bad_fcs='include')
-        return self._get_dwell_time(result_list, beacon_frames)
+        # Filter beacon frames based on ssid prefix.
+        result_beacon_frames = [beacon_frame for beacon_frame in beacon_frames if
+                                beacon_frame.ssid.startswith(ssid_prefix)]
+        if result_beacon_frames is None:
+            raise error.TestFail('Failed to find any beacons for this test')
+        return self._get_dwell_time(result_list, result_beacon_frames)
 
 
     def run_once(self):
