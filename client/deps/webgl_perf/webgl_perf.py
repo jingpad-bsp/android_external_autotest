@@ -9,11 +9,12 @@ from autotest_lib.client.bin import utils
 
 version = 1
 
+
 def setup(topdir):
     """Unpack tarball to src/ and apply patch.
     @param topdir: The directory of this deps.
     """
-    tarball='webgl-performance-0.0.1.tar.bz2'
+    tarball = 'webgl-performance-0.0.2.tar.bz2'
     srcdir = os.path.join(topdir, 'src')
     filesdir = os.path.join(topdir, 'files')
     shutil.rmtree(srcdir, ignore_errors=True)
@@ -22,8 +23,11 @@ def setup(topdir):
         os.mkdir(srcdir)
         utils.extract_tarball_to_dir(tarball_path, srcdir)
     os.chdir(srcdir)
-    utils.system('patch -p1 < ../files/webgl-performance-0.0.2.patch')
+    utils.system('patch -p1 < ../files/0001-Patch-index.html.patch')
+    utils.system(
+        'patch -p1 < ../files/0002-Always-increment-numberOfResults.patch')
     shutil.copy('../files/favicon.ico', srcdir)
+
 
 pwd = os.getcwd()
 utils.update_version(pwd + '/src', True, version, setup, pwd)
