@@ -119,8 +119,8 @@ class brillo_Gtests(test.test):
             logging.error('The following gTest Suites failed: \n %s',
                           '\n'.join(failed_gtestSuites))
             raise error.TestFail(
-                    'Not all gTest Suites completed successfully.\n'
-                    '%s out of %s suites failed.\n'
+                    'Not all gTest Suites completed successfully. '
+                    '%s out of %s suites failed. '
                     'Failed Suites: %s' % (len(failed_gtestSuites),
                                            len(gtestSuites),
                                            failed_gtestSuites))
