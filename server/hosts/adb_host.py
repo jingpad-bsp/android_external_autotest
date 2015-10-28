@@ -301,14 +301,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return None
 
         parse_output = re.match(CMD_OUTPUT_REGEX, result.stdout)
-        if not parse_output:
+        if not parse_output and not ignore_status:
             raise error.AutoservRunError(
-                    'Failed to parse the exit code for command: %s' % command,
-                    result)
-        result.stdout = parse_output.group('OUTPUT')
-        result.exit_status = int(parse_output.group('EXIT_CODE'))
-        if result.exit_status != 0 and not ignore_status:
-            raise error.AutoservRunError(command, result)
+                    'Failed to parse the exit code for command: %s' %
+                    command, result)
+        elif parse_output:
+            result.stdout = parse_output.group('OUTPUT')
+            result.exit_status = int(parse_output.group('EXIT_CODE'))
+            if result.exit_status != 0 and not ignore_status:
+                raise error.AutoservRunError(command, result)
         return result
 
 
