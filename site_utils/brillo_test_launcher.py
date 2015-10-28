@@ -75,12 +75,14 @@ def quickmerge(moblab):
     """
     autotest_rootdir = os.path.dirname(
             os.path.dirname(os.path.realpath(__file__)))
-    for item in _QUICKMERGE_LIST:
-        src = os.path.join(autotest_rootdir, item)
-        dest = ':'.join(['moblab@%s' % moblab.hostname,
-                         os.path.join(moblab_host.AUTOTEST_INSTALL_DIR, item)])
-        rsync_cmd = ['rsync', '-a', '--exclude', '*.pyc', src, dest]
-        utils.run(' '.join(rsync_cmd), timeout=120)
+    # We use rsync -R to copy a bunch of sources in a single run, adding a dot
+    # to pinpoint the relative path root.
+    rsync_cmd = ['rsync', '-aR', '--exclude', '*.pyc']
+    rsync_cmd += [os.path.join(autotest_rootdir, '.', path)
+                  for path in _QUICKMERGE_LIST]
+    rsync_cmd.append('moblab@%s:%s' %
+                     (moblab.hostname, moblab_host.AUTOTEST_INSTALL_DIR))
+    utils.run(rsync_cmd, timeout=240)
 
 
 def add_adb_host(moblab, adb_hostname):
