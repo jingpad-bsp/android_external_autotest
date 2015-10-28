@@ -228,6 +228,10 @@ class power_LoadTest(test.test):
                 extension.ExecuteJavaScript('var %s = %s;' %
                                             (k, getattr(self, params_dict[k])))
 
+        # This opens a trap start page to capture tabs opened for first login.
+        # It will be closed when startTest is run.
+        extension.ExecuteJavaScript('chrome.windows.create(null, null);')
+
         for i in range(self._loop_count):
             start_time = time.time()
             extension.ExecuteJavaScript('startTest();')
