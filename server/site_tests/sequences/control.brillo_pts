@@ -21,6 +21,7 @@ SERVER_SEQUENCES = [
                          fetch_control_file=True),
     sequence.SequenceJob('brillo_PingTest', duration=120),
     sequence.SequenceJob('brillo_KernelVersionTest', duration=120),
+    sequence.SequenceJob('brillo_WifiInterfaceTest', duration=120),
 ]
 
 sequence.sequence_schedule(job, machines, SERVER_SEQUENCES)
