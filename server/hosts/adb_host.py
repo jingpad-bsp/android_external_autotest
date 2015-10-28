@@ -55,7 +55,7 @@ FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
 # Default maximum number of seconds to wait for a device to be down.
 DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
 # Default maximum number of seconds to wait for a device to be up.
-DEFAULT_WAIT_UP_TIME_SECONDS = 30
+DEFAULT_WAIT_UP_TIME_SECONDS = 60
 
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
