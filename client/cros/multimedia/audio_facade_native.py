@@ -36,9 +36,13 @@ class AudioFacadeNative(object):
     _PLAYBACK_DATA_FORMAT = dict(
             file_type='raw', sample_format='S16_LE', channel=2, rate=48000)
 
-    def __init__(self, chrome):
-        self._chrome = chrome
-        self._browser = chrome.browser
+    def __init__(self, resource):
+        """Initializes an audio facade.
+
+        @param resource: A FacadeResource object.
+
+        """
+        self._resource = resource
         self._recorder = None
         self._counter = None
 

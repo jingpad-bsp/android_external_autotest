@@ -4,7 +4,6 @@
 
 """Facade to access the display-related functionality."""
 
-import exceptions
 import multiprocessing
 import numpy
 import os
@@ -15,6 +14,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.multimedia import facade_resource
 from autotest_lib.client.cros.multimedia import image_generator
 from telemetry.internal.browser import web_contents
 
@@ -23,13 +23,7 @@ class TimeoutException(Exception):
 
 
 _FLAKY_CALL_RETRY_TIMEOUT_SEC = 60
-_FLAKY_CHROME_CALL_RETRY_DELAY_SEC = 1
 _FLAKY_DISPLAY_CALL_RETRY_DELAY_SEC = 2
-
-_retry_chrome_call = retry.retry(
-        (chrome.Error, exceptions.IndexError),
-        timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
-        delay_sec=_FLAKY_CHROME_CALL_RETRY_DELAY_SEC)
 
 _retry_display_call = retry.retry(
         (KeyError, error.CmdError),
@@ -47,50 +41,23 @@ class DisplayFacadeNative(object):
     MINIMUM_REFRESH_RATE_EXPECTED = 25.0
     DELAY_TIME = 3
 
-    def __init__(self, chrome):
-        self._chrome = chrome
-        self._browser = chrome.browser
+    def __init__(self, resource):
+        """Initializes a DisplayFacadeNative.
+
+        @param resource: A FacadeResource object.
+        """
+        self._resource = resource
         self._image_generator = image_generator.ImageGenerator()
 
 
-    @_retry_chrome_call
-    def _get_extension(self, extension_path=None):
-        """Gets the extension from the indicated path.
-
-        @param extension_path: the path of the target extension.
-                               Set to None to get autotest extension.
-                               Defaults to None.
-        @return an extension object.
-
-        @raise RuntimeError if the extension is not found.
-        @raise chrome.Error if the found extension has not yet been
-               retrieved succesfully.
-        """
-        try:
-            if extension_path is None:
-                extension = self._chrome.autotest_ext
-            else:
-                extension = self._chrome.get_extension(extension_path)
-        except KeyError, errmsg:
-            # Trigger _retry_chrome_call to retry to retrieve the
-            # found extension.
-            raise chrome.Error(errmsg)
-        if not extension:
-            if extension_path is None:
-                raise RuntimeError('Autotest extension not found')
-            else:
-                raise RuntimeError('Extension not found in %r'
-                                    % extension_path)
-        return extension
-
-
-    @_retry_chrome_call
+    @facade_resource.retry_chrome_call
     def get_display_info(self):
         """Gets the display info from Chrome.system.display API.
 
         @return array of dict for display info.
         """
-        extension = self._get_extension(constants.DISPLAY_TEST_EXTENSION)
+        extension = self._resource.get_extension(
+                constants.DISPLAY_TEST_EXTENSION)
         extension.ExecuteJavaScript('window.__display_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.system.display.getInfo(function(info) {"
@@ -101,13 +68,13 @@ class DisplayFacadeNative(object):
         return extension.EvaluateJavaScript("window.__display_info")
 
 
-    @_retry_chrome_call
+    @facade_resource.retry_chrome_call
     def get_window_info(self):
         """Gets the current window info from Chrome.system.window API.
 
         @return a dict for the information of the current window.
         """
-        extension = self._get_extension()
+        extension = self._resource.get_extension()
         extension.ExecuteJavaScript('window.__window_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.windows.getCurrent(function(info) {"
@@ -171,7 +138,7 @@ class DisplayFacadeNative(object):
         """
         try:
             self.load_url('chrome://settings-frame/display')
-            tab = self._browser.tabs[-1]
+            tab = self._resource.get_tab()
             self._wait_for_display_options_to_appear(tab, display_index)
             return tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_"
@@ -230,7 +197,7 @@ class DisplayFacadeNative(object):
 
         try:
             self.load_url('chrome://settings-frame/display')
-            tab = self._browser.tabs[-1]
+            tab = self._resource.get_tab()
             self._wait_for_display_options_to_appear(tab, display_index)
 
             tab.ExecuteJavaScript(
@@ -396,7 +363,7 @@ class DisplayFacadeNative(object):
             # tab that shows SVG image.
             url_pattern = '.svg'
 
-        tabs = self._browser.tabs
+        tabs = self._resource.get_tabs()
         for i in xrange(0, len(tabs)):
             if url_pattern in tabs[i].url:
                 data = tabs[i].Screenshot(timeout=5)
@@ -505,7 +472,7 @@ class DisplayFacadeNative(object):
         return result == display
 
 
-    @_retry_chrome_call
+    @facade_resource.retry_chrome_call
     def move_to_display(self, display_index):
         """Moves the current window to the indicated display.
 
@@ -521,7 +488,7 @@ class DisplayFacadeNative(object):
             raise RuntimeError('Cannot find the indicated display')
         target_bounds = display_info[display_index]['bounds']
 
-        extension = self._get_extension()
+        extension = self._resource.get_extension()
         # If the area of bounds is empty (here we achieve this by setting
         # width and height to zero), the window_sizer will automatically
         # determine an area which is visible and fits on the screen.
@@ -565,7 +532,7 @@ class DisplayFacadeNative(object):
         @param is_fullscreen: True or False to indicate fullscreen state.
         @return True if success, False otherwise.
         """
-        extension = self._chrome.autotest_ext
+        extension = self._resource.get_extension()
         if not extension:
             raise RuntimeError('Autotest extension not found')
 
@@ -588,15 +555,12 @@ class DisplayFacadeNative(object):
         return self.is_fullscreen_enabled() == is_fullscreen
 
 
-    @_retry_chrome_call
     def load_url(self, url):
         """Loads the given url in a new tab. The new tab will be active.
 
         @param url: The url to load as a string.
         """
-        tab = self._browser.tabs.New()
-        tab.Navigate(url)
-        tab.Activate()
+        self._resource.load_url(url)
         return True
 
 
@@ -619,7 +583,7 @@ class DisplayFacadeNative(object):
         @param color_sequence: An integer list for switching colors.
         @return A list of the timestamp for each switch.
         """
-        tab = self._browser.tabs[-1]
+        tab = self._resource.get_tab()
         color_sequence_for_java_script = (
                 'var color_sequence = [' +
                 ','.join("'#%06X'" % x for x in color_sequence) +
@@ -658,7 +622,6 @@ class DisplayFacadeNative(object):
         return tab.EvaluateJavaScript("window.timestamp_list")
 
 
-    @_retry_chrome_call
     def close_tab(self, index=-1):
         """Disables fullscreen and closes the tab of the given index.
 
@@ -673,5 +636,5 @@ class DisplayFacadeNative(object):
         # (though it is not) and do nothing, which will break all the
         # following tests.
         self.set_fullscreen(False)
-        self._browser.tabs[index].Close()
+        self._resource.close_tab(index)
         return True

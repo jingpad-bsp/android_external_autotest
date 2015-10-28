@@ -20,16 +20,17 @@ from autotest_lib.client.cros.multimedia import audio_facade_native
 from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.multimedia import system_facade_native
 from autotest_lib.client.cros.multimedia import usb_facade_native
+from autotest_lib.client.cros.multimedia import facade_resource
 
 
 class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     """XML RPC delegate for multimedia testing."""
 
-    def __init__(self, chromium):
+    def __init__(self, resource):
         """Initializes the facade objects."""
         self._facades = {
-            'audio': audio_facade_native.AudioFacadeNative(chromium),
-            'display': display_facade_native.DisplayFacadeNative(chromium),
+            'audio': audio_facade_native.AudioFacadeNative(resource),
+            'display': display_facade_native.DisplayFacadeNative(resource),
             'system': system_facade_native.SystemFacadeNative(),
             'usb': usb_facade_native.USBFacadeNative(),
         }
@@ -93,17 +94,12 @@ if __name__ == '__main__':
         config_logging()
         logging.debug('multimedia_xmlrpc_server main...')
 
-        extra_browser_args = ['--enable-gpu-benchmarking']
 
         # Restart Cras to clean up any audio activities.
         utils.restart_job('cras')
 
-        with chrome.Chrome(
-                extension_paths=[constants.DISPLAY_TEST_EXTENSION],
-                extra_browser_args=extra_browser_args,
-                clear_enterprise_policy=not args.restart,
-                autotest_ext=True) as cr:
+        with facade_resource.FacadeResource(restart=args.restart) as res:
             server = xmlrpc_server.XmlRpcServer(
                     'localhost', constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
-            server.register_delegate(MultimediaXmlRpcDelegate(cr))
+            server.register_delegate(MultimediaXmlRpcDelegate(res))
             server.run()

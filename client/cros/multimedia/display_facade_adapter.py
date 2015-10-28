@@ -11,6 +11,7 @@ from PIL import Image
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import sys_power
 from autotest_lib.client.cros.multimedia import display_facade_native
+from autotest_lib.client.cros.multimedia import facade_resource
 from autotest_lib.client.cros.multimedia.display_info import DisplayInfo
 
 
@@ -29,7 +30,7 @@ class DisplayFacadeLocalAdapter(object):
         # Create a DisplayFacadeNative object as a component such that this
         # class can expose and manipulate its interfaces.
         self._display_component = display_facade_native.DisplayFacadeNative(
-                chrome)
+                facade_resource.FacadeResource(chrome_object=chrome))
 
 
     def get_external_connector_name(self):

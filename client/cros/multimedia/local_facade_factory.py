@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.cros.multimedia import audio_facade_adapter
 from autotest_lib.client.cros.multimedia import display_facade_adapter
 
 
@@ -15,14 +14,8 @@ class LocalFacadeFactory(object):
     def __init__(self, chrome):
         """Initializes the local facade adapter objects."""
         self._facades = {
-            'audio': audio_facade_adapter.AudioFacadeLocalAdapter(chrome),
             'display': display_facade_adapter.DisplayFacadeLocalAdapter(chrome)
         }
-
-
-    def create_audio_facade(self):
-        """Creates an audio facade object."""
-        return self._facades['audio']
 
 
     def create_display_facade(self):
