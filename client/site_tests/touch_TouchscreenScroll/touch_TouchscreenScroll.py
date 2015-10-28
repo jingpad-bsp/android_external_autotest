@@ -3,9 +3,7 @@
 # found in the LICENSE file.
 
 import logging
-import os
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -18,6 +16,7 @@ class touch_TouchscreenScroll(
 
     _DIRECTIONS = ['down', 'up', 'right', 'left']
     _REVERSES = {'down': 'up', 'up': 'down', 'right': 'left', 'left': 'right'}
+    _FILENAME_FMT_STR = 'scroll-%s'
 
 
     def _check_scroll_direction(self, filepath, expected):
@@ -50,24 +49,19 @@ class touch_TouchscreenScroll(
     def _is_testable(self):
         """Return True if test can run on this device, else False.
 
-        @raises: TestError if host has no touchscreen when it should.
+        @raises: TestError if host has no touchscreen.
 
         """
-        # Check if playback files are available on DUT to run test.
-        self._device = utils.get_board()
-        gest_dir = os.path.join(self.bindir, 'gestures')
-        self._filepaths = {}
-
-        for direction in self._DIRECTIONS:
-            gest_file = '%s_touchscreen_scroll_%s' % (self._device, direction)
-            self._filepaths[direction] = os.path.join(gest_dir, gest_file)
-            if not os.path.exists(self._filepaths[direction]):
-                logging.info('Missing gesture files, Aborting test')
-                return False
-
         # Raise error if no touchscreen detected.
         if not self._has_touchscreen:
-            raise error.TestError('No touchscreen found!')
+            raise error.TestError('No touchscreen found on this device!')
+
+        # Check if playback files are available on DUT to run test.
+        self._filepaths = self._find_test_files_from_directions(
+                'touchscreen', self._FILENAME_FMT_STR, self._DIRECTIONS)
+        if not self._filepaths:
+            logging.info('Missing gesture files, Aborting test.')
+            return False
 
         return True
 

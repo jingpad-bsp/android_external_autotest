@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
 import logging
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -19,24 +17,22 @@ class touch_TabSwitch(touch_playback_test_base.touch_playback_test_base):
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
                        'x86-mario', 'stout']
 
+    _DIRECTIONS = ['left', 'right']
+
     def _is_testable(self):
         """Returns True if the test can run on this device, else False."""
         if not self._has_touchpad:
-            logging.info('Device has no touchpad; aborting.')
-            return False
+            raise error.TestError('No touchpad found on this device!')
 
-        device = utils.get_board()
-        if device in self._INVALID_BOARDS:
+        if self._platform in self._INVALID_BOARDS:
             logging.info('Device does not support this gesture; aborting.')
             return False
 
-        gest_dir = os.path.join(self.bindir, 'gestures')
-        self._left_filepath = os.path.join(gest_dir, '%s_left' % device)
-        self._right_filepath = os.path.join(gest_dir, '%s_right' % device)
-
-        if not (os.path.exists(self._left_filepath) and
-                os.path.exists(self._right_filepath)):
-            logging.info('No gesture files for this test; aborting.')
+        # Check if playback files are available on DUT to run test.
+        self._filepaths = self._find_test_files_from_directions(
+                'touchpad', 'three-finger-swipe-%s', self._DIRECTIONS)
+        if not self._filepaths:
+            logging.info('Missing gesture files, Aborting test.')
             return False
 
         return True
@@ -80,12 +76,12 @@ class touch_TabSwitch(touch_playback_test_base.touch_playback_test_base):
         """
         for tab_index in [1, 0, 0]:
             self._blocking_playback(touch_type='touchpad',
-                                    filepath=self._left_filepath)
+                                    filepath=self._filepaths['left'])
             self._require_active(tab_index)
 
         for tab_index in [1, 2, 2]:
             self._blocking_playback(touch_type='touchpad',
-                                    filepath=self._right_filepath)
+                                    filepath=self._filepaths['right'])
             self._require_active(tab_index)
 
     def run_once(self):

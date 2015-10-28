@@ -3,10 +3,8 @@
 # found in the LICENSE file.
 
 import logging
-import os
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -16,7 +14,8 @@ class touch_TouchscreenTaps(touch_playback_test_base.touch_playback_test_base):
     """Checks that touchscreen presses are translated into clicks."""
     version = 1
 
-    _test_timeout = 1  # Number of seconds the test will wait for a click.
+    _TEST_TIMEOUT = 1  # Number of seconds the test will wait for a click.
+    _CLICK_NAME = 'tap'
 
 
     def _check_for_click(self):
@@ -26,9 +25,9 @@ class touch_TouchscreenTaps(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._reload_page()
-        self._blocking_playback(filepath=self._tap_filepath,
+        self._blocking_playback(filepath=self._filepaths[self._CLICK_NAME],
                                 touch_type='touchscreen')
-        time.sleep(self._test_timeout)
+        time.sleep(self._TEST_TIMEOUT)
         actual_count = int(self._tab.EvaluateJavaScript('clickCount'))
         if actual_count is not 1:
             raise error.TestFail('Saw %d clicks!' % actual_count)
@@ -37,21 +36,19 @@ class touch_TouchscreenTaps(touch_playback_test_base.touch_playback_test_base):
     def _is_testable(self):
         """Return True if test can run on this device, else False.
 
-        @raises: TestError if host has no touchscreen when it should.
+        @raises: TestError if host has no touchscreen.
 
         """
-        # Check if playback files are available on DUT to run test.
-        device = utils.get_board()
-        gest_dir = os.path.join(self.bindir, 'gestures')
-        tap_file = '%s_touchscreen_tap' % device
-        self._tap_filepath = os.path.join(gest_dir, tap_file)
-        if not os.path.exists(self._tap_filepath):
-            logging.info('Missing gesture files, Aborting test')
-            return False
-
         # Raise error if no touchscreen detected.
         if not self._has_touchscreen:
-            raise error.TestError('No touchscreen found!')
+            raise error.TestError('No touchscreen found on this device!')
+
+        # Check if playback files are available on DUT to run test.
+        self._filepaths = self._find_test_files(
+                'touchscreen', [self._CLICK_NAME])
+        if not self._filepaths:
+            logging.info('Missing gesture files, Aborting test.')
+            return False
 
         return True
 

@@ -35,7 +35,7 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
         @raises: TestError if input_type lacks required information.
 
         """
-        device_dir = self.player.device_dirs[input_type]
+        device_dir = self.player.devices[input_type].device_dir
         if not device_dir:
             raise error.TestError('No device directory for %s!' % input_type)
 
@@ -44,7 +44,7 @@ class touch_WakeupSource(touch_playback_test_base.touch_playback_test_base):
             logging.info('%s not found for %s', filename, input_type)
 
             # Look for wakeup file on parent bus instead.
-            event = self.player.nodes[input_type].split('/')[-1]
+            event = self.player.devices[input_type].node.split('/')[-1]
 
             parent = None
             i2c_devices_dir = os.path.join('/', 'sys', 'bus', 'i2c', 'devices')

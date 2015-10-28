@@ -56,6 +56,61 @@ class touch_playback_test_base(test.test):
 
         self._autotest_ext = None
         self._has_inputcontrol = os.path.isfile(self._INPUTCONTROL)
+        self._platform = utils.get_board()
+
+
+    def _find_test_files(self, input_type, gestures):
+        """Determine where the test files are.
+
+        Expected file format is: <boardname>_<input type>_<hwid>_<gesture name>
+            e.g. samus_touchpad_164.17_scroll_down
+
+        @param input_type: device type, e.g. 'touchpad'
+        @param gestures: list of gesture name strings used in filename
+
+        @returns: None if not all files are found.  Dictionary of filepaths if
+                  they are found, indexed by gesture names as given.
+        @raises: error.TestError if no hw_id is found.
+
+        """
+        hw_id = self.player.devices[input_type].hw_id
+        if not hw_id:
+            raise error.TestError('No valid hw_id for this %s!' % input_type)
+
+        filepaths = {}
+        gesture_dir = os.path.join(self.bindir, 'gestures')
+        for gesture in gestures:
+            filename = '%s_%s_%s_%s' % (self._platform, input_type, hw_id,
+                                        gesture)
+            filepath = os.path.join(gesture_dir, filename)
+            if not os.path.exists(filepath):
+                logging.info('Did not find %s!', filepath)
+                return None
+            filepaths[gesture] = filepath
+
+        return filepaths
+
+
+    def _find_test_files_from_directions(self, input_type, fmt_str, directions):
+        """Find test files given a list of directions and gesture name format.
+
+        @param input_type: device type, e.g. 'touchpad'
+        @param fmt_str: format string for filename, e.g. 'scroll-%s'
+        @param directions: list of directions for fmt_string
+
+        @returns: None if not all files are found.  Dictionary of filepaths if
+                  they are found, indexed by directions as given.
+        @raises: error.TestError if no hw_id is found.
+
+        """
+        gestures = [fmt_str % d for d in directions]
+        temp_filepaths = self._find_test_files(input_type, gestures)
+
+        filepaths = {}
+        if temp_filepaths:
+            filepaths = {d: temp_filepaths[fmt_str % d] for d in directions}
+
+        return filepaths
 
 
     def _emulate_mouse(self, property_file=None):

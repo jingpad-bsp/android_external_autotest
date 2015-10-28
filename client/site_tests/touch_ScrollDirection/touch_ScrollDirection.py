@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import logging
-import os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -17,6 +16,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
     _DIRECTIONS = ['down', 'up', 'right', 'left']
     _REVERSES = {'down': 'up', 'up': 'down', 'right': 'left', 'left': 'right'}
+    _FILENAME_FMT_STR = 'scroll-%s'
 
 
     def _wait_for_page_ready(self):
@@ -73,21 +73,16 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         @raises: TestError if host has no touchpad when it should.
 
         """
-        # Check if playback files are available on DUT to run test.
-        self._device = utils.get_board()
-        gest_dir = os.path.join(self.bindir, 'gestures')
-        self._filepaths = {}
-
-        for direction in self._DIRECTIONS:
-            gest_file =  '%s_scroll_%s' % (self._device, direction)
-            self._filepaths[direction] = os.path.join(gest_dir, gest_file)
-            if not os.path.exists(self._filepaths[direction]):
-                logging.info('Missing gesture files, Aborting test')
-                return False
-
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
-            raise error.TestError('No touchpad found on this %s' % self._device)
+            raise error.TestError('No touchpad found on this device!')
+
+        # Check if playback files are available on DUT to run test.
+        self._filepaths = self._find_test_files_from_directions(
+                'touchpad', self._FILENAME_FMT_STR, self._DIRECTIONS)
+        if not self._filepaths:
+            logging.info('Missing gesture files, Aborting test.')
+            return False
 
         return True
 

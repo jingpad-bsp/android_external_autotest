@@ -4,10 +4,8 @@
 
 import itertools
 import logging
-import os
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -17,8 +15,10 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
     """Toggles tap-to-click and tap dragging settings to ensure correctness."""
     version = 1
 
-    _test_timeout = 1  # Number of seconds the test will wait for a click.
+    _TEST_TIMEOUT = 1  # Number of seconds the test will wait for a click.
     _MOUSE_DESCRIPTION = 'apple_mouse.prop'
+    _CLICK_NAME = 'tap-click'
+    _DRAG_NAME = 'tap-drag-left'
 
 
     def _check_for_click(self, expected):
@@ -30,8 +30,8 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         """
         expected_count = 1 if expected else 0
         self._reload_page()
-        self._playback(filepath=self._click_filepath)
-        time.sleep(self._test_timeout)
+        self._playback(self._filepaths[self._CLICK_NAME])
+        time.sleep(self._TEST_TIMEOUT)
         actual_count = int(self._tab.EvaluateJavaScript('clickCount'))
         if actual_count is not expected_count:
             raise error.TestFail('Expected clicks=%s, actual=%s.'
@@ -47,7 +47,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         """
         self._reload_page()
         self._wait_for_page_ready()
-        self._blocking_playback(filepath=self._drag_filepath)
+        self._blocking_playback(self._filepaths[self._DRAG_NAME])
         actual = self._tab.EvaluateJavaScript('movementOccurred')
         if actual is not expected:
             raise error.TestFail('Tap dragging movement was %s; expected %s.'
@@ -60,26 +60,15 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
         @raises: TestError if host has no touchpad when it should.
 
         """
-        # Check if playback files are available on DUT to run test.
-        device = utils.get_board()
-        gest_dir = os.path.join(self.bindir, 'gestures')
-        tap_click_file = '%s_tap_click' % device
-        tap_drag_file = '%s_tap_drag' % device
-        self._click_filepath = os.path.join(gest_dir, tap_click_file)
-        self._drag_filepath = os.path.join(gest_dir, tap_drag_file)
-        if not (os.path.exists(self._click_filepath) and
-                os.path.exists (self._drag_filepath)):
-            logging.info('Missing gesture files, Aborting test.')
-            return False
-
         # Raise error if no touchpad detected.
         if not self._has_touchpad:
-            raise error.TestError('No touchpad found on this %s' % device)
+            raise error.TestError('No touchpad found on this device!')
 
-        # Except for some device specific conditions (see crbug.com/488282).
-        touchpad_name = self.player.names['touchpad']
-        if device == 'daisy' and touchpad_name.find('Atmel') > -1:
-            logging.info('Aborting test for Atmel daisy.')
+        # Check if playback files are available on DUT to run test.
+        self._filepaths = self._find_test_files(
+                'touchpad', [self._CLICK_NAME, self._DRAG_NAME])
+        if not self._filepaths:
+            logging.info('Missing gesture files, Aborting test.')
             return False
 
         return True
