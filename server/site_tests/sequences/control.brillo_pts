@@ -20,6 +20,7 @@ SERVER_SEQUENCES = [
     sequence.SequenceJob('control.brillo_GtestsWhitelist', duration=2000,
                          fetch_control_file=True),
     sequence.SequenceJob('brillo_PingTest', duration=120),
+    sequence.SequenceJob('brillo_KernelVersionTest', duration=120),
 ]
 
 sequence.sequence_schedule(job, machines, SERVER_SEQUENCES)
