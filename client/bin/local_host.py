@@ -21,6 +21,14 @@ class LocalHost(hosts.Host):
             hostname = platform.node()
         self.hostname = hostname
         self.bootloader = bootloader
+        self.tmp_dirs = []
+
+
+    def close(self):
+        """Cleanup after we're done."""
+        for tmp_dir in self.tmp_dirs:
+            self.run('rm -rf "%s"' % (utils.sh_escape(tmp_dir)),
+                     ignore_status=True)
 
 
     def wait_up(self, timeout=None):
@@ -83,7 +91,7 @@ class LocalHost(hosts.Host):
 
 
     def _copy_file(self, source, dest, delete_dest=False, preserve_perm=False,
-                  preserve_symlinks=False):
+                   preserve_symlinks=False):
         """Copy files from source to dest, will be the base for {get,send}_file.
 
         @param source: The file/directory on localhost to copy.
@@ -151,3 +159,20 @@ class LocalHost(hosts.Host):
         """
         self._copy_file(source, dest, delete_dest=delete_dest,
                         preserve_symlinks=preserve_symlinks)
+
+
+    def get_tmp_dir(self, parent='/tmp'):
+        """
+        Return the pathname of a directory on the host suitable
+        for temporary file storage.
+
+        The directory and its content will be deleted automatically
+        on the destruction of the Host object that was used to obtain
+        it.
+
+        @param parent: The leading path to make the tmp dir.
+        """
+        self.run('mkdir -p "%s"' % parent)
+        tmp_dir = self.run('mktemp -d -p "%s"' % parent).stdout.rstrip()
+        self.tmp_dirs.append(tmp_dir)
+        return tmp_dir

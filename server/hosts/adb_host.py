@@ -136,11 +136,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Initialize an ADB Host.
 
         This will create an ADB Host. Hostname should always refer to the
-        host machine connected to an android device. This will either be the
-        only android device connected or if there are multiple, serial must be
-        specified. Currently only one serial being passed in is supported.
-        Multiple serial support will be coming soon (TODO(kevcheng)).  If
-        device_hostname is supplied then all ADB commands will run over TCP/IP.
+        test station connected to an Android DUT. This will be the DUT
+        to test with.  If there are multiple, serial must be specified or an
+        exception will be raised.  If device_hostname is supplied then all
+        ADB commands will run over TCP/IP.
 
         @param hostname: Hostname of the machine running ADB.
         @param serials: DEPRECATED (to be removed)
@@ -152,19 +151,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param device_hostname: Hostname or IP of the android device we want to
                                 interact with. If supplied all ADB interactions
                                 run over TCP/IP.
-
         """
         if device_hostname and (adb_serial or fastboot_serial):
             raise error.AutoservError(
                     'TCP/IP and USB modes are mutually exclusive')
 
+        self.teststation = (local_host.LocalHost() if hostname == 'localhost'
+                            else ssh_host.SSHHost(hostname=hostname))
+        self.tmp_dirs = []
         self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
         self._adb_serial = adb_serial
         self._fastboot_serial = fastboot_serial or adb_serial
-        self.teststation = (local_host.LocalHost() if hostname == 'localhost'
-                            else ssh_host.SSHHost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self._device_hostname:
@@ -191,7 +190,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._connect_over_tcpip_as_needed()
 
         # Delay checking if the host running adb command is a Moblab.
-        self._is_host_moblab = None
+        self._is_teststation_moblab = None
 
 
     def _connect_over_tcpip_as_needed(self):
@@ -199,7 +198,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self._device_hostname:
             return
         logging.debug('Connecting to device over TCP/IP')
-        if self._device_hostname in self.adb_devices():
+        if self._device_hostname == self._adb_serial:
             # We previously had a connection to this device, restart the ADB
             # server.
             self.adb_run('kill-server')
@@ -222,7 +221,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def adb_run(self, command, **kwargs):
         """Runs an adb command.
 
-        This command may launch on the adb device or on the adb host.
+        This command will launch on the test station.
 
         Refer to _device_run method for docstring for parameters.
         """
@@ -233,7 +232,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def fastboot_run(self, command, **kwargs):
         """Runs an fastboot command.
 
-        This command may launch on the adb device or on the adb host.
+        This command will launch on the test station.
 
         Refer to _device_run method for docstring for parameters.
         """
@@ -247,9 +246,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
                     connect_timeout=30, options='', stdin=None, verbose=True,
                     require_sudo=False, args=()):
-        """Runs a command named `function`.
+        """Runs a command named `function` on the test station.
 
-        This command may launch on the adb device or on the adb host.
+        This command will launch on the test station.
 
         @param command: Command to run.
         @param shell: If true the command runs in the adb shell otherwise if
@@ -276,7 +275,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                      necessary.
 
         @returns a CMDResult object.
-
         """
         if function == ADB_CMD:
             serial = self._adb_serial
@@ -315,7 +313,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns a string representing this device's board.
         """
-        # TODO(kevcheng): with multiple hosts, switch this to return a list.
         board = self.run_output('getprop %s' % BOARD_FILE)
         board_os = self.get_os_type()
         board_num = str(self._num_of_boards.get(board, 0) + 1)
@@ -328,7 +325,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Disable log collection on adb_hosts.
 
         TODO(sbasi): crbug.com/305427
-
         """
 
 
@@ -364,7 +360,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @raises AutoservRunError: If the command failed.
         @raises AutoservSSHTimeout: Ssh connection has timed out.
-
         """
         command = ('"%s; echo %s:\$?"' %
                 (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
@@ -439,7 +434,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns True if the device goes down before the timeout, False
                  otherwise.
-
         """
         @retry.retry(error.TimeoutException, timeout_min=timeout/60.0,
                      delay_sec=1)
@@ -459,15 +453,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def reboot(self):
-        """Reboot the android device connected to this host with adb.
-
-        Reboots the device over ADB.
+        """Reboot the android device via adb.
 
         @raises AutoservRebootError if reboot failed.
-
         """
         # Not calling super.reboot() as we want to reboot the ADB device not
-        # the host we are running ADB on.
+        # the test station we are running ADB on.
         self.adb_run('reboot', timeout=10, ignore_timeout=True)
         if not self.wait_down():
             raise error.AutoservRebootError(
@@ -493,12 +484,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def _get_devices(self, use_adb):
-        """Get a list of devices currently attached to this adb host.
+        """Get a list of devices currently attached to the test station.
 
         @params use_adb: True to get adb accessible devices. Set to False to
                          get fastboot accessible devices.
 
-        @returns a list of devices attached to this adb host.
+        @returns a list of devices attached to the test station.
         """
         if use_adb:
             result = self.adb_run('devices')
@@ -518,9 +509,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def adb_devices(self):
-        """Get a list of devices currently attached to this adb host and
-        accessible by adb command.
-        """
+        """Get a list of devices currently attached to the test station and
+        accessible with the adb command."""
         devices = self._get_devices(use_adb=True)
         if self._adb_serial is None and len(devices) > 1:
             raise error.AutoservError(
@@ -529,7 +519,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def fastboot_devices(self):
-        """Get a list of devices currently attached to this adb host and
+        """Get a list of devices currently attached to the test station and
         accessible by fastboot command.
         """
         devices = self._get_devices(use_adb=False)
@@ -564,11 +554,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def close(self):
-        """Close the host object.
+        """Close the ADBHost object.
 
         Called as the test ends. Will return the device to USB mode and kill
         the ADB server.
-
         """
         if self._use_tcpip:
             # Return the device to usb mode.
@@ -584,13 +573,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def syslog(self, message, tag='autotest'):
-        """Logs a message to syslog on host.
+        """Logs a message to syslog on the device.
 
         @param message String message to log into syslog
         @param tag String tag prefix for syslog
 
         """
-        self.adb_run('log -t "%s" "%s"' % (tag, message), shell=True)
+        self.run('log -t "%s" "%s"' % (tag, message))
 
 
     def get_autodir(self):
@@ -598,12 +587,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return '/data/autotest'
 
 
+    def verify_connectivity(self):
+        """Verify we can connect to the device."""
+        dev_state = self.adb_run('get-state').stdout.strip()
+        if dev_state != 'device':
+            raise error.AutoservHostError('device state is not \'device\': %s' %
+                                          dev_state)
+
+
     def verify_software(self):
         """Verify working software on an adb_host.
 
         TODO (crbug.com/532222): Actually implement this method.
         """
-        return True
+        return
 
 
     def verify_job_repo_url(self, tag=''):
@@ -615,21 +612,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     <job_id>-<user>/<hostname>, or <hostless> for a server job.
         """
         return
-
-
-    def _get_teststation_tmpdir(self):
-        """Creates a tmp dir for staging on the test station.
-
-        @returns the path of the tmp dir created.
-
-        @raises: AutoservError if there is an error creating the tmp dir.
-        """
-        try:
-            tmp_dir = self.teststation.run_output("mktemp -d")
-        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-            raise error.AutoservError(
-                    'Failed to create tmp dir on test station: %s' % e)
-        return tmp_dir
 
 
     def send_file(self, source, dest, delete_dest=False,
@@ -667,7 +649,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 return
 
         # Stage the files on the test station.
-        tmp_dir = self._get_teststation_tmpdir()
+        tmp_dir = self.teststation.get_tmp_dir()
         src_path = os.path.join(tmp_dir, os.path.basename(dest))
         # Now copy the file over to the test station so you can reference the
         # file in the push command.
@@ -738,7 +720,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                   transforming them into files/dirs on copy.
         """
         # Stage the files on the test station.
-        tmp_dir = self._get_teststation_tmpdir()
+        tmp_dir = self.teststation.get_tmp_dir()
         dest_path = os.path.join(tmp_dir, os.path.basename(source))
 
         if delete_dest:
@@ -776,24 +758,29 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def get_tmp_dir(self, parent=''):
-        """Return a suitable temporary directory on the host.
+        """Return a suitable temporary directory on the device.
 
-        For adb_host we ensure this is a subdirectory of /data/local/tmp
+        We ensure this is a subdirectory of /data/local/tmp.
 
         @param parent: Parent directory of the returned tmp dir.
 
         @returns a path to the temp directory on the host.
         """
+        # TODO(kevcheng): Refactor the cleanup of tmp dir to be inherited
+        #                 from the parent.
         if not parent.startswith(TMP_DIR):
             parent = os.path.join(TMP_DIR, parent.lstrip(os.path.sep))
-        return super(ADBHost, self).get_tmp_dir(parent=parent)
+        self.run('mkdir -p %s' % parent)
+        tmp_dir = self.run_output('mktemp -d -p %s' % parent)
+        self.tmp_dirs.append(tmp_dir)
+        return tmp_dir
 
 
     def get_platform(self):
         """Determine the correct platform label for this host.
 
         TODO (crbug.com/536250): Figure out what we want to do for adb_host's
-                       get_plaftom.
+                                 get_platform.
 
         @returns a string representing this host's platform.
         """
@@ -881,7 +868,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def ensure_bootloader_mode(self):
-        """Ensure the device  is in bootloader mode.
+        """Ensure the device is in bootloader mode.
 
         @raise: error.AutoservError if the device failed to reboot into
                 bootloader mode.
@@ -927,20 +914,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     @property
-    def is_host_moblab(self):
-        """Check if the host running adb command is a Moblab.
+    def is_teststation_moblab(self):
+        """Check if the test station running adb command is a Moblab.
 
         @return: True if the host running adb command is a Moblab, False
                  otherwise.
         """
-        if self._is_host_moblab is None:
+        if self._is_teststation_moblab is None:
             try:
                 self.teststation.run('cat %s | grep -q moblab' %
                                      cros_constants.LSB_RELEASE)
-                self._is_host_moblab = True
+                self._is_teststation_moblab = True
             except error.AutoservRunError:
-                self._is_host_moblab = False
-        return self._is_host_moblab
+                self._is_teststation_moblab = False
+        return self._is_teststation_moblab
 
 
     @retry.retry(error.AutoservRunError, timeout_min=10)
@@ -982,7 +969,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     '%s' % (build_url, e))
 
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
-        if self.is_host_moblab:
+        if self.is_teststation_moblab:
             tmp_dir = moblab_host.MOBLAB_TMP_DIR
             self.teststation.run('mkdir -p %s' % tmp_dir)
         else:
@@ -1116,3 +1103,22 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.InstallError(
                     'Installation of os type %s is not supported.' %
                     self.get_os_type())
+
+
+    def list_files_glob(self, path_glob):
+        """Get a list of files on the device given glob pattern path.
+
+        @param path_glob: The path glob that we want to return the list of
+                files that match the glob.  Relative paths will not work as
+                expected.  Supply an absolute path to get the list of files
+                you're hoping for.
+
+        @returns List of files that match the path_glob.
+        """
+        # This is just in case path_glob has no path separator.
+        base_path = os.path.dirname(path_glob) or '.'
+        result = self.run('find %s -path \'%s\' -print' %
+                          (base_path, path_glob))
+        if result.exit_status != 0:
+            return []
+        return result.stdout.splitlines()
