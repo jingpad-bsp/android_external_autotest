@@ -17,6 +17,8 @@ from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 
 
+ADB_CMD = 'adb'
+FASTBOOT_CMD = 'fastboot'
 SHELL_CMD = 'shell'
 # Some devices have no serial, then `adb serial` has output such as:
 # (no serial number)  device
@@ -29,7 +31,7 @@ DEVICE_NO_SERIAL_TAG = '<NO_SERIAL>'
 # 172.22.75.141:5555  device
 DEVICE_FINDER_REGEX = ('^(?P<SERIAL>([\w]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' +
                        re.escape(DEVICE_NO_SERIAL_MSG) +
-                       ')([:]5555)?[ \t]+device')
+                       ')([:]5555)?[ \t]+(?:device|fastboot)')
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
@@ -47,6 +49,10 @@ FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
                     stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP,
                     stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH]
 
+# Default maximum number of seconds to wait for a device to be down.
+DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
+# Default maximum number of seconds to wait for a device to be up.
+DEFAULT_WAIT_UP_TIME_SECONDS = 30
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
@@ -152,14 +158,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if self._device_hostname in self.adb_devices():
             # We previously had a connection to this device, restart the ADB
             # server.
-            self._adb_run('kill-server')
+            self.adb_run('kill-server')
         # Ensure that connection commands don't run over TCP/IP.
         self._use_tcpip = False
-        self._adb_run('tcpip 5555', use_serial=True, timeout=10,
+        self.adb_run('tcpip 5555', use_serial=True, timeout=10,
                       ignore_timeout=True)
         time.sleep(2)
         try:
-            self._adb_run('connect %s' % self._device_hostname, use_serial=True)
+            self.adb_run('connect %s' % self._device_hostname, use_serial=True)
         except (error.AutoservRunError, error.CmdError) as e:
             raise error.AutoservError('Failed to connect via TCP/IP: %s' % e)
         # Allow ADB a bit of time after connecting before interacting with the
@@ -169,19 +175,57 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._use_tcpip = True
 
 
-    def _adb_run(self, command, shell=False, use_serial=False, timeout=3600,
-                 ignore_status=False, ignore_timeout=False,
-                 stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
-                 connect_timeout=30, options='', stdin=None, verbose=True,
-                 args=()):
+    # pylint: disable-msg=C0111
+    def adb_run(self, command, shell=False, use_serial=False, timeout=3600,
+                ignore_status=False, ignore_timeout=False,
+                stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
+                connect_timeout=30, options='', stdin=None, verbose=True,
+                args=()):
         """Runs an adb command.
+
+        This command may launch on the adb device or on the adb host.
+
+        Refer to _device_run method for docstring for parameters.
+        """
+        return self._device_run(
+                ADB_CMD, command, shell, use_serial, timeout, ignore_status,
+                ignore_timeout, stdout, stderr, connect_timeout, options, stdin,
+                verbose, args)
+
+
+    # pylint: disable-msg=C0111
+    def fastboot_run(self, command, use_serial=False, timeout=3600,
+                     ignore_status=False, ignore_timeout=False,
+                     stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
+                     connect_timeout=30, options='', stdin=None, verbose=True,
+                     require_sudo=False, args=()):
+        """Runs an fastboot command.
+
+        This command may launch on the adb device or on the adb host.
+
+        Refer to _device_run method for docstring for parameters.
+        """
+        require_sudo = require_sudo or utils.is_moblab()
+        return self._device_run(
+                FASTBOOT_CMD, command, False, use_serial, timeout,
+                ignore_status, ignore_timeout, stdout, stderr, connect_timeout,
+                options, stdin, verbose, require_sudo, args)
+
+
+    def _device_run(self, function, command, shell=False, use_serial=False,
+                    timeout=3600, ignore_status=False, ignore_timeout=False,
+                    stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
+                    connect_timeout=30, options='', stdin=None, verbose=True,
+                    require_sudo=False, args=()):
+        """Runs a command named `function`.
 
         This command may launch on the adb device or on the adb host.
 
         @param command: Command to run.
         @param shell: If true the command runs in the adb shell otherwise if
                       False it will be passed directly to adb. For example
-                      reboot with shell=False will call 'adb reboot'.
+                      reboot with shell=False will call 'adb reboot'. This
+                      option only applies to function adb.
         @param use_serial: Use the adb device serial to specify the device
                            the command will run on.
         @param timeout: Time limit in seconds before attempting to
@@ -197,6 +241,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param connect_timeout: Connection timeout (in seconds)
         @param options: String with additional ssh command options
         @param stdin: Stdin to pass (a string) to the executed command
+        @param require_sudo: True to require sudo to run the command. Default is
+                             False.
         @param args: Sequence of strings to pass as arguments to command by
                      quoting them in " and escaping their contents if
                      necessary.
@@ -204,7 +250,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a CMDResult object.
 
         """
-        cmd = 'adb '
+        if function not in [ADB_CMD, FASTBOOT_CMD]:
+            raise NotImplementedError('Function %s is not supported yet.' %
+                                      function)
+        if function != ADB_CMD and shell:
+            raise error.CmdError('shell option is only applicable to `adb`.')
+        cmd = '%s%s ' % ('sudo -n ' if require_sudo else '', function)
         if self._use_tcpip and not use_serial:
             cmd += '-s %s:5555 ' % self._device_hostname
         elif self._serials and self._serials[0] != DEVICE_NO_SERIAL_TAG:
@@ -290,7 +341,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         command = ('"%s; echo %s:\$?"' %
                 (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
-        result = self._adb_run(
+        result = self.adb_run(
                 command, shell=True, use_serial=False, timeout=timeout,
                 ignore_status=ignore_status, ignore_timeout=ignore_timeout,
                 stdout=stdout_tee, stderr=stderr_tee,
@@ -355,30 +406,40 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 ignore_timeout=ignore_timeout)
 
 
-    def reboot(self):
-        """Reboot the android device connected to this host.
+    def wait_up(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS, command=ADB_CMD):
+        """Wait until the remote host is up or the timeout expires.
 
-        Reboots the device over ADB.
+        Overrides wait_down from AbstractSSHHost.
 
-        @raises AutoservRebootError if reboot failed.
+        @param timeout: Time limit in seconds before returning even if the host
+                is not up.
+        @param command: The command used to test if a device is up, i.e.,
+                accessible by the given command. Default is set to `adb`.
 
+        @returns True if the host was found to be up before the timeout expires,
+                 False otherwise.
         """
-        # Not calling super.reboot() as we want to reboot the ADB device not
-        # the host we are running ADB on.
-        self._adb_run('reboot', timeout=10, ignore_timeout=True)
-        if not self.wait_down(timeout=10):
-            raise error.AutoservRebootError(
-                    'ADB Device is still up after reboot')
-        if not self.wait_up(timeout=30):
-            raise error.AutoservRebootError(
-                    'ADB Device failed to return from reboot.')
-        if self._use_tcpip:
-            # Reconnect via TCP/IP.
-            self._connect_over_tcpip()
+        @retry.retry(error.TimeoutException, timeout_min=timeout/60.0,
+                     delay_sec=1)
+        def _wait_up():
+            if not self.is_up(command=command):
+                raise error.TimeoutException('Device is still down.')
+            return True
+
+        try:
+            _wait_up()
+            logging.debug('Host %s is now up, and can be accessed by %s.',
+                          self.hostname, command)
+            return True
+        except error.TimeoutException:
+            logging.debug('Host %s is still down after waiting %d seconds',
+                          self.hostname, timeout)
+            return False
 
 
-    def wait_down(self, timeout=None, warning_timer=None, old_boot_id=None):
-        """Wait till the host goes down.
+    def wait_down(self, timeout=DEFAULT_WAIT_DOWN_TIME_SECONDS,
+                  warning_timer=None, old_boot_id=None, command=ADB_CMD):
+        """Wait till the host goes down, i.e., not accessible by given command.
 
         Overrides wait_down from AbstractSSHHost.
 
@@ -386,7 +447,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param warning_timer: Time limit in seconds that will generate
                               a warning if the host is not down yet.
                               Currently ignored.
-        @param old_boot_id: Not applicable for adb_host
+        @param old_boot_id: Not applicable for adb_host.
+        @param command: `adb`, test if the device can be accessed by adb
+                command, or `fastboot`, test if the device can be accessed by
+                fastboot command. Default is set to `adb`.
 
         @returns True if the device goes down before the timeout, False
                  otherwise.
@@ -395,7 +459,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @retry.retry(error.TimeoutException, timeout_min=timeout/60.0,
                      delay_sec=1)
         def _wait_down():
-            if self.is_up():
+            if self.is_up(command=command):
                 raise error.TimeoutException('Device is still up.')
             return True
 
@@ -409,9 +473,40 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return False
 
 
-    def adb_devices(self):
-        """Get a list of devices currently attached to this adb host."""
-        result = self._adb_run('devices', use_serial=True)
+    def reboot(self):
+        """Reboot the android device connected to this host with adb.
+
+        Reboots the device over ADB.
+
+        @raises AutoservRebootError if reboot failed.
+
+        """
+        # Not calling super.reboot() as we want to reboot the ADB device not
+        # the host we are running ADB on.
+        self.adb_run('reboot', timeout=10, ignore_timeout=True)
+        if not self.wait_down():
+            raise error.AutoservRebootError(
+                    'ADB Device is still up after reboot')
+        if not self.wait_up():
+            raise error.AutoservRebootError(
+                    'ADB Device failed to return from reboot.')
+        if self._use_tcpip:
+            # Reconnect via TCP/IP.
+            self._connect_over_tcpip()
+
+
+    def _get_devices(self, use_adb):
+        """Get a list of devices currently attached to this adb host.
+
+        @params use_adb: True to get adb accessible devices. Set to False to
+                         get fastboot accessible devices.
+
+        @returns a list of devices attached to this adb host.
+        """
+        if use_adb:
+            result = self.adb_run('devices', use_serial=True)
+        else:
+            result = self.fastboot_run('devices', use_serial=True)
         devices = []
         for line in result.stdout.splitlines():
             match = re.search(DEVICE_FINDER_REGEX,
@@ -424,20 +519,45 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 devices.append(serial)
         if len(devices) != 1 and DEVICE_NO_SERIAL_TAG in devices:
             raise error.AutoservError(
-                'Multiple ADB devices attached '
-                '*and* devices without serial number are present.')
+                'Multiple %s devices attached *and* devices without serial '
+                'number are present.' % (ADB_CMD if use_adb else FASTBOOT_CMD))
         return devices
 
 
-    def is_up(self, timeout=0):
-        """Determine if the specified adb device is up.
+    def adb_devices(self):
+        """Get a list of devices currently attached to this adb host and
+        accessible by adb command.
+        """
+        return self._get_devices(use_adb=True)
+
+
+    def fastboot_devices(self):
+        """Get a list of devices currently attached to this adb host and
+        accessible by fastboot command.
+        """
+        return self._get_devices(use_adb=False)
+
+
+    def is_up(self, timeout=0, command=ADB_CMD):
+        """Determine if the specified adb device is up with expected mode.
 
         @param timeout: Not currently used.
+        @param command: `adb`, the device can be accessed by adb command,
+                or `fastboot`, the device can be accessed by fastboot command.
+                Default is set to `adb`.
 
-        @returns True if the device is detectable but ADB, False otherwise.
+        @returns True if the device is detectable by given command, False
+                 otherwise.
 
         """
-        return self._serials[0] in self.adb_devices()
+        if command == ADB_CMD:
+            devices = self.adb_devices()
+        elif command == FASTBOOT_CMD:
+            devices = self.fastboot_devices()
+        else:
+            raise ValueError('Command %s is not supported.' % command)
+        return bool(devices and
+                    (not self._serials or self._serials[0] in devices))
 
 
     def close(self):
@@ -456,7 +576,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # the Android device becomes unusable, and if we start the next test
         # too quickly, we'll get an error complaining about no ADB device
         # attached.
-        #self._adb_run('kill-server')
+        #self.adb_run('kill-server')
         return super(ADBHost, self).close()
 
 
@@ -467,7 +587,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param tag String tag prefix for syslog
 
         """
-        self._adb_run('log -t "%s" "%s"' % (tag, message), shell=True)
+        self.adb_run('log -t "%s" "%s"' % (tag, message), shell=True)
 
 
     def get_autodir(self):
@@ -549,9 +669,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                            preserve_symlinks=preserve_symlinks)
 
         if delete_dest:
-            self._adb_run('rm -rf %s' % dest, shell=True)
+            self.adb_run('rm -rf %s' % dest, shell=True)
 
-        self._adb_run('push %s %s' % (src_path, dest))
+        self.adb_run('push %s %s' % (src_path, dest))
 
         # If we're not local, cleanup the adb_host.
         if not self._local_adb:
@@ -686,7 +806,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param args: List of command arguments.
         """
         cmd = '%s %s' % ('reverse' if reverse else 'forward', ' '.join(args))
-        self._adb_run(cmd)
+        self.adb_run(cmd)
 
 
     def add_forwarding(self, src, dst, reverse=False, rebind=True):
@@ -751,3 +871,31 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         self.remove_forwarding('tcp:%s' % port)
         super(ADBHost, self).rpc_port_disconnect(tunnel_proc, port)
+
+
+    def ensure_bootloader_mode(self):
+        """Ensure the device  is in bootloader mode.
+
+        @raise: error.AutoservError if the device failed to reboot into
+                bootloader mode.
+        """
+        if self.is_up(command=FASTBOOT_CMD):
+            return
+        self.adb_run('reboot bootloader')
+        if not self.wait_up(command=FASTBOOT_CMD):
+            raise error.AutoservError(
+                    'The device failed to reboot into bootloader mode.')
+
+
+    def ensure_adb_mode(self):
+        """Ensure the device is up and can be accessed by adb command.
+
+        @raise: error.AutoservError if the device failed to reboot into
+                adb mode.
+        """
+        if self.is_up():
+            return
+        self.fastboot_run('reboot')
+        if not self.wait_up():
+            raise error.AutoservError(
+                    'The device failed to reboot into adb mode.')
