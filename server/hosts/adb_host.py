@@ -11,6 +11,7 @@ import time
 
 import common
 
+from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants as cros_constants
@@ -19,6 +20,7 @@ from autotest_lib.server import constants as server_constants
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.server.hosts import ssh_host
 
 
 ADB_CMD = 'adb'
@@ -156,9 +158,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
-        self._local_adb = False
         self._adb_serial = adb_serial
         self._fastboot_serial = fastboot_serial or adb_serial
+        self.teststation = (local_host.LocalHost() if hostname == 'localhost'
+                            else ssh_host.SSHHost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self._device_hostname:
@@ -169,17 +172,18 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self._fastboot_serial
         logging.debug(msg)
 
-        if hostname == 'localhost':
-            self._local_adb = True
+        # Sets up the is_client_install_supported field.
         super(ADBHost, self)._initialize(hostname=hostname,
                                          is_client_install_supported=False,
                                          *args, **dargs)
+
+        # Make sure teststation credentials work.
         try:
-            self.host_run('true')
-        except error.AutoservRunError:
-            # Some hosts may not have root access, in this case try user adb.
+            self.teststation.run('true')
+        except error.AutoservRunError as e:
+            # Some test stations may not have root access, try user adb.
             logging.debug('Switching to user adb.')
-            self.user = 'adb'
+            self.teststation.user = 'adb'
 
         self._connect_over_tcpip_as_needed()
 
@@ -308,17 +312,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if verbose:
             logging.debug('Command: %s', cmd)
 
-        if self._local_adb:
-            return utils.run(
-                    command=cmd, timeout=timeout, ignore_status=ignore_status,
-                    ignore_timeout=ignore_timeout, stdout_tee=stdout,
-                    stderr_tee=stderr, stdin=stdin, args=args)
-        else:
-            return super(ADBHost, self).run(
-                    command=cmd, timeout=timeout, ignore_status=ignore_status,
-                    ignore_timeout=ignore_timeout, stdout_tee=stdout,
-                    options=options, stdin=stdin,
-                    connect_timeout=connect_timeout, args=args)
+        return self.teststation.run(command=cmd, timeout=timeout,
+                ignore_status=ignore_status,
+                ignore_timeout=ignore_timeout, stdout_tee=stdout,
+                stderr_tee=stderr, options=options, stdin=stdin,
+                connect_timeout=connect_timeout, args=args)
 
 
     @label_decorator()
@@ -401,48 +399,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             if result.exit_status != 0 and not ignore_status:
                 raise error.AutoservRunError(command, result)
         return result
-
-
-    def host_run(self, command, timeout=3600, ignore_status=False,
-                 ignore_timeout=False, stdout_tee=utils.TEE_TO_LOGS,
-                 stderr_tee=utils.TEE_TO_LOGS, connect_timeout=30, options='',
-                 stdin=None, args=()):
-        """Run a non-adb command on the ADB host.
-
-        Useful if packages need to be staged prior to use via ADB.
-
-        @param command: The command line string.
-        @param timeout: Time limit in seconds before attempting to
-                        kill the running process. The run() function
-                        will take a few seconds longer than 'timeout'
-                        to complete if it has to kill the process.
-        @param ignore_status: Do not raise an exception, no matter
-                              what the exit code of the command is.
-        @param ignore_timeout: Bool True if command timeouts should be
-                ignored.  Will return None on command timeout.
-        @param stdout_tee: Redirect stdout.
-        @param stderr_tee: Redirect stderr.
-        @param connect_timeout: Connection timeout (in seconds)
-        @param options: String with additional ssh command options
-        @param stdin: Stdin to pass (a string) to the executed command
-        @param args: Sequence of strings to pass as arguments to command by
-                     quoting them in " and escaping their contents if necessary
-
-        @returns A CMDResult object or None if the call timed out and
-                 ignore_timeout is True.
-
-        """
-        if self._local_adb:
-            return utils.run(
-                    command=command, timeout=timeout,
-                    ignore_status=ignore_status, stdout_tee=stdout_tee,
-                    stderr_tee=stderr_tee, stdin=stdin, args=args,
-                    ignore_timeout=ignore_timeout)
-        return super(ADBHost, self).run(
-                command=command, timeout=timeout, ignore_status=ignore_status,
-                stdout_tee=stdout_tee, options=options, stdin=stdin,
-                connect_timeout=connect_timeout, args=args,
-                ignore_timeout=ignore_timeout)
 
 
     def wait_up(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS, command=ADB_CMD):
@@ -613,7 +569,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self._use_tcpip:
             # Return the device to usb mode.
-            self.run('adb usb')
+            self.adb_run('usb')
         # TODO(sbasi) Originally, we would kill the server after each test to
         # reduce the opportunity for bad server state to hang around.
         # Unfortunately, there is a period of time after each kill during which
@@ -658,24 +614,30 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return
 
 
-    def _get_adb_host_tmpdir(self):
-        """Creates a tmp dir for staging on the adb_host.
+    def _get_teststation_tmpdir(self):
+        """Creates a tmp dir for staging on the test station.
 
         @returns the path of the tmp dir created.
 
         @raises: AutoservError if there is an error creating the tmp dir.
         """
         try:
-            tmp_dir = self.host_run("mktemp -d").stdout.strip()
+            tmp_dir = self.teststation.run_output("mktemp -d")
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
             raise error.AutoservError(
-                    'Failed to create tmp dir on adb_host: %s' % e)
+                    'Failed to create tmp dir on test station: %s' % e)
         return tmp_dir
 
 
     def send_file(self, source, dest, delete_dest=False,
                   preserve_symlinks=False):
         """Copy files from the drone to the device.
+
+        Just a note, there is the possibility the test station is localhost
+        which makes some of these steps redundant (e.g. creating tmp dir) but
+        that scenario will undoubtedly be a development scenario (test station
+        is also the moblab) and not the typical live test running scenario so
+        the redundancy I think is harmless.
 
         @param source: The file/directory on the drone to send to the device.
         @param dest: The destination path on the device to copy to.
@@ -701,28 +663,24 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 self.run('ln -s %s %s' % (symlink_target, dest))
                 return
 
-        tmp_dir = ''
-        src_path = source
-        # Stage the files on the adb_host if we're not running on localhost.
-        if not self._local_adb:
-            tmp_dir = self._get_adb_host_tmpdir()
-            src_path = os.path.join(tmp_dir, os.path.basename(dest))
-            # Now copy the file over to the adb_host so you can reference the
-            # file in the push command.
-            super(ADBHost, self).send_file(source, src_path,
-                                           preserve_symlinks=preserve_symlinks)
+        # Stage the files on the test station.
+        tmp_dir = self._get_teststation_tmpdir()
+        src_path = os.path.join(tmp_dir, os.path.basename(dest))
+        # Now copy the file over to the test station so you can reference the
+        # file in the push command.
+        self.teststation.send_file(source, src_path,
+                                   preserve_symlinks=preserve_symlinks)
 
         if delete_dest:
-            self.adb_run('rm -rf %s' % dest, shell=True)
+            self.run('rm -rf %s' % dest)
 
         self.adb_run('push %s %s' % (src_path, dest))
 
-        # If we're not local, cleanup the adb_host.
-        if not self._local_adb:
-            try:
-                self.host_run('rm -rf %s' % tmp_dir)
-            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+        # Cleanup the test station.
+        try:
+            self.teststation.run('rm -rf %s' % tmp_dir)
+        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
 
     def _get_file_info(self, dest):
@@ -760,6 +718,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                  preserve_symlinks=False):
         """Copy files from the device to the drone.
 
+        Just a note, there is the possibility the test station is localhost
+        which makes some of these steps redundant (e.g. creating tmp dir) but
+        that scenario will undoubtedly be a development scenario (test station
+        is also the moblab) and not the typical live test running scenario so
+        the redundancy I think is harmless.
+
         @param source: The file/directory on the device to copy back to the
                        drone.
         @param dest: The destination path on the drone to copy to.
@@ -770,15 +734,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param preserve_symlinks: Try to preserve symlinks instead of
                                   transforming them into files/dirs on copy.
         """
-        tmp_dir = ''
-        dest_path = dest
-        # Stage the files on the adb_host if we're not local.
-        if not self._local_adb:
-            tmp_dir = self._get_adb_host_tmpdir()
-            dest_path = os.path.join(tmp_dir, os.path.basename(source))
+        # Stage the files on the test station.
+        tmp_dir = self._get_teststation_tmpdir()
+        dest_path = os.path.join(tmp_dir, os.path.basename(source))
 
         if delete_dest:
-            utils.run('rm -rf %s' % dest)
+            self.teststation.run('rm -rf %s' % dest)
 
         source_info = {}
         if preserve_symlinks or preserve_perm:
@@ -791,13 +752,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         else:
             self.adb_run('pull %s %s' % (source, dest_path))
 
-            # If not local, copy over the file from the adb_host and clean up.
-            if not self._local_adb:
-                super(ADBHost, self).get_file(dest_path, dest)
-                try:
-                    self.host_run('rm -rf %s' % tmp_dir)
-                except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-                    logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+            # Copy over the file from the test station and clean up.
+            self.teststation.get_file(dest_path, dest)
+            try:
+                self.teststation.run('rm -rf %s' % tmp_dir)
+            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
         if preserve_perm:
             os.chmod(dest, source_info['perms'])
@@ -972,8 +932,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self._is_host_moblab is None:
             try:
-                self.host_run('cat %s | grep -q moblab' %
-                              cros_constants.LSB_RELEASE)
+                self.teststation.run('cat %s | grep -q moblab' %
+                                     cros_constants.LSB_RELEASE)
                 self._is_host_moblab = True
             except error.AutoservRunError:
                 self._is_host_moblab = False
@@ -992,10 +952,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         src_url = os.path.join(build_url, file)
         dest_file = os.path.join(dest_dir, file)
         try:
-            self.host_run('wget -q -O "%s" "%s"' % (dest_file, src_url))
+            self.teststation.run('wget -q -O "%s" "%s"' % (dest_file, src_url))
         except:
             # Delete the destination file if download failed.
-            self.host_run('rm -f "%s"' % dest_file)
+            self.teststation.run('rm -f "%s"' % dest_file)
             raise
 
 
@@ -1021,23 +981,24 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
         if self.is_host_moblab:
             tmp_dir = moblab_host.MOBLAB_TMP_DIR
-            self.host_run('mkdir -p %s' % tmp_dir)
+            self.teststation.run('mkdir -p %s' % tmp_dir)
         else:
             tmp_dir = DEFAULT_TMP_FOLDER
 
-        image_dir = self.host_run('mktemp -p %s -d' % tmp_dir).stdout.strip()
+        image_dir = self.teststation.run(
+                'mktemp -p %s -d' % tmp_dir).stdout.strip()
         image_files = [zipped_image_file] + ANDROID_STANDALONE_IMAGES
 
         try:
             for image_file in image_files:
                 self._download_file(build_url, image_file, image_dir)
 
-            self.host_run('unzip "%s/%s" -x -d "%s"' %
-                          (image_dir, zipped_image_file, image_dir))
+            self.teststation.run('unzip "%s/%s" -x -d "%s"' %
+                                 (image_dir, zipped_image_file, image_dir))
 
             return image_dir
         except:
-            self.host_run('rm -rf %s' % image_dir)
+            self.teststation.run('rm -rf %s' % image_dir)
             raise
 
 
@@ -1066,8 +1027,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         # Check if adb and fastboot are present.
         try:
-            self.host_run('which adb')
-            self.host_run('which fastboot')
+            self.teststation.run('which adb')
+            self.teststation.run('which fastboot')
         except error.AutoservRunError:
             raise AndroidInstallError("Missing adb or fastboot.")
 
@@ -1088,7 +1049,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
             # Get all *.img file in the build_local_path.
             list_file_cmd = 'ls -d %s' % os.path.join(build_local_path, '*.img')
-            image_files = self.host_run(list_file_cmd).stdout.strip().split()
+            image_files = self.teststation.run(
+                    list_file_cmd).stdout.strip().split()
             images = dict([(os.path.basename(f), f) for f in image_files])
             for image, image_file in images.items():
                 if image not in ANDROID_IMAGES:
@@ -1104,7 +1066,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise AndroidInstallError, sys.exc_info()[1], sys.exc_info()[2]
         finally:
             if delete_build_folder:
-                self.host_run('rm -rf %s' % build_local_path)
+                self.teststation.run('rm -rf %s' % build_local_path)
             self.ensure_adb_mode()
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)

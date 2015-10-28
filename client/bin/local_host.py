@@ -4,11 +4,14 @@
 This file contains the implementation of a host object for the local machine.
 """
 
-import glob, os, platform
+import distutils.core, glob, os, platform, shutil
 from autotest_lib.client.common_lib import hosts, error
 from autotest_lib.client.bin import utils
 
 class LocalHost(hosts.Host):
+    """This class represents a host running locally on the host."""
+
+
     def _initialize(self, hostname=None, bootloader=None, *args, **dargs):
         super(LocalHost, self)._initialize(*args, **dargs)
 
@@ -77,3 +80,74 @@ class LocalHost(hosts.Host):
                     paths.add(link_to)
 
         return closure
+
+
+    def _copy_file(self, source, dest, delete_dest=False, preserve_perm=False,
+                  preserve_symlinks=False):
+        """Copy files from source to dest, will be the base for {get,send}_file.
+
+        @param source: The file/directory on localhost to copy.
+        @param dest: The destination path on localhost to copy to.
+        @param delete_dest: A flag set to choose whether or not to delete
+                            dest if it exists.
+        @param preserve_perm: Tells get_file() to try to preserve the sources
+                              permissions on files and dirs.
+        @param preserve_symlinks: Try to preserve symlinks instead of
+                                  transforming them into files/dirs on copy.
+        """
+        if delete_dest and os.path.exists(dest):
+            # Check if it's a file or a dir and use proper remove method.
+            if os.path.isdir(dest):
+                shutil.rmtree(dest)
+            else:
+                os.remove(dest)
+
+        if preserve_symlinks and os.path.islink(source):
+            os.symlink(os.readlink(source), dest)
+        # If source is a dir, use distutils.dir_util.copytree since
+        # shutil.copy_tree has weird limitations.
+        elif os.path.isdir(source):
+            distutils.dir_util.copy_tree(source, dest,
+                    preserve_symlinks=preserve_symlinks,
+                    preserve_mode=preserve_perm,
+                    update=1)
+        else:
+            shutil.copyfile(source, dest)
+
+        if preserve_perm:
+            shutil.copymode(source, dest)
+
+
+    def get_file(self, source, dest, delete_dest=False, preserve_perm=True,
+                 preserve_symlinks=False):
+        """Copy files from source to dest.
+
+        @param source: The file/directory on localhost to copy.
+        @param dest: The destination path on localhost to copy to.
+        @param delete_dest: A flag set to choose whether or not to delete
+                            dest if it exists.
+        @param preserve_perm: Tells get_file() to try to preserve the sources
+                              permissions on files and dirs.
+        @param preserve_symlinks: Try to preserve symlinks instead of
+                                  transforming them into files/dirs on copy.
+        """
+        self._copy_file(source, dest, delete_dest=delete_dest,
+                        preserve_perm=preserve_perm,
+                        preserve_symlinks=preserve_symlinks)
+
+
+    def send_file(self, source, dest, delete_dest=False,
+                  preserve_symlinks=False):
+        """Copy files from source to dest.
+
+        @param source: The file/directory on the drone to send to the device.
+        @param dest: The destination path on the device to copy to.
+        @param delete_dest: A flag set to choose whether or not to delete
+                            dest on the device if it exists.
+        @param preserve_symlinks: Controls if symlinks on the source will be
+                                  copied as such on the destination or
+                                  transformed into the referenced
+                                  file/directory.
+        """
+        self._copy_file(source, dest, delete_dest=delete_dest,
+                        preserve_symlinks=preserve_symlinks)
