@@ -34,7 +34,7 @@ _autoserv_proc = None
 _sigint_handler_lock = threading.Lock()
 
 _AUTOSERV_SIGINT_TIMEOUT_SECONDS = 5
-_NO_BOARD = 'ad_hoc_board'
+NO_BOARD = 'ad_hoc_board'
 NO_BUILD = 'ad_hoc_build'
 _SUITE_REGEX = r'suite:(.*)'
 
@@ -110,7 +110,7 @@ def add_common_args(parser):
 
 
 def fetch_local_suite(autotest_path, suite_predicate, afe, test_arg, remote,
-                      build=NO_BUILD, board=_NO_BOARD,
+                      build=NO_BUILD, board=NO_BOARD,
                       results_directory=None, no_experimental=False,
                       ignore_deps=True):
     """Create a suite from the given suite predicate.
@@ -433,7 +433,7 @@ def _auto_detect_labels(afe, remote):
 
 
 def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
-                      build=NO_BUILD, board=_NO_BOARD, args=None,
+                      build=NO_BUILD, board=NO_BOARD, args=None,
                       pretend=False, no_experimental=False,
                       ignore_deps=True,
                       results_directory=None, ssh_verbosity=0,
@@ -603,7 +603,7 @@ def create_results_directory(results_directory=None):
 
 
 def perform_run_from_autotest_root(autotest_path, argv, tests, remote,
-                                   build=NO_BUILD, board=_NO_BOARD, args=None,
+                                   build=NO_BUILD, board=NO_BOARD, args=None,
                                    pretend=False, no_experimental=False,
                                    ignore_deps=True,
                                    results_directory=None, ssh_verbosity=0,
