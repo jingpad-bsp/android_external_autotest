@@ -15,6 +15,7 @@ from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.audio import cmd_utils
 from autotest_lib.client.cros.audio import cras_dbus_utils
 from autotest_lib.client.cros.audio import cras_utils
+from autotest_lib.client.cros.multimedia import audio_extension_handler
 
 
 class AudioFacadeNativeError(Exception):
@@ -46,15 +47,26 @@ class AudioFacadeNative(object):
         self._resource = resource
         self._recorder = None
         self._counter = None
-        self._extension = None
-        self._load_extension()
+        self._extension_handler = None
+        self._create_extension_handler()
 
 
-    def _load_extension(self):
-        """Loads multimedia test extension."""
-        self._extension = self._resource.get_extension(
+    def _create_extension_handler(self):
+        """Loads multimedia test extension and creates extension handler."""
+        extension = self._resource.get_extension(
                 constants.MULTIMEDIA_TEST_EXTENSION)
-        logging.debug('Loaded extension: %s', self._extension)
+        logging.debug('Loaded extension: %s', extension)
+        self._extension_handler = audio_extension_handler.AudioExtensionHandler(
+                extension)
+
+
+    def get_audio_info(self):
+        """Returns the audio info from chrome.audio API.
+
+        @returns: Checks docstring of get_audio_info of AudioExtensionHandler.
+
+        """
+        return self._extension_handler.get_audio_info()
 
 
     def cleanup(self):
