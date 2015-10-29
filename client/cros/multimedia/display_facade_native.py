@@ -57,7 +57,7 @@ class DisplayFacadeNative(object):
         @return array of dict for display info.
         """
         extension = self._resource.get_extension(
-                constants.DISPLAY_TEST_EXTENSION)
+                constants.MULTIMEDIA_TEST_EXTENSION)
         extension.ExecuteJavaScript('window.__display_info = null;')
         extension.ExecuteJavaScript(
                 "chrome.system.display.getInfo(function(info) {"

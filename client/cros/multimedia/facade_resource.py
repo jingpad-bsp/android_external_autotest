@@ -34,7 +34,7 @@ class FacadeResource(object):
             self._chrome = chrome_object
         else:
             self._chrome = chrome.Chrome(
-                extension_paths=[constants.DISPLAY_TEST_EXTENSION],
+                extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
                 extra_browser_args=self.EXTRA_BROWSER_ARGS,
                 clear_enterprise_policy=not restart,
                 autotest_ext=True)

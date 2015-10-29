@@ -174,8 +174,8 @@ MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN = 'multimedia_xmlrpc_server'
 MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
 MULTIMEDIA_XMLRPC_SERVER_LOG_FILE= '/var/log/multimedia_xmlrpc_server.log'
 
-DISPLAY_TEST_EXTENSION = (
-        '/usr/local/autotest/cros/multimedia/display_test_extension')
+MULTIMEDIA_TEST_EXTENSION = (
+        '/usr/local/autotest/cros/multimedia/multimedia_test_extension')
 
 APMANAGER_XMLRPC_SERVER_PORT = 9992
 APMANAGER_XMLRPC_SERVER_COMMAND = (
