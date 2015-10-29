@@ -75,6 +75,10 @@ class _CtrlDBypasser(_BaseFwBypasser):
         self.servo.switch_usbkey('host')
         time.sleep(self.faft_config.usb_plug)
         self.servo.switch_usbkey('dut')
+        if not self.client_host.ping_wait_up(
+                timeout=self.faft_config.delay_reboot_to_ping):
+            psc = self.servo.get_power_state_controller()
+            psc.power_on(psc.REC_ON)
 
 
     def trigger_dev_to_rec(self):
@@ -111,24 +115,6 @@ class _CtrlDBypasser(_BaseFwBypasser):
         self.servo.enter_key()
         time.sleep(self.faft_config.confirm_screen)
         self.servo.enter_key()
-
-
-class _BrokenScreenBypasser(_CtrlDBypasser):
-    """Controls bypass logic of broken screen"""
-
-    def press_recovery_switch(self):
-        if not self.client_host.ping_wait_up(
-                timeout=self.faft_config.delay_reboot_to_ping):
-            psc = self.servo.get_power_state_controller()
-            # No need to add any wait here.
-            # This function should be called after waiting for ping timeout.
-            psc.power_on(psc.REC_ON)
-
-
-    def bypass_rec_mode(self):
-        """Bypass the broken screen then recovery screen"""
-        self.servo.switch_usbkey('dut')
-        self.press_recovery_switch()
 
 
 class _JetstreamBypasser(_BaseFwBypasser):
@@ -193,9 +179,6 @@ def _create_fw_bypasser(faft_framework):
         # FIXME Create an RyuBypasser
         logging.info('Create a CtrlDBypasser')
         return _CtrlDBypasser(faft_framework)
-    elif bypasser_type == 'broken_screen_bypasser':
-        logging.info('Create a BrokenScreenBypasser')
-        return _BrokenScreenBypasser(faft_framework)
     else:
         raise NotImplementedError('Not supported fw_bypasser_type: %s',
                                   bypasser_type)
