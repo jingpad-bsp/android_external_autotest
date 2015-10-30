@@ -15,6 +15,7 @@ import pprint
 import re
 import sys
 import time
+import traceback
 # Please limit the use of the uinput library to this file. Try not to spread
 # dependencies and abstract as much as possible to make switching to a different
 # input library in the future easier.
@@ -36,6 +37,7 @@ def xcommand(cmd, user=None):
     @return a modified command line string with necessary X setup
     """
     logging.warning('xcommand will be deprecated under freon!')
+    traceback.print_stack()
     if user is not None:
         cmd = 'su %s -c \'%s\'' % (user, cmd)
     if not utils.is_freon():
