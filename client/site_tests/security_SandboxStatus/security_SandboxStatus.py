@@ -37,11 +37,13 @@ class security_SandboxStatus(test.test):
                                  'sandboxed." in chrome://sandbox')
 
 
-    def _CheckGPUCell(self, row, cell, content):
+    # TODO(jorgelo): This breaks with changes to the layout of chrome://gpu.
+    # Make it more robust. crbug.com/549681.
+    def _CheckGPUCell(self, table, row, cell, content):
         '''Checks the content of a cell in chrome://gpu.'''
 
         gpu_js = ("document.getElementsByTagName('table')"
-                  "[1].rows[%d].cells[%d].textContent" % (row, cell))
+                  "[%d].rows[%d].cells[%d].textContent" % (table, row, cell))
         try:
             res = utils.poll_for_condition(
                     lambda: self._EvaluateJavaScript(gpu_js),
@@ -61,15 +63,9 @@ class security_SandboxStatus(test.test):
             self._CheckAdequatelySandboxed()
 
             self._tab.Navigate('chrome://gpu')
-            # GPU "Sandboxed" info can appear in rows 1 or 2.
-            # TODO(crbug.com/513593): Remove this workaround after Chrome uprev's.
-            in_row1 = self._CheckGPUCell(1, 0, 'Sandboxed')
-            in_row2 = self._CheckGPUCell(2, 0, 'Sandboxed')
 
-            if not (in_row1 or in_row2):
+            if not self._CheckGPUCell(2, 2, 0, 'Sandboxed'):
                 raise error.TestError('Could not locate "Sandboxed" row in table')
 
-            if in_row1 and not self._CheckGPUCell(1, 1, 'true'):
-                raise error.TestError('GPU not sandboxed')
-            elif in_row2 and not  self._CheckGPUCell(2, 1, 'true'):
+            if not self._CheckGPUCell(2, 2, 1, 'true'):
                 raise error.TestError('GPU not sandboxed')
