@@ -89,7 +89,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.exit_status == 0
 
 
+    # TODO(garnold) Remove the 'serials' argument once all clients are made to
+    # not use it.
     def _initialize(self, hostname='localhost', serials=None,
+                    adb_serial=None, fastboot_serial=None,
                     device_hostname=None, *args, **dargs):
         """Initialize an ADB Host.
 
@@ -101,20 +104,37 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         device_hostname is supplied then all ADB commands will run over TCP/IP.
 
         @param hostname: Hostname of the machine running ADB.
-        @param serials: List of serial number of the android device we want to
-                        interact with.
+        @param serials: DEPRECATED (to be removed)
+        @param adb_serial: An ADB device serial. If None, assume a single
+                           device is attached (and fail otherwise).
+        @param fastboot_serial: A fastboot device serial. If None, defaults to
+                                the ADB serial (or assumes a single device if
+                                the latter is None).
         @param device_hostname: Hostname or IP of the android device we want to
                                 interact with. If supplied all ADB interactions
                                 run over TCP/IP.
 
         """
-        logging.debug('Initializing ADB Host running on host: %s.', hostname)
-        logging.debug('Android Device: Serials:%s, Hostname: %s',
-                      serials, device_hostname)
+        if device_hostname and (adb_serial or fastboot_serial):
+            raise error.AutoservError(
+                    'TCP/IP and USB modes are mutually exclusive')
+
         self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
         self._local_adb = False
+        self._adb_serial = adb_serial
+        self._fastboot_serial = fastboot_serial or adb_serial
+
+        msg ='Initializing ADB device on host: %s' % hostname
+        if self._device_hostname:
+            msg += ', device hostname: %s' % self._device_hostname
+        if self._adb_serial:
+            msg += ', ADB serial: %s' % self._adb_serial
+        if self._fastboot_serial:
+            msg += ', fastboot serial: %s' % self._fastboot_serial
+        logging.debug(msg)
+
         if hostname == 'localhost':
             self._local_adb = True
         super(ADBHost, self)._initialize(hostname=hostname,
@@ -127,45 +147,24 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             logging.debug('Switching to user adb.')
             self.user = 'adb'
 
-        # TODO(kevcheng): Revamp this so we can properly reference multiple
-        #                 serials for one ADBHost.
-        self._serials = serials
-        if not self._serials:
-            logging.debug('Serial not provided determining...')
-            # Ensure only one device is attached to this host.
-            devices = self.adb_devices()
-            if not devices:
-                raise error.AutoservError('No ADB devices attached.')
-            if len(devices) > 1:
-                raise error.AutoservError('Multiple ADB devices attached.')
-            self._serials = devices
-            logging.debug('Using serial: %s', self._serials[0])
-
-        if self._device_hostname:
-            logging.debug('Device Hostname provided. Connecting over TCP/IP')
-            self._connect_over_tcpip()
-            self._use_tcpip = True
+        self._connect_over_tcpip_as_needed()
 
 
-    def _connect_over_tcpip(self,):
-        """Connect to the ADB device over tcpip
-
-        @param device_hostname: Device hostname or IP for which we want to
-                                connect to. If none, will use
-                                self._device_hostname
-
-        """
+    def _connect_over_tcpip_as_needed(self):
+        """Connect to the ADB device over TCP/IP if so configured."""
+        if not self._device_hostname:
+            return
+        logging.debug('Connecting to device over TCP/IP')
         if self._device_hostname in self.adb_devices():
             # We previously had a connection to this device, restart the ADB
             # server.
             self.adb_run('kill-server')
         # Ensure that connection commands don't run over TCP/IP.
         self._use_tcpip = False
-        self.adb_run('tcpip 5555', use_serial=True, timeout=10,
-                      ignore_timeout=True)
+        self.adb_run('tcpip 5555', timeout=10, ignore_timeout=True)
         time.sleep(2)
         try:
-            self.adb_run('connect %s' % self._device_hostname, use_serial=True)
+            self.adb_run('connect %s' % self._device_hostname)
         except (error.AutoservRunError, error.CmdError) as e:
             raise error.AutoservError('Failed to connect via TCP/IP: %s' % e)
         # Allow ADB a bit of time after connecting before interacting with the
@@ -176,7 +175,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     # pylint: disable-msg=C0111
-    def adb_run(self, command, shell=False, use_serial=False, timeout=3600,
+    def adb_run(self, command, shell=False, timeout=3600,
                 ignore_status=False, ignore_timeout=False,
                 stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
                 connect_timeout=30, options='', stdin=None, verbose=True,
@@ -188,13 +187,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Refer to _device_run method for docstring for parameters.
         """
         return self._device_run(
-                ADB_CMD, command, shell, use_serial, timeout, ignore_status,
+                ADB_CMD, command, shell, timeout, ignore_status,
                 ignore_timeout, stdout, stderr, connect_timeout, options, stdin,
                 verbose, args)
 
 
     # pylint: disable-msg=C0111
-    def fastboot_run(self, command, use_serial=False, timeout=3600,
+    def fastboot_run(self, command, timeout=3600,
                      ignore_status=False, ignore_timeout=False,
                      stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
                      connect_timeout=30, options='', stdin=None, verbose=True,
@@ -207,12 +206,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         require_sudo = require_sudo or utils.is_moblab()
         return self._device_run(
-                FASTBOOT_CMD, command, False, use_serial, timeout,
+                FASTBOOT_CMD, command, False, timeout,
                 ignore_status, ignore_timeout, stdout, stderr, connect_timeout,
                 options, stdin, verbose, require_sudo, args)
 
 
-    def _device_run(self, function, command, shell=False, use_serial=False,
+    def _device_run(self, function, command, shell=False,
                     timeout=3600, ignore_status=False, ignore_timeout=False,
                     stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
                     connect_timeout=30, options='', stdin=None, verbose=True,
@@ -226,8 +225,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                       False it will be passed directly to adb. For example
                       reboot with shell=False will call 'adb reboot'. This
                       option only applies to function adb.
-        @param use_serial: Use the adb device serial to specify the device
-                           the command will run on.
         @param timeout: Time limit in seconds before attempting to
                         kill the running process. The run() function
                         will take a few seconds longer than 'timeout'
@@ -250,16 +247,23 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a CMDResult object.
 
         """
-        if function not in [ADB_CMD, FASTBOOT_CMD]:
-            raise NotImplementedError('Function %s is not supported yet.' %
-                                      function)
+        if function == ADB_CMD:
+            serial = self._adb_serial
+        elif function == FASTBOOT_CMD:
+            serial = self._fastboot_serial
+        else:
+            raise NotImplementedError('Mode %s is not supported' % function)
+
         if function != ADB_CMD and shell:
             raise error.CmdError('shell option is only applicable to `adb`.')
+
         cmd = '%s%s ' % ('sudo -n ' if require_sudo else '', function)
-        if self._use_tcpip and not use_serial:
+
+        if serial:
+            cmd += '-s %s ' % serial
+        elif self._use_tcpip:
             cmd += '-s %s:5555 ' % self._device_hostname
-        elif self._serials and self._serials[0] != DEVICE_NO_SERIAL_TAG:
-            cmd += '-s %s ' % self._serials[0]
+
         if shell:
             cmd += '%s ' % SHELL_CMD
         cmd += command
@@ -342,7 +346,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         command = ('"%s; echo %s:\$?"' %
                 (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
         result = self.adb_run(
-                command, shell=True, use_serial=False, timeout=timeout,
+                command, shell=True, timeout=timeout,
                 ignore_status=ignore_status, ignore_timeout=ignore_timeout,
                 stdout=stdout_tee, stderr=stderr_tee,
                 connect_timeout=connect_timeout, options=options, stdin=stdin,
@@ -490,9 +494,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self.wait_up():
             raise error.AutoservRebootError(
                     'ADB Device failed to return from reboot.')
-        if self._use_tcpip:
-            # Reconnect via TCP/IP.
-            self._connect_over_tcpip()
+        # Reconnect via TCP/IP.
+        self._connect_over_tcpip_as_needed()
 
 
     def _get_devices(self, use_adb):
@@ -504,9 +507,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a list of devices attached to this adb host.
         """
         if use_adb:
-            result = self.adb_run('devices', use_serial=True)
+            result = self.adb_run('devices')
         else:
-            result = self.fastboot_run('devices', use_serial=True)
+            result = self.fastboot_run('devices')
         devices = []
         for line in result.stdout.splitlines():
             match = re.search(DEVICE_FINDER_REGEX,
@@ -517,10 +520,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     serial = DEVICE_NO_SERIAL_TAG
                 logging.debug('Found Device: %s', serial)
                 devices.append(serial)
-        if len(devices) != 1 and DEVICE_NO_SERIAL_TAG in devices:
-            raise error.AutoservError(
-                'Multiple %s devices attached *and* devices without serial '
-                'number are present.' % (ADB_CMD if use_adb else FASTBOOT_CMD))
         return devices
 
 
@@ -528,14 +527,22 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Get a list of devices currently attached to this adb host and
         accessible by adb command.
         """
-        return self._get_devices(use_adb=True)
+        devices = self._get_devices(use_adb=True)
+        if self._adb_serial is None and len(devices) > 1:
+            raise error.AutoservError(
+                    'Not given ADB serial but multiple devices detected')
+        return devices
 
 
     def fastboot_devices(self):
         """Get a list of devices currently attached to this adb host and
         accessible by fastboot command.
         """
-        return self._get_devices(use_adb=False)
+        devices = self._get_devices(use_adb=False)
+        if self._fastboot_serial is None and len(devices) > 1:
+            raise error.AutoservError(
+                    'Not given fastboot serial but multiple devices detected')
+        return devices
 
 
     def is_up(self, timeout=0, command=ADB_CMD):
@@ -552,12 +559,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if command == ADB_CMD:
             devices = self.adb_devices()
+            serial = self._adb_serial
         elif command == FASTBOOT_CMD:
             devices = self.fastboot_devices()
+            serial = self._fastboot_serial
         else:
-            raise ValueError('Command %s is not supported.' % command)
-        return bool(devices and
-                    (not self._serials or self._serials[0] in devices))
+            raise NotImplementedError('Mode %s is not supported' % command)
+
+        return bool(devices and (not serial or serial in devices))
 
 
     def close(self):
