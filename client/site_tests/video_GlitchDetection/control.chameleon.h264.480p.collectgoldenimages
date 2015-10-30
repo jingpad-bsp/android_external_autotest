@@ -27,7 +27,7 @@ Golden images can then be copied from the dut once the test is finished.
 host = next(iter(job.hosts))
 
 job.run_test('video_GlitchDetection',
-              source_path=('https://storage.googleapis.com/ '
+              source_path=('https://storage.googleapis.com/'
               'chromiumos-test-assets-public/Shaka-Dash/480.mp4'),
               codec='h264',
               resolution='480p',
