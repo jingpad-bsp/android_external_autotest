@@ -6,3 +6,6 @@ CRASHLOGS_HOST_ATTRIBUTE = 'need_crash_logs'
 
 # Marker file that is left when crash-logs are collected.
 CRASHLOGS_MARKER = '.crashjob'
+
+# Flag file to indicate the host is an adb tester.
+ANDROID_TESTER_FILEFLAG = '/mnt/stateful_partition/.android_tester'

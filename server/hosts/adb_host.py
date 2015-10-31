@@ -6,15 +6,19 @@ import logging
 import os
 import re
 import stat
+import sys
 import time
 
 import common
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.server import utils
+from autotest_lib.server import constants as server_constants
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import moblab_host
 
 
 ADB_CMD = 'adb'
@@ -38,7 +42,6 @@ CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
 RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
 TMP_DIR = '/data/local/tmp'
-ANDROID_TESTER_FILEFLAG = '/mnt/stateful_partition/.android_tester'
 # Regex to pull out file type, perms and symlink. Example:
 # lrwxrwx--- 1 6 2015-09-12 19:21 blah_link -> ./blah
 FILE_INFO_REGEX = '^(?P<TYPE>[dl-])(?P<PERMS>[rwx-]{9})'
@@ -53,6 +56,37 @@ FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
 DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
 # Default maximum number of seconds to wait for a device to be up.
 DEFAULT_WAIT_UP_TIME_SECONDS = 30
+
+OS_TYPE_ANDROID = 'android'
+OS_TYPE_BRILLO = 'brillo'
+
+# Regex to parse devserver url to get the detailed build information. Sample
+# url: http://$devserver:8080/static/branch/target/build_id
+DEVSERVER_URL_REGEX = ('.*/(?P<BRANCH>([^/]+))/(?P<BOARD>([^/]+))-'
+                       '(?P<BUILD_TYPE>([^/]+))/(?P<BUILD_ID>([^/]+))/*')
+
+ANDROID_IMAGE_FILE_FMT = '%(board)s-img-%(build_id)s.zip'
+ANDROID_BOOTLOADER = 'bootloader.img'
+ANDROID_RADIO = 'radio.img'
+ANDROID_BOOT = 'boot.img'
+ANDROID_SYSTEM = 'system.img'
+ANDROID_VENDOR = 'vendor.img'
+
+# Image files not inside the image zip file. These files should be downloaded
+# directly from devserver.
+ANDROID_STANDALONE_IMAGES = [ANDROID_BOOTLOADER, ANDROID_RADIO]
+# Image files that are packaged in a zip file, e.g., shamu-img-123456.zip
+ANDROID_ZIPPED_IMAGES = [ANDROID_BOOT, ANDROID_SYSTEM, ANDROID_VENDOR]
+# All image files to be flashed to an Android device.
+ANDROID_IMAGES = ANDROID_STANDALONE_IMAGES + ANDROID_ZIPPED_IMAGES
+
+# Default tmp folder for server running adb command. The tmp folder will be used
+# to store the image files used to provision a device.
+DEFAULT_TMP_FOLDER = '/tmp'
+
+class AndroidInstallError(error.InstallError):
+    """Generic error for Android installation related exceptions."""
+
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
@@ -82,7 +116,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             if not host.verify_ssh_user_access():
                 host.user = 'adb'
             result = host.run(
-                    'test -f %s' % ANDROID_TESTER_FILEFLAG,
+                    'test -f %s' % server_constants.ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
             return False
@@ -142,12 +176,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                          *args, **dargs)
         try:
             self.host_run('true')
-        except error.AutoservRunError as e:
+        except error.AutoservRunError:
             # Some hosts may not have root access, in this case try user adb.
             logging.debug('Switching to user adb.')
             self.user = 'adb'
 
         self._connect_over_tcpip_as_needed()
+
+        # Delay checking if the host running adb command is a Moblab.
+        self._is_host_moblab = None
 
 
     def _connect_over_tcpip_as_needed(self):
@@ -802,8 +839,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def get_os_type(self):
         if self.run_output('getprop ro.product.brand') == 'Brillo':
-            return 'brillo'
-        return 'android'
+            return OS_TYPE_BRILLO
+        return OS_TYPE_ANDROID
 
 
     def _forward(self, reverse, args):
@@ -906,3 +943,190 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self.wait_up():
             raise error.AutoservError(
                     'The device failed to reboot into adb mode.')
+
+
+    @classmethod
+    def _get_build_info_from_build_url(cls, build_url):
+        """Get the Android build information from the build url.
+
+        @param build_url: The url to use for downloading Android artifacts.
+                pattern: http://$devserver:###/static/branch/target/build_id
+
+        @return: A dictionary of build information, including keys: board,
+                 branch, target, build_id.
+        """
+        match = re.match(DEVSERVER_URL_REGEX, build_url)
+        return {'board': match.group('BOARD'),
+                'branch': match.group('BRANCH'),
+                'target': ('%s-%s' %
+                           (match.group('BOARD'), match.group('BUILD_TYPE'))),
+                'build_id': match.group('BUILD_ID')}
+
+
+    @property
+    def is_host_moblab(self):
+        """Check if the host running adb command is a Moblab.
+
+        @return: True if the host running adb command is a Moblab, False
+                 otherwise.
+        """
+        if self._is_host_moblab is None:
+            try:
+                self.host_run('cat %s | grep -q moblab' %
+                              cros_constants.LSB_RELEASE)
+                self._is_host_moblab = True
+            except error.AutoservRunError:
+                self._is_host_moblab = False
+        return self._is_host_moblab
+
+
+    @retry.retry(error.AutoservRunError, timeout_min=10)
+    def _download_file(self, build_url, file, dest_dir):
+        """Download the given file from the build url.
+
+        @param build_url: The url to use for downloading Android artifacts.
+                pattern: http://$devserver:###/static/branch/target/build_id
+        @param file: Name of the file to be downloaded, e.g., boot.img.
+        @param dest_dir: Destination folder for the file to be downloaded to.
+        """
+        src_url = os.path.join(build_url, file)
+        dest_file = os.path.join(dest_dir, file)
+        try:
+            self.host_run('wget -q -O "%s" "%s"' % (dest_file, src_url))
+        except:
+            # Delete the destination file if download failed.
+            self.host_run('rm -f "%s"' % dest_file)
+            raise
+
+
+    def stage_image_files(self, build_url):
+        """Download required image files from the given build_url to a local
+        directory in the machine runs fastboot command.
+
+        @param build_url: The url to use for downloading Android artifacts.
+                pattern: http://$devserver:###/static/branch/target/build_id
+
+        @return: Path to the directory contains image files.
+        """
+        if not build_url:
+            raise AndroidInstallError('Need build_url to download image files.')
+
+        try:
+            build_info = self._get_build_info_from_build_url(build_url)
+        except (IndexError, ValueError) as e:
+            raise AndroidInstallError(
+                    'Cannot check contents of devserver, build url %s:\nError: '
+                    '%s' % (build_url, e))
+
+        zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
+        if self.is_host_moblab:
+            tmp_dir = moblab_host.MOBLAB_TMP_DIR
+            self.host_run('mkdir -p %s' % tmp_dir)
+        else:
+            tmp_dir = DEFAULT_TMP_FOLDER
+
+        image_dir = self.host_run('mktemp -p %s -d' % tmp_dir).stdout.strip()
+        image_files = [zipped_image_file] + ANDROID_STANDALONE_IMAGES
+
+        try:
+            for image_file in image_files:
+                self._download_file(build_url, image_file, image_dir)
+
+            self.host_run('unzip "%s/%s" -x -d "%s"' %
+                          (image_dir, zipped_image_file, image_dir))
+
+            return image_dir
+        except:
+            self.host_run('rm -rf %s' % image_dir)
+            raise
+
+
+    def install_android(self, build_url, build_local_path=None, wipe=False,
+                        flash_all=False):
+        """Install the DUT.
+
+        Following are the steps used here to provision an android device:
+        1. If build_local_path is not set, download the image zip file, e.g.,
+           shamu-img-2284311.zip, unzip it.
+        2. Run fastboot to install following artifacts:
+           bootloader, radio, boot, system, vendor(only if exists)
+
+        Repair is not supported for Android devices yet.
+
+        @param build_url: The url to use for downloading Android artifacts.
+                pattern: http://$devserver:###/static/$build
+        @param build_local_path: The path to a local folder that contains the
+                image files needed to provision the device. Note that the folder
+                is in the machine running adb command, rather than the drone.
+        @param wipe: If true, userdata will be wiped before flashing.
+        @param flash_all: If True, all img files found in img_path will be
+                flashed. Otherwise, only boot and system are flashed.
+
+        @raises AndroidInstallError if any error occurs.
+        """
+        # Check if adb and fastboot are present.
+        try:
+            self.host_run('which adb')
+            self.host_run('which fastboot')
+        except error.AutoservRunError:
+            raise AndroidInstallError("Missing adb or fastboot.")
+
+        # If the build is not staged in local server yet, clean up the temp
+        # folder used to store image files after the provision is completed.
+        delete_build_folder = bool(not build_local_path)
+
+        try:
+            # Download image files needed for provision to a local directory.
+            if not build_local_path:
+                build_local_path = self.stage_image_files(build_url)
+
+            # Device needs to be in bootloader mode for flashing.
+            self.ensure_bootloader_mode()
+
+            if wipe:
+                self.fastboot_run('-w Wiping')
+
+            # Get all *.img file in the build_local_path.
+            list_file_cmd = 'ls -d %s' % os.path.join(build_local_path, '*.img')
+            image_files = self.host_run(list_file_cmd).stdout.strip().split()
+            images = dict([(os.path.basename(f), f) for f in image_files])
+            for image, image_file in images.items():
+                if image not in ANDROID_IMAGES:
+                    continue
+                logging.info('Flashing %s...', image_file)
+                self.fastboot_run('flash %s %s' % (image[:-4], image_file))
+                if image == ANDROID_BOOTLOADER:
+                    self.fastboot_run('reboot-bootloader')
+                    self.wait_up(command=FASTBOOT_CMD)
+        except Exception as e:
+            logging.error('Install Android build failed with error: %s', e)
+            # Re-raise the exception with type of AndroidInstallError.
+            raise AndroidInstallError, sys.exc_info()[1], sys.exc_info()[2]
+        finally:
+            if delete_build_folder:
+                self.host_run('rm -rf %s' % build_local_path)
+            self.ensure_adb_mode()
+        logging.info('Successfully installed Android build staged at %s.',
+                     build_url)
+
+
+    def machine_install(self, build_url, build_local_path=None, wipe=False,
+                        flash_all=False):
+        """Install the DUT.
+
+        @param build_url: The url to use for downloading Android artifacts.
+                pattern: http://$devserver:###/static/$build
+        @param build_local_path: The path to a local directory that contains the
+                image files needed to provision the device.
+        @param wipe: If true, userdata will be wiped before flashing.
+        @param flash_all: If True, all img files found in img_path will be
+                flashed. Otherwise, only boot and system are flashed.
+        """
+        if self.get_os_type() == OS_TYPE_ANDROID:
+            self.install_android(
+                    build_url=build_url, build_local_path=build_local_path,
+                    wipe=wipe, flash_all=flash_all)
+        else:
+            raise error.InstallError(
+                    'Installation of os type %s is not supported.' %
+                    self.get_os_type())
