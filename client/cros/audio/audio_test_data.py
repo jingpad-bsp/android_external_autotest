@@ -180,3 +180,7 @@ SIMPLE_FREQUENCY_SPEAKER_TEST_FILE = AudioTestData(
                          channel=2,
                          rate=48000),
         frequencies=[440, 440])
+"""
+Media test verification for 256Hz frequency.
+"""
+MEDIA_TEST_FILE = FakeTestData(frequencies=[256, 256])
