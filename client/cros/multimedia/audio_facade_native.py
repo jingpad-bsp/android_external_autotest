@@ -69,6 +69,24 @@ class AudioFacadeNative(object):
         return self._extension_handler.get_audio_info()
 
 
+    def set_chrome_active_volume(self, volume):
+        """Sets the active audio output volume using chrome.audio API.
+
+        @param volume: Volume to set (0~100).
+
+        """
+        self._extension_handler.set_active_volume(volume)
+
+
+    def set_chrome_mute(self, mute):
+        """Mutes the active audio output using chrome.audio API.
+
+        @param mute: True to mute. False otherwise.
+
+        """
+        self._extension_handler.set_mute(mute)
+
+
     def cleanup(self):
         """Clean up the temporary files."""
         for path in glob.glob('/tmp/playback_*'):

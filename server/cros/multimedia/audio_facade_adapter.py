@@ -194,3 +194,21 @@ class AudioFacadeRemoteAdapter(object):
 
         """
         self._audio_proxy.wait_for_unexpected_nodes_changed(timeout_secs)
+
+
+    def set_chrome_active_volume(self, volume):
+        """Sets the active audio output volume using chrome.audio API.
+
+        @param volume: Volume to set (0~100).
+
+        """
+        self._audio_proxy.set_chrome_active_volume(volume)
+
+
+    def set_chrome_mute(self, mute):
+        """Mutes the active audio output using chrome.audio API.
+
+        @param mute: True to mute. False otherwise.
+
+        """
+        self._audio_proxy.set_chrome_mute(mute)
