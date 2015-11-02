@@ -4,6 +4,8 @@
 
 """Handler for audio extension functionality."""
 
+import logging
+
 from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.multimedia import facade_resource
 
@@ -81,3 +83,99 @@ class AudioExtensionHandler(object):
                          "window.__audio_info") != None),
                 expected_value=True)
         return self._extension.EvaluateJavaScript("window.__audio_info")
+
+
+    def _get_active_id(self):
+        """Gets active output and input node id.
+
+        Assume there is only one active output node and one active input node.
+
+        @returns: (output_id, input_id) where output_id and input_id are
+                  strings for active node id.
+
+        """
+        output_nodes, input_nodes = self.get_audio_info()
+
+        return (self._get_active_id_from_nodes(output_nodes),
+                self._get_active_id_from_nodes(input_nodes))
+
+
+    def _get_active_id_from_nodes(self, nodes):
+        """Gets active node id from nodes.
+
+        Assume there is only one active node.
+
+        @param nodes: A list of input/output nodes got from get_audio_info().
+
+        @returns: node['id'] where node['isActive'] is True.
+
+        @raises: AudioExtensionHandlerError if active id is not unique.
+
+        """
+        active_ids = [x['id'] for x in nodes if x['isActive']]
+        if len(active_ids) != 1:
+            logging.error(
+                    'Node info contains multiple active nodes: %s', node_info)
+            raise AudioExtensionHandlerError(
+                    'Active id should be unique')
+
+        return active_ids[0]
+
+
+
+    @facade_resource.retry_chrome_call
+    def set_active_volume(self, volume):
+        """Sets the active audio output volume using chrome.audio API.
+
+        This method also unmutes the node.
+
+        @param volume: Volume to set (0~100).
+
+        """
+        output_id, _ = self._get_active_id()
+        logging.debug('output_id: %s', output_id)
+
+        self._extension.ExecuteJavaScript('window.__set_volume_done = null;')
+
+        self._extension.ExecuteJavaScript(
+                """
+                chrome.audio.setProperties(
+                    '%s',
+                    {isMuted: false, volume: %s},
+                    function() {window.__set_volume_done = true;});
+                """
+                % (output_id, volume))
+
+        utils.wait_for_value(
+                lambda: (self._extension.EvaluateJavaScript(
+                         "window.__set_volume_done") != None),
+                expected_value=True)
+
+
+    @facade_resource.retry_chrome_call
+    def set_mute(self, mute):
+        """Mutes the active audio output using chrome.audio API.
+
+        @param mute: True to mute. False otherwise.
+
+        """
+        output_id, _ = self._get_active_id()
+        logging.debug('output_id: %s', output_id)
+
+        is_muted_string = 'true' if mute else 'false'
+
+        self._extension.ExecuteJavaScript('window.__set_mute_done = null;')
+
+        self._extension.ExecuteJavaScript(
+                """
+                chrome.audio.setProperties(
+                    '%s',
+                    {isMuted: %s},
+                    function() {window.__set_mute_done = true;});
+                """
+                % (output_id, is_muted_string))
+
+        utils.wait_for_value(
+                lambda: (self._extension.EvaluateJavaScript(
+                         "window.__set_mute_done") != None),
+                expected_value=True)
