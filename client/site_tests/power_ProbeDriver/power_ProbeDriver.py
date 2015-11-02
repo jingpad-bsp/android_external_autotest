@@ -43,12 +43,12 @@ class power_ProbeDriver(test.test):
         @param ac_paths: sysfs AC entries
         @param bat_paths: sysfs battery entries
         """
-        if len(ac_paths) != 1:
-            raise error.TestFail('Not exactly one AC found: %d' %
-                                 len(ac_paths))
+        if not ac_paths:
+            raise error.TestFail('No line power devices found in %s' %
+                                 power_supply_path)
 
-        if not self._online(ac_paths[0]):
-            raise error.TestFail('AC is not online: %s' % ac_paths[0])
+        if not any([self._online(ac_path) for ac_path in ac_paths]):
+            raise error.TestFail('Line power is not connected')
 
         # if there are batteries, test fails if one of them is discharging
         # note: any([]) == False, so we don't have to test len(bat_paths) > 0
