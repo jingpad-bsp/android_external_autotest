@@ -392,15 +392,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
-    def clear_supplicant_blacklist(self):
-        """Clear wpa_supplicant's AP blacklist.
-
-        @return stdout and stderr returns from underlying |wpa| command.
-
-        """
-        return wifi_proxy.WifiProxy.clear_supplicant_blacklist()
-
-
     @xmlrpc_server.dbus_safe(None)
     def get_dbus_property_on_device(self, wifi_interface, prop_name):
         """Get a property for the given WiFi device.
@@ -441,24 +432,6 @@ class ShillXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         shill_proxy.ShillProxy.set_dbus_property(device_object,
                                                  prop_name,
                                                  value)
-        return True
-
-
-    def request_roam(self, bssid):
-        """Request that we roam to the specified BSSID.
-
-        Note that this operation assumes that:
-
-        1) We're connected to an SSID for which |bssid| is a member.
-        2) There is a BSS with an appropriate ID in our scan results.
-
-        This method does not check for success of either the command or
-        the roaming operation.
-
-        @param bssid: string BSSID of BSS to roam to.
-
-        """
-        utils.run('su wpa -s /usr/bin/wpa_cli roam %s' % bssid)
         return True
 
 

@@ -29,16 +29,25 @@ class WpaCliProxy(object):
             'GROUP_HANDSHAKE')
     WPA_SUPPLICANT_ASSOCIATED_STATES = (
             'COMPLETED',)
+    ANDROID_CMD_FORMAT = '/system/bin/wpa_cli IFNAME={0[ifname]} {0[cmd]}'
+    BRILLO_CMD_FORMAT = 'su system /system/bin/wpa_cli -i{0[ifname]} -p/data/misc/wifi/sockets {0[cmd]}'
+    CROS_CMD_FORMAT = 'su wpa -s /bin/bash -c "/usr/bin/wpa_cli {0[cmd]}"'
 
 
 
     def __init__(self, host, wifi_if):
         self._host = host
+        self._wifi_if = wifi_if
         self._created_networks = {}
         # TODO(wiley) Hardcoding this IFNAME prefix makes some big assumptions.
         #             we'll need to discover this parameter as it becomes more
         #             generally useful.
-        self._wpa_cli_cmd = 'wpa_cli IFNAME=%s' % wifi_if
+        if host.get_os_type() == 'android':
+            self._wpa_cli_cmd_format = self.ANDROID_CMD_FORMAT
+        elif host.get_os_type() == 'brillo':
+            self._wpa_cli_cmd_format = self.BRILLO_CMD_FORMAT
+        elif host.get_os_type() == 'cros':
+            self._wpa_cli_cmd_format = self.CROS_CMD_FORMAT
 
 
     def _add_network(self, ssid):
@@ -49,16 +58,16 @@ class WpaCliProxy(object):
         @return int network id of added network.
 
         """
-        add_result = self._run_wpa_cli_cmd('add_network', check_result=False)
+        add_result = self.run_wpa_cli_cmd('add_network', check_result=False)
         network_id = int(add_result.stdout.splitlines()[-1])
-        self._run_wpa_cli_cmd('set_network %d ssid \\"%s\\"' %
-                              (network_id, ssid))
+        self.run_wpa_cli_cmd('set_network %d ssid \\"%s\\"' %
+                             (network_id, ssid))
         self._created_networks[ssid] = network_id
         logging.debug('Added network %s=%d', ssid, network_id)
         return network_id
 
 
-    def _run_wpa_cli_cmd(self, command, check_result=True):
+    def run_wpa_cli_cmd(self, command, check_result=True):
         """
         Run a wpa_cli command and optionally check the result.
 
@@ -69,7 +78,9 @@ class WpaCliProxy(object):
         @return result object returned by host.run.
 
         """
-        result = self._host.run('%s %s' % (self._wpa_cli_cmd, command))
+        cmd = self._wpa_cli_cmd_format.format(
+                {'ifname' : self._wifi_if, 'cmd' : command})
+        result = self._host.run(cmd)
         if check_result and not result.stdout.strip().endswith('OK'):
             raise error.TestFail('wpa_cli command failed: %s' % command)
 
@@ -93,7 +104,7 @@ class WpaCliProxy(object):
         @return dict of key/value pairs parsed from output using = as divider.
 
         """
-        status_result = self._run_wpa_cli_cmd('status', check_result=False)
+        status_result = self.run_wpa_cli_cmd('status', check_result=False)
         return dict([line.strip().split('=', 1)
                      for line in status_result.stdout.splitlines()
                      if line.find('=') > 0])
@@ -166,7 +177,7 @@ class WpaCliProxy(object):
         # 0    SimpleConnect_jstja_ch1 any     [DISABLED]^M
         # 1    SimpleConnect_gjji2_ch6 any     [DISABLED]^M
         # 2    SimpleConnect_xe9d1_ch11        any     [DISABLED]^M
-        list_networks_result = self._run_wpa_cli_cmd(
+        list_networks_result = self.run_wpa_cli_cmd(
                 'list_networks', check_result=False)
         start_parsing = False
         for line in list_networks_result.stdout.splitlines():
@@ -176,7 +187,7 @@ class WpaCliProxy(object):
                 continue
 
             network_id = int(line.split()[0])
-            self._run_wpa_cli_cmd('remove_network %d' % network_id)
+            self.run_wpa_cli_cmd('remove_network %d' % network_id)
         self._created_networks = {}
 
 
@@ -247,14 +258,14 @@ class WpaCliProxy(object):
         assoc_result = xmlrpc_datatypes.AssociationResult()
         network_id = self._add_network(assoc_params.ssid)
         if assoc_params.is_hidden:
-            self._run_wpa_cli_cmd('set_network %d %s %s' %
-                                  (network_id, 'scan_ssid', '1'))
+            self.run_wpa_cli_cmd('set_network %d %s %s' %
+                                 (network_id, 'scan_ssid', '1'))
 
         sec_config = assoc_params.security_config
         for field, value in sec_config.get_wpa_cli_properties().iteritems():
-            self._run_wpa_cli_cmd('set_network %d %s %s' %
-                                  (network_id, field, value))
-        self._run_wpa_cli_cmd('select_network %d' % network_id)
+            self.run_wpa_cli_cmd('set_network %d %s %s' %
+                                 (network_id, field, value))
+        self.run_wpa_cli_cmd('select_network %d' % network_id)
 
         # Wait for an appropriate BSS to appear in scan results.
         scan_results_pattern = '\t'.join(['([0-9a-f:]{17})', # BSSID
@@ -272,8 +283,8 @@ class WpaCliProxy(object):
                 # up, and we'll never see the BSS we care about in some cases.
                 break
 
-            scan_result = self._run_wpa_cli_cmd('scan_results',
-                                                check_result=False)
+            scan_result = self.run_wpa_cli_cmd('scan_results',
+                                               check_result=False)
             found_stations = []
             for line in scan_result.stdout.strip().splitlines():
                 match = re.match(scan_results_pattern, line)
@@ -291,7 +302,7 @@ class WpaCliProxy(object):
             if time.time() - last_scan_time > self.SCANNING_INTERVAL_SECONDS:
                 # Sometimes this might fail with a FAIL-BUSY if the previous
                 # scan hasn't finished.
-                scan_result = self._run_wpa_cli_cmd('scan', check_result=False)
+                scan_result = self.run_wpa_cli_cmd('scan', check_result=False)
                 if scan_result.stdout.strip().endswith('OK'):
                     last_scan_time = time.time()
             time.sleep(self.POLLING_INTERVAL_SECONDS)
@@ -330,8 +341,8 @@ class WpaCliProxy(object):
         logging.debug('disconnect()')
         if ssid not in self._created_networks:
             return False
-        self._run_wpa_cli_cmd('disable_network %d' %
-                              self._created_networks[ssid])
+        self.run_wpa_cli_cmd('disable_network %d' %
+                             self._created_networks[ssid])
         return True
 
 

@@ -321,6 +321,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
             self._wifi_if = devs[0].if_name
             self._shill_proxy = wpa_cli_proxy.WpaCliProxy(
                     self.host, self._wifi_if)
+            self._wpa_cli_proxy = self._shill_proxy
         else:
             self._shill_proxy = get_xmlrpc_proxy(self.host)
             interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
@@ -330,6 +331,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 raise error.TestError('No interfaces managed by shill on %s' %
                                       self.host.hostname)
             self._wifi_if = interfaces[0]
+            self._wpa_cli_proxy = wpa_cli_proxy.WpaCliProxy(
+                    self.host, self._wifi_if)
             self._raise_logging_level()
         self._interface = interface.Interface(self._wifi_if, host=self.host)
         logging.debug('WiFi interface is: %r',
@@ -626,14 +629,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
     def clear_supplicant_blacklist(self):
         """Clear's the AP blacklist on the DUT.
 
-        @return stdout and stderror returns passed from
-                self._shill_proxy.clear_supplicant_blacklist()
+        @return stdout and stderror returns passed from wpa_cli command.
 
         """
-        stdoutdata, stderrdata = self._shill_proxy.clear_supplicant_blacklist()
-        logging.info('wpa_cli blacklist clear: out:%r err:%r', stdoutdata,
-                     stderrdata)
-        return stdoutdata, stderrdata
+        result = self._wpa_cli_proxy.run_wpa_cli_cmd('blacklist clear',
+                                                     check_result=False);
+        logging.info('wpa_cli blacklist clear: out:%r err:%r', result.stdout,
+                     result.stderr)
+        return result.stdout, result.stderr
 
 
     def get_active_wifi_SSIDs(self):
@@ -852,8 +855,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @param bssid: string MAC address of bss to roam to.
 
         """
-        self._assert_method_supported('request_roam')
-        self._shill_proxy.request_roam(bssid)
+        self._wpa_cli_proxy.run_wpa_cli_cmd('roam %s' % bssid,
+                                            check_result=False);
+        return True
+
 
     def request_roam_dbus(self, bssid, interface):
         """Request that we roam to the specified BSSID through dbus.
@@ -930,9 +935,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         with self.iw_runner.get_event_logger() as logger:
             logger.start()
             # Issue reattach command to wpa_supplicant
-            result = self.host.run('su wpa -s /usr/bin/wpa_cli reattach')
-            if not result.stdout.strip().endswith('OK'):
-                raise error.TestFail('wpa_cli reassociate command failed')
+            self._wpa_cli_proxy.run_wpa_cli_cmd('reattach');
 
             # Wait for the timeout seconds for association to complete
             time.sleep(timeout_seconds)
