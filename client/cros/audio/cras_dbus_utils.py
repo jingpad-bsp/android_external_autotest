@@ -6,6 +6,7 @@
 
 import logging
 import multiprocessing
+import pprint
 
 from autotest_lib.client.cros.audio import cras_utils
 
@@ -176,23 +177,32 @@ class CrasDBusCounter(CrasDBusMonitor):
     _CHECK_QUIT_PERIOD_SECS = 0.1
     STOP_CMD = 'stop'
 
-    def __init__(self, signal_name, child_conn):
+    def __init__(self, signal_name, child_conn, ignore_redundant=True):
         """Initializes a CrasDBusCounter.
 
         @param signal_name: The name of the signal of interest.
-        @child_conn: A multiprocessing.Pipe which use to receive stop signal
-                     and to send the counting result.
+        @param child_conn: A multiprocessing.Pipe which is used to receive stop
+                     signal and to send the counting result.
+        @param ignore_redundant: Ignores signal if GetNodes result stays the
+                     same. This happens when there is change in unplugged nodes,
+                     which does not affect Cras client.
 
         """
         super(CrasDBusCounter, self).__init__()
         self._signal_name = signal_name
         self._count = None
         self._child_conn = child_conn
+        self._ignore_redundant = ignore_redundant
+        self._nodes = None
 
 
     def run(self):
         """Runs the gobject main loop and listens for the signal."""
         self._count = 0
+
+        self._nodes = cras_utils.get_cras_nodes()
+        logging.debug('Before starting the counter')
+        logging.debug('nodes = %s', pprint.pformat(self._nodes))
 
         signal_match = self._iface.connect_to_signal(
                 self._signal_name, self._signal_handler)
@@ -216,6 +226,14 @@ class CrasDBusCounter(CrasDBusMonitor):
         if self._loop.is_running():
             logging.debug('Got %s signal when loop is running.',
                           self._signal_name)
+
+            logging.debug('Getting nodes.')
+            nodes = cras_utils.get_cras_nodes()
+            logging.debug('nodes = %s', pprint.pformat(nodes))
+            if self._ignore_redundant and self._nodes == nodes:
+                logging.debug('Nodes did not change. Ignore redundant signal')
+                return
+
             self._count = self._count + 1
             logging.debug('count = %d', self._count)
         else:
