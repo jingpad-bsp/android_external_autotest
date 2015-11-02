@@ -179,3 +179,18 @@ class AudioExtensionHandler(object):
                 lambda: (self._extension.EvaluateJavaScript(
                          "window.__set_mute_done") != None),
                 expected_value=True)
+
+
+    @facade_resource.retry_chrome_call
+    def get_active_volume_mute(self):
+        """Gets the volume state of active audio output using chrome.audio API.
+
+        @param returns: A tuple (volume, mute), where volume is 0~100, and mute
+                        is True if node is muted, False otherwise.
+
+        """
+        output_nodes, _ = self.get_audio_info()
+        active_id = self._get_active_id_from_nodes(output_nodes)
+        for node in output_nodes:
+            if node['id'] == active_id:
+                return (node['volume'], node['isMuted'])
