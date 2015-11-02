@@ -121,12 +121,13 @@ class video_GlitchDetection(test.test):
                 golden_checksum_count = len(golden_checksums)
                 test_checksum_count = len(test_checksums)
 
-                if golden_checksum_count - test_checksum_count:
+                eps = constants.MAX_DIFF_TOTAL_FCOUNT
+                if golden_checksum_count - test_checksum_count > eps:
                     msg = ('Expecting about %d checksums, received %d. '
                            'Allowed delta is %d') % (
                             golden_checksum_count,
                             test_checksum_count,
-                            constants.MAX_DIFF_TOTAL_FCOUNT)
+                            eps)
                     raise error.TestFail(msg)
 
                 # Some frames might be missing during either golden frame
