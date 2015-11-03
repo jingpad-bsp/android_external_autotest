@@ -21,4 +21,4 @@ DOC = """
 Search the touch update log entries for errors or failures.
 """
 
-job.run_test('touch_UpdateErrors')
+job.run_test('touch_UpdateErrors', input_type='touchscreen')

@@ -17,35 +17,63 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
     _INVALID_BOARDS = ['x86-alex', 'x86-alex_he', 'x86-zgb', 'x86-zgb_he',
                        'x86-mario', 'stout']
 
-    # Special exception for crosbug.com/p/31012, to be removed once
-    # crbug.com/516886 is resolved.
-    def _is_actual_error(self, err):
-        """Returns True/False depending on whether this error is valid.
+    # Devices which have errors in older builds but not newer ones.
+    _IGNORE_OLDER_LOGS = ['expresso', 'enguarde', 'cyan']
 
-        @param err: the error message we are about to raise
+    def _find_logs_start_line(self):
+        """Find where in /var/log/messages this build's logs start.
+
+        Prevent bugs such as crosbug.com/p/31012, where unfixable errors from
+        FSI builds remain in the logs.
+
+        For devices where this applies, split the logs by Linux version.  Since
+        this line can repeat, find the last chunk of logs where the version is
+        all the same - all for the build under test.
+
+        @returns: string of the line number to start looking at logs
 
         """
-        exceptions = {'expresso': 'Tue Jul 15 22:26:57 PDT 2014',
-                      'enguarde': 'Wed Jun 18 12:24:44 PDT 2014'}
-        valid_error = 'No valid firmware for ELAN0000:00 found'
-        if self.device in exceptions and err.find(valid_error) >= 0:
-            matches = utils.run(
-                    'grep "%s" /var/log/messages' % exceptions[self.device],
-                    ignore_status=True).stdout
-            if matches:
-                logging.info('Ignoring failure from crosbug.com/p/31012!')
-                return False
-        return True
+        if self._platform not in self._IGNORE_OLDER_LOGS:
+            return '0'
 
-    def _check_updates(self):
+        log_cmd = 'grep -ni "Linux version " /var/log/messages'
+
+        version_entries = utils.run(log_cmd).stdout.strip().split('\n')
+
+        # Separate the line number and the version date (i.e. remove timestamp).
+        lines, dates = [], []
+        for entry in version_entries:
+            lines.append(entry[:entry.find(':')])
+            dates.append(entry[entry.find('Linux version '):])
+        latest = dates[-1]
+        start_line = lines[-1]
+
+        # Find where logs from this build start by checking backwards for the
+        # first change in build.  Some of these dates may be duplicated.
+        for i in xrange(len(lines)-1, -1, -1):
+            if dates[i] != latest:
+                break
+            start_line = lines[i]
+
+        return start_line
+
+    def _check_updates(self, input_type):
         """Fail the test if device has problems with touch firmware update.
+
+        @param input_type: string of input type, e.g. 'touchpad'
 
         @raises: TestFail if no update attempt occurs or if there is an error.
 
         """
-        log_cmd = 'grep -i touch /var/log/messages'
+        hw_id = self.player.devices[input_type].hw_id
+        if not hw_id:
+            raise error.TestError('%s has no valid hw_id!' % input_type)
 
-        pass_terms = ['chromeos-touch-firmware-update']
+        start_line = self._find_logs_start_line()
+        log_cmd = 'tail -n +%s /var/log/messages | grep -i touch' % start_line
+
+        pass_terms = ['touch-firmware-update',
+                      '"Product ID[^a-z0-9]*%s"' % hw_id]
         fail_terms = ['error:']
 
         # Check for key terms in touch logs.
@@ -55,23 +83,19 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             if term in fail_terms and len(log_entries) > 0:
                 error_msg = log_entries.split('\n')[0]
                 error_msg = error_msg[error_msg.find(term)+len(term):].strip()
-                if self._is_actual_error(error_msg):
-                    raise error.TestFail(error_msg)
+                raise error.TestFail(error_msg)
             if term in pass_terms and len(log_entries) == 0:
+                logging.info('Did not find "%s"!', term)
                 raise error.TestFail('Touch firmware did not attempt update.')
 
-    def run_once(self):
+    def run_once(self, input_type='touchpad'):
         """Entry point of this test."""
-
-        # Skip run on devices which do not have touch inputs.
-        if not self._has_touchpad and not self._has_touchscreen:
-            logging.info('This device does not have a touch input source.')
-            return
+        if not self._has(input_type):
+            raise error.TestError('No %s found on this device!' % input_type)
 
         # Skip run on invalid touch inputs.
-        self.device = utils.get_board()
-        if self.device in self._INVALID_BOARDS:
+        if self._platform in self._INVALID_BOARDS:
             logging.info('This touchpad is not supported for this test.')
             return
 
-        self._check_updates()
+        self._check_updates(input_type)

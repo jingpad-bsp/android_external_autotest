@@ -15,14 +15,14 @@ from autotest_lib.client.common_lib import error
 class Device(object):
     """Information about a specific input device."""
     def __init__(self, input_type):
-        self.input_type = input_type # e.g. 'touchpad'
-        self.emulated = False # Whether device is real or not
-        self.emulation_process = None # Process of running emulation
-        self.name = 'unknown' # e.g. 'Atmel maXTouch Touchpad'
-        self.fw_id = None # e.g. '6.0'
-        self.hw_id = None # e.g. '90.0'
-        self.node = None # e.g. '/dev/input/event4'
-        self.device_dir = None # e.g. '/sys/class/input/event4/device/device'
+        self.input_type = input_type  # e.g. 'touchpad'
+        self.emulated = False  # Whether device is real or not
+        self.emulation_process = None  # Process of running emulation
+        self.name = 'unknown'  # e.g. 'Atmel maXTouch Touchpad'
+        self.fw_id = None  # e.g. '6.0'
+        self.hw_id = None  # e.g. '90.0'
+        self.node = None  # e.g. '/dev/input/event4'
+        self.device_dir = None  # e.g. '/sys/class/input/event4/device/device'
 
     def __str__(self):
         s = '%s:' % self.input_type
@@ -47,8 +47,8 @@ class InputPlayback(object):
 
     """
 
-    _DEFAULT_PROPERTY_FILES = {'mouse' : 'mouse.prop',
-                               'keyboard' : 'keyboard.prop'}
+    _DEFAULT_PROPERTY_FILES = {'mouse': 'mouse.prop',
+                               'keyboard': 'keyboard.prop'}
     _PLAYBACK_COMMAND = 'evemu-play --insert-slot0 %s < %s'
 
     # Define a keyboard as anything with any keys #2 to #248 inclusive,
@@ -156,10 +156,9 @@ class InputPlayback(object):
                 exception=error.TestError('Error emulating %s!' % input_type))
 
         with open(property_file) as fh:
-            name_line = fh.readline() #Format "N: NAMEOFDEVICE"
+            name_line = fh.readline()  # Format "N: NAMEOFDEVICE"
             new_device.name = name_line[3:-1]
 
-        self.devices[input_type] = new_device
         self._emulated_device = new_device
 
 
@@ -226,7 +225,63 @@ class InputPlayback(object):
 
 
     def _get_contents_of_file(self, filepath):
+        """Return the contents of the given file.
+
+        @param filepath: string of path to file
+
+        @returns: contents of file.  Assumes file exists.
+
+        """
         return utils.run('cat %s' % filepath).stdout.strip()
+
+
+    def _find_device_ids(self, input_type):
+        """Find the fw_id and hw_id for the given input_type.
+
+        fw_id and hw_id mostly just make sense for touchpads and touchscreens.
+        This function modifies the devices[] entry for the given input_type.
+
+        @param input_type: string of input type.
+
+        """
+        device_dir = self.devices[input_type].device_dir
+        if not device_dir:
+            return
+
+        fw_id, hw_id = None, None
+
+        # Note: 2nd gen Synaptics touchpads do not report fw_id.
+        fw_filenames = ['fw_version', 'firmware_version', 'firmware_id']
+        for fw_filename in fw_filenames:
+            fw_path = os.path.join(device_dir, fw_filename)
+            if os.path.exists(fw_path):
+                fw_id = self._get_contents_of_file(fw_path)
+                break
+
+        hw_filenames = ['hw_version', 'product_id', 'board_id']
+        for hw_filename in hw_filenames:
+            hw_path = os.path.join(device_dir, hw_filename)
+            if os.path.exists(hw_path):
+                hw_id = self._get_contents_of_file(hw_path)
+                break
+
+        # hw_ids for Weida and 2nd gen Synaptics are different.
+        if not hw_id:
+            id_folder = os.path.abspath(os.path.join(device_dir, '..', 'id'))
+            product_path = os.path.join(id_folder, 'product')
+            vendor_path = os.path.join(id_folder, 'vendor')
+
+            if os.path.isfile(product_path):
+                product = self._get_contents_of_file(product_path)
+                if input_type == 'touchscreen':
+                    if os.path.isfile(vendor_path):
+                        vendor = self._get_contents_of_file(vendor_path)
+                        hw_id = vendor + product
+                else:
+                    hw_id = product
+
+        self.devices[input_type].fw_id = fw_id
+        self.devices[input_type].hw_id = hw_id
 
 
     def find_connected_inputs(self):
@@ -240,15 +295,15 @@ class InputPlayback(object):
         Record the found devices in self.devices.
 
         """
-        self.devices = {} #Discard any previously seen nodes.
+        self.devices = {}  # Discard any previously seen nodes.
 
         input_events = self._get_input_events()
         for event in input_events:
             properties = self._find_device_properties(event)
             input_type = self._determine_input_type(properties)
             if input_type:
-                new_device = Device(input_type)
-                new_device.node = event
+                self.devices[input_type] = Device(input_type)
+                self.devices[input_type].node = event
 
                 class_folder = event.replace('dev', 'sys/class')
                 name_file = os.path.join(class_folder, 'device', 'name')
@@ -262,40 +317,22 @@ class InputPlayback(object):
                     if self._emulated_device.name != name:
                         continue
                     else:
-                        new_device.emulated = True
+                        self.devices[input_type].emulated = True
                         process = self._emulated_device.emulation_process
-                        new_device.emulation_process = process
-                new_device.name = name
+                        self.devices[input_type].emulation_process = process
+                self.devices[input_type].name = name
 
                 # Find the devices folder containing power info
                 # e.g. /sys/class/event4/device/device
                 # Search that folder for hwid and fwid
                 device_dir = os.path.join(class_folder, 'device', 'device')
                 if os.path.exists(device_dir):
-                    new_device.device_dir = device_dir
+                    self.devices[input_type].device_dir = device_dir
+                    self._find_device_ids(input_type)
 
-                    device_dir_files = utils.run('ls %s' % device_dir).stdout
-                    device_dir_files.strip().split()
-
-                    fw_filenames = ['fw_version', 'firmware_version',
-                                    'firmware_id']
-                    for fw_filename in fw_filenames:
-                        if fw_filename in device_dir_files:
-                            new_device.fw_id = self._get_contents_of_file(
-                                    os.path.join(device_dir, fw_filename))
-                            break
-
-                    hw_filenames = ['hw_version', 'product_id', 'board_id']
-                    for hw_filename in hw_filenames:
-                        if hw_filename in device_dir_files:
-                            new_device.hw_id = self._get_contents_of_file(
-                                    os.path.join(device_dir, hw_filename))
-                            break
-
-                self.devices[input_type] = new_device
-                if new_device.emulated:
-                    self._emulated_device = new_device
-                logging.debug(new_device)
+                if self.devices[input_type].emulated:
+                    self._emulated_device = self.devices[input_type]
+                logging.debug(self.devices[input_type])
 
 
     def playback(self, filepath, input_type='touchpad'):
