@@ -25,7 +25,11 @@ class AudioExtensionHandler(object):
 
 
     def _check_api_available(self):
-        """Checks chrome.audio is available."""
+        """Checks chrome.audio is available.
+
+        @raises: AudioExtensionHandlerError if extension is not available.
+
+        """
         success = utils.wait_for_value(
                 lambda: (self._extension.EvaluateJavaScript(
                          "chrome.audio") != None),
