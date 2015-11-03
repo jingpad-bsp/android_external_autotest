@@ -199,7 +199,7 @@ def generate_payload(moblab, devserver_port, tmp_stage_dir, payload_spec):
         raise PayloadGenerationError('Source image file %s does not exist.' %
                                      src_image)
 
-    tmp_images_dir = moblab.run('mktemp -d').stdout.strip()
+    tmp_images_dir = moblab.make_tmp_dir()
     try:
         # Copy the images to a temporary location.
         remote_dst_image = os.path.join(tmp_images_dir,
@@ -272,9 +272,9 @@ def main(args):
             'the test (unless otherwise requested).',
             setup_parser=setup_parser, validate_args=validate_args)
 
-    moblab, devserver_port = brillo_common.get_moblab_and_devserver_port(args.moblab_host)
-    tmp_dir = moblab.run('mktemp -d --tmpdir=%s' %
-                         moblab_host.MOBLAB_IMAGE_STORAGE).stdout.strip()
+    moblab, devserver_port = brillo_common.get_moblab_and_devserver_port(
+            args.moblab_host)
+    tmp_dir = moblab.make_tmp_dir(base=moblab_host.MOBLAB_IMAGE_STORAGE)
     moblab.run('chown -R moblab:moblab %s' % tmp_dir)
     test_args = {'name': _TEST_JOB_NAME}
     try:
