@@ -1,7 +1,6 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """This is a client side WebGL aquarium test."""
 
 import logging
@@ -15,7 +14,6 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
-
 
 # Minimum battery charge percentage to run the test
 BATTERY_INITIAL_CHARGED_MIN = 10
@@ -32,7 +30,20 @@ STABILIZATION_DURATION = 10
 class graphics_WebGLAquarium(test.test):
     """WebGL aquarium graphics test."""
     version = 1
+
+    _backlight = None
+    _power_status = None
+    _service_stopper = None
+    _test_power = False
+    active_tab = None
+    flip_stats = {}
     GSC = None
+    kernel_sampler = None
+    perf_keyval = {}
+    sampler_lock = None
+    test_duration_secs = 30
+    test_setting_num_fishes = 50
+    test_settings = {50: ('setSetting2', 2), 1000: ('setSetting6', 6),}
 
     def setup(self):
         tarball_path = os.path.join(self.bindir,
@@ -40,18 +51,9 @@ class graphics_WebGLAquarium(test.test):
         utils.extract_tarball_to_dir(tarball_path, self.srcdir)
 
     def initialize(self):
-        self._test_power = False
-        self._backlight = None
-        self._service_stopper = None
         self.GSC = graphics_utils.GraphicsStateChecker()
-        self.test_settings = {
-                50: ('setSetting2', 2),
-                1000: ('setSetting6', 6),
-        }
-        self.perf_keyval = {}
-        self.flip_stats = {}
-        self.active_tab = None
         self.sampler_lock = threading.Lock()
+        # TODO: Create samplers for other platforms (e.g. x86).
         if utils.get_board().lower() in ['daisy', 'daisy_spring']:
             # Enable ExynosSampler on Exynos platforms.  The sampler looks for
             # exynos-drm page flip states: 'wait_kds', 'rendered', 'prepared',
@@ -61,10 +63,7 @@ class graphics_WebGLAquarium(test.test):
             self.kernel_sampler = sampler.ExynosSampler(period=5, duration=3)
             self.kernel_sampler.sampler_callback = self.exynos_sampler_callback
             self.kernel_sampler.output_flip_stats = (
-                    self.exynos_output_flip_stats)
-        else:
-            # TODO: Create samplers for other platforms (e.g. x86).
-            self.kernel_sampler = None
+                self.exynos_output_flip_stats)
 
     def cleanup(self):
         if self._backlight:
@@ -75,7 +74,8 @@ class graphics_WebGLAquarium(test.test):
             keyvals = self.GSC.get_memory_keyvals()
             if not self._test_power:
                 for key, val in keyvals.iteritems():
-                    self.output_perf_value(description=key, value=val,
+                    self.output_perf_value(description=key,
+                                           value=val,
                                            units='bytes',
                                            higher_is_better=False)
             self.GSC.finalize()
@@ -89,9 +89,6 @@ class graphics_WebGLAquarium(test.test):
         @param num_fishes: The number of fishes to run the test with.
         @param perf_log: Report perf data only if it's set to True.
         """
-        if not utils.wait_for_idle_cpu(60.0, 0.1):
-            raise error.TestFail('Could not get idle CPU.')
-
         # Create tab and load page. Set the number of fishes when page is fully
         # loaded.
         tab = browser.tabs.New()
@@ -102,7 +99,8 @@ class graphics_WebGLAquarium(test.test):
 
         # Set the number of fishes when document finishes loading.  Also reset
         # our own FPS counter and start recording FPS and rendering time.
-        utils.wait_for_value(lambda: tab.EvaluateJavaScript(
+        utils.wait_for_value(
+            lambda: tab.EvaluateJavaScript(
                 'if (document.readyState === "complete") {'
                 '  setSetting(document.getElementById("%s"), %d);'
                 '  g_crosFpsCounter.reset();'
@@ -110,35 +108,36 @@ class graphics_WebGLAquarium(test.test):
                 '} else {'
                 '  false;'
                 '}' % self.test_settings[num_fishes]),
-                expected_value=True, timeout_sec=30)
+            expected_value=True,
+            timeout_sec=30)
 
         if self.kernel_sampler:
             self.kernel_sampler.start_sampling_thread()
         time.sleep(self.test_duration_secs)
         if self.kernel_sampler:
             self.kernel_sampler.stop_sampling_thread()
-            self.kernel_sampler.output_flip_stats(
-                    'flip_stats_%d' % num_fishes)
+            self.kernel_sampler.output_flip_stats('flip_stats_%d' % num_fishes)
             self.flip_stats = {}
 
         if perf_log:
             # Get average FPS and rendering time, then close the tab.
             avg_fps = tab.EvaluateJavaScript('g_crosFpsCounter.getAvgFps();')
             avg_render_time = tab.EvaluateJavaScript(
-                    'g_crosFpsCounter.getAvgRenderTime();')
+                'g_crosFpsCounter.getAvgRenderTime();')
             self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
             self.perf_keyval['avg_render_time_%04d_fishes' % num_fishes] = (
-                    avg_render_time)
-            self.output_perf_value(description='avg_fps_%04d_fishes' %
-                                   num_fishes, value=avg_fps, units='fps',
-                                   higher_is_better=True)
+                avg_render_time)
+            self.output_perf_value(
+                description='avg_fps_%04d_fishes' % num_fishes,
+                value=avg_fps,
+                units='fps',
+                higher_is_better=True)
             logging.info('%d fish(es): Average FPS = %f, '
-                         'average render time = %f',
-                         num_fishes, avg_fps, avg_render_time)
+                         'average render time = %f', num_fishes, avg_fps,
+                         avg_render_time)
 
     def run_power_test(self, browser, test_url):
-        """
-        Runs the webgl power consumption test and reports the perf results.
+        """Runs the webgl power consumption test and reports the perf results.
 
         @param browser: The Browser object to run the test with.
         @param test_url: The URL to the aquarium test site.
@@ -148,7 +147,7 @@ class graphics_WebGLAquarium(test.test):
         self._backlight.set_default()
 
         self._service_stopper = service_stopper.ServiceStopper(
-                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._service_stopper.stop_services()
 
         self._power_status = power_status.get_status()
@@ -156,8 +155,9 @@ class graphics_WebGLAquarium(test.test):
         # charged.
         self._power_status.assert_battery_state(BATTERY_INITIAL_CHARGED_MIN)
 
-        measurements = [power_status.SystemPower(
-                self._power_status.battery_path)]
+        measurements = [
+            power_status.SystemPower(self._power_status.battery_path)
+        ]
 
         def get_power():
             power_logger = power_status.PowerLogger(measurements)
@@ -176,9 +176,9 @@ class graphics_WebGLAquarium(test.test):
         # avg_fps and avg_render_time in this test.
         self.perf_keyval[POWER_DESCRIPTION] = energy_rate
         self.output_perf_value(description=POWER_DESCRIPTION,
-                               value=energy_rate, units='W',
+                               value=energy_rate,
+                               units='W',
                                higher_is_better=False)
-
 
     def exynos_sampler_callback(self, sampler_obj):
         """Sampler callback function for ExynosSampler.
@@ -197,13 +197,13 @@ class graphics_WebGLAquarium(test.test):
                 results[value.fb] = {}
                 for state, stats in value.states.iteritems():
                     results[value.fb][state] = (stats.avg, stats.stdev)
-                info_str.append('%s: %s %s' % (
-                        value.fb, results[value.fb]['wait_kds'][0],
-                        results[value.fb]['flipped'][0]))
+                info_str.append('%s: %s %s' %
+                                (value.fb, results[value.fb]['wait_kds'][0],
+                                 results[value.fb]['flipped'][0]))
             results['avg_fps'] = self.active_tab.EvaluateJavaScript(
-                    'g_crosFpsCounter.getAvgFps();')
+                'g_crosFpsCounter.getAvgFps();')
             results['avg_render_time'] = self.active_tab.EvaluateJavaScript(
-                    'g_crosFpsCounter.getAvgRenderTime();')
+                'g_crosFpsCounter.getAvgRenderTime();')
             self.active_tab.ExecuteJavaScript('g_crosFpsCounter.reset();')
             info_str.append('avg_fps: %s, avg_render_time: %s' %
                             (results['avg_fps'], results['avg_render_time']))
@@ -221,10 +221,10 @@ class graphics_WebGLAquarium(test.test):
         with open(file_name, 'w') as f:
             for t in sorted(self.flip_stats.keys()):
                 if ('avg_fps' in self.flip_stats[t] and
-                    'avg_render_time' in self.flip_stats[t]):
-                    f.write('%s %s %s\n' % (
-                            t, self.flip_stats[t]['avg_fps'],
-                            self.flip_stats[t]['avg_render_time']))
+                        'avg_render_time' in self.flip_stats[t]):
+                    f.write('%s %s %s\n' %
+                            (t, self.flip_stats[t]['avg_fps'],
+                             self.flip_stats[t]['avg_render_time']))
                 for fb, stats in self.flip_stats[t].iteritems():
                     if not isinstance(fb, int):
                         continue
@@ -237,9 +237,10 @@ class graphics_WebGLAquarium(test.test):
                                                stats['prepared'][1],
                                                stats['wait_kds'][1],
                                                stats['flipped'][1]))
-
-    def run_once(self, test_duration_secs=30,
-                 test_setting_num_fishes=(50, 1000), power_test=False):
+    def run_once(self,
+                 test_duration_secs=30,
+                 test_setting_num_fishes=(50, 1000),
+                 power_test=False):
         """Find a brower with telemetry, and run the test.
 
         @param test_duration_secs: The duration in seconds to run each scenario
@@ -252,8 +253,8 @@ class graphics_WebGLAquarium(test.test):
 
         with chrome.Chrome(logged_in=False) as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
-            test_url = cr.browser.platform.http_server.UrlOf(
-                os.path.join(self.srcdir, 'aquarium.html'))
+            test_url = cr.browser.platform.http_server.UrlOf(os.path.join(
+                self.srcdir, 'aquarium.html'))
             if not utils.wait_for_cool_machine():
                 raise error.TestFail('Could not get cold machine.')
             if power_test:
