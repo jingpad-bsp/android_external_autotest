@@ -21,7 +21,6 @@ except ImportError:
     subprocess.check_call([build_externals_path, 'chromiterepo'])
     # Restart the script so python now finds the autotest site-packages.
     sys.exit(os.execv(__file__, sys.argv))
-from autotest_lib.server import utils
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.site_utils import brillo_common
 
@@ -36,7 +35,6 @@ _STAGED_PAYLOAD_FILENAME = 'update.gz'
 _SPEC_GEN_LABEL = 'gen'
 _TEST_JOB_NAME = 'brillo_update_test'
 _TEST_NAME = 'autoupdate_EndToEndTest'
-_TEST_LAUNCH_SCRIPT = 'brillo_test_launcher.py'
 _DEFAULT_DEVSERVER_PORT = '8080'
 
 # Snippet of code that runs on the Moblab and returns the type of a payload
@@ -75,13 +73,7 @@ def setup_parser(parser):
                              'input. See --target_payload for possible values '
                              'for SPEC.')
 
-    launch_opts = parser.add_mutually_exclusive_group()
-    launch_opts.add_argument('-A', '--print_args', action='store_true',
-                             help='Print test arguments to stdout instead of '
-                                  'launching the test.')
-    launch_opts.add_argument('-C', '--print_command', action='store_true',
-                             help='Print complete test launch command instead '
-                                  'of launching the test.')
+    brillo_common.setup_test_action_parser(parser)
 
 
 def validate_args(parser, args):
@@ -273,59 +265,6 @@ def stage_payload(moblab, devserver_port, tmp_dir, use, payload_spec):
                                    payload_spec)
 
 
-def get_arg_strs(test_args):
-    """Converts an argument dictionary into a list of 'arg=val' strings."""
-    return ['%s=%s' % kv for kv in test_args.iteritems()]
-
-
-def get_command(moblab, test_args, do_quote):
-    """Returns the test launch command.
-
-    @param moblab: MoblabHost representing the MobLab being used for testing.
-    @param test_args: Dictionary of test arguments.
-    @param do_quote: If True, add single-quotes around test arguments.
-
-    @return Test launch command as a list of strings.
-    """
-    def quote(val):
-        return "'%s'" % val if do_quote else val
-
-    cmd = [os.path.join(os.path.dirname(__file__), _TEST_LAUNCH_SCRIPT),
-           '-t', quote(_TEST_NAME)]
-    if not moblab.hostname.startswith('localhost'):
-           cmd += ['-m', quote(moblab.hostname)]
-    for arg_str in get_arg_strs(test_args):
-        cmd += ['-A', quote(arg_str)]
-    return cmd
-
-
-def print_args(test_args):
-    """Prints the test arguments to stdout, one per line.
-
-    @param test_args: Dictionary of test arguments.
-    """
-    print('\n'.join(get_arg_strs(test_args)))
-
-
-def print_command(moblab, test_args):
-    """Prints the test launch command to stdout with quoting.
-
-    @param moblab: MoblabHost representing the MobLab being used for testing.
-    @param test_args: Dictionary of test arguments.
-    """
-    print(' '.join(get_command(moblab, test_args, True)))
-
-
-def run_command(moblab, test_args):
-    """Runs the test launch script.
-
-    @param moblab: MoblabHost representing the MobLab being used for testing.
-    @param test_args: Dictionary of test arguments.
-    """
-    utils.run(get_command(moblab, test_args, False),
-              stdout_tee=sys.stdout, stderr_tee=sys.stderr)
-
-
 def main(args):
     """The main function."""
     args = brillo_common.parse_args(
@@ -353,15 +292,7 @@ def main(args):
     finally:
         moblab.run('rm -rf %s' % tmp_dir)
 
-    if args.print_args:
-        logging.info('Printing test arguments')
-        print_args(test_args)
-    elif args.print_command:
-        logging.info('Printing test launch command')
-        print_command(moblab, test_args)
-    else:
-        logging.info('Launching test')
-        run_command(moblab, test_args)
+    brillo_common.do_test_action(args, moblab, _TEST_NAME, test_args)
 
 
 if __name__ == '__main__':

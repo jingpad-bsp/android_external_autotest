@@ -59,8 +59,6 @@ def setup_parser(parser):
     parser.add_argument('-A', '--test_arg', metavar='NAME=VAL',
                         dest='test_args', default=[], action='append',
                         help='An argument to pass to the test.')
-    parser.add_argument('-q', '--quickmerge', action='store_true',
-                        help='Rsync over modified Autotest code.')
 
 
 def quickmerge(moblab):
