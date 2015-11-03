@@ -268,8 +268,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             cmd += '%s ' % SHELL_CMD
         cmd += command
 
-        for arg in args:
-            cmd += '%s ' % utils.sh_escape(arg)
         if verbose:
             logging.debug('Command: %s', cmd)
 
