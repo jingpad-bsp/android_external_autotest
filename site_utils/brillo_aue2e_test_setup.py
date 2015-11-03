@@ -60,7 +60,7 @@ def setup_parser(parser):
 
     @param parser: argparse.ArgumentParser of the script.
     """
-    parser.add_argument('-t', '--target_payload', metavar='SPEC',
+    parser.add_argument('-t', '--target_payload', metavar='SPEC', required=True,
                         help='Stage a target payload. This can either be a '
                              'path to a local payload file, or take the form '
                              '"%s:DST_IMAGE[:SRC_IMAGE]", in which case a '
@@ -74,16 +74,6 @@ def setup_parser(parser):
                              'for SPEC.')
 
     brillo_common.setup_test_action_parser(parser)
-
-
-def validate_args(parser, args):
-    """Validate command-line arguments.
-
-    @param parser: argparse.ArgumentParser of the script.
-    @param args: The parsed arguments.
-    """
-    if not args.target_payload:
-        parser.error('Must provide --target_payload.')
 
 
 def get_stage_rel_path(stage_file):
@@ -270,7 +260,7 @@ def main(args):
     args = brillo_common.parse_args(
             'Set up Moblab for running Brillo AU end-to-end test, then launch '
             'the test (unless otherwise requested).',
-            setup_parser=setup_parser, validate_args=validate_args)
+            setup_parser=setup_parser)
 
     moblab, devserver_port = brillo_common.get_moblab_and_devserver_port(
             args.moblab_host)
