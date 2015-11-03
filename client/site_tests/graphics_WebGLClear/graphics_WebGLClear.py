@@ -61,16 +61,7 @@ class graphics_WebGLClear(test.test):
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
-
-        utils.wait_for_value(
-            lambda: tab.EvaluateJavaScript(
-                'if (document.readyState === "complete") {'
-                '  true;'
-                '} else {'
-                '  false;'
-                '}'),
-            expected_value=True, timeout_sec=30)
-
+        tab.WaitForDocumentReadyStateToBeComplete()
         time.sleep(self.test_duration_secs)
         avg_fps = tab.EvaluateJavaScript('g_fpsTimer.averageFPS;')
         self.perf_keyval['avg_fps'] = avg_fps

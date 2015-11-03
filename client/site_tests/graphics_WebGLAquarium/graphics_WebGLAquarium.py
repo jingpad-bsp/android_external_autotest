@@ -89,12 +89,16 @@ class graphics_WebGLAquarium(test.test):
         @param num_fishes: The number of fishes to run the test with.
         @param perf_log: Report perf data only if it's set to True.
         """
+        if not utils.wait_for_idle_cpu(60.0, 0.1):
+            raise error.TestFail('Could not get idle CPU.')
+
         # Create tab and load page. Set the number of fishes when page is fully
         # loaded.
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
         self.active_tab = tab
+        tab.WaitForDocumentReadyStateToBeComplete()
 
         # Set the number of fishes when document finishes loading.  Also reset
         # our own FPS counter and start recording FPS and rendering time.

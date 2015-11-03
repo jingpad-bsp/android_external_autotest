@@ -42,13 +42,15 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         @param browser: The Browser object to run the test with.
         @param test_url: The URL to the many planets deep test site.
         """
+        if not utils.wait_for_idle_cpu(60.0, 0.1):
+            raise error.TestFail('Could not get idle CPU.')
+
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
-        tab.WaitForJavaScriptExpression('typeof start != "undefined"', 10)
+        tab.WaitForDocumentReadyStateToBeComplete()
 
         # Wait 3 seconds for the page to stabilize.
-        # TODO(ihf): Add a function that waits for low system load.
         time.sleep(3)
 
         # Reset our own FPS counter and start recording FPS and rendering time.

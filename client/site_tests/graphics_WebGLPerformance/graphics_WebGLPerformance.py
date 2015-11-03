@@ -1,7 +1,6 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """This is a client side WebGL performance test.
 
 http://hg.mozilla.org/users/bjacob_mozilla.com/webgl-perf-tests/raw-file/3729e8afac99/index.html
@@ -12,7 +11,8 @@ benchmarks aiming to compare browser or GPU performance. These are only useful
 to catch performance regressions in a given browser and system.
 """
 
-import logging, os, time
+import logging
+import os
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -26,13 +26,13 @@ class graphics_WebGLPerformance(test.test):
     version = 1
     GSC = None
     _test_duration_secs = 0
+    perf_keyval = {}
 
     def setup(self):
         self.job.setup_dep(['webgl_perf'])
         self.job.setup_dep(['graphics'])
 
     def initialize(self):
-        self.perf_keyval = {}
         self.GSC = graphics_utils.GraphicsStateChecker()
 
     def cleanup(self):
@@ -53,13 +53,14 @@ class graphics_WebGLPerformance(test.test):
         @param test_url: The URL to the performance test site.
         """
         # Wait 5 seconds for the system to stabilize.
-        # TODO(ihf): Add a function that waits for low system load.
-        time.sleep(5)
+        if not utils.wait_for_idle_cpu(60.0, 0.1):
+            raise error.TestFail('Could not get idle CPU.')
 
         # Kick off test.
         tab = browser.tabs.New()
         tab.Navigate(test_url)
         tab.Activate()
+        tab.WaitForDocumentReadyStateToBeComplete()
 
         # Wait for test completion.
         tab.WaitForJavaScriptExpression('time_ms_geom_mean > 0.0',
@@ -105,6 +106,10 @@ class graphics_WebGLPerformance(test.test):
         @param test_duration_secs: The test duration in seconds.
         @param fullscreen: Whether to run the test in fullscreen.
         """
+        # TODO(ihf): Remove the timeout increase once crbug.com/551042 is fixed.
+        gpu_type = utils.get_gpu_family()
+        if gpu_type == 'pinetrail' or gpu_type == 'mali':
+            test_duration_secs = 7200
         self._test_duration_secs = test_duration_secs
 
         ext_paths = []
