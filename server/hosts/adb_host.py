@@ -752,7 +752,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if preserve_symlinks and source_info['symlink']:
             os.symlink(source_info['symlink'], dest)
         else:
-            self._adb_run('pull %s %s' % (source, dest_path))
+            self.adb_run('pull %s %s' % (source, dest_path))
 
             # If not local, copy over the file from the adb_host and clean up.
             if not self._local_adb:
