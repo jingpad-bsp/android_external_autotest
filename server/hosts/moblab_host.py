@@ -34,6 +34,7 @@ MOBLAB_SERVICES = ['moblab-scheduler-init',
 MOBLAB_PROCESSES = ['apache2', 'dhcpd']
 DUT_VERIFY_SLEEP_SECS = 5
 DUT_VERIFY_TIMEOUT = 15 * 60
+MOBLAB_TMP_DIR = '/mnt/moblab/tmp'
 
 
 class MoblabHost(cros_host.CrosHost):
@@ -298,3 +299,14 @@ class MoblabHost(cros_host.CrosHost):
         @returns a string representing this host's platform.
         """
         return super(MoblabHost, self).get_platform() + '_moblab'
+
+
+    def make_tmp_dir(self, base=MOBLAB_TMP_DIR):
+        """Creates a temporary directory.
+
+        @param base: The directory where it should be created.
+
+        @return Path to a newly created temporary directory.
+        """
+        self.run('mkdir -p %s' % base)
+        return self.run('mktemp -d -p %s' % base).stdout.strip()
