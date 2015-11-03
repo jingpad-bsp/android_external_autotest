@@ -532,6 +532,7 @@ class ServoHost(ssh_host.SSHHost):
     def _repair_with_sysrq_reboot(self):
         """Reboot with magic SysRq key."""
         self.reboot(timeout=self.REBOOT_TIMEOUT_SECS,
+                    label=None,
                     down_timeout=self.HOST_DOWN_TIMEOUT_SECS,
                     reboot_cmd='echo "b" > /proc/sysrq-trigger &',
                     fastsync=True)
