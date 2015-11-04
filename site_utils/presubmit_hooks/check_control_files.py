@@ -189,8 +189,9 @@ def main():
     with open(path_whitelist, 'r') as f:
         whitelist = {line.strip() for line in f.readlines() if line.strip()}
 
-    # get the useflags
-    useflags = GetUseFlags()
+    # Delay getting the useflags. The call takes long time, so init useflags
+    # only when needed, i.e., the script needs to check any control file.
+    useflags = None
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
         if control_file:
@@ -204,6 +205,8 @@ def main():
                 # The control file may not have bug template defined.
                 pass
 
+            if not useflags:
+                useflags = GetUseFlags()
             CheckSuites(ctrl_data, test_name, useflags)
             CheckSuitesAttrMatch(ctrl_data, whitelist, test_name)
             CheckRetry(ctrl_data, test_name)
