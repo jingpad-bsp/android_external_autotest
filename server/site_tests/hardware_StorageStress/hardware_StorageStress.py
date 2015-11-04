@@ -66,6 +66,9 @@ class hardware_StorageStress(test.test):
             raise error.TestFail(
                 'Test failed with error: Invalid power command')
 
+        # Test is doing a lot of disk activity, monitor disk data at each iteration.
+        self.job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
+
         # parse test command
         if storage_test_command == 'integrity':
             setup_func = self._write_data

@@ -16,7 +16,6 @@ each verify.
 """
 
 def run_hardware_storage_stress(machine):
-    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_StorageStress', client_ip=machine,
         power_command='suspend', suspend_duration=300, duration=3600)
 

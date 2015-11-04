@@ -19,6 +19,5 @@ that the data on storage is still valid.
 NOTE: Must boot from USB or SD card to run this test.
 """
 
-job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url='hardware_StorageFio', filesize=0, integrity='True',
              wait=60 * 60 * 72, max_run_time_mins=60 * 73)

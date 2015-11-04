@@ -14,7 +14,6 @@ Check the test hardware_StorageQualBase is working as expected.
 """
 
 def run_server_tests(machine):
-    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_StorageQualBase', client_ip=machine,
                  client_tag='test', crypto_runtime=30)
 

@@ -15,7 +15,6 @@ This tests check trim support under stress.
 """
 
 def run_server_tests(machine):
-    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_StorageQualTrimStress',
                  client_ip=machine, duration=5100)
 

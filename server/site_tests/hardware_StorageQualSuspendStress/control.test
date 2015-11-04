@@ -14,7 +14,6 @@ Test hardware_StorageSuspendStress section.
 """
 
 def run_hardware_storage_stress(machine):
-    job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
     job.run_test('hardware_StorageQualSuspendStress', client_ip=machine, duration=3600)
 
 job.parallel_simple(run_hardware_storage_stress, machines)

@@ -15,6 +15,5 @@ Send stress pattern to the disk for 30 minutes: 64K random write with 15% of
 read.
 """
 
-job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url='hardware_StorageFio', filesize=0,
              requirements = [('64k_stress', [])])

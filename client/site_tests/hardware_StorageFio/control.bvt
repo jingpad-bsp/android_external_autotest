@@ -20,7 +20,6 @@ Use following test over 64 MB area.
 - QD1 512K seq read
 """
 
-job.add_sysinfo_logfile('/var/log/storage_info.txt', on_every_test=True)
 job.run_test(url=NAME.split('.')[0], filesize=64 * 1024 * 1024,
              tag=NAME.split('.')[1], requirements = [('bvt_job', [])],
              constraints=[
