@@ -4,6 +4,7 @@
 
 import logging
 
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import test
@@ -45,6 +46,8 @@ class brillo_WifiInterfaceTest(test.test):
                            try to detect at least one that works.
         @param wifi_ssid: Name of the SSID we want the interface to be
                           connected to; None means any.
+
+        @raise TestFail: The test failed.
         """
         err_iface = ('No interface is' if wifi_iface is None
                       else 'Interface %s is not' % wifi_iface)

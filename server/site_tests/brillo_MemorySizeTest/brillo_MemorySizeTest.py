@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
@@ -21,6 +22,9 @@ class brillo_MemorySizeTest(test.test):
         @param host: a host object representing the DUT.
         @param min_total: Minimum total memory in 1K blocks.
         @param min_free: Minimum free memory in 1K blocks.
+
+        @raise TestError: Something went wrong while trying to execute the test.
+        @raise TestFail: The test failed.
         """
         if int(min_total) < int(min_free):
             raise error.TestError(

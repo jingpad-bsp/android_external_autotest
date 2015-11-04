@@ -104,6 +104,8 @@ class brillo_Gtests(test.test):
         @param use_whitelist: If gTestSuites is not passed in and use_whitelist
                               is true, only whitelisted tests found on the
                               system will be used.
+
+        @raise TestFail: The test failed.
         """
         self.host = host
         if not gtestSuites:

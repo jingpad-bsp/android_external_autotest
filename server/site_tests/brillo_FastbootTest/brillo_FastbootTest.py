@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
@@ -11,6 +12,13 @@ class brillo_FastbootTest(test.test):
     version = 1
 
     def run_once(self, host=None):
+        """Runs the test.
+
+        @param host: A host object representing the DUT.
+
+        @raise TestError: Something went wrong while trying to execute the test.
+        @raise TestFail: The test failed.
+        """
         # Make sure we're in ADB mode.
         if not host.is_up():
             raise error.TestError('Device is not in ADB mode')

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
@@ -21,6 +22,8 @@ class brillo_DiskSizeTest(test.test):
         @param host: a host object representing the DUT.
         @param path: Path to device or a location within its mounted filesystem.
         @param min_size: Minimum device size in 1K blocks.
+
+        @raise TestFail: The test failed.
         """
         try:
             df_output = host.run_output('df %s' % path).splitlines()

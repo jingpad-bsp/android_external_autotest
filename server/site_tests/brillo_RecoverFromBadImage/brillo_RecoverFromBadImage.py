@@ -117,12 +117,15 @@ class brillo_RecoverFromBadImage(test.test):
 
     def run_once(self, host=None, image_file=None, partition=_DEFAULT_PART_NAME,
                  device=None):
-        """Run the test.
+        """Runs the test.
 
         @param host: A host object representing the DUT.
         @param image_file: Image file to flash to the partition.
         @param partition: Name of the partition to wipe/recover.
         @param device: Path to the partition block device.
+
+        @raise TestError: Something went wrong while trying to execute the test.
+        @raise TestFail: The test failed.
         """
         # Check that the image file exists.
         if image_file is None:
