@@ -35,8 +35,8 @@ class network_WiFi_MultiAuth(wifi_cell_test_base.WiFiCellTestBase):
                 ssid=self.TEST_SSID)
         ap_config1 = hostap_config.HostapConfig(
                 ssid=self.TEST_SSID,
-                frequency=5240,
-                mode=hostap_config.HostapConfig.MODE_11A,
+                frequency=2437,
+                mode=hostap_config.HostapConfig.MODE_11G,
                 security_config=wpa_config,
                 scenario_name='wpa_network')
         client_config1 = xmlrpc_datatypes.AssociationParameters(

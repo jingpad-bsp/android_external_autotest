@@ -14,7 +14,7 @@ class network_WiFi_SSIDSwitchBack(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
     FREQUENCY_1 = 2412
-    FREQUENCY_2 = 5240
+    FREQUENCY_2 = 2437
     BSSID_1 = "00:01:02:03:04:05"
     BSSID_2 = "06:07:08:09:0a:0b"
     SSID_1 = "InsideADogItsTooDarkToRead"
@@ -70,7 +70,7 @@ class network_WiFi_SSIDSwitchBack(wifi_cell_test_base.WiFiCellTestBase):
         self.configure_connect_verify_deconfig_wait(
                 network_WiFi_SSIDSwitchBack.SSID_2,
                 network_WiFi_SSIDSwitchBack.FREQUENCY_2,
-                hostap_config.HostapConfig.MODE_11A,
+                hostap_config.HostapConfig.MODE_11G,
                 network_WiFi_SSIDSwitchBack.BSSID_2)
 
         # Bring the first AP back up.
