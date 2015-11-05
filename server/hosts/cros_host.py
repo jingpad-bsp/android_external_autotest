@@ -1073,12 +1073,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 support.
 
         """
-        # To repair a DUT connected to a moblab, try to create a servo object if
-        # it was failed to be created earlier as there may be a servo_host host
-        # attribute for this host.
-        if utils.is_moblab():
-            self._setup_servo()
-
         if not self.servo:
             raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
                                                'DUT has no servo support.')
@@ -1293,6 +1287,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         """
         # Caution: Deleting shards relies on repair to always reboot the DUT.
+
+        # To repair a DUT connected to a moblab, try to create a servo object if
+        # it was failed to be created earlier as there may be a servo_host host
+        # attribute for this host.
+        if utils.is_moblab():
+            self._setup_servo()
 
         if self._servo_host and not self.servo:
             try:
