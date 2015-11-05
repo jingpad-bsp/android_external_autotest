@@ -14,7 +14,7 @@ TEST_CLASS = "platform, kernel"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:kernel_usb"
 SUITE = "kernel_usb"
-DEPENDENCIES = "servo"
+DEPENDENCIES = "servo, kernel_usb"
 
 DOC = """
 This test uses servo to connect USB devices.
