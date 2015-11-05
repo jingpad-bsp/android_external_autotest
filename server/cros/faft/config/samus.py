@@ -15,4 +15,4 @@ class Values(object):
                      'usbpd_uart' ]
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
-    servo_prog_state_delay = 5
+    servo_prog_state_delay = 10
