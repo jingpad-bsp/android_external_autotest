@@ -126,7 +126,7 @@ class power_LoadTest(test.test):
 
             self._shill_proxy = wifi_proxy.WifiProxy()
             self._shill_proxy.remove_all_wifi_entries()
-            for _ in range(3):
+            for i in xrange(1,4):
                 raw_output = self._shill_proxy.connect_to_wifi_network(
                         wifi_config.ssid,
                         wifi_config.security,
@@ -139,11 +139,14 @@ class power_LoadTest(test.test):
                         association_timeout_seconds=
                                 wifi_config.association_timeout,
                         configuration_timeout_seconds=
-                                wifi_config.configuration_timeout)
+                                wifi_config.configuration_timeout * i)
                 result = xmlrpc_datatypes.AssociationResult. \
                         from_dbus_proxy_output(raw_output)
                 if result.success:
                     break
+                logging.warn('wifi connect: disc:%d assoc:%d config:%d fail:%s',
+                             result.discovery_time, result.association_time,
+                             result.configuration_time, result.failure_reason)
             else:
                 raise error.TestError('Could not connect to WiFi network.')
 
