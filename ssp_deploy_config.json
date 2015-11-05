@@ -16,5 +16,11 @@
         "target": "/usr/local/autotest/shadow_config.ini",
         "append": false,
         "permission": 644
+    },
+    {
+        "source": "moblab_config.ini",
+        "target": "/usr/local/autotest/moblab_config.ini",
+        "append": false,
+        "permission": 644
     }
 ]

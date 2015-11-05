@@ -281,7 +281,7 @@ def install_package_precheck(packages):
              skipped.
 
     """
-    if not SSP_ENABLED:
+    if not SSP_ENABLED and not utils.is_in_container():
         logging.info('Server-side packaging is not enabled. Install package %s '
                      'is skipped.', packages)
         return False
