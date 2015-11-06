@@ -21,7 +21,7 @@ from autotest_lib.server.cros.faft.rpc_proxy import RPCProxy
 from autotest_lib.server.cros.faft.utils import mode_switcher
 from autotest_lib.server.cros.faft.utils.faft_checkers import FAFTCheckers
 from autotest_lib.server.cros.servo import chrome_ec
-
+from autotest_lib.server.cros.servo import chrome_usbpd
 
 ConnectionError = mode_switcher.ConnectionError
 
@@ -138,6 +138,14 @@ class FirmwareTest(FAFTBase):
 
         if self.faft_config.chrome_ec:
             self.ec = chrome_ec.ChromeEC(self.servo)
+        # Check for presence of a USBPD console
+        if self.faft_config.chrome_usbpd:
+            self.usbpd = chrome_usbpd.ChromeUSBPD(self.servo)
+        elif self.faft_config.chrome_ec:
+            # If no separate USBPD console, then PD exists on EC console
+            self.usbpd = self.ec
+        # Get plankton console
+        self.plankton = host.plankton_console
 
         self._setup_uart_capture()
         self._setup_servo_log()

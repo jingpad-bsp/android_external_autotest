@@ -18,6 +18,7 @@ class Values(object):
     fw_bypasser_type = 'ctrl_d_bypasser'
 
     chrome_ec = False
+    chrome_usbpd = False
     dark_resume_capable = False
     has_lid = True
     has_keyboard = True

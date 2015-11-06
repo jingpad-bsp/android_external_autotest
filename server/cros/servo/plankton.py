@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import re
 import time
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
+from autotest_lib.server.cros.servo import chrome_ec
 
 
 class PlanktonError(Exception):
@@ -57,9 +57,9 @@ class Plankton(object):
         """
         if args_dict is None:
             args_dict = {}
-        plankton_host = args_dict.get('plankton_host', self.DEFAULT_SERVO_HOST)
+        plankton_hostname = args_dict.get('plankton_host', self.DEFAULT_SERVO_HOST)
         plankton_port = args_dict.get('plankton_port', self.DEFAULT_SERVO_PORT)
-        remote = 'http://%s:%s' % (plankton_host, plankton_port)
+        remote = 'http://%s:%s' % (plankton_hostname, plankton_port)
         self._server = xmlrpclib.ServerProxy(remote)
         self.init_io_expander()
 
@@ -75,13 +75,20 @@ class Plankton(object):
 
 
     def set(self, control_name, value):
-        """Sets the value of a control using servod."""
+        """Sets the value of a control using servod.
+
+        @param control_name: plankton servo control item
+        @param value: value to set plankton servo control item
+        """
         assert control_name
         self._server.set(control_name, value)
 
 
     def get(self, control_name):
-        """Gets the value of a control from servod."""
+        """Gets the value of a control from servod.
+
+        @param control_name: plankton servo control item
+        """
         assert control_name
         return self._server.get(control_name)
 
@@ -162,3 +169,12 @@ class Plankton(object):
         self.set(self.USBC_MUX, mux)
         time.sleep(self.USBC_COMMAND_DELAY)
 
+
+class PlanktonConsole(chrome_ec.ChromeEC):
+    """Manages control of a Plankton PD console.
+
+    We control the PD conolse via the UART of a Servo board. ChromePlankton
+    provides many interfaces to set and get its behavior via console commands.
+    This class is to abstract these interfaces.
+    """
+    pass

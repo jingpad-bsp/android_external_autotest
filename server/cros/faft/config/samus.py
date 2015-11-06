@@ -9,6 +9,7 @@ class Values(object):
     """FAFT config values for Samus."""
     ec_boot_to_console = 0.6
     chrome_ec = True
+    chrome_usbpd = True
     dark_resume_capable = True
     ec_capability = ['adc_ectemp', 'battery', 'charging', 'keyboard',
                      'lid', 'x86', 'usb', 'peci', 'smart_usb_charge',
