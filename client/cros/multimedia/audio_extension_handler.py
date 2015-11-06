@@ -119,7 +119,7 @@ class AudioExtensionHandler(object):
         active_ids = [x['id'] for x in nodes if x['isActive']]
         if len(active_ids) != 1:
             logging.error(
-                    'Node info contains multiple active nodes: %s', node_info)
+                    'Node info contains multiple active nodes: %s', nodes)
             raise AudioExtensionHandlerError(
                     'Active id should be unique')
 
