@@ -198,3 +198,39 @@ class AudioExtensionHandler(object):
         for node in output_nodes:
             if node['id'] == active_id:
                 return (node['volume'], node['isMuted'])
+
+
+    @facade_resource.retry_chrome_call
+    def set_active_node_id(self, node_id):
+        """Sets the active node by node id.
+
+        The current active node will be disabled first if the new active node
+        is different from the current one.
+
+        @param node_id: The node id obtained from cras_utils.get_cras_nodes.
+                        Chrome.audio also uses this id to specify input/output
+                        nodes.
+
+        @raises AudioExtensionHandlerError if there is no such id.
+
+        """
+        if node_id in self._get_active_id():
+            logging.debug('Node %s is already active.', node_id)
+            return
+
+        logging.debug('Setting active id to %s', node_id)
+
+        self._extension.ExecuteJavaScript('window.__set_active_done = null;')
+
+        self._extension.ExecuteJavaScript(
+                """
+                chrome.audio.setActiveDevices(
+                    ['%s'],
+                    function() {window.__set_active_done = true;});
+                """
+                % (node_id))
+
+        utils.wait_for_value(
+                lambda: (self._extension.EvaluateJavaScript(
+                         "window.__set_active_done") != None),
+                expected_value=True)
