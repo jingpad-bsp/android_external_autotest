@@ -11,6 +11,11 @@ from autotest_lib.client.cros.audio import cmd_utils
 
 _CRAS_TEST_CLIENT = '/usr/bin/cras_test_client'
 
+
+class CrasUtilsError(Exception):
+    pass
+
+
 def playback(*args, **kargs):
     """A helper function to execute the playback_cmd.
 
@@ -493,3 +498,20 @@ def remove_active_input_node(node_id):
 
     """
     get_cras_control_interface().RemoveActiveInputNode(node_id)
+
+
+def get_node_id_from_node_type(node_type):
+    """Gets node id from node type.
+
+    @param types: A node type defined in CRAS_NODE_TYPES.
+
+    """
+    nodes = get_cras_nodes()
+    find_ids = []
+    for node in nodes:
+        if node['Type'] == node_type:
+            find_ids.append(node['Id'])
+    if len(find_ids) != 1:
+        raise CrasUtilsError(
+                'Can not find unique node id from node type %s' % node_type)
+    return find_ids[0]
