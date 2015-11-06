@@ -4,6 +4,7 @@
 
 import logging
 import time
+import sys
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
@@ -68,6 +69,9 @@ class firmware_FwScreenPressPower(FirmwareTest):
         if self.faft_config.fw_bypasser_type != 'ctrl_d_bypasser':
             raise error.TestNAError("This test is only valid on devices with "
                                     "screens.")
+        if not self.faft_config.has_powerbutton:
+            raise error.TestNAError("This test is only valid on devices with "
+                                    "power button.")
 
         logging.info("Expected dev mode and reboot. "
                      "When the next DEVELOPER SCREEN shown, press power button "

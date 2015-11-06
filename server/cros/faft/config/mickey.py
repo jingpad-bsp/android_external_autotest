@@ -8,5 +8,5 @@ from autotest_lib.server.cros.faft.config import brain
 
 class Values(brain.Values):
     """Inherit overrides from Brain."""
-    pass
+    has_powerbutton = False
 
