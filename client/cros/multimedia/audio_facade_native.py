@@ -97,6 +97,20 @@ class AudioFacadeNative(object):
         return self._extension_handler.get_active_volume_mute()
 
 
+    def set_chrome_active_node_type(self, node_type):
+        """Sets active node type through chrome.audio API.
+
+        The node types are defined in cras_utils.CRAS_NODE_TYPES.
+        The current active node will be disabled first if the new active node
+        is different from the current one.
+
+        @param node_types: A node type defined in cras_utils.CRAS_NODE_TYPES.
+
+        """
+        node_id = cras_utils.get_node_id_from_node_type(node_type)
+        self._extension_handler.set_active_node_id(node_id)
+
+
     def cleanup(self):
         """Clean up the temporary files."""
         for path in glob.glob('/tmp/playback_*'):
