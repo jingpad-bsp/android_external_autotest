@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-import time
+import datetime, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -21,7 +21,7 @@ class VideoPlayer(object):
 
 
     def __init__(self, tab, full_url, video_id, video_src_path='',
-                 event_timeout=1, polling_wait_time=1):
+                 event_timeout=5, polling_wait_time=1):
         """
         @param tab: object, tab to interact with the tab in the browser.
         @param full_url: string, full url pointing to html file to load.
@@ -72,10 +72,29 @@ class VideoPlayer(object):
         function.
 
         """
-
         exception_msg = 'Video did not signal ready in time.'
 
         self._wait_for_event(self.is_video_ready, exception_msg)
+
+
+    @method_logger.log
+    def verify_video_can_play(self):
+        """
+        Plays video and ensures that reported video current time is > 0.
+        @raises: error.TestError if current time is not > 0 after time > 0s
+
+        """
+        exception_msg = 'Expected current > 0 after %ds' %self.event_timeout
+
+        self.play()
+
+        # check that video is playing
+        self._wait_for_event(lambda : self.currentTime() > 0.0, exception_msg)
+
+        self.pause()
+
+        # seek back to the beginning of video
+        self.seek_to(datetime.timedelta(seconds=0))
 
 
     @method_logger.log

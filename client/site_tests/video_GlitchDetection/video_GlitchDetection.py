@@ -64,6 +64,9 @@ class video_GlitchDetection(test.test):
 
             with capturer:
                 player.load_video()
+
+                player.verify_video_can_play()
+
                 display_facade.move_to_display(
                     display_facade.get_first_external_display_index())
                 display_facade.set_fullscreen(True)
@@ -155,11 +158,15 @@ class video_GlitchDetection(test.test):
                         constants.MAX_NONMATCHING_FCOUNT):
                     unknown_frames = set(test_checksums) - set(golden_checksums)
 
-                    store_indices = [test_checksums[c] for c in unknown_frames]
+                    store_indices = [test_checksum_indices[c] for c in
+                                     unknown_frames]
 
-                    paths = capturer.write_images(store_indices)
+                    paths = capturer.write_images(store_indices,
+                                                  constants.TEST_DIR,
+                                                  constants.IMAGE_FORMAT)
 
-                    publisher.publish(paths)
+                    pub = publisher.ImageDiffPublisher(self.resultsdir)
+                    pub.publish(paths)
 
                     raise error.TestFail("Too many non-matching frames")
 
