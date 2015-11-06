@@ -41,6 +41,7 @@ EVENT_TYPE_INSTALL_COMPLETE = '2'
 EVENT_TYPE_UPDATE_COMPLETE = '3'
 EVENT_TYPE_DOWNLOAD_STARTED = '13'
 EVENT_TYPE_DOWNLOAD_FINISHED = '14'
+EVENT_TYPE_REBOOTED_AFTER_UPDATE = '54'
 
 # Update event results.
 EVENT_RESULT_ERROR = '0'
@@ -55,7 +56,8 @@ EVENT_TYPE_DICT = {
         EVENT_TYPE_INSTALL_COMPLETE: 'install_complete',
         EVENT_TYPE_UPDATE_COMPLETE: 'update_complete',
         EVENT_TYPE_DOWNLOAD_STARTED: 'download_started',
-        EVENT_TYPE_DOWNLOAD_FINISHED: 'download_finished'
+        EVENT_TYPE_DOWNLOAD_FINISHED: 'download_finished',
+        EVENT_TYPE_REBOOTED_AFTER_UPDATE: 'rebooted_after_update'
 }
 
 EVENT_RESULT_DICT = {
@@ -232,37 +234,42 @@ class ExpectedUpdateEvent(object):
 class ExpectedUpdateEventChain(object):
     """Defines a chain of expected update events."""
     def __init__(self):
-        self._expected_event_chain = []
+        self._expected_events_chain = []
 
 
-    def add_event(self, expected_event, timeout, on_timeout=None):
+    def add_event(self, expected_events, timeout, on_timeout=None):
         """Adds an expected event to the chain.
 
-        @param expected_event: The event to add.
+        @param expected_events: The ExpectedEvent, or a list thereof, to wait
+                                for. If a list is passed, it will wait for *any*
+                                of the provided events, but only one of those.
         @param timeout: A timeout (in seconds) to wait for the event.
         @param on_timeout: An error string to use if the event times out. If
                            None, a generic message is used.
         """
-        self._expected_event_chain.append((expected_event, timeout, on_timeout))
+        if isinstance(expected_events, ExpectedUpdateEvent):
+            expected_events = [ExpectedUpdateEvent]
+        self._expected_events_chain.append(
+                (expected_events, timeout, on_timeout))
 
 
     @staticmethod
-    def _format_event_with_timeout(expected_event, timeout):
+    def _format_event_with_timeout(expected_events, timeout):
         """Returns a string representation of the event, with timeout."""
         until = 'within %s seconds' % timeout if timeout else 'indefinitely'
-        return '%s %s' % (expected_event, until)
+        return '%s, %s' % (' OR '.join(map(str, expected_events)), until)
 
 
     def __str__(self):
         return ('[%s]' %
                 ', '.join(
-                    [self._format_event_with_timeout(expected_event, timeout)
-                     for expected_event, timeout, _
-                     in self._expected_event_chain]))
+                    [self._format_event_with_timeout(expected_events, timeout)
+                     for expected_events, timeout, _
+                     in self._expected_events_chain]))
 
 
     def __repr__(self):
-        return str(self._expected_event_chain)
+        return str(self._expected_events_chain)
 
 
     def verify(self, get_next_event):
@@ -273,23 +280,23 @@ class ExpectedUpdateEventChain(object):
         @raises ExpectedUpdateEventChainFailed if we failed to verify an event.
 
         """
-        for expected_event, timeout, on_timeout in self._expected_event_chain:
+        for expected_events, timeout, on_timeout in self._expected_events_chain:
             logging.info('Expecting %s',
-                         self._format_event_with_timeout(expected_event,
+                         self._format_event_with_timeout(expected_events,
                                                          timeout))
             err_msg = self._verify_event_with_timeout(
-                    expected_event, timeout, on_timeout, get_next_event)
+                    expected_events, timeout, on_timeout, get_next_event)
             if err_msg is not None:
                 logging.error('Failed expected event: %s', err_msg)
                 raise ExpectedUpdateEventChainFailed(err_msg)
 
 
     @staticmethod
-    def _verify_event_with_timeout(expected_event, timeout, on_timeout,
+    def _verify_event_with_timeout(expected_events, timeout, on_timeout,
                                    get_next_event):
         """Verify an expected event occurs within a given timeout.
 
-        @param expected_event: an expected event specification
+        @param expected_events: the list of possible events expected next
         @param timeout: specified in seconds
         @param on_timeout: A string to return if timeout occurs, or None.
         @param get_next_event: function returning the next event in a stream
@@ -304,7 +311,7 @@ class ExpectedUpdateEventChain(object):
             if new_event:
                 logging.info('Event received after %s seconds',
                              round(curr_timestamp - base_timestamp, 1))
-                return expected_event.verify(new_event)
+                return any(event.verify(new_event) for event in expected_events)
 
             # No new events, sleep for one second only (so we don't miss
             # events at the end of the allotted timeout).
@@ -314,7 +321,7 @@ class ExpectedUpdateEventChain(object):
         logging.error('Timeout expired')
         if on_timeout is None:
             return ('Waiting for event %s timed out after %d seconds' %
-                    (expected_event, timeout))
+                    (' OR '.join(map(str, expected_events)), timeout))
         return on_timeout
 
 
@@ -327,7 +334,7 @@ class UpdateEventLogVerifier(object):
         self._num_consumed_events = 0
 
 
-    def verify_expected_event_chain(self, expected_event_chain):
+    def verify_expected_events_chain(self, expected_event_chain):
         """Verify a given event chain.
 
         @param expected_event_chain: instance of expected event chain.
@@ -1679,7 +1686,7 @@ class autoupdate_EndToEndTest(test.test):
                             self._WAIT_FOR_UPDATE_COMPLETED_SECONDS,
                             event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
-            log_verifier.verify_expected_event_chain(chain)
+            log_verifier.verify_expected_events_chain(chain)
 
             # Wait after an update completion (safety margin).
             _wait(self._WAIT_AFTER_UPDATE_SECONDS, 'after update completion')
@@ -1701,20 +1708,31 @@ class autoupdate_EndToEndTest(test.test):
         # Observe post-reboot update check, which should indicate that the
         # image version has been updated.
         chain = ExpectedUpdateEventChain()
+        expected_events = [
+            ExpectedUpdateEvent(
+                event_type=EVENT_TYPE_UPDATE_COMPLETE,
+                event_result=EVENT_RESULT_SUCCESS_REBOOT,
+                version=target_release,
+                previous_version=source_release,
+                on_error=self._error_reboot_after_update),
+            # Newer versions send a "rebooted_after_update" message after reboot
+            # with the previous version instead of another "update_complete".
+            ExpectedUpdateEvent(
+                event_type=EVENT_TYPE_REBOOTED_AFTER_UPDATE,
+                event_result=EVENT_RESULT_SUCCESS,
+                version=target_release,
+                previous_version=source_release,
+                on_error=self._error_reboot_after_update),
+        ]
         chain.add_event(
-                ExpectedUpdateEvent(
-                    event_type=EVENT_TYPE_UPDATE_COMPLETE,
-                    event_result=EVENT_RESULT_SUCCESS_REBOOT,
-                    version=target_release,
-                    previous_version=source_release,
-                    on_error=self._error_reboot_after_update),
+                expected_events,
                 self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
                 on_timeout=self._timeout_err(
                         'a successful reboot notification',
                         self._WAIT_FOR_UPDATE_CHECK_AFTER_REBOOT_SECONDS,
                         event_type=EVENT_TYPE_UPDATE_COMPLETE))
 
-        log_verifier.verify_expected_event_chain(chain)
+        log_verifier.verify_expected_events_chain(chain)
 
         # Make sure we're using a different slot after the update.
         target_active_slot = test_platform.get_active_slot()
