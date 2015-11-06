@@ -4,6 +4,8 @@
  * found in the LICENSE file.
  */
 
+#define _GNU_SOURCE
+#include <assert.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -13,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <xf86drm.h>
 
 #include <gbm.h>
 
@@ -90,9 +93,63 @@ static int check_bo(struct gbm_bo *bo)
 	CHECK(gbm_bo_get_width(bo) >= 0);
 	CHECK(gbm_bo_get_height(bo) >= 0);
 	CHECK(gbm_bo_get_stride(bo) >= gbm_bo_get_width(bo));
-	CHECK(gbm_bo_get_fd(bo) > 0);
 
 	return 1;
+}
+
+static int drm_open_vgem()
+{
+	const char g_sys_card_path_format[] =
+		"/sys/bus/platform/devices/vgem/drm/card%d";
+	const char g_dev_card_path_format[] =
+		"/dev/dri/card%d";
+	char *name;
+	int i, fd;
+
+	for (i = 0; i < 16; i++) {
+		struct stat _stat;
+		int ret;
+		ret = asprintf(&name, g_sys_card_path_format, i);
+		assert(ret != -1);
+
+		if (stat(name, &_stat) == -1) {
+			free(name);
+			continue;
+		}
+
+		free(name);
+		ret = asprintf(&name, g_dev_card_path_format, i);
+		assert(ret != -1);
+
+		fd = open(name, O_RDWR);
+		free(name);
+		if (fd == -1) {
+			return -1;
+		}
+		return fd;
+	}
+	return -1;
+}
+
+static int create_vgem_bo(int fd, size_t size, uint32_t * handle)
+{
+	struct drm_mode_create_dumb create;
+	int ret;
+
+	memset(&create, 0, sizeof(create));
+	create.height = size;
+	create.width = 1;
+	create.bpp = 8;
+
+	ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
+	if (ret)
+		return ret;
+
+	assert(create.size >= size);
+
+	*handle = create.handle;
+
+	return 0;
 }
 
 /*
@@ -287,6 +344,56 @@ static int test_destroy()
 	return 1;
 }
 
+/*
+ * Tests prime export.
+ */
+static int test_export()
+{
+	struct gbm_bo *bo;
+	int prime_fd;
+
+	bo = gbm_bo_create(gbm, 1024, 1024, GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
+	CHECK(check_bo(bo));
+
+	prime_fd = gbm_bo_get_fd(bo);
+	CHECK(prime_fd > 0);
+	close(prime_fd);
+
+	gbm_bo_destroy(bo);
+
+	return 1;
+}
+
+/*
+ * Tests prime import.
+ */
+static int test_import()
+{
+	struct gbm_import_fd_data fd_data;
+	int vgem_fd = drm_open_vgem();
+	struct drm_prime_handle prime_handle;
+	struct gbm_bo *bo;
+	const int width = 123;
+	const int height = 456;
+
+	CHECK(create_vgem_bo(vgem_fd, width * height, &prime_handle.handle) == 0);
+	CHECK(drmIoctl(vgem_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_handle) == 0);
+
+	fd_data.fd = prime_handle.fd;
+	fd_data.width = width;
+	fd_data.height = height;
+	fd_data.stride = width * 4;
+	fd_data.format = GBM_FORMAT_XRGB8888;
+
+	bo = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
+	CHECK(check_bo(bo));
+	gbm_bo_destroy(bo);
+
+	close(vgem_fd);
+
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	int result = 1;
@@ -298,6 +405,8 @@ int main(int argc, char *argv[])
 	result &= test_alloc_free_formats();
 	result &= test_alloc_free_usage();
 	result &= test_user_data();
+	result &= test_export();
+	result &= test_import();
 	result &= test_destroy();
 
 	if (!result) {
