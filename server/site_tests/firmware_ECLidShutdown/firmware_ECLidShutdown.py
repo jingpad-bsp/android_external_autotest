@@ -26,11 +26,18 @@ class firmware_ECLidShutdown(FirmwareTest):
     # This accomodates if DUT needs to transition into certain states.
     PWR_RETRIES = 13
 
+    def initialize(self, host, cmdline_args):
+        super(firmware_ECLidShutdown, self).initialize(host, cmdline_args)
+        self.setup_usbkey(usbkey=False)
+
     def cleanup(self):
         """If DUT not pingable, may be still stuck in recovery mode.
         Reboot it.  Also, reset GBB_FLAGS and make sure that lid set
         to open (in case of error).
         """
+        # reset ec_uart_regexp to prevent timeouts in case there was
+        # an error before we could reset it
+        self._reset_ec_regexp()
         if self.servo.get('lid_open') == 'no':
             self.servo.set('lid_open', 'yes')
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN,
@@ -59,8 +66,8 @@ class firmware_ECLidShutdown(FirmwareTest):
         self.clear_set_gbb_flags(vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN,
                                  0)
         # reboot into recovery mode and wait a bit for it to actually get there
-        self.switcher.reboot_to_mode(to_mode='rec',
-                                     wait_for_dut_up=False)
+        self.faft_client.system.request_recovery_boot()
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         time.sleep(self.RECOVERY_DELAY)
 
         # close/open lid
@@ -86,8 +93,8 @@ class firmware_ECLidShutdown(FirmwareTest):
         self.clear_set_gbb_flags(0,
                                  vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN)
         # reboot into recovery mode and wait a bit for it to get there
-        self.switcher.reboot_to_mode(to_mode='rec',
-                                      wait_for_dut_up=False)
+        self.faft_client.system.request_recovery_boot()
+        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         time.sleep(self.RECOVERY_DELAY)
 
         # close/open the lid
