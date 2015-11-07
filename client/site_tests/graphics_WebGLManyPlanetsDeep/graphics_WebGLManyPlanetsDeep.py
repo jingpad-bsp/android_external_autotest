@@ -47,7 +47,8 @@ class graphics_WebGLManyPlanetsDeep(test.test):
         @param test_url: The URL to the many planets deep test site.
         """
         if not utils.wait_for_idle_cpu(60.0, 0.1):
-            raise error.TestFail('Could not get idle CPU.')
+            if not utils.wait_for_idle_cpu(20.0, 0.2):
+                raise error.TestFail('Could not get idle CPU.')
 
         tab = browser.tabs.New()
         tab.Navigate(test_url)

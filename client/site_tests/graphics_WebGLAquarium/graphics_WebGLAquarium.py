@@ -255,6 +255,10 @@ class graphics_WebGLAquarium(test.test):
             cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
             test_url = cr.browser.platform.http_server.UrlOf(os.path.join(
                 self.srcdir, 'aquarium.html'))
+
+            if not utils.wait_for_idle_cpu(60.0, 0.1):
+                if not utils.wait_for_idle_cpu(20.0, 0.2):
+                    raise error.TestFail('Could not get idle CPU.')
             if not utils.wait_for_cool_machine():
                 raise error.TestFail('Could not get cold machine.')
             if power_test:

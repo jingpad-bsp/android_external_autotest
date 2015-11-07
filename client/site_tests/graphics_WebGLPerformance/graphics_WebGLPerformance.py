@@ -52,9 +52,9 @@ class graphics_WebGLPerformance(test.test):
         @param browser: The Browser object to run the test with.
         @param test_url: The URL to the performance test site.
         """
-        # Wait 5 seconds for the system to stabilize.
         if not utils.wait_for_idle_cpu(60.0, 0.1):
-            raise error.TestFail('Could not get idle CPU.')
+            if not utils.wait_for_idle_cpu(20.0, 0.2):
+                raise error.TestFail('Could not get idle CPU.')
 
         # Kick off test.
         tab = browser.tabs.New()
