@@ -26,6 +26,7 @@ SERVER_SEQUENCES = [
     sequence.SequenceJob('brillo_MemorySizeTest', duration=120),
     sequence.SequenceJob('brillo_FastbootTest', duration=120),
     sequence.SequenceJob('brillo_StorageWriteSpeedTest', duration=120),
+    sequence.SequenceJob('brillo_Invariants', duration=120),
 ]
 
 sequence.sequence_schedule(job, machines, SERVER_SEQUENCES)
