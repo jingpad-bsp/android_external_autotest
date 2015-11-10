@@ -188,7 +188,7 @@ def dump_cros_audio_logs(host, audio_facade, directory, suffix=''):
 
 
 @contextmanager
-def monitor_no_nodes_changed(audio_facade):
+def monitor_no_nodes_changed(audio_facade, callback=None):
     """Context manager to monitor nodes changed signal on Cros device.
 
     Starts the counter in the beginning. Stops the counter in the end to make
@@ -199,6 +199,8 @@ def monitor_no_nodes_changed(audio_facade):
 
     @param audio_facade: A RemoteAudioFacade to access audio functions on
                          Cros device.
+    @param fail_callback: The callback to call before raising TestFail
+                          when there is unexpected NodesChanged signals.
 
     @raises: error.TestFail if there is NodesChanged signal on
              Cros device during the context.
@@ -210,5 +212,8 @@ def monitor_no_nodes_changed(audio_facade):
     finally:
         count = audio_facade.stop_counting_signal()
         if count:
-            raise error.TestFail(
-                    'Got %d unexpected NodesChanged signal' % count)
+            message = 'Got %d unexpected NodesChanged signal' % count
+            logging.error(message)
+            if callback:
+                callback()
+            raise error.TestFail(message)
