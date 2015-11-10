@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import enterprise_base
+from autotest_lib.client.cros import httpd
 
 ENTERPRISE_STAGING_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
@@ -57,19 +58,33 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.import_dmserver(self.srcdir)
             self.start_dmserver()
         self._initialize_chrome_extra_flags()
+        self._web_server = None
 
     def cleanup(self):
         # Clean up AutoTest DM Server if using local fake server.
         if self.env == 'dm-fake':
             super(EnterprisePolicyTest, self).cleanup()
 
+        # Stop web server if it was started.
+        if self._web_server:
+            self._web_server.stop()
+
         # Close Chrome instance if opened.
         if self.cr:
             self.cr.close()
 
-    def _initialize_test_context(self, args=()):
+    def start_webserver(self, port):
+        """Set up an HTTP Server to serve pages from localhost.
+
+        @param port: Port used by HTTP server.
+
         """
-        Initializes class-level test context parameters.
+        if self.mode != 'list':
+            self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
+            self._web_server.run()
+
+    def _initialize_test_context(self, args=()):
+        """Initialize class-level test context parameters.
 
         @raises error.TestError if an arg is given an invalid value or some
                 combination of args is given incompatible values.
@@ -98,6 +113,13 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 raise error.TestError('value must not be given '
                                       'when mode=all.')
 
+        # If |mode| is 'list', set |env| to generic prod, and blank out
+        # the other key parameters: case, value.
+        if self.mode == 'list':
+            self.env = 'prod'
+            self.case = None
+            self.value = None
+
         # If |value| is given, set |is_value_given| flag to True. And if
         # |value| was given as 'none' or '', then set |value| to None.
         if self.value is not None:
@@ -108,7 +130,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.is_value_given = False
 
         # Verify |env| is a valid environment.
-        if self.env not in ENTERPRISE_FLAGS_DICT:
+        if self.env is not None and self.env not in ENTERPRISE_FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
         # If |env| is 'dm-fake', ensure value and credentials are not given.
@@ -156,7 +178,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         logging.info('  Test DMS Name: %r', self.dms_name)
 
     def _initialize_chrome_extra_flags(self):
-        """Initializes flags used to create Chrome instance."""
+        """Initialize flags used to create Chrome instance."""
         # Construct DM Server URL flags.
         env_flag_list = []
         if self.env != 'prod':
@@ -178,8 +200,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.cr = None
 
     def setup_case(self, policy_name, policy_value, policies_json):
-        """
-        Sets up preconditions for a single test case.
+        """Set up preconditions for a single test case.
 
         If the AutoTest fake DM Server is initialized, upload |policies_json|
         to it. Sign in to Chrome OS. Open the Policies page. Verify that the
@@ -237,8 +258,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         policy_tab.Close()
 
     def _setup_policy(self, policies_json):
-        """
-        Creates policy blob from JSON data, and sends to AutoTest fake DMS.
+        """Create policy blob from JSON data, and send to AutoTest fake DMS.
 
         @param policies_json: The policy JSON data (name-value pairs).
 
@@ -257,13 +277,12 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.setup_policy(policy_blob)
 
     def _move_modeless_to_mandatory(self, policies_json):
-        """
-        Adds the 'mandatory' mode if a policy's mode was omitted.
+        """Add the 'mandatory' mode if a policy's mode was omitted.
 
         The AutoTest fake DM Server requires that every policy be contained
         within either a 'mandatory' or 'recommended' dictionary, to indicate
-        the mode of the policy. This function moves modeless polices into the
-        'mandatory' dictionary.
+        the mode of the policy. This function moves modeless policies into
+        the 'mandatory' dictionary.
 
         @param policies_json: The policy JSON data (name-value pairs).
         @returns: dict of policies grouped by mode keys.
@@ -294,28 +313,26 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         return collated_json
 
     def _remove_null_policies(self, policies_json):
-        """
-        Removes policy dict data that is set to None or ''.
+        """Remove policy dict data that is set to None or ''.
 
         For the status of a policy to be shown as "Not set" on the
         chrome://policy page, the policy blob must contain no dictionary entry
         for that policy. This function removes policy NVPs from a copy of the
-        |policies_json| dictionary that the test case set to None or ''.
+        |policies_json| dictionary that the test case had set to None or ''.
 
         @param policies_json: setup policy JSON data (name-value pairs).
         @returns: setup policy JSON data with all 'Not set' policies removed.
 
         """
         policies_json_copy = policies_json.copy()
-        for mode, policies in policies_json_copy.items():
+        for policies in policies_json_copy.values():
             for policy_data in policies.items():
                 if policy_data[1] is None or policy_data[1] == '':
                     policies.pop(policy_data[0])
         return policies_json_copy
 
     def _get_policy_value_shown(self, policy_tab, policy_name):
-        """
-        Gets the value shown for the named policy on the Policies page.
+        """Get the value shown for the named policy on the Policies page.
 
         Takes |policy_name| as a parameter and returns the corresponding
         policy value shown on the chrome://policy page.
@@ -353,3 +370,32 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             return None
         return value_shown
 
+    def _validate_and_run_test_case(self, test_case, run_test):
+        """Validate test case and call the test runner in the test class.
+
+        @param test_case: name of the test case to run.
+        @param run_test: method in test class that runs a test case.
+
+        """
+        if test_case not in self.TEST_CASES:
+            raise error.TestError('Test case is not valid: %s' % test_case)
+        logging.info('Running test case: %s', test_case)
+        run_test(test_case)
+
+    def run_once_impl(self, run_test):
+        """Dispatch the common run modes for all child test classes.
+
+        @param run_test: method in test class that runs a test case.
+
+        """
+        if self.mode == 'all':
+            for test_case in sorted(self.TEST_CASES):
+                self._validate_and_run_test_case(test_case, run_test)
+        elif self.mode == 'single':
+            self._validate_and_run_test_case(self.case, run_test)
+        elif self.mode == 'list':
+            logging.info('List Test Cases:')
+            for test_case, value in sorted(self.TEST_CASES.items()):
+                logging.info('  case=%s, value="%s"', test_case, value)
+        else:
+            raise error.TestError('Run mode is not valid: %s' % self.mode)
