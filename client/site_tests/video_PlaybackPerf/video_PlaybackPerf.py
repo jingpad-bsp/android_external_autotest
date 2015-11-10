@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from contextlib import closing
 import logging
 import os
-import re
 import time
 
 from autotest_lib.client.bin import site_utils, test, utils
@@ -14,14 +12,13 @@ from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.video import histogram_verifier
+from autotest_lib.client.cros.video import vda_constants
 
 
 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
         '--disable-accelerated-video-decode']
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/'
-
-GPU_VIDEO_INIT_HISTOGRAM = 'Media.GpuVideoDecoderInitializeStatus'
-HISTOGRAMS_URL = 'chrome://histograms/' + GPU_VIDEO_INIT_HISTOGRAM
 
 PLAYBACK_WITH_HW_ACCELERATION = 'playback_with_hw_acceleration'
 PLAYBACK_WITHOUT_HW_ACCELERATION = 'playback_without_hw_acceleration'
@@ -30,9 +27,6 @@ PLAYBACK_WITHOUT_HW_ACCELERATION = 'playback_without_hw_acceleration'
 MEASUREMENT_DURATION = 30
 # Time to exclude from calculation after playing a video [seconds].
 STABILIZATION_DURATION = 10
-
-# The status code indicating GpuVideoDecoder::Initialize() has succeeded.
-GPU_VIDEO_INIT_BUCKET = 0
 
 # List of thermal throttling services that should be disabled.
 # - temp_metrics for link.
@@ -81,48 +75,6 @@ class video_PlaybackPerf(test.test):
         tab.WaitForDocumentReadyStateToBeComplete()
         tab.EvaluateJavaScript("document.getElementsByTagName('video')[0]."
                                "loop=true")
-
-
-    def is_hardware_accelerated(self, cr):
-        """
-        Checks if video decoding is hardware accelerated.
-
-        @param cr: Autotest Chrome instance.
-
-        @return True if it is using hardware acceleration, False otherwise.
-        """
-        result = False
-        tab = cr.browser.tabs.New()
-        def histograms_loaded():
-            """Returns true if histogram is loaded."""
-            tab.Navigate(HISTOGRAMS_URL)
-            tab.WaitForDocumentReadyStateToBeComplete()
-            return tab.EvaluateJavaScript(
-                    'document.documentElement.innerText.search("%s") != -1'
-                    % GPU_VIDEO_INIT_HISTOGRAM)
-
-        def histogram_success():
-            """Returns true if GpuVideoDecoder::Initialize() has succeeded."""
-            lines = tab.EvaluateJavaScript('document.documentElement.innerText')
-            # Example of the expected string to match:
-            # 0  --------------------------O (1 = 100.0%)
-            re_string = '^'+ str(GPU_VIDEO_INIT_BUCKET) +'\s\s-.*100\.0%.*'
-            return re.search(re_string, lines, re.MULTILINE) != None
-
-        try:
-            utils.poll_for_condition(
-                    histograms_loaded,
-                    timeout=5,
-                    exception=error.TestError(
-                            'Cannot find gpu video decoder histogram.'),
-                    sleep_interval=1)
-        except error.TestError:
-            result = False
-        else:
-            result = histogram_success()
-
-        tab.Close()
-        return result
 
 
     def run_once(self, video_name, video_description, power_test=False):
@@ -189,10 +141,10 @@ class video_PlaybackPerf(test.test):
             else:
                 logging.error("No frame is decoded. Set drop percent to 100.")
                 dropped_frame_percent = 100.0
-            logging.info("Decoded frames=%d, dropped frames=%d, percent=%f" %
-                             (decoded_frame_count,
+            logging.info("Decoded frames=%d, dropped frames=%d, percent=%f",
+                              decoded_frame_count,
                               dropped_frame_count,
-                              dropped_frame_percent))
+                              dropped_frame_percent)
             return (dropped_frame_count, dropped_frame_percent)
         return self.test_playback(local_path, get_dropped_frames)
 
@@ -282,7 +234,10 @@ class video_PlaybackPerf(test.test):
             result = gather_result(cr)
 
             # Check if decode is hardware accelerated.
-            if self.is_hardware_accelerated(cr):
+            if histogram_verifier.is_bucket_present(
+                    cr,
+                    vda_constants.MEDIA_GVD_INIT_STATUS,
+                    vda_constants.MEDIA_GVD_BUCKET):
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
             else:
                 logging.info("Can not use hardware decoding.")
@@ -297,7 +252,10 @@ class video_PlaybackPerf(test.test):
             result = gather_result(cr)
 
             # Make sure decode is not hardware accelerated.
-            if self.is_hardware_accelerated(cr):
+            if histogram_verifier.is_bucket_present(
+                    cr,
+                    vda_constants.MEDIA_GVD_INIT_STATUS,
+                    vda_constants.MEDIA_GVD_BUCKET):
                 raise error.TestError(
                         'Video decode acceleration should not be working.')
             keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result

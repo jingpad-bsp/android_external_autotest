@@ -6,13 +6,9 @@ import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import histogram_parser
-
-
-MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
-MEDIA_GVD_BUCKET = 0
+from autotest_lib.client.cros.video import histogram_verifier
+from autotest_lib.client.cros.video import vda_constants
 
 
 class video_ChromeHWDecodeUsed(test.test):
@@ -40,14 +36,7 @@ class video_ChromeHWDecodeUsed(test.test):
             time.sleep(30)
 
             # Waits for histogram updated for the test video.
-            parser = histogram_parser.HistogramParser(cr, MEDIA_GVD_INIT_STATUS)
-
-            buckets = parser.buckets
-
-            if (not buckets or
-                    MEDIA_GVD_BUCKET not in buckets or
-                    not buckets[MEDIA_GVD_BUCKET] or
-                    buckets[MEDIA_GVD_BUCKET].percent < 100.0):
-
-                raise error.TestError('%s not found or not at 100 percent. %s'
-                                      % (MEDIA_GVD_BUCKET, str(parser)))
+            histogram_verifier.verify(
+                    cr,
+                    vda_constants.MEDIA_GVD_INIT_STATUS,
+                    vda_constants.MEDIA_GVD_BUCKET)

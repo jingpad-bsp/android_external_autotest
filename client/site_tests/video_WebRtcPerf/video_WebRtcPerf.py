@@ -2,10 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from contextlib import closing
 import logging
 import os
-import re
 import time
 
 from autotest_lib.client.bin import site_utils, test, utils
@@ -14,6 +12,9 @@ from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros.video import histogram_verifier
+from autotest_lib.client.cros.video import vda_constants
+
 
 EXTRA_BROWSER_ARGS = ['--use-fake-device-for-media-stream',
                       '--use-fake-ui-for-media-stream']
@@ -26,8 +27,6 @@ DOWNLOAD_BASE = ('http://commondatastorage.googleapis.com/'
 VIDEO_NAME = 'crowd720_25frames.y4m'
 
 WEBRTC_INTERNALS_URL = 'chrome://webrtc-internals'
-RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
-HISTOGRAMS_URL = 'chrome://histograms/' + RTC_INIT_HISTOGRAM
 
 WEBRTC_WITH_HW_ACCELERATION = 'webrtc_with_hw_acceleration'
 WEBRTC_WITHOUT_HW_ACCELERATION = 'webrtc_without_hw_acceleration'
@@ -36,9 +35,6 @@ WEBRTC_WITHOUT_HW_ACCELERATION = 'webrtc_without_hw_acceleration'
 MEASUREMENT_DURATION = 30
 # Time to exclude from calculation after start the loopback [seconds].
 STABILIZATION_DURATION = 10
-
-# The status code indicating RTCVideoDecoder::InitDecode() has succeeded.
-RTC_VIDEO_INIT_BUCKET = 1
 
 # List of thermal throttling services that should be disabled.
 # - temp_metrics for link.
@@ -110,48 +106,6 @@ class video_WebRtcPerf(test.test):
         tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         tab.WaitForDocumentReadyStateToBeComplete()
-
-
-    def is_hardware_accelerated(self, cr):
-        """
-        Checks if WebRTC decoding is hardware accelerated.
-
-        @param cr: Autotest Chrome instance.
-
-        @return True if it is using hardware acceleration, False otherwise.
-        """
-        result = False
-        tab = cr.browser.tabs.New()
-        def histograms_loaded():
-            """Returns true if histogram is loaded."""
-            tab.Navigate(HISTOGRAMS_URL)
-            tab.WaitForDocumentReadyStateToBeComplete()
-            return tab.EvaluateJavaScript(
-                    'document.documentElement.innerText.search("%s") != -1'
-                    % RTC_INIT_HISTOGRAM)
-
-        def histogram_success():
-            """Returns true if RTCVideoDecoder::InitDecode has succeeded."""
-            lines = tab.EvaluateJavaScript('document.documentElement.innerText')
-            # Example of the expected string to match:
-            # 0  --------------------------O (1 = 100.0%)
-            re_string = '^'+ str(RTC_VIDEO_INIT_BUCKET) +'\s\s-.*100\.0%.*'
-            return re.search(re_string, lines, re.MULTILINE) != None
-
-        try:
-            utils.poll_for_condition(
-                    histograms_loaded,
-                    timeout=5,
-                    exception=error.TestError(
-                            'Cannot find rtc video decoder histogram.'),
-                    sleep_interval=1)
-        except error.TestError:
-            result = False
-        else:
-            result = histogram_success()
-
-        tab.Close()
-        return result
 
 
     def open_stats_page(self, cr):
@@ -226,7 +180,10 @@ class video_WebRtcPerf(test.test):
             result = gather_result(cr)
 
             # Check if decode is hardware accelerated.
-            if self.is_hardware_accelerated(cr):
+            if histogram_verifier.is_bucket_present(
+                    cr,
+                    vda_constants.RTC_INIT_HISTOGRAM,
+                    vda_constants.RTC_VIDEO_INIT_BUCKET):
                 keyvals[WEBRTC_WITH_HW_ACCELERATION] = result
             else:
                 logging.info("Can not use hardware decoding.")
@@ -242,7 +199,10 @@ class video_WebRtcPerf(test.test):
             result = gather_result(cr)
 
             # Make sure decode is not hardware accelerated.
-            if self.is_hardware_accelerated(cr):
+            if histogram_verifier.is_bucket_present(
+                    cr,
+                    vda_constants.RTC_INIT_HISTOGRAM,
+                    vda_constants.RTC_VIDEO_INIT_BUCKET):
                 raise error.TestError('HW decode should not be used.')
             keyvals[WEBRTC_WITHOUT_HW_ACCELERATION] = result
 
