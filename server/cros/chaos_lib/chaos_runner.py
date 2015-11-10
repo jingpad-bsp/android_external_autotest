@@ -69,11 +69,10 @@ class ChaosRunner(object):
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = utils.allocate_packet_capturer(
                     lock_manager, hostname=capturer_hostname)
-            capturer = site_linux_system.LinuxSystem(capture_host, {},
-                                                     'packet_capturer')
-
             # Cleanup and reboot packet capturer before the test.
             utils.sanitize_client(capture_host)
+            capturer = site_linux_system.LinuxSystem(capture_host, {},
+                                                     'packet_capturer')
 
             # Run iw scan and abort if more than allowed number of APs are up.
             iw_command = iw_runner.IwRunner(capture_host)
