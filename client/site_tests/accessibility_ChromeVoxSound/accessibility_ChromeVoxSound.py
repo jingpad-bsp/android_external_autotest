@@ -93,7 +93,7 @@ class accessibility_ChromeVoxSound(test.test):
 
             logging.info('Detecting initial ChromeVox welcome speech.')
             audio_length = self._detect_audio()
-            if audio_length < 3:
+            if audio_length < 2:
                 raise error.TestError('Speech after enabling ChromeVox was <= '
                                       '%f seconds long!' % audio_length)
 
