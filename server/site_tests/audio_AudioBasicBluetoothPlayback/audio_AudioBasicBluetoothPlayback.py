@@ -82,6 +82,13 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
         return audio_test_utils.bluetooth_nodes_plugged(self.audio_facade)
 
 
+    def dump_logs_after_nodes_changed(self):
+        """Dumps the log after unexpected NodesChanged signal happens."""
+        audio_test_utils.dump_cros_audio_logs(
+                self.host, self.audio_facade, self.resultsdir,
+                'after_nodes_changed')
+
+
     def run_once(self, host, suspend=False,
                  disable=False, disconnect=False):
         """Running Bluetooth basic audio tests
@@ -156,7 +163,8 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
                         timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS,
                         desc='bluetooth node auto-reconnect after suspend')
 
-            with audio_test_utils.monitor_no_nodes_changed(self.audio_facade):
+            with audio_test_utils.monitor_no_nodes_changed(
+                    self.audio_facade, self.dump_logs_after_nodes_changed):
                 # Checks the node selected by Cras is correct again.
                 audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (['BLUETOOTH'], None))

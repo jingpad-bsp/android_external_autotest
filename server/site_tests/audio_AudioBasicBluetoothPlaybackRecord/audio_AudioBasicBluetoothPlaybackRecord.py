@@ -87,6 +87,13 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         return audio_test_utils.bluetooth_nodes_plugged(self.audio_facade)
 
 
+    def dump_logs_after_nodes_changed(self):
+        """Dumps the log after unexpected NodesChanged signal happens."""
+        audio_test_utils.dump_cros_audio_logs(
+                self.host, self.audio_facade, self.resultsdir,
+                'after_nodes_changed')
+
+
     def run_once(self, host, suspend=False,
                  disable=False, disconnect=False):
         """Running Bluetooth basic audio tests
@@ -197,7 +204,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                 self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
 
                 with audio_test_utils.monitor_no_nodes_changed(
-                        self.audio_facade):
+                        self.audio_facade, self.dump_logs_after_nodes_changed):
                     # Checks the node selected by Cras is correct again.
                     audio_test_utils.check_audio_nodes(self.audio_facade,
                                                        (['BLUETOOTH'],
