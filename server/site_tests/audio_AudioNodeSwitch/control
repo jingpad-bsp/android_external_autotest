@@ -27,6 +27,7 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("audio_AudioNodeSwitch", host=host, jack_node=True)
-
+    job.run_test("audio_AudioNodeSwitch", host=host, jack_node=True, tag='JACK')
+    job.run_test("audio_AudioNodeSwitch", host=host, hdmi_node=True, tag='HDMI')
+    job.run_test("audio_AudioNodeSwitch", host=host, hdmi_node=True, jack_node=True, tag='HDMI_JACK')
 parallel_simple(run, machines)
