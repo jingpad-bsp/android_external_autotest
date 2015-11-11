@@ -173,11 +173,7 @@ class AudioBusLink(WidgetLink):
 
     This class handles two tasks.
     1. Audio bus routing.
-    2. 3.5mm 4-ring audio cable plugging/unplugging between audio board
-       and Cros device using motor in audio box.
-    Note that in the configuration where there is no audio box, assume that
-    audio board and Cros device are always connected by 3.5mm 4-ring audio
-    cable and there is no need to plug/unplug the cable.
+    2. Plug/unplug jack using the widget handler on the DUT side.
 
     Note that audio jack is shared by headphone and external microphone on
     Cros device. So plugging/unplugging headphone widget will also affect
@@ -188,19 +184,13 @@ class AudioBusLink(WidgetLink):
         _audio_bus: An AudioBus object.
 
     """
-    def __init__(self, audio_bus, jack_plugger):
+    def __init__(self, audio_bus):
         """Initializes an AudioBusLink.
 
         @param audio_bus: An AudioBus object.
-        @param jack_plugger: An AudioJackPlugger object if there is an audio
-                             jack plugger on audio board.
-                             A DummyAudioJackPlugger object if there is no
-                             jack plugger on audio board.
-
         """
         super(AudioBusLink, self).__init__()
         self._audio_bus = audio_bus
-        self._jack_plugger = jack_plugger
         logging.debug('Create an AudioBusLink with bus index %d',
                       audio_bus.bus_index)
 
@@ -212,7 +202,7 @@ class AudioBusLink(WidgetLink):
 
         """
         if widget.audio_port.host == 'Cros':
-            self._jack_plugger.plug()
+            widget.handler.plug()
 
         self._audio_bus.connect(widget.audio_port.port_id)
 
@@ -228,7 +218,7 @@ class AudioBusLink(WidgetLink):
 
         """
         if widget.audio_port.host == 'Cros':
-            self._jack_plugger.unplug()
+            widget.handler.unplug()
 
         self._audio_bus.disconnect(widget.audio_port.port_id)
 
@@ -244,7 +234,7 @@ class AudioBusLink(WidgetLink):
 
         """
         if widget.audio_port.host == 'Cros':
-            self._jack_plugger.plug()
+            widget.handler.plug()
 
         self._audio_bus.connect(widget.audio_port.port_id)
 
@@ -260,7 +250,7 @@ class AudioBusLink(WidgetLink):
 
         """
         if widget.audio_port.host == 'Cros':
-            self._jack_plugger.unplug()
+            widget.handler.unplug()
 
         self._audio_bus.disconnect(widget.audio_port.port_id)
         logging.info(

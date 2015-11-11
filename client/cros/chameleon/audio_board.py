@@ -32,9 +32,8 @@ class AudioBoard(object):
             self._jack_plugger = AudioJackPlugger(chameleon_connection)
         except AudioJackPluggerException:
             logging.warning(
-                    'There is no jack plugger on this audio board. '
-                    'Use DummyAudioJackPlugger instead')
-            self._jack_plugger = DummyAudioJackPlugger()
+                    'There is no jack plugger on this audio board.')
+            self._jack_plugger = None
 
         self._bluetooth_controller = BluetoothController(chameleon_connection)
 
@@ -54,8 +53,7 @@ class AudioBoard(object):
         """Gets an AudioJackPlugger on this audio board.
 
         @returns: An AudioJackPlugger object if there is an audio jack plugger.
-                  A DummyAudioJackPlugger object if there is no audio jack
-                  plugger.
+                  None if there is no audio jack plugger.
 
         """
         return self._jack_plugger
@@ -253,36 +251,6 @@ class AudioJackPlugger(object):
         """Unplugs the audio cable from audio jack of Cros device."""
         self._chameleond_proxy.AudioBoardAudioJackUnplug()
         logging.info('Unplugged 3.5mm audio cable from Cros device')
-
-
-class DummyAudioJackPlugger(object):
-    """An abstraction of plugger whose state remains plugged.
-
-    In the case where there is no audio box, the 3.5mm 4-ring audio cable
-    should be plugged to Cros device and remains there.
-    This dummy plugger only logs messages and does nothing upon the request
-    to plug/unplug.
-    """
-    def __init__(self):
-        """Constructs a DummyAudioJackPlugger."""
-        logging.info(
-                'Init a DummyAudioJackPlugger which assumes 3.5mm audio '
-                'cable is always plugged to Cros device.')
-        pass
-
-
-    def plug(self):
-        """Plugs the audio cable into audio jack of Cros device."""
-        logging.info(
-                'Do nothing as DummyAudioJackPlugger has audio jack '
-                'always plugged.')
-
-
-    def unplug(self):
-        """Unplugs the audio cable from audio jack of Cros device."""
-        logging.warning(
-                'Do nothing as DummyAudioJackPlugger has audio jack '
-                'always plugged.')
 
 
 class BluetoothController(object):

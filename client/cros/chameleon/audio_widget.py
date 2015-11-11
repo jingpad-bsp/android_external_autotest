@@ -549,16 +549,13 @@ class CrosWidgetHandler(WidgetHandler):
 
     def plug(self):
         """Plugs this widget."""
-        # TODO(cychiang): Implement plug control. This class
-        # will need access to ChameleonBoard and interface name.
-        # For widget on 3.5mm jack(Headphone and External Mic), we need to
-        # plug/unplug 3.5mm jack by fixture controlled by Chameleon.
+        logging.info('CrosWidgetHandler: plug')
         self._plug_handler.plug()
 
 
     def unplug(self):
         """Unplugs this widget."""
-        # TODO(cychiang): Similar to plug().
+        logging.info('CrosWidgetHandler: unplug')
         self._plug_handler.unplug()
 
 
@@ -592,11 +589,38 @@ class DummyPlugHandler(PlugHandler):
 
     def plug(self):
         """Does nothing for plug."""
-        pass
+        logging.info('DummyPlugHandler: plug')
+
 
     def unplug(self):
         """Does nothing for unplug."""
-        pass
+        logging.info('DummyPlugHandler: unplug')
+
+
+class JackPluggerPlugHandler(PlugHandler):
+    """This class abstracts plug/unplug action with motor on Cros device.
+
+    Properties:
+        _jack_plugger: A JackPlugger object to access the jack plugger robot
+
+    """
+
+    def __init__(self, jack_plugger):
+        """Initializes a JackPluggerPlugHandler.
+
+        @param jack_plugger: A JackPlugger object
+        """
+        self._jack_plugger = jack_plugger
+
+
+    def plug(self):
+        """plugs in the jack to the cros device."""
+        self._jack_plugger.plug()
+
+
+    def unplug(self):
+        """Unplugs the jack from the cros device."""
+        self._jack_plugger.unplug()
 
 
 class USBPlugHandler(PlugHandler):

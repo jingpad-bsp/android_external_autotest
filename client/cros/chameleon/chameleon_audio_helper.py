@@ -166,13 +166,9 @@ class AudioLinkFactory(object):
         # specific than AudioBusLink.
         # Controls this link using AudioBus object obtained from AudioBoard
         # object.
-        # Plugs/unplugs 3.5mm jack using AudioJackPlugger object obtained from
-        # AudioBoard object.
         elif issubclass(link_type, audio_widget_link.AudioBusLink):
             bus_index = self._acquire_audio_bus_index()
-            link = link_type(
-                    self._audio_board.get_audio_bus(bus_index),
-                    self._audio_board.get_jack_plugger())
+            link = link_type(self._audio_board.get_audio_bus(bus_index))
             self._audio_bus_links[bus_index] = link
         elif issubclass(link_type, audio_widget_link.BluetoothWidgetLink):
             # To connect bluetooth adapter on Cros device to bluetooth module on
@@ -286,11 +282,17 @@ class AudioWidgetFactory(object):
             """
             is_usb = audio_port.port_id in [ids.CrosIds.USBIN,
                                             ids.CrosIds.USBOUT]
+            audio_board = self._chameleon_board.get_audio_board()
+            if audio_board:
+                jack_plugger = audio_board.get_jack_plugger()
+            else:
+                jack_plugger = None
+
             if is_usb:
                 plug_handler = audio_widget.USBPlugHandler(self._usb_facade)
+            elif jack_plugger:
+                plug_handler = audio_widget.JackPluggerPlugHandler(jack_plugger)
             else:
-                # Currently the jack plugger control is handled in
-                # audio_widget_link and it will be cleaned up by @cychiang.
                 plug_handler = audio_widget.DummyPlugHandler()
 
             if audio_port.role == 'sink':
