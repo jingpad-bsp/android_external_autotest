@@ -11,6 +11,7 @@ import logging
 import os
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.chameleon import audio_test_utils
@@ -28,8 +29,10 @@ class audio_AudioBasicUSBPlaybackRecord(audio_test.AudioTest):
     """
     version = 1
     RECORD_SECONDS = 5
+    SUSPEND_SECONDS = 30
+    RPC_RECONNECT_TIMEOUT = 60
 
-    def run_once(self, host):
+    def run_once(self, host, suspend=False):
         golden_file = audio_test_data.SWEEP_TEST_FILE
 
         chameleon_board = host.chameleon
@@ -71,6 +74,14 @@ class audio_AudioBasicUSBPlaybackRecord(audio_test.AudioTest):
 
                 playback_source.set_playback_data(golden_file)
                 record_source.set_playback_data(golden_file)
+
+                if suspend:
+                    audio_test_utils.suspend_resume(host, self.SUSPEND_SECONDS)
+                    utils.poll_for_condition(condition=factory.ready,
+                                             timeout=self.RPC_RECONNECT_TIMEOUT,
+                                             desc='multimedia server reconnect')
+                    audio_test_utils.check_audio_nodes(audio_facade,
+                                                       (['USB'], ['USB']))
 
                 logging.info('Start recording from Chameleon.')
                 playback_recorder.start_recording()
