@@ -9,9 +9,8 @@ NAME = 'network_WiFi_DarkResumeActiveScans'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 DEPENDENCIES = 'wificell, servo, lucidsleep'
-ATTRIBUTES = ('suite:wifi_correctness_cros_core, suite:wifi_release, '
-              'suite:wifi_lucidsleep')
-SUITE = ('wifi_correctness_cros_core, wifi_release, wifi_lucidsleep')
+ATTRIBUTES = 'suite:wifi_correctness_cros_core, suite:wifi_lucidsleep'
+SUITE = 'wifi_correctness_cros_core, wifi_lucidsleep'
 
 DOC = """
 When wake on WiFi is supported and enabled, our system could wake up from
