@@ -43,7 +43,7 @@ RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
 TMP_DIR = '/data/local/tmp'
 # Regex to pull out file type, perms and symlink. Example:
-# lrwxrwx--- 1 6 2015-09-12 19:21 blah_link -> ./blah
+# lrwxrwx--- 1 6 root system 2015-09-12 19:21 blah_link -> ./blah
 FILE_INFO_REGEX = '^(?P<TYPE>[dl-])(?P<PERMS>[rwx-]{9})'
 FILE_SYMLINK_REGEX = '^.*-> (?P<SYMLINK>.+)'
 # List of the perm stats indexed by the order they are listed in the example
@@ -735,8 +735,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns a dict of the file permissions and symlink.
         """
-        # Grab file info but leave out the name/group for easier regexing.
-        file_info = self.run_output('ls -lgo %s' % dest)
+        # Grab file info.
+        file_info = self.run_output('ls -l %s' % dest)
         symlink = None
         perms = 0
         match = re.match(FILE_INFO_REGEX, file_info)
