@@ -203,7 +203,7 @@ def _apply_upgrades(afe, dry_run, afe_versions,
     if not dry_run and new_default != old_default:
         sys.stdout.write('Default %s -> %s\n' %
                          (old_default, new_default))
-        sys.stdout.write('The following boards have a non-default version:\n')
+        sys.stdout.write('Applying stable version changes:\n')
     # N.B. The ordering here matters:  Any board that will have a
     # non-default stable version must be updated _before_ we change the
     # default mapping, below.
@@ -218,7 +218,7 @@ def _apply_upgrades(afe, dry_run, afe_versions,
             sys.stdout.write(message % (board, build))
         else:
             if not dry_run:
-                old_build = afe_versions.get(board, old_default)
+                old_build = afe_versions.get(board, '(default)')
                 sys.stdout.write('    %-22s %s -> %s\n' %
                                  (board, old_build, build))
             _set_stable_version(afe, dry_run, board, build)
@@ -227,9 +227,12 @@ def _apply_upgrades(afe, dry_run, afe_versions,
     # any non-default mappings made obsolete by the update.
     if new_default != old_default:
         _set_stable_version(afe, dry_run, _DEFAULT_BOARD, new_default)
-        for board, build in upgrade_versions.items():
-            if board in afe_versions and build == new_default:
-                _delete_stable_version(afe, dry_run, board)
+    for board, build in upgrade_versions.items():
+        if board in afe_versions and build == new_default:
+            if not dry_run:
+                sys.stdout.write('    %-22s %s -> (default)\n' %
+                                 (board, afe_versions[board]))
+            _delete_stable_version(afe, dry_run, board)
 
 
 def _parse_command_line(argv):
