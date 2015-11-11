@@ -90,7 +90,7 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
 
     def run_once(self, input_type='touchpad'):
         """Entry point of this test."""
-        if not self._has(input_type):
+        if not self.player.has(input_type):
             raise error.TestError('No %s found on this device!' % input_type)
 
         # Skip run on invalid touch inputs.
