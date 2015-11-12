@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=120
+need_pass=116
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,15 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "shaders/glsl-vs-user-varying-ff" 0.0 "bin/glsl-vs-user-varying-ff -fbo -auto"
+run_test "shaders/glsl-vs-varying-array" 0.0 "bin/shader_runner tests/shaders/glsl-vs-varying-array.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-1" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-1.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-2" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-2.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-3" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-3.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-4" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-4.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-5" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-5.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-6" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-6.shader_test -auto"
+run_test "shaders/glsl-vs-vec4-indexing-temp-dst" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-dst-in-loop" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst-in-loop.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-dst-in-nested-loop-combined" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst-in-nested-loop-combined.shader_test -auto"
 run_test "shaders/glsl-vs-vec4-indexing-temp-src" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-src.shader_test -auto"
@@ -137,24 +146,11 @@ run_test "spec/!OpenGL 1.1/texwrap 1D proj" 0.0 "bin/texwrap 1D GL_RGBA8 proj -f
 run_test "spec/!OpenGL 1.1/texwrap 2D" 0.0 "bin/texwrap 2D GL_RGBA8 -fbo -auto"
 run_test "spec/!OpenGL 1.1/texwrap 2D proj" 0.0 "bin/texwrap 2D GL_RGBA8 proj -fbo -auto"
 run_test "spec/!OpenGL 1.1/texwrap formats" 0.0 "bin/texwrap -fbo -auto"
-run_test "spec/!OpenGL 1.1/tri-tex-crash" 0.0 "bin/tri-tex-crash -auto"
-run_test "spec/!OpenGL 1.1/triangle-guardband-viewport" 0.0 "bin/triangle-guardband-viewport -fbo -auto"
-run_test "spec/!OpenGL 1.1/two-sided-lighting" 0.0 "bin/two-sided-lighting -auto"
-run_test "spec/!OpenGL 1.1/user-clip" 0.0 "bin/user-clip -auto"
-run_test "spec/!OpenGL 1.1/varray-disabled" 0.0 "bin/varray-disabled -auto"
-run_test "spec/!OpenGL 1.1/vbo-buffer-unmap" 0.0 "bin/vbo-buffer-unmap -auto"
-run_test "spec/!OpenGL 1.2/copyteximage 3D" 0.0 "bin/copyteximage 3D -auto"
-run_test "spec/!OpenGL 1.2/crash-texparameter-before-teximage" 0.0 "bin/crash-texparameter-before-teximage -auto"
-run_test "spec/!OpenGL 1.2/draw-elements-vs-inputs" 0.0 "bin/draw-elements-vs-inputs -auto"
-run_test "spec/!OpenGL 1.2/getteximage-targets 3D" 0.0 "bin/getteximage-targets 3D -fbo -auto"
-run_test "spec/!OpenGL 1.2/lodclamp" 0.0 "bin/lodclamp -auto"
-run_test "spec/!OpenGL 1.2/lodclamp-between" 0.0 "bin/lodclamp-between -auto"
-run_test "spec/!OpenGL 1.2/lodclamp-between-max" 0.0 "bin/lodclamp-between-max -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 120 tests have passed. |"
+  echo "| Overall pass, as all 116 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=206
+need_pass=198
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,8 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "shaders/glsl-fs-mov-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mov-masked.shader_test -auto"
+run_test "shaders/glsl-fs-neg" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg.shader_test -auto"
 run_test "shaders/glsl-fs-neg-abs" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg-abs.shader_test -auto"
 run_test "shaders/glsl-fs-neg-dot" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg-dot.shader_test -auto"
 run_test "shaders/glsl-fs-pointcoord" 0.0 "bin/glsl-fs-pointcoord -fbo -auto"
@@ -56,7 +58,6 @@ run_test "shaders/glsl-fs-texture2d-dependent-4" 0.0 "bin/shader_runner tests/sh
 run_test "shaders/glsl-fs-texture2d-dependent-5" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2d-dependent-5.shader_test -auto"
 run_test "shaders/glsl-fs-texture2d-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2d-masked.shader_test -auto"
 run_test "shaders/glsl-fs-texture2d-masked-2" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2d-masked-2.shader_test -auto"
-run_test "shaders/glsl-fs-texture2d-masked-3" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2d-masked-3.shader_test -auto"
 run_test "shaders/glsl-fs-texture2d-masked-4" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2d-masked-4.shader_test -auto"
 run_test "shaders/glsl-fs-texture2dproj" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2dproj.shader_test -auto"
 run_test "shaders/glsl-fs-texture2dproj-2" 0.0 "bin/shader_runner tests/shaders/glsl-fs-texture2dproj-2.shader_test -auto"
@@ -227,20 +228,11 @@ run_test "shaders/glsl-vs-uniform-array-1" 0.0 "bin/shader_runner tests/shaders/
 run_test "shaders/glsl-vs-uniform-array-2" 0.0 "bin/shader_runner tests/shaders/glsl-vs-uniform-array-2.shader_test -auto"
 run_test "shaders/glsl-vs-uniform-array-3" 0.0 "bin/shader_runner tests/shaders/glsl-vs-uniform-array-3.shader_test -auto"
 run_test "shaders/glsl-vs-uniform-array-4" 0.0 "bin/shader_runner tests/shaders/glsl-vs-uniform-array-4.shader_test -auto"
-run_test "shaders/glsl-vs-user-varying-ff" 0.0 "bin/glsl-vs-user-varying-ff -fbo -auto"
-run_test "shaders/glsl-vs-varying-array" 0.0 "bin/shader_runner tests/shaders/glsl-vs-varying-array.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-1" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-1.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-2" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-2.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-3" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-3.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-4" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-4.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-5" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-5.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-6" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-6.shader_test -auto"
-run_test "shaders/glsl-vs-vec4-indexing-temp-dst" 0.0 "bin/shader_runner tests/shaders/glsl-vs-vec4-indexing-temp-dst.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 206 tests have passed. |"
+  echo "| Overall pass, as all 198 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

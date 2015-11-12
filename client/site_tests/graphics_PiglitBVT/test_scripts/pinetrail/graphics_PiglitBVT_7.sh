@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=272
+need_pass=259
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,27 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-bounds" 0.0 "bin/arb_draw_elements_base_vertex-bounds -auto"
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements" 0.0 "bin/arb_draw_elements_base_vertex-drawelements -auto"
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements-instanced" 0.0 "bin/arb_draw_elements_base_vertex-drawelements-instanced -auto"
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements-user_varrays" 0.0 "bin/arb_draw_elements_base_vertex-drawelements -auto user_varrays"
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-negative-index" 0.0 "bin/arb_draw_elements_base_vertex-negative-index -auto"
-run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-negative-index-user_varrays" 0.0 "bin/arb_draw_elements_base_vertex-negative-index -auto user_varrays"
-run_test "spec/ARB_draw_elements_base_vertex/dlist" 0.0 "bin/arb_draw_elements_base_vertex-dlist -fbo -auto"
-run_test "spec/ARB_draw_instanced/arb_draw_instanced-drawarrays" 0.0 "bin/arb_draw_instanced-drawarrays -auto"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.frag fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.vert fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.frag fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.vert pass 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/compiler/negative-instanceidarb-write.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/negative-instanceidarb-write.vert fail 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/dlist" 0.0 "bin/arb_draw_instanced-dlist -fbo -auto"
-run_test "spec/ARB_draw_instanced/draw-non-instanced" 0.0 "bin/shader_runner tests/spec/arb_draw_instanced/execution/draw-non-instanced.shader_test -auto"
-run_test "spec/ARB_draw_instanced/elements" 0.0 "bin/arb_draw_instanced-elements -fbo -auto"
-run_test "spec/ARB_draw_instanced/instance-array-dereference" 0.0 "bin/shader_runner tests/spec/arb_draw_instanced/execution/instance-array-dereference.shader_test -auto"
-run_test "spec/ARB_draw_instanced/negative-arrays-first-negative" 0.0 "bin/arb_draw_instanced-negative-arrays-first-negative -fbo -auto"
-run_test "spec/ARB_draw_instanced/negative-elements-type" 0.0 "bin/arb_draw_instanced-negative-elements-type -fbo -auto"
-run_test "spec/ARB_draw_instanced/preprocessor/feature-macro-enabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/preprocessor/feature-macro-enabled.frag pass 1.10 GL_ARB_draw_instanced"
-run_test "spec/ARB_draw_instanced/preprocessor/feature-macro-enabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/preprocessor/feature-macro-enabled.vert pass 1.10 GL_ARB_draw_instanced"
 run_test "spec/ARB_explicit_attrib_location/1.10/compiler/attribute-01.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.10/compiler/attribute-01.vert fail 1.10 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.10/compiler/in-01.frag" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.10/compiler/in-01.frag pass 1.10 GL_ARB_explicit_attrib_location"
 run_test "spec/ARB_explicit_attrib_location/1.10/compiler/in-01.vert" 0.0 "bin/glslparsertest tests/spec/arb_explicit_attrib_location/1.10/compiler/in-01.vert pass 1.10 GL_ARB_explicit_attrib_location"
@@ -277,7 +256,6 @@ run_test "spec/ARB_texture_rectangle/texwrap RECT" 0.0 "bin/texwrap RECT GL_RGBA
 run_test "spec/ARB_texture_rectangle/texwrap RECT proj" 0.0 "bin/texwrap RECT GL_RGBA8 proj -fbo -auto"
 run_test "spec/ARB_vertex_array_bgra/api-errors" 0.0 "bin/arb_vertex_array_bgra-api-errors -auto"
 run_test "spec/ARB_vertex_array_bgra/get" 0.0 "bin/arb_vertex_array_bgra-get -auto"
-run_test "spec/ARB_vertex_array_object/isvertexarray" 0.0 "bin/arb_vertex_array-isvertexarray -fbo -auto"
 run_test "spec/ARB_vertex_array_object/vao-element-array-buffer" 0.0 "bin/vao-element-array-buffer -fbo -auto"
 run_test "spec/ARB_vertex_buffer_object/elements-negative-offset" 0.0 "bin/arb_vertex_buffer_object-elements-negative-offset -auto"
 run_test "spec/ARB_vertex_buffer_object/fdo14575" 0.0 "bin/fdo14575 -auto"
@@ -302,11 +280,20 @@ run_test "spec/ARB_vertex_program/fdo24066" 0.0 "bin/fdo24066 -auto"
 run_test "spec/ARB_vertex_program/getenv4d-with-error" 0.0 "bin/arb_vertex_program-getenv4d-with-error -auto"
 run_test "spec/ARB_vertex_program/getlocal4-errors" 0.0 "bin/arb_vertex_program-getlocal4-errors -fbo -auto"
 run_test "spec/ARB_vertex_program/getlocal4d-with-error" 0.0 "bin/arb_vertex_program-getlocal4d-with-error -auto"
+run_test "spec/ARB_vertex_program/getlocal4f-max" 0.0 "bin/arb_vertex_program-getlocal4f-max -fbo -auto"
+run_test "spec/ARB_vertex_program/minmax" 0.0 "bin/arb_vertex_program-minmax -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-offset.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset-neg" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-offset-neg.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-overwritten" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-overwritten.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-relative-offset" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-relative-offset.vpfp -fbo -auto"
+run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-varying" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-varying.vpfp -fbo -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 272 tests have passed. |"
+  echo "| Overall pass, as all 259 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=228
+need_pass=223
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-mix-float-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-mix-float-float-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-mix-vec2-vec2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-mix-vec2-vec2-float.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-mix-vec2-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-mix-vec2-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-mix-vec3-vec3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-mix-vec3-vec3-float.shader_test -auto"
@@ -184,7 +185,6 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-int" 0.0 "bi
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-int-ivec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec2-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec2-ivec2.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec3-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec3-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec3-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-div-ivec3-ivec3.shader_test -auto"
@@ -253,16 +253,11 @@ run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-mat2" 0.0
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-mat3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-mat4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec3.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec4.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-int.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec2.shader_test -auto"
-run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec3.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 228 tests have passed. |"
+  echo "| Overall pass, as all 223 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

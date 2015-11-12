@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=243
+need_pass=239
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,7 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "hiz/hiz-depth-read-fbo-d24s8" 0.0 "bin/hiz-depth-read-fbo-d24s8 -auto"
 run_test "hiz/hiz-depth-read-window-stencil0" 0.0 "bin/hiz-depth-read-window-stencil0 -auto"
 run_test "hiz/hiz-depth-read-window-stencil1" 0.0 "bin/hiz-depth-read-window-stencil1 -auto"
 run_test "hiz/hiz-depth-stencil-test-fbo-d0-s8" 0.0 "bin/hiz-depth-stencil-test-fbo-d0-s8 -auto"
@@ -81,7 +82,6 @@ run_test "shaders/glsl-algebraic-logicand-true" 0.0 "bin/shader_runner tests/sha
 run_test "shaders/glsl-algebraic-logicand-true-2" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicand-true-2.shader_test -auto"
 run_test "shaders/glsl-algebraic-logicor-false" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicor-false.shader_test -auto"
 run_test "shaders/glsl-algebraic-logicor-false-2" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicor-false-2.shader_test -auto"
-run_test "shaders/glsl-algebraic-logicor-true" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicor-true.shader_test -auto"
 run_test "shaders/glsl-algebraic-logicor-true-2" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicor-true-2.shader_test -auto"
 run_test "shaders/glsl-algebraic-logicxor-false" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicxor-false.shader_test -auto"
 run_test "shaders/glsl-algebraic-logicxor-true" 0.0 "bin/shader_runner tests/shaders/glsl-algebraic-logicxor-true.shader_test -auto"
@@ -191,7 +191,6 @@ run_test "shaders/glsl-fs-abs-04" 0.0 "bin/shader_runner tests/shaders/glsl-fs-a
 run_test "shaders/glsl-fs-abs-neg" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-neg.shader_test -auto"
 run_test "shaders/glsl-fs-abs-neg-with-intermediate" 0.0 "bin/shader_runner tests/shaders/glsl-fs-abs-neg-with-intermediate.shader_test -auto"
 run_test "shaders/glsl-fs-add-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-add-masked.shader_test -auto"
-run_test "shaders/glsl-fs-all-01" 0.0 "bin/shader_runner tests/shaders/glsl-fs-all-01.shader_test -auto"
 run_test "shaders/glsl-fs-all-02" 0.0 "bin/shader_runner tests/shaders/glsl-fs-all-02.shader_test -auto"
 run_test "shaders/glsl-fs-any" 0.0 "bin/shader_runner tests/shaders/glsl-fs-any.shader_test -auto"
 run_test "shaders/glsl-fs-array-redeclaration" 0.0 "bin/shader_runner tests/shaders/glsl-fs-array-redeclaration.shader_test -auto"
@@ -203,7 +202,6 @@ run_test "shaders/glsl-fs-clamp-1" 0.0 "bin/shader_runner tests/shaders/glsl-fs-
 run_test "shaders/glsl-fs-clamp-2" 0.0 "bin/shader_runner tests/shaders/glsl-fs-clamp-2.shader_test -auto"
 run_test "shaders/glsl-fs-clamp-3" 0.0 "bin/shader_runner tests/shaders/glsl-fs-clamp-3.shader_test -auto"
 run_test "shaders/glsl-fs-clamp-4" 0.0 "bin/shader_runner tests/shaders/glsl-fs-clamp-4.shader_test -auto"
-run_test "shaders/glsl-fs-clamp-5" 0.0 "bin/shader_runner tests/shaders/glsl-fs-clamp-5.shader_test -auto"
 run_test "shaders/glsl-fs-color-matrix" 0.0 "bin/glsl-fs-color-matrix -fbo -auto"
 run_test "shaders/glsl-fs-conditional-output-write" 0.0 "bin/shader_runner tests/shaders/glsl-fs-conditional-output-write.shader_test -auto"
 run_test "shaders/glsl-fs-copy-propagation-texcoords-1" 0.0 "bin/shader_runner tests/shaders/glsl-fs-copy-propagation-texcoords-1.shader_test -auto"
@@ -271,13 +269,11 @@ run_test "shaders/glsl-fs-min-3" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mi
 run_test "shaders/glsl-fs-mix" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mix.shader_test -auto"
 run_test "shaders/glsl-fs-mix-constant" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mix-constant.shader_test -auto"
 run_test "shaders/glsl-fs-mod" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mod.shader_test -auto"
-run_test "shaders/glsl-fs-mov-masked" 0.0 "bin/shader_runner tests/shaders/glsl-fs-mov-masked.shader_test -auto"
-run_test "shaders/glsl-fs-neg" 0.0 "bin/shader_runner tests/shaders/glsl-fs-neg.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 243 tests have passed. |"
+  echo "| Overall pass, as all 239 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

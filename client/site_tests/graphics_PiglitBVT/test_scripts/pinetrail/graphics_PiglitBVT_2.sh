@@ -30,6 +30,9 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "glean/glsl1-chained assignment" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
+run_test "glean/glsl1-continue with no loop" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
+run_test "glean/glsl1-cross() function, in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-gl_FragDepth writing" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-gl_Position not written check" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-if (boolean-scalar) check" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -40,7 +43,6 @@ run_test "glean/glsl1-matrix column check (2)" 0.0 "bin/glean -o -v -v -v -t +gl
 run_test "glean/glsl1-matrix, vector multiply (1)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-matrix, vector multiply (3)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-nested function calls (1)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-nested function calls (2)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-nested function calls (3)" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-sequence (comma) operator" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-shadow2D(): 2" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
@@ -72,7 +74,6 @@ run_test "glean/orthoPosPoints" 0.0 "bin/glean -o -v -v -v -t +orthoPosPoints --
 run_test "glean/orthoPosRandRects" 0.0 "bin/glean -o -v -v -v -t +orthoPosRandRects --quick"
 run_test "glean/orthoPosRandTris" 0.0 "bin/glean -o -v -v -v -t +orthoPosRandTris --quick"
 run_test "glean/orthoPosVLines" 0.0 "bin/glean -o -v -v -v -t +orthoPosVLines --quick"
-run_test "glean/pixelFormats" 0.0 "bin/glean -o -v -v -v -t +pixelFormats --quick"
 run_test "glean/pointSprite" 0.0 "bin/glean -o -v -v -v -t +pointSprite --quick"
 run_test "glean/readPixSanity" 0.0 "bin/glean -o -v -v -v -t +readPixSanity --quick"
 run_test "glean/shaderAPI" 0.0 "bin/glean -o -v -v -v -t +shaderAPI --quick"
@@ -166,7 +167,6 @@ run_test "glx/glx-visuals-stencil" 0.0 "bin/glx-visuals-stencil -auto"
 run_test "glx/glx-visuals-stencil -pixmap" 0.0 "bin/glx-visuals-stencil -pixmap -fbo -auto"
 run_test "glx/glx-window-life" 0.0 "bin/glx-window-life -fbo -auto"
 run_test "hiz/hiz-depth-read-fbo-d24-s0" 0.0 "bin/hiz-depth-read-fbo-d24-s0 -auto"
-run_test "hiz/hiz-depth-read-fbo-d24s8" 0.0 "bin/hiz-depth-read-fbo-d24s8 -auto"
 popd
 
 if [ $need_pass == 0 ] ; then

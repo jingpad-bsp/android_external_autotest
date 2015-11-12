@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=376
+need_pass=372
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,23 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX1 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX16 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX16 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX16 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX16 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX4 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX4 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX4 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX4 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX8 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX8 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX8 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX8 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-storage-completeness" 0.0 "bin/fbo-storage-completeness -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-storage-formats" 0.0 "bin/fbo-storage-formats -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fdo20701" 0.0 "bin/fdo20701 -fbo -auto"
-run_test "spec/EXT_packed_depth_stencil/errors" 0.0 "bin/ext_packed_depth_stencil-errors -fbo -auto"
 run_test "spec/EXT_packed_depth_stencil/fbo-depth-GL_DEPTH24_STENCIL8-clear" 0.0 "bin/fbo-depth clear GL_DEPTH24_STENCIL8 -fbo -auto"
 run_test "spec/EXT_packed_depth_stencil/fbo-depth-GL_DEPTH24_STENCIL8-readpixels" 0.0 "bin/fbo-depth readpixels GL_DEPTH24_STENCIL8 -fbo -auto"
 run_test "spec/EXT_packed_depth_stencil/fbo-depth-GL_DEPTH24_STENCIL8-tex1d" 0.0 "bin/fbo-depth-tex1d GL_DEPTH24_STENCIL8 -fbo -auto"
@@ -406,11 +389,24 @@ run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3" 0.0 "bin/sha
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec3-using-if.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4-using-if" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-any-bvec4-using-if.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-asin-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-asin-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-atan-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-atan-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-ceil-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-ceil-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-ceil-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-clamp-float-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-clamp-float-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec2-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec2-float-float.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec2-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec2-vec2-vec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec3-float-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/fs-clamp-vec3-float-float.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 376 tests have passed. |"
+  echo "| Overall pass, as all 372 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

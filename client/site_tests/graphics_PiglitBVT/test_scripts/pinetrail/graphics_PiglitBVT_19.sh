@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=204
+need_pass=195
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,16 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec4.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3x2.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat3x4.shader_test -auto"
@@ -112,7 +102,6 @@ run_test "spec/glsl-1.20/execution/uniform-initializer/fs-bool-set-by-API" 0.0 "
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-bool-set-by-other-stage" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-bool-set-by-other-stage.shader_test -auto"
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-float-array" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-float-array.shader_test -auto"
-run_test "spec/glsl-1.20/execution/uniform-initializer/fs-float-from-const" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-float-from-const.shader_test -auto"
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-float-set-by-API" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-float-set-by-API.shader_test -auto"
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-float-set-by-other-stage" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-float-set-by-other-stage.shader_test -auto"
 run_test "spec/glsl-1.20/execution/uniform-initializer/fs-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/uniform-initializer/fs-int.shader_test -auto"
@@ -168,9 +157,7 @@ run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat4-rd" 0.0 
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-array-mat4-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-row-rd.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-row-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat2-wr.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-row-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-temp-mat3-wr.shader_test -auto"
@@ -199,7 +186,6 @@ run_test "spec/glsl-1.20/execution/variable-indexing/fs-varying-mat2-row-rd" 0.0
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-varying-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-varying-mat3-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-varying-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-varying-mat3-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/fs-varying-mat4-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-varying-mat4-rd.shader_test -auto"
-run_test "spec/glsl-1.20/execution/variable-indexing/fs-varying-mat4-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/fs-varying-mat4-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-row-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat2-col-row-wr.shader_test -auto"
@@ -234,11 +220,16 @@ run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-row-wr" 
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat3-wr.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-rd.shader_test -auto"
 run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-rd.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-row-wr.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-col-wr.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-rd.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-rd.shader_test -auto"
+run_test "spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.20/execution/variable-indexing/vs-temp-array-mat4-index-col-row-wr.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 204 tests have passed. |"
+  echo "| Overall pass, as all 195 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

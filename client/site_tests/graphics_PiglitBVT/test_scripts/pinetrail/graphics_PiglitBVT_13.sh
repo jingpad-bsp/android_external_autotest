@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=214
+need_pass=208
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,11 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec3.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-float-vec4.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-int.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec2.shader_test -auto"
+run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec3.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-int-ivec4.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-int" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-int.shader_test -auto"
 run_test "spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-ivec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.10/execution/built-in-functions/vs-op-mult-ivec2-ivec2.shader_test -auto"
@@ -233,22 +238,11 @@ run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow1D-06" 0.0 "bin/shader
 run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow1D-09" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow1D-09.shader_test -auto"
 run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-02" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-02.shader_test -auto"
 run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-04" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-04.shader_test -auto"
-run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-05" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-05.shader_test -auto"
-run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-06" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-06.shader_test -auto"
-run_test "spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-09" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/glsl-fs-shadow2D-09.shader_test -auto"
-run_test "spec/glsl-1.10/execution/samplers/in-parameter-array" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/in-parameter-array.shader_test -auto"
-run_test "spec/glsl-1.10/execution/samplers/in-parameter-nested-struct" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/samplers/in-parameter-nested-struct.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-row-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-row-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-row-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-wr" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat2-wr.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-rd.shader_test -auto"
-run_test "spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-rd" 0.0 "bin/shader_runner tests/spec/glsl-1.10/execution/variable-indexing/fs-temp-array-mat3-row-rd.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 214 tests have passed. |"
+  echo "| Overall pass, as all 208 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

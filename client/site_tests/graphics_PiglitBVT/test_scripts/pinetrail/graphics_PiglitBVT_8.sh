@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=66
+need_pass=71
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,16 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/ARB_vertex_program/getlocal4f-max" 0.0 "bin/arb_vertex_program-getlocal4f-max -fbo -auto"
-run_test "spec/ARB_vertex_program/minmax" 0.0 "bin/arb_vertex_program-minmax -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-address-01" 0.0 "bin/vp-address-01 -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-offset.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-offset-neg" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-offset-neg.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-overwritten" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-overwritten.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-relative-offset" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-relative-offset.vpfp -fbo -auto"
-run_test "spec/ARB_vertex_program/vp-arl-constant-array-huge-varying" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-huge-varying.vpfp -fbo -auto"
 run_test "spec/ARB_vertex_program/vp-arl-constant-array-varying" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-constant-array-varying.vpfp -fbo -auto"
 run_test "spec/ARB_vertex_program/vp-arl-env-array" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-env-array.vpfp -fbo -auto"
 run_test "spec/ARB_vertex_program/vp-arl-local-array" 0.0 "bin/vpfp-generic tests/shaders/generic/vp-arl-local-array.vpfp -fbo -auto"
@@ -67,7 +57,6 @@ run_test "spec/EXT_framebuffer_blit/fbo-sys-blit" 0.0 "bin/fbo-sys-blit -auto"
 run_test "spec/EXT_framebuffer_blit/fbo-sys-sub-blit" 0.0 "bin/fbo-sys-sub-blit -auto"
 run_test "spec/EXT_framebuffer_object/fbo-1d" 0.0 "bin/fbo-1d -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-3d" 0.0 "bin/fbo-3d -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-alphatest-formats" 0.0 "bin/fbo-alphatest-formats -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor" 0.0 "bin/fbo-alphatest-nocolor -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-alphatest-nocolor-ff" 0.0 "bin/fbo-alphatest-nocolor-ff -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-bind-renderbuffer" 0.0 "bin/fbo-bind-renderbuffer -fbo -auto"
@@ -80,7 +69,6 @@ run_test "spec/EXT_framebuffer_object/fbo-depthtex" 0.0 "bin/fbo-depthtex -fbo -
 run_test "spec/EXT_framebuffer_object/fbo-finish-deleted" 0.0 "bin/fbo-finish-deleted -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-flushing" 0.0 "bin/fbo-flushing -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-flushing-2" 0.0 "bin/fbo-flushing-2 -fbo -auto"
-run_test "spec/EXT_framebuffer_object/fbo-fragcoord" 0.0 "bin/fbo-fragcoord -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap" 0.0 "bin/fbo-generatemipmap -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-noimage" 0.0 "bin/fbo-generatemipmap-noimage -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-generatemipmap-nonsquare" 0.0 "bin/fbo-generatemipmap-nonsquare -fbo -auto"
@@ -96,11 +84,28 @@ run_test "spec/EXT_framebuffer_object/fbo-scissor-bitmap" 0.0 "bin/fbo-scissor-b
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX1 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX1 -fbo -auto"
 run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX1 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX1-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX1 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX16 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX16 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX16 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX16-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX16 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX4 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX4 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX4 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX4-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX4 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-clear" 0.0 "bin/fbo-stencil clear GL_STENCIL_INDEX8 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-copypixels" 0.0 "bin/fbo-stencil copypixels GL_STENCIL_INDEX8 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-drawpixels" 0.0 "bin/fbo-stencil drawpixels GL_STENCIL_INDEX8 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-stencil-GL_STENCIL_INDEX8-readpixels" 0.0 "bin/fbo-stencil readpixels GL_STENCIL_INDEX8 -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-storage-completeness" 0.0 "bin/fbo-storage-completeness -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fbo-storage-formats" 0.0 "bin/fbo-storage-formats -fbo -auto"
+run_test "spec/EXT_framebuffer_object/fdo20701" 0.0 "bin/fdo20701 -fbo -auto"
+run_test "spec/EXT_packed_depth_stencil/errors" 0.0 "bin/ext_packed_depth_stencil-errors -fbo -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 66 tests have passed. |"
+  echo "| Overall pass, as all 71 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

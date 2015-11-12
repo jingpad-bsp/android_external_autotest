@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=414
+need_pass=411
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -441,14 +441,11 @@ run_test "glean/glsl1-TPPStreamCompiler::assignOperands" 0.0 "bin/glean -o -v -v
 run_test "glean/glsl1-Writemask" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-break with no loop" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 run_test "glean/glsl1-built-in constants" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-chained assignment" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-continue with no loop" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
-run_test "glean/glsl1-cross() function, in-place" 0.0 "bin/glean -o -v -v -v -t +glsl1 --quick"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 414 tests have passed. |"
+  echo "| Overall pass, as all 411 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

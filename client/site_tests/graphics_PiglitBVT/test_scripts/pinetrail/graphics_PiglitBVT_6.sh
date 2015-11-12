@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-need_pass=99
+need_pass=130
 failures=0
 PIGLIT_PATH=/usr/local/piglit/lib/piglit/
 export PIGLIT_SOURCE_DIR=/usr/local/piglit/lib/piglit/
@@ -30,6 +30,19 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
+run_test "spec/!OpenGL 1.1/tri-tex-crash" 0.0 "bin/tri-tex-crash -auto"
+run_test "spec/!OpenGL 1.1/triangle-guardband-viewport" 0.0 "bin/triangle-guardband-viewport -fbo -auto"
+run_test "spec/!OpenGL 1.1/two-sided-lighting" 0.0 "bin/two-sided-lighting -auto"
+run_test "spec/!OpenGL 1.1/user-clip" 0.0 "bin/user-clip -auto"
+run_test "spec/!OpenGL 1.1/varray-disabled" 0.0 "bin/varray-disabled -auto"
+run_test "spec/!OpenGL 1.1/vbo-buffer-unmap" 0.0 "bin/vbo-buffer-unmap -auto"
+run_test "spec/!OpenGL 1.2/copyteximage 3D" 0.0 "bin/copyteximage 3D -auto"
+run_test "spec/!OpenGL 1.2/crash-texparameter-before-teximage" 0.0 "bin/crash-texparameter-before-teximage -auto"
+run_test "spec/!OpenGL 1.2/draw-elements-vs-inputs" 0.0 "bin/draw-elements-vs-inputs -auto"
+run_test "spec/!OpenGL 1.2/getteximage-targets 3D" 0.0 "bin/getteximage-targets 3D -fbo -auto"
+run_test "spec/!OpenGL 1.2/lodclamp" 0.0 "bin/lodclamp -auto"
+run_test "spec/!OpenGL 1.2/lodclamp-between" 0.0 "bin/lodclamp-between -auto"
+run_test "spec/!OpenGL 1.2/lodclamp-between-max" 0.0 "bin/lodclamp-between-max -auto"
 run_test "spec/!OpenGL 1.2/mipmap-setup" 0.0 "bin/mipmap-setup -auto"
 run_test "spec/!OpenGL 1.2/tex-skipped-unit" 0.0 "bin/tex-skipped-unit -auto"
 run_test "spec/!OpenGL 1.2/two-sided-lighting-separate-specular" 0.0 "bin/two-sided-lighting-separate-specular -auto"
@@ -48,13 +61,11 @@ run_test "spec/!OpenGL 1.4/triangle-rasterization-fbo" 0.0 "bin/triangle-rasteri
 run_test "spec/!OpenGL 1.4/triangle-rasterization-overdraw" 0.0 "bin/triangle-rasterization-overdraw -auto"
 run_test "spec/!OpenGL 1.5/draw-elements" 0.0 "bin/draw-elements -auto"
 run_test "spec/!OpenGL 1.5/draw-elements-user" 0.0 "bin/draw-elements -auto user"
-run_test "spec/!OpenGL 1.5/draw-vertices" 0.0 "bin/draw-vertices -auto"
 run_test "spec/!OpenGL 1.5/draw-vertices-user" 0.0 "bin/draw-vertices -auto user"
 run_test "spec/!OpenGL 1.5/isbufferobj" 0.0 "bin/isbufferobj -auto"
 run_test "spec/!OpenGL 1.5/normal3b3s-invariance-byte" 0.0 "bin/gl-1.5-normal3b3s-invariance GL_BYTE -auto"
 run_test "spec/!OpenGL 1.5/normal3b3s-invariance-short" 0.0 "bin/gl-1.5-normal3b3s-invariance GL_SHORT -auto"
 run_test "spec/!OpenGL 2.0/attrib-assignments" 0.0 "bin/attrib-assignments -auto"
-run_test "spec/!OpenGL 2.0/attribs" 0.0 "bin/attribs -fbo -auto"
 run_test "spec/!OpenGL 2.0/clear-varray-2.0" 0.0 "bin/clear-varray-2.0 -auto"
 run_test "spec/!OpenGL 2.0/clip-flag-behavior" 0.0 "bin/clip-flag-behavior -auto"
 run_test "spec/!OpenGL 2.0/depth-tex-modes-glsl" 0.0 "bin/depth-tex-modes-glsl -auto"
@@ -123,17 +134,37 @@ run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-blit" 0.0 "bin/f
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-clear" 0.0 "bin/fbo-depth clear GL_DEPTH_COMPONENT24 -fbo -auto"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-readpixels" 0.0 "bin/fbo-depth readpixels GL_DEPTH_COMPONENT24 -fbo -auto"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT24-tex1d" 0.0 "bin/fbo-depth-tex1d GL_DEPTH_COMPONENT24 -fbo -auto"
-run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-blit" 0.0 "bin/fbo-depth blit GL_DEPTH_COMPONENT32 -fbo -auto"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-clear" 0.0 "bin/fbo-depth clear GL_DEPTH_COMPONENT32 -fbo -auto"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-readpixels" 0.0 "bin/fbo-depth readpixels GL_DEPTH_COMPONENT32 -fbo -auto"
 run_test "spec/ARB_depth_texture/fbo-depth-GL_DEPTH_COMPONENT32-tex1d" 0.0 "bin/fbo-depth-tex1d GL_DEPTH_COMPONENT32 -fbo -auto"
 run_test "spec/ARB_depth_texture/get-renderbuffer-internalformat" 0.0 "bin/get-renderbuffer-internalformat GL_ARB_depth_texture -fbo -auto"
 run_test "spec/ARB_depth_texture/texwrap formats" 0.0 "bin/texwrap GL_ARB_depth_texture -fbo -auto"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-bounds" 0.0 "bin/arb_draw_elements_base_vertex-bounds -auto"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements" 0.0 "bin/arb_draw_elements_base_vertex-drawelements -auto"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements-instanced" 0.0 "bin/arb_draw_elements_base_vertex-drawelements-instanced -auto"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-drawelements-user_varrays" 0.0 "bin/arb_draw_elements_base_vertex-drawelements -auto user_varrays"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-negative-index" 0.0 "bin/arb_draw_elements_base_vertex-negative-index -auto"
+run_test "spec/ARB_draw_elements_base_vertex/arb_draw_elements_base_vertex-negative-index-user_varrays" 0.0 "bin/arb_draw_elements_base_vertex-negative-index -auto user_varrays"
+run_test "spec/ARB_draw_elements_base_vertex/dlist" 0.0 "bin/arb_draw_elements_base_vertex-dlist -fbo -auto"
+run_test "spec/ARB_draw_instanced/arb_draw_instanced-drawarrays" 0.0 "bin/arb_draw_instanced-drawarrays -auto"
+run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.frag fail 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/compiler/instanceidarb-disabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-disabled.vert fail 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.frag fail 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/compiler/instanceidarb-enabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/instanceidarb-enabled.vert pass 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/compiler/negative-instanceidarb-write.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/compiler/negative-instanceidarb-write.vert fail 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/dlist" 0.0 "bin/arb_draw_instanced-dlist -fbo -auto"
+run_test "spec/ARB_draw_instanced/draw-non-instanced" 0.0 "bin/shader_runner tests/spec/arb_draw_instanced/execution/draw-non-instanced.shader_test -auto"
+run_test "spec/ARB_draw_instanced/elements" 0.0 "bin/arb_draw_instanced-elements -fbo -auto"
+run_test "spec/ARB_draw_instanced/instance-array-dereference" 0.0 "bin/shader_runner tests/spec/arb_draw_instanced/execution/instance-array-dereference.shader_test -auto"
+run_test "spec/ARB_draw_instanced/negative-arrays-first-negative" 0.0 "bin/arb_draw_instanced-negative-arrays-first-negative -fbo -auto"
+run_test "spec/ARB_draw_instanced/negative-elements-type" 0.0 "bin/arb_draw_instanced-negative-elements-type -fbo -auto"
+run_test "spec/ARB_draw_instanced/preprocessor/feature-macro-enabled.frag" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/preprocessor/feature-macro-enabled.frag pass 1.10 GL_ARB_draw_instanced"
+run_test "spec/ARB_draw_instanced/preprocessor/feature-macro-enabled.vert" 0.0 "bin/glslparsertest tests/spec/arb_draw_instanced/preprocessor/feature-macro-enabled.vert pass 1.10 GL_ARB_draw_instanced"
 popd
 
 if [ $need_pass == 0 ] ; then
   echo "+---------------------------------------------+"
-  echo "| Overall pass, as all 99 tests have passed. |"
+  echo "| Overall pass, as all 130 tests have passed. |"
   echo "+---------------------------------------------+"
 else
   echo "+-----------------------------------------------------------+"

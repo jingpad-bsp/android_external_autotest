@@ -30,13 +30,6 @@ function run_test()
 
 
 pushd $PIGLIT_PATH
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-02" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-02.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-03" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-03.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-04" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-04.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-05" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-05.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-06" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-06.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-07" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-07.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-08" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-08.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-09" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-09.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-10" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-equal-10.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-notEqual-02" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/glsl-const-builtin-notEqual-02.shader_test -auto"
@@ -62,7 +55,6 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-float-mat4x2" 0.
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-float-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-float-mat4x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x3-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x3-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x3-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x3-mat2x3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x4-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x4-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat2x4-mat2x4.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat3x2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat3x2-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat3x2-mat3x2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-add-mat3x2-mat3x2.shader_test -auto"
@@ -102,7 +94,6 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat2x4-f
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat2x4-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat2x4-mat2.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x2-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x2-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x2-mat3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x4-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x4-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat3x4-mat3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat4x2-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat4x2-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat4x2-mat4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-assign-mult-mat4x2-mat4.shader_test -auto"
@@ -174,7 +165,6 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-float" 0
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat2x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-mat4x3.shader_test -auto"
-run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x2-vec3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-float" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-float.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-mat2x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-mat3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-mult-mat3x4-mat3.shader_test -auto"
@@ -248,6 +238,16 @@ run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x2" 0.0 "b
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-op-uplus-mat4x3.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec2.shader_test -auto"
 run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec2-vec4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec3-vec4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-outerProduct-vec4-vec4.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x3" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x3.shader_test -auto"
+run_test "spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x4" 0.0 "bin/shader_runner generated_tests/spec/glsl-1.20/execution/built-in-functions/vs-transpose-mat2x4.shader_test -auto"
 popd
 
 if [ $need_pass == 0 ] ; then
