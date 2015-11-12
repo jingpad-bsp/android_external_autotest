@@ -319,7 +319,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @param image_type: Type of the image. Default is `cros`.
 
-        @returns a str of $board-version/$BUILD.
+        @returns a str of $board-version/$BUILD. Returns None if stable version
+                for the board and the default are both not set, e.g., stable
+                firmware version for a new board.
 
         """
         board = self._get_board_from_afe()
@@ -333,6 +335,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             build_pattern = CONFIG.get_config_value(
                     'CROS', 'stable_build_pattern')
             stable_version = build_pattern % (board, stable_version)
+        elif image_type == 'firmware':
+            # If firmware stable version is not specified, `stable_version`
+            # from the RPC is the default stable version for CrOS image.
+            # firmware stable version must be from firmware branch, thus its
+            # value must be like board-firmware/R31-1234.0.0. Check if
+            # firmware exists in the stable version, if not, return None.
+            if 'firmware' not in stable_version:
+                return None
         return stable_version
 
 
