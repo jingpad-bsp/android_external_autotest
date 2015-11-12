@@ -76,6 +76,10 @@ def quickmerge(moblab):
     # We use rsync -R to copy a bunch of sources in a single run, adding a dot
     # to pinpoint the relative path root.
     rsync_cmd = ['rsync', '-aR', '--exclude', '*.pyc']
+    ssh_cmd = 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    if int(moblab.port) != 22:
+        ssh_cmd += ' -p %s' % moblab.port
+    rsync_cmd += ['-e', ssh_cmd]
     rsync_cmd += [os.path.join(autotest_rootdir, '.', path)
                   for path in _QUICKMERGE_LIST]
     rsync_cmd.append('moblab@%s:%s' %
