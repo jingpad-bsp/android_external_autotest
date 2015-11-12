@@ -216,40 +216,27 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     # pylint: disable-msg=C0111
-    def adb_run(self, command, shell=False, timeout=3600,
-                ignore_status=False, ignore_timeout=False,
-                stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
-                connect_timeout=30, options='', stdin=None, verbose=True,
-                args=()):
+    def adb_run(self, command, **kwargs):
         """Runs an adb command.
 
         This command may launch on the adb device or on the adb host.
 
         Refer to _device_run method for docstring for parameters.
         """
-        return self._device_run(
-                ADB_CMD, command, shell, timeout, ignore_status,
-                ignore_timeout, stdout, stderr, connect_timeout, options, stdin,
-                verbose, args)
+        return self._device_run(ADB_CMD, command, **kwargs)
 
 
     # pylint: disable-msg=C0111
-    def fastboot_run(self, command, timeout=3600,
-                     ignore_status=False, ignore_timeout=False,
-                     stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
-                     connect_timeout=30, options='', stdin=None, verbose=True,
-                     require_sudo=False, args=()):
+    def fastboot_run(self, command, **kwargs):
         """Runs an fastboot command.
 
         This command may launch on the adb device or on the adb host.
 
         Refer to _device_run method for docstring for parameters.
         """
-        require_sudo = require_sudo or utils.is_moblab()
-        return self._device_run(
-                FASTBOOT_CMD, command, False, timeout,
-                ignore_status, ignore_timeout, stdout, stderr, connect_timeout,
-                options, stdin, verbose, require_sudo, args)
+        if utils.is_moblab():
+            kwargs['require_sudo'] = True
+        return self._device_run(FASTBOOT_CMD, command, **kwargs)
 
 
     def _device_run(self, function, command, shell=False,
