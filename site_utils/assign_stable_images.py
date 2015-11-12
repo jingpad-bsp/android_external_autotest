@@ -15,10 +15,16 @@ critical scheduling pools.
 See `autotest_lib.site_utils.lab_inventory` for the full definition
 of "managed board".
 
-The command accepts a `--dry-run` option.  When used, the command makes
-no changes, but will instead print a series of `atest` commands that
-will make the required changes.  The output from the `--dry-run` option
-is suitable as input to the shell.
+The command accepts two mutually exclusive options determining
+how changes will be handled:
+  * With no options, the command will make RPC calls to the AFE to
+    update the state according to the rules.
+  * With the `--shell-mode` option, the command will print a series
+    of `atest` commands that will accomplish the changes.
+  * With the `--dry-run` option, the command will perform all normal
+    printing, but will skip actual RPC calls to change the database.
+
+The `--shell-mode` and `--dry-run` options are mutually exclusive.
 """
 
 import argparse
@@ -55,10 +61,21 @@ _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
 # stable version mapping that is used for any board without an explicit
 # mapping of its own.
 #
-_SET_VERSION = 'atest stable_version modify --board %s --version %s\n'
+_SET_VERSION = 'atest stable_version modify --board %s --version %s'
 _DELETE_VERSION = ('atest stable_version delete --no-confirmation '
-                   '--board %s\n')
+                   '--board %s')
 _DEFAULT_BOARD = 'DEFAULT'
+
+
+# Execution modes:
+#
+# _NORMAL_MODE:  no command line options.
+# _DRY_RUN: --dry-run on the command line.
+# _SHELL_MODE: --shell-mode on the command line.
+#
+_NORMAL_MODE = 0
+_DRY_RUN = 1
+_SHELL_MODE = 2
 
 
 def _get_omaha_board(json_entry):
@@ -144,7 +161,7 @@ def _get_upgrade_versions(afe_versions, omaha_versions, boards):
             max(version_counts.items(), key=lambda x: x[1])[0])
 
 
-def _set_stable_version(afe, dry_run, board, version):
+def _set_stable_version(afe, mode, board, version):
     """Call the AFE to change a stable version mapping.
 
     Setting the mapping for the distinguished board name
@@ -152,36 +169,36 @@ def _set_stable_version(afe, dry_run, board, version):
     that doesn't have its own mapping.
 
     @param afe          AFE object for RPC calls.
-    @param dry_run      If true, make no changes, but report what would
-                        be done on stdout.
+    @param mode         Mode indicating whether to print a shell
+                        command, call an RPC, or do nothing.
     @param board        Update the mapping for this board.
     @param version      Update the board to this version.
     """
-    if dry_run:
-        sys.stdout.write(_SET_VERSION % (board, version))
-    else:
+    if mode == _SHELL_MODE:
+        print _SET_VERSION % (board, version)
+    elif mode == _NORMAL_MODE:
         afe.run('set_stable_version', board=board, version=version)
 
 
-def _delete_stable_version(afe, dry_run, board):
+def _delete_stable_version(afe, mode, board):
     """Call the AFE to delete a stable version mapping.
 
     Deleting a mapping causes the board to revert to the current default
     mapping in the AFE.
 
     @param afe          AFE object for RPC calls.
-    @param dry_run      If true, make no changes, but report what would
-                        be done on stdout.
+    @param mode         Mode indicating whether to print a shell
+                        command, call an RPC, or do nothing.
     @param board        Delete the mapping for this board.
     """
     assert board != _DEFAULT_BOARD
-    if dry_run:
-        sys.stdout.write(_DELETE_VERSION % board)
-    else:
+    if mode == _SHELL_MODE:
+        print _DELETE_VERSION % board
+    elif mode == _NORMAL_MODE:
         afe.run('delete_stable_version', board=board)
 
 
-def _apply_upgrades(afe, dry_run, afe_versions,
+def _apply_upgrades(afe, mode, afe_versions,
                     upgrade_versions, new_default):
     """Change stable version mappings in the AFE.
 
@@ -191,8 +208,9 @@ def _apply_upgrades(afe, dry_run, afe_versions,
     according to the old or the new mapping.
 
     @param afe                  AFE object for RPC calls.
-    @param dry_run              If true, make no changes, but report
-                                what would be done on stdout.
+    @param mode                 Mode indicating whether the action is to
+                                print shell commands, do nothing, or
+                                actually make RPC calls for changes.
     @param afe_versions         The current board->version mappings in
                                 the AFE.
     @param upgrade_versions     The current board->version mappings from
@@ -200,10 +218,9 @@ def _apply_upgrades(afe, dry_run, afe_versions,
     @param new_default          The new default build for the AFE.
     """
     old_default = afe_versions[_DEFAULT_BOARD]
-    if not dry_run and new_default != old_default:
-        sys.stdout.write('Default %s -> %s\n' %
-                         (old_default, new_default))
-        sys.stdout.write('Applying stable version changes:\n')
+    if mode != _SHELL_MODE and new_default != old_default:
+        print 'Default %s -> %s' % (old_default, new_default)
+        print 'Applying stable version changes:'
     # N.B. The ordering here matters:  Any board that will have a
     # non-default stable version must be updated _before_ we change the
     # default mapping, below.
@@ -211,28 +228,27 @@ def _apply_upgrades(afe, dry_run, afe_versions,
         if build == new_default:
             continue
         if board in afe_versions and build == afe_versions[board]:
-            if dry_run:
-                message = '# Leave board %s at %s\n'
+            if mode == _SHELL_MODE:
+                message = '# Leave board %s at %s'
             else:
-                message = '    %-22s (no change) -> %s\n'
-            sys.stdout.write(message % (board, build))
+                message = '    %-22s (no change) -> %s'
+            print message % (board, build)
         else:
-            if not dry_run:
+            if mode != _SHELL_MODE:
                 old_build = afe_versions.get(board, '(default)')
-                sys.stdout.write('    %-22s %s -> %s\n' %
-                                 (board, old_build, build))
-            _set_stable_version(afe, dry_run, board, build)
+                print '    %-22s %s -> %s' % (board, old_build, build)
+            _set_stable_version(afe, mode, board, build)
     # At this point, all non-default mappings have been installed.
     # If there's a new default mapping, make that change now, and delete
     # any non-default mappings made obsolete by the update.
     if new_default != old_default:
-        _set_stable_version(afe, dry_run, _DEFAULT_BOARD, new_default)
+        _set_stable_version(afe, mode, _DEFAULT_BOARD, new_default)
     for board, build in upgrade_versions.items():
         if board in afe_versions and build == new_default:
-            if not dry_run:
-                sys.stdout.write('    %-22s %s -> (default)\n' %
-                                 (board, afe_versions[board]))
-            _delete_stable_version(afe, dry_run, board)
+            if mode != _SHELL_MODE:
+                print ('    %-22s %s -> (default)' %
+                       (board, afe_versions[board]))
+            _delete_stable_version(afe, mode, board)
 
 
 def _parse_command_line(argv):
@@ -251,9 +267,18 @@ def _parse_command_line(argv):
             prog=argv[0],
             description='Update the stable repair version for all '
                         'boards')
-    parser.add_argument('-n', '--dry-run', action='store_true',
-                        help='print changes without executing them')
-    return parser.parse_args(argv[1:])
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument('-x', '--shell-mode', dest='mode',
+                            action='store_const', const=_SHELL_MODE,
+                            help='print shell commands to make the '
+                                 'changes')
+    mode_group.add_argument('-n', '--dry-run', dest='mode',
+                            action='store_const', const=_DRY_RUN,
+                            help='print changes without executing them')
+    arguments = parser.parse_args(argv[1:])
+    if not arguments.mode:
+        arguments.mode = _NORMAL_MODE
+    return arguments
 
 
 def main(argv):
@@ -262,6 +287,8 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
     """
     arguments = _parse_command_line(argv)
+    if arguments.mode == _DRY_RUN:
+        print 'Dry run; no changes will be made.'
     afe = frontend_wrappers.RetryingAFE(server=None)
     # The 'get_all_stable_versions' RPC returns a dictionary mapping
     # `_DEFAULT_BOARD` to the current default version, plus a set of
@@ -271,7 +298,7 @@ def main(argv):
         _get_upgrade_versions(afe_versions,
                               _get_omaha_versions(),
                               lab_inventory.get_managed_boards(afe)))
-    _apply_upgrades(afe, arguments.dry_run, afe_versions,
+    _apply_upgrades(afe, arguments.mode, afe_versions,
                     upgrade_versions, new_default)
 
 
