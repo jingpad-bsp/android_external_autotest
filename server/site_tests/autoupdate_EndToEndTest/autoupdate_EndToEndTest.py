@@ -205,25 +205,14 @@ class ExpectedUpdateEvent(object):
                                                       expected_attr_val)[0:2])
             return False
 
-        if not actual_attr_val == expected_attr_val:
-            # We allow expected version numbers (e.g. 2940.0.0) to be contained
-            # in actual values (2940.0.0-a1); this is necessary for the test to
-            # pass with developer / non-release images.
-            if 'version' in attr_name and expected_attr_val in actual_attr_val:
-                logging.info('Expected %s (%s) contained in actual value (%s) '
-                             'but does not match exactly',
-                             *self._attr_name_and_values(
-                                     attr_name, expected_attr_val,
-                                     actual_attr_val=actual_attr_val))
-                return True
+        # We allow expected version numbers (e.g. 2940.0.0) to be contained in
+        # actual values (2940.0.0-a1); this is necessary for the test to pass
+        # with developer / non-release images.
+        if (actual_attr_val == expected_attr_val or
+            ('version' in attr_name and expected_attr_val in actual_attr_val)):
+            return True
 
-            logging.error('Expected %s (%s) different from actual value (%s)',
-                          *self._attr_name_and_values(
-                                  attr_name, expected_attr_val,
-                                  actual_attr_val=actual_attr_val))
-            return False
-
-        return True
+        return False
 
 
     def get_attrs(self):
@@ -248,7 +237,7 @@ class ExpectedUpdateEventChain(object):
                            None, a generic message is used.
         """
         if isinstance(expected_events, ExpectedUpdateEvent):
-            expected_events = [ExpectedUpdateEvent]
+            expected_events = [expected_events]
         self._expected_events_chain.append(
                 (expected_events, timeout, on_timeout))
 
@@ -311,7 +300,8 @@ class ExpectedUpdateEventChain(object):
             if new_event:
                 logging.info('Event received after %s seconds',
                              round(curr_timestamp - base_timestamp, 1))
-                return any(event.verify(new_event) for event in expected_events)
+                results = [event.verify(new_event) for event in expected_events]
+                return None if None in results else ' AND '.join(results)
 
             # No new events, sleep for one second only (so we don't miss
             # events at the end of the allotted timeout).
@@ -1564,8 +1554,7 @@ class autoupdate_EndToEndTest(test.test):
                                         'complete the update', 'bug or crash')
 
 
-    def _error_reboot_after_update(self, expected, actual,
-                                        mismatched_attrs):
+    def _error_reboot_after_update(self, expected, actual, mismatched_attrs):
         if 'event_result' in mismatched_attrs:
             return ('The updater was expected to reboot (%s) but reported '
                     'a different result code instead (%s). This could be '
