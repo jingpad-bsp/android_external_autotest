@@ -44,10 +44,21 @@ _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = 'full_payload,test_suites,stateful'
 _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
                                                    'control_files,stateful,'
                                                    'autotest_packages')
+# Artifacts that should be staged when client calls devserver RPC to stage an
+# Android build.
+_ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('bootloader_image,radio_image,'
+                                             'zip_images,test_zip')
 SKIP_DEVSERVER_HEALTH_CHECK = CONFIG.get_config_value(
         'CROS', 'skip_devserver_health_check', type=bool)
 # Number of seconds for the call to get devserver load to time out.
 TIMEOUT_GET_DEVSERVER_LOAD = 2.0
+
+# Android artifact path in devserver
+ANDROID_BUILD_NAME_PATTERN = CONFIG.get_config_value(
+        'CROS', 'android_build_name_pattern', type=str).replace('\\', '')
+
+# Return value from a devserver RPC indicating the call succeeded.
+SUCCESS = 'Success'
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -458,129 +469,31 @@ class CrashServer(DevServer):
                 error_fd)
 
 
-class ImageServer(DevServer):
-    """Class for DevServer that handles image-related RPCs.
+class ImageServerBase(DevServer):
+    """Base class for devservers used to stage builds.
 
-    The calls to devserver to stage artifacts, including stage and download, are
-    made in async mode. That is, when caller makes an RPC |stage| to request
-    devserver to stage certain artifacts, devserver handles the call and starts
-    staging artifacts in a new thread, and return |Success| without waiting for
-    staging being completed. When caller receives message |Success|, it polls
-    devserver's is_staged call until all artifacts are staged.
-    Such mechanism is designed to prevent cherrypy threads in devserver being
-    running out, as staging artifacts might take long time, and cherrypy starts
-    with a fixed number of threads that handle devserver rpc.
+    CrOS and Android builds are staged in different ways as they have different
+    sets of artifacts. This base class abstracts the shared functions between
+    the two types of ImageServer.
     """
-    @staticmethod
-    def servers():
+
+    @classmethod
+    def servers(cls):
+        """Returns a list of servers that can serve as a desired type of
+        devserver.
+        """
         return _get_dev_server_list()
 
 
-    class ArtifactUrls(object):
-        """A container for URLs of staged artifacts.
+    def _get_image_url(self, image):
+        """Returns the url of the directory for this image on the devserver.
 
-        Attributes:
-            full_payload: URL for downloading a staged full release update
-            mton_payload: URL for downloading a staged M-to-N release update
-            nton_payload: URL for downloading a staged N-to-N release update
-
+        @param image: the image that was fetched.
         """
-        def __init__(self, full_payload=None, mton_payload=None,
-                     nton_payload=None):
-            self.full_payload = full_payload
-            self.mton_payload = mton_payload
-            self.nton_payload = nton_payload
-
-
-    def wait_for_artifacts_staged(self, archive_url, artifacts='', files=''):
-        """Polling devserver.is_staged until all artifacts are staged.
-
-        @param archive_url: Google Storage URL for the build.
-        @param artifacts: Comma separated list of artifacts to download.
-        @param files: Comma separated list of files to download.
-        @return: True if all artifacts are staged in devserver.
-        """
-        call = self.build_call('is_staged',
-                               archive_url=archive_url,
-                               artifacts=artifacts,
-                               files=files)
-
-        def all_staged():
-            """Call devserver.is_staged rpc to check if all files are staged.
-
-            @return: True if all artifacts are staged in devserver. False
-                     otherwise.
-            @rasies DevServerException, the exception is a wrapper of all
-                    exceptions that were raised when devserver tried to download
-                    the artifacts. devserver raises an HTTPError when an
-                    exception was raised in the code. Such exception should be
-                    re-raised here to stop the caller from waiting. If the call
-                    to devserver failed for connection issue, a URLError
-                    exception is raised, and caller should retry the call to
-                    avoid such network flakiness.
-
-            """
-            try:
-                return urllib2.urlopen(call).read() == 'True'
-            except urllib2.HTTPError as e:
-                error_markup = e.read()
-                strip = MarkupStripper()
-                try:
-                    strip.feed(error_markup.decode('utf_32'))
-                except UnicodeDecodeError:
-                    strip.feed(error_markup)
-                raise DevServerException(strip.get_data())
-            except urllib2.URLError as e:
-                # Could be connection issue, retry it.
-                # For example: <urlopen error [Errno 111] Connection refused>
-                return False
-
-        site_utils.poll_for_condition(
-                all_staged,
-                exception=site_utils.TimeoutError(),
-                timeout=sys.maxint,
-                sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
-        return True
-
-
-    @remote_devserver_call()
-    def call_and_wait(self, call_name, archive_url, artifacts, files,
-                      error_message, expected_response='Success'):
-        """Helper method to make a urlopen call, and wait for artifacts staged.
-
-        @param call_name: name of devserver rpc call.
-        @param archive_url: Google Storage URL for the build..
-        @param artifacts: Comma separated list of artifacts to download.
-        @param files: Comma separated list of files to download.
-        @param expected_response: Expected response from rpc, default to
-                                  |Success|. If it's set to None, do not compare
-                                  the actual response. Any response is consider
-                                  to be good.
-        @param error_message: Error message to be thrown if response does not
-                              match expected_response.
-
-        @return: The response from rpc.
-        @raise DevServerException upon any return code that's expected_response.
-
-        """
-        call = self.build_call(call_name,
-                               archive_url=archive_url,
-                               artifacts=artifacts,
-                               files=files,
-                               async=True)
-        try:
-            response = urllib2.urlopen(call).read()
-        except httplib.BadStatusLine as e:
-            logging.error(e)
-            raise DevServerException('Received Bad Status line, Devserver %s '
-                                     'might have gone down while handling '
-                                     'the call: %s' % (self.url(), call))
-
-        if expected_response and not response == expected_response:
-              raise DevServerException(error_message)
-
-        self.wait_for_artifacts_staged(archive_url, artifacts, files)
-        return response
+        image = self.translate(image)
+        url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
+                                              type=str)
+        return (url_pattern % (self.url(), image)).replace('update', 'static')
 
 
     @staticmethod
@@ -633,8 +546,342 @@ class ImageServer(DevServer):
         return metadata
 
 
+    def _poll_is_staged(self, **kwargs):
+        """Polling devserver.is_staged until all artifacts are staged.
+
+        @param kwargs: keyword arguments to make is_staged devserver call.
+
+        @return: True if all artifacts are staged in devserver.
+        """
+        call = self.build_call('is_staged', **kwargs)
+
+        def all_staged():
+            """Call devserver.is_staged rpc to check if all files are staged.
+
+            @return: True if all artifacts are staged in devserver. False
+                     otherwise.
+            @rasies DevServerException, the exception is a wrapper of all
+                    exceptions that were raised when devserver tried to download
+                    the artifacts. devserver raises an HTTPError when an
+                    exception was raised in the code. Such exception should be
+                    re-raised here to stop the caller from waiting. If the call
+                    to devserver failed for connection issue, a URLError
+                    exception is raised, and caller should retry the call to
+                    avoid such network flakiness.
+
+            """
+            try:
+                return urllib2.urlopen(call).read() == 'True'
+            except urllib2.HTTPError as e:
+                error_markup = e.read()
+                strip = MarkupStripper()
+                try:
+                    strip.feed(error_markup.decode('utf_32'))
+                except UnicodeDecodeError:
+                    strip.feed(error_markup)
+                raise DevServerException(strip.get_data())
+            except urllib2.URLError as e:
+                # Could be connection issue, retry it.
+                # For example: <urlopen error [Errno 111] Connection refused>
+                return False
+
+        site_utils.poll_for_condition(
+                all_staged,
+                exception=site_utils.TimeoutError(),
+                timeout=sys.maxint,
+                sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
+
+        return True
+
+
+    def _call_and_wait(self, call_name, error_message,
+                       expected_response=SUCCESS, **kwargs):
+        """Helper method to make a urlopen call, and wait for artifacts staged.
+
+        @param call_name: name of devserver rpc call.
+        @param error_message: Error message to be thrown if response does not
+                              match expected_response.
+        @param expected_response: Expected response from rpc, default to
+                                  |Success|. If it's set to None, do not compare
+                                  the actual response. Any response is consider
+                                  to be good.
+        @param kwargs: keyword arguments to make is_staged devserver call.
+
+        @return: The response from rpc.
+        @raise DevServerException upon any return code that's expected_response.
+
+        """
+        call = self.build_call(call_name, async=True, **kwargs)
+        try:
+            response = urllib2.urlopen(call).read()
+        except httplib.BadStatusLine as e:
+            logging.error(e)
+            raise DevServerException('Received Bad Status line, Devserver %s '
+                                     'might have gone down while handling '
+                                     'the call: %s' % (self.url(), call))
+
+        if expected_response and not response == expected_response:
+                raise DevServerException(error_message)
+
+        # `os_type` is needed in build a devserver call, but not needed for
+        # wait_for_artifacts_staged, since that method is implemented by
+        # each ImageServerBase child class.
+        if 'os_type' in kwargs:
+            del kwargs['os_type']
+        self.wait_for_artifacts_staged(**kwargs)
+        return response
+
+
+    def _stage_artifacts(self, build, artifacts, files, archive_url, **kwargs):
+        """Tell the devserver to download and stage |artifacts| from |image|
+        specified by kwargs.
+
+        This is the main call point for staging any specific artifacts for a
+        given build. To see the list of artifacts one can stage see:
+
+        ~src/platfrom/dev/artifact_info.py.
+
+        This is maintained along with the actual devserver code.
+
+        @param artifacts: A list of artifacts.
+        @param files: A list of files to stage.
+        @param archive_url: Optional parameter that has the archive_url to stage
+                this artifact from. Default is specified in autotest config +
+                image.
+        @param kwargs: keyword arguments that specify the build information, to
+                make stage devserver call.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        if not archive_url:
+            archive_url = _get_storage_server_for_artifacts(artifacts) + build
+
+        artifacts_arg = ','.join(artifacts) if artifacts else ''
+        files_arg = ','.join(files) if files else ''
+        error_message = ("staging %s for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." %
+                         ('artifacts=%s files=%s ' % (artifacts_arg, files_arg),
+                          build))
+
+        staging_info = ('build=%s, artifacts=%s, files=%s, archive_url=%s' %
+                        (build, artifacts, files, archive_url))
+        logging.info('Staging artifacts on devserver %s: %s',
+                     self.url(), staging_info)
+        if artifacts:
+            server_name = self.get_server_name(self.url())
+            timer_key = self.create_stats_str(
+                    'stage_artifacts', server_name, artifacts)
+            counter_key = self.create_stats_str(
+                    'stage_artifacts_count', server_name, artifacts)
+            metadata = self.create_metadata(server_name, build, artifacts,
+                                            files)
+            autotest_stats.Counter(counter_key, metadata=metadata).increment()
+            timer = autotest_stats.Timer(timer_key, metadata=metadata)
+            timer.start()
+        try:
+            arguments = {'archive_url': archive_url,
+                         'artifacts': artifacts_arg,
+                         'files': files_arg}
+            if kwargs:
+                arguments.update(kwargs)
+            self.call_and_wait(call_name='stage',error_message=error_message,
+                               **arguments)
+            if artifacts:
+                timer.stop()
+            logging.info('Finished staging artifacts: %s', staging_info)
+        except error.TimeoutException:
+            logging.error('stage_artifacts timed out: %s', staging_info)
+            if artifacts:
+                timeout_key = self.create_stats_str(
+                        'stage_artifacts_timeout', server_name, artifacts)
+                autotest_stats.Counter(timeout_key,
+                                       metadata=metadata).increment()
+            raise DevServerException(
+                    'stage_artifacts timed out: %s' % staging_info)
+
+
+    def call_and_wait(self, *args, **kwargs):
+        """Helper method to make a urlopen call, and wait for artifacts staged.
+
+        This method needs to be overridden in the subclass to implement the
+        logic to call _call_and_wait.
+        """
+        raise NotImplementedError
+
+
+    def _trigger_download(self, build, artifacts, files, synchronous=True,
+                          **kwargs_build_info):
+        """Tell the devserver to download and stage image specified in
+        kwargs_build_info.
+
+        Tells the devserver to fetch |image| from the image storage server
+        named by _get_image_storage_server().
+
+        If |synchronous| is True, waits for the entire download to finish
+        staging before returning. Otherwise only the artifacts necessary
+        to start installing images onto DUT's will be staged before returning.
+        A caller can then call finish_download to guarantee the rest of the
+        artifacts have finished staging.
+
+        @param synchronous: if True, waits until all components of the image are
+               staged before returning.
+        @param kwargs_build_info: Dictionary of build information.
+                For CrOS, it is None as build is the CrOS image name.
+                For Android, it is {'target': target,
+                                    'build_id': build_id,
+                                    'branch': branch}
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+
+        """
+        if kwargs_build_info:
+            archive_url = None
+        else:
+            archive_url = _get_image_storage_server() + build
+        error_message = ("trigger_download for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." % build)
+        kwargs = {'archive_url': archive_url,
+                  'artifacts': artifacts,
+                  'files': files,
+                  'error_message': error_message}
+        if kwargs_build_info:
+            kwargs.update(kwargs_build_info)
+
+        logging.info('trigger_download starts for %s', build)
+        server_name = self.get_server_name(self.url())
+        artifacts_list = artifacts.split(',')
+        counter_key = self.create_stats_str(
+                'trigger_download_count', server_name, artifacts_list)
+        metadata = self.create_metadata(server_name, build, artifacts_list)
+        autotest_stats.Counter(counter_key, metadata=metadata).increment()
+        try:
+            response = self.call_and_wait(call_name='stage', **kwargs)
+            logging.info('trigger_download finishes for %s', build)
+        except error.TimeoutException:
+            logging.error('trigger_download timed out for %s.', build)
+            timeout_key = self.create_stats_str(
+                    'trigger_download_timeout', server_name, artifacts_list)
+            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
+            raise DevServerException(
+                    'trigger_download timed out for %s.' % build)
+        was_successful = response == SUCCESS
+        if was_successful and synchronous:
+            self._finish_download(build, artifacts, files, **kwargs_build_info)
+
+
+    def _finish_download(self, build, artifacts, files, **kwargs_build_info):
+        """Tell the devserver to finish staging image specified in
+        kwargs_build_info.
+
+        If trigger_download is called with synchronous=False, it will return
+        before all artifacts have been staged. This method contacts the
+        devserver and blocks until all staging is completed and should be
+        called after a call to trigger_download.
+
+        @param kwargs_build_info: Dictionary of build information.
+                For CrOS, it is None as build is the CrOS image name.
+                For Android, it is {'target': target,
+                                    'build_id': build_id,
+                                    'branch': branch}
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        archive_url = _get_image_storage_server() + build
+        error_message = ("finish_download for %s failed;"
+                         "HTTP OK not accompanied by 'Success'." % build)
+        kwargs = {'archive_url': archive_url,
+                  'artifacts': artifacts,
+                  'files': files,
+                  'error_message': error_message}
+        if kwargs_build_info:
+            kwargs.update(kwargs_build_info)
+        try:
+            self.call_and_wait(call_name='stage', **kwargs)
+        except error.TimeoutException:
+            logging.error('finish_download timed out for %s', build)
+            server_name = self.get_server_name(self.url())
+            artifacts_list = artifacts.split(',')
+            timeout_key = self.create_stats_str(
+                    'finish_download_timeout', server_name, artifacts_list)
+            metadata = self.create_metadata(server_name, build, artifacts_list)
+            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
+            raise DevServerException(
+                    'finish_download timed out for %s.' % build)
+
+
+class ImageServer(ImageServerBase):
+    """Class for DevServer that handles RPCs related to CrOS images.
+
+    The calls to devserver to stage artifacts, including stage and download, are
+    made in async mode. That is, when caller makes an RPC |stage| to request
+    devserver to stage certain artifacts, devserver handles the call and starts
+    staging artifacts in a new thread, and return |Success| without waiting for
+    staging being completed. When caller receives message |Success|, it polls
+    devserver's is_staged call until all artifacts are staged.
+    Such mechanism is designed to prevent cherrypy threads in devserver being
+    running out, as staging artifacts might take long time, and cherrypy starts
+    with a fixed number of threads that handle devserver rpc.
+    """
+
+    class ArtifactUrls(object):
+        """A container for URLs of staged artifacts.
+
+        Attributes:
+            full_payload: URL for downloading a staged full release update
+            mton_payload: URL for downloading a staged M-to-N release update
+            nton_payload: URL for downloading a staged N-to-N release update
+
+        """
+        def __init__(self, full_payload=None, mton_payload=None,
+                     nton_payload=None):
+            self.full_payload = full_payload
+            self.mton_payload = mton_payload
+            self.nton_payload = nton_payload
+
+
+    def wait_for_artifacts_staged(self, archive_url, artifacts='', files=''):
+        """Polling devserver.is_staged until all artifacts are staged.
+
+        @param archive_url: Google Storage URL for the build.
+        @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
+        @return: True if all artifacts are staged in devserver.
+        """
+        kwargs = {'archive_url': archive_url,
+                  'artifacts': artifacts,
+                  'files': files}
+        return self._poll_is_staged(**kwargs)
+
+
     @remote_devserver_call()
-    def stage_artifacts(self, image, artifacts=None, files=None,
+    def call_and_wait(self, call_name, archive_url, artifacts, files,
+                      error_message, expected_response=SUCCESS):
+        """Helper method to make a urlopen call, and wait for artifacts staged.
+
+        @param call_name: name of devserver rpc call.
+        @param archive_url: Google Storage URL for the build..
+        @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
+        @param expected_response: Expected response from rpc, default to
+                                  |Success|. If it's set to None, do not compare
+                                  the actual response. Any response is consider
+                                  to be good.
+        @param error_message: Error message to be thrown if response does not
+                              match expected_response.
+
+        @return: The response from rpc.
+        @raise DevServerException upon any return code that's expected_response.
+
+        """
+        kwargs = {'archive_url': archive_url,
+                  'artifacts': artifacts,
+                  'files': files}
+        return self._call_and_wait(call_name, error_message,
+                                   expected_response, **kwargs)
+
+
+    @remote_devserver_call()
+    def stage_artifacts(self, image, artifacts=None, files='',
                         archive_url=None):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
@@ -654,51 +901,10 @@ class ImageServer(DevServer):
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
-        assert artifacts or files, 'Must specify something to stage.'
+        if not artifacts and not files:
+            raise DevServerException('Must specify something to stage.')
         image = self.translate(image)
-        if not archive_url:
-            archive_url = (_get_storage_server_for_artifacts(artifacts) +
-                           image)
-
-        artifacts_arg = ','.join(artifacts) if artifacts else ''
-        files_arg = ','.join(files) if files else ''
-        error_message = ("staging %s for %s failed;"
-                         "HTTP OK not accompanied by 'Success'." %
-                         ('artifacts=%s files=%s ' % (artifacts_arg, files_arg),
-                          image))
-        staging_info = 'image=%s, artifacts=%s, files=%s, archive_url=%s' % (
-                       image, artifacts, files, archive_url)
-        logging.info('Staging artifacts on devserver %s: %s',
-                     self.url(), staging_info)
-        if artifacts:
-            server_name = self.get_server_name(self.url())
-            timer_key = self.create_stats_str(
-                    'stage_artifacts', server_name, artifacts)
-            counter_key = self.create_stats_str(
-                    'stage_artifacts_count', server_name, artifacts)
-            metadata = self.create_metadata(server_name, image, artifacts,
-                                            files)
-            autotest_stats.Counter(counter_key, metadata=metadata).increment()
-            timer = autotest_stats.Timer(timer_key, metadata=metadata)
-            timer.start()
-        try:
-            self.call_and_wait(call_name='stage',
-                               archive_url=archive_url,
-                               artifacts=artifacts_arg,
-                               files=files_arg,
-                               error_message=error_message)
-            if artifacts:
-                timer.stop()
-            logging.info('Finished staging artifacts: %s', staging_info)
-        except error.TimeoutException as e:
-            logging.error('stage_artifacts timed out: %s', staging_info)
-            if artifacts:
-                timeout_key = self.create_stats_str(
-                        'stage_artifacts_timeout', server_name, artifacts)
-                autotest_stats.Counter(timeout_key,
-                                       metadata=metadata).increment()
-            raise DevServerException(
-                    'stage_artifacts timed out: %s' % staging_info)
+        self._stage_artifacts(image, artifacts, files, archive_url)
 
 
     @remote_devserver_call(timeout_min=0.5)
@@ -739,34 +945,9 @@ class ImageServer(DevServer):
 
         """
         image = self.translate(image)
-        archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
-        error_message = ("trigger_download for %s failed;"
-                         "HTTP OK not accompanied by 'Success'." % image)
-        logging.info('trigger_download starts for %s', image)
-        server_name = self.get_server_name(self.url())
-        artifacts_list = artifacts.split(',')
-        counter_key = self.create_stats_str(
-                    'trigger_download_count', server_name, artifacts_list)
-        metadata = self.create_metadata(server_name, image, artifacts_list)
-        autotest_stats.Counter(counter_key, metadata=metadata).increment()
-        try:
-            response = self.call_and_wait(call_name='stage',
-                                          archive_url=archive_url,
-                                          artifacts=artifacts,
-                                          files='',
-                                          error_message=error_message)
-            logging.info('trigger_download finishes for %s', image)
-        except error.TimeoutException as e:
-            logging.error('trigger_download timed out for %s.', image)
-            timeout_key = self.create_stats_str(
-                    'trigger_download_timeout', server_name, artifacts_list)
-            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
-            raise DevServerException(
-                    'trigger_download timed out for %s.' % image)
-        was_successful = response == 'Success'
-        if was_successful and synchronous:
-            self.finish_download(image)
+        self._trigger_download(image, artifacts, files='',
+                               synchronous=synchronous)
 
 
     @remote_devserver_call()
@@ -805,26 +986,8 @@ class ImageServer(DevServer):
         @raise DevServerException upon any return code that's not HTTP OK.
         """
         image = self.translate(image)
-        archive_url = _get_image_storage_server() + image
         artifacts = _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST
-        error_message = ("finish_download for %s failed;"
-                         "HTTP OK not accompanied by 'Success'." % image)
-        try:
-            self.call_and_wait(call_name='stage',
-                               archive_url=archive_url,
-                               artifacts=artifacts,
-                               files='',
-                               error_message=error_message)
-        except error.TimeoutException as e:
-            logging.error('finish_download timed out for %s', image)
-            server_name = self.get_server_name(self.url())
-            artifacts_list = artifacts.split(',')
-            timeout_key = self.create_stats_str(
-                    'finish_download_timeout', server_name, artifacts_list)
-            metadata = self.create_metadata(server_name, image, artifacts_list)
-            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
-            raise DevServerException(
-                    'finish_download timed out for %s.' % image)
+        self._finish_download(image, artifacts, files='')
 
 
     def get_update_url(self, image):
@@ -836,18 +999,6 @@ class ImageServer(DevServer):
         url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
                                               type=str)
         return (url_pattern % (self.url(), image))
-
-
-    def _get_image_url(self, image):
-        """Returns the url of the directory for this image on the devserver.
-
-        @param image: the image that was fetched.
-        """
-        image = self.translate(image)
-        url_pattern = CONFIG.get_config_value('CROS', 'image_url_pattern',
-                                              type=str)
-        return (url_pattern % (self.url(), image)).replace(
-                'update', 'static')
 
 
     def get_staged_file_url(self, filename, image):
@@ -992,6 +1143,193 @@ class ImageServer(DevServer):
             latest_builds.append(urllib2.urlopen(call).read())
 
         return max(latest_builds, key=version.LooseVersion)
+
+
+class AndroidBuildServer(ImageServerBase):
+    """Class for DevServer that handles RPCs related to Android builds.
+
+    The calls to devserver to stage artifacts, including stage and download, are
+    made in async mode. That is, when caller makes an RPC |stage| to request
+    devserver to stage certain artifacts, devserver handles the call and starts
+    staging artifacts in a new thread, and return |Success| without waiting for
+    staging being completed. When caller receives message |Success|, it polls
+    devserver's is_staged call until all artifacts are staged.
+    Such mechanism is designed to prevent cherrypy threads in devserver being
+    running out, as staging artifacts might take long time, and cherrypy starts
+    with a fixed number of threads that handle devserver rpc.
+    """
+
+    def wait_for_artifacts_staged(self, target, build_id, branch,
+                                  archive_url=None, artifacts='', files=''):
+        """Polling devserver.is_staged until all artifacts are staged.
+
+        @param target: Target of the android build to stage, e.g.,
+                       shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+        @param archive_url: Google Storage URL for the build.
+        @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
+
+        @return: True if all artifacts are staged in devserver.
+        """
+        kwargs = {'target': target,
+                  'build_id': build_id,
+                  'branch': branch,
+                  'artifacts': artifacts,
+                  'files': files,
+                  'os_type': 'android'}
+        if archive_url:
+            kwargs['archive_url'] = archive_url
+        return self._poll_is_staged(**kwargs)
+
+
+    @remote_devserver_call()
+    def call_and_wait(self, call_name, target, build_id, branch, archive_url,
+                      artifacts, files, error_message,
+                      expected_response=SUCCESS):
+        """Helper method to make a urlopen call, and wait for artifacts staged.
+
+        @param call_name: name of devserver rpc call.
+        @param target: Target of the android build to stage, e.g.,
+                       shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+        @param archive_url: Google Storage URL for the CrOS build.
+        @param artifacts: Comma separated list of artifacts to download.
+        @param files: Comma separated list of files to download.
+        @param expected_response: Expected response from rpc, default to
+                                  |Success|. If it's set to None, do not compare
+                                  the actual response. Any response is consider
+                                  to be good.
+        @param error_message: Error message to be thrown if response does not
+                              match expected_response.
+
+        @return: The response from rpc.
+        @raise DevServerException upon any return code that's expected_response.
+
+        """
+        kwargs = {'target': target,
+                  'build_id': build_id,
+                  'branch': branch,
+                  'artifacts': artifacts,
+                  'files': files,
+                  'os_type': 'android'}
+        if archive_url:
+            kwargs['archive_url'] = archive_url
+        return self._call_and_wait(call_name, error_message, expected_response,
+                                   **kwargs)
+
+
+    @remote_devserver_call()
+    def stage_artifacts(self, target, build_id, branch, artifacts=None,
+                        files='', archive_url=None):
+        """Tell the devserver to download and stage |artifacts| from |image|.
+
+         This is the main call point for staging any specific artifacts for a
+        given build. To see the list of artifacts one can stage see:
+
+        ~src/platfrom/dev/artifact_info.py.
+
+        This is maintained along with the actual devserver code.
+
+        @param target: Target of the android build to stage, e.g.,
+                               shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+        @param artifacts: A list of artifacts.
+        @param files: A list of files to stage.
+        @param archive_url: Optional parameter that has the archive_url to stage
+                this artifact from. Default is specified in autotest config +
+                image.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        android_build_info = {'target': target,
+                              'build_id': build_id,
+                              'branch': branch}
+        if not artifacts and not files:
+            raise DevServerException('Must specify something to stage.')
+        if not all(android_build_info.values()):
+            raise DevServerException(
+                    'To stage an Android build, must specify target, build id '
+                    'and branch.')
+        build = ANDROID_BUILD_NAME_PATTERN % android_build_info
+        self._stage_artifacts(build, artifacts, files, archive_url,
+                              **android_build_info)
+
+
+    def trigger_download(self, target, build_id, branch, synchronous=True):
+        """Tell the devserver to download and stage an Android build.
+
+        Tells the devserver to fetch an Android build from the image storage
+        server named by _get_image_storage_server().
+
+        If |synchronous| is True, waits for the entire download to finish
+        staging before returning. Otherwise only the artifacts necessary
+        to start installing images onto DUT's will be staged before returning.
+        A caller can then call finish_download to guarantee the rest of the
+        artifacts have finished staging.
+
+        @param target: Target of the android build to stage, e.g.,
+                       shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+        @param synchronous: if True, waits until all components of the image are
+               staged before returning.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+
+        """
+        android_build_info = {'target': target,
+                              'build_id': build_id,
+                              'branch': branch}
+        build = ANDROID_BUILD_NAME_PATTERN % android_build_info
+        artifacts = _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        self._trigger_download(build, artifacts, files='',
+                               synchronous=synchronous, **android_build_info)
+
+
+    def finish_download(self, target, build_id, branch):
+        """Tell the devserver to finish staging an Android build.
+
+        If trigger_download is called with synchronous=False, it will return
+        before all artifacts have been staged. This method contacts the
+        devserver and blocks until all staging is completed and should be
+        called after a call to trigger_download.
+
+        @param target: Target of the android build to stage, e.g.,
+                       shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        android_build_info = {'target': target,
+                              'build_id': build_id,
+                              'branch': branch}
+        build = ANDROID_BUILD_NAME_PATTERN % android_build_info
+        artifacts = _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        self._finish_download(build, artifacts, files='', **android_build_info)
+
+
+    def get_staged_file_url(self, filename, target, build_id, branch):
+        """Returns the url of a staged file for this image on the devserver.
+
+        @param filename: Name of the file.
+        @param target: Target of the android build to stage, e.g.,
+                       shamu-userdebug.
+        @param build_id: Build id of the android build to stage.
+        @param branch: Branch of the android build to stage.
+
+        @return: The url of a staged file for this image on the devserver.
+        """
+        android_build_info = {'target': target,
+                              'build_id': build_id,
+                              'branch': branch,
+                              'os_type': 'android'}
+        build = ANDROID_BUILD_NAME_PATTERN % android_build_info
+        return '/'.join([self._get_image_url(build), filename])
 
 
 def _is_load_healthy(load):

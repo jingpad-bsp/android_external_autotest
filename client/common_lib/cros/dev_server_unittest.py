@@ -51,6 +51,7 @@ class DevServerTest(mox.MoxTestBase):
         super(DevServerTest, self).setUp()
         self.crash_server = dev_server.CrashServer(DevServerTest._CRASH_HOST)
         self.dev_server = dev_server.ImageServer(DevServerTest._HOST)
+        self.android_dev_server = dev_server.AndroidBuildServer(DevServerTest._HOST)
         self.mox.StubOutWithMock(urllib2, 'urlopen')
 
 
@@ -152,7 +153,7 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulTriggerDownloadSync(self):
         """Call the dev server's download method with synchronous=True."""
         name = 'fake/image'
-        self.mox.StubOutWithMock(dev_server.ImageServer, 'finish_download')
+        self.mox.StubOutWithMock(dev_server.ImageServer, '_finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(name),
@@ -162,7 +163,7 @@ class DevServerTest(mox.MoxTestBase):
                                 mox.StrContains(name),
                                 mox.StrContains('is_staged'))).AndReturn(
                                                                       to_return)
-        self.dev_server.finish_download(name)
+        self.dev_server._finish_download(name, mox.IgnoreArg(), mox.IgnoreArg())
 
         # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()
@@ -507,6 +508,56 @@ class DevServerTest(mox.MoxTestBase):
         self.assertFalse(dev_server._is_load_healthy(load_high_cpu))
         self.assertFalse(dev_server._is_load_healthy(load_high_network))
         self.assertTrue(dev_server._compare_load(load_1, load_2) > 0)
+
+
+    def _testSuccessfulTriggerDownloadAndroid(self, synchronous=True):
+        """Call the dev server's download method with given synchronous setting.
+
+        @param synchronous: True to call the download method synchronously.
+        """
+        target = 'test_target'
+        branch = 'test_branch'
+        build_id = '123456'
+        self.mox.StubOutWithMock(dev_server.AndroidBuildServer, '_finish_download')
+        to_return = StringIO.StringIO('Success')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target),
+                                mox.StrContains(branch),
+                                mox.StrContains(build_id),
+                                mox.StrContains('stage?'))).AndReturn(to_return)
+        to_return = StringIO.StringIO('True')
+        urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
+                                mox.StrContains(target),
+                                mox.StrContains(branch),
+                                mox.StrContains(build_id),
+                                mox.StrContains('is_staged'))).AndReturn(
+                                                                      to_return)
+        if synchronous:
+            android_build_info = {'target': target,
+                                  'build_id': build_id,
+                                  'branch': branch}
+            build = dev_server.ANDROID_BUILD_NAME_PATTERN % android_build_info
+            self.android_dev_server._finish_download(
+                    build,
+                    dev_server._ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE, '',
+                    target=target, build_id=build_id, branch=branch)
+
+        # Synchronous case requires a call to finish download.
+        self.mox.ReplayAll()
+        self.android_dev_server.trigger_download(
+                synchronous=synchronous, target=target, build_id=build_id,
+                branch=branch)
+        self.mox.VerifyAll()
+
+
+    def testSuccessfulTriggerDownloadAndroidSync(self):
+        """Call the dev server's download method with synchronous=True."""
+        self._testSuccessfulTriggerDownloadAndroid(synchronous=True)
+
+
+    def testSuccessfulTriggerDownloadAndroidAsync(self):
+        """Call the dev server's download method with synchronous=False."""
+        self._testSuccessfulTriggerDownloadAndroid(synchronous=False)
 
 
 if __name__ == "__main__":
