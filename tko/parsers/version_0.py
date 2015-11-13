@@ -9,6 +9,10 @@ class NoHostnameError(Exception):
     pass
 
 
+class BoardLabelError(Exception):
+    pass
+
+
 class job(models.job):
     def __init__(self, dir):
         job_dict = job.load_from_dir(dir)
@@ -70,6 +74,21 @@ class job(models.job):
             if not host_keyval:
                 tko_utils.dprint('Unable to parse host keyval for %s'
                                  % individual_hostname)
+            elif 'labels' in host_keyval:
+                # Use board label as machine group. This is to avoid the
+                # confusion of multiple boards mapping to the same platform in
+                # wmatrix. With this change, wmatrix will group tests with the
+                # same board, rather than the same platform.
+                labels = host_keyval['labels'].split(',')
+                board_labels = [l[8:] for l in labels
+                               if l.startswith('board%3A')]
+                if board_labels and len(board_labels) == 1:
+                    machine_groups.add(board_labels[0])
+                else:
+                    error = ('Failed to retrieve board label from host labels: '
+                             '%s' % host_keyval['labels'])
+                    tko_utils.dprint(error)
+                    raise BoardLabelError(error)
             elif "platform" in host_keyval:
                 machine_groups.add(host_keyval["platform"])
         machine_group = ",".join(sorted(machine_groups))
