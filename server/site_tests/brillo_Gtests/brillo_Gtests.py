@@ -13,6 +13,9 @@ from autotest_lib.server import test
 
 NATIVE_TESTS_PATH = '/data/nativetest'
 WHITELIST_FILE = '/data/nativetest/tests.txt'
+LIST_TEST_BINARIES_TEMPLATE = (
+        'find %(path)s -type f -mindepth 2 -maxdepth 2 '
+        '\( -perm -100 -o -perm -010 -o -perm -001 \)')
 
 class brillo_Gtests(test.test):
     """Run one or more native gTest Suites."""
@@ -24,26 +27,22 @@ class brillo_Gtests(test.test):
         @param use_whitelist: Only whitelisted tests found on the system will
                               be used.
         """
+        list_cmd = LIST_TEST_BINARIES_TEMPLATE % {'path': NATIVE_TESTS_PATH}
+        gtest_suites = self.host.run_output(list_cmd).splitlines()
         if use_whitelist:
-            test_folders = self.host.run_output(
-                    'cat %s' % WHITELIST_FILE).splitlines()
-        else:
-            test_folders = ['*']
-
-        gtestSuites = []
-        for test_folder in test_folders:
             try:
-                test_folder = os.path.join(NATIVE_TESTS_PATH, test_folder)
-                gtestSuites.extend(
-                        self.host.run_output('ls -d -1 %s/*' %
-                                             test_folder).splitlines())
+                whitelisted = [os.path.join(NATIVE_TESTS_PATH, test)
+                               for test in self.host.run_output(
+                                       'cat %s' % WHITELIST_FILE).splitlines()]
+                gtest_suites = [test for test in gtest_suites
+                                if os.path.dirname(test) in whitelisted]
             except error.AutoservRunError:
-                logging.error('Skipping test folder: %s as '
-                              'it does not exist.', test_folder)
-        if not gtestSuites:
-            raise error.TestWarn('No gTest executables found on the DUT!')
-        logging.debug('gTest executables found:\n%s', '\n'.join(gtestSuites))
-        return gtestSuites
+                logging.error('Failed to read whitelist %s', WHITELIST_FILE)
+
+        if not gtest_suites:
+            raise error.TestWarn('No test executables found on the DUT')
+        logging.debug('Test executables found:\n%s', '\n'.join(gtest_suites))
+        return gtest_suites
 
 
     def run_gtestsuite(self, gtestSuite):
@@ -95,12 +94,12 @@ class brillo_Gtests(test.test):
         return True
 
 
-    def run_once(self, host=None, gtestSuites=None, use_whitelist=False):
+    def run_once(self, host=None, gtest_suites=None, use_whitelist=False):
         """Run gTest Suites on the DUT.
 
         @param host: host object representing the device under test.
-        @param gtestSuites: List of gTest suites to run. Default is to run
-                            every gTest suite on the host.
+        @param gtest_suites: List of gTest suites to run. Default is to run
+                             every gTest suite on the host.
         @param use_whitelist: If gTestSuites is not passed in and use_whitelist
                               is true, only whitelisted tests found on the
                               system will be used.
@@ -108,21 +107,21 @@ class brillo_Gtests(test.test):
         @raise TestFail: The test failed.
         """
         self.host = host
-        if not gtestSuites:
-            gtestSuites = self._find_all_gtestsuites(
+        if not gtest_suites:
+            gtest_suites = self._find_all_gtestsuites(
                     use_whitelist=use_whitelist)
 
-        failed_gtestSuites = []
-        for gtestSuite in gtestSuites:
+        failed_gtest_suites = []
+        for gtestSuite in gtest_suites:
             if not self.run_gtestsuite(gtestSuite):
-                failed_gtestSuites.append(gtestSuite)
+                failed_gtest_suites.append(gtestSuite)
 
-        if failed_gtestSuites:
+        if failed_gtest_suites:
             logging.error('The following gTest Suites failed: \n %s',
-                          '\n'.join(failed_gtestSuites))
+                          '\n'.join(failed_gtest_suites))
             raise error.TestFail(
                     'Not all gTest Suites completed successfully. '
                     '%s out of %s suites failed. '
-                    'Failed Suites: %s' % (len(failed_gtestSuites),
-                                           len(gtestSuites),
-                                           failed_gtestSuites))
+                    'Failed Suites: %s' % (len(failed_gtest_suites),
+                                           len(gtest_suites),
+                                           failed_gtest_suites))
