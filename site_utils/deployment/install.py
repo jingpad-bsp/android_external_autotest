@@ -79,6 +79,19 @@ _DIVIDER = '\n============\n'
 _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
 
 
+def _report_write(report_log, message):
+    """Write a message to the report log.
+
+    Report output goes both to stdout, and to a given report
+    file.
+
+    @param report_log   Write the message here and to stdout.
+    @param message      Write this message.
+    """
+    report_log.write(message)
+    sys.stdout.write(message)
+
+
 def _get_omaha_build(board):
     """Get the currently preferred Beta channel build for `board`.
 
@@ -106,7 +119,7 @@ def _get_omaha_build(board):
     return None
 
 
-def _update_build(afe, arguments):
+def _update_build(afe, report_log, arguments):
     """Update the stable_test_versions table.
 
     This calls the `set_stable_version` RPC call to set the stable
@@ -123,6 +136,7 @@ def _update_build(afe, arguments):
     prior to selection.
 
     @param afe          AFE object for RPC calls.
+    @param report_log   File-like object for logging report output.
     @param arguments    Command line arguments determining the
                         target board and user-specified build
                         (if any).
@@ -131,8 +145,8 @@ def _update_build(afe, arguments):
     afe_version = afe.run('get_stable_version',
                           board=arguments.board)
     omaha_version = _get_omaha_build(arguments.board)
-    sys.stdout.write('AFE   version is %s.\n' % afe_version)
-    sys.stdout.write('Omaha version is %s.\n' % omaha_version)
+    _report_write(report_log, 'AFE   version is %s.\n' % afe_version)
+    _report_write(report_log, 'Omaha version is %s.\n' % omaha_version)
     if (omaha_version is not None and
             utils.compare_versions(afe_version, omaha_version) < 0):
         version = omaha_version
@@ -142,8 +156,9 @@ def _update_build(afe, arguments):
         if utils.compare_versions(arguments.build, version) >= 0:
             version = arguments.build
         else:
-            sys.stdout.write('Selected version %s is too old.\n' %
-                             arguments.build)
+            _report_write(report_log,
+                          'Selected version %s is too old.\n' %
+                          arguments.build)
     if version != afe_version and not arguments.nostable:
         afe.run('set_stable_version',
                 version=version,
@@ -439,13 +454,15 @@ def _install_dut(arguments, hostname):
     return None
 
 
-def _report_hosts(heading, host_results_list):
+def _report_hosts(report_log, heading, host_results_list):
     """Report results for a list of hosts.
 
     To improve visibility, results are preceded by a header line,
     followed by a divider line.  Then results are printed, one host
     per line.
 
+    @param report_log         File-like object for logging report
+                              output.
     @param heading            The header string to be printed before
                               results.
     @param host_results_list  A list of (hostname, message) tuples
@@ -453,25 +470,26 @@ def _report_hosts(heading, host_results_list):
     """
     if not host_results_list:
         return
-    sys.stdout.write(heading)
-    sys.stdout.write(_DIVIDER)
+    _report_write(report_log, heading)
+    _report_write(report_log, _DIVIDER)
     for t in host_results_list:
-        sys.stdout.write('%-30s %s\n' % t)
-    sys.stdout.write('\n')
+        _report_write(report_log, '%-30s %s\n' % t)
+    _report_write(report_log, '\n')
 
 
-def _report_results(afe, hostnames, results):
+def _report_results(afe, report_log, hostnames, results):
     """Gather and report a summary of results from installation.
 
     Segregate results into successes and failures, reporting
     each separately.  At the end, report the total of successes
     and failures.
 
-    @param afe        AFE object for RPC calls.
-    @param hostnames  List of the hostnames that were tested.
-    @param results    List of error messages, in the same order
-                      as the hostnames.  `None` means the
-                      corresponding host succeeded.
+    @param afe          AFE object for RPC calls.
+    @param report_log   File-like object for logging report output.
+    @param hostnames    List of the hostnames that were tested.
+    @param results      List of error messages, in the same order
+                        as the hostnames.  `None` means the
+                        corresponding host succeeded.
     """
     success_hosts = []
     success_reports = []
@@ -494,12 +512,13 @@ def _report_results(afe, hostnames, results):
                 h.add_labels([_DEFAULT_POOL])
                 success_reports.append(
                         (h.hostname, 'Host added to %s' % _DEFAULT_POOL))
-    sys.stdout.write(_DIVIDER)
-    _report_hosts('Successes', success_reports)
-    _report_hosts('Failures', failure_reports)
-    sys.stdout.write('Installation complete:  '
-                     '%d successes, %d failures.\n' %
-                         (len(success_reports), len(failure_reports)))
+    _report_write(report_log, _DIVIDER)
+    _report_hosts(report_log, 'Successes', success_reports)
+    _report_hosts(report_log, 'Failures', failure_reports)
+    _report_write(report_log,
+                  'Installation complete:  '
+                  '%d successes, %d failures.\n' %
+                  (len(success_reports), len(failure_reports)))
 
 
 def install_duts(argv, full_deploy):
@@ -525,16 +544,18 @@ def install_duts(argv, full_deploy):
     if not arguments:
         sys.exit(1)
     sys.stderr.write('Installation output logs in %s\n' % arguments.dir)
+    report_log = open(os.path.join(arguments.dir, 'report.log'), 'w')
     afe = frontend.AFE(server=arguments.web)
-    current_build = _update_build(afe, arguments)
-    sys.stdout.write(_DIVIDER)
-    sys.stderr.write('Repair version for board %s is now %s.\n' %
-                     (arguments.board, current_build))
+    current_build = _update_build(afe, report_log, arguments)
+    _report_write(report_log, _DIVIDER)
+    _report_write(report_log,
+                  'Repair version for board %s is now %s.\n' %
+                  (arguments.board, current_build))
     install_pool = multiprocessing.Pool(len(arguments.hostnames))
     install_function = functools.partial(_install_dut, arguments)
     results_list = install_pool.map(install_function,
                                     arguments.hostnames)
-    _report_results(afe, arguments.hostnames, results_list)
+    _report_results(afe, report_log, arguments.hostnames, results_list)
 
     # MacDuff:
     #   [ ... ]
