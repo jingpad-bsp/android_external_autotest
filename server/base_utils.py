@@ -257,9 +257,23 @@ def parse_machine(machine, user='root', password='', port=22):
     if ':' in user:
         user, password = user.split(':', 1)
 
-    if ':' in machine:
-        machine, port = machine.split(':', 1)
+    # Brackets are required to protect an IPv6 address whenever a
+    # [xx::xx]:port number (or a file [xx::xx]:/path/) is appended to
+    # it. Do not attempt to extract a (non-existent) port number from
+    # an unprotected/bare IPv6 address "xx::xx".
+    # In the Python >= 3.3 future, 'import ipaddress' will parse
+    # addresses; and maybe more.
+    bare_ipv6 = '[' != machine[0] and re.search(r':.*:', machine)
+
+    # Extract trailing :port number if any.
+    if not bare_ipv6 and re.search(r':\d*$', machine):
+        machine, port = machine.rsplit(':', 1)
         port = int(port)
+
+    # Strip any IPv6 brackets (ssh does not support them).
+    # We'll add them back later for rsync, scp, etc.
+    if machine[0] == '[' and machine[-1] == ']':
+        machine = machine[1:-1]
 
     if not machine or not user:
         raise ValueError

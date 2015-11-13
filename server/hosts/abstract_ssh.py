@@ -1,4 +1,4 @@
-import os, time, socket, shutil, glob, logging, traceback, tempfile
+import os, time, socket, shutil, glob, logging, traceback, tempfile, re
 import subprocess
 
 from multiprocessing import Lock
@@ -121,7 +121,16 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         if escape:
             paths = [utils.scp_remote_escape(path) for path in paths]
-        return '%s@%s:"%s"' % (self.user, self.hostname, " ".join(paths))
+
+        remote = self.hostname
+
+        # rsync and scp require IPv6 brackets, even when there isn't any
+        # trailing port number (ssh doesn't support IPv6 brackets).
+        # In the Python >= 3.3 future, 'import ipaddress' will parse addresses.
+        if re.search(r':.*:', remote):
+            remote = '[%s]' % remote
+
+        return '%s@%s:"%s"' % (self.user, remote, " ".join(paths))
 
 
     def _make_rsync_cmd(self, sources, dest, delete_dest, preserve_symlinks):

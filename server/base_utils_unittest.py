@@ -34,6 +34,19 @@ class UtilsTest(unittest.TestCase):
                     ('user@host',           ('host', 'user', '', 22)),
                     ('user:pass@host',      ('host', 'user', 'pass', 22)),
                     ('user:pass@host:1234', ('host', 'user', 'pass', 1234)),
+
+                    ('user:pass@10.3.2.1',
+                     ('10.3.2.1', 'user', 'pass', 22)),
+                    ('user:pass@10.3.2.1:1234',
+                     ('10.3.2.1', 'user', 'pass', 1234)),
+
+                    ('::1',                 ('::1', 'root', '', 22)),
+                    ('user:pass@abdc::ef',  ('abdc::ef', 'user', 'pass', 22)),
+                    ('abdc::ef:99',         ('abdc::ef:99', 'root', '', 22)),
+                    ('user:pass@[abdc::ef:99]',
+                     ('abdc::ef:99', 'user', 'pass', 22)),
+                    ('user:pass@[abdc::ef]:1234',
+                     ('abdc::ef', 'user', 'pass', 1234)),
                    )
         for machine, result in gooddata:
             self.assertEquals(utils.parse_machine(machine), result)
@@ -47,12 +60,12 @@ class UtilsTest(unittest.TestCase):
 
     def test_parse_machine_bad(self):
         '''test that bad data passed to parse_machine() will raise an exception'''
-        baddata = (('host:port', ValueError),   # pass a non-integer string for port
-                   ('host:22:33', ValueError),  # pass two ports
-                   (':22', ValueError),         # neglect to pass a hostname #1
-                   ('user@', ValueError),       # neglect to pass a hostname #2
-                   ('user@:22', ValueError),    # neglect to pass a hostname #3
+        baddata = ((':22', IndexError),         # neglect to pass a hostname #1
+                   ('user@', IndexError),       # neglect to pass a hostname #2
+                   ('user@:22', IndexError),    # neglect to pass a hostname #3
                    (':pass@host', ValueError),  # neglect to pass a username
+                   ('host:', ValueError),       # empty port after hostname
+                   ('[1::2]:', ValueError),     # empty port after IPv6
                   )
         for machine, exception in baddata:
             self.assertRaises(exception, utils.parse_machine, machine)
