@@ -73,8 +73,8 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
         log_cmd = 'tail -n +%s /var/log/messages | grep -i touch' % start_line
 
         pass_terms = ['touch-firmware-update',
-                      '"Product ID[^a-z0-9]*%s"' % hw_id]
-        fail_terms = ['error:']
+                      '"Product[^a-z0-9]ID[^a-z0-9]*%s"' % hw_id]
+        fail_terms = ['error']
 
         # Check for key terms in touch logs.
         for term in pass_terms + fail_terms:
