@@ -70,6 +70,195 @@ class NormalizeTest(unittest.TestCase):
             self.assertEqual(expected[i], normalized_y[i])
 
 
+class AnomalyTest(unittest.TestCase):
+    def setUp(self):
+        """Creates a test signal of sine wave."""
+        self.block_size = 120
+        self.rate = 48000
+        self.freq = 440
+        length_in_secs = 0.25
+        self.samples = length_in_secs * self.rate
+        x = numpy.linspace(
+                0.0, (self.samples - 1) * 1.0 / self.rate, self.samples)
+        self.y = numpy.sin(self.freq * 2.0 * numpy.pi * x)
+
+
+    def add_noise(self):
+        """Add noise to the test signal."""
+        noise_amplitude = 0.3
+        noise = numpy.random.standard_normal(len(self.y)) * noise_amplitude
+        self.y = self.y + noise
+
+
+    def insert_anomaly(self):
+        """Inserts an anomaly to the test signal.
+
+        The anomaly self.anomaly_samples should be created before calling this
+        method.
+
+        """
+        self.anomaly_start_secs = 0.1
+        self.y = numpy.insert(self.y, int(self.anomaly_start_secs * self.rate),
+                              self.anomaly_samples)
+
+
+    def generate_skip_anomaly(self):
+        """Skips a section of test signal."""
+        self.anomaly_start_secs = 0.1
+        self.anomaly_duration_secs = 0.005
+        anomaly_append_secs = self.anomaly_start_secs + self.anomaly_duration_secs
+        anomaly_start_index = self.anomaly_start_secs * self.rate
+        anomaly_append_index = anomaly_append_secs * self.rate
+        self.y = numpy.append(self.y[:anomaly_start_index], self.y[anomaly_append_index:])
+
+
+    def create_constant_anomaly(self, amplitude):
+        """Creates an anomaly of constant samples.
+
+        @param amplitude: The amplitude of the constant samples.
+
+        """
+        self.anomaly_duration_secs = 0.005
+        self.anomaly_samples = (
+                [amplitude] * int(self.anomaly_duration_secs * self.rate))
+
+
+    def run_analysis(self):
+        """Runs the anomaly detection."""
+        self.results = audio_analysis.anomaly_detection(
+                self.y, self.rate, self.freq, self.block_size)
+        logging.debug('Results: %s', self.results)
+
+
+    def check_no_anomaly(self):
+        """Verifies that there is no anomaly in detection result."""
+        self.run_analysis()
+        self.assertFalse(self.results)
+
+
+    def check_anomaly(self):
+        """Verifies that there is anomaly in detection result.
+
+        The detection result should contain anomaly time stamps that are
+        close to where anomaly was inserted. There can be multiple anomalies
+        since the detection depends on the block size.
+
+        """
+        self.run_analysis()
+        self.assertTrue(self.results)
+        # Anomaly can be detected as long as the detection window of block size
+        # overlaps with anomaly.
+        expected_detected_range_secs = (
+                self.anomaly_start_secs - float(self.block_size) / self.rate,
+                self.anomaly_start_secs + self.anomaly_duration_secs)
+        for detected_secs in self.results:
+            self.assertTrue(detected_secs <= expected_detected_range_secs[1])
+            self.assertTrue(detected_secs >= expected_detected_range_secs[0] )
+
+
+    def testGoodSignal(self):
+        """Sine wave signal with no noise or anomaly."""
+        self.check_no_anomaly()
+
+
+    def testGoodSignalNoise(self):
+        """Sine wave signal with noise."""
+        self.add_noise()
+        self.check_no_anomaly()
+
+
+    def testZeroAnomaly(self):
+        """Sine wave signal with no noise but with anomaly.
+
+        This test case simulates underrun in digital data where there will be
+        one block of samples with 0 amplitude.
+
+        """
+        self.create_constant_anomaly(0)
+        self.insert_anomaly()
+        self.check_anomaly()
+
+
+    def testZeroAnomalyNoise(self):
+        """Sine wave signal with noise and anomaly.
+
+        This test case simulates underrun in analog data where there will be
+        one block of samples with amplitudes close to 0.
+
+        """
+        self.create_constant_anomaly(0)
+        self.insert_anomaly()
+        self.add_noise()
+        self.check_anomaly()
+
+
+    def testLowConstantAnomaly(self):
+        """Sine wave signal with low constant anomaly.
+
+        The anomaly is one block of constant values.
+
+        """
+        self.create_constant_anomaly(0.05)
+        self.insert_anomaly()
+        self.check_anomaly()
+
+
+    def testLowConstantAnomalyNoise(self):
+        """Sine wave signal with low constant anomaly and noise.
+
+        The anomaly is one block of constant values.
+
+        """
+        self.create_constant_anomaly(0.05)
+        self.insert_anomaly()
+        self.add_noise()
+        self.check_anomaly()
+
+
+    def testHighConstantAnomaly(self):
+        """Sine wave signal with high constant anomaly.
+
+        The anomaly is one block of constant values.
+
+        """
+        self.create_constant_anomaly(2)
+        self.insert_anomaly()
+        self.check_anomaly()
+
+
+    def testHighConstantAnomalyNoise(self):
+        """Sine wave signal with high constant anomaly and noise.
+
+        The anomaly is one block of constant values.
+
+        """
+        self.create_constant_anomaly(2)
+        self.insert_anomaly()
+        self.add_noise()
+        self.check_anomaly()
+
+
+    def testSkippedAnomaly(self):
+        """Sine wave signal with skipped anomaly.
+
+        The anomaly simulates the symptom where a block is skipped.
+
+        """
+        self.generate_skip_anomaly()
+        self.check_anomaly()
+
+
+    def testSkippedAnomalyNoise(self):
+        """Sine wave signal with skipped anomaly with noise.
+
+        The anomaly simulates the symptom where a block is skipped.
+
+        """
+        self.generate_skip_anomaly()
+        self.add_noise()
+        self.check_anomaly()
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()

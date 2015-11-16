@@ -164,3 +164,167 @@ def _peak_detection(array, window_size):
 
     # Sort the peaks by values.
     return sorted(results, key=lambda x: x[1], reverse=True)
+
+
+# The default pattern mathing threshold. By experiment, this threshold
+# can tolerate normal noise of 0.3 amplitude when sine wave signal
+# amplitude is 1.
+PATTERN_MATCHING_THRESHOLD = 0.85
+
+def anomaly_detection(signal, rate, freq, block_size,
+                      threshold=PATTERN_MATCHING_THRESHOLD):
+    """Detects anomaly in a sine wave signal.
+
+    This method detects anomaly in a sine wave signal by matching
+    patterns of each block.
+    For each moving window of block in the test signal, checks if there
+    is any block in golden signal that is similar to this block of test signal.
+    If there is such a block in golden signal, then this block of test
+    signal is matched and there is no anomaly in this block of test signal.
+    If there is any block in test signal that is not matched, then this block
+    covers an anomaly.
+    The block of test signal starts from index 0, and proceeds in steps of
+    half block size. The overlapping of test signal blocks makes sure there must
+    be at least one block covering the transition from sine wave to anomaly.
+
+    @param signal: A 1-D array-like object for 1-channel PCM data.
+    @param rate: The sampling rate.
+    @param freq: The expected frequency of signal.
+    @param block_size: The block size in samples to detect anomaly.
+    @param threshold: The threshold of correlation index to be judge as matched.
+
+    @returns: A list containing detected anomaly time in seconds.
+
+    """
+    golden_y = _generate_golden_pattern(rate, freq, block_size)
+
+    results = []
+
+    for start in xrange(0, len(signal), block_size / 2):
+        end = start + block_size
+        test_signal = signal[start:end]
+        matched = _moving_pattern_matching(golden_y, test_signal, threshold)
+        if not matched:
+            results.append(start)
+
+    results = [float(x) / rate for x in results]
+
+    return results
+
+
+def _generate_golden_pattern(rate, freq, block_size):
+    """Generates a golden pattern of certain frequency.
+
+    The golden pattern must cover all the possibilities of waveforms in a
+    block. So, we need a golden pattern covering 1 period + 1 block size,
+    such that the test block can start anywhere in a period, and extends
+    a block size.
+
+    |period |1 bk|
+    |       |    |
+     . .     . .
+    .   .   .   .
+         . .     .
+
+    @param rate: The sampling rate.
+    @param freq: The frequency of golden pattern.
+    @param block_size: The block size in samples to detect anomaly.
+
+    @returns: A 1-D array for golden pattern.
+
+    """
+    samples_in_a_period = int(rate / freq) + 1
+    samples_in_golden_pattern = samples_in_a_period + block_size
+    golden_x = numpy.linspace(
+            0.0, (samples_in_golden_pattern - 1) * 1.0 / rate,
+            samples_in_golden_pattern)
+    golden_y = numpy.sin(freq * 2.0 * numpy.pi * golden_x)
+    return golden_y
+
+
+def _moving_pattern_matching(golden_signal, test_signal, threshold):
+    """Checks if test_signal is similar to any block of golden_signal.
+
+    Compares test signal with each block of golden signal by correlation
+    index. If there is any block of golden signal that is similar to
+    test signal, then it is matched.
+
+    @param golden_signal: A 1-D array for golden signal.
+    @param test_signal: A 1-D array for test signal.
+    @param threshold: The threshold of correlation index to be judge as matched.
+
+    @returns: True if there is a match. False otherwise.
+
+    @raises: ValueError: if test signal is longer than golden signal.
+
+    """
+    if len(golden_signal) < len(test_signal):
+        raise ValueError('Test signal is longer than golden signal')
+
+    block_length = len(test_signal)
+    number_of_movings = len(golden_signal) - block_length + 1
+    correlation_indices = []
+    for moving_index in xrange(number_of_movings):
+        # Cuts one block of golden signal from start index.
+        # The block length is the same as test signal.
+        start = moving_index
+        end = start + block_length
+        golden_signal_block = golden_signal[start:end]
+        try:
+            correlation_index = _get_correlation_index(
+                    golden_signal_block, test_signal)
+        except TestSignalNormTooSmallError:
+            logging.info('Caught one block of test signal that has no meaningful norm')
+            return False
+        correlation_indices.append(correlation_index)
+
+    # Checks if the maximum correlation index is high enough.
+    max_corr = max(correlation_indices)
+    if max_corr < threshold:
+        logging.debug('Got one unmatched block with max_corr: %s', max_corr)
+        return False
+    return True
+
+
+class GoldenSignalNormTooSmallError(Exception):
+    """Exception when golden signal norm is too small."""
+    pass
+
+
+class TestSignalNormTooSmallError(Exception):
+    """Exception when test signal norm is too small."""
+    pass
+
+
+_MINIMUM_SIGNAL_NORM = 0.001
+
+def _get_correlation_index(golden_signal, test_signal):
+    """Computes correlation index of two signal of same length.
+
+    @param golden_signal: An 1-D array-like object.
+    @param test_signal: An 1-D array-like object.
+
+    @raises: ValueError: if two signal have different lengths.
+    @raises: GoldenSignalNormTooSmallError: if golden signal norm is too small
+    @raises: TestSignalNormTooSmallError: if test signal norm is too small.
+
+    @returns: The correlation index.
+    """
+    if len(golden_signal) != len(test_signal):
+        raise ValueError(
+                'Only accepts signal of same length: %s, %s' % (
+                        len(golden_signal), len(test_signal)))
+
+    norm_golden = numpy.linalg.norm(golden_signal)
+    norm_test = numpy.linalg.norm(test_signal)
+    if norm_golden <= _MINIMUM_SIGNAL_NORM:
+        raise GoldenSignalNormTooSmallError(
+                'No meaningful data as norm is too small.')
+    if norm_test <= _MINIMUM_SIGNAL_NORM:
+        raise TestSignalNormTooSmallError(
+                'No meaningful data as norm is too small.')
+
+    # The 'valid' cross correlation result of two signals of same length will
+    # contain only one number.
+    correlation = numpy.correlate(golden_signal, test_signal, 'valid')[0]
+    return correlation / (norm_golden * norm_test)
