@@ -54,7 +54,7 @@ class Values(object):
     # Delay between reboot and first ping response from the DUT
     # When this times out, it indicates we're stuck at a firmware screen.
     # Hence, bypass action has to be taken if we want to proceed.
-    delay_reboot_to_ping = 20
+    delay_reboot_to_ping = 30
 
     # Delay between keypresses in firmware screen
     confirm_screen = 3
