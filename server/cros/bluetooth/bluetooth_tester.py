@@ -35,7 +35,7 @@ class BluetoothTester(object):
         client_at = autotest.Autotest(self.host)
         client_at.install()
         # Start up the XML-RPC proxy on the tester.
-        self._proxy = self.host.xmlrpc_connect(
+        self._proxy = self.host.rpc_server_tracker.xmlrpc_connect(
                 constants.BLUETOOTH_TESTER_XMLRPC_SERVER_COMMAND,
                 constants.BLUETOOTH_TESTER_XMLRPC_SERVER_PORT,
                 command_name=
