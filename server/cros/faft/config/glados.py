@@ -8,4 +8,5 @@ from autotest_lib.server.cros.faft.config import samus
 
 class Values(samus.Values):
     """Inherit overrides from Samus."""
-    pass
+    firmware_screen = 16
+    usb_plug = 16
