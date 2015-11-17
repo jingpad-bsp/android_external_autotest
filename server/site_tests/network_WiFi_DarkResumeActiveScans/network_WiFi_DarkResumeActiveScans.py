@@ -106,7 +106,8 @@ class network_WiFi_DarkResumeActiveScans(
         # Trigger a wake to scan RTC timer dark resume, and make sure that no
         # probe requests were launched during this dark resume.
         with contextlib.nested(
-                client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),
+                client.wake_on_wifi_features(
+                        wifi_client.WAKE_ON_WIFI_DARKCONNECT),
                 client.wake_to_scan_period_seconds(
                         wifi_client.WAKE_TO_SCAN_PERIOD_SECONDS),
                 client.force_wake_to_scan_timer(True)):

@@ -21,8 +21,8 @@ class network_WiFi_WakeOnDisconnect(lucid_sleep_test_base.LucidSleepTestBase):
         client = self.context.client
         router = self.context.router
 
-        # ask shill to set up wake-on-ssid
-        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID):
+        # Enable the dark connect feature in shill.
+        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_DARKCONNECT):
             logging.info('Set up WoWLAN')
 
             with self.dr_utils.suspend():

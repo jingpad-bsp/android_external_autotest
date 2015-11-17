@@ -23,9 +23,10 @@ class network_WiFi_WakeOnSSID(lucid_sleep_test_base.LucidSleepTestBase):
         client = self.context.client
         router = self.context.router
 
-        # Enable the wake on SSID feature in shill, and set the scan period.
+        # Enable the dark connect feature in shill, and set the scan period.
         with contextlib.nested(
-                client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),
+                client.wake_on_wifi_features(
+                        wifi_client.WAKE_ON_WIFI_DARKCONNECT),
                 client.net_detect_scan_period_seconds(
                         wifi_client.NET_DETECT_SCAN_WAIT_TIME_SECONDS)):
             logging.info('Set up WoWLAN')

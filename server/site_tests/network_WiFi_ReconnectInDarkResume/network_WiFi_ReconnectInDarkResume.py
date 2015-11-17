@@ -49,9 +49,10 @@ class network_WiFi_ReconnectInDarkResume(
         else:
             reconnect_ap_ssid = first_ap_ssid
 
-        # Enable the wake on SSID feature in shill, and set the scan period.
+        # Enable the dark connect feature in shill, and set the scan period.
         with contextlib.nested(
-                client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID),
+                client.wake_on_wifi_features(
+                        wifi_client.WAKE_ON_WIFI_DARKCONNECT),
                 client.net_detect_scan_period_seconds(
                         wifi_client.NET_DETECT_SCAN_WAIT_TIME_SECONDS)):
             logging.info('Set up WoWLAN')

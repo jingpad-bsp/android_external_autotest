@@ -29,8 +29,8 @@ from autotest_lib.server.hosts import adb_host
 # Wake-on-WiFi feature strings
 WAKE_ON_WIFI_NONE = 'none'
 WAKE_ON_WIFI_PACKET = 'packet'
-WAKE_ON_WIFI_SSID = 'ssid'
-WAKE_ON_WIFI_PACKET_SSID = 'packet_and_ssid'
+WAKE_ON_WIFI_DARKCONNECT = 'darkconnect'
+WAKE_ON_WIFI_PACKET_DARKCONNECT = 'packet_and_darkconnect'
 WAKE_ON_WIFI_NOT_SUPPORTED = 'not_supported'
 
 # Wake-on-WiFi test timing constants
@@ -803,7 +803,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
         The correct way to use this method is:
 
-        with client.wake_on_wifi_features(WAKE_ON_WIFI_SSID):
+        with client.wake_on_wifi_features(WAKE_ON_WIFI_DARKCONNECT):
             ...
 
         @param features: string from the WAKE_ON_WIFI constants above.

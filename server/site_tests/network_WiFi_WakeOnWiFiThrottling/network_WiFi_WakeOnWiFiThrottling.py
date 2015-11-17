@@ -32,8 +32,8 @@ class network_WiFi_WakeOnWiFiThrottling(
         client_mac = client.wifi_mac
         router = self.context.router
 
-        # Enable the wake on SSID feature in shill, and set the scan period.
-        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID):
+        # Enable the dark connect feature in shill, and set the scan period.
+        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_DARKCONNECT):
             logging.info('Set up WoWLAN')
 
             logging.info('Testing short dark resume threshold')

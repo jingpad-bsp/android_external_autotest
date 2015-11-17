@@ -26,8 +26,8 @@ class network_WiFi_FastReconnectInDarkResume(
         client_mac = client.wifi_mac
         router = self.context.router
 
-        # Enable the wake on SSID feature in shill.
-        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_SSID):
+        # Enable the dark connect feature in shill.
+        with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_DARKCONNECT):
             logging.info('Set up WoWLAN')
 
             with self.dr_utils.suspend():
