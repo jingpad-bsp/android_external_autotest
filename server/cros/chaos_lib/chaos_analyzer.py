@@ -63,12 +63,13 @@ class ChaosTestInfo(object):
                                         os.path.join(root, file_name))
 
     def _parse_meta_info(self, file):
-        dut_mac_prefix =' \'DUT\': '
-        ap_bssid_prefix =' \'AP Info\': '
-        ap_ssid_prefix =' \'SSID\': '
+        dut_mac_prefix ='\'DUT\': '
+        ap_bssid_prefix ='\'AP Info\': '
+        ap_ssid_prefix ='\'SSID\': '
         self._meta_info = {}
         with open(file) as infile:
             for line in infile.readlines():
+                line = line.strip()
                 if line.startswith(dut_mac_prefix):
                     dut_mac = line[len(dut_mac_prefix):].rstrip()
                     self._meta_info['dut_mac'] = (
@@ -143,17 +144,24 @@ class ChaosTestInfo(object):
         """Returns the MAC of the DUT in test info."""
         return self._meta_info['dut_mac']
 
-    def is_valid(self):
+    def is_valid(self, packet_capture_only):
         """
         Checks if the given folder contains a valid Chaos test results.
+
+        @param packet_capture_only: Flag to indicate whether to analyze only
+                                    packet captures.
 
         @return True if valid chaos results are found; False otherwise.
 
         """
-        return ((self._is_meta_info_valid()) and
-                (bool(self._traces)) and
-                (bool(self._message_log)) and
-                (bool(self._net_log)))
+        if packet_capture_only:
+            return ((self._is_meta_info_valid()) and
+                    (bool(self._traces)))
+        else:
+            return ((self._is_meta_info_valid()) and
+                    (bool(self._traces)) and
+                    (bool(self._message_log)) and
+                    (bool(self._net_log)))
 
 
 class ChaosLogger(object):
@@ -195,16 +203,18 @@ class ChaosAnalyzer(object):
         file_name = os.path.basename(trace)
         return re.search(self.TRACE_FILE_ATTEMPT_NUM_RE, file_name).group(0)
 
-    def _get_all_test_infos(self, dir_name, failures_only):
+    def _get_all_test_infos(self, dir_name, failures_only, packet_capture_only):
         test_infos = []
         for root, dir, files in os.walk(dir_name):
             test_info = ChaosTestInfo(root, files, failures_only)
-            if test_info.is_valid():
+            if test_info.is_valid(packet_capture_only):
                 test_infos.append(test_info)
+        if not test_infos:
+            print "Did not find any valid test info!"
         return test_infos
 
     def analyze(self, input_dir_name=None, output_dir_name=None,
-                failures_only=False):
+                failures_only=False, packet_capture_only=False):
         """
         Starts the analysis of the Chaos test logs and packet capture.
 
@@ -212,9 +222,12 @@ class ChaosAnalyzer(object):
         @param output_dir_name: Directory to which the chaos analysis is output.
         @param failures_only: Flag to indicate whether to analyze only
                               failure test attempts.
+        @param packet_capture_only: Flag to indicate whether to analyze only
+                                    packet captures.
 
         """
-        for test_info in self._get_all_test_infos(input_dir_name, failures_only):
+        for test_info in self._get_all_test_infos(input_dir_name, failures_only,
+                                                  packet_capture_only):
             for trace in test_info.traces:
                 attempt_num = self._get_attempt_number_from_trace(trace)
                 trace_dir_name = os.path.dirname(trace)
@@ -235,21 +248,22 @@ class ChaosAnalyzer(object):
                 output_file_path = (
                         os.path.join(output_dir, output_file_name))
                 try:
-                    with open(output_file_path, "w") as output_file, \
-                         open(test_info.message_log, "r") as message_log, \
-                         open(test_info.net_log, "r") as net_log:
+                    with open(output_file_path, "w") as output_file:
                          logger = ChaosLogger(output_file)
                          protocol_analyzer = (
                                 chaos_capture_analyzer.ChaosCaptureAnalyzer(
                                         test_info.bssids, test_info.ssid,
                                         test_info.dut_mac, logger))
                          protocol_analyzer.analyze(trace)
-                         log_analyzer = (
-                                chaos_log_analyzer.ChaosLogAnalyzer(
-                                        message_log, net_log, logger))
-                         log_analyzer.analyze(attempt_num)
+                         if not packet_capture_only:
+                             with open(test_info.message_log, "r") as message_log, \
+                                  open(test_info.net_log, "r") as net_log:
+                                  log_analyzer = (
+                                         chaos_log_analyzer.ChaosLogAnalyzer(
+                                                message_log, net_log, logger))
+                                  log_analyzer.analyze(attempt_num)
                 except IOError as e:
-                    print 'Operation failed: %s' % e.strerror
+                    print 'Operation failed: %s!' % e.strerror
 
 
 def main():
@@ -259,6 +273,8 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze Chaos logs.')
     parser.add_argument('-f', '--failures-only', action='store_true',
                         help='analyze only failure logs.')
+    parser.add_argument('-p', '--packet-capture-only', action='store_true',
+                        help='analyze only packet captures.')
     parser.add_argument('-i', '--input-dir', action='store', default='.',
                         help='process the logs from directory.')
     parser.add_argument('-o', '--output-dir', action='store',
@@ -267,7 +283,8 @@ def main():
     chaos_analyzer = ChaosAnalyzer()
     chaos_analyzer.analyze(input_dir_name=args.input_dir,
                            output_dir_name=args.output_dir,
-                           failures_only=args.failures_only)
+                           failures_only=args.failures_only,
+                           packet_capture_only=args.packet_capture_only)
 
 if __name__ == "__main__":
     main()
