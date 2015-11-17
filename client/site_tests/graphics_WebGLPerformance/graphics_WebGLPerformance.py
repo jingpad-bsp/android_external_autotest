@@ -106,10 +106,6 @@ class graphics_WebGLPerformance(test.test):
         @param test_duration_secs: The test duration in seconds.
         @param fullscreen: Whether to run the test in fullscreen.
         """
-        # TODO(ihf): Remove the timeout increase once crbug.com/551042 is fixed.
-        gpu_type = utils.get_gpu_family()
-        if gpu_type == 'pinetrail' or gpu_type == 'mali':
-            test_duration_secs = 7200
         self._test_duration_secs = test_duration_secs
 
         ext_paths = []
