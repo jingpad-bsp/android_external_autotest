@@ -90,12 +90,17 @@ class ChameleonVideoCapturer(object):
                 lambda: self.chameleon_port.get_captured_frame_count() >=
                         max_frame_count,
                 error.TestError(error_msg),
-                self.timeout_get_all_frames_s)
+                self.timeout_get_all_frames_s,
+                sleep_interval=0.01)
 
         self.chameleon_port.stop_capturing_video()
 
         self.checksums = self.chameleon_port.get_captured_checksums()
         count = self.chameleon_port.get_captured_frame_count()
+
+        # Due to the polling and asychronous calls we might get too many frames
+        # cap at max
+        del self.checksums[max_frame_count:]
 
         logging.debug("***# of frames received %s", count)
         logging.debug("Checksums before chopping repeated ones")
