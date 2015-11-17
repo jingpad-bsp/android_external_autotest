@@ -31,7 +31,8 @@ class platform_FullyChargedPowerStatus(test.test):
         online = power_supply_info['Line Power']['online']
         state = power_supply_info['Battery']['state']
         percentage = power_supply_info['Battery']['display percentage']
-        return (online, state,  int(float(percentage)))
+        current = power_supply_info['Battery']['current']
+        return (online, state, int(float(percentage)), float(current))
 
 
     def check_power_charge_status(self, status):
@@ -41,9 +42,9 @@ class platform_FullyChargedPowerStatus(test.test):
 
         """
         errors = list()
-        online, state, percentage = self.get_power_supply_parameters()
+        online, state, percentage, current = self.get_power_supply_parameters()
 
-        if state != 'Fully charged' and state != 'Charging':
+        if state != 'Fully charged' and state != 'Charging' and current != 0.0:
             errors.append('Bad state %s at %s' % (state, status))
 
         if percentage < 95 :
@@ -101,7 +102,7 @@ class platform_FullyChargedPowerStatus(test.test):
         else:
             raise error.TestError('No RPM is setup to device')
 
-        online, state, percentage = self.get_power_supply_parameters()
+        online, state, percentage, current = self.get_power_supply_parameters()
         if not ( online == 'yes' and percentage > 95 ):
             raise error.TestError('The DUT is not on AC or Battery charge is low ')
 
