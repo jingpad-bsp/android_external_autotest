@@ -18,6 +18,8 @@ class network_WiFi_WoWLAN(lucid_sleep_test_base.LucidSleepTestBase):
     def run_once(self):
         """Body of the test."""
         self.configure_and_connect_to_ap(hostap_config.HostapConfig(channel=1))
+        self.context.assert_ping_from_dut()
+
         client = self.context.client
         router = self.context.router
         dut_mac = client.wifi_mac
