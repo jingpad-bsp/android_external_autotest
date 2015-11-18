@@ -140,7 +140,7 @@ class ServoHost(ssh_host.SSHHost):
                 if not self.is_in_lab():
                     raise
                 else:
-                    self.repair_full()
+                    self.repair()
 
 
     def is_in_lab(self):
@@ -591,7 +591,7 @@ class ServoHost(ssh_host.SSHHost):
         time.sleep(self.REBOOT_DELAY_SECS)
 
 
-    def repair_full(self):
+    def repair(self):
         """Attempt to repair servo host.
 
         This overrides the base class function for repair.

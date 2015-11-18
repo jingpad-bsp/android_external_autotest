@@ -277,8 +277,8 @@ class MoblabHost(cros_host.CrosHost):
         super(MoblabHost, self).check_device()
 
 
-    def repair_full(self):
-        """Moblab specific repair_full.
+    def repair(self):
+        """Moblab specific repair.
 
         Preserves the dhcp lease file prior to repairing the device.
         """
@@ -288,7 +288,7 @@ class MoblabHost(cros_host.CrosHost):
             self._dhcpd_leasefile = temp
         except error.AutoservRunError:
             logging.debug('Failed to retrieve dhcpd lease file from host.')
-        super(MoblabHost, self).repair_full()
+        super(MoblabHost, self).repair()
 
 
     def get_platform(self):

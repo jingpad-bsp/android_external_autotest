@@ -1257,8 +1257,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return False
 
 
-    def repair_full(self):
-        """Repair a host for repair level NO_PROTECTION.
+    def repair(self):
+        """Attempt to get the DUT to pass `self.verify()`.
 
         This overrides the base class function for repair; it does
         not call back to the parent class, but instead offers a

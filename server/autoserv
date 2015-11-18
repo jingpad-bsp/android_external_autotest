@@ -414,7 +414,6 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     execution_tag = parser.options.execution_tag
     if not execution_tag:
         execution_tag = parse_job
-    host_protection = parser.options.host_protection
     ssh_user = parser.options.ssh_user
     ssh_port = parser.options.ssh_port
     ssh_pass = parser.options.ssh_pass
@@ -483,7 +482,7 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
             if repair:
                 if auto_start_servod and len(machines) == 1:
                     _start_servod(machines[0])
-                job.repair(host_protection, job_labels)
+                job.repair(job_labels)
             elif verify:
                 job.verify(job_labels)
             elif provision:

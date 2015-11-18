@@ -4,8 +4,6 @@ import os
 import shlex
 import sys
 
-from autotest_lib.client.common_lib import host_protections
-
 
 class autoserv_parser(object):
     """Custom command-line options parser for autoserv.
@@ -120,13 +118,6 @@ class autoserv_parser(object):
                                        ' an existing results directory'))
         self.parser.add_argument('-a', '--args', dest='args',
                                  help='additional args to pass to control file')
-        protection_levels = [host_protections.Protection.get_attr_name(s)
-                             for _, s in host_protections.choices]
-        self.parser.add_argument('--host-protection', action='store',
-                                 type=str, dest='host_protection',
-                                 default=host_protections.default,
-                                 choices=protection_levels,
-                                 help='level of host protection during repair')
         self.parser.add_argument('--ssh-user', action='store',
                                  type=str, dest='ssh_user', default='root',
                                  help='specify the user for ssh connections')

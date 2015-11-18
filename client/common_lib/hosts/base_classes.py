@@ -18,7 +18,6 @@ stutsman@google.com (Ryan Stutsman)
 import cPickle, cStringIO, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
-from autotest_lib.client.common_lib import host_protections
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.bin import partition
 
@@ -72,8 +71,7 @@ class Host(object):
 
 
     def _initialize(self, *args, **dargs):
-        self._already_repaired = []
-        self._removed_files = False
+        pass
 
 
     def close(self):
@@ -152,12 +150,7 @@ class Host(object):
 
     def is_shutting_down(self):
         """ Indicates is a machine is currently shutting down. """
-        # runlevel() may not be available, so wrap it in try block.
-        try:
-            runlevel = int(self.run("runlevel").stdout.strip().split()[1])
-            return runlevel in (0, 6)
-        except:
-            return False
+        return False
 
 
     def get_wait_up_processes(self):
@@ -199,7 +192,7 @@ class Host(object):
         raise NotImplementedError('Wait down not implemented!')
 
 
-    def construct_host_metadata(self, type_str):
+    def _construct_host_metadata(self, type_str):
         """Returns dict of metadata with type_str, hostname, time_recorded.
 
         @param type_str: String representing _type field in es db.
@@ -222,9 +215,9 @@ class Host(object):
         key_string = 'Reboot.%s' % dargs.get('board')
 
         total_reboot_timer = autotest_stats.Timer('%s.total' % key_string,
-                metadata=self.construct_host_metadata('reboot_total'))
+                metadata=self._construct_host_metadata('reboot_total'))
         wait_down_timer = autotest_stats.Timer('%s.wait_down' % key_string,
-                metadata=self.construct_host_metadata('reboot_down'))
+                metadata=self._construct_host_metadata('reboot_down'))
 
         total_reboot_timer.start()
         wait_down_timer.start()
@@ -236,7 +229,7 @@ class Host(object):
             raise error.AutoservShutdownError("Host did not shut down")
         wait_down_timer.stop()
         wait_up_timer = autotest_stats.Timer('%s.wait_up' % key_string,
-                metadata=self.construct_host_metadata('reboot_up'))
+                metadata=self._construct_host_metadata('reboot_up'))
         wait_up_timer.start()
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")
@@ -315,211 +308,15 @@ class Host(object):
                          path, self.hostname)
 
 
-    def get_open_func(self, use_cache=True):
-        """
-        Defines and returns a function that may be used instead of built-in
-        open() to open and read files. The returned function is implemented
-        by using self.run('cat <file>') and may cache the results for the same
-        filename.
-
-        @param use_cache Cache results of self.run('cat <filename>') for the
-            same filename
-
-        @return a function that can be used instead of built-in open()
-        """
-        cached_files = {}
-
-        def open_func(filename):
-            if not use_cache or filename not in cached_files:
-                output = self.run('cat \'%s\'' % filename,
-                                  stdout_tee=open('/dev/null', 'w')).stdout
-                fd = cStringIO.StringIO(output)
-
-                if not use_cache:
-                    return fd
-
-                cached_files[filename] = fd
-            else:
-                cached_files[filename].seek(0)
-
-            return cached_files[filename]
-
-        return open_func
-
-
-    def check_partitions(self, root_part, filter_func=None):
-        """ Compare the contents of /proc/partitions with those of
-        /proc/mounts and raise exception in case unmounted partitions are found
-
-        root_part: in Linux /proc/mounts will never directly mention the root
-        partition as being mounted on / instead it will say that /dev/root is
-        mounted on /. Thus require this argument to filter out the root_part
-        from the ones checked to be mounted
-
-        filter_func: unnary predicate for additional filtering out of
-        partitions required to be mounted
-
-        Raise: error.AutoservHostError if unfiltered unmounted partition found
-        """
-
-        print 'Checking if non-swap partitions are mounted...'
-
-        unmounted = partition.get_unmounted_partition_list(root_part,
-            filter_func=filter_func, open_func=self.get_open_func())
-        if unmounted:
-            raise error.AutoservNotMountedHostError(
-                'Found unmounted partitions: %s' %
-                [part.device for part in unmounted])
-
-
-    def _repair_wait_for_reboot(self):
-        TIMEOUT = int(self.HOURS_TO_WAIT_FOR_RECOVERY * 3600)
-        if self.is_shutting_down():
-            logging.info('Host is shutting down, waiting for a restart')
-            self.wait_for_restart(TIMEOUT)
-        else:
-            self.wait_up(TIMEOUT)
-
-
-    def _get_mountpoint(self, path):
-        """Given a "path" get the mount point of the filesystem containing
-        that path."""
-        code = ('import os\n'
-                # sanitize the path and resolve symlinks
-                'path = os.path.realpath(%r)\n'
-                "while path != '/' and not os.path.ismount(path):\n"
-                '    path, _ = os.path.split(path)\n'
-                'print path\n') % path
-        return self.run('python -c "%s"' % code,
-                        stdout_tee=open(os.devnull, 'w')).stdout.rstrip()
-
-
     def erase_dir_contents(self, path, ignore_status=True, timeout=3600):
         """Empty a given directory path contents."""
         rm_cmd = 'find "%s" -mindepth 1 -maxdepth 1 -print0 | xargs -0 rm -rf'
         self.run(rm_cmd % path, ignore_status=ignore_status, timeout=timeout)
-        self._removed_files = True
 
 
-    def repair_full_disk(self, mountpoint):
-        # it's safe to remove /tmp and /var/tmp, site specific overrides may
-        # want to remove some other places too
-        if mountpoint == self._get_mountpoint('/tmp'):
-            self.erase_dir_contents('/tmp')
-
-        if mountpoint == self._get_mountpoint('/var/tmp'):
-            self.erase_dir_contents('/var/tmp')
-
-
-    def _call_repair_func(self, err, func, *args, **dargs):
-        for old_call in self._already_repaired:
-            if old_call == (func, args, dargs):
-                # re-raising the original exception because surrounding
-                # error handling may want to try other ways to fix it
-                logging.warning('Already done this (%s) repair procedure, '
-                             're-raising the original exception.', func)
-                raise err
-
-        try:
-            func(*args, **dargs)
-        except (error.AutoservHardwareRepairRequestedError,
-                error.AutoservHardwareRepairRequiredError):
-            # let these special exceptions propagate
-            raise
-        except error.AutoservError:
-            logging.exception('Repair failed but continuing in case it managed'
-                              ' to repair enough')
-
-        self._already_repaired.append((func, args, dargs))
-
-
-    def repair_filesystem_only(self):
-        """perform file system repairs only"""
-        while True:
-            # try to repair specific problems
-            try:
-                logging.info('Running verify to find failures to repair...')
-                self.verify()
-                if self._removed_files:
-                    logging.info('Removed files, rebooting to release the'
-                                 ' inodes')
-                    self.reboot()
-                return # verify succeeded, then repair succeeded
-            except error.AutoservHostIsShuttingDownError, err:
-                logging.exception('verify failed')
-                self._call_repair_func(err, self._repair_wait_for_reboot)
-            except error.AutoservDiskFullHostError, err:
-                logging.exception('verify failed')
-                self._call_repair_func(err, self.repair_full_disk,
-                                       self._get_mountpoint(err.path))
-
-
-    def repair_software_only(self):
-        """perform software repairs only"""
-        while True:
-            try:
-                self.repair_filesystem_only()
-                break
-            except (error.AutoservSshPingHostError, error.AutoservSSHTimeout,
-                    error.AutoservSshPermissionDeniedError,
-                    error.AutoservDiskFullHostError), err:
-                logging.exception('verify failed')
-                logging.info('Trying to reinstall the machine')
-                self._call_repair_func(err, self.machine_install)
-
-
-    def repair_full(self):
-        hardware_repair_requests = 0
-        while True:
-            try:
-                self.repair_software_only()
-                break
-            except error.AutoservHardwareRepairRequiredError, err:
-                logging.exception('software repair failed, '
-                                  'hardware repair requested')
-                hardware_repair_requests += 1
-                try_hardware_repair = (hardware_repair_requests >=
-                                       self.HARDWARE_REPAIR_REQUEST_THRESHOLD)
-                if try_hardware_repair:
-                    logging.info('hardware repair requested %d times, '
-                                 'trying hardware repair',
-                                 hardware_repair_requests)
-                    self._call_repair_func(err, self.request_hardware_repair)
-                else:
-                    logging.info('hardware repair requested %d times, '
-                                 'trying software repair again',
-                                 hardware_repair_requests)
-            except error.AutoservHardwareHostError, err:
-                logging.exception('verify failed')
-                # software repair failed, try hardware repair
-                logging.info('Hardware problem found, '
-                             'requesting hardware repairs')
-                self._call_repair_func(err, self.request_hardware_repair)
-
-
-    def repair_with_protection(self, protection_level):
-        """Perform the maximal amount of repair within the specified
-        protection level.
-
-        @param protection_level: the protection level to use for limiting
-                                 repairs, a host_protections.Protection
-        """
-        protection = host_protections.Protection
-        if protection_level == protection.DO_NOT_REPAIR:
-            logging.info('Protection is "Do not repair" so just verifying')
-            self.verify()
-        elif protection_level == protection.REPAIR_FILESYSTEM_ONLY:
-            logging.info('Attempting filesystem-only repair')
-            self.repair_filesystem_only()
-        elif protection_level == protection.REPAIR_SOFTWARE_ONLY:
-            logging.info('Attempting software repair only')
-            self.repair_software_only()
-        elif protection_level == protection.NO_PROTECTION:
-            logging.info('Attempting full repair')
-            self.repair_full()
-        else:
-            raise NotImplementedError('Unknown host protection level %s'
-                                      % protection_level)
+    def repair(self):
+        """Try and get the host to pass `self.verify()`."""
+        self.verify()
 
 
     def disable_ipfilters(self):
@@ -654,15 +451,6 @@ class Host(object):
                 del self.RUNNING_LOG_OP
         else:
             op_func()
-
-
-    def request_hardware_repair(self):
-        """ Should somehow request (send a mail?) for hardware repairs on
-        this machine. The implementation can either return by raising the
-        special error.AutoservHardwareRepairRequestedError exception or can
-        try to wait until the machine is repaired and then return normally.
-        """
-        raise NotImplementedError("request_hardware_repair not implemented")
 
 
     def list_files_glob(self, glob):

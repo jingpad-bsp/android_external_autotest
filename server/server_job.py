@@ -385,7 +385,7 @@ class base_server_job(base_job.base_job):
         return namespace
 
 
-    def cleanup(self, labels=''):
+    def cleanup(self, labels):
         """Cleanup machines.
 
         @param labels: Comma separated job labels, will be used to
@@ -401,7 +401,7 @@ class base_server_job(base_job.base_job):
         self._execute_code(CLEANUP_CONTROL_FILE, namespace, protect=False)
 
 
-    def verify(self, labels=''):
+    def verify(self, labels):
         """Verify machines are all ssh-able.
 
         @param labels: Comma separated job labels, will be used to
@@ -417,7 +417,7 @@ class base_server_job(base_job.base_job):
         self._execute_code(VERIFY_CONTROL_FILE, namespace, protect=False)
 
 
-    def reset(self, labels=''):
+    def reset(self, labels):
         """Reset machines by first cleanup then verify each machine.
 
         @param labels: Comma separated job labels, will be used to
@@ -433,10 +433,9 @@ class base_server_job(base_job.base_job):
         self._execute_code(RESET_CONTROL_FILE, namespace, protect=False)
 
 
-    def repair(self, host_protection, labels=''):
+    def repair(self, labels):
         """Repair machines.
 
-        @param host_protection: level of host protection.
         @param labels: Comma separated job labels, will be used to
                        determine special task actions.
         """
@@ -446,8 +445,7 @@ class base_server_job(base_job.base_job):
             os.chdir(self.resultdir)
 
         namespace = self._make_namespace()
-        namespace.update({'protection_level' : host_protection,
-                          'job_labels': labels, 'args': ''})
+        namespace.update({'job_labels': labels, 'args': ''})
         self._execute_code(REPAIR_CONTROL_FILE, namespace, protect=False)
 
 

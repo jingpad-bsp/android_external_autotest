@@ -482,23 +482,6 @@ class AutoservRepairMethodNA(AutoservError):
     pass
 
 
-class AutoservHardwareRepairRequestedError(AutoservError):
-    """
-    Exception class raised from Host.repair_full() (or overrides) when software
-    repair fails but it successfully managed to request a hardware repair (by
-    notifying the staff, sending mail, etc)
-    """
-    pass
-
-
-class AutoservHardwareRepairRequiredError(AutoservError):
-    """
-    Exception class raised during repairs to indicate that a hardware repair
-    is going to be necessary.
-    """
-    pass
-
-
 class AutoservInstallError(AutoservError):
     """Error occured while installing autotest on a host"""
     pass

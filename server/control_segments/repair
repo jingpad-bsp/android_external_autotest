@@ -1,7 +1,6 @@
 import logging
 import os
 
-from autotest_lib.client.common_lib import host_protections
 from autotest_lib.server import crashcollect
 from autotest_lib.server.cros import provision
 
@@ -9,20 +8,6 @@ from autotest_lib.server.cros import provision
 # A string of the form 'label1,label2:value,label3'.
 job_labels = locals().get('job_labels') or ','.join(args)
 labels_list = [l.strip() for l in job_labels.split(',') if l]
-
-
-def _call_repair(host):
-    protection = host_protections.Protection
-
-    try:
-        level = protection.get_value(protection_level)
-    except ValueError:
-        raise NotImplementedError("Unknown host protection level %s" %
-                                  protection_level)
-
-    logging.debug('Protection level of host %s is %s: %s',
-                  host.hostname, protection_level, level)
-    host.repair_with_protection(level)
 
 
 def repair(machine):
@@ -36,7 +21,7 @@ def repair(machine):
         # Collect crash info.
         crashcollect.get_crashinfo(host, None)
 
-        _call_repair(host)
+        host.repair()
         logging.debug('Repair with labels list %s', labels_list)
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Repair)
