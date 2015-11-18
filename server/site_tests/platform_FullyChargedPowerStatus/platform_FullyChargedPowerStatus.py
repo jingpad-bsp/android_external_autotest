@@ -31,7 +31,7 @@ class platform_FullyChargedPowerStatus(test.test):
         online = power_supply_info['Line Power']['online']
         state = power_supply_info['Battery']['state']
         percentage = power_supply_info['Battery']['display percentage']
-        current = power_supply_info['Battery']['current']
+        current = power_supply_info['Battery']['current (A)']
         return (online, state, int(float(percentage)), float(current))
 
 
