@@ -292,6 +292,7 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         hostname = currentHostObject.get("hostname").isString().stringValue();
         String pageTitle = "Host " + hostname;
         hostnameInput.setText(hostname);
+        hostnameInput.setWidth("240px");
         updateLockButton();
         updateLockReasonInput();
         displayObjectData(pageTitle);
