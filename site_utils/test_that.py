@@ -549,11 +549,11 @@ def _parse_arguments_internal(argv):
 
     parser.add_argument('remote', metavar='REMOTE',
                         help='hostname[:port] for remote device. Specify '
-                             ':lab: to run in test lab, or :vm:PORT_NUMBER to '
-                             'run in vm.  When tests are run in the lab, '
-                             'test_that will use the client autotest package '
-                             'for the build specified with --build, and the '
-                             'lab server code rather than local changes.')
+                             ':lab: to run in test lab. When tests are run in '
+                             'the lab, test_that will use the client autotest '
+                             'package for the build specified with --build, '
+                             'and the lab server code rather than local '
+                             'changes.')
     parser.add_argument('tests', nargs='+', metavar='TEST',
                         help='Run given test(s). Use suite:SUITE to specify '
                              'test suite. Use e:[NAME_PATTERN] to specify a '
