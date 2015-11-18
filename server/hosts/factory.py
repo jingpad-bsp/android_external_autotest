@@ -7,8 +7,7 @@ from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.hosts import cros_host, ssh_host
 from autotest_lib.server.hosts import moblab_host, sonic_host
-from autotest_lib.server.hosts import adb_host
-
+from autotest_lib.server.hosts import adb_host, testbed
 
 
 SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
@@ -133,3 +132,13 @@ def create_host(hostname, host_class=None, **args):
         _started_hostnames.add(hostname)
 
     return host_instance
+
+
+def create_testbed(hostname, *args):
+    """Create the testbed object.
+
+    @param hostname: The hostname of the test station for this testbed.
+
+    @returns: The testbed object with all associated host objects instantiated.
+    """
+    return testbed.TestBed(hostname)

@@ -132,7 +132,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     # not use it.
     def _initialize(self, hostname='localhost', serials=None,
                     adb_serial=None, fastboot_serial=None,
-                    device_hostname=None, *args, **dargs):
+                    device_hostname=None, teststation=None, *args, **dargs):
         """Initialize an ADB Host.
 
         This will create an ADB Host. Hostname should always refer to the
@@ -151,6 +151,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param device_hostname: Hostname or IP of the android device we want to
                                 interact with. If supplied all ADB interactions
                                 run over TCP/IP.
+        @param teststation: The teststation object ADBHost should use.
         """
         if device_hostname and (adb_serial or fastboot_serial):
             raise error.AutoservError(
@@ -164,6 +165,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._use_tcpip = False
         self._adb_serial = adb_serial
         self._fastboot_serial = fastboot_serial or adb_serial
+        self.teststation = teststation
+        if not self.teststation:
+            self.teststation = (
+                    local_host.LocalHost() if hostname == 'localhost'
+                    else ssh_host.SSHHost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self._device_hostname:
@@ -483,6 +489,26 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.adb_run('remount')
 
 
+    @staticmethod
+    def parse_device_serials(devices_output):
+        """Return a list of parsed serials from the output.
+
+        @param devices_output: Output from either an adb or fastboot command.
+
+        @returns List of device serials
+        """
+        devices = []
+        for line in devices_output.splitlines():
+            match = re.search(DEVICE_FINDER_REGEX, line)
+            if match:
+                serial = match.group('SERIAL')
+                if serial == DEVICE_NO_SERIAL_MSG or re.match(r'^\?+$', serial):
+                    serial = DEVICE_NO_SERIAL_TAG
+                logging.debug('Found Device: %s', serial)
+                devices.append(serial)
+        return devices
+
+
     def _get_devices(self, use_adb):
         """Get a list of devices currently attached to the test station.
 
@@ -495,17 +521,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             result = self.adb_run('devices')
         else:
             result = self.fastboot_run('devices')
-        devices = []
-        for line in result.stdout.splitlines():
-            match = re.search(DEVICE_FINDER_REGEX,
-                              line)
-            if match:
-                serial = match.group('SERIAL')
-                if serial == DEVICE_NO_SERIAL_MSG or re.match(r'^\?+$', serial):
-                    serial = DEVICE_NO_SERIAL_TAG
-                logging.debug('Found Device: %s', serial)
-                devices.append(serial)
-        return devices
+        return self.parse_device_serials(result.stdout)
 
 
     def adb_devices(self):
