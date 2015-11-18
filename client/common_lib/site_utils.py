@@ -589,3 +589,16 @@ def is_in_same_subnet(ip_1, ip_2, mask_bits=24):
     ip_1_num = struct.unpack('!I', socket.inet_aton(ip_1))[0]
     ip_2_num = struct.unpack('!I', socket.inet_aton(ip_2))[0]
     return ip_1_num & mask == ip_2_num & mask
+
+
+def parse_android_build(build_name):
+    """Get branch, target, build_id from the given build_name.
+
+    @param build_name: Name of an Android build, should be formated as
+                       branch/target/build_id
+
+    @return: Tuple of branch, target, build_id
+    @raise ValueError: If the build_name is not correctly formated.
+    """
+    branch, target, build_id = build_name.split('/')
+    return branch, target, build_id

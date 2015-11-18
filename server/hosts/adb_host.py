@@ -13,10 +13,12 @@ import common
 
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants as cros_constants
-from autotest_lib.server import utils
+from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
+from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import moblab_host
@@ -99,6 +101,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                         _LABEL_FUNCTIONS,
                                         _DETECTABLE_LABELS)
 
+    _parser = autoserv_parser.autoserv_parser
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -1002,6 +1005,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
+    def _stage_build_for_install(self, build_name):
+        """Stage a build on a devserver and return the build_url and devserver.
+
+        @param build_name: a name like git-master/shamu-userdebug/2040953
+        @returns a tuple with an update URL like:
+            http://172.22.50.122:8080/git-master/shamu-userdebug/2040953
+            and the devserver instance.
+        """
+        logging.info('Staging build for installation: %s', build_name)
+        branch, target, build_id = utils.parse_android_build(build_name)
+        devserver = dev_server.AndroidBuildServer.resolve(build_name)
+        devserver.trigger_download(target, build_id, branch, synchronous=False)
+        return '%s/%s' % (devserver.url(), build_name), devserver
+
+
     def install_android(self, build_url, build_local_path=None, wipe=False,
                         flash_all=False):
         """Install the DUT.
@@ -1035,6 +1053,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # If the build is not staged in local server yet, clean up the temp
         # folder used to store image files after the provision is completed.
         delete_build_folder = bool(not build_local_path)
+
+        if not build_url and self._parser.options.image:
+            build_url, _ = self._stage_build_for_install(
+                    self._parser.options.image)
 
         try:
             # Download image files needed for provision to a local directory.
@@ -1072,12 +1094,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                      build_url)
 
 
-    def machine_install(self, build_url, build_local_path=None, wipe=False,
+    def machine_install(self, build_url=None, build_local_path=None, wipe=False,
                         flash_all=False):
         """Install the DUT.
 
         @param build_url: The url to use for downloading Android artifacts.
-                pattern: http://$devserver:###/static/$build
+                pattern: http://$devserver:###/static/$build. If build_url is
+                set to None, the code may try _parser.options.image to do the
+                installation. If none of them is set, machine_install will fail.
         @param build_local_path: The path to a local directory that contains the
                 image files needed to provision the device.
         @param wipe: If true, userdata will be wiped before flashing.
