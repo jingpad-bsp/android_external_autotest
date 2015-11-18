@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import glob
+import json
 import logging
 import os
 import platform
@@ -19,6 +20,9 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_utils
 
 _UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
+_INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
+
+pciid_to_intel_architecture = {}
 
 
 class TimeoutError(error.TestError):
@@ -972,6 +976,8 @@ def set_dirty_writeback_centisecs(time=60000):
 
 def get_gpu_family():
     """Return the GPU family name"""
+    global pciid_to_intel_architecture
+
     cpuarch = base_utils.get_cpu_soc_family()
     if cpuarch == 'exynos5' or cpuarch == 'rockchip':
         return 'mali'
@@ -985,27 +991,14 @@ def get_gpu_family():
     if not os.path.exists(pci_path):
         raise error.TestError('PCI device 0000:00:02.0 not found')
 
-    device_id = int(utils.read_one_line(pci_path), 16)
-    intel_architecture = {
-        0xa011: 'pinetrail',
-        0x0106: 'sandybridge',
-        0x0116: 'sandybridge',
-        0x0126: 'sandybridge',
-        0x0156: 'ivybridge',
-        0x0166: 'ivybridge',
-        0x0a06: 'haswell',
-        0x0a16: 'haswell',
-        0x0f31: 'baytrail',
-        0x1606: 'broadwell',
-        0x1616: 'broadwell',
-        0x22b0: 'braswell',
-        0x22b1: 'braswell',
-        0x1906: 'skylake',
-        0x1916: 'skylake',
-        0x191e: 'skylake',
-    }
+    device_id = utils.read_one_line(pci_path).lower()
 
-    return intel_architecture[device_id]
+    # Only load Intel PCI ID file once and only if necessary.
+    if not pciid_to_intel_architecture:
+        with open(_INTEL_PCI_IDS_FILE_PATH, 'r') as in_f:
+            pciid_to_intel_architecture = json.load(in_f)
+
+    return pciid_to_intel_architecture[device_id]
 
 
 def has_no_monitor():
