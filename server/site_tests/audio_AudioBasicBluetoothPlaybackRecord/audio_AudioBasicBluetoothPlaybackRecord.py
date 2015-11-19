@@ -163,7 +163,8 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
 
                 # Selects bluetooth mic to be the active input node.
                 if audio_test_utils.has_internal_microphone(host):
-                    self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+                    self.audio_facade.set_chrome_active_node_type(
+                            None, 'BLUETOOTH')
 
                 # Checks the node selected by Cras is correct.
                 audio_test_utils.check_audio_nodes(self.audio_facade,
@@ -200,8 +201,11 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
                             timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS,
                             desc='bluetooth node auto-reconnect after suspend')
 
-                # Select again BT input, as default input node is INTERNAL_MIC
-                self.audio_facade.set_selected_node_types([], ['BLUETOOTH'])
+                if audio_test_utils.has_internal_microphone(host):
+                    # Select again BT input, as default input node is
+                    # INTERNAL_MIC.
+                    self.audio_facade.set_chrome_active_node_type(
+                            None, 'BLUETOOTH')
 
                 with audio_test_utils.monitor_no_nodes_changed(
                         self.audio_facade, self.dump_logs_after_nodes_changed):
