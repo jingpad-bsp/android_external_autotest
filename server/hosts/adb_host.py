@@ -476,6 +476,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._connect_over_tcpip_as_needed()
 
 
+    def remount(self):
+        """Remounts paritions on the device read-write.
+
+        Specifically, the /system, /vendor (if present) and /oem (if present)
+        partitions on the device are remounted read-write.
+        """
+        self.adb_run('root')
+        # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
+        time.sleep(1)
+        self.adb_run('wait-for-device')
+        self.adb_run('remount')
+
+
     def _get_devices(self, use_adb):
         """Get a list of devices currently attached to this adb host.
 
