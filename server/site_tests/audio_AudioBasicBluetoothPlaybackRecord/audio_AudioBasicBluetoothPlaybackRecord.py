@@ -294,11 +294,17 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
         error_messages = ''
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, playback_recorder, 'frequency'):
-            error_messages += 'Record: Recorded file does not match playback file.'
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, record_recorder, 'frequency'):
-            error_messages += 'Playback: Recorded file does not match playback file.'
+        try:
+            audio_test_utils.check_recorded_frequency(
+                    golden_file, playback_recorder)
+        except error.TestFail, e:
+            error_messages += e
+
+        try:
+            audio_test_utils.check_recorded_frequency(
+                    golden_file, record_recorder)
+        except error.TestFail, e:
+            error_messages += e
+
         if error_messages:
             raise error.TestFail(error_messages)
