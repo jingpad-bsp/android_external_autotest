@@ -74,7 +74,7 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
 
         pass_terms = ['touch-firmware-update',
                       '"Product[^a-z0-9]ID[^a-z0-9]*%s"' % hw_id]
-        fail_terms = ['error']
+        fail_terms = ['error[^s]', 'err[^a-z]']
 
         # Check for key terms in touch logs.
         for term in pass_terms + fail_terms:
