@@ -30,6 +30,18 @@ SAMPLE_FORMATS = dict(
                 size_bytes=2))
 
 
+def get_maximum_value_from_sample_format(sample_format):
+    """Gets the maximum value from sample format.
+
+    @param sample_format: A key in SAMPLE_FORMAT.
+
+    @returns: The maximum value the sample can hold + 1.
+
+    """
+    size_bits = SAMPLE_FORMATS[sample_format]['size_bytes'] * 8
+    return 1 << (size_bits - 1)
+
+
 class AudioRawDataError(Exception):
     """Error in AudioRawData."""
     pass
