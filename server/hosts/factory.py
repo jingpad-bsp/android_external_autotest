@@ -4,15 +4,13 @@ import logging
 from contextlib import closing
 
 from autotest_lib.client.common_lib import error, global_config
-from autotest_lib.server import autotest, utils as server_utils
-from autotest_lib.server.hosts import site_factory, cros_host, ssh_host, serial
+from autotest_lib.server import utils as server_utils
+from autotest_lib.server.hosts import cros_host, ssh_host
 from autotest_lib.server.hosts import moblab_host, sonic_host
-from autotest_lib.server.hosts import adb_host, logfile_monitor
+from autotest_lib.server.hosts import adb_host
 
 
 
-DEFAULT_FOLLOW_PATH = '/var/log/kern.log'
-DEFAULT_PATTERNS_PATH = 'console_patterns'
 SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
                                                           'ssh_engine',
                                                           type=str)
@@ -84,31 +82,17 @@ def _detect_host(connectivity_class, hostname, **args):
     return cros_host.CrosHost
 
 
-def create_host(
-    hostname, auto_monitor=False, follow_paths=None, pattern_paths=None,
-    netconsole=False, host_class=None, **args):
+def create_host(hostname, host_class=None, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
     and creates a instance of the new class.
 
     @param hostname: A string representing the host name of the device.
-    @param auto_monitor: A boolean value, if True, will try to mix
-                         SerialHost in. If the host supports use as SerialHost,
-                         will not mix in LogfileMonitorMixin anymore.
-                         If the host doesn't support it, will
-                         fall back to direct demesg logging and mix
-                         LogfileMonitorMixin in.
-    @param follow_paths: A list, passed to LogfileMonitorMixin,
-                         remote paths to monitor.
-    @param pattern_paths: A list, passed to LogfileMonitorMixin,
-                          local paths to alert pattern definition files.
     @param host_class: Host class to use, if None, will attempt to detect
                        the correct class.
-    @param netconsole: A boolean value, if True, will mix NetconsoleHost in.
     @param args: Args that will be passed to the constructor of
                  the new host class.
-    @param adb: If True creates an instance of adb_host not cros_host.
 
     @returns: A host object which is an instance of the newly created
               host class.
@@ -138,46 +122,6 @@ def create_host(
                    connectivity_class]
     else:
         classes = [host_class, connectivity_class]
-    # by default mix in run_test support
-    classes.append(autotest.AutotestHostMixin)
-
-    # if the user really wants to use netconsole, let them
-    if netconsole:
-        classes.append(netconsole.NetconsoleHost)
-
-    if auto_monitor:
-        # use serial console support if it's available
-        conmux_args = {}
-        for key in ("conmux_server", "conmux_attach"):
-            if key in args:
-                conmux_args[key] = args[key]
-        if serial.SerialHost.host_is_supported(hostname, **conmux_args):
-            classes.append(serial.SerialHost)
-        else:
-            # no serial available, fall back to direct dmesg logging
-            if follow_paths is None:
-                follow_paths = [DEFAULT_FOLLOW_PATH]
-            else:
-                follow_paths = list(follow_paths) + [DEFAULT_FOLLOW_PATH]
-
-            if pattern_paths is None:
-                pattern_paths = [DEFAULT_PATTERNS_PATH]
-            else:
-                pattern_paths = (
-                    list(pattern_paths) + [DEFAULT_PATTERNS_PATH])
-
-            logfile_monitor_class = logfile_monitor.NewLogfileMonitorMixin(
-                follow_paths, pattern_paths)
-            classes.append(logfile_monitor_class)
-
-    elif follow_paths:
-        logfile_monitor_class = logfile_monitor.NewLogfileMonitorMixin(
-            follow_paths, pattern_paths)
-        classes.append(logfile_monitor_class)
-
-    # do any site-specific processing of the classes list
-    site_factory.postprocess_classes(classes, hostname,
-                                     auto_monitor=auto_monitor, **args)
 
     # create a custom host class for this machine and return an instance of it
     host_class = type("%s_host" % hostname, tuple(classes), {})

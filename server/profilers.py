@@ -91,7 +91,7 @@ class profilers(profiler_manager.profiler_manager):
 
         # install autotest on any new hosts in use
         for hostname in in_use_hosts - profiler_hosts:
-            host = hosts.create_host(hostname, auto_monitor=False)
+            host = hosts.create_host(hostname)
             tmp_dir = host.get_tmp_dir(parent=PROFILER_TMPDIR)
             at = autotest.Autotest(host)
             at.install_no_autoserv(autodir=tmp_dir)
