@@ -104,9 +104,9 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         recorder_widget.save_file(recorded_file)
 
         # Compares data by frequency.
-        if not chameleon_audio_helper.compare_recorded_result(
-                self.golden_file, recorder_widget, 'frequency'):
-            raise error.TestFail('Recorded and playback file do not match')
+        audio_test_utils.check_recorded_frequency(
+                self.golden_file, recorder_widget,
+                second_peak_ratio=self.second_peak_ratio)
 
 
     def check_correct_audio_node_selected(self):
@@ -192,6 +192,10 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         self.audio_board = chameleon_board.get_audio_board()
         self.widget_link = None
         self.use_audio_bus = False
+        if is_internal:
+            self.second_peak_ratio = 0.1
+        else:
+            self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None

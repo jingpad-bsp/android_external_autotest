@@ -139,9 +139,10 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
 
         @param recorder_widget: recorder widget to save data from
 
-        @returns true if audio comparison is successful, false otherwise
-
-        @raise error.TestFail: if comparison fails
+        @returns (success, error_message): success is True if audio comparison
+                                           is successful, False otherwise.
+                                           error_message contains the error
+                                           message.
 
         """
         recorded_file = os.path.join(self.resultsdir, "recorded.raw")
@@ -160,10 +161,15 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         logging.debug('Saving filtered data to %s', recorded_file)
         recorder_widget.save_file(recorded_file)
 
-
         # Compares data by frequency and returns the result.
-        return chameleon_audio_helper.compare_recorded_result(
-            self.golden_file, recorder_widget, 'frequency')
+        try:
+            audio_test_utils.check_recorded_frequency(
+                    self.golden_file, recorder_widget,
+                    second_peak_ratio=self.second_peak_ratio)
+        except error.TestFail, e:
+            return (False, e)
+
+        return (True, None)
 
 
     def run_once(self, host, audio_nodes, golden_data,
@@ -197,6 +203,12 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.host = host
         self.audio_nodes = audio_nodes
         self.is_internal=is_internal
+
+        if is_internal:
+            self.second_peak_ratio = 0.1
+        else:
+            self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+
         self.errors = []
         self.golden_file, self.low_pass_freq = golden_data
         chameleon_board = self.host.chameleon
@@ -270,9 +282,10 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
             else:
                 self.play_and_record(source_widget, recorder_widget)
 
-            if not self.save_and_check_data(recorder_widget):
-                self.errors.append('%s: Recorded file does not match playback file' %
-                              test_case)
+            success, error_message = self.save_and_check_data(recorder_widget)
+            if not success:
+                self.errors.append('%s: Comparison failed: %s' %
+                                   test_case, error_message)
 
         if self.errors:
             raise error.TestFail('; '.join(set(self.errors)))
