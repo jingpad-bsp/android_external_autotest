@@ -99,6 +99,20 @@ class AudioTestData(object):
         os.unlink(self.path)
 
 
+class FakeTestData(object):
+    def __init__(self, frequencies):
+        """A fake test data which contains properties but no real data.
+
+        This is useful when we need to pass an AudioTestData object into a test
+        or audio_test_utils.check_recorded_frequency.
+
+        @param frequencies: A list containing the frequency of each channel in
+                            this file. Only applicable to data of sine tone.
+
+        """
+        self.frequencies = frequencies
+
+
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
 
 """
