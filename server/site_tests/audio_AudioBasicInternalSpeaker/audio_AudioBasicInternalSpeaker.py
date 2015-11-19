@@ -107,7 +107,5 @@ class audio_AudioBasicInternalSpeaker(audio_test.AudioTest):
         # Comparing data by frequency is more robust than comparing by
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, recorder, 'frequency'):
-            raise error.TestFail(
-                    'Recorded file does not match playback file')
+        audio_test_utils.check_recorded_frequency(golden_file, recorder,
+                                                  second_peak_ratio=0.1)
