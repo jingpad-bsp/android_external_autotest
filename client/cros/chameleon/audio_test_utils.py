@@ -14,6 +14,8 @@ from contextlib import contextmanager
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros.audio import audio_analysis
+from autotest_lib.client.cros.audio import audio_data
 
 def check_audio_nodes(audio_facade, audio_nodes):
     """Checks the node selected by Cros device is correct.
@@ -217,3 +219,80 @@ def monitor_no_nodes_changed(audio_facade, callback=None):
             if callback:
                 callback()
             raise error.TestFail(message)
+
+
+# The second dominant frequency should have energy less than -26dB of the
+# first dominant frequency in the spectrum.
+DEFAULT_SECOND_PEAK_RATIO = 0.05
+# The deviation of estimated dominant frequency from golden frequency.
+DEFAULT_FREQUENCY_DIFF_THRESHOLD = 5
+
+def check_recorded_frequency(
+        golden_file, recorder,
+        second_peak_ratio=DEFAULT_SECOND_PEAK_RATIO,
+        frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD):
+    """Checks if the recorded data contains sine tone of golden frequency.
+
+    @param golden_file: An AudioTestData object that serves as golden data.
+    @param recorder: An AudioWidget used in the test to record data.
+    @param second_peak_ratio: The test fails when the second dominant
+                              frequency has coefficient larger than this
+                              ratio of the coefficient of first dominant
+                              frequency.
+    @param frequency_diff_threshold: The maximum difference between estimated
+                                     frequency of test signal and golden
+                                     frequency. This value should be small for
+                                     signal passed through line.
+
+    @raises error.TestFail if the recorded data does not contain sine tone of
+            golden frequency.
+
+    """
+    data_format = recorder.data_format
+    recorded_data = audio_data.AudioRawData(
+            binary=recorder.get_binary(),
+            channel=data_format['channel'],
+            sample_format=data_format['sample_format'])
+
+    errors = []
+
+    for test_channel, golden_channel in enumerate(recorder.channel_map):
+        if golden_channel is None:
+            logging.info('Skipped channel %d', test_channel)
+            continue
+
+        signal = recorded_data.channel_data[test_channel]
+        saturate_value = audio_data.get_maximum_value_from_sample_format(
+                data_format['sample_format'])
+        normalized_signal = audio_analysis.normalize_signal(
+                signal, saturate_value)
+        spectral = audio_analysis.spectral_analysis(
+                normalized_signal, data_format['rate'])
+
+        if not spectral:
+            errors.append(
+                    'Channel %d: Can not find dominant frequency.' %
+                            test_channel)
+
+        golden_frequency = golden_file.frequencies[golden_channel]
+        logging.debug('Checking channel %s spectral %s against frequency %s',
+                test_channel, spectral, golden_frequency)
+
+        dominant_frequency = spectral[0][0]
+
+        if (abs(dominant_frequency - golden_frequency) >
+            frequency_diff_threshold):
+            errors.append(
+                    'Channel %d: Dominant frequency %s is away from golden %s' %
+                    (test_channel, dominant_frequency, golden_frequency))
+
+        if len(spectral) > 1:
+            first_coeff = spectral[0][1]
+            second_coeff = spectral[1][1]
+            if second_coeff > first_coeff * second_peak_ratio:
+                errors.append(
+                        'Channel %d: Found large second dominant frequencies: '
+                        '%s' % (test_channel, spectral))
+
+    if errors:
+        raise error.TestFail(', '.join(errors))
