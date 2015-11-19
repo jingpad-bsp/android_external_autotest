@@ -18,7 +18,7 @@ class AudioTestDataException(Exception):
 
 class AudioTestData(object):
     """Class to represent audio test data."""
-    def __init__(self, data_format=None, path=None):
+    def __init__(self, data_format=None, path=None, frequencies=None):
         """
         Initializes an audio test file.
 
@@ -30,6 +30,8 @@ class AudioTestData(object):
                             channel: number of channels.
                             rate: sampling rate.
         @param path: The path to the file.
+        @param frequencies: A list containing the frequency of each channel in
+                            this file. Only applicable to data of sine tone.
 
         @raises: AudioTestDataException if the path does not exist.
 
@@ -38,6 +40,7 @@ class AudioTestData(object):
         if not os.path.exists(path):
             raise AudioTestDataException('Can not find path %s' % path)
         self.path = path
+        self.frequencies = frequencies
 
 
     def get_binary(self):
@@ -141,7 +144,8 @@ FREQUENCY_TEST_FILE = AudioTestData(
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
-                         rate=48000))
+                         rate=48000),
+        frequencies=[2000, 1000])
 
 
 """
@@ -157,7 +161,8 @@ SIMPLE_FREQUENCY_TEST_FILE = AudioTestData(
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
-                         rate=48000))
+                         rate=48000),
+        frequencies=[440, 440])
 
 """
 This test data contains fixed frequency sine wave in two channels.
@@ -173,4 +178,5 @@ SIMPLE_FREQUENCY_SPEAKER_TEST_FILE = AudioTestData(
         data_format=dict(file_type='raw',
                          sample_format='S16_LE',
                          channel=2,
-                         rate=48000))
+                         rate=48000),
+        frequencies=[440, 440])
