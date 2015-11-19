@@ -30,7 +30,7 @@ class platform_DebugDaemonGetPerfData(test.test):
     ]
 
     # Commands to repeatedly run in the background when collecting perf data.
-    _system_profile_commands = {
+    _system_load_commands = {
         'idle'     : 'sleep 1',
         'busy'     : 'ls',
     }
@@ -57,15 +57,13 @@ class platform_DebugDaemonGetPerfData(test.test):
         return string_file.getvalue()
 
 
-    def validate_get_perf_method(self, duration, num_reps, profile_type):
+    def validate_get_perf_method(self, duration, num_reps, load_type):
         """
         Validate a debugd method that returns perf data.
 
         @param duration: The duration to use for perf data collection.
-
         @param num_reps: Number of times to run.
-
-        @param profile_type: A label to use for storing into perf keyvals.
+        @param load_type: A label to use for storing into perf keyvals.
         """
         # Dictionary for storing results returned from debugd.
         # Key:   Name of data type (string)
@@ -73,15 +71,17 @@ class platform_DebugDaemonGetPerfData(test.test):
         stored_results = collections.defaultdict(list)
 
         for _ in range(num_reps):
+            perf_command = ['perf', 'record', '-a', '-e', 'cycles',
+                            '-c', '1000003']
             status, perf_data, perf_stat = (
-                self.dbus_iface.GetRandomPerfOutput(duration))
+                self.dbus_iface.GetPerfOutput(duration, perf_command))
             if status != 0:
-                raise error.TestFail('GetRandomPerfOutput() returned status %d',
+                raise error.TestFail('GetPerfOutput() returned status %d',
                                      status)
             if len(perf_data) == 0 and len(perf_stat) == 0:
-                raise error.TestFail('GetRandomPerfOutput() returned no data')
+                raise error.TestFail('GetPerfOutput() returned no data')
             if len(perf_data) > 0 and len(perf_stat) > 0:
-                raise error.TestFail('GetRandomPerfOutput() returned both '
+                raise error.TestFail('GetPerfOutput() returned both '
                                      'perf_data and perf_stat')
 
             result_type = None
@@ -92,7 +92,7 @@ class platform_DebugDaemonGetPerfData(test.test):
                 result = perf_stat
                 result_type = "perf_stat"
 
-            logging.info('GetRandomPerfOutput() for %s seconds returned %d '
+            logging.info('GetPerfOutput() for %s seconds returned %d '
                          'bytes of type %s',
                          duration, len(result), result_type)
             if len(result) < 10:
@@ -112,7 +112,7 @@ class platform_DebugDaemonGetPerfData(test.test):
                 self.SizeInfo(len(result), len(self.gzip_string(result))))
 
         for result_type, sizes in stored_results.iteritems():
-            key = 'mean_%s_size_%s_%d' % (result_type, profile_type, duration)
+            key = 'mean_%s_size_%s_%d' % (result_type, load_type, duration)
             total_size = sum(entry.size for entry in sizes)
             total_size_zipped = sum(entry.size_zipped for entry in sizes)
 
@@ -135,15 +135,15 @@ class platform_DebugDaemonGetPerfData(test.test):
         # Open /dev/null to redirect unnecessary output.
         devnull = open('/dev/null', 'w')
 
-        for profile_type in self._system_profile_commands:
-            # Repeatedly run the comand for the current profile.
-            cmd = 'while true; do %s; done' % \
-                self._system_profile_commands[profile_type]
+        load_items = self._system_load_commands.iteritems()
+        for load_type, load_command in load_items:
+            # Repeatedly run the comand for the current load.
+            cmd = 'while true; do %s; done' % load_command
             process = subprocess.Popen(cmd, stdout=devnull, shell=True)
 
             for duration, num_reps in self._profile_duration_and_repetitions:
                 # Collect perf data from debugd.
-                self.validate_get_perf_method(duration, num_reps, profile_type)
+                self.validate_get_perf_method(duration, num_reps, load_type)
 
             # Terminate the process and actually wait for it to terminate.
             process.terminate()
