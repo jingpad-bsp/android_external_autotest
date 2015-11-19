@@ -224,14 +224,18 @@ class AudioFacadeRemoteAdapter(object):
         return self._audio_proxy.get_chrome_active_volume_mute()
 
 
-    def set_chrome_active_node_type(self, node_type):
+    def set_chrome_active_node_type(self, output_node_type, input_node_type):
         """Sets active node type through chrome.audio API.
 
         The node types are defined in cras_utils.CRAS_NODE_TYPES.
         The current active node will be disabled first if the new active node
         is different from the current one.
 
-        @param node_types: A node type defined in cras_utils.CRAS_NODE_TYPES.
+        @param output_node_type: A node type defined in
+                                 cras_utils.CRAS_NODE_TYPES. None to skip.
+        @param input_node_type: A node type defined in
+                                 cras_utils.CRAS_NODE_TYPES. None to skip
 
         """
-        self._audio_proxy.set_chrome_active_node_type(node_type)
+        self._audio_proxy.set_chrome_active_node_type(
+                output_node_type, input_node_type)

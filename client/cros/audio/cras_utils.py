@@ -500,16 +500,21 @@ def remove_active_input_node(node_id):
     get_cras_control_interface().RemoveActiveInputNode(node_id)
 
 
-def get_node_id_from_node_type(node_type):
+def get_node_id_from_node_type(node_type, is_input):
     """Gets node id from node type.
 
     @param types: A node type defined in CRAS_NODE_TYPES.
+    @param is_input: True if the node is input. False otherwise.
+
+    @returns: A string for node id.
+
+    @raises: CrasUtilsError: if unique node id can not be found.
 
     """
     nodes = get_cras_nodes()
     find_ids = []
     for node in nodes:
-        if node['Type'] == node_type:
+        if node['Type'] == node_type and node['IsInput'] == is_input:
             find_ids.append(node['Id'])
     if len(find_ids) != 1:
         raise CrasUtilsError(
