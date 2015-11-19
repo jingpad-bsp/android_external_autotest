@@ -105,7 +105,4 @@ class audio_AudioBasicExternalMicrophone(audio_test.AudioTest):
         # Comparing data by frequency is more robust than comparing them by
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, recorder, 'frequency'):
-            raise error.TestFail(
-                    'Recorded file does not match playback file')
+        audio_test_utils.check_recorded_frequency(golden_file, recorder)
