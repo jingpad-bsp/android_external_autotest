@@ -11,7 +11,7 @@ import re
 import time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome, retry
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants, sys_power
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros.multimedia import facade_resource
@@ -124,6 +124,7 @@ class DisplayFacadeNative(object):
                 % {'index': display_index}, timeout)
 
 
+    @facade_resource.retry_chrome_call
     def get_display_modes(self, display_index):
         """Gets all the display modes for the specified display.
 
