@@ -98,8 +98,8 @@ class graphics_Idle(test.test):
         get into rc6; idle before doing so, and retry every second for 20
         seconds."""
         logging.info('Running verify_graphics_rc6')
-        if (self._gpu_type == 'broadwell' or self._gpu_type == 'haswell' or
-            self._gpu_type == 'ivybridge' or self._gpu_type == 'sandybridge'):
+        if (utils.get_cpu_soc_family() == 'x86_64' and
+            self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
             while found == False and tries < 20:
@@ -129,9 +129,8 @@ class graphics_Idle(test.test):
         """ On i915 systems, check that we get into the lowest clock frequency;
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_i915_min_clock')
-        if (self._gpu_type == 'baytrail' or self._gpu_type == 'broadwell' or
-            self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
-            self._gpu_type == 'sandybridge'):
+        if (utils.get_cpu_soc_family() == 'x86_64' and
+            self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
             while not found and tries < 80:
@@ -311,9 +310,8 @@ class graphics_Idle(test.test):
         to become idle (i.e. the i915_gem_active list need to go to 0);
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_gem_idle')
-        if (self._gpu_type == 'baytrail' or self._gpu_type == 'broadwell' or
-            self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
-            self._gpu_type == 'sandybridge'):
+        if (utils.get_cpu_soc_family() == 'x86_64' and
+            self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
             while not found and tries < 240:
