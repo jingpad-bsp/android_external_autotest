@@ -29,6 +29,7 @@ class WiFiTestContextManager(object):
     CMDLINE_PACKET_CAPTURE_SNAPLEN = 'capture_snaplen'
     CMDLINE_ROUTER_ADDR = 'router_addr'
     CMDLINE_ROUTER_PACKET_CAPTURES = 'router_capture'
+    CMDLINE_USE_WPA_CLI = 'use_wpa_cli'
 
 
     @property
@@ -66,7 +67,9 @@ class WiFiTestContextManager(object):
         super(WiFiTestContextManager, self).__init__()
         self._test_name = test_name
         self._cmdline_args = cmdline_args.copy()
-        self._client_proxy = wifi_client.WiFiClient(host, debug_dir)
+        self._client_proxy = wifi_client.WiFiClient(
+                host, debug_dir,
+                self._get_bool_cmdline_value(self.CMDLINE_USE_WPA_CLI, True))
         self._attenuator = None
         self._router = None
         self._enable_client_packet_captures = False
@@ -81,6 +84,27 @@ class WiFiTestContextManager(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.teardown()
+
+
+    def _get_bool_cmdline_value(self, key, default_value):
+        """Returns a bool value for the given key from the cmdline args.
+
+        @param key string cmdline args key.
+        @param default_value value to return if the key is not specified in the
+               cmdline args.
+
+        @return True/False or default_value if key is not specified in the
+                cmdline args.
+
+        """
+        if key in self._cmdline_args:
+            value = self._cmdline_args[key].lower()
+            if value in ('1', 'true', 'yes', 'y'):
+                return True
+            else:
+                return False
+        else:
+            return default_value
 
 
     def get_wifi_addr(self, ap_num=0):
@@ -176,12 +200,8 @@ class WiFiTestContextManager(object):
         if self.CMDLINE_PACKET_CAPTURE_SNAPLEN in self._cmdline_args:
             self._packet_capture_snaplen = int(
                     self._cmdline_args[self.CMDLINE_PACKET_CAPTURE_SNAPLEN])
-        if self.CMDLINE_CONDUCTIVE_RIG in self._cmdline_args:
-            value = self._cmdline_args[self.CMDLINE_CONDUCTIVE_RIG].lower()
-            if value in ('1', 'true', 'yes', 'y'):
-                self.client.conductive = True
-            else:
-                self.client.conductive = False
+        self.client.conductive = self._get_bool_cmdline_value(
+                self.CMDLINE_CONDUCTIVE_RIG, None)
         for system in (self.client, self.router):
             system.sync_host_times()
 

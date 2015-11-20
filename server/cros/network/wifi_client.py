@@ -45,8 +45,9 @@ INTERFACE_DOWN_WAIT_TIME_SECONDS = 10
 ConnectTime = namedtuple('ConnectTime', 'state, time')
 
 XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
-XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
-BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
+SHILL_XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
+SHILL_BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
+ANDROID_XMLRPC_LOG_PATH = '/var/log/android_xmlrpc_server.log'
 
 def get_xmlrpc_proxy(host):
     """Get a shill XMLRPC proxy for |host|.
@@ -65,13 +66,19 @@ def get_xmlrpc_proxy(host):
     if host.is_client_install_supported:
         client_at = autotest.Autotest(host)
         client_at.install()
-    if host.get_os_type() == 'brillo':
+    if host.get_os_type() == adb_host.OS_TYPE_BRILLO:
         xmlrpc_server_command = constants.SHILL_BRILLO_XMLRPC_SERVER_COMMAND
-        log_path = BRILLO_XMLRPC_LOG_PATH
+        log_path = SHILL_BRILLO_XMLRPC_LOG_PATH
         command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
+    elif host.get_os_type() == adb_host.OS_TYPE_ANDROID:
+        xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND
+        log_path = ANDROID_XMLRPC_LOG_PATH
+        command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
+        # For android, start the XML RPC server on the accompanying host.
+        host = host.teststation
     else:
         xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
-        log_path = XMLRPC_LOG_PATH
+        log_path = SHILL_XMLRPC_LOG_PATH
         command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
     # Start up the XMLRPC proxy on the client
     proxy = host.rpc_server_tracker.xmlrpc_connect(
@@ -287,12 +294,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return self._interface.noise_level(frequency_mhz)
 
 
-    def __init__(self, client_host, result_dir):
+    def __init__(self, client_host, result_dir, use_wpa_cli):
         """
         Construct a WiFiClient.
 
         @param client_host host object representing a remote host.
         @param result_dir string directory to store test logs/packet caps.
+        @param use_wpa_cli bool True if we want to use |wpa_cli| commands for
+               Android testing.
 
         """
         super(WiFiClient, self).__init__(client_host, 'client',
@@ -306,7 +315,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self._conductive = None
         self._client_hostname = client_host.hostname
 
-        if self.host.get_os_type() == 'android':
+        if self.host.get_os_type() == adb_host.OS_TYPE_ANDROID and use_wpa_cli:
             # Look up the WiFi device (and its MAC) on the client.
             devs = self.iw_runner.list_interfaces(desired_if_type='managed')
             devs = [dev for dev in devs
