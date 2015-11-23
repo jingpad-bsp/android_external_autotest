@@ -16,9 +16,11 @@ class ServoAfeBoardMapTest(unittest.TestCase):
     def test_afe_board_mapping(self):
         """Tests mappings."""
         afe_map = servo_afe_board_map.map_afe_board_to_servo_board
+        self.assertEqual(afe_map('kip'), 'kip')
         self.assertEqual(afe_map('gizmo'), 'panther')
         self.assertEqual(afe_map('link_freon'), 'link')
         self.assertEqual(afe_map('stumpy_moblab'), 'stumpy')
+        self.assertEqual(afe_map('veyron_minnie-cheets'), 'veyron_minnie')
 
 
 if __name__ == '__main__':

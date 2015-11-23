@@ -63,6 +63,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros import servo_afe_board_map
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
@@ -217,9 +218,11 @@ def _check_servo(host):
     # servod is actually up and serving.  The call to time.sleep()
     # below gives time to make sure that the verify() call won't
     # fail.
+    servo_board = (
+        servo_afe_board_map.map_afe_board_to_servo_board(
+            host._get_board_from_afe()))
     host._servo_host.run('stop servod || :')
-    host._servo_host.run('start servod BOARD=%s' %
-                         host._get_board_from_afe())
+    host._servo_host.run('start servod BOARD=%s' % servo_board)
     time.sleep(4)
     logging.debug('Starting servo host verification')
     host._servo_host.verify()

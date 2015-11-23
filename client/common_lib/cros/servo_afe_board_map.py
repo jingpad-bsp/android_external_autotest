@@ -4,6 +4,7 @@
 
 import logging
 
+
 def map_afe_board_to_servo_board(afe_board):
     """Map a board we get from the AFE to a servo appropriate value.
 
@@ -14,13 +15,16 @@ def map_afe_board_to_servo_board(afe_board):
     @return board we expect servo to have.
 
     """
+    KNOWN_SUFFIXES = ['_freon', '_moblab', '-cheets']
+    BOARD_MAP = {'gizmo': 'panther'}
     mapped_board = afe_board
-    KNOWN_SUFFIXES = ['_freon', '_moblab']
-    if afe_board == 'gizmo':
-        mapped_board = 'panther'
-    for suffix in KNOWN_SUFFIXES:
-        if afe_board.endswith(suffix):
-            mapped_board = afe_board[0:-len(suffix)]
+    if afe_board in BOARD_MAP:
+        mapped_board = BOARD_MAP[afe_board]
+    else:
+        for suffix in KNOWN_SUFFIXES:
+            if afe_board.endswith(suffix):
+                mapped_board = afe_board[0:-len(suffix)]
+                break
     if mapped_board != afe_board:
         logging.info('Mapping AFE board=%s to %s', afe_board, mapped_board)
     return mapped_board
