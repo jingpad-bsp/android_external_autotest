@@ -143,9 +143,10 @@ SHILL_XMLRPC_SERVER_COMMAND = (
         './shill_xmlrpc_server.py')
 SHILL_BRILLO_XMLRPC_SERVER_COMMAND = (
         '/system/bin/shill-test-rpc-proxy --port=%s' % SHILL_XMLRPC_SERVER_PORT)
+ANDROID_XMLRPC_SERVER_TARGET_DIR = '/root'
 ANDROID_XMLRPC_SERVER_COMMAND = (
-        'cd /root; '
-        './android_xmlrpc_server.py')
+        'cd %s; '
+        './android_xmlrpc_server.py' % ANDROID_XMLRPC_SERVER_TARGET_DIR)
 SHILL_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill_xmlrpc_server'
 SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN = 'shill-test-rpc-proxy'
 ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN = 'android_xmlrpc_server'

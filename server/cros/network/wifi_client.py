@@ -4,6 +4,7 @@
 
 import logging
 import math
+import os
 import re
 import time
 
@@ -48,6 +49,21 @@ XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 SHILL_XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
 SHILL_BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
 ANDROID_XMLRPC_LOG_PATH = '/var/log/android_xmlrpc_server.log'
+ANDROID_XMLRPC_SERVER_AUTOTEST_PATH = (
+        '../../../client/cros/networking/android_xmlrpc_server.py')
+
+def install_android_xmlrpc_server(host):
+    """Install Android XMLRPC server script on |host|.
+
+    @param host: host object representing a remote device.
+
+    """
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    xmlrpc_server_script = os.path.join(
+            current_dir, ANDROID_XMLRPC_SERVER_AUTOTEST_PATH)
+    host.send_file(
+            xmlrpc_server_script, constants.ANDROID_XMLRPC_SERVER_TARGET_DIR)
+
 
 def get_xmlrpc_proxy(host):
     """Get a shill XMLRPC proxy for |host|.
@@ -76,6 +92,7 @@ def get_xmlrpc_proxy(host):
         command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
         # For android, start the XML RPC server on the accompanying host.
         host = host.teststation
+        install_android_xmlrpc_server(host)
     else:
         xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
         log_path = SHILL_XMLRPC_LOG_PATH
