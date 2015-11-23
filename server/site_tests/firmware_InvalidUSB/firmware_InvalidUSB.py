@@ -48,9 +48,7 @@ class firmware_InvalidUSB(FirmwareTest):
                           'devsw_boot': '0',
                           'mainfw_type': 'normal',
                           }))
-        self.faft_client.system.request_recovery_boot()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
-        self.switcher.bypass_rec_mode()
+        self.switcher.reboot_to_mode(to_mode='rec', wait_for_dut_up=False)
         logging.info('Wait to ensure the USB image is unable to boot...')
         try:
             self.switcher.wait_for_client()
@@ -66,7 +64,7 @@ class firmware_InvalidUSB(FirmwareTest):
         logging.info("Expected to boot the restored USB image and reboot.")
         self.check_state((self.checkers.crossystem_checker, {
                           'mainfw_type': 'recovery',
-                          'recovery_reason': vboot.RECOVERY_REASON['US_TEST'],
+                          'recovery_reason': vboot.RECOVERY_REASON['RO_MANUAL'],
                           }))
         self.switcher.mode_aware_reboot()
 
