@@ -383,9 +383,9 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     def _raise_logging_level(self):
         """Raises logging levels for WiFi on DUT."""
-        self.host.run('wpa_debug excessive')
-        self.host.run('ff_debug --level -5')
-        self.host.run('ff_debug +wifi')
+        self.host.run('wpa_debug excessive', ignore_status=True)
+        self.host.run('ff_debug --level -5', ignore_status=True)
+        self.host.run('ff_debug +wifi', ignore_status=True)
 
 
     def vht_supported(self):
