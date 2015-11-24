@@ -98,9 +98,9 @@ class display_LidCloseOpen(test.test):
 
     def run_once(self, host, plug_status, test_mirrored=False):
 
-        # Check for chromebox type devices
-        if host.get_board_type() == 'CHROMEBOX':
-            raise error.TestNAError('Test can not processed on CHROMEBOX type devices')
+        # Check for chromebook type devices
+        if not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
         self.host = host
         self.test_mirrored = test_mirrored
         self.errors = list()
