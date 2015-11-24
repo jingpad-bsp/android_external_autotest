@@ -90,13 +90,16 @@ class stable_version_list(stable_version):
 
         @param results: A dictionary of board:version.
         """
-        format = '%-12s| %-20s'
-        print '='*30
+        board_columns = max([len(s) for s in results.keys()])
+        version_columns = max([len(s) for s in results.values()])
+        total_columns = board_columns + version_columns + 3
+        format = '%%-%ds | %%s' % board_columns
+        print '=' * total_columns
         print format % ('board', 'version')
-        print '-'*30
+        print '-' * total_columns
         for board,version in results.iteritems():
             print format % (board, version)
-        print '='*30
+        print '=' * total_columns
 
 
 class stable_version_modify(stable_version):
