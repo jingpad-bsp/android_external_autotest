@@ -29,7 +29,7 @@ class buffet_InvalidCredentials(test.test):
         self._helper._oauth_client.invalidate_all_access_tokens()
         self._helper.check_buffet_status_is(
                 buffet_tester.STATUS_INVALID_CREDENTIALS,
-                expected_device_id='',
+                expected_device_id=device_id,
                 timeout_seconds=20)
 
 
