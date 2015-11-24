@@ -108,6 +108,15 @@ class AudioInputWidget(AudioWidget):
             logging.debug('Saving recorded raw file to %s', file_path)
             f.write(self._rec_binary)
 
+        wav_file_path = file_path + '.wav'
+        logging.debug('Saving recorded wav file to %s', wav_file_path)
+        sox_utils.convert_raw_file(
+                path_src=file_path,
+                channels_src=self._channel,
+                rate_src=self._sampling_rate,
+                bits_src=self._sample_size_bits,
+                path_dst=wav_file_path)
+
 
     def get_binary(self):
         """Gets recorded binary data.
