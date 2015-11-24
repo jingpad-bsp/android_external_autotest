@@ -30,7 +30,7 @@ class display_Resolution(test.test):
     # Time to allow lid transition to take effect
     WAIT_TIME_LID_TRANSITION = 5
 
-    RESOLUTION_TEST_LIST = [
+    DEFAULT_RESOLUTION_LIST = [
             # Mix DP and HDMI together to test the converter cases.
             ('DP', 1280, 800),
             ('DP', 1440, 900),
@@ -42,7 +42,8 @@ class display_Resolution(test.test):
     ]
 
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
-                 test_reboot=False, test_lid_close_open=False):
+                 test_reboot=False, test_lid_close_open=False,
+                 resolution_list=None):
         # Check the servo object
         if test_lid_close_open and host.servo is None:
             raise error.TestError('Invalid servo object found on the host.')
@@ -58,16 +59,21 @@ class display_Resolution(test.test):
                 chameleon_board, display_facade)
 
         errors = []
+        if resolution_list is None:
+            resolution_list = self.DEFAULT_RESOLUTION_LIST
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
                     chameleon_port, display_facade, self.outputdir)
-
-            for interface, width, height in self.RESOLUTION_TEST_LIST:
+            chameleon_port_name = chameleon_port.get_connector_type()
+            logging.info('Detected %s chameleon port.', chameleon_port_name)
+            for interface, width, height in resolution_list:
+                if not chameleon_port_name.startswith(interface):
+                    continue
                 test_resolution = (width, height)
                 test_name = "%s_%dx%d" % ((interface,) + test_resolution)
 
                 if not edid.is_edid_supported(host, interface, width, height):
-                    logging.info('skip unsupported EDID: %s', test_name)
+                    logging.info('Skip unsupported EDID: %s', test_name)
                     continue
 
                 if test_lid_close_open:
