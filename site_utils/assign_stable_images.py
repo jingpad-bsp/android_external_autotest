@@ -275,6 +275,8 @@ def _parse_command_line(argv):
     mode_group.add_argument('-n', '--dry-run', dest='mode',
                             action='store_const', const=_DRY_RUN,
                             help='print changes without executing them')
+    parser.add_argument('extra_boards', nargs='*', metavar='BOARD',
+                        help='Names of additional boards to be updated.')
     arguments = parser.parse_args(argv[1:])
     if not arguments.mode:
         arguments.mode = _NORMAL_MODE
@@ -290,6 +292,8 @@ def main(argv):
     if arguments.mode == _DRY_RUN:
         print 'Dry run; no changes will be made.'
     afe = frontend_wrappers.RetryingAFE(server=None)
+    boards = (set(arguments.extra_boards) |
+              lab_inventory.get_managed_boards(afe))
     # The 'get_all_stable_versions' RPC returns a dictionary mapping
     # `_DEFAULT_BOARD` to the current default version, plus a set of
     # non-default board -> version mappings.
@@ -297,7 +301,7 @@ def main(argv):
     upgrade_versions, new_default = (
         _get_upgrade_versions(afe_versions,
                               _get_omaha_versions(),
-                              lab_inventory.get_managed_boards(afe)))
+                              boards))
     _apply_upgrades(afe, arguments.mode, afe_versions,
                     upgrade_versions, new_default)
 
