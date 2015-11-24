@@ -186,6 +186,25 @@ def parse_stat_output(stat_output):
     return stat
 
 
+def convert_raw_file(path_src, channels_src, bits_src, rate_src,
+                     path_dst):
+    """Converts a raw file to a new format.
+
+    @param path_src: The path to the source file.
+    @param channels_src: The channel number of the source file.
+    @param bits_src: The size of sample in bits of the source file.
+    @param rate_src: The sampling rate of the source file.
+    @param path_dst: The path to the destination file. The file name determines
+                     the new file format.
+
+    """
+    sox_cmd = [SOX_PATH]
+    sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
+    sox_cmd += [path_src]
+    sox_cmd += [path_dst]
+    cmd_utils.execute(sox_cmd)
+
+
 def convert_format(path_src, channels_src, bits_src, rate_src,
                    path_dst, channels_dst, bits_dst, rate_dst,
                    volume_scale):
