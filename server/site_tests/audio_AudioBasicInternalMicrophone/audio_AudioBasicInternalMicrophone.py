@@ -119,4 +119,4 @@ class audio_AudioBasicInternalMicrophone(audio_test.AudioTest):
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
         audio_test_utils.check_recorded_frequency(golden_file, recorder,
-                                                  second_peak_ratio=0.1)
+                                                  second_peak_ratio=0.2)
