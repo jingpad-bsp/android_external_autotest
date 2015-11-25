@@ -1657,7 +1657,8 @@ def main():
     output_dict['return_code'] = code
     output_json = json.dumps(output_dict, sort_keys=True)
     if options.json_dump:
-        sys.stdout.write(output_json)
+        output_json_marked = '#JSON_START#%s#JSON_END#' % output_json.strip()
+        sys.stdout.write(output_json_marked)
 
     logging.info('Will return from run_suite with status: %s',
                   RETURN_CODES.get_string(code))
