@@ -115,6 +115,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         Check if the given host is an adb host.
 
+        If SSH connectivity can't be established, check_host will try to use
+        user 'adb' as well. If SSH connectivity still can't be established
+        then the original SSH user is restored.
+
         @param host: An ssh host representing a device.
         @param timeout: The timeout for the run command.
 
@@ -124,13 +128,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservRunError: If the command failed.
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
+        ssh_user = host.user
         try:
-            if not host.verify_ssh_user_access():
+            if not (host.hostname == 'localhost' or
+                    host.verify_ssh_user_access()):
                 host.user = 'adb'
             result = host.run(
                     'test -f %s' % server_constants.ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
+            host.user = ssh_user
             return False
         return result.exit_status == 0
 

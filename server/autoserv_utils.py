@@ -29,7 +29,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
                              no_console_prefix=False,
                              ssh_options=None,
                              use_packaging=True,
-                             in_lab=False):
+                             in_lab=False,
+                             host_attributes=None):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -61,6 +62,7 @@ def autoserv_run_job_command(autoserv_directory, machines,
                    environment. This information is useful as autoserv knows
                    the database is available and can make database calls such
                    as looking up host attributes at runtime.
+    @param host_attributes: Dict of host attributes to pass into autoserv.
 
     @returns The autoserv command line as a list of executable + parameters.
 
@@ -108,6 +110,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
                 command.append('-c')
             elif control_type_value == control_data.CONTROL_TYPE.SERVER:
                 command.append('-s')
+
+    if host_attributes:
+        command += ['--host_attributes', repr(host_attributes)]
 
     if verbose:
         command.append('--verbose')

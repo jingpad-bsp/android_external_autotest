@@ -3,6 +3,7 @@
 import logging
 from contextlib import closing
 
+from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.hosts import cros_host, ssh_host
@@ -29,6 +30,8 @@ _started_hostnames = set()
 # overhead in checking for less common host types.
 host_types = [cros_host.CrosHost, moblab_host.MoblabHost, sonic_host.SonicHost,
               adb_host.ADBHost,]
+OS_HOST_DICT = {'cros' : cros_host.CrosHost,
+                'android': adb_host.ADBHost}
 
 
 def _get_host_arguments():
@@ -113,8 +116,10 @@ def create_host(machine, host_class=None, **args):
     args['ssh_verbosity_flag'] = ssh_verbosity_flag
     args['ssh_options'] = ssh_options
 
+    if hostname == 'localhost':
+        connectivity_class = local_host.LocalHost
     # by default assume we're using SSH support
-    if SSH_ENGINE == 'paramiko':
+    elif SSH_ENGINE == 'paramiko':
         from autotest_lib.server.hosts import paramiko_host
         connectivity_class = paramiko_host.ParamikoHost
     elif SSH_ENGINE == 'raw_ssh':
@@ -124,12 +129,13 @@ def create_host(machine, host_class=None, **args):
                                   "value of the configuration key 'ssh_engine' "
                                   "on autotest's global_config.ini file." %
                                   SSH_ENGINE)
-
-    if not host_class:
+    host_attributes = args.get('host_attributes', {})
+    host_class = host_class or OS_HOST_DICT.get(host_attributes.get('os_type'))
+    if host_class:
+        classes = [host_class, connectivity_class]
+    else:
         classes = [_detect_host(connectivity_class, hostname, **args),
                    connectivity_class]
-    else:
-        classes = [host_class, connectivity_class]
 
     # create a custom host class for this machine and return an instance of it
     host_class = type("%s_host" % hostname, tuple(classes), {})
