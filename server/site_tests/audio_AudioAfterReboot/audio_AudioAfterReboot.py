@@ -106,7 +106,8 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         # Compares data by frequency.
         audio_test_utils.check_recorded_frequency(
                 self.golden_file, recorder_widget,
-                second_peak_ratio=self.second_peak_ratio)
+                second_peak_ratio=self.second_peak_ratio,
+                ignore_frequencies=self.ignore_frequencies)
 
 
     def check_correct_audio_node_selected(self):
@@ -192,10 +193,14 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         self.audio_board = chameleon_board.get_audio_board()
         self.widget_link = None
         self.use_audio_bus = False
-        if is_internal:
+
+        self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+        self.ignore_frequencies = None
+        if source == chameleon_audio_ids.CrosIds.SPEAKER:
             self.second_peak_ratio = 0.1
-        else:
-            self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+            self.ignore_frequencies = [50, 60]
+        elif recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC:
+            self.second_peak_ratio = 0.2
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None

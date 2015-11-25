@@ -165,7 +165,8 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         try:
             audio_test_utils.check_recorded_frequency(
                     self.golden_file, recorder_widget,
-                    second_peak_ratio=self.second_peak_ratio)
+                    second_peak_ratio=self.second_peak_ratio,
+                    ignore_frequencies=self.ignore_frequencies)
         except error.TestFail, e:
             return (False, e)
 
@@ -204,10 +205,13 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.audio_nodes = audio_nodes
         self.is_internal=is_internal
 
-        if is_internal:
+        self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+        self.ignore_frequencies = None
+        if source == chameleon_audio_ids.CrosIds.SPEAKER:
             self.second_peak_ratio = 0.1
-        else:
-            self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+            self.ignore_frequencies = [50, 60]
+        elif recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC:
+            self.second_peak_ratio = 0.2
 
         self.errors = []
         self.golden_file, self.low_pass_freq = golden_data
