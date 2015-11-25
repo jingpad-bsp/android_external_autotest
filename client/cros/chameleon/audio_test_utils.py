@@ -230,7 +230,8 @@ DEFAULT_FREQUENCY_DIFF_THRESHOLD = 5
 def check_recorded_frequency(
         golden_file, recorder,
         second_peak_ratio=DEFAULT_SECOND_PEAK_RATIO,
-        frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD):
+        frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD,
+        ignore_frequencies=None):
     """Checks if the recorded data contains sine tone of golden frequency.
 
     @param golden_file: An AudioTestData object that serves as golden data.
@@ -243,6 +244,11 @@ def check_recorded_frequency(
                                      frequency of test signal and golden
                                      frequency. This value should be small for
                                      signal passed through line.
+    @param ignore_frequencies: A list of frequencies to be ignored. The
+                               component in the spectral with frequency too
+                               close to the frequency in the list will be
+                               ignored. The comparison of frequencies uses
+                               frequency_diff_threshold as well.
 
     @raises error.TestFail if the recorded data does not contain sine tone of
             golden frequency.
@@ -285,6 +291,24 @@ def check_recorded_frequency(
             errors.append(
                     'Channel %d: Dominant frequency %s is away from golden %s' %
                     (test_channel, dominant_frequency, golden_frequency))
+
+        def should_be_ignored(frequency):
+            """Checks if frequency is close to any frequency in ignore list.
+
+            @param frequency: The frequency to be tested.
+
+            @returns: True if the frequency should be ignored. False otherwise.
+
+            """
+            for ignore_frequency in ignore_frequencies:
+                if (abs(frequency - ignore_frequency) <
+                    frequency_diff_threshold):
+                    logging.debug('Ignore frequency: %s', frequency)
+                    return True
+
+        # Filter out the frequencies to be ignored.
+        if ignore_frequencies:
+            spectral = [x for x in spectral if not should_be_ignored(x[0])]
 
         if len(spectral) > 1:
             first_coeff = spectral[0][1]
