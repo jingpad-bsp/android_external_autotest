@@ -19,7 +19,7 @@ Measure the memory usage in different cases:
   3. Repeat opening a tab and play a video in the tab.
 """
 
-ASSETS_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash'
+ASSETS_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/Shaka-Dash/'
 tp101_1080p = ASSETS_BASE + '1080.webm'
 tp101_360p = ASSETS_BASE + '360.webm'
 
