@@ -9,6 +9,8 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 
+policy_testserver = None
+
 
 class EnterpriseTest(test.test):
     """Base class for policy tests."""
@@ -19,7 +21,7 @@ class EnterpriseTest(test.test):
     def import_dmserver(self, proto_path):
         """Import the DM testserver from chrome source.
 
-           @param proto_path: location of proto files.
+        @param proto_path: location of proto files.
         """
         telemetry_src = '/usr/local/telemetry/src'
         sys.path.append(os.path.join(telemetry_src,
@@ -35,7 +37,7 @@ class EnterpriseTest(test.test):
         import policy_testserver
 
     def start_dmserver(self):
-        """Start the local DM server."""
+        """Start the local DM testserver."""
         policy_server_runner = policy_testserver.PolicyServerRunner()
         self._policy_location = os.path.join(self.tmpdir, 'policy.json')
         port = utils.get_unused_port()
