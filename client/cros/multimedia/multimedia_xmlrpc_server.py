@@ -90,7 +90,8 @@ if __name__ == '__main__':
 
     if args.debug:
         s = xmlrpclib.ServerProxy('http://localhost:%d' %
-                                  constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
+                                  constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
+                                  allow_none=True)
         code.interact(local=locals())
     else:
         config_logging()
