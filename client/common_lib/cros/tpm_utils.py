@@ -6,10 +6,17 @@ import logging, os
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cryptohome
+from autotest_lib.client.cros import cros_ui, cryptohome
 
 
 _PASSWD_FILE = '/var/tmp/tpm_password'
+_RM_DIRS = ('/home/.shadow/* ' +
+            '/home/chronos/.oobe_completed ' +
+            '/home/chronos/Local\ State ' +
+            '/var/cache/app_pack ' +
+            '/var/cache/shill/default.profile ' +
+            '/var/lib/tpm ' +
+            '/var/lib/whitelist/* ')
 
 
 class NoTPMPasswordException(Exception):
@@ -106,9 +113,9 @@ def CleanupAndReboot(client):
 
     @param client: client object to run commands on.
     """
-    client.run('rm -rf /home/.shadow/*', ignore_status=True)
-    client.run('rm -rf /var/lib/whitelist/*', ignore_status=True)
-    client.run('rm -f /home/chronos/Local\ State', ignore_status=True)
+    cros_ui.stop_and_wait_for_chrome_to_exit()
+
+    client.run('sudo rm -rf ' + _RM_DIRS, ignore_status=True)
     client.run('sync', ignore_status=True)
     client.reboot()
 
