@@ -6,6 +6,7 @@
 
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.server.cros.audio import audio_test
@@ -21,32 +22,75 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
     """
     version = 1
     _PLUG_DELAY = 5
+    _VOLUMES = {'INTERNAL_SPEAKER': 100,
+                'HEADPHONE': 80,
+                'HDMI': 60}
 
-    def check_default_nodes(self, host, audio_facade):
-        """Checks default audio nodes for devices with onboard audio support.
-
-        @param audio_facade: A RemoteAudioFacade to access audio functions on
-                             Cros device.
-
-        @param host: The CrosHost object.
-
-        """
-        if audio_test_utils.has_internal_microphone(host):
-            audio_test_utils.check_audio_nodes(audio_facade,
+    def check_default_nodes(self):
+        """Checks default audio nodes for devices with onboard audio support."""
+        if audio_test_utils.has_internal_microphone(self.host):
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (None, ['INTERNAL_MIC']))
-        if audio_test_utils.has_internal_speaker(host):
-            audio_test_utils.check_audio_nodes(audio_facade,
+        if audio_test_utils.has_internal_speaker(self.host):
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['INTERNAL_SPEAKER'], None))
 
+
+    def set_active_volume_to_node_volume(self, node):
+        """Sets Chrome volume to the specified volume of node.
+
+        @param node: One of node type in self._VOLUMES.
+
+        """
+        self.audio_facade.set_chrome_active_volume(self._VOLUMES[node])
+
+
+    def check_active_node_volume(self, node):
+        """Checks the active node type and checks if its volume is as expected.
+
+        @param node: The expected node.
+
+        @raises: TestFail if node volume is not as expected.
+
+        """
+        # Checks the node type is the active node type.
+        audio_test_utils.check_audio_nodes(self.audio_facade, ([node], None))
+        # Checks if active volume is the node volume.
+        volume, mute = self.audio_facade.get_chrome_active_volume_mute()
+        expected_volume = self._VOLUMES[node]
+        if volume != expected_volume:
+            raise error.TestFail(
+                    'Node %s volume %d != %d' % (node, volume, expected_volume))
+
+
+    def switch_nodes_and_check_volume(self, nodes):
+        """Switches between nodes and check the node volumes.
+
+        @param nodes: A list of node types to check.
+
+        """
+        if len(nodes) == 1:
+            self.check_active_node_volume(nodes[0])
+        for node in nodes:
+            # Switch nodes and check their volume.
+            self.audio_facade.set_chrome_active_node_type(node, None)
+            self.check_active_node_volume(node)
+
+
     def run_once(self, host, jack_node=False, hdmi_node=False):
+        self.host = host
         chameleon_board = host.chameleon
         audio_board = chameleon_board.get_audio_board()
         factory = self.create_remote_facade_factory(host)
 
         chameleon_board.reset()
-        audio_facade = factory.create_audio_facade()
+        self.audio_facade = factory.create_audio_facade()
 
-        self.check_default_nodes(host, audio_facade)
+        self.check_default_nodes()
+
+        self.set_active_volume_to_node_volume('INTERNAL_SPEAKER')
+        self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER'])
+
         if hdmi_node:
             finder = chameleon_port_finder.ChameleonAudioInputFinder(
                      chameleon_board)
@@ -54,25 +98,37 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
             hdmi_port.set_plug(True)
             time.sleep(self._PLUG_DELAY)
 
-            audio_test_utils.check_audio_nodes(audio_facade,
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['HDMI'], None))
+
+            self.set_active_volume_to_node_volume('HDMI')
+            self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER', 'HDMI'])
+
         if jack_node:
             jack_plugger = audio_board.get_jack_plugger()
             jack_plugger.plug()
             time.sleep(self._PLUG_DELAY)
-            audio_test_utils.dump_cros_audio_logs(host, audio_facade,
+            audio_test_utils.dump_cros_audio_logs(host, self.audio_facade,
                                                   self.resultsdir)
-            audio_test_utils.check_audio_nodes(audio_facade,
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['HEADPHONE'], ['MIC']))
+
+            self.set_active_volume_to_node_volume('HEADPHONE')
+            nodes = ['INTERNAL_SPEAKER', 'HEADPHONE']
+            if hdmi_node:
+                nodes.append('HDMI')
+            self.switch_nodes_and_check_volume(nodes)
+
             jack_plugger.unplug()
 
             time.sleep(self._PLUG_DELAY)
 
         if hdmi_node:
-            audio_test_utils.check_audio_nodes(audio_facade,
+            audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['HDMI'], None))
+            self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER', 'HDMI'])
             hdmi_port.set_plug(False)
             time.sleep(self._PLUG_DELAY)
 
-        self.check_default_nodes(host, audio_facade)
-
+        self.check_default_nodes()
+        self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER'])
