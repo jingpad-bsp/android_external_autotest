@@ -81,6 +81,8 @@ def _detect_host(connectivity_class, hostname, **args):
     return cros_host.CrosHost
 
 
+# TODO(kevcheng): Update the creation method so it's not a research project
+# determining the class inheritance model.
 def create_host(machine, host_class=None, **args):
     """Create a host object.
 

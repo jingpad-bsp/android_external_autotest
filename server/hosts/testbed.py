@@ -8,11 +8,9 @@ import logging
 
 import common
 
-from autotest_lib.client.bin import local_host
-from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import adb_host
-from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server.hosts import teststation_host
 
 
 class TestBed(object):
@@ -30,15 +28,8 @@ class TestBed(object):
         """
         logging.info('Initializing TestBed centered on host: %s', hostname)
         self.hostname = hostname
-        self.teststation = (local_host.LocalHost() if hostname == 'localhost'
-                            else ssh_host.SSHHost(hostname=hostname))
-        # Make sure teststation credentials work.
-        try:
-            self.teststation.run('true')
-        except error.AutoservRunError:
-            # Some test stations may not have root access, try user adb.
-            logging.debug('Switching to user adb.')
-            self.teststation.user = 'adb'
+        self.teststation = teststation_host.create_teststationhost(
+                hostname=hostname)
         self.adb_device_serials = adb_serials or self.query_adb_device_serials()
         self.adb_devices = {}
         for adb_serial in self.adb_device_serials:

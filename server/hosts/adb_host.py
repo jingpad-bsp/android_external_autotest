@@ -11,18 +11,15 @@ import time
 
 import common
 
-from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
-from autotest_lib.server.hosts import moblab_host
-from autotest_lib.server.hosts import ssh_host
+from autotest_lib.server.hosts import teststation_host
 
 
 ADB_CMD = 'adb'
@@ -161,8 +158,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError(
                     'TCP/IP and USB modes are mutually exclusive')
 
-        self.teststation = (local_host.LocalHost() if hostname == 'localhost'
-                            else ssh_host.SSHHost(hostname=hostname))
+
         self.tmp_dirs = []
         self._num_of_boards = {}
         self._device_hostname = device_hostname
@@ -172,11 +168,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         adb_serial = adb_serial or self.host_attributes.get('serials', None)
         self._adb_serial = adb_serial
         self._fastboot_serial = fastboot_serial or adb_serial
-        self.teststation = teststation
-        if not self.teststation:
-            self.teststation = (
-                    local_host.LocalHost() if hostname == 'localhost'
-                    else ssh_host.SSHHost(hostname=hostname))
+        self.teststation = (teststation if teststation
+                else teststation_host.create_teststationhost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self._device_hostname:
@@ -187,19 +180,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self._fastboot_serial
         logging.debug(msg)
 
-        # Make sure teststation credentials work.
-        try:
-            self.teststation.run('true')
-        except error.AutoservRunError as e:
-            # Some test stations may not have root access, try user adb.
-            logging.debug('Switching to user adb.')
-            self.teststation.user = 'adb'
-
         self._restart_adbd_with_root_permissions()
         self._connect_over_tcpip_as_needed()
-
-        # Delay checking if the host running adb command is a Moblab.
-        self._is_teststation_moblab = None
 
 
     def _connect_over_tcpip_as_needed(self):
@@ -226,7 +208,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._use_tcpip = True
 
 
-    # pylint: disable-msg=C0111
+    # pylint: disable=missing-docstring
     def adb_run(self, command, **kwargs):
         """Runs an adb command.
 
@@ -237,7 +219,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return self._device_run(ADB_CMD, command, **kwargs)
 
 
-    # pylint: disable-msg=C0111
+    # pylint: disable=missing-docstring
     def fastboot_run(self, command, **kwargs):
         """Runs an fastboot command.
 
@@ -245,8 +227,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         Refer to _device_run method for docstring for parameters.
         """
-        if utils.is_moblab():
-            kwargs['require_sudo'] = True
         return self._device_run(FASTBOOT_CMD, command, **kwargs)
 
 
@@ -309,7 +289,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if verbose:
             logging.debug('Command: %s', cmd)
 
-        return self.teststation.run(command=cmd, timeout=timeout,
+        return self.teststation.run(cmd, timeout=timeout,
                 ignore_status=ignore_status,
                 ignore_timeout=ignore_timeout, stdout_tee=stdout,
                 stderr_tee=stderr, options=options, stdin=stdin,
@@ -936,23 +916,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 'build_id': match.group('BUILD_ID')}
 
 
-    @property
-    def is_teststation_moblab(self):
-        """Check if the test station running adb command is a Moblab.
-
-        @return: True if the host running adb command is a Moblab, False
-                 otherwise.
-        """
-        if self._is_teststation_moblab is None:
-            try:
-                self.teststation.run('cat %s | grep -q moblab' %
-                                     cros_constants.LSB_RELEASE)
-                self._is_teststation_moblab = True
-            except error.AutoservRunError:
-                self._is_teststation_moblab = False
-        return self._is_teststation_moblab
-
-
     @retry.retry(error.AutoservRunError, timeout_min=10)
     def _download_file(self, build_url, file, dest_dir):
         """Download the given file from the build url.
@@ -992,14 +955,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     '%s' % (build_url, e))
 
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
-        if self.is_teststation_moblab:
-            tmp_dir = moblab_host.MOBLAB_TMP_DIR
-            self.teststation.run('mkdir -p %s' % tmp_dir)
-        else:
-            tmp_dir = DEFAULT_TMP_FOLDER
-
-        image_dir = self.teststation.run(
-                'mktemp -p %s -d' % tmp_dir).stdout.strip()
+        image_dir = self.teststation.get_tmp_dir()
         image_files = [zipped_image_file] + ANDROID_STANDALONE_IMAGES
 
         try:
