@@ -1,6 +1,7 @@
 suite:AFDO_page_replay
 suite:AFDO_record
 suite:another_suite
+suite:arc-bvt-cq
 suite:au
 suite:audio
 suite:bluetooth

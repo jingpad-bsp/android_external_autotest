@@ -8,8 +8,9 @@ PURPOSE = 'Verifies we can draw and capture graphics from applications.'
 CRITERIA = """
 This test fails if application screen shots cannot capture the screen output.
 """
-ATTRIBUTES = "suite:bvt-cq, suite:graphics, suite:graphics_per-day, suite:graphics_system"
-SUITE = 'bvt-cq, graphics_per-day, graphics, graphics_system'
+ATTRIBUTES = ("suite:arc-bvt-cq, suite:bvt-cq, suite:bvt-cq, suite:graphics,"
+              "suite:graphics_per-day, suite:graphics_system")
+SUITE = 'arc-bvt-cq, bvt-cq, graphics_per-day, graphics, graphics_system'
 TIME='SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "graphics"
