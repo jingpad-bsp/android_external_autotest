@@ -193,6 +193,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             logging.debug('Switching to user adb.')
             self.teststation.user = 'adb'
 
+        self._restart_adbd_with_root_permissions()
         self._connect_over_tcpip_as_needed()
 
         # Delay checking if the host running adb command is a Moblab.
@@ -476,16 +477,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._connect_over_tcpip_as_needed()
 
 
+    def _restart_adbd_with_root_permissions(self):
+        """Restarts the adb daemon with root permissions."""
+        self.adb_run('root')
+        # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
+        time.sleep(1)
+        self.adb_run('wait-for-device')
+
+
     def remount(self):
         """Remounts paritions on the device read-write.
 
         Specifically, the /system, /vendor (if present) and /oem (if present)
         partitions on the device are remounted read-write.
         """
-        self.adb_run('root')
-        # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
-        time.sleep(1)
-        self.adb_run('wait-for-device')
         self.adb_run('remount')
 
 
