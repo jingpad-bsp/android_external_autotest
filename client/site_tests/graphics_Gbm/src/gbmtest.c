@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include <gbm.h>
 
@@ -97,6 +98,65 @@ static int check_bo(struct gbm_bo *bo)
 	return 1;
 }
 
+static drmModeConnector *find_first_connected_connector(int fd,
+							drmModeRes *resources)
+{
+	int i;
+	for (i = 0; i < resources->count_connectors; i++) {
+		drmModeConnector *connector;
+
+		connector = drmModeGetConnector(fd, resources->connectors[i]);
+		if (connector) {
+			if ((connector->count_modes > 0) &&
+					(connector->connection == DRM_MODE_CONNECTED))
+				return connector;
+
+			drmModeFreeConnector(connector);
+		}
+	}
+	return NULL;
+}
+
+static int drm_open()
+{
+	int fd;
+	unsigned i;
+	char* dev_name;
+	drmModeRes *res = NULL;
+	int ret;
+
+	for (i = 0; i < DRM_MAX_MINOR; i++) {
+		ret = asprintf(&dev_name, DRM_DEV_NAME, DRM_DIR_NAME, i);
+		if (ret < 0)
+			continue;
+
+		fd = open(dev_name, O_RDWR, 0);
+		free(dev_name);
+		if (fd < 0)
+			continue;
+
+		res = drmModeGetResources(fd);
+		if (!res) {
+			drmClose(fd);
+			continue;
+		}
+
+		if (res->count_crtcs > 0 && res->count_connectors > 0) {
+			if (find_first_connected_connector(fd, res))
+				break;
+		}
+
+		drmClose(fd);
+		drmModeFreeResources(res);
+		res = NULL;
+	}
+
+	if (fd < 0 || res == NULL)
+		return -1;
+
+	return fd;
+}
+
 static int drm_open_vgem()
 {
 	const char g_sys_card_path_format[] =
@@ -157,7 +217,7 @@ static int create_vgem_bo(int fd, size_t size, uint32_t * handle)
  */
 static int test_init()
 {
-	fd = open("/dev/dri/card0", O_RDWR);
+	fd = drm_open();
 	CHECK(fd >= 0);
 
 	gbm = gbm_create_device(fd);
@@ -179,7 +239,7 @@ static int test_reinit()
 	gbm_device_destroy(gbm);
 	close(fd);
 
-	fd = open("/dev/dri/card0", O_RDWR);
+	fd = drm_open();
 	CHECK(fd >= 0);
 
 	gbm = gbm_create_device(fd);
