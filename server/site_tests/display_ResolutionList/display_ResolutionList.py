@@ -30,6 +30,8 @@ class display_ResolutionList(test.test):
 
     # TODO: Allow reading testcase_spec from command line.
     def run_once(self, host, test_mirrored=False, testcase_spec=None):
+        if not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
         if testcase_spec is None:
             testcase_spec = self.DEFAULT_TESTCASE_SPEC
         test_name = "%s_%dx%d" % testcase_spec
