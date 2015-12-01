@@ -165,8 +165,8 @@ class video_GlitchDetection(test.test):
                                                   constants.TEST_DIR,
                                                   constants.IMAGE_FORMAT)
 
-                    pub = publisher.ImageDiffPublisher(self.resultsdir)
-                    pub.publish(paths)
+                    path_publish = publisher.ImageDiffPublisher(self.resultsdir)
+                    path_publish.publish_paths(paths, self.tagged_testname)
 
                     raise error.TestFail("Too many non-matching frames")
 

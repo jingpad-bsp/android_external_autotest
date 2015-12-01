@@ -137,14 +137,14 @@ class ui_TestBase(test.test):
             version_string = utils.parse_chrome_version(version_string)[0]
 
             # tags for publishing
-            tags = [
-                self.tagged_testname,
-                utils.get_chromeos_release_version(),
-                version_string,
-                utils.get_board(),
-                datetime.date.today().strftime("%m/%d/%y"),
-                comp_res.diff_pixel_count
-            ]
+            tags = {
+                'testname': self.tagged_testname,
+                'chromeos_version': utils.get_chromeos_release_version(),
+                'chrome_version': version_string,
+                'board':  utils.get_board(),
+                'date': datetime.date.today().strftime("%m/%d/%y"),
+                'diff_pixels': comp_res.diff_pixel_count
+            }
 
             publisher.publish(golden_image_local_path,
                                     test_image_filepath,

@@ -34,14 +34,45 @@
         .tagname {
           font-weight: bold;
         }
+
+        .hidden {
+          display: none;
+        }
+
+        #glitchimage {
+          max-width: 800px;
+        }
     </style>
     <script type="text/javascript">
+        var paths = $images
+        var size = paths.length;
+        var curr = 0;
+
         function setup() {
-            var golden = document.getElementById("golden").src;
-            updateFullImageSrc(golden);
+            if (paths.length > 0)  {
+                document.getElementById("glitchimage").src = paths[0];
+            }
+            document.getElementById("total").innerHTML = size;
         }
-        function updateFullImageSrc(src) {
-            document.getElementById("fullsizeimage").src = src;
+
+        function setCounter() {
+            document.getElementById("counter").innerHTML = curr + 1;
+        }
+
+        function setImageSource() {
+            document.getElementById("glitchimage").src = paths[curr];
+        }
+
+        function next() {
+            curr = (curr + 1) % size;
+            setImageSource();
+            setCounter();
+        }
+
+        function prev() {
+            curr = ((curr - 1) + size) % size;
+            setImageSource();
+            setCounter();
         }
     </script>
 </head>
@@ -54,23 +85,14 @@
             <li><span class="tagname"> Chrome Build Number: </span>$chrome_version</li>
             <li><span class="tagname"> Device: </span>$board</li>
             <li><span class="tagname"> Date of run: </span>$date</li>
-            <li><span class="tagname"> Differing pixels: </span>$diff_pixels</li>
         </ul>
     </div>
     <hr />
-    <div id="thumbnails">
-        <p>Golden</p>
-        <img id="golden" class="thumb"onclick=updateFullImageSrc(this.src)
-             src="data:image/png;base64, $golden"><br>
-        <p>Test</p>
-        <img id="test" class="thumb" onclick=updateFullImageSrc(this.src)
-             src="data:image/png;base64, $test"><br>
-        <p>Diff</p>
-        <img id="diff" class="thumb" onclick=updateFullImageSrc(this.src) 
-             src="data:image/png;base64, $diff">
-    </div>
-    <div id="content">
-        <img id="fullsizeimage" src="golden.png" />
+    <div id="images">
+        <button id="prev" onclick="prev()">Previous</button>
+        <span id="counter">1</span> / <span id="total"></span>
+        <button id="next" onclick="next()">Next</button><br />
+        <img id="glitchimage" src="" />
     </div>
 </body>
 </html>
