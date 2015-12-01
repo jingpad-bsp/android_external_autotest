@@ -18,6 +18,7 @@ stutsman@google.com (Ryan Stutsman)
 import cPickle, cStringIO, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
+from autotest_lib.client.common_lib.cros import path_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.bin import partition
 
@@ -381,7 +382,8 @@ class Host(object):
 
     def get_arch(self):
         """ Get the hardware architecture of the remote machine. """
-        arch = self.run('/bin/uname -m').stdout.rstrip()
+        cmd_uname = path_utils.must_be_installed('/bin/uname', host=self)
+        arch = self.run('%s -m' % cmd_uname).stdout.rstrip()
         if re.match(r'i\d86$', arch):
             arch = 'i386'
         return arch
@@ -389,7 +391,8 @@ class Host(object):
 
     def get_kernel_ver(self):
         """ Get the kernel version of the remote machine. """
-        return self.run('/bin/uname -r').stdout.rstrip()
+        cmd_uname = path_utils.must_be_installed('/bin/uname', host=self)
+        return self.run('%s -r' % cmd_uname).stdout.rstrip()
 
 
     def get_cmdline(self):

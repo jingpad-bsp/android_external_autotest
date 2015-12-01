@@ -321,6 +321,10 @@ def get_firmware_ver(host):
     @returns the WiFi firmware version as a string, None if the version
              cannot be found.
     """
+    # TODO(rpius): Need to find someway to get this info for Android/Brillo.
+    if host.get_os_type() != 'cros':
+        return None
+
     # Firmware versions manually aggregated by installing ToT on each device
     known_firmware_ver = ['Atheros', 'mwifiex', 'loaded firmware version',
                           'brcmf_c_preinit_dcmds']
