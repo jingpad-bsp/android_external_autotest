@@ -16,7 +16,8 @@ import subprocess
 
 _EXPECTATIONS_DIR = 'expectations'
 _AUTOTEST_RESULT_TEMPLATE = 'gs://chromeos-autotest-results/%s-chromeos-test/chromeos*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
-
+# Use this template for tryjob results:
+#_AUTOTEST_RESULT_TEMPLATE = 'gs://chromeos-autotest-results/%s-ihf/*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
 _BOARD_REGEX = re.compile(r'ChromeOS BOARD = (.+)')
 _CPU_FAMILY_REGEX = re.compile(r'ChromeOS CPU family = (.+)')
 _GPU_FAMILY_REGEX = re.compile(r'ChromeOS GPU family = (.+)')
@@ -239,7 +240,7 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     'result_ids',
     metavar='result_id',
-    nargs='+',  # At least one result_id needs to be specified.
+    nargs='*',  # Zero or more result_ids specified.
     help='List of result log IDs (wildcards for gsutil like 5678* are ok).')
 args = argparser.parse_args()
 
