@@ -134,11 +134,12 @@ def create_host(hostname, host_class=None, **args):
     return host_instance
 
 
-def create_testbed(hostname, *args):
+def create_testbed(hostname, **kwargs):
     """Create the testbed object.
 
     @param hostname: The hostname of the test station for this testbed.
+    @param kwargs: Keyword args to pass to the testbed initialization.
 
     @returns: The testbed object with all associated host objects instantiated.
     """
-    return testbed.TestBed(hostname)
+    return testbed.TestBed(hostname, kwargs)

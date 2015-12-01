@@ -26,3 +26,4 @@ from bootloader import Bootloader
 
 # factory function
 from factory import create_host
+from factory import create_testbed
