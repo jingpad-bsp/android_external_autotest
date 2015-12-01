@@ -1025,7 +1025,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         branch, target, build_id = utils.parse_android_build(build_name)
         devserver = dev_server.AndroidBuildServer.resolve(build_name)
         devserver.trigger_download(target, build_id, branch, synchronous=False)
-        return '%s/%s' % (devserver.url(), build_name), devserver
+        return '%s/static/%s' % (devserver.url(), build_name), devserver
 
 
     def install_android(self, build_url, build_local_path=None, wipe=False,
