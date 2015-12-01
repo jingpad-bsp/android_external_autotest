@@ -15,7 +15,7 @@ from autotest_lib.client.cros import httpd
 
 ENTERPRISE_STAGING_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
-    '--lso-url=https://test-sandbox.auth.corp.google.com',
+    '--lso-url=https://gaiastaging.corp.google.com',
     '--google-apis-url=https://www-googleapis-test.sandbox.google.com',
     '--oauth2-client-id=236834563817.apps.googleusercontent.com',
     '--oauth2-client-secret=RsKv5AwFKSzNgE0yjnurkPVI',
@@ -29,7 +29,7 @@ ENTERPRISE_TESTDMS_FLAGS = [
 ENTERPRISE_FLAGS_DICT = {
     'prod': [],
     'cr-dev': ENTERPRISE_STAGING_FLAGS,
-    'cr-auto': ENTERPRISE_STAGING_FLAGS,
+    'cr-auto': [],
     'dm-test': ENTERPRISE_TESTDMS_FLAGS,
     'dm-fake': ENTERPRISE_TESTDMS_FLAGS
 }
