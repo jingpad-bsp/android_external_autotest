@@ -66,9 +66,18 @@ class AndroidXmlRpcDelegate:
     DBUS_DEVICE = 'Device'
     WEP40_HEX_KEY_LEN = 10
     WEP104_HEX_KEY_LEN = 26
+    SHILL_DISCONNECTED_STATES = ['idle']
+    SHILL_CONNECTED_STATES =  ['portal', 'online', 'ready']
+    DISCONNECTED_SSID = '0x'
 
 
     def __init__(self, serial_number):
+        """Initializes the ACTS library components.
+
+        @param serial_number Serial number of the android device to be tested,
+               None if there is only one device connected to the host.
+
+        """
         if not serial_number:
             ads = android_device.get_all_instances()
             if not ads:
@@ -77,7 +86,7 @@ class AndroidXmlRpcDelegate:
                 raise XmlRpcServerError(msg)
             self.ad = ads[0]
         elif serial_number in android_device.list_adb_devices():
-            self.ad = android_device.AndroidDevice(serial)
+            self.ad = android_device.AndroidDevice(serial_number)
         else:
             msg = ("Specified Android device %s can't be found, abort!"
                    ) % serial_number
@@ -105,10 +114,23 @@ class AndroidXmlRpcDelegate:
 
 
     def set_device_enabled(self, wifi_interface, enabled):
-        return True
+        """Enable or disable the WiFi device.
+
+        @param wifi_interface: string name of interface being modified.
+        @param enabled: boolean; true if this device should be enabled,
+                false if this device should be disabled.
+        @return True if it worked; false, otherwise
+
+        """
+        return utils.wifi_toggle_state(self.ad.droid, self.ad.ed, enabled)
 
 
     def sync_time_to(self, epoch_seconds):
+        """Sync time on the DUT to |epoch_seconds| from the epoch.
+
+        @param epoch_seconds: float number of seconds from the epoch.
+
+        """
         self.ad.droid.setTime(epoch_seconds)
         return True
 
@@ -134,10 +156,96 @@ class AndroidXmlRpcDelegate:
 
 
     def disconnect(self, ssid):
-        return True
+        """Attempt to disconnect from the given ssid.
+
+        Blocks until disconnected or operation has timed out.  Returns True iff
+        disconnect was successful.
+
+        @param ssid string network to disconnect from.
+        @return bool True on success, False otherwise.
+
+        """
+        # Android had no explicit disconnect, so let's just forget the network.
+        return self.delete_entries_for_ssid(ssid)
+
+
+    def get_active_wifi_SSIDs(self):
+        """Get the list of all SSIDs in the current scan results.
+
+        @return list of string SSIDs with at least one BSS we've scanned.
+
+        """
+        ssids = []
+        try:
+            self.ad.droid.wifiStartScan()
+            self.ad.ed.pop_event('WifiManagerScanResultsAvailable')
+            scan_results = self.ad.droid.wifiGetScanResults()
+            for result in scan_results:
+                if utils.WifiEnums.SSID_KEY in result:
+                    ssids.append(result[utils.WifiEnums.SSID_KEY])
+        except queue.Empty:
+            logging.error("Scan results available event timed out!")
+        except Exception as e:
+            logging.error("Scan results error: %s" % str(e))
+        finally:
+            logging.debug(ssids)
+            return ssids
+
+
+    def wait_for_service_states(self, ssid, states, timeout_seconds):
+        """Wait for SSID to reach one state out of a list of states.
+
+        @param ssid string the network to connect to (e.g. 'GoogleGuest').
+        @param states tuple the states for which to wait
+        @param timeout_seconds int seconds to wait for a state
+
+        @return (result, final_state, wait_time) tuple of the result for the
+                wait.
+        """
+        current_con = self.ad.droid.wifiGetConnectionInfo()
+        # Check the current state to see if we're connected/disconnected.
+        if set(states).intersection(set(self.SHILL_CONNECTED_STATES)):
+            if current_con[utils.WifiEnums.SSID_KEY] == ssid:
+                return True, '', 0
+            wait_event = 'WifiNetworkConnected'
+        elif set(states).intersection(set(self.SHILL_DISCONNECTED_STATES)):
+            if current_con[utils.WifiEnums.SSID_KEY] == self.DISCONNECTED_SSID:
+                return True, '', 0
+            wait_event = 'WifiNetworkDisconnected'
+        else:
+            assert 0, "Unhandled wait states received: %r" % states
+        final_state = ""
+        wait_time = -1
+        result = False
+        logging.debug(current_con)
+        try:
+            self.ad.droid.wifiStartTrackingStateChange()
+            start_time = get_current_epoch_time()
+            wait_result = self.ad.ed.pop_event(wait_event, timeout_seconds)
+            end_time = get_current_epoch_time()
+            wait_time = (end_time - start_time) / 1000
+            if wait_event == 'WifiNetworkConnected':
+                actual_ssid = wait_result['data'][utils.WifiEnums.SSID_KEY]
+                assert actual_ssid == ssid, ("Expected to connect to %s, but "
+                        "connected to %s") % (ssid, actual_ssid)
+            result = True
+        except queue.Empty:
+            logging.error("No state change available yet!")
+        except Exception as e:
+            logging.error("State change error: %s" % str(e))
+        finally:
+            logging.debug((result, final_state, wait_time))
+            self.ad.droid.wifiStopTrackingStateChange()
+            return result, final_state, wait_time
 
 
     def delete_entries_for_ssid(self, ssid):
+        """Delete all saved entries for an SSID.
+
+        @param ssid string of SSID for which to delete entries.
+        @return True on success, False otherwise.
+
+        """
         try:
             utils.wifi_forget_network(self.ad, ssid)
         except Exception as e:
@@ -151,6 +259,7 @@ class AndroidXmlRpcDelegate:
 
         @param raw_params serialized AssociationParameters.
         @return serialized AssociationResult
+
         """
         # Prepare data objects.
         params = Map(raw_params)
@@ -169,22 +278,15 @@ class AndroidXmlRpcDelegate:
             "xmlrpc_struct_type_key" : "AssociationResult"
         }
         try:
-            # Scan for the network.
             start_time = get_current_epoch_time()
-            self.ad.droid.wifiStartScan()
-            self.ad.ed.pop_event("WifiManagerScanResultsAvailable",
-                                 params.discovery_timeout)
-            scan_results = self.ad.droid.wifiGetScanResults()
+            active_ssids = self.get_active_wifi_SSIDs()
             end_time = get_current_epoch_time()
             assoc_result["discovery_time"] = (end_time - start_time) / 1000
-            result = False
             # Verify that the network was found, if the SSID is not hidden.
             if not params.is_hidden:
-                found = False
-                for r in scan_results:
-                    if "SSID" in r and r["SSID"] == params.ssid:
-                        found = True
-                assert found, "Could not find %s in scan results" % params.ssid
+                assert params.ssid in active_ssids, ("Could not find %s in scan"
+                        "results: %r") % (params.ssid, active_ssids)
+            result = False
             if params.security_config.security == "psk":
                 network_config["password"] = params.security_config.psk
             elif params.security_config.security == "wep":
