@@ -20,6 +20,7 @@ class security_StatefulPermissions(test.test):
     # Note that chronos permissions in /home are covered in greater detail
     # by 'security_ProfilePermissions'.
     _masks_byuser = {"adm": [],
+                     "attestation": ["/unencrypted/preserve/attestation.epb"],
                      "avfs": [],
                      "bin": [],
                      "bluetooth": ["/encrypted/var/lib/bluetooth"],
