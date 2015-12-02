@@ -589,8 +589,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # distinguishes this image from other test images.
         # Afterwards, we must re-run the autoreboot script because
         # it depends on the _LAB_MACHINE_FILE.
-        self.run('touch %s' % self._LAB_MACHINE_FILE)
-        self.run('start autoreboot')
+        autoreboot_cmd = ('FILE="%s" ; [ -f "$FILE" ] || '
+                          '( touch "$FILE" ; start autoreboot )')
+        self.run(autoreboot_cmd % self._LAB_MACHINE_FILE)
         updater.verify_boot_expectations(
                 expected_kernel, rollback_message=
                 'Build %s failed to boot on %s; system rolled back to previous '
