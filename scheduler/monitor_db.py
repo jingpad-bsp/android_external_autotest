@@ -263,10 +263,11 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     @param queue_entry - A HostQueueEntry object - If supplied and no Job
             object was supplied, this will be used to lookup the Job object.
     """
-    return autoserv_utils.autoserv_run_job_command(_autoserv_directory,
+    command = autoserv_utils.autoserv_run_job_command(_autoserv_directory,
             machines, results_directory=drone_manager.WORKING_DIRECTORY,
             extra_args=extra_args, job=job, queue_entry=queue_entry,
-            verbose=verbose)
+            verbose=verbose, in_lab=True)
+    return command
 
 
 class BaseDispatcher(object):

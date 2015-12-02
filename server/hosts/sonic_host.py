@@ -58,7 +58,8 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
         """
         try:
             result = host.run('getprop ro.product.device', timeout=timeout)
-        except (error.AutoservRunError, error.AutoservSSHTimeout):
+        except (error.AutoservRunError, error.AutoservSSHTimeout,
+                error.AutotestHostRunError):
             return False
         return 'anchovy' in result.stdout
 

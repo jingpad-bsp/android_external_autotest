@@ -14,6 +14,7 @@ labels_list = [l.strip() for l in job_labels.split(',') if l]
 def cleanup(machine):
     timer = None
     try:
+        hostname = utils.get_hostname_from_machine(machine)
         job.record('START', None, 'cleanup')
         host = hosts.create_host(machine, initialize=False, auto_monitor=False,
                                  try_lab_servo=True)
@@ -30,7 +31,7 @@ def cleanup(machine):
         except error.AutoservSshPingHostError:
             # Try to restart dut with servo.
             host._servo_repair_power()
-        local_log_dir = os.path.join(job.resultdir, machine)
+        local_log_dir = os.path.join(job.resultdir, hostname)
         host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
 
         host.cleanup()

@@ -18,6 +18,8 @@ from autotest_lib.client.common_lib import base_job, global_config
 from autotest_lib.client.common_lib import error, utils, packages
 from autotest_lib.client.common_lib import logging_manager
 from autotest_lib.server import test, subcommand, profilers
+from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import abstract_ssh, factory as host_factory
 from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
 
@@ -153,7 +155,7 @@ class base_server_job(base_job.base_job):
                  test_retry=0, group_name='',
                  tag='', disable_sysinfo=False,
                  control_filename=SERVER_CONTROL_FILENAME,
-                 parent_job_id=None):
+                 parent_job_id=None, host_attributes=None, in_lab=False):
         """
         Create a server side job object.
 
@@ -183,6 +185,11 @@ class base_server_job(base_job.base_job):
                 should be written in the results directory.
         @param parent_job_id: Job ID of the parent job. Default to None if the
                 job does not have a parent job.
+        @param host_attributes: Dict of host attributes passed into autoserv
+                                via the command line. If specified here, these
+                                attributes will apply to all machines.
+        @param in_lab: Boolean that indicates if this is running in the lab
+                       environment.
         """
         super(base_server_job, self).__init__(resultdir=resultdir,
                                               test_retry=test_retry)
@@ -268,6 +275,17 @@ class base_server_job(base_job.base_job):
         self.failed_with_device_error = False
 
         self.parent_job_id = parent_job_id
+        self.in_lab = in_lab
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        self.machine_dict_list = []
+        for machine in self.machines:
+            host_attributes = host_attributes or {}
+            if self.in_lab:
+                host = afe.get_hosts(hostname=machine)[0]
+                host_attributes.update(host.attributes)
+            self.machine_dict_list.append(
+                    {'hostname' : machine,
+                     'host_attributes' : host_attributes})
 
 
     @classmethod
@@ -374,7 +392,7 @@ class base_server_job(base_job.base_job):
         machines, job, ssh_user, ssh_port, ssh_pass, ssh_verbosity_flag,
         and ssh_options.
         """
-        namespace = {'machines' : self.machines,
+        namespace = {'machines' : self.machine_dict_list,
                      'job' : self,
                      'ssh_user' : self._ssh_user,
                      'ssh_port' : self._ssh_port,
@@ -493,21 +511,23 @@ class base_server_job(base_job.base_job):
         is_forking = not (len(machines) == 1 and self.machines == machines)
         if self._parse_job and is_forking and log:
             def wrapper(machine):
-                self._parse_job += "/" + machine
+                hostname = server_utils.get_hostname_from_machine(machine)
+                self._parse_job += "/" + hostname
                 self._using_parser = INCREMENTAL_TKO_PARSING
                 self.machines = [machine]
-                self.push_execution_context(machine)
+                self.push_execution_context(hostname)
                 os.chdir(self.resultdir)
-                utils.write_keyval(self.resultdir, {"hostname": machine})
+                utils.write_keyval(self.resultdir, {"hostname": hostname})
                 self.init_parser()
                 result = function(machine)
                 self.cleanup_parser()
                 return result
         elif len(machines) > 1 and log:
             def wrapper(machine):
-                self.push_execution_context(machine)
+                hostname = server_utils.get_hostname_from_machine(machine)
+                self.push_execution_context(hostname)
                 os.chdir(self.resultdir)
-                machine_data = {'hostname' : machine,
+                machine_data = {'hostname' : hostname,
                                 'status_version' : str(self._STATUS_VERSION)}
                 utils.write_keyval(self.resultdir, machine_data)
                 result = function(machine)

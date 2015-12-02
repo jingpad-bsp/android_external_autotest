@@ -204,10 +204,10 @@ class machine_worker(object):
         # the machine we're working on. Required so that server jobs will write
         # to the proper location.
         self._server_job.machines = [self._machine]
-        self._server_job.push_execution_context(self._machine)
+        self._server_job.push_execution_context(self._machine['hostname'])
         os.chdir(self._server_job.resultdir)
         if self._continuous_parsing:
-            self._server_job._parse_job += "/" + self._machine
+            self._server_job._parse_job += "/" + self._machine['hostname']
             self._server_job._using_parser = True
             self._server_job.init_parser()
 

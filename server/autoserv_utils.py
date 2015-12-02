@@ -28,7 +28,8 @@ def autoserv_run_job_command(autoserv_directory, machines,
                              ssh_verbosity=0,
                              no_console_prefix=False,
                              ssh_options=None,
-                             use_packaging=True):
+                             use_packaging=True,
+                             in_lab=False):
     """
     Construct an autoserv command from a job or host queue entry.
 
@@ -56,6 +57,10 @@ def autoserv_run_job_command(autoserv_directory, machines,
     @param ssh_options: A string giving extra arguments to be tacked on to
                         ssh commands.
     @param use_packaging Enable install modes that use the packaging system.
+    @param in_lab: If true, informs autoserv it is running within a lab
+                   environment. This information is useful as autoserv knows
+                   the database is available and can make database calls such
+                   as looking up host attributes at runtime.
 
     @returns The autoserv command line as a list of executable + parameters.
 
@@ -113,6 +118,9 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
     if not use_packaging:
         command.append('--no_use_packaging')
+
+    if in_lab:
+        command.extend(['--lab', 'True'])
 
     return command + extra_args
 

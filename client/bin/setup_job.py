@@ -5,7 +5,6 @@
 import logging, os, pickle, re, sys
 import common
 
-from autotest_lib.client.bin import client_logging_config
 from autotest_lib.client.bin import job as client_job
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
@@ -32,6 +31,10 @@ class setup_job(client_job.job):
         base_job.base_job.__init__(self, options=options)
         self._cleanup_debugdir_files()
         self._cleanup_results_dir()
+        self.machine_dict_list = [{'hostname' : options.hostname}]
+        # Client side tests should always run the same whether or not they are
+        # running in the lab.
+        self.in_lab = False
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':3600})
 

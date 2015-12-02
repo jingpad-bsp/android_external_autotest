@@ -83,7 +83,7 @@ class test_init(unittest.TestCase):
             'num_tests_run', 'pkgmgr', 'profilers', 'resultdir',
             'run_test_cleanup', 'sysinfo', 'tag', 'user', 'use_sequence_number',
             'warning_loggers', 'warning_manager', 'label', 'test_retry',
-            'parent_job_id'
+            'parent_job_id', 'in_lab', 'machine_dict_list'
             ])
 
         OPTIONAL_ATTRIBUTES = set([

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import tempfile
 import common
 
 from autotest_lib.server import server_job
@@ -33,7 +32,7 @@ class test_init(base_job_unittest.test_init.generic_tests, unittest.TestCase):
     OPTIONAL_ATTRIBUTES = (
         base_job_unittest.test_init.generic_tests.OPTIONAL_ATTRIBUTES
         - set(['serverdir', 'num_tests_run', 'num_tests_failed',
-               'warning_manager', 'warning_loggers']))
+               'warning_manager', 'warning_loggers', 'in_lab']))
 
     def setUp(self):
         self.god = mock.mock_god()

@@ -5,16 +5,15 @@ This is the core infrastructure.
 Copyright Andy Whitcroft, Martin J. Bligh 2006
 """
 
-import copy, os, platform, re, shutil, sys, time, traceback, types, glob
-import logging, getpass, errno, weakref
-import cPickle as pickle
+import copy, os, re, shutil, sys, time, traceback, types, glob
+import logging, getpass, weakref
 from autotest_lib.client.bin import client_logging_config
 from autotest_lib.client.bin import utils, parallel, kernel, xen
 from autotest_lib.client.bin import profilers, boottool, harness
 from autotest_lib.client.bin import config, sysinfo, test, local_host
 from autotest_lib.client.bin import partition as partition_lib
 from autotest_lib.client.common_lib import base_job
-from autotest_lib.client.common_lib import error, barrier, log, logging_manager
+from autotest_lib.client.common_lib import error, barrier, logging_manager
 from autotest_lib.client.common_lib import base_packages, packages
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.tools import html_report
@@ -245,6 +244,10 @@ class base_client_job(base_job.base_job):
         self._init_bootloader()
 
         self.machines = [options.hostname]
+        self.machine_dict_list = [{'hostname' : options.hostname}]
+        # Client side tests should always run the same whether or not they are
+        # running in the lab.
+        self.in_lab = False
         self.hosts = set([local_host.LocalHost(hostname=options.hostname,
                                                bootloader=self.bootloader)])
 

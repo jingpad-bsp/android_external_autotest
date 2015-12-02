@@ -24,7 +24,8 @@ class AbstractSSHHost(remote.RemoteHost):
     """
 
     def _initialize(self, hostname, user="root", port=22, password="",
-                    is_client_install_supported=True, *args, **dargs):
+                    is_client_install_supported=True, host_attributes={},
+                    *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
         # IP address is retrieved only on demand. Otherwise the host
@@ -49,6 +50,8 @@ class AbstractSSHHost(remote.RemoteHost):
 
         # Create a Lock to protect against race conditions.
         self._lock = Lock()
+
+        self.host_attributes = host_attributes
 
 
     @property

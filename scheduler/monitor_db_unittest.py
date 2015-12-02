@@ -1071,6 +1071,7 @@ class TopLevelFunctionsTest(unittest.TestCase):
         extra_args = ['-Z', 'hello']
         expected_command_line_base = set((monitor_db._autoserv_path, '-p',
                                           '-m', machines, '-r',
+                                          '--lab', 'True',
                                           drone_manager.WORKING_DIRECTORY))
 
         expected_command_line = expected_command_line_base.union(

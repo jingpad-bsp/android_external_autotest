@@ -81,13 +81,17 @@ def _detect_host(connectivity_class, hostname, **args):
     return cros_host.CrosHost
 
 
-def create_host(hostname, host_class=None, **args):
+def create_host(machine, host_class=None, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
     and creates a instance of the new class.
 
-    @param hostname: A string representing the host name of the device.
+    @param machine: A dict representing the device under test or a String
+                    representing the DUT hostname (for legacy caller support).
+                    If it is a machine dict, the 'hostname' key is required.
+                    Optional 'host_attributes' key will pipe in host_attributes
+                    from the autoserv runtime or the AFE.
     @param host_class: Host class to use, if None, will attempt to detect
                        the correct class.
     @param args: Args that will be passed to the constructor of
@@ -96,6 +100,9 @@ def create_host(hostname, host_class=None, **args):
     @returns: A host object which is an instance of the newly created
               host class.
     """
+    hostname, host_attributes = server_utils.get_host_info_from_machine(
+            machine)
+    args['host_attributes'] = host_attributes
     ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
             _get_host_arguments()
 

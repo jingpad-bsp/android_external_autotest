@@ -97,7 +97,7 @@ class _sysinfo_logger(object):
     def _install(self):
         if not self.host:
             from autotest_lib.server import hosts, autotest
-            self.host = hosts.create_host(self.job.machines[0])
+            self.host = hosts.create_host(self.job.machine_dict_list[0])
             # TODO(kevcheng): remove when host client install is supported for
             # ADBHost. crbug.com/543702
             if not self.host.is_client_install_supported:

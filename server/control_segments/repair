@@ -12,11 +12,12 @@ labels_list = [l.strip() for l in job_labels.split(',') if l]
 
 def repair(machine):
     try:
+        hostname = utils.get_hostname_from_machine(machine)
         job.record('START', None, 'repair')
         host = hosts.create_host(machine, initialize=False, auto_monitor=False,
                                  try_lab_servo=True)
         # Collect logs before the repair, as it might destroy all useful logs.
-        local_log_dir = os.path.join(job.resultdir, machine, 'before_repair')
+        local_log_dir = os.path.join(job.resultdir, hostname, 'before_repair')
         host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
         # Collect crash info.
         crashcollect.get_crashinfo(host, None)

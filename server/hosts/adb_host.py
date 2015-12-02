@@ -153,6 +153,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                 run over TCP/IP.
         @param teststation: The teststation object ADBHost should use.
         """
+        # Sets up the is_client_install_supported field.
+        super(ADBHost, self)._initialize(hostname=hostname,
+                                         is_client_install_supported=False,
+                                         *args, **dargs)
         if device_hostname and (adb_serial or fastboot_serial):
             raise error.AutoservError(
                     'TCP/IP and USB modes are mutually exclusive')
@@ -163,6 +167,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
+        # TODO (sbasi/kevcheng): Once the teststation host is committed,
+        # refactor the serial retrieval.
+        adb_serial = adb_serial or self.host_attributes.get('serials', None)
         self._adb_serial = adb_serial
         self._fastboot_serial = fastboot_serial or adb_serial
         self.teststation = teststation
@@ -179,11 +186,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if self._fastboot_serial:
             msg += ', fastboot serial: %s' % self._fastboot_serial
         logging.debug(msg)
-
-        # Sets up the is_client_install_supported field.
-        super(ADBHost, self)._initialize(hostname=hostname,
-                                         is_client_install_supported=False,
-                                         *args, **dargs)
 
         # Make sure teststation credentials work.
         try:

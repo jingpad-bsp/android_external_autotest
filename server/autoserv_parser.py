@@ -1,4 +1,5 @@
 import argparse
+import ast
 import logging
 import os
 import shlex
@@ -201,6 +202,16 @@ class autoserv_parser(object):
                                      'R27-3837.0.0 or a build name: '
                                      'x86-alex-release/R27-3837.0.0 to '
                                      'utilize lab devservers automatically.'))
+        self.parser.add_argument('--host_attributes', action='store',
+                                 dest='host_attributes', default='{}',
+                                 help=('Host attribute to be applied to all '
+                                       'machines/hosts for this autoserv run. '
+                                       'Must be a string-encoded dict. '
+                                       'Example: {"key1":"value1", "key2":'
+                                       '"value2"}'))
+        self.parser.add_argument('--lab', action='store', type=str,
+                                 dest='lab', default='',
+                                 help=argparse.SUPPRESS)
         #
         # Warning! Please read before adding any new arguments!
         #
@@ -239,6 +250,8 @@ class autoserv_parser(object):
         if self.options.image:
             self.options.install_before = True
             self.options.image =  self.options.image.strip()
+        self.options.host_attributes = ast.literal_eval(
+                self.options.host_attributes)
 
 
 # create the one and only one instance of autoserv_parser

@@ -442,6 +442,8 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     ssh_verbosity = int(parser.options.ssh_verbosity)
     ssh_options = parser.options.ssh_options
     no_use_packaging = parser.options.no_use_packaging
+    host_attributes = parser.options.host_attributes
+    in_lab = bool(parser.options.lab)
 
     # can't be both a client and a server side test
     if client and server:
@@ -478,6 +480,9 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
         kwargs['parent_job_id'] = int(parser.options.parent_job_id)
     if control_filename:
         kwargs['control_filename'] = control_filename
+    if host_attributes:
+        kwargs['host_attributes'] = host_attributes
+    kwargs['in_lab'] = in_lab
     job = server_job.server_job(control, parser.args[1:], results, label,
                                 user, machines, client, parse_job,
                                 ssh_user, ssh_port, ssh_pass,

@@ -671,3 +671,23 @@ def verify_not_root_user():
     """Simple function to error out if running with uid == 0"""
     if os.getuid() == 0:
         raise error.IllegalUser('This script can not be ran as root.')
+
+
+def get_hostname_from_machine(machine):
+    """Lookup hostname from a machine string or dict.
+
+    @returns: Machine hostname in string format.
+    """
+    hostname, _ = get_host_info_from_machine(machine)
+    return hostname
+
+
+def get_host_info_from_machine(machine):
+    """Lookup host information from a machine string or dict.
+
+    @returns: Tuple of (hostname, host_attributes)
+    """
+    if isinstance(machine, dict):
+        return (machine['hostname'], machine['host_attributes'])
+    else:
+        return (machine, {})
