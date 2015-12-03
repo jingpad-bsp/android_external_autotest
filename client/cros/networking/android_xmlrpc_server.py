@@ -5,14 +5,17 @@
 # found in the LICENSE file.
 
 import argparse
+import contextlib
+import errno
 import logging
 import queue
+import select
+import signal
+import threading
 
 from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.server import SimpleXMLRPCRequestHandler
 
 from acts.utils import get_current_epoch_time
-
 import acts.controllers.android_device as android_device
 import acts.test_utils.wifi_test_utils as utils
 
@@ -45,17 +48,95 @@ class Map(dict):
         self.__setitem__(key, value)
 
 
+# This is copied over from client/cros/xmlrpc_server.py so that this
+# daemon has no autotest dependencies.
+class XmlRpcServer(threading.Thread):
+    """Simple XMLRPC server implementation.
+
+    In theory, Python should provide a sane XMLRPC server implementation as
+    part of its standard library.  In practice the provided implementation
+    doesn't handle signals, not even EINTR.  As a result, we have this class.
+
+    Usage:
+
+    server = XmlRpcServer(('localhost', 43212))
+    server.register_delegate(my_delegate_instance)
+    server.run()
+
+    """
+
+    def __init__(self, host, port):
+        """Construct an XmlRpcServer.
+
+        @param host string hostname to bind to.
+        @param port int port number to bind to.
+
+        """
+        super(XmlRpcServer, self).__init__()
+        logging.info('Binding server to %s:%d', host, port)
+        self._server = SimpleXMLRPCServer((host, port), allow_none=True)
+        self._server.register_introspection_functions()
+        self._keep_running = True
+        self._delegates = []
+        # Gracefully shut down on signals.  This is how we expect to be shut
+        # down by autotest.
+        signal.signal(signal.SIGTERM, self._handle_signal)
+        signal.signal(signal.SIGINT, self._handle_signal)
+
+
+    def register_delegate(self, delegate):
+        """Register delegate objects with the server.
+
+        The server will automagically look up all methods not prefixed with an
+        underscore and treat them as potential RPC calls.  These methods may
+        only take basic Python objects as parameters, as noted by the
+        SimpleXMLRPCServer documentation.  The state of the delegate is
+        persisted across calls.
+
+        @param delegate object Python object to be exposed via RPC.
+
+        """
+        self._server.register_instance(delegate)
+        self._delegates.append(delegate)
+
+
+    def run(self):
+        """Block and handle many XmlRpc requests."""
+        logging.info('XmlRpcServer starting...')
+        with contextlib.ExitStack() as stack:
+            for delegate in self._delegates:
+                stack.enter_context(delegate)
+            while self._keep_running:
+                try:
+                    self._server.handle_request()
+                except select.error as v:
+                    # In a cruel twist of fate, the python library doesn't
+                    # handle this kind of error.
+                    if v[0] != errno.EINTR:
+                        raise
+        logging.info('XmlRpcServer exited.')
+
+
+    def _handle_signal(self, _signum, _frame):
+        """Handle a process signal by gracefully quitting.
+
+        SimpleXMLRPCServer helpfully exposes a method called shutdown() which
+        clears a flag similar to _keep_running, and then blocks until it sees
+        the server shut down.  Unfortunately, if you call that function from
+        a signal handler, the server will just hang, since the process is
+        paused for the signal, causing a deadlock.  Thus we are reinventing the
+        wheel with our own event loop.
+
+        """
+        self._server.server_close()
+        self._keep_running = False
+
+
 class XmlRpcServerError(Exception):
     """Raised when an error is encountered in the XmlRpcServer."""
 
 
-class RequestHandler(SimpleXMLRPCRequestHandler):
-    """The RPC request handler used by SimpleXMLRPCServer.
-    """
-    rpc_paths = ('/RPC2',)
-
-
-class AndroidXmlRpcDelegate:
+class AndroidXmlRpcDelegate(object):
     """Exposes methods called remotely during WiFi autotests.
 
     All instance methods of this object without a preceding '_' are exposed via
@@ -95,18 +176,26 @@ class AndroidXmlRpcDelegate:
 
 
     def __enter__(self):
+        logging.debug('Bringing up AndroidXmlRpcDelegate.')
         self.ad.get_droid()
         self.ad.ed.start()
         return self
 
 
     def __exit__(self, exception, value, traceback):
+        logging.debug('Tearing down AndroidXmlRpcDelegate.')
         self.ad.terminate_all_sessions()
 
 
     # Commands start.
     def ready(self):
-        logging.debug("ready.")
+        """Confirm that the XMLRPC server is up and ready to serve.
+
+        @return True (always).
+
+        """
+        logging.debug('ready()')
+        return True
 
 
     def list_controlled_wifi_interfaces(self):
@@ -358,9 +447,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     logging.debug("android_xmlrpc_server main...")
-    server = SimpleXMLRPCServer(('localhost', 9989), allow_none=True,
-        requestHandler=RequestHandler, logRequests=True, encoding="utf-8")
-    server.register_introspection_functions()
-    with AndroidXmlRpcDelegate(args.serial_number) as funcs:
-        server.register_instance(funcs)
-        server.serve_forever()
+    server = XmlRpcServer('localhost', 9989)
+    server.register_delegate(AndroidXmlRpcDelegate(args.serial_number))
+    server.run()
