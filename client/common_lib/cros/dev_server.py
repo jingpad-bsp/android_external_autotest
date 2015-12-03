@@ -1332,6 +1332,31 @@ class AndroidBuildServer(ImageServerBase):
         return '/'.join([self._get_image_url(build), filename])
 
 
+    def translate(self, build_name):
+        """Translate the build name if it's in LATEST format.
+
+        If the build name is in the format [branch]/[target]/LATEST, return the
+        latest build in Launch Control otherwise return the build name as is.
+
+        @param build_name: build_name to check.
+
+        @return The actual build name to use.
+        """
+        branch, target, build_id = utils.parse_android_build(build_name)
+        if build_id != 'LATEST':
+            return build_name
+        call = self.build_call('latestbuild', branch=branch, target=target,
+                               os_type='android')
+        translated_build_id = urllib2.urlopen(call).read()
+        translated_build = (ANDROID_BUILD_NAME_PATTERN %
+                            {'branch': branch,
+                             'target': target,
+                             'build_id': translated_build_id})
+        logging.debug('Translated relative build %s to %s', build_name,
+                      translated_build)
+        return translated_build
+
+
 def _is_load_healthy(load):
     """Check if devserver's load meets the minimum threshold.
 

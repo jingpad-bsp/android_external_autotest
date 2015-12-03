@@ -1022,8 +1022,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             and the devserver instance.
         """
         logging.info('Staging build for installation: %s', build_name)
-        branch, target, build_id = utils.parse_android_build(build_name)
         devserver = dev_server.AndroidBuildServer.resolve(build_name)
+        build_name = devserver.translate(build_name)
+        branch, target, build_id = utils.parse_android_build(build_name)
         devserver.trigger_download(target, build_id, branch, synchronous=False)
         return '%s/static/%s' % (devserver.url(), build_name), devserver
 
