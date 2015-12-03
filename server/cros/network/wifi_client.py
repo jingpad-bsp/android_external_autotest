@@ -52,6 +52,7 @@ ANDROID_XMLRPC_LOG_PATH = '/var/log/android_xmlrpc_server.log'
 ANDROID_XMLRPC_SERVER_AUTOTEST_PATH = (
         '../../../client/cros/networking/android_xmlrpc_server.py')
 
+
 def install_android_xmlrpc_server(host):
     """Install Android XMLRPC server script on |host|.
 
@@ -1280,6 +1281,19 @@ class WiFiClient(site_linux_system.LinuxSystem):
         return True
 
 
+    def set_dhcp_property(self, dhcp_prop_name, dhcp_prop_value):
+        """Sets the given DHCP_Property to the value provided.
+
+        @param dhcp_prop_name: the dhcp_property to be set
+        @param dhcp_prop_value: value to assign to the dhcp_prop_name
+        @return a context manager for the setting
+
+        """
+        return TemporaryManagerDBusProperty(self._shill_proxy,
+                                            dhcp_prop_name,
+                                            dhcp_prop_value)
+
+
 class TemporaryDBusProperty:
     """Utility class to temporarily change a dbus property for the WiFi device.
 
@@ -1307,7 +1321,7 @@ class TemporaryDBusProperty:
 
     def __enter__(self):
         logging.info('- Setting property %s on device %s',
-                self._prop_name, self._interface)
+                     self._prop_name, self._interface)
 
         self._saved_value = self._shill.get_dbus_property_on_device(
                 self._interface, self._prop_name)
@@ -1330,3 +1344,51 @@ class TemporaryDBusProperty:
                                                        self._prop_name,
                                                        self._saved_value):
             raise error.TestFail('Could not reset property')
+
+
+class TemporaryManagerDBusProperty:
+    """Utility class to temporarily change a Manager dbus property.
+
+    Since dbus properties are global and persistent settings, we want
+    to make sure that we change them back to what they were before the test
+    started.
+
+    """
+
+    def __init__(self, shill_proxy, prop_name, value):
+        """Construct a TemporaryManagerDBusProperty context manager.
+
+        @param shill_proxy: the shill proxy to use to communicate via dbus
+        @param prop_name: the name of the property we want to set
+        @param value: the desired value of the property
+
+        """
+        self._shill = shill_proxy
+        self._prop_name = prop_name
+        self._value = value
+        self._saved_value = None
+
+
+    def __enter__(self):
+        logging.info('- Setting Manager property: %s', self._prop_name)
+
+        self._saved_value = self._shill.get_manager_property(
+                self._prop_name)
+        if self._saved_value is None:
+            raise error.TestFail('Manager property not found.')
+        if not self._shill.set_manager_property(self._prop_name, self._value):
+                raise error.TestFail('Could not set manager property')
+
+        logging.info('- Changed value from [%s] to [%s]',
+                     self._saved_value,
+                     self._value)
+
+
+    def __exit__(self, exception, value, traceback):
+        logging.info('- Resetting property %s to [%s]',
+                     self._prop_name,
+                     self._saved_value)
+
+        if not self._shill.set_manager_property(self._prop_name,
+                                                self._saved_value):
+            raise error.TestFail('Could not reset manager property')
