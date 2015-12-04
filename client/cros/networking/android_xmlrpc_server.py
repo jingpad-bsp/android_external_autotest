@@ -12,6 +12,7 @@ import queue
 import select
 import signal
 import threading
+import time
 
 from xmlrpc.server import SimpleXMLRPCServer
 
@@ -143,13 +144,12 @@ class AndroidXmlRpcDelegate(object):
     an XMLRPC server.
     """
 
-    DEFAULT_TEST_PROFILE_NAME = 'test'
-    DBUS_DEVICE = 'Device'
     WEP40_HEX_KEY_LEN = 10
     WEP104_HEX_KEY_LEN = 26
     SHILL_DISCONNECTED_STATES = ['idle']
     SHILL_CONNECTED_STATES =  ['portal', 'online', 'ready']
     DISCONNECTED_SSID = '0x'
+    DISCOVERY_POLLING_INTERVAL = 1
 
 
     def __init__(self, serial_number):
@@ -366,15 +366,20 @@ class AndroidXmlRpcDelegate(object):
             "failure_reason" : "Oops!",
             "xmlrpc_struct_type_key" : "AssociationResult"
         }
+        duration = lambda: (get_current_epoch_time() - start_time) / 1000
         try:
-            start_time = get_current_epoch_time()
-            active_ssids = self.get_active_wifi_SSIDs()
-            end_time = get_current_epoch_time()
-            assoc_result["discovery_time"] = (end_time - start_time) / 1000
             # Verify that the network was found, if the SSID is not hidden.
             if not params.is_hidden:
-                assert params.ssid in active_ssids, ("Could not find %s in scan"
-                        "results: %r") % (params.ssid, active_ssids)
+                start_time = get_current_epoch_time()
+                found = False
+                while duration() < params.discovery_timeout and not found:
+                    active_ssids = self.get_active_wifi_SSIDs()
+                    found = params.ssid in active_ssids
+                    if not found:
+                        time.sleep(self.DISCOVERY_POLLING_INTERVAL)
+                assoc_result["discovery_time"] = duration()
+                assert found, ("Could not find %s in scan results: %r") % (
+                        params.ssid, active_ssids)
             result = False
             if params.security_config.security == "psk":
                 network_config["password"] = params.security_config.psk
@@ -402,8 +407,7 @@ class AndroidXmlRpcDelegate(object):
             timeout = params.association_timeout + params.configuration_timeout
             connect_result = self.ad.ed.pop_event(
                 utils.WifiEventNames.WIFI_CONNECTED, timeout)
-            end_time = get_current_epoch_time()
-            assoc_result["association_time"] = (end_time - start_time) / 1000
+            assoc_result["association_time"] = duration()
             actual_ssid = connect_result['data'][utils.WifiEnums.SSID_KEY]
             logging.debug('Connected to SSID: %s' % params.ssid);
             assert actual_ssid == params.ssid, ("Expected to connect to %s, "
