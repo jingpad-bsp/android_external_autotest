@@ -1516,19 +1516,23 @@ class autoupdate_EndToEndTest(test.test):
     def _error_intermediate(self, expected, actual, mismatched_attrs, action,
                             problem):
         if 'event_result' in mismatched_attrs:
-            return ('The updater reported an unexpected result code (%s). This '
-                    'could be an updater bug or a connectivity problem; check '
-                    'the %s. For a detailed log of update events, check the '
-                    '%s.' %
-                    (EVENT_RESULT_DICT[actual['event_result']],
-                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+            event_result = actual.get('event_result')
+            reported = (('different than expected (%s)' %
+                         EVENT_RESULT_DICT[event_result])
+                        if event_result else 'missing')
+            return ('The updater reported result code is %s. This could be an '
+                    'updater bug or a connectivity problem; check the %s. For '
+                    'a detailed log of update events, check the %s.' %
+                    (reported, self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
         if 'event_type' in mismatched_attrs:
-            return ('Expected the updater to %s (%s) but received a different '
-                    'notification (%s). This could be an updater %s; check the '
+            event_type = actual.get('event_type')
+            reported = ('different (%s)' % EVENT_TYPE_DICT[event_type]
+                        if event_type else 'missing')
+            return ('Expected the updater to %s (%s) but received event type '
+                    'is %s. This could be an updater %s; check the '
                     '%s. For a detailed log of update events, check the %s.' %
-                    (action, EVENT_TYPE_DICT[expected['event_type']],
-                     EVENT_TYPE_DICT[actual['event_type']], problem,
-                     self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
+                    (action, EVENT_TYPE_DICT[expected['event_type']], reported,
+                     problem, self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
         if 'version' in mismatched_attrs:
             return ('The updater reported an unexpected version despite '
                     'previously reporting the correct one. This is most likely '
@@ -1556,23 +1560,27 @@ class autoupdate_EndToEndTest(test.test):
 
     def _error_reboot_after_update(self, expected, actual, mismatched_attrs):
         if 'event_result' in mismatched_attrs:
+            event_result = actual.get('event_result')
+            reported = ('different (%s)' % EVENT_RESULT_DICT[event_result]
+                        if event_result else 'missing')
             return ('The updater was expected to reboot (%s) but reported '
-                    'a different result code instead (%s). This could be '
-                    'a failure to reboot, an updater bug or a connectivity '
-                    'problem; check the %s and the system log. For a detailed '
-                    'log of update events, check the %s.' %
-                    (EVENT_RESULT_DICT[expected['event_result']],
-                     EVENT_RESULT_DICT[actual['event_result']],
+                    'result code is %s. This could be a failure to reboot, an '
+                    'updater bug or a connectivity problem; check the %s and '
+                    'the system log. For a detailed log of update events, '
+                    'check the %s.' %
+                    (EVENT_RESULT_DICT[expected['event_result']], reported,
                      self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
         if 'event_type' in mismatched_attrs:
+            event_type = actual.get('event_type')
+            reported = ('different (%s)' % EVENT_TYPE_DICT[event_type]
+                        if event_type else 'missing')
             return ('Expected to successfully reboot into the new image (%s) '
-                    'but received a different notification (%s). This probably '
-                    'means that the new image failed to verify after reboot, '
-                    'possibly because the payload is corrupt. This might also '
-                    'be an updater bug or crash; check the %s. For a detailed '
-                    'log of update events, check the %s.' %
-                    (EVENT_TYPE_DICT[expected['event_type']],
-                     EVENT_TYPE_DICT[actual['event_type']],
+                    'but received event type is %s. This probably means that '
+                    'the new image failed to verify after reboot, possibly '
+                    'because the payload is corrupt. This might also be an '
+                    'updater bug or crash; check the %s. For a detailed log of '
+                    'update events, check the %s.' %
+                    (EVENT_TYPE_DICT[expected['event_type']], reported,
                      self._WHERE_UPDATE_LOG, self._WHERE_OMAHA_LOG))
         if 'version' in mismatched_attrs:
             return ('The DUT rebooted after the update but reports a different '
