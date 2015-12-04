@@ -48,6 +48,9 @@ _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
 # Android build.
 _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('bootloader_image,radio_image,'
                                              'zip_images,test_zip')
+# Artifacts that should be staged when client calls devserver RPC to stage an
+# Android build.
+_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('zip_images,vendor_partitions')
 SKIP_DEVSERVER_HEALTH_CHECK = CONFIG.get_config_value(
         'CROS', 'skip_devserver_health_check', type=bool)
 # Number of seconds for the call to get devserver load to time out.
@@ -1259,7 +1262,8 @@ class AndroidBuildServer(ImageServerBase):
                               **android_build_info)
 
 
-    def trigger_download(self, target, build_id, branch, synchronous=True):
+    def trigger_download(self, target, build_id, branch, is_brillo=False,
+                         synchronous=True):
         """Tell the devserver to download and stage an Android build.
 
         Tells the devserver to fetch an Android build from the image storage
@@ -1275,6 +1279,7 @@ class AndroidBuildServer(ImageServerBase):
                        shamu-userdebug.
         @param build_id: Build id of the android build to stage.
         @param branch: Branch of the android build to stage.
+        @param is_brillo: Set to True if it's a Brillo build. Default is False.
         @param synchronous: if True, waits until all components of the image are
                staged before returning.
 
@@ -1285,12 +1290,13 @@ class AndroidBuildServer(ImageServerBase):
                               'build_id': build_id,
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
-        artifacts = _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo else
+                     _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
         self._trigger_download(build, artifacts, files='',
                                synchronous=synchronous, **android_build_info)
 
 
-    def finish_download(self, target, build_id, branch):
+    def finish_download(self, target, build_id, branch, is_brillo=False):
         """Tell the devserver to finish staging an Android build.
 
         If trigger_download is called with synchronous=False, it will return
@@ -1302,6 +1308,7 @@ class AndroidBuildServer(ImageServerBase):
                        shamu-userdebug.
         @param build_id: Build id of the android build to stage.
         @param branch: Branch of the android build to stage.
+        @param is_brillo: Set to True if it's a Brillo build. Default is False.
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
@@ -1309,7 +1316,8 @@ class AndroidBuildServer(ImageServerBase):
                               'build_id': build_id,
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
-        artifacts = _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo else
+                     _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
         self._finish_download(build, artifacts, files='', **android_build_info)
 
 
