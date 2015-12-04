@@ -61,7 +61,7 @@ class GceHost(abstract_ssh.AbstractSSHHost):
         keys = self.gce.GetCommonInstanceMetadata(
                 SSH_KEYS_METADATA_KEY)
         key_set = set(string.split(keys, '\n'))
-        new_key_set = (key_set + set(to_add)) - set(to_remove)
+        new_key_set = (key_set | set(to_add)) - set(to_remove)
         if key_set != new_key_set:
             self.gce.SetCommonInstanceMetadata(
                     SSH_KEYS_METADATA_KEY,
