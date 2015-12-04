@@ -301,6 +301,9 @@ class ChaosParser(object):
                     break
                 else:
                     continue
+        if not keyval:
+            raise Exception('Did Chaos tests complete successfully? Rerun tests'
+                            ' with missing results.')
         return {'status_file': status, 'keyval_file': keyval}
 
 
