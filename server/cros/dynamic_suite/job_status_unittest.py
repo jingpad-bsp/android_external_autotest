@@ -14,7 +14,6 @@ import tempfile
 import time
 import unittest
 import os
-
 import common
 
 from autotest_lib.server import frontend

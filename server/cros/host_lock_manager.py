@@ -4,8 +4,9 @@
 
 import logging
 import signal
-
 import common
+
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 """HostLockManager class, for the dynamic_suite module.
@@ -57,9 +58,9 @@ class HostLockManager(object):
 
         @param afe: an instance of AFE as defined in server/frontend.py.
         """
-        self._afe = afe or frontend_wrappers.RetryingAFE(timeout_min=30,
-                                                         delay_sec=10,
-                                                         debug=False)
+        self._afe = afe or frontend_wrappers.RetryingAFE(
+                            timeout_min=30, delay_sec=10, debug=False,
+                            server=site_utils.get_global_afe_hostname())
         # Keep track of hosts locked by this instance.
         self._locked_hosts = set()
 

@@ -8,11 +8,10 @@
 
 import mox
 import unittest
-
 import common
+
 from autotest_lib.server import frontend
 from autotest_lib.server.cros import host_lock_manager
-
 
 class HostLockManagerTest(mox.MoxTestBase):
     """Unit tests for host_lock_manager.HostLockManager.
