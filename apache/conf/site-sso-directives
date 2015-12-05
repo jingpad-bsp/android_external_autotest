@@ -1,5 +1,5 @@
 
-<LocationMatch "^/(afe|new_tko|loginz).*">
+<LocationMatch "^/(afe|tko|new_tko|loginz).*">
     AuthType google-sso
     AuthName ChromeOSAutotest
     RpMode v2_v1accepted

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 
+import grp
 import httplib
 import json
 import logging
@@ -476,6 +477,26 @@ def is_shard():
     hostname = global_config.global_config.get_config_value(
             'SHARD', 'shard_hostname', default=None)
     return bool(hostname)
+
+
+def is_restricted_user(username):
+    """Determines if a user is in a restricted group.
+
+    User in restricted group only have access to master.
+
+    @param username: A string, representing a username.
+
+    @returns: True if the user is in a restricted group.
+    """
+    if not username:
+        return False
+
+    restricted_groups = global_config.global_config.get_config_value(
+            'AUTOTEST_WEB', 'restricted_groups', default='').split(',')
+    for group in restricted_groups:
+        if group and username in grp.getgrnam(group).gr_mem:
+            return True
+    return False
 
 
 def get_special_task_status(is_complete, success, is_active):

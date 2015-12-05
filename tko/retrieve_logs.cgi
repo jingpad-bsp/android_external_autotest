@@ -107,7 +107,10 @@ def find_repository_host(job_path):
     # This cgi script is run only in master (cautotest) and shards.
     # Drones do not run this script when receiving '/results/...' request.
     # Only master should check drones and shards for the requested log.
-    if not server_utils.is_shard():
+    # Also restricted users do not have access to drones or shards,
+    # always point them to localhost or google storage.
+    if (not server_utils.is_shard() and
+        not server_utils.is_restricted_user(os.environ.get('REMOTE_USER'))):
         shards = []
         if server_manager_utils.use_server_db():
             drones = server_manager_utils.get_drones()
