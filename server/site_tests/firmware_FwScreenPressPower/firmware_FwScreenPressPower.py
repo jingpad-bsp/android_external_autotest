@@ -82,8 +82,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
                               }))
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_fw_screen_and_press_power,
-                                  None,
-                                  self.switcher.bypass_dev_mode)
+                                  post_power_action=self.switcher.bypass_dev_mode)
         self.switcher.wait_for_client()
 
         logging.info("Reboot. When the developer screen shown, press "
@@ -96,9 +95,8 @@ class firmware_FwScreenPressPower(FirmwareTest):
                               }))
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_second_screen_and_press_power,
-                                  None,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Request recovery boot. When the RECOVERY INSERT "
@@ -110,9 +108,8 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_press_power,
-                                  None,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Request recovery boot again. When the recovery "
@@ -126,9 +123,8 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_yuck_screen_and_press_power,
-                                  None,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Switch back to normal mode.")
@@ -148,9 +144,7 @@ class firmware_FwScreenPressPower(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_press_power,
-                                  None,
-                                  None,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Check and done.")

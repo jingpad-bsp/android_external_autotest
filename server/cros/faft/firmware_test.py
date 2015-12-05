@@ -1074,12 +1074,13 @@ class FirmwareTest(FAFTBase):
         return ret
 
     def run_shutdown_process(self, shutdown_action, pre_power_action=None,
-            post_power_action=None, shutdown_timeout=None):
+            run_power_action=True, post_power_action=None, shutdown_timeout=None):
         """Run shutdown_action(), which makes DUT shutdown, and power it on.
 
         @param shutdown_action: function which makes DUT shutdown, like
                                 pressing power key.
         @param pre_power_action: function which is called before next power on.
+        @param power_action: power_key press by default, set to None to skip.
         @param post_power_action: function which is called after next power on.
         @param shutdown_timeout: a timeout to confirm DUT shutdown.
         @raise TestFail: if the shutdown_action() failed to turn DUT off.
@@ -1099,7 +1100,8 @@ class FirmwareTest(FAFTBase):
 
         if pre_power_action:
             self._call_action(pre_power_action)
-        self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
+        if run_power_action:
+            self.servo.power_key(self.faft_config.hold_pwr_button_poweron)
         if post_power_action:
             self._call_action(post_power_action)
 

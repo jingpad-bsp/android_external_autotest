@@ -86,8 +86,8 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           }))
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_fw_screen_and_close_lid,
-                                  self.servo.lid_open,
-                                  self.switcher.bypass_dev_mode)
+                                  pre_power_action=self.servo.lid_open,
+                                  post_power_action=self.switcher.bypass_dev_mode)
         self.switcher.wait_for_client()
 
         logging.info("Reboot. When the developer screen shown, press "
@@ -100,9 +100,9 @@ class firmware_FwScreenCloseLid(FirmwareTest):
                           }))
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_second_screen_and_close_lid,
-                                  self.servo.lid_open,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  pre_power_action=self.servo.lid_open,
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Request recovery boot. When the RECOVERY INSERT "
@@ -114,9 +114,9 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
-                                  self.servo.lid_open,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  pre_power_action=self.servo.lid_open,
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Request recovery boot again. When the recovery "
@@ -129,9 +129,9 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_yuck_screen_and_close_lid,
-                                  self.servo.lid_open,
-                                  self.switcher.bypass_dev_mode,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  pre_power_action=self.servo.lid_open,
+                                  post_power_action=self.switcher.bypass_dev_mode,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
 
         logging.info("Switch back to normal mode.")
@@ -151,9 +151,9 @@ class firmware_FwScreenCloseLid(FirmwareTest):
         self.faft_client.system.request_recovery_boot()
         self.switcher.mode_aware_reboot(wait_for_dut_up=False)
         self.run_shutdown_process(self.wait_longer_fw_screen_and_close_lid,
-                                  self.servo.lid_open,
-                                  None,
-                                  self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
+                                  pre_power_action=self.servo.lid_open,
+                                  run_power_action=False,
+                                  shutdown_timeout=self.SHORT_SHUTDOWN_CONFIRMATION_PERIOD)
         self.switcher.wait_for_client()
         self.check_state((self.checkers.crossystem_checker, {
                           'devsw_boot': '0',
