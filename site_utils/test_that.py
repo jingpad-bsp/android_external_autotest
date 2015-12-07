@@ -516,7 +516,12 @@ def validate_arguments(arguments):
         if arguments.ssh_verbosity:
             raise ValueError('--ssh_verbosity flag not supported when running '
                              'against :lab:')
+        if not arguments.board or not arguments.build:
+            raise ValueError('--board and --build are both required when '
+                             'running against :lab:')
     else:
+        if arguments.build is None:
+            arguments.build = _NO_BUILD
         if arguments.web:
             raise ValueError('--web flag not supported when running locally')
 
@@ -567,7 +572,7 @@ def _parse_arguments_internal(argv):
                         action='store',
                         help='Board for which the test will run. Default: %s' %
                              (default_board or 'Not configured'))
-    parser.add_argument('-i', '--build', metavar='BUILD', default=_NO_BUILD,
+    parser.add_argument('-i', '--build', metavar='BUILD', default=None,
                         help='Build to test. Device will be reimaged if '
                              'necessary. Omit flag to skip reimage and test '
                              'against already installed DUT image. Examples: '
