@@ -872,8 +872,6 @@ class base_job(object):
     @property profdir: The client profilers/ directory.
     @property toolsdir: The client tools/ directory.
 
-    @property conmuxdir: The conmux directory. [OPTIONAL]
-
     @property control: A path to the control file to be executed. [OPTIONAL]
     @property hosts: A set of all live Host objects currently in use by the
         job. Code running in the context of a local client can safely assume
@@ -952,7 +950,6 @@ class base_job(object):
     bindir = _job_directory.property_factory('bindir')
     profdir = _job_directory.property_factory('profdir')
     toolsdir = _job_directory.property_factory('toolsdir')
-    conmuxdir = _job_directory.property_factory('conmuxdir')
 
 
     # all the generic persistent properties
@@ -1050,10 +1047,8 @@ class base_job(object):
         # various server-specific directories
         if self.serverdir:
             self._tmpdir = readwrite_dir(tempfile.gettempdir())
-            self._conmuxdir = readonly_dir(self.autodir, 'conmux')
         else:
             self._tmpdir = readwrite_dir(root, 'tmp')
-            self._conmuxdir = None
 
 
     def _find_resultdir(self, *args, **dargs):

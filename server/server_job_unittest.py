@@ -32,7 +32,7 @@ class test_find_base_directories(
 class test_init(base_job_unittest.test_init.generic_tests, unittest.TestCase):
     OPTIONAL_ATTRIBUTES = (
         base_job_unittest.test_init.generic_tests.OPTIONAL_ATTRIBUTES
-        - set(['serverdir', 'conmuxdir', 'num_tests_run', 'num_tests_failed',
+        - set(['serverdir', 'num_tests_run', 'num_tests_failed',
                'warning_manager', 'warning_loggers']))
 
     def setUp(self):

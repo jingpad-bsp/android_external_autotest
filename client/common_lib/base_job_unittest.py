@@ -73,7 +73,7 @@ class test_init(unittest.TestCase):
             # standard directories
             'autodir', 'clientdir', 'serverdir', 'resultdir', 'pkgdir',
             'tmpdir', 'testdir', 'site_testdir', 'bindir',
-            'profdir', 'toolsdir', 'conmuxdir',
+            'profdir', 'toolsdir',
 
             # other special attributes
             'args', 'automatic_test_tag', 'bootloader', 'control',
@@ -87,7 +87,7 @@ class test_init(unittest.TestCase):
             ])
 
         OPTIONAL_ATTRIBUTES = set([
-            'serverdir', 'conmuxdir',
+            'serverdir',
 
             'automatic_test_tag', 'bootloader', 'control', 'harness',
             'last_boot_tag', 'num_tests_run', 'num_tests_failed', 'tag',

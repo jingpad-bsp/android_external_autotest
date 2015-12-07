@@ -132,7 +132,6 @@ class base_server_job(base_job.base_job):
 
     Optional properties provided by this implementation:
         serverdir
-        conmuxdir
 
         num_tests_run
         num_tests_failed
