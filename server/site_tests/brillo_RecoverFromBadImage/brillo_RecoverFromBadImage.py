@@ -11,6 +11,8 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
 
+# The /dev directory mapping partition names to block devices.
+_BLK_DEV_BY_NAME_DIR = '/dev/block/by-name'
 # By default, we kill and recover the active system partition.
 _DEFAULT_PART_NAME = 'system_X'
 
@@ -78,14 +80,12 @@ class brillo_RecoverFromBadImage(test.test):
         @raise TestError: If the partition name could not be mapped to a device.
         """
         try:
-            for name_dir in host.run_output(
-                    'find /dev/block/platform -name by-name').splitlines():
-                for device in host.run_output(
-                        'find %s -type l' % name_dir).splitlines():
-                    if os.path.basename(device) == partition:
-                        logging.info('Mapped partition %s to device %s',
-                                     partition, device)
-                        return device
+            cmd = 'find %s -type l' % os.path.join(_BLK_DEV_BY_NAME_DIR, '')
+            for device in host.run_output(cmd).splitlines():
+                if os.path.basename(device) == partition:
+                    logging.info('Mapped partition %s to device %s',
+                                 partition, device)
+                    return device
         except error.AutoservError:
             raise error.TestError(
                     'Error finding device for partition %s' % partition)
