@@ -132,9 +132,4 @@ class provision_AutoUpdate(test.test):
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))
-        build = host.get_build()
-        if build != value:
-            raise error.TestFail(
-                    'Expected cros-version label of %s in AFE, but found %s' %
-                    (value, build))
         logging.debug('Finished provisioning %s to %s', host, value)
