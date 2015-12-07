@@ -180,7 +180,13 @@ SIMPLE_FREQUENCY_SPEAKER_TEST_FILE = AudioTestData(
                          channel=2,
                          rate=48000),
         frequencies=[440, 440])
+
 """
-Media test verification for 256Hz frequency.
+Media test verification for 256Hz frequency (headphone audio).
 """
-MEDIA_TEST_FILE = FakeTestData(frequencies=[256, 256])
+MEDIA_HEADPHONE_TEST_FILE = FakeTestData(frequencies=[256, 256])
+
+"""
+Media test verification for 512Hz frequency (onboard speakers).
+"""
+MEDIA_SPEAKER_TEST_FILE = FakeTestData(frequencies=[512, 512])

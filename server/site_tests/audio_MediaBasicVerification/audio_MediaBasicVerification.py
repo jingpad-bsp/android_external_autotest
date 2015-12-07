@@ -100,5 +100,5 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
         audio_test_utils.check_recorded_frequency(
-                audio_test_data.MEDIA_TEST_FILE,
+                audio_test_data.MEDIA_HEADPHONE_TEST_FILE,
                 recorder)

@@ -23,7 +23,7 @@ This test remotely tests audio quality over headphone.
 args_dict = utils.args_to_dict(args)
 chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 test_file = ('http://commondatastorage.googleapis.com/chromiumos-test-assets-'
-             'public/audio_test/chameleon/test_256_16.wav')
+             'public/audio_test/chameleon/Headphone/test_256_16.wav')
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
