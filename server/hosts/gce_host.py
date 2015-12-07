@@ -59,7 +59,7 @@ class GceHost(abstract_ssh.AbstractSSHHost):
         @param to_remove: a list of enties to be removed.
         """
         keys = self.gce.GetCommonInstanceMetadata(
-                SSH_KEYS_METADATA_KEY)
+                SSH_KEYS_METADATA_KEY) or ''
         key_set = set(string.split(keys, '\n'))
         new_key_set = (key_set | set(to_add)) - set(to_remove)
         if key_set != new_key_set:
