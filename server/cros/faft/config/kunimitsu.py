@@ -4,8 +4,13 @@
 
 """FAFT config setting overrides for Kunimitsu."""
 
-from autotest_lib.server.cros.faft.config import samus
+class Values(object):
+    """FAFT config values for Kunimitsu."""
+    chrome_ec = True
+    dark_resume_capable = True
+    wp_voltage = 'pp3300'
+    spi_voltage = 'pp3300'
+    ec_boot_to_console = 0.2
+    ec_capability = ['battery', 'charging', 'keyboard',
+                     'lid', 'x86', 'usb', 'usbpd_uart' ]
 
-class Values(samus.Values):
-    """Inherit overrides from Samus."""
-    pass
