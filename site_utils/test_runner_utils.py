@@ -42,8 +42,6 @@ _TEST_KEY_FILENAME = 'testing_rsa'
 TEST_KEY_PATH = ('/mnt/host/source/src/scripts/mod_for_test_scripts/'
                   'ssh_keys/%s' % _TEST_KEY_FILENAME)
 
-_TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
-
 _LATEST_RESULTS_DIRECTORY = '/tmp/test_that_latest'
 
 
@@ -675,11 +673,8 @@ def perform_run_from_autotest_root(autotest_path, argv, tests, remote,
         logging.info('Finished pretend run. Exiting.')
         return 0
 
-    # TODO b/25929635 (sbasi/wiley) Move the generate test report script.
-    if not os.path.exists(_TEST_REPORT_SCRIPTNAME):
-        logging.info('%s does not exist. Exiting.', _TEST_REPORT_SCRIPTNAME)
-        return 0
-    test_report_command = [_TEST_REPORT_SCRIPTNAME]
+    test_report_command = [os.path.join(os.path.dirname(__file__),
+                                        'generate_test_report')]
     # Experimental test results do not influence the exit code.
     test_report_command.append('--ignore_experimental_tests')
     if whitelist_chrome_crashes:

@@ -36,9 +36,6 @@ except ImportError:
 from autotest_lib.site_utils import test_runner_utils
 
 
-_TEST_REPORT_SCRIPTNAME = '/usr/bin/generate_test_report'
-
-
 def parse_arguments(argv):
     """
     Parse command line arguments
