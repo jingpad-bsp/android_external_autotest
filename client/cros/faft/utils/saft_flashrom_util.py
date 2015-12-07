@@ -349,6 +349,12 @@ class flashrom_util(object):
         self.os_if.log('flashrom.write_partial(): %s' % cmd)
         self.os_if.run_shell_command(cmd)
 
+        # flashrom write will reboot the ec after corruption
+        # For Android, need to make sure ec is back online
+        # before continuing, or adb command will cause test failure
+        if self.os_if.is_android:
+            self.os_if.wait_for_device(60)
+
         # clean temporary resources
         self._remove_temp_file(tmpfn)
         self._remove_temp_file(layout_fn)
