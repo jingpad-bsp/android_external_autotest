@@ -126,7 +126,7 @@ class Task(object):
     Task.  Each instance has enough info to schedule itself
     on-demand with the AFE.
 
-    This class also overrides __hash__() and all comparitor methods to enable
+    This class also overrides __hash__() and all comparator methods to enable
     correct use in dicts, sets, etc.
     """
 
@@ -367,7 +367,7 @@ class Task(object):
                 else:
                     self._bare_branches.append(spec)
 
-        # Since we expect __hash__() and other comparitor methods to be used
+        # Since we expect __hash__() and other comparator methods to be used
         # frequently by set operations, and they use str() a lot, pre-compute
         # the string representation of this object.
         if num is None:

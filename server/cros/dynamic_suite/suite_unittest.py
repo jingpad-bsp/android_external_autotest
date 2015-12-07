@@ -25,7 +25,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
-from autotest_lib.server.cros.dynamic_suite.comparitors import StatusContains
+from autotest_lib.server.cros.dynamic_suite.comparators import StatusContains
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.cros.dynamic_suite.suite import RetryHandler
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
