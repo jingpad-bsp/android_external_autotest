@@ -1625,6 +1625,7 @@ def main_without_exception_handling(options):
 
 def main():
     """Entry point."""
+    utils.verify_not_root_user()
     code = RETURN_CODES.OK
     output_dict = {}
 

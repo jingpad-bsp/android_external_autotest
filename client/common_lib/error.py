@@ -655,6 +655,10 @@ class ContainerError(Exception):
     """
 
 
+class IllegalUser(Exception):
+    """Exception raise when a program runs as an illegal user."""
+
+
 # This MUST remain at the end of the file.
 # Limit 'from error import *' to only import the exception instances.
 for _name, _thing in locals().items():

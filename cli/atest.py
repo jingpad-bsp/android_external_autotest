@@ -16,10 +16,11 @@ execute() and output() methods.
 
 __author__ = 'jmeurin@google.com (Jean-Marc Eurin)'
 
-import os, sys, optparse, re, traceback
+import os, sys, re, traceback
 
 import common
 from autotest_lib.cli import topic_common
+from autotest_lib.server import utils
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     atest-<topic> <action> <options>
     atest --help
     """
+    utils.verify_not_root_user()
     cli = os.path.basename(sys.argv[0])
     syntax_obj = topic_common.atest()
 

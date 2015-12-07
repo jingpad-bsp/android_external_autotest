@@ -665,3 +665,9 @@ def add_label_detector(label_function_list, label_list=None, label=None):
             label_list.append(label)
         return func
     return add_func
+
+
+def verify_not_root_user():
+    """Simple function to error out if running with uid == 0"""
+    if os.getuid() == 0:
+        raise error.IllegalUser('This script can not be ran as root.')
