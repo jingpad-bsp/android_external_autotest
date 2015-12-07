@@ -140,9 +140,10 @@ def _stage_ssp(parser):
     return script_locals['ssp_url']
 
 
-def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
+def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url):
     """Run the server job with server-side packaging.
 
+    @param job: The server job object.
     @param container_name: Name of the container to run the test.
     @param job_id: ID of the test job.
     @param results: Folder to store results. This could be different from
@@ -156,8 +157,15 @@ def _run_with_ssp(container_name, job_id, results, parser, ssp_url):
     bucket = lxc.ContainerBucket()
     control = (parser.args[0] if len(parser.args) > 0 and parser.args[0] != ''
                else None)
-    test_container = bucket.setup_test(container_name, job_id, ssp_url, results,
-                                       control=control)
+    try:
+        test_container = bucket.setup_test(container_name, job_id, ssp_url,
+                                           results, control=control)
+    except Exception as e:
+        job.record('FAIL', None, None,
+                   'Failed to setup container for test: %s. Check logs in '
+                   'ssp_logs folder for more details.' % e)
+        raise
+
     args = sys.argv[:]
     args.remove('--require-ssp')
     # --parent_job_id is only useful in autoserv running in host, not in
@@ -496,8 +504,8 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                     _start_servod(machines[0])
                 if use_ssp:
                     try:
-                        _run_with_ssp(container_name, job_or_task_id, results,
-                                      parser, ssp_url)
+                        _run_with_ssp(job, container_name, job_or_task_id,
+                                      results, parser, ssp_url)
                     finally:
                         # Update the ownership of files in result folder.
                         correct_results_folder_permission(results)
