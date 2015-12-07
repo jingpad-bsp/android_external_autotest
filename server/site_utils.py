@@ -691,3 +691,24 @@ def get_host_info_from_machine(machine):
         return (machine['hostname'], machine['host_attributes'])
     else:
         return (machine, {})
+
+
+def get_creds_abspath(creds_file):
+    """Returns the abspath of the credentials file.
+
+    If creds_file is already an absolute path, just return it.
+    Otherwise, assume it is located in the creds directory
+    specified in global_config and return the absolute path.
+
+    @param: creds_path, a path to the credentials.
+    @return: An absolute path to the credentials file.
+    """
+    if not creds_file:
+        return None
+    if os.path.isabs(creds_file):
+        return creds_file
+    creds_dir = global_config.global_config.get_config_value(
+            'SERVER', 'creds_dir', default='')
+    if not creds_dir or not os.path.exists(creds_dir):
+        creds_dir = common.autotest_dir
+    return os.path.join(creds_dir, creds_file)

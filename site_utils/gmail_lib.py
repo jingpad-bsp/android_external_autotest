@@ -27,6 +27,7 @@ from email.mime.text import MIMEText
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils as server_utils
 from chromite.lib import retry_util
 
 try:
@@ -39,8 +40,8 @@ except ImportError as e:
 
 
 EMAIL_COUNT_KEY = 'emails.%s'
-DEFAULT_GMAIL_CREDS_PATH = global_config.global_config.get_config_value(
-        'NOTIFICATIONS', 'gmail_api_credentials', default='')
+DEFAULT_CREDS_FILE = global_config.global_config.get_config_value(
+        'NOTIFICATIONS', 'gmail_api_credentials', default=None)
 RETRY_DELAY = 5
 RETRY_BACKOFF_FACTOR = 1.5
 MAX_RETRY = 10
@@ -117,26 +118,19 @@ class GmailApiClient():
                 raise
 
 
-def get_default_creds_abspath():
-    """Returns the abspath of the gmail api credentials file.
-
-    @return: A path to the oauth2 credentials file.
-    """
-    auth_creds = DEFAULT_GMAIL_CREDS_PATH
-    return (auth_creds if os.path.isabs(auth_creds) else
-            os.path.join(common.autotest_dir, auth_creds))
-
-
-def send_email(to, subject, message_text, retry=True):
+def send_email(to, subject, message_text, retry=True, creds_path=None):
     """Send email.
 
     @param to: The recipients, separated by comma.
     @param subject: Subject of the email.
     @param message_text: Text to send.
     @param retry: If retry on retriable failures as defined in RETRIABLE_MSGS.
+    @param creds_path: The credential path for gmail account, if None,
+                       will use DEFAULT_CREDS_FILE.
     """
-    auth_creds = get_default_creds_abspath()
-    if not os.path.isfile(auth_creds):
+    auth_creds = server_utils.get_creds_abspath(
+        creds_path or DEFAULT_CREDS_FILE)
+    if not auth_creds or not os.path.isfile(auth_creds):
         logging.error('Failed to send email to %s: Credential file does not'
                       'exist: %s. If this is a prod server, puppet should'
                       'install it. If you need to be able to send email, '

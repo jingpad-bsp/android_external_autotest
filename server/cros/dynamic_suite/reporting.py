@@ -38,6 +38,8 @@ BUG_CONFIG_SECTION = 'BUG_REPORTING'
 
 CHROMIUM_EMAIL_ADDRESS = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'chromium_email_address', default='')
+EMAIL_CREDS_FILE = global_config.global_config.get_config_value(
+        'NOTIFICATIONS', 'gmail_api_credentials_test_failure', default=None)
 
 
 class Bug(object):
@@ -912,8 +914,9 @@ def send_email(bug, bug_template):
         to_set.add(bug_template.get('owner'))
     recipients = ', '.join(to_set)
     try:
-        gmail_lib.send_email(recipients, bug.title(), bug.summary(),
-                             retry=False)
+        gmail_lib.send_email(
+            recipients, bug.title(), bug.summary(), retry=False,
+            creds_path=site_utils.get_creds_abspath(EMAIL_CREDS_FILE))
     except Exception:
         autotest_stats.Counter(EMAIL_COUNT_KEY % 'fail').increment()
         raise
