@@ -37,6 +37,7 @@ import datetime
 from django.db.models import Count
 import common
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
@@ -915,6 +916,10 @@ def create_job(name, priority, control_file, control_type,
     if image is None:
         return rpc_utils.create_job_common(
                 **rpc_utils.get_create_job_common_args(locals()))
+
+    # Translate the image name, in case its a relative build name.
+    ds = dev_server.ImageServer.resolve(image)
+    image = ds.translate(image)
 
     # When image is supplied use a known parameterized test already in the
     # database to pass the OS image path from the front end, through the
