@@ -198,7 +198,8 @@ class RPCHelper(object):
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
         if not hosts:
             raise BoardNotAvailableError(
-                    'No hosts found for board:%s in pool:%s' %
+                    'No hosts found for board:%s in pool:%s. The test lab '
+                    'currently does not cover test for this board and pool.'%
                     (board, pool))
 
         if len(hosts) < minimum_duts:

@@ -1640,19 +1640,18 @@ def main():
             code = RETURN_CODES.INVALID_OPTIONS
         else:
             (code, output_dict) = main_without_exception_handling(options)
+    except diagnosis_utils.BoardNotAvailableError as e:
+        output_dict['return_message'] = 'Skipping testing: %s' % e.message
+        code = RETURN_CODES.BOARD_NOT_AVAILABLE
+        logging.info(output_dict['return_message'])
+    except utils.TestLabException as e:
+        output_dict['return_message'] = 'TestLabException: %s' % e
+        code = RETURN_CODES.INFRA_FAILURE
+        logging.exception(output_dict['return_message'])
     except Exception as e:
-        if isinstance(e, diagnosis_utils.BoardNotAvailableError):
-            error_msg = 'BoardNotAvailableError: %s' % e
-            code = RETURN_CODES.BOARD_NOT_AVAILABLE
-        elif isinstance(e, utils.TestLabException):
-            error_msg = 'TestLabException: %s' % e
-            code = RETURN_CODES.INFRA_FAILURE
-        else:
-            error_msg = 'Unhandled run_suite exception: %s' % e
-            code = RETURN_CODES.INFRA_FAILURE
-
-        output_dict['return_message'] = error_msg
-        logging.exception(error_msg)
+        output_dict['return_message'] = 'Unhandled run_suite exception: %s' % e
+        code = RETURN_CODES.INFRA_FAILURE
+        logging.exception(output_dict['return_message'])
 
     # Dump test outputs into json.
     output_dict['return_code'] = code
