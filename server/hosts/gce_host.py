@@ -83,3 +83,13 @@ class GceHost(abstract_ssh.AbstractSSHHost):
         @param ssh_key: the key to delete.
         """
         self._modify_ssh_keys([], ['%s:%s' % (username, ssh_key)])
+
+    def stop(self):
+        """Stops the DUT instance
+        """
+        self.gce.StopInstance(self._gce_instance)
+
+    def start(self):
+        """Starts the DUT instance
+        """
+        self.gce.StartInstance(self._gce_instance)
