@@ -212,6 +212,15 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url):
     try:
         test_container.attach_run(cmd_line)
         success = True
+    except Exception as e:
+        # If the test run inside container fails without generating any log,
+        # write a message to status.log to help troubleshooting.
+        debug_files = os.listdir(os.path.join(results, 'debug'))
+        if not debug_files:
+            job.record('FAIL', None, None,
+                       'Failed to run test inside the container: %s. Check '
+                       'logs in ssp_logs folder for more details.' % e)
+        raise
     finally:
         counter_key = '%s.%s' % (lxc.STATS_KEY,
                                  'success' if success else 'fail')
