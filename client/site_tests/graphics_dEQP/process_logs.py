@@ -131,7 +131,8 @@ def expectation_list_to_dict(tests):
 def save_expectation_dict(expectation_path, expectation_dict):
   # Clean up obsolete expectations.
   for file_name in glob.glob(expectation_path + '.*'):
-    os.remove(file_name)
+    if not '.hasty.' in file_name or '.hasty' in expectation_path:
+      os.remove(file_name)
   # Dump json for next iteration.
   with open(expectation_path + '.json', 'w') as f:
     json.dump(expectation_dict,
