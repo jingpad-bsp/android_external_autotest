@@ -923,12 +923,15 @@ def get_storage_error_msg(disk_name, reason):
     return msg
 
 
-def load_module(module_name):
+def load_module(module_name, params=None):
     # Checks if a module has already been loaded
     if module_is_loaded(module_name):
         return False
 
-    utils.system('/sbin/modprobe ' + module_name)
+    cmd = '/sbin/modprobe ' + module_name
+    if params:
+        cmd += ' ' + params
+    utils.system(cmd)
     return True
 
 
