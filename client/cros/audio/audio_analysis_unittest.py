@@ -8,6 +8,11 @@ from autotest_lib.client.cros.audio import audio_analysis
 from autotest_lib.client.cros.audio import audio_data
 
 class SpectralAnalysisTest(unittest.TestCase):
+    def setUp(self):
+        """Uses the same seed to generate noise for each test."""
+        numpy.random.seed(0)
+
+
     def testSpectralAnalysis(self):
         rate = 48000
         length_in_secs = 0.5
@@ -73,6 +78,9 @@ class NormalizeTest(unittest.TestCase):
 class AnomalyTest(unittest.TestCase):
     def setUp(self):
         """Creates a test signal of sine wave."""
+        # Use the same seed for each test case.
+        numpy.random.seed(0)
+
         self.block_size = 120
         self.rate = 48000
         self.freq = 440
