@@ -12,6 +12,7 @@ import struct
 import time
 import urllib2
 import uuid
+import wave
 
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
@@ -617,3 +618,37 @@ def parse_android_build(build_name):
     """
     branch, target, build_id = build_name.split('/')
     return branch, target, build_id
+
+
+def check_wav_file(filename, num_channels=None, sample_rate=None,
+                   sample_width=None):
+    """Checks a WAV file and returns its peak PCM value.
+
+    @param filename: Input WAV file to analyze.
+    @param num_channels: Number of channels to expect (None to not check).
+    @param sample_rate: Sample rate to expect (None to not check).
+    @param sample_width: Sample width to expect (None to not check).
+
+    @return The absolute maximum PCM value in the WAV file.
+
+    @raise ValueError: Failed to process the WAV file or validate an attribute.
+    """
+    chk_file = None
+    try:
+        chk_file = wave.open(filename, 'r')
+        if num_channels is not None and chk_file.getnchannels() != num_channels:
+            raise ValueError('Incorrect number of channels')
+        if sample_rate is not None and chk_file.getframerate() != sample_rate:
+            raise ValueError('Incorrect sample rate')
+        if sample_width is not None and chk_file.getsampwidth() != sample_width:
+            raise ValueError('Incorrect sample width')
+        num_frames = chk_file.getnframes()
+        frames = struct.unpack('%dh' % num_frames,
+                               chk_file.readframes(num_frames))
+    except wave.Error as e:
+        raise ValueError('Error processing WAV file: %s' % e)
+    finally:
+        if chk_file is not None:
+            chk_file.close()
+
+    return max(map(abs, frames))
