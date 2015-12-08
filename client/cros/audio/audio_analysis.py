@@ -22,6 +22,10 @@ class RMSTooSmallError(Exception):
     pass
 
 
+class EmptyDataError(Exception):
+    """Error when signal is empty."""
+
+
 def normalize_signal(signal, saturate_value):
     """Normalizes the signal with respect to the saturate value.
 
@@ -63,6 +67,9 @@ def spectral_analysis(signal, rate, min_peak_ratio=DEFAULT_MIN_PEAK_RATIO,
 
     """
     # Checks the signal is meaningful.
+    if len(signal) == 0:
+        raise EmptyDataError('Signal data is empty')
+
     signal_rms = numpy.linalg.norm(signal) / numpy.sqrt(len(signal))
     logging.debug('signal RMS = %s', signal_rms)
     if signal_rms < MEANINGFUL_RMS_THRESHOLD:
@@ -196,6 +203,9 @@ def anomaly_detection(signal, rate, freq, block_size,
     @returns: A list containing detected anomaly time in seconds.
 
     """
+    if len(signal) == 0:
+        raise EmptyDataError('Signal data is empty')
+
     golden_y = _generate_golden_pattern(rate, freq, block_size)
 
     results = []

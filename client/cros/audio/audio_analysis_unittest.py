@@ -66,6 +66,12 @@ class SpectralAnalysisTest(unittest.TestCase):
             results = audio_analysis.spectral_analysis(noise, rate)
 
 
+    def testEmptyData(self):
+        """Checks that sepectral analysis rejects empty data."""
+        with self.assertRaises(audio_analysis.EmptyDataError):
+            results = audio_analysis.spectral_analysis([], 100)
+
+
 class NormalizeTest(unittest.TestCase):
     def testNormalize(self):
         y = [1, 2, 3, 4, 5]
@@ -265,6 +271,13 @@ class AnomalyTest(unittest.TestCase):
         self.generate_skip_anomaly()
         self.add_noise()
         self.check_anomaly()
+
+
+    def testEmptyData(self):
+        """Checks that anomaly detection rejects empty data."""
+        self.y = []
+        with self.assertRaises(audio_analysis.EmptyDataError):
+            self.check_anomaly()
 
 
 if __name__ == '__main__':
