@@ -4,12 +4,14 @@
 """This is a client side WebGL aquarium test."""
 
 import logging
+import math
 import os
+import sampler
 import threading
 import time
 
-import sampler
 from autotest_lib.client.bin import test, utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
 from autotest_lib.client.cros import power_status, power_utils
@@ -122,6 +124,8 @@ class graphics_WebGLAquarium(test.test):
         if perf_log:
             # Get average FPS and rendering time, then close the tab.
             avg_fps = tab.EvaluateJavaScript('g_crosFpsCounter.getAvgFps();')
+            if math.isnan(float(avg_fps)):
+                raise error.TestFail('Could not get FPS count.')
             avg_render_time = tab.EvaluateJavaScript(
                 'g_crosFpsCounter.getAvgRenderTime();')
             self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
