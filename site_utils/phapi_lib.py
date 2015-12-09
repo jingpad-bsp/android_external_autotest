@@ -89,6 +89,9 @@ class ProjectHostingApiClient():
         if apiclient_build is None:
             raise ProjectHostingApiException('Cannot get apiclient library.')
 
+        if not oauth_credentials:
+            raise ProjectHostingApiException('No oauth_credentials is provided.')
+
         storage = oauth_client_fileio.Storage(oauth_credentials)
         credentials = storage.get()
         if credentials is None or credentials.invalid:

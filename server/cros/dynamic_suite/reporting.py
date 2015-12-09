@@ -417,11 +417,7 @@ class Reporter(object):
 
         @return: A path to the oauth2 credentials file.
         """
-        auth_creds = cls._oauth_credentials
-        #TODO: crbug.com/349505
-        if os.path.isabs(auth_creds):
-            return auth_creds
-        return os.path.join(common.autotest_dir, auth_creds)
+        return site_utils.get_creds_abspath(cls._oauth_credentials)
 
 
     def __init__(self):
@@ -430,7 +426,7 @@ class Reporter(object):
             return
         try:
             self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                self.get_creds_abspath(), self._project_name)
+                    self.get_creds_abspath(), self._project_name)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create project hosting api client: %s', e)
             self._phapi_client = None
