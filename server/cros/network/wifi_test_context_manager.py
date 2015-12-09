@@ -146,13 +146,18 @@ class WiFiTestContextManager(object):
         @param is_ibss True iff this is an IBSS endpoint.
 
         """
+        if not self.client.is_frequency_supported(
+                configuration_parameters.frequency):
+            raise error.TestNAError('DUT does not support frequency: %s' %
+                                    configuration_parameters.frequency)
         configuration_parameters.security_config.install_router_credentials(
                 self.router.host)
         if is_ibss:
             if multi_interface:
                 raise error.TestFail('IBSS mode does not support multiple '
                                      'interfaces.')
-
+            if not self.client.is_ibss_supported():
+                raise error.TestNAError('DUT does not support IBSS mode')
             self.router.ibss_configure(configuration_parameters)
         else:
             self.router.hostap_configure(configuration_parameters,

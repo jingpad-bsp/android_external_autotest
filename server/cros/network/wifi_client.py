@@ -147,6 +147,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     CONNECTED_STATES = ['ready', 'portal', 'online']
 
+
     @property
     def machine_id(self):
         """@return string unique to a particular board/cpu configuration."""
@@ -373,6 +374,11 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.powersave_switch(False)
         # All tests that use this object assume the interface starts enabled.
         self.set_device_enabled(self._wifi_if, True)
+        # Invoke the |capabilities| property defined in the parent |Linuxsystem|
+        # to workaround the lazy loading of the capabilities cache and supported
+        # frequency list. This is needed for tests that may need access to these
+        # when the DUT is unreachable (for ex: suspended).
+        self.capabilities
 
 
     def _assert_method_supported(self, method_name):
@@ -393,18 +399,28 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.host.run('ff_debug +wifi', ignore_status=True)
 
 
-    def vht_supported(self):
+    def is_vht_supported(self):
         """Returns True if VHT supported; False otherwise"""
-        return self.iw_runner.vht_supported()
+        return self.CAPABILITY_VHT in self.capabilities
 
 
-    def frequency_supported(self, frequency):
+    def is_5ghz_supported(self):
+        """Returns True if 5Ghz bands are supported; False otherwise."""
+        return self.CAPABILITY_5GHZ in self.capabilities
+
+
+    def is_ibss_supported(self):
+        """Returns True if IBSS mode is supported; False otherwise."""
+        return self.CAPABILITY_IBSS in self.capabilities
+
+
+    def is_frequency_supported(self, frequency):
         """Returns True if the given frequency is supported; False otherwise.
 
         @param frequency: int Wifi frequency to check if it is supported by
                           DUT.
         """
-        return self.iw_runner.frequency_supported(frequency)
+        return frequency in self.phys_for_frequency
 
 
     def _supports_method(self, method_name):
