@@ -456,8 +456,8 @@ class graphics_dEQP(test.test):
             test_count, test_passes, test_failures)
 
         if test_count == 0:
-            raise error.TestError('No test cases found for filter: %s!' %
-                                  self._filter)
+            raise error.TestWarn('No test cases found for filter: %s!' %
+                                 self._filter)
 
         if options['subset_to_run'] == 'NotPass':
             if test_passes:
