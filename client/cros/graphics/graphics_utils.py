@@ -11,7 +11,6 @@ import collections
 import glob
 import logging
 import os
-import pprint
 import re
 import sys
 import time
@@ -464,7 +463,7 @@ def _get_display_resolution_x():
                               'XAUTHORITY=/home/chronos/.Xauthority'
     cmd = '%s xrandr | egrep -o "current [0-9]* x [0-9]*"' % env_vars
     output = utils.system_output(cmd)
-    match = re.search('(\d+) x (\d+)', output)
+    match = re.search(r'(\d+) x (\d+)', output)
     if len(match.groups()) == 2:
         return int(match.group(1)), int(match.group(2))
     return None
@@ -547,7 +546,7 @@ def get_modetest_connectors():
 def get_modetest_crtcs():
     """
     Returns a list of CRTC data.
-    
+
     Sample:
         [CRTC(id=19, fb=50, pos=(0, 0), size=(1366, 768)),
          CRTC(id=22, fb=54, pos=(0, 0), size=(1920, 1080))]
@@ -565,7 +564,10 @@ def get_modetest_crtcs():
                 y = int(crtc_match.group(4))
                 width = int(crtc_match.group(5))
                 height = int(crtc_match.group(6))
-                crtcs.append(CRTC(crtc_id, fb, (x, y), (width, height)))
+                # CRTCs with fb=0 are disabled, but lets skip anything with
+                # trivial width/height just in case.
+                if not (fb == 0 or width == 0 or height == 0):
+                    crtcs.append(CRTC(crtc_id, fb, (x, y), (width, height)))
             elif line and not line[0].isspace():
                 return crtcs
         if re.match(_MODETEST_CRTCS_START_PATTERN, line) is not None:
