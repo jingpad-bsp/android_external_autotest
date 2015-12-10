@@ -115,6 +115,8 @@ class XmlRpcServer(threading.Thread):
                     # handle this kind of error.
                     if v[0] != errno.EINTR:
                         raise
+                except Exception as e:
+                    logging.error("Error in handle request: %s" % str(e))
         logging.info('XmlRpcServer exited.')
 
 
@@ -211,7 +213,7 @@ class AndroidXmlRpcDelegate(object):
         @return True if it worked; false, otherwise
 
         """
-        return utils.wifi_toggle_state(self.ad.droid, self.ad.ed, enabled)
+        return utils.wifi_toggle_state(self.ad, enabled)
 
 
     def sync_time_to(self, epoch_seconds):
