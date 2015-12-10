@@ -46,12 +46,12 @@ class platform_CompromisedStatefulPartition(test.test):
             raise error.TestFail('Did not get OOBE screen after '
                                  'rebooting the device with '
                                  'corrupted statefull partition')
+        autotest_client.run_test(client_autotest,
+                                 exit_without_logout=True)
+        time.sleep(self._WAIT_DELAY)
         for new_file in self.FILES_LIST:
             if not host.path_exists(new_file):
                 raise error.TestFail('%s is missing after rebooting '
                                      'the device with corrupted '
                                      'statefull partition' % new_file)
-
-        autotest_client.run_test(client_autotest,
-                                 exit_without_logout=True)
 
