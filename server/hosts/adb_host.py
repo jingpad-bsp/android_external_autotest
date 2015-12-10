@@ -56,7 +56,9 @@ FILE_PERMS_FLAGS = [stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR,
 # Default maximum number of seconds to wait for a device to be down.
 DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
 # Default maximum number of seconds to wait for a device to be up.
-DEFAULT_WAIT_UP_TIME_SECONDS = 60
+DEFAULT_WAIT_UP_TIME_SECONDS = 300
+# Maximum number of seconds to wait for a device to be up after it's wiped.
+WAIT_UP_AFTER_WIPE_TIME_SECONDS = 900
 
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
@@ -903,8 +905,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     'The device failed to reboot into bootloader mode.')
 
 
-    def ensure_adb_mode(self):
+    def ensure_adb_mode(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS):
         """Ensure the device is up and can be accessed by adb command.
+
+        @param timeout: Time limit in seconds before returning even if the host
+                        is not up.
 
         @raise: error.AutoservError if the device failed to reboot into
                 adb mode.
@@ -912,7 +917,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if self.is_up():
             return
         self.fastboot_run('reboot')
-        if not self.wait_up():
+        if not self.wait_up(timeout=timeout):
             raise error.AutoservError(
                     'The device failed to reboot into adb mode.')
 
@@ -1040,7 +1045,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return '%s/static/%s' % (devserver.url(), build_name), devserver
 
 
-    def install_android(self, build_url, build_local_path=None, wipe=False,
+    def install_android(self, build_url, build_local_path=None, wipe=True,
                         flash_all=False):
         """Install the Android DUT.
 
@@ -1080,7 +1085,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self.ensure_bootloader_mode()
 
             if wipe:
-                self.fastboot_run('-w Wiping')
+                self.fastboot_run('-w')
 
             # Get all *.img file in the build_local_path.
             list_file_cmd = 'ls -d %s' % os.path.join(build_local_path, '*.img')
@@ -1102,7 +1107,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         finally:
             if delete_build_folder:
                 self.teststation.run('rm -rf %s' % build_local_path)
-            self.ensure_adb_mode()
+            timeout = (WAIT_UP_AFTER_WIPE_TIME_SECONDS if wipe else
+                       DEFAULT_WAIT_UP_TIME_SECONDS)
+            self.ensure_adb_mode(timeout=timeout)
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)
 
@@ -1161,7 +1168,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                      build_url)
 
 
-    def machine_install(self, build_url=None, build_local_path=None, wipe=False,
+    def machine_install(self, build_url=None, build_local_path=None, wipe=True,
                         flash_all=False):
         """Install the DUT.
 
