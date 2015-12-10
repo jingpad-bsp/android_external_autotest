@@ -177,7 +177,7 @@ class TestThatUnittests(unittest.TestCase):
                          stderr=subprocess.STDOUT
                         ).AndReturn(mock_process_1)
         mock_process_1.stdout.readline().AndReturn(b'')
-        mock_process_1.wait()
+        mock_process_1.wait().AndReturn(0)
 
         os.makedirs(job2_results_dir)
         utils.write_keyval(job2_results_dir, experimental_keyval)
@@ -190,17 +190,19 @@ class TestThatUnittests(unittest.TestCase):
                          stderr=subprocess.STDOUT
                         ).AndReturn(mock_process_2)
         mock_process_2.stdout.readline().AndReturn(b'')
-        mock_process_2.wait()
+        mock_process_2.wait().AndReturn(0)
 
         # Test run_job.
         self.mox.ReplayAll()
-        job_res = test_that.run_job(job1, remote, autotest_path, results_dir,
+        code, job_res = test_that.run_job(job1, remote, autotest_path, results_dir,
                                     fast_mode, id_digits, 0, None, args)
         self.assertEqual(job_res, job1_results_dir)
-        job_res = test_that.run_job(job2, remote, autotest_path, results_dir,
+        self.assertEqual(code, 0)
+        code, job_res = test_that.run_job(job2, remote, autotest_path, results_dir,
                                     fast_mode, id_digits, 0, None, args)
 
         self.assertEqual(job_res, job2_results_dir)
+        self.assertEqual(code, 0)
         self.mox.UnsetStubs()
         self.mox.VerifyAll()
         self.mox.ResetAll()
@@ -261,7 +263,7 @@ class TestThatUnittests(unittest.TestCase):
                                                          control_file),
                              remote, autotest_path, results_dir, fast_mode,
                              id_digits, ssh_verbosity, ssh_options,
-                             args, False, False)
+                             args, False, False).AndReturn((0, '/fake/dir'))
         self.mox.ReplayAll()
         test_that.perform_local_run(afe, autotest_path, ['suite:'+suite_name],
                                     remote, fast_mode, build=build, board=board,

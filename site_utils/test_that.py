@@ -229,7 +229,8 @@ def run_job(job, host, autotest_path, results_directory, fast_mode,
     @param pretend: If True, will print out autoserv commands rather than
                     running them.
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
-    @returns: Absolute path of directory where results were stored.
+    @returns: a tuple, return code of the job and absolute path of directory
+              where results were stored.
     """
     with tempfile.NamedTemporaryFile() as temp_file:
         temp_file.write(job.control_file)
@@ -257,8 +258,8 @@ def run_job(job, host, autotest_path, results_directory, fast_mode,
                 no_console_prefix=True,
                 use_packaging=False)
 
-        _run_autoserv(command, pretend)
-        return results_directory
+        code = _run_autoserv(command, pretend)
+        return code, results_directory
 
 
 def setup_local_afe():
@@ -438,6 +439,8 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
     @param ssh_options: Additional ssh options to be passed to autoserv_utils
     @param autoserv_verbose: If true, pass the --verbose flag to autoserv.
     @param iterations: int number of times to schedule tests.
+
+    @returns: A list of return codes each job that has run.
     """
     # Create host in afe, add board and build labels.
     cros_version_label = provision.cros_version_to_label(build)
@@ -493,10 +496,13 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
 
     last_job_id = afe.get_jobs()[-1].id
     job_id_digits = len(str(last_job_id))
+    codes = []
     for job in afe.get_jobs():
-        run_job(job, remote, autotest_path, results_directory, fast_mode,
+        code, _ = run_job(job, remote, autotest_path, results_directory, fast_mode,
                 job_id_digits, ssh_verbosity, ssh_options, args, pretend,
                 autoserv_verbose)
+        codes.append(code)
+    return codes
 
 
 def validate_arguments(arguments):
@@ -814,7 +820,7 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
     signal.signal(signal.SIGTERM, sigint_handler)
 
     afe = setup_local_afe()
-    perform_local_run(afe, autotest_path, arguments.tests,
+    codes = perform_local_run(afe, autotest_path, arguments.tests,
                       arguments.remote, arguments.fast_mode,
                       arguments.build, arguments.board,
                       args=arguments.args,
@@ -849,6 +855,10 @@ def _perform_run_from_autotest_root(arguments, autotest_path, argv):
     os.symlink(link_target, _LATEST_RESULTS_DIRECTORY)
     logging.info('Finished running tests. Results can be found in %s or %s',
                  results_directory, _LATEST_RESULTS_DIRECTORY)
+    if any(codes):
+        logging.error("Autoserv encountered unexpected errors "
+                      "when executing jobs.")
+        final_result = final_result or 1
     return final_result
 
 
