@@ -369,6 +369,7 @@ class LineStat(DevStat):
 
     def __init__(self, path=None):
         super(LineStat, self).__init__(self.linepower_fields, path)
+        logging.debug("line path: %s", path)
         self.update()
 
 
@@ -386,7 +387,8 @@ class SysStat(object):
     battery:   A list of BatteryStat objects.
     linepower: A list of LineStat objects.
     """
-    psu_types = ['Mains', 'USB', 'USB_ACA', 'USB_CDP', 'USB_DCP', 'Unknown']
+    psu_types = ['Mains', 'USB', 'USB_ACA', 'USB_C', 'USB_CDP', 'USB_DCP',
+                 'USB_PD', 'USB_PD_DRP', 'Unknown']
 
     def __init__(self):
         power_supply_path = '/sys/class/power_supply/*'
