@@ -31,12 +31,18 @@ class power_Consumption(test.test):
     version = 2
 
 
-    def initialize(self):
+    def initialize(self, ac_ok=False):
+        """Initialize test.
+
+        Args:
+            ac_ok: boolean to allow running on AC
+        """
         # Objects that need to be taken care of in cleanup() are initialized
         # here to None. Otherwise we run the risk of AttributeError raised in
         # cleanup() masking a real error that caused the test to fail during
         # initialize() before those variables were assigned.
         self._backlight = None
+        self._tmp_keyvals = {}
 
         self._services = service_stopper.ServiceStopper(
             service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
@@ -46,9 +52,12 @@ class power_Consumption(test.test):
         # Time to exclude from calculation after firing a task [seconds]
         self._stabilization_seconds = 5
         self._power_status = power_status.get_status()
-        # Verify that we are running on battery and the battery is
-        # sufficiently charged
-        self._power_status.assert_battery_state(30)
+        self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
+
+        if not ac_ok:
+            # Verify that we are running on battery and the battery is
+            # sufficiently charged
+            self._power_status.assert_battery_state(30)
 
         # Find the battery capacity to report expected battery life in hours
         batinfo = self._power_status.battery[0]
@@ -489,6 +498,7 @@ class power_Consumption(test.test):
 
         # Wrap up
         keyvals = self._plog.calc()
+        keyvals.update(self._tmp_keyvals)
 
         # Calculate expected battery life time with ChromeVer power draw
         idle_name = 'ChromeVer_system_pwr'
