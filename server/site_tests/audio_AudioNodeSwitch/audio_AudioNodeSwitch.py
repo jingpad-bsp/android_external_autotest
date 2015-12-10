@@ -4,11 +4,13 @@
 
 """This is a server side audio nodes s test using the Chameleon board."""
 
+import os
 import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
+from autotest_lib.client.cros.chameleon import edid as edid_lib
 from autotest_lib.server.cros.audio import audio_test
 
 
@@ -21,6 +23,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
 
     """
     version = 1
+    _APPLY_EDID_DELAY = 5
     _PLUG_DELAY = 5
     _VOLUMES = {'INTERNAL_SPEAKER': 100,
                 'HEADPHONE': 80,
@@ -85,6 +88,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
 
         chameleon_board.reset()
         self.audio_facade = factory.create_audio_facade()
+        self.display_facade = factory.create_display_facade()
 
         self.check_default_nodes()
 
@@ -92,9 +96,13 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER'])
 
         if hdmi_node:
-            finder = chameleon_port_finder.ChameleonAudioInputFinder(
-                     chameleon_board)
+            edid_path = os.path.join(self.bindir,
+                                     'test_data/edids/HDMI_DELL_U2410.txt')
+            finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                chameleon_board, self.display_facade)
             hdmi_port = finder.find_port('HDMI')
+            hdmi_port.apply_edid(edid_lib.Edid.from_file(edid_path))
+            time.sleep(self._APPLY_EDID_DELAY)
             hdmi_port.set_plug(True)
             time.sleep(self._PLUG_DELAY)
 
