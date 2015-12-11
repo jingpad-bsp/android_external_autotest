@@ -363,6 +363,18 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "power_Consumption",
+    "master_name": "ChromeOSPower"
+  },
+  {
+    "autotest_name": "power_LoadTest.WIFI_1hr",
+    "master_name": "ChromeOSPower"
+  },
+  {
+    "autotest_name": "power_LoadTest.WIRED_1hr",
+    "master_name": "ChromeOSPower"
+  },
+  {
     "autotest_name": "power_Resume",
     "master_name": "ChromeOSPower"
   },
