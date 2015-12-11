@@ -90,6 +90,11 @@ def get_xmlrpc_proxy(host):
         xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND
         log_path = ANDROID_XMLRPC_LOG_PATH
         command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
+        # If there is more than one device attached to the host, use serial to
+        # identify the DUT.
+        if host._adb_serial:
+            xmlrpc_server_command = (
+                    '%s -s %s' % (xmlrpc_server_command, host._adb_serial))
         # For android, start the XML RPC server on the accompanying host.
         host = host.teststation
         install_android_xmlrpc_server(host)
