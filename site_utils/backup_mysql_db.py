@@ -62,13 +62,19 @@ _DAILY = 'daily'
 _WEEKLY = 'weekly'
 _MONTHLY = 'monthly'
 
+# Back up server db
+_SERVER_DB = 'server_db'
+
 # Contrary to a conventional mysql dump which takes O(hours) on large databases,
 # a host dump is the cheapest form of backup possible. We dump the output of a
 # of a mysql command showing all hosts and their pool labels to a text file that
 # is backed up to google storage.
 _ONLY_HOSTS = 'only_hosts'
 _ONLY_SHARDS = 'only_shards'
-_SCHEDULER_TYPES = [_ONLY_HOSTS, _ONLY_SHARDS, _DAILY, _WEEKLY, _MONTHLY]
+_SCHEDULER_TYPES = [_SERVER_DB, _ONLY_HOSTS, _ONLY_SHARDS, _DAILY, _WEEKLY, _MONTHLY]
+
+class BackupError(Exception):
+  """Raised for error occurred during backup."""
 
 
 class MySqlArchiver(object):
@@ -79,13 +85,35 @@ class MySqlArchiver(object):
                will be uploaded to.
       number_to_keep:  The number of dumps we should store.
     """
+    _AUTOTEST_DB = "chromeos_autotest_db"
+    _SERVER_DB = "chromeos_lab_servers"
 
 
     def __init__(self, scheduled_type, number_to_keep, gs_bucket):
+        # For conventional scheduled type, we back up all databases.
+        # self._db is only used when scheduled_type is not
+        # conventional scheduled type.
+        self._db = self._get_db_name(scheduled_type)
         self._gs_dir = '/'.join([gs_bucket, scheduled_type])
         self._number_to_keep = number_to_keep
         self._type = scheduled_type
 
+
+    @classmethod
+    def _get_db_name(cls, scheduled_type):
+        """Get the db name to backup.
+
+        @param scheduled_type: one of _SCHEDULER_TYPES.
+
+        @returns: The name of the db to backup.
+                  Or None for backup all dbs.
+        """
+        if scheduled_type == _SERVER_DB:
+            return cls._SERVER_DB
+        elif scheduled_type in [_ONLY_HOSTS, _ONLY_SHARDS]:
+            return cls._AUTOTEST_DB
+        else:
+            return None
 
     @staticmethod
     def _get_user_pass():
@@ -106,10 +134,12 @@ class MySqlArchiver(object):
         for entry in IGNORE_TABLES:
             extra_dump_args += '--ignore-table=%s ' % entry
 
-        utils.system('set -o pipefail; mysqldump --all-databases --user=%s '
-                     '--password=%s %s | gzip - > %s' % (user, password,
-                                                         extra_dump_args,
-                                                         filename))
+        if not self._db:
+            extra_dump_args += "--all-databases"
+        db_name = self._db or ''
+        utils.system('set -o pipefail; mysqldump --user=%s '
+                     '--password=%s %s %s| gzip - > %s' % (
+                     user, password, extra_dump_args, db_name, filename))
         return filename
 
 
@@ -120,12 +150,14 @@ class MySqlArchiver(object):
 
         @return: The path to a tempfile containing the response of the query.
         """
-        parameters = {'query': query}
+        if not self._db:
+            raise BackupError("_create_dump_from_query requires a specific db.")
+        parameters = {'db': self._db, 'query': query}
         parameters['user'], parameters['password'] = self._get_user_pass()
         _, parameters['filename'] = tempfile.mkstemp('autotest_db_dump')
         utils.system(
                 'set -o pipefail; mysql -u %(user)s -p%(password)s '
-                'chromeos_autotest_db -e "%(query)s" > %(filename)s' %
+                '%(db)s -e "%(query)s" > %(filename)s' %
                 parameters)
         return parameters['filename']
 
