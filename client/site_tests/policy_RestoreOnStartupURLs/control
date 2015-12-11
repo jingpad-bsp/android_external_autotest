@@ -4,8 +4,8 @@
 
 AUTHOR = "scunningham"
 NAME = "policy_RestoreOnStartupURLs"
-ATTRIBUTES = "suite:regression"
-SUITE = "regression"
+ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
@@ -18,12 +18,9 @@ This test verifies the effect of the RestoreOnStartupURLs user policy on
 Chrome OS client behavior and appearance. It excercises a range of valid
 policy values across three test cases.
 
-A test case shall pass when a single browser tab is opened for each URL
+A test case shall pass when a single browser tab is opened for only the URLs
 specified in the policy value, and in the order specified (left to right).
-
-A test case fails if a tab is not opened for a specified URL, or if the tab
-order is not as specified in the policy, or if a tab is opened that was not
-specified in the policy.
+A test case shall fail if the above behavior is not enforced.
 
 Default useage example:
 $ test_that <IPAddress> policy_RestoreOnStartupURLs
@@ -33,10 +30,10 @@ the default policy values defined by each test case.
 
 Arguments useage example:
 $ test_that <IPAddress> policy_RestoreOnStartupURLs --args="env=prod
-mode=single case=1URL value=http://www.irs.com"
+mode=single case=SingleUrl_1Tab value=http://www.irs.com"
 
-Runs a single test case (e.g., 1URL) against the production environment, with
-an user-specified alternate policy value of http://www.irs.com.
+Runs a single test case (e.g., SingleUrl_1Tab) against the production
+environment, with an user-specified policy value of http://www.irs.com.
 
 See accompanying README file for additional usage instructions and examples.
 

@@ -4,8 +4,8 @@
 
 AUTHOR = "scunningham"
 NAME = "policy_EditBookmarksEnabled"
-ATTRIBUTES = "suite:regression"
-SUITE = "regression"
+ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
@@ -16,7 +16,7 @@ Verify effects of EditBookmarksEnabled policy on client behavior & appearance.
 
 This test verifies the effect of the EditBookmarksEnabled user policy on
 Chrome OS client behavior and appearance. It exercises all valid policy
-values with three test cases: True, False, and NotSet.
+values across three test cases: True, False, and NotSet.
 
 A test case shall pass if the Manage Bookmarks page allows (or forbids) the
 user to add a new bookmark when the policy is true/notset (or false). A test
