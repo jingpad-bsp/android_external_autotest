@@ -42,6 +42,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.hosts import cros_host
+from autotest_lib.server.hosts import factory
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -112,6 +113,18 @@ run_suite_output = []
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
     pass
+
+
+def powerwash_dut(hostname):
+    """Powerwash the dut with the given hostname.
+
+    @param hostname: hostname of the dut.
+    """
+    host = factory.create_host(hostname)
+    host.run('echo "fast safe" > '
+             '/mnt/stateful_partition/factory_install_reset')
+    host.run('reboot')
+    host.close()
 
 
 def get_default_build(devserver=None, board='stumpy'):
@@ -218,6 +231,18 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         for label in [l for l in host.labels
                       if l.startswith(provision.CROS_VERSION_PREFIX)]:
             afe.run('host_remove_labels', id=host.id, labels=[label])
+
+        if use_shard and not create_and_return:
+            # Let's verify the repair flow and powerwash the duts.  We can
+            # assume they're all cros hosts (valid assumption?) so powerwash
+            # will work.
+            try:
+                powerwash_dut(host.hostname)
+            except Exception as e:
+                raise TestPushException('Failed to powerwash dut %s. Make '
+                                        'sure the dut is working first. '
+                                        'Error: %s' % (host.hostname, e))
+            afe.reverify_hosts(hostnames=[host.hostname])
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
     cmd = [os.path.join(current_dir, RUN_SUITE_COMMAND),
