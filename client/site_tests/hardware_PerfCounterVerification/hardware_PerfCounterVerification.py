@@ -98,20 +98,17 @@ class hardware_PerfCounterVerification(test.test):
                 rvar = prefix+'misses_per_milion_cycles'
                 results[rvar] = numpy.max(misses_per_milion_cycles)
 
+        # Output the standard Autotest way:
         self.write_perf_keyval(results)
-
-        cpu_arch = utils.get_cpu_arch()
-        if cpu_arch == 'arm':
-            # ARM is observed to have a somewhat weaker correlation in cycles.
-            cycles_r_squared_expectation = 0.996
-        else:
-            cycles_r_squared_expectation = 0.999
+        # ... And the CrOS-specific way:
+        for k, v in results.iteritems():
+          self.output_perf_value(k, v)
 
         if ('cycles' in self.events and not is_tlb_benchmark and
-            results['cycles_r_squared'] < cycles_r_squared_expectation):
+            results['cycles_r_squared'] < 0.996):
             raise error.TestFail('Poor correlation for cycles ~ loops')
         if ('instructions' in self.events and
-            results['instructions_r_squared'] < 0.999999):
+            results['instructions_r_squared'] < 0.999):
             raise error.TestFail('Poor correlation for instructions ~ loops')
         if ('iTLB-misses' in self.events and
             results['iTLB-misses_r_squared'] < 0.999):
