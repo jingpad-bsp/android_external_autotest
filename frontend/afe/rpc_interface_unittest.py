@@ -8,7 +8,6 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
 from autotest_lib.frontend.afe import model_logic, model_attributes
-from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
@@ -16,6 +15,7 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.server import frontend
+from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
@@ -467,7 +467,7 @@ class RpcInterfaceTest(unittest.TestCase,
             self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
 
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
-                    server=rpc_utils.get_global_afe_hostname(), user=None)
+                    server=server_utils.get_global_afe_hostname(), user=None)
             mock_afe2.run.expect_call('modify_host', id=host.id,
                     locked=True, lock_reason='_modify_host_helper lock')
 

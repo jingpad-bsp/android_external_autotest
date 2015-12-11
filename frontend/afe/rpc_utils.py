@@ -1284,12 +1284,6 @@ def get_label(name):
     return label
 
 
-def get_global_afe_hostname():
-    """Read the hostname of the global AFE from the global configuration."""
-    return global_config.global_config.get_config_value(
-            'SERVER', 'global_afe_hostname')
-
-
 def route_rpc_to_master(func):
     """Route RPC to master AFE.
 
@@ -1343,7 +1337,7 @@ def route_rpc_to_master(func):
 
         if server_utils.is_shard():
             afe = frontend_wrappers.RetryingAFE(
-                    server=get_global_afe_hostname(),
+                    server=server_utils.get_global_afe_hostname(),
                     user=thread_local.get_user())
             return afe.run(func.func_name, **kwargs)
         return func(**kwargs)

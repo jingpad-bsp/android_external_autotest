@@ -479,6 +479,12 @@ def is_shard():
     return bool(hostname)
 
 
+def get_global_afe_hostname():
+    """Read the hostname of the global AFE from the global configuration."""
+    return global_config.global_config.get_config_value(
+            'SERVER', 'global_afe_hostname')
+
+
 def is_restricted_user(username):
     """Determines if a user is in a restricted group.
 
