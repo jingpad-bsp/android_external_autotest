@@ -99,10 +99,10 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         """Clean up after the test is completed
 
         Perform additional cleanups after the test, the important thing is
-        to restore default antennas bitmap.
+        to re-enable all antennas.
         """
         self.context.router.deconfig()
-        self.context.router.set_default_antenna_bitmap()
+        self.context.router.enable_all_antennas()
         super(network_WiFi_VerifyRouter, self).cleanup()
 
 

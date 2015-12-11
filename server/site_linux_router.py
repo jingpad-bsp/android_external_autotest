@@ -207,8 +207,7 @@ class LinuxRouter(site_linux_system.LinuxSystem):
         # Place us in the US by default
         self.iw_runner.set_regulatory_domain('US')
 
-        # Reset all antennas to be active
-        self.set_default_antenna_bitmap()
+        self.enable_all_antennas()
 
         # Some tests want this functionality, but otherwise, it's a distraction.
         if self._enable_avahi:

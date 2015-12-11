@@ -697,8 +697,8 @@ class LinuxSystem(object):
             self.iw_runner.set_antenna_bitmap(phy.name, tx_bitmap, rx_bitmap)
 
 
-    def set_default_antenna_bitmap(self):
-        """Setup default antenna bitmaps for all the phys."""
+    def enable_all_antennas(self):
+        """Enable all antennas on all phys."""
         for phy in self.phy_list:
             if not phy.supports_setting_antenna_mask:
                 continue
