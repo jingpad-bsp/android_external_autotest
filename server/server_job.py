@@ -508,6 +508,18 @@ class base_server_job(base_job.base_job):
 
     def _make_parallel_wrapper(self, function, machines, log):
         """Wrap function as appropriate for calling by parallel_simple."""
+        # machines could be a list of dictionaries, e.g.,
+        # [{'host_attributes': {}, 'hostname': '100.96.51.226'}]
+        # The dictionary is generated in base_server_job.__init__, refer to
+        # variable machine_dict_list, then passed in with namespace, see method
+        # base_server_job._make_namespace.
+        # To compare the machinese to self.machines, which is a list of machine
+        # hostname, we need to convert machines back to a list of hostnames.
+        # Note that the order of hostnames doesn't matter, as is_forking will be
+        # True if there are more than one machine.
+        if (machines and isinstance(machines, list)
+            and isinstance(machines[0], dict)):
+            machines = [m['hostname'] for m in machines]
         is_forking = not (len(machines) == 1 and self.machines == machines)
         if self._parse_job and is_forking and log:
             def wrapper(machine):
