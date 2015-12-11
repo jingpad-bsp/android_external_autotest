@@ -276,7 +276,7 @@ class MachineKillerBug(Bug):
 class PoolHealthBug(Bug):
     """Report information about a critical pool of DUTs in the lab."""
 
-    _POOL_HEALTH_LABELS = ['recoverduts', 'Hardware-Lab', 'Pri-1']
+    _POOL_HEALTH_LABELS = ['recoverduts', 'Build-HardwareLab', 'Pri-1']
     _CC_ADDRESS = global_config.global_config.get_config_value(
                             'BUG_REPORTING', 'pool_health_cc',
                             type=list, default=[])
@@ -329,7 +329,7 @@ class PoolHealthBug(Bug):
 class SuiteSchedulerBug(Bug):
     """Bug filed for suite scheduler."""
 
-    _SUITE_SCHEDULER_LABELS = ['Hardware-Lab', 'Pri-1', 'suite_scheduler']
+    _SUITE_SCHEDULER_LABELS = ['Build-HardwareLab', 'Pri-1', 'suite_scheduler']
 
     def __init__(self, suite, build, board, control_file_exception):
         self._suite = suite
@@ -461,7 +461,7 @@ class Reporter(object):
                  requires investigation from the lab team.
         """
         lab_sheriff = site_utils.get_sheriffs(lab_only=True)
-        return {'labels': ['Hardware-Lab'],
+        return {'labels': ['Build-HardwareLab'],
                 'owner': lab_sheriff[0] if lab_sheriff else '',}
 
 
