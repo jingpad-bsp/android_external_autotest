@@ -64,6 +64,7 @@ class display_ResolutionList(test.test):
                                     test_name)
 
                 logging.info('Use EDID: %s', test_name)
+
                 with chameleon_port.use_edid_file(edid_path):
                     index = utils.wait_for_value_changed(
                             display_facade.get_first_external_display_index,
@@ -71,13 +72,18 @@ class display_ResolutionList(test.test):
                     if not index:
                         raise error.TestFail("No external display is found.")
 
-                    settings_resolution_list = (
-                            display_facade.get_available_resolutions(index))
-                    logging.info('External display %d: %d resolutions found.',
-                                index, len(settings_resolution_list))
-
+                    # In mirror mode only display index is '0', as external
+                    # is treated same as internal(single resolution applies)
+                    if test_mirrored:
+                        index = 0
                     logging.info('Set mirrored: %s', test_mirrored)
                     display_facade.set_mirrored(test_mirrored)
+                    settings_resolution_list = (
+                            display_facade.get_available_resolutions(index))
+                    if len(settings_resolution_list) == 0:
+                        raise error.TestFail("No resolution list is found.")
+                    logging.info('External display %d: %d resolutions found.',
+                                index, len(settings_resolution_list))
 
                     for r in settings_resolution_list:
                         # FIXME: send a keystroke to keep display on.
