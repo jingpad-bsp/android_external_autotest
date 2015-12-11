@@ -2,6 +2,7 @@ import logging
 import os
 
 from autotest_lib.server import crashcollect
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 

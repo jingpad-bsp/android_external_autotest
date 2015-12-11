@@ -3,6 +3,7 @@ import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 
