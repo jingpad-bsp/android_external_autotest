@@ -31,18 +31,30 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def _antenna_test(self, bitmap, channel):
-        """Test to verify each antenna is working on given band.
+        """Test that we can connect on |channel|, with given antenna |bitmap|.
 
-        Setup AP in each radio in given band, and run connection test with one
-        antenna active at a time, to verify each antenna in each radio is
-        working correctly for given band. Antenna can only be configured when
-        the wireless interface is down.
+        Sets up two radios on |channel|, configures both radios with the
+        given antenna |bitmap|, and then verifies that a client can connect
+        to the AP on each radio.
+
+        Why do we run the two radios concurrently, instead of iterating over
+        them? That's simply because our lower-layer code doesn't provide an
+        interface for specifiying which PHY to run an AP on.
+
+        To work around the API limitaiton, we bring up multiple APs, and let
+        the lower-layer code spread them across radios. For stumpy/panther,
+        this works in an obvious way. That is, each call to this method
+        exercises phy0 and phy1.
+
+        For whirlwind, we still cover all radios, but in a less obvious way.
+        Calls with a 2.4 GHz channel exercise phy0 and phy2, while calls
+        with a 5 GHz channel exercise phy1 and phy2.
 
         @param bitmap: int bitmask controlling which antennas to enable.
         @param channel: int Wifi channel to conduct test on
 
         """
-        # Connect to AP with only one antenna active at a time
+        # Antenna can only be configured when the wireless interface is down.
         self.context.router.deconfig()
         # Set the bitmasks to both antennas on before turning one off.
         self.context.router.set_antenna_bitmap(3, 3)
@@ -51,13 +63,15 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
         time.sleep(5)
         if bitmap != 3:
             self.context.router.set_antenna_bitmap(bitmap, bitmap)
-        # Setup two APs in the same band
+        # Setup two APs on |channel|. configure() will spread these across
+        # radios.
         n_mode = hostap_config.HostapConfig.MODE_11N_MIXED
         ap_config = hostap_config.HostapConfig(channel=channel, mode=n_mode)
         self.context.configure(ap_config)
         self.context.configure(ap_config, multi_interface=True)
         failures = []
-        # Verify connectivity to both APs
+        # Verify connectivity to both APs. As the APs are spread
+        # across radios, this exercises multiple radios.
         for instance in range(2):
             context_message = ('bitmap=%d, ap_instance=%d, channel=%d' %
                                (bitmap, instance, channel))
@@ -93,13 +107,15 @@ class network_WiFi_VerifyRouter(wifi_cell_test_base.WiFiCellTestBase):
 
 
     def run_once(self):
-        """Set up two APs connect to both and then exit."""
+        """Verify that all radios on this router are functional."""
         self.context.router.require_capabilities(
                 [site_linux_system.LinuxSystem.CAPABILITY_MULTI_AP_SAME_BAND])
 
         all_failures = []
         # Run antenna test for 2GHz band and 5GHz band
         for channel in (6, 149):
+            # First connect with both antennas enabled. Then connect with just
+            # one antenna enabled at a time.
             for bitmap in (3, 1, 2):
                 failures = set()
                 for attempt in range(self.MAX_ASSOCIATION_RETRIES):
