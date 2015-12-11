@@ -678,8 +678,10 @@ class base_server_job(base_job.base_job):
                 try:
                     logging.exception(
                             'Exception escaped control file, job aborting:')
+                    reason = re.sub(base_job.status_log_entry.BAD_CHAR_REGEX,
+                                    ' ', str(e))
                     self.record('INFO', None, None, str(e),
-                                {'job_abort_reason': str(e)})
+                                {'job_abort_reason': reason})
                 except:
                     pass # don't let logging exceptions here interfere
                 raise
