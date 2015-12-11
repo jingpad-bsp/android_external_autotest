@@ -298,13 +298,13 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
             audio_test_utils.check_recorded_frequency(
                     golden_file, playback_recorder)
         except error.TestFail, e:
-            error_messages += e
+            error_messages += str(e)
 
         try:
             audio_test_utils.check_recorded_frequency(
                     golden_file, record_recorder)
         except error.TestFail, e:
-            error_messages += e
+            error_messages += str(e)
 
         if error_messages:
             raise error.TestFail(error_messages)
