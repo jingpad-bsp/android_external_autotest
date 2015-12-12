@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 AUTHOR = "Mussa Kiroga"
-NAME = "video_GlitchDetection_chameleon_mp4_720p"
+NAME = "video_GlitchDetection_chameleon_h264_720p"
 PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
 CRITERIA = """
 
 """
-# ATTRIBUTES = "suite:chameleon_hdmi"
-# SUITE = "chameleon_hdmi"
+ATTRIBUTES = "suite:chameleon_hdmi"
+SUITE = "chameleon_hdmi"
 TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
@@ -31,10 +31,9 @@ results.
 host = next(iter(job.hosts))
 
 job.run_test('video_GlitchDetection',
-              channel='dev',
-              video_name='bigbuck',
-              video_format='mp4',
-              video_def='720p',
-              use_chameleon=True,
+              source_path=('https://storage.googleapis.com/'
+              'chromiumos-test-assets-public/Shaka-Dash/720.mp4'),
+              codec='h264',
+              resolution='720p',
               host=host,
               args=args)
