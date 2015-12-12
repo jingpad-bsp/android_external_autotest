@@ -13,7 +13,7 @@ from collections import namedtuple
 # Use 'sudo pip install enum34' to install.
 from enum import Enum
 
-Test = namedtuple('Test', 'filter, suite, shards, hasty, notpass')
+Test = namedtuple('Test', 'filter, suite, shards, time, hasty, notpass')
 
 ATTRIBUTES_BVT_CQ = (
     'suite:graphics_per-day, suite:graphics_system, suite:bvt-cq')
@@ -31,29 +31,29 @@ class Suite(Enum):
     bvtpb = 4
 
 tests = [
-    Test('dEQP-EGL.functional',    Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-EGL.info',          Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-EGL.performance',   Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-EGL.stress',        Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-filter_args',       Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.accuracy',    Suite.bvtpb, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.capability',  Suite.bvtpb, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.functional',  Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.functional',  Suite.daily, shards=1,  hasty=True,  notpass=False),
-    Test('dEQP-GLES2.functional',  Suite.bvtpb, shards=10, hasty=True,  notpass=False),
-    Test('dEQP-GLES2.info',        Suite.bvtpb, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.performance', Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES3.accuracy',    Suite.bvtpb, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES3.functional',  Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES3.functional',  Suite.daily, shards=1,  hasty=True,  notpass=False),
-    Test('dEQP-GLES3.functional',  Suite.daily, shards=10, hasty=True,  notpass=False),
-    Test('dEQP-GLES3.info',        Suite.bvtpb, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES3.performance', Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES3.stress',      Suite.daily, shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES31.functional', Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES31.info',       Suite.none,  shards=1,  hasty=False, notpass=True),
-    Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, notpass=True),
+    Test('dEQP-EGL.functional',    Suite.none,  shards=1,  hasty=False, notpass=True, time='LENGTHY'),
+    Test('dEQP-EGL.info',          Suite.none,  shards=1,  hasty=False, notpass=True, time='SHORT'),
+    Test('dEQP-EGL.performance',   Suite.none,  shards=1,  hasty=False, notpass=True, time='SHORT'),
+    Test('dEQP-EGL.stress',        Suite.none,  shards=1,  hasty=False, notpass=True, time='LONG'),
+    Test('dEQP-filter_args',       Suite.none,  shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES2.accuracy',    Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES2.capability',  Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES2.functional',  Suite.daily, shards=1,  hasty=False, notpass=True, time='LENGTHY'),
+    Test('dEQP-GLES2.functional',  Suite.daily, shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-GLES2.functional',  Suite.bvtpb, shards=10, hasty=True,  notpass=False, time='FAST'),
+    Test('dEQP-GLES2.info',        Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES2.performance', Suite.daily, shards=1,  hasty=False, notpass=True, time='LONG'),
+    Test('dEQP-GLES2.stress',      Suite.daily, shards=1,  hasty=False, notpass=True, time='LONG'),
+    Test('dEQP-GLES3.accuracy',    Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES3.functional',  Suite.daily, shards=1,  hasty=False, notpass=True, time='LENGTHY'),
+    Test('dEQP-GLES3.functional',  Suite.daily, shards=1,  hasty=True,  notpass=False, time='LONG'),
+    Test('dEQP-GLES3.functional',  Suite.daily, shards=10, hasty=True,  notpass=False, time='FAST'),
+    Test('dEQP-GLES3.info',        Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES3.performance', Suite.daily, shards=1,  hasty=False, notpass=True, time='LONG'),
+    Test('dEQP-GLES3.stress',      Suite.daily, shards=1,  hasty=False, notpass=True, time='LONG'),
+    Test('dEQP-GLES31.functional', Suite.none,  shards=1,  hasty=False, notpass=True, time='LENGTHY'),
+    Test('dEQP-GLES31.info',       Suite.none,  shards=1,  hasty=False, notpass=True, time='FAST'),
+    Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, notpass=True, time='LONG'),
 ]
 
 CONTROLFILE_TEMPLATE = (
@@ -71,8 +71,7 @@ CRITERIA = 'All of the individual tests must pass.'
 ATTRIBUTES = '{1}'
 SUITE = '{2}'
 TIME = '{3}'
-DEPENDENCIES = '{4}'
-TEST_CATEGORY = 'Functional'
+{4}TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
 DOC = \"\"\"
@@ -91,17 +90,11 @@ job.run_test('graphics_dEQP', opts = args + ['filter={5}',
 
 
 def get_controlfilename(test, shard=0):
-    name = get_name(test)
-    filename = 'control.%s' % name
-    if test.hasty:
-        filename = 'control.%s.hasty' % name
-    if test.shards > 1:
-        filename = 'control.%s.hasty.%d' % (name, shard)
-    return filename
+    return 'control.%s' % get_name(test, shard)
 
 def get_dependencies(test):
     if test.notpass:
-        return 'cleanup-reboot'
+        return "DEPENDENCIES = 'cleanup-reboot'\n"
     return ''
 
 def get_suite(test):
@@ -123,18 +116,20 @@ def get_attributes(test):
     return ''
 
 def get_time(test):
-    if test.hasty:
-        return 'SHORT'
-    return 'LENGTHY'
+    return test.time
 
-def get_name(test):
+def get_name(test, shard):
     name = test.filter.replace('dEQP-', '', 1).lower()
+    if test.hasty:
+        name = '%s.hasty' % name
+    if test.shards > 1:
+        name = '%s.%d' % (name, shard)
     if test.notpass:
         name = name + '.NotPass'
     return name
 
-def get_testname(test):
-    return 'graphics_dEQP.%s' % get_name(test)
+def get_testname(test, shard=0):
+    return 'graphics_dEQP.%s' % get_name(test, shard)
 
 def write_controlfile(filename, content):
     print 'Writing %s.' % filename
@@ -144,12 +139,12 @@ def write_controlfile(filename, content):
 def write_controlfiles(test):
     attributes = get_attributes(test)
     suite = get_suite(test)
-    testname = get_testname(test)
     time = get_time(test)
     dependencies = get_dependencies(test)
     if test.shards > 1:
         for shard in xrange(0, test.shards):
             subset = 'Pass'
+            testname = get_testname(test, shard)
             filename = get_controlfilename(test, shard)
             content = CONTROLFILE_TEMPLATE.format(
                 testname, attributes, suite, time, dependencies,
@@ -158,12 +153,13 @@ def write_controlfiles(test):
     else:
         if test.notpass:
             subset = 'NotPass'
+            testname = get_testname(test)
             filename = get_controlfilename(test)
             content = CONTROLFILE_TEMPLATE.format(
                 testname, attributes, suite, time, dependencies, test.filter,
                 subset, test.hasty, 0, test.shards)
             write_controlfile(filename, content)
-        test = Test(test.filter, test.suite, test.shards, test.hasty, notpass=False)
+        test = Test(test.filter, test.suite, test.shards, test.time, test.hasty, notpass=False)
         dependencies = get_dependencies(test)
         subset = 'Pass'
         testname = get_testname(test)
