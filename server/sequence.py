@@ -136,16 +136,17 @@ parallel_simple(run, machines)
         current_job_id = job_directories.get_job_id_or_task_id(job.resultdir)
         logging.debug('Current job id: %s', current_job_id)
         runtime_mins = self.child_job_timeout()
+        hostname = utils.get_hostname_from_machine(machine)
 
         for i in xrange(0, self._iteration):
-            child_job_name = self.child_job_name(machine, i)
+            child_job_name = self.child_job_name(hostname, i)
             logging.debug('Creating job: %s', child_job_name)
             afe.create_job(
                     self.child_control_file(),
                     name=child_job_name,
                     priority='Medium',
                     control_type=control_data.CONTROL_TYPE.SERVER,
-                    hosts=[machine], meta_hosts=(), one_time_hosts=(),
+                    hosts=[hostname], meta_hosts=(), one_time_hosts=(),
                     atomic_group_name=None, synch_count=None, is_template=False,
                     timeout_mins=timeout_mins + (i + 1) * runtime_mins,
                     max_runtime_mins=runtime_mins,
