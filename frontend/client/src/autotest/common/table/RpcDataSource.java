@@ -39,8 +39,9 @@ public class RpcDataSource implements DataSource {
                 }
                 pageParams.put("sort_by", sortList);
             }
-
-            JsonRpcProxy.getProxy().rpcCall(dataMethodName, pageParams, 
+            if (dataMethodName == "get_hosts")
+                pageParams.put("include_current_job", new JSONString("true"));
+            JsonRpcProxy.getProxy().rpcCall(dataMethodName, pageParams,
                                             new JsonRpcCallback() {
                 @Override
                 public void onSuccess(JSONValue result) {

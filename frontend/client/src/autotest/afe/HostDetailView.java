@@ -288,8 +288,23 @@ public class HostDetailView extends DetailView implements DataCallback, TableAct
         shard_url = shard_url + "/afe/#tab_id=view_host&object_id=" + host_id;
         showField(currentHostObject, "shard", "view_host_shard");
         getElementById("view_host_shard").setAttribute("href", shard_url);
-        showField(currentHostObject, "protection", "view_host_protection");
+
+        String job_id = Utils.jsonToString(currentHostObject.get("current_job")).trim();
+        if (!job_id.equals("<null>")){
+            String job_url = "#tab_id=view_job&object_id=" + job_id;
+            showField(currentHostObject, "current_job", "view_host_current_job");
+            getElementById("view_host_current_job").setAttribute("href", job_url);
+        }
         hostname = currentHostObject.get("hostname").isString().stringValue();
+
+        String task = Utils.jsonToString(currentHostObject.get("current_special_task")).trim();
+        if (!task.equals("<null>")){
+            String task_url = Utils.getRetrieveLogsUrl("hosts/" + hostname + "/" + task);
+            showField(currentHostObject, "current_special_task", "view_host_current_special_task");
+            getElementById("view_host_current_special_task").setAttribute("href", task_url);
+        }
+
+        showField(currentHostObject, "protection", "view_host_protection");
         String pageTitle = "Host " + hostname;
         hostnameInput.setText(hostname);
         hostnameInput.setWidth("240px");

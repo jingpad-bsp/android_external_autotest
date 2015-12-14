@@ -460,14 +460,18 @@ def delete_host(id):
 
 
 def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
-              exclude_atomic_group_hosts=False, valid_only=True, **filter_data):
-    """
+              exclude_atomic_group_hosts=False, valid_only=True,
+              include_current_job=False, **filter_data):
+    """Get a list of dictionaries which contains the information of hosts.
+
     @param multiple_labels: match hosts in all of the labels given.  Should
             be a list of label names.
     @param exclude_only_if_needed_labels: Exclude hosts with at least one
             "only_if_needed" label applied.
     @param exclude_atomic_group_hosts: Exclude hosts that have one or more
             atomic group labels associated with them.
+    @param include_current_job: Set to True to include ids of currently running
+            job and special task.
     """
     hosts = rpc_utils.get_host_query(multiple_labels,
                                      exclude_only_if_needed_labels,
@@ -489,6 +493,20 @@ def get_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
         host_dict['acls'] = [acl.name for acl in host_obj.acl_list]
         host_dict['attributes'] = dict((attribute.attribute, attribute.value)
                                        for attribute in host_obj.attribute_list)
+        if include_current_job:
+            host_dict['current_job'] = None
+            host_dict['current_special_task'] = None
+            entries = models.HostQueueEntry.objects.filter(
+                    host_id=host_dict['id'], active=True, complete=False)
+            if entries:
+                host_dict['current_job'] = (
+                        entries[0].get_object_dict()['job'])
+            tasks = models.SpecialTask.objects.filter(
+                    host_id=host_dict['id'], is_active=True, is_complete=False)
+            if tasks:
+                host_dict['current_special_task'] = (
+                        '%d-%s' % (tasks[0].get_object_dict()['id'],
+                                   tasks[0].get_object_dict()['task'].lower()))
         host_dicts.append(host_dict)
     return rpc_utils.prepare_for_serialization(host_dicts)
 
