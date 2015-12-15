@@ -287,6 +287,11 @@ def modify_host(id, **kwargs):
     host = models.Host.smart_get(id)
     rpc_utils.check_modify_host_locking(host, kwargs)
 
+    # This is required to make `lock_time` for a host be exactly same
+    # between the master and a shard.
+    if kwargs.get('locked', None) and 'lock_time' not in kwargs:
+        kwargs['lock_time'] = datetime.datetime.now()
+
     rpc_utils.fanout_rpc([host], 'modify_host_local',
                          include_hostnames=False, id=id, **kwargs)
     host.update_object(kwargs)
@@ -337,6 +342,11 @@ def modify_hosts(host_filter_data, update_data):
         if host.shard:
             affected_shard_hostnames.add(host.shard.rpc_hostname())
             affected_host_ids.append(host.id)
+
+    # This is required to make `lock_time` for a host be exactly same
+    # between the master and a shard.
+    if update_data.get('locked', None) and 'lock_time' not in update_data:
+        update_data['lock_time'] = datetime.datetime.now()
 
     # Caution: Changing the filter from the original here. See docstring.
     rpc_utils.run_rpc_on_multiple_hostnames(

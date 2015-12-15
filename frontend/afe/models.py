@@ -597,7 +597,8 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
         # locked then we don't really care what state it is in.
         if self.locked and not self.locked_by:
             self.locked_by = User.current_user()
-            self.lock_time = datetime.now()
+            if not self.lock_time:
+                self.lock_time = datetime.now()
             self.record_state('lock_history', 'locked', self.locked,
                               {'changed_by': self.locked_by.login,
                                'lock_reason': self.lock_reason})

@@ -460,7 +460,8 @@ class RpcInterfaceTest(unittest.TestCase,
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
                     server=shard_hostname, user=None)
             mock_afe2.run.expect_call('modify_host_local', id=host.id,
-                    locked=True, lock_reason='_modify_host_helper lock')
+                    locked=True, lock_reason='_modify_host_helper lock',
+                    lock_time=datetime.datetime(2015, 12, 15))
         elif on_shard:
             mock_afe = self.god.create_mock_class_obj(
                     frontend_wrappers.RetryingAFE, 'MockAFE')
@@ -469,10 +470,12 @@ class RpcInterfaceTest(unittest.TestCase,
             mock_afe2 = frontend_wrappers.RetryingAFE.expect_new(
                     server=server_utils.get_global_afe_hostname(), user=None)
             mock_afe2.run.expect_call('modify_host', id=host.id,
-                    locked=True, lock_reason='_modify_host_helper lock')
+                    locked=True, lock_reason='_modify_host_helper lock',
+                    lock_time=datetime.datetime(2015, 12, 15))
 
         rpc_interface.modify_host(id=host.id, locked=True,
-                                  lock_reason='_modify_host_helper lock')
+                                  lock_reason='_modify_host_helper lock',
+                                  lock_time=datetime.datetime(2015, 12, 15))
 
         host = models.Host.objects.get(pk=host.id)
         if on_shard:
@@ -529,7 +532,8 @@ class RpcInterfaceTest(unittest.TestCase,
             'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
-                         'lock_reason': 'Testing forward to shard'})
+                         'lock_reason': 'Testing forward to shard',
+                         'lock_time' : datetime.datetime(2015, 12, 15) })
 
         mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(
                 server='shard1', user=None)
@@ -537,12 +541,14 @@ class RpcInterfaceTest(unittest.TestCase,
             'modify_hosts_local',
             host_filter_data={'id__in': [shard1.id, shard2.id]},
             update_data={'locked': True,
-                         'lock_reason': 'Testing forward to shard'})
+                         'lock_reason': 'Testing forward to shard',
+                         'lock_time' : datetime.datetime(2015, 12, 15)})
 
-        rpc_interface.modify_hosts(host_filter_data={'status': 'Ready'},
-                                   update_data={
-                                    'locked': True,
-                                    'lock_reason': 'Testing forward to shard'})
+        rpc_interface.modify_hosts(
+                host_filter_data={'status': 'Ready'},
+                update_data={'locked': True,
+                             'lock_reason': 'Testing forward to shard',
+                             'lock_time' : datetime.datetime(2015, 12, 15) })
 
         host1 = models.Host.objects.get(pk=host1.id)
         self.assertTrue(host1.locked)
