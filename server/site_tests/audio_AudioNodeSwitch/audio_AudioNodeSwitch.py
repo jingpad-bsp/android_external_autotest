@@ -9,7 +9,10 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
+from autotest_lib.client.cros.chameleon import chameleon_audio_ids
+from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
+
 from autotest_lib.client.cros.chameleon import edid as edid_lib
 from autotest_lib.server.cros.audio import audio_test
 
@@ -27,7 +30,8 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
     _PLUG_DELAY = 5
     _VOLUMES = {'INTERNAL_SPEAKER': 100,
                 'HEADPHONE': 80,
-                'HDMI': 60}
+                'HDMI': 60,
+                'USB': 40,}
 
     def check_default_nodes(self):
         """Checks default audio nodes for devices with onboard audio support."""
@@ -80,7 +84,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
             self.check_active_node_volume(node)
 
 
-    def run_once(self, host, jack_node=False, hdmi_node=False):
+    def run_once(self, host, jack_node=False, hdmi_node=False, usb_node=False):
         self.host = host
         chameleon_board = host.chameleon
         audio_board = chameleon_board.get_audio_board()
@@ -93,7 +97,9 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         self.check_default_nodes()
 
         self.set_active_volume_to_node_volume('INTERNAL_SPEAKER')
-        self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER'])
+        nodes = ['INTERNAL_SPEAKER']
+        self.switch_nodes_and_check_volume(nodes)
+
 
         if hdmi_node:
             edid_path = os.path.join(self.bindir,
@@ -110,7 +116,8 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
                                                (['HDMI'], None))
 
             self.set_active_volume_to_node_volume('HDMI')
-            self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER', 'HDMI'])
+            nodes.append('HDMI')
+            self.switch_nodes_and_check_volume(nodes)
 
         if jack_node:
             jack_plugger = audio_board.get_jack_plugger()
@@ -122,21 +129,47 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
                                                (['HEADPHONE'], ['MIC']))
 
             self.set_active_volume_to_node_volume('HEADPHONE')
-            nodes = ['INTERNAL_SPEAKER', 'HEADPHONE']
-            if hdmi_node:
-                nodes.append('HDMI')
+            nodes.append('HEADPHONE')
             self.switch_nodes_and_check_volume(nodes)
 
-            jack_plugger.unplug()
+        if usb_node:
+            widget_factory = chameleon_audio_helper.AudioWidgetFactory(
+                factory, host)
 
+            source = widget_factory.create_widget(
+                chameleon_audio_ids.CrosIds.USBOUT)
+            recorder = widget_factory.create_widget(
+                chameleon_audio_ids.ChameleonIds.USBIN)
+            binder = widget_factory.create_binder(source, recorder)
+
+            with chameleon_audio_helper.bind_widgets(binder):
+                time.sleep(self._PLUG_DELAY)
+                audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                   (['USB'], ['USB']))
+                self.set_active_volume_to_node_volume('USB')
+                nodes.append('USB')
+                self.switch_nodes_and_check_volume(nodes)
             time.sleep(self._PLUG_DELAY)
+            nodes.remove('USB')
+            self.switch_nodes_and_check_volume(nodes)
+
+        if jack_node:
+            if usb_node:
+                audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                   (['HEADPHONE'], ['MIC']))
+            jack_plugger.unplug()
+            time.sleep(self._PLUG_DELAY)
+            nodes.remove('HEADPHONE')
+            self.switch_nodes_and_check_volume(nodes)
 
         if hdmi_node:
-            audio_test_utils.check_audio_nodes(self.audio_facade,
-                                               (['HDMI'], None))
-            self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER', 'HDMI'])
+            if usb_node or jack_node :
+                audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                   (['HDMI'], None))
             hdmi_port.set_plug(False)
             time.sleep(self._PLUG_DELAY)
+            nodes.remove('HDMI')
+            self.switch_nodes_and_check_volume(nodes)
 
         self.check_default_nodes()
-        self.switch_nodes_and_check_volume(['INTERNAL_SPEAKER'])
+

@@ -7,7 +7,7 @@ from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "audio_AudioNodeSwitch"
+NAME = "audio_AudioNodeSwitch.HDMI_USB"
 PURPOSE = "Check if correct audio channel selected."
 CRITERIA = "This test will fail if expected audio channel is not selected."
 TIME = "SHORT"
@@ -27,7 +27,5 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
-    job.run_test("audio_AudioNodeSwitch", host=host, jack_node=True, tag='JACK')
-    job.run_test("audio_AudioNodeSwitch", host=host, hdmi_node=True, tag='HDMI')
-    job.run_test("audio_AudioNodeSwitch", host=host, usb_node=True, tag='USB')
+    job.run_test("audio_AudioNodeSwitch", host=host, hdmi_node=True, usb_node=True, tag='HDMI_USB')
 parallel_simple(run, machines)
