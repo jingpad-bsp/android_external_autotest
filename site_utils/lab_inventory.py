@@ -84,7 +84,7 @@ from autotest_lib.site_utils.suite_scheduler import constants
 # _MANAGED_POOLS - The set of all the general purpose pools
 #     monitored by this script.
 
-_CRITICAL_POOLS = ['bvt', 'cq']
+_CRITICAL_POOLS = ['bvt', 'cq', 'continuous']
 _SPARE_POOL = 'suites'
 _MANAGED_POOLS = _CRITICAL_POOLS + [_SPARE_POOL]
 
