@@ -26,7 +26,7 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
     version = 1
     RECORD_SECONDS = 10
     RESUME_TIMEOUT_SECS = 60
-    SHORT_WAIT = 2
+    SHORT_WAIT = 4
     SUSPEND_SECONDS = 30
 
 
@@ -153,6 +153,10 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
         """
         self.host = host
         self.audio_nodes = audio_nodes
+
+        if (not audio_test_utils.has_internal_speaker(host) and
+                tag == "internal_speaker"):
+            return
 
         self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
         self.ignore_frequencies = None
