@@ -42,16 +42,16 @@ class TestCountJobs(test.TestCase):
 
         Furthermore, 0 jobs should be counted within 0 or (-1) days.
         """
-        right_now = datetime.now()
+        some_day = datetime.fromtimestamp(1450211914)  # a time grabbed from time.time()
         class FakeDatetime(datetime):
             """Always returns the same 'now' value"""
             @classmethod
             def now(self):
                 """Return a fake 'now', rather than rely on the system's clock."""
-                return right_now
+                return some_day
         with mock.patch('datetime.datetime', FakeDatetime):
             for i in range(1, 10):
-                 models.Job(created_on=right_now - timedelta(hours=i)).save()
+                 models.Job(created_on=some_day - timedelta(hours=i)).save()
                  for count, days in ((i, 1), (0, 0), (0, -1)):
                      self.assertEqual(
                         count,
