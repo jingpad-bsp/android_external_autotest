@@ -179,7 +179,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
         self.tmp_dirs = []
-        self._num_of_boards = {}
         self._device_hostname = device_hostname
         self._use_tcpip = False
         # TODO (sbasi/kevcheng): Once the teststation host is committed,
@@ -337,9 +336,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         board = self.run_output('getprop %s' % BOARD_FILE)
         board_os = self.get_os_type()
-        board_num = str(self._num_of_boards.get(board, 0) + 1)
-        self._num_of_boards[board] = int(board_num)
-        return constants.BOARD_PREFIX + '-'.join([board_os, board, board_num])
+        return constants.BOARD_PREFIX + '-'.join([board_os, board])
 
 
     def job_start(self):

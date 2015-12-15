@@ -8,6 +8,7 @@ import logging
 
 import common
 
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import teststation_host
@@ -55,7 +56,7 @@ class TestBed(object):
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         serials_attr = afe.get_host_attribute('serials', hostname=self.hostname)
         for serial_attr in serials_attr:
-            serials.append(serial_attr.value)
+            serials.extend(serial_attr.value.split(','))
 
         # Looks like we got nothing from afe, let's probe the test station.
         if not serials:
@@ -92,3 +93,40 @@ class TestBed(object):
         @return: A dict of adb device serials to their host objects.
         """
         return self.adb_devices
+
+
+    def get_labels(self):
+        """Return a list of the labels gathered from the devices connected.
+
+        @return: A list of strings that denote the labels from all the devices
+                 connected.
+        """
+        labels = []
+        for adb_device in self.get_adb_devices().values():
+            labels.extend(adb_device.get_labels())
+        # Currently the board label will need to be modified for each adb
+        # device.  We'll get something like 'board:android-shamu' and
+        # we'll need to update it to 'board:android-shamu-1'.  Let's store all
+        # the labels in a dict and keep track of how many times we encounter
+        # it, that way we know what number to append.
+        board_label_dict = {}
+        updated_labels = []
+        for label in labels:
+            # Update the board labels
+            if label.startswith(constants.BOARD_PREFIX):
+                # Now let's grab the board num and append it to the board_label.
+                board_num = board_label_dict.setdefault(label, 0) + 1
+                board_label_dict[label] = board_num
+                updated_labels.append('%s-%d' % (label, board_num))
+            else:
+                # We don't need to mess with this.
+                updated_labels.append(label)
+        return updated_labels
+
+
+    def get_platform(self):
+        """Return the platform of the devices.
+
+        @return: A string representing the testbed platform.
+        """
+        return 'testbed'

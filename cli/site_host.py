@@ -20,6 +20,7 @@ hosts.factory.ssh_verbosity_flag = ''
 hosts.factory.ssh_options = ''
 
 
+# pylint: disable=missing-docstring
 class site_host(host.host):
     pass
 
@@ -105,10 +106,14 @@ class site_host_create(site_host, host.host_create):
         for host in self.hosts:
             try:
                 if utils.ping(host, tries=1, deadline=1) == 0:
-                    ssh_host = hosts.create_host(host, serials=self.serials)
+                    if self.serials and len(self.serials) > 1:
+                        host_dut = hosts.create_testbed(
+                                host, adb_serials=self.serials)
+                    else:
+                        host_dut = hosts.create_host(host, serials=self.serials)
                     host_info = host_information(host,
-                                                 ssh_host.get_platform(),
-                                                 ssh_host.get_labels())
+                                                 host_dut.get_platform(),
+                                                 host_dut.get_labels())
                 else:
                     # Can't ping the host, use default information.
                     host_info = host_information(host, None, [])
