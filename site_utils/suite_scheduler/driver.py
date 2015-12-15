@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+import logging
+import time
+from multiprocessing import pool
 
 import base_event, board_enumerator, build_event
 import task, timed_event
@@ -11,6 +13,7 @@ import common
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils
 
+POOL_SIZE = 32
 
 _timer = autotest_stats.Timer('suite_scheduler')
 
@@ -132,6 +135,27 @@ class Driver(object):
             self.RereadAndReprocessConfig(config, mv)
 
 
+    @staticmethod
+    def HandleBoard(inputs):
+        """Handle event based on given inputs.
+
+        @param inputs: A dictionary of the arguments needed to handle an event.
+            Keys include:
+            scheduler: a DedupingScheduler, used to schedule jobs with the AFE.
+            event: An event object to be handled.
+            board: Name of the board.
+        """
+        scheduler = inputs['scheduler']
+        event = inputs['event']
+        board = inputs['board']
+
+        logging.info('Handling %s event for board %s', event.keyword, board)
+        branch_builds = event.GetBranchBuildsForBoard(board)
+        event.Handle(scheduler, branch_builds, board)
+        logging.info('Finished handling %s event for board %s', event.keyword,
+                     board)
+
+
     @_timer.decorate
     def HandleEventsOnce(self, mv):
         """One turn through the loop.  Separated out for unit testing.
@@ -140,13 +164,20 @@ class Driver(object):
         @raise EnumeratorException if we can't enumerate any supported boards.
         """
         boards = self._enumerator.Enumerate()
-        logging.info('Boards currently in the lab: %r', boards)
+        logging.info('%d boards currently in the lab: %r', len(boards), boards)
+        thread_pool = pool.ThreadPool(POOL_SIZE)
         for e in self._events.itervalues():
             if e.ShouldHandle():
-                logging.info('Handling %s event', e.keyword)
+                logging.info('Handling %s event for %d boards', e.keyword,
+                             len(boards))
+                args = []
                 for board in boards:
-                    branch_builds = e.GetBranchBuildsForBoard(board)
-                    e.Handle(self._scheduler, branch_builds, board)
+                    args.append({'scheduler': self._scheduler,
+                                 'event': e,
+                                 'board': board})
+                thread_pool.map(self.HandleBoard, args)
+                logging.info('Finished handling %s event for %d boards',
+                             e.keyword, len(boards))
                 e.UpdateCriteria()
 
 

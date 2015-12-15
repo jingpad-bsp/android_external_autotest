@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import math
+import threading
 
 import common
 from autotest_lib.client.common_lib import error
@@ -74,13 +75,25 @@ class RetryingAFE(frontend.AFE):
             is_blacklisted = isinstance(exc, blacklist)
             return is_exc_to_check and not is_blacklisted
 
-        # Set the keyword argument for GenericRetry
-        dargs['sleep'] = self.delay_sec
-        dargs['backoff_factor'] = backoff
+        # If the call is not in main thread, signal can't be used to abort the
+        # call. In that case, use a basic retry which does not enforce timeout
+        # if the process hangs.
+        @retry.retry(Exception, timeout_min=self.timeout_min,
+                     delay_sec=self.delay_sec,
+                     blacklist=[ImportError, error.RPCException,
+                                proxy.ValidationError])
+        def _run_in_child_thread(self, call, **dargs):
+            return super(RetryingAFE, self).run(call, **dargs)
 
-        with timeout_util.Timeout(self.timeout_min * 60):
-            return retry_util.GenericRetry(handler, max_retry, _run,
-                                           self, call, **dargs)
+        if isinstance(threading.current_thread(), threading._MainThread):
+            # Set the keyword argument for GenericRetry
+            dargs['sleep'] = self.delay_sec
+            dargs['backoff_factor'] = backoff
+            with timeout_util.Timeout(self.timeout_min * 60):
+                return retry_util.GenericRetry(handler, max_retry, _run,
+                                               self, call, **dargs)
+        else:
+            return _run_in_child_thread(self, call, **dargs)
 
 
 class RetryingTKO(frontend.TKO):

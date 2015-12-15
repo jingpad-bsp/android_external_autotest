@@ -2,7 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, random, signal, sys, time
+import logging
+import random
+import signal
+import sys
+import threading
+import time
 
 from autotest_lib.client.common_lib import error
 
@@ -113,6 +118,10 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
     function without retrying; a malformed RPC isn't going to
     magically become good. Will raise exceptions in blacklist as well.
 
+    If the retry is done in a child thread, timeout may not be enforced as
+    signal only works in main thread. Therefore, the retry inside a child
+    thread may run longer than timeout or even hang.
+
     original from:
       http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
 
@@ -144,7 +153,8 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
             exception_tuple = () if blacklist is None else tuple(blacklist)
             start_time = time.time()
             remaining_time = timeout_min * 60
-
+            is_main_thread = isinstance(threading.current_thread(),
+                                        threading._MainThread)
             while remaining_time > 0:
                 if delayed_enabled:
                     delay()
@@ -153,10 +163,13 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
                 try:
                     # Clear the cache
                     exc_info = None
-                    is_timeout, result = timeout(func, args, kwargs,
-                                                 remaining_time)
-                    if not is_timeout:
-                        return result
+                    if is_main_thread:
+                        is_timeout, result = timeout(func, args, kwargs,
+                                                     remaining_time)
+                        if not is_timeout:
+                            return result
+                    else:
+                        return func(*args, **kwargs)
                 except exception_tuple:
                     raise
                 except error.CrosDynamicSuiteException:

@@ -247,7 +247,7 @@ def main():
                 CONFIG_SECTION_SERVER, "suite_scheduler_afe", default=None)
 
     afe = frontend_wrappers.RetryingAFE(
-            server=afe_server, timeout_min=1, delay_sec=5, debug=False)
+            server=afe_server, timeout_min=10, delay_sec=5, debug=False)
     logging.info('Connecting to: %s' , afe.server)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe, options.file_bug)
