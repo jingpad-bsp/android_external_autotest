@@ -19,7 +19,7 @@ class TestBed(object):
 
 
     def __init__(self, hostname='localhost', host_attributes={},
-                 adb_serials=None):
+                 adb_serials=None, **dargs):
         """Initialize a TestBed.
 
         This will create the Test Station Host and connected hosts (ADBHost for
@@ -34,7 +34,7 @@ class TestBed(object):
                 hostname=hostname)
         serials_from_attributes = host_attributes.get('serials')
         if serials_from_attributes:
-            serials_from_attributes.split(',')
+            serials_from_attributes = serials_from_attributes.split(',')
 
         self.adb_device_serials = (adb_serials or
                                    serials_from_attributes or
@@ -76,7 +76,8 @@ class TestBed(object):
                  devices.
         """
         device_list = [self.teststation]
-        return device_list.extend(self.adb_devices.values())
+        device_list.extend(self.adb_devices.values())
+        return device_list
 
 
     def get_test_station(self):
@@ -130,3 +131,15 @@ class TestBed(object):
         @return: A string representing the testbed platform.
         """
         return 'testbed'
+
+
+    def repair(self):
+        """Run through repair on all the devices."""
+        for adb_device in self.get_adb_devices().values():
+            adb_device.repair()
+
+
+    def verify(self):
+        """Run through verify on all the devices."""
+        for device in self.get_all_hosts():
+            device.verify()

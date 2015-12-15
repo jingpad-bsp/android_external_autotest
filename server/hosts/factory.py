@@ -180,4 +180,24 @@ def create_testbed(machine, **kwargs):
     hostname, host_attributes = server_utils.get_host_info_from_machine(
             machine)
     kwargs['host_attributes'] = host_attributes
-    return testbed.TestBed(hostname, kwargs)
+    return testbed.TestBed(hostname, **kwargs)
+
+
+def create_target_machine(machine, **kwargs):
+    """Create the target machine which could be a testbed or a *Host.
+
+    @param machine: A dict representing the test bed under test or a String
+                    representing the testbed hostname (for legacy caller
+                    support).
+                    If it is a machine dict, the 'hostname' key is required.
+                    Optional 'host_attributes' key will pipe in host_attributes
+                    from the autoserv runtime or the AFE.
+    @param kwargs: Keyword args to pass to the testbed initialization.
+
+    @returns: The target machine to be used for verify/repair.
+    """
+    # TODO(kevcheng): We'll want to have a smarter way of figuring out which
+    # host to create (checking host labels).
+    if server_utils.machine_is_testbed(machine):
+        return create_testbed(machine, **kwargs)
+    return create_host(machine, **kwargs)

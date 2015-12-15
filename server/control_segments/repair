@@ -15,17 +15,23 @@ def repair(machine):
     try:
         hostname = utils.get_hostname_from_machine(machine)
         job.record('START', None, 'repair')
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False,
-                                 try_lab_servo=True)
-        # Collect logs before the repair, as it might destroy all useful logs.
-        local_log_dir = os.path.join(job.resultdir, hostname, 'before_repair')
-        host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
-        # Collect crash info.
-        crashcollect.get_crashinfo(host, None)
+        target = hosts.create_target_machine(machine, initialize=False,
+                                             auto_monitor=False,
+                                             try_lab_servo=True)
+        # We don't need to collect logs or crash info if we're a testbed since
+        # they're not applicable (yet).
+        if not utils.machine_is_testbed(machine):
+            # Collect logs before the repair, as it might destroy all
+            # useful logs.
+            local_log_dir = os.path.join(job.resultdir, hostname,
+                                         'before_repair')
+            target.collect_logs('/var/log', local_log_dir, ignore_errors=True)
+            # Collect crash info.
+            crashcollect.get_crashinfo(target, None)
 
-        host.repair()
+        target.repair()
         logging.debug('Repair with labels list %s', labels_list)
-        provision.run_special_task_actions(job, host, labels_list,
+        provision.run_special_task_actions(job, target, labels_list,
                                            provision.Repair)
     except Exception as e:
         logging.exception(e)

@@ -1,4 +1,5 @@
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 
@@ -10,17 +11,17 @@ labels_list = [l.strip() for l in job_labels.split(',') if l]
 def verify(machine):
     print 'Initializing host %s' % machine
     timer = None
+    # We set try_lab_servo to True to trigger servo verify and
+    # servo update if needed.
+    target = hosts.create_target_machine(machine, initialize=False,
+                                         auto_monitor=False, try_lab_servo=True)
     try:
         job.record('START', None, 'verify')
-        # We set try_lab_servo to True to trigger servo verify and
-        # servo update if needed.
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False,
-                                 try_lab_servo=True)
         timer = autotest_stats.Timer('verify_time')
         timer.start()
 
-        host.verify()
-        provision.run_special_task_actions(job, host, labels_list,
+        target.verify()
+        provision.run_special_task_actions(job, target, labels_list,
                                            provision.Verify)
     except Exception as e:
         logging.exception(e)
