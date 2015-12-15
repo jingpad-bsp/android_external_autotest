@@ -2,15 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
-
-import logging
-import time
-import pprint
-import re
-
 """A test verifying Address Space Layout Randomization
 
 Uses system calls to get important pids and then gets information about
@@ -19,54 +10,119 @@ information about them again. If ASLR is enabled, memory mappings should
 change.
 """
 
+from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import upstart
 
-class Process:
+import logging
+import time
+import pprint
+import re
+
+def _pidof(exe_name):
+    """Returns PID of a process with the given name."""
+    return utils.system_output('pidof %s' % exe_name).strip()
+
+
+class Process(object):
     """Holds information about a process.
 
-    Stores information about a process and how to restart it.
+    Stores basic information about a process. This class is a base for
+    UpstartProcess and SystemdProcess declared below.
 
     Attributes:
-        __name: String name of process.
-        __initctl_name: String name initctl uses to query process.
-        Defaults to None.
-        __parent: String name of process's parent. Defaults to None.
+        _name: String name of process.
+        _service_name: Name of the service corresponding to the process.
+        _parent: String name of process's parent. Defaults to None.
     """
-    def __init__(self, name, initctl_name = None, parent = None):
-        self.__name = name
-        self.__initctl_name = initctl_name
-        self.__parent = parent
+
+    _START_POLL_INTERVAL_SECONDS = 1
+    _START_TIMEOUT = 30
+
+    def __init__(self, name, service_name, parent=None):
+        self._name = name
+        self._service_name = service_name
+        self._parent = parent
 
     def get_name(self):
-        return self.__name
+        return self._name
 
-    def get_initctl_name(self):
-        return self.__initctl_name
+    def get_pid(self):
+        """Gets pid of process, waiting for it if not found.
 
-    def get_parent(self):
-        return self.__parent
+        Raises:
+            error.TestFail: corresponding process is not found.
+        """
+        retries = 0
+        ps_results = ""
+        while retries < self._START_TIMEOUT:
+            if self._parent is None:
+                ps_results = _pidof(self._name)
+            else:
+                ppid = _pidof(self._parent)
+                get_pid_command = ('ps -C %s -o pid,ppid | grep " %s$"'
+                    ' | awk \'{print $1}\'') % (self._name, ppid)
+                ps_results = utils.system_output(get_pid_command).strip()
+
+            if ps_results != "":
+                return ps_results
+
+            # The process could not be found. We then sleep, hoping the
+            # process is just slow to initially start.
+            time.sleep(self._START_POLL_INTERVAL_SECONDS)
+            retries += 1
+
+        # We never saw the process, so abort with details on who was missing.
+        raise error.TestFail('Never saw a pid for "%s"' % (self._name))
 
 
-class Mapping:
+class UpstartProcess(Process):
+    """Represents an Upstart service."""
+
+    def exists(self):
+        """Checks if the service is present in Upstart configuration."""
+        return upstart.has_service(self._service_name)
+
+    def restart(self):
+        """Restarts the process via initctl."""
+        utils.system('initctl restart %s' % self._service_name)
+
+class SystemdProcess(Process):
+    """Represents an systemd service."""
+
+    def exists(self):
+        """Checks if the service is present in systemd configuration."""
+        cmd = 'systemctl show -p LoadState %s.service' % self._service_name
+        output = utils.system_output(cmd, ignore_status=True).strip()
+        return output == 'LoadState=loaded'
+
+    def restart(self):
+        """Restarts the process via systemctl."""
+        utils.system('systemctl restart %s' % self._service_name)
+
+
+class Mapping(object):
     """Holds information about a process's address mapping.
 
     Stores information about one memory mapping for a process.
 
     Attributes:
-        __name: String name of process/memory occupying the location.
-        __start: String containing memory address range start.
+        _name: String name of process/memory occupying the location.
+        _start: String containing memory address range start.
     """
     def __init__(self, name, start):
-        self.__start = start
-        self.__name = name
+        self._start = start
+        self._name = name
 
     def set_start(self, new_value):
-        self.__start = new_value
+        self._start = new_value
 
     def get_start(self):
-        return self.__start
+        return self._start
 
     def __repr__(self):
-        return "<mapping %s %s>" % (self.__name, self.__start)
+        return "<mapping %s %s>" % (self._name, self._start)
 
 
 class security_ASLR(test.test):
@@ -76,39 +132,18 @@ class security_ASLR(test.test):
 
     Attributes:
         version: Current version of the test.
-        _INITCTL_RESTART_TIMEOUT: Time in seconds that we wait for initctl
-        restart to finish.
-        _INITCTL_POLL_INTERVAL: Time in seconds between checks on initctl
-        status when restarting.
     """
     version = 1
 
-    _INITCTL_RESTART_TIMEOUT = 30
-    _INITCTL_POLL_INTERVAL = 1
     _TEST_ITERATION_COUNT = 5
 
     _ASAN_SYMBOL = "__asan_init"
 
     # 'update_engine' should at least be present on all boards.
-    _PROCESS_LIST = [Process('chrome', 'ui', 'session_manager'),
-                     Process('debugd', 'debugd'),
-                     Process('update_engine', 'update-engine')]
-
-
-    def get_path_of(self, process):
-        """Gets path of process.
-
-        @param process: process to find.
-        """
-        name = process.get_name()
-        try:
-            path = utils.system_output('which %s' % name)
-            logging.debug('Path for "%s" is "%s"', name, path)
-        except:
-            path = None
-            logging.debug('Could not find path for "%s"', name)
-
-        return path
+    _PROCESS_LIST = [UpstartProcess('chrome', 'ui', parent='session_manager'),
+                     UpstartProcess('debugd', 'debugd'),
+                     UpstartProcess('update_engine', 'update-engine'),
+                     SystemdProcess('update_engine', 'update-engine')]
 
 
     def get_processes_to_test(self):
@@ -122,8 +157,7 @@ class security_ASLR(test.test):
             A list of process objects to be tested (see below for
             definition of process class).
         """
-        return [p for p in self._PROCESS_LIST
-                    if self.get_path_of(p) is not None]
+        return [p for p in self._PROCESS_LIST if p.exists()]
 
 
     def running_on_asan(self):
@@ -138,45 +172,6 @@ class security_ASLR(test.test):
         logging.debug("running_on_asan(): symbol: '%s', _ASAN_SYMBOL: '%s'",
                       symbol, self._ASAN_SYMBOL)
         return symbol != ""
-
-
-    def get_pid_of(self, process):
-        """Gets pid of process
-
-        Used for retrieving pids of processes such as init or processes
-        that may have multiple instances that need to be distinguished by
-        a parent pid. This routine expects the process to be findable. If
-        not, it will wait for it before ultimately failing the test.
-
-        Args:
-            process: process object that we want a pid for.
-        """
-        name = process.get_name()
-        parent = process.get_parent()
-
-        retries = 0
-        ps_results = ""
-        while retries < self._INITCTL_RESTART_TIMEOUT:
-            if parent is None:
-                command = 'ps -C %s -o pid --no-header' % name
-                ps_results = utils.system_output(command).strip()
-            else:
-                parent_process = self.process(parent)
-                ppid = self.get_pid_of(parent_process).strip()
-                get_pid_command = ('ps -C %s -o pid,ppid | grep " %s$"'
-                    ' | awk \'{print $1}\'') % (name, ppid)
-                ps_results = utils.system_output(get_pid_command).strip()
-
-            if ps_results != "":
-                return ps_results
-
-            # The process could not be found. We then sleep, hoping the
-            # process is just slow to initially start.
-            time.sleep(self._INITCTL_POLL_INTERVAL)
-            retries += 1
-
-        # We never saw the process, so abort with details on who was missing.
-        raise error.TestFail('Never saw a pid for "%s"' % (name))
 
 
     def test_randomization(self, process):
@@ -195,19 +190,23 @@ class security_ASLR(test.test):
         """
         test_result = dict([('pass', True), ('results', []), ('cases', dict())])
         name = process.get_name()
-        parent = process.get_parent()
         mappings = list()
+        pid = -1
         for i in range(self._TEST_ITERATION_COUNT):
-            pid = self.get_pid_of(process)
+            new_pid = process.get_pid()
+            if pid == new_pid:
+                raise error.TestFail(
+                    'Service "%s" retained PID %d after restart.' % (name, pid))
+            pid = new_pid
             mappings.append(self.map(pid))
-            self.restart(process)
+            process.restart()
         logging.debug('Complete mappings dump for process %s:\n%s',
-                      name, pprint.pformat(mappings,4))
+                      name, pprint.pformat(mappings, 4))
 
         initial_map = mappings[0]
         for i, mapping in enumerate(mappings[1:]):
             logging.debug('Iteration %d', i)
-            for key, value in mapping.iteritems():
+            for key in mapping.iterkeys():
                 # Set default case result to fail, pass when an address change
                 # occurs.
                 if not test_result['cases'].has_key(key):
@@ -221,7 +220,7 @@ class security_ASLR(test.test):
                     logging.debug("Bad: %s address didn't change", key)
                 else:
                     logging.debug('Good: %s address changed', key)
-                    test_result['cases'][key]['number'] += 1;
+                    test_result['cases'][key]['number'] += 1
                     test_result['cases'][key]['pass'] = True
         for case, result in test_result['cases'].iteritems():
             if result['pass']:
@@ -230,73 +229,9 @@ class security_ASLR(test.test):
             else:
                 test_result['results'].append('[FAIL] Address for %s had '
                         'deterministic value: %s' % (case,
-                        mapping[case].get_start()))
+                        mappings[case].get_start()))
             test_result['pass'] = test_result['pass'] and result['pass']
         return test_result
-
-
-    def restart(self, process):
-        """Restarts a process given information about it.
-
-        Uses a system call to initctl to restart a process and verifies
-        that it restarted by pollinig its pid until it changes (signifying
-        successful restart).
-
-        @param process: process object containing information about process
-                        to restart. See above for process class definition.
-
-        Raises:
-            error.TestFail if the process isn't restarted with
-            a new pid by _INITCTL_RESTART_TIMEOUT seconds.
-        """
-        name = process.get_name()
-        initctl_name = process.get_initctl_name()
-        status_command = 'initctl status %s' % initctl_name
-        initial_status = utils.system_output(status_command)
-        utils.system('initctl restart %s' % initctl_name)
-        utils.poll_for_condition(
-            lambda: self.has_restarted(process, status_command,
-                initial_status),
-            exception = error.TestFail(
-                'initctl failed to restart process for %s' % name),
-            timeout = self._INITCTL_RESTART_TIMEOUT,
-            sleep_interval = self._INITCTL_POLL_INTERVAL)
-
-
-    def has_restarted(self, process, status_command, initial_status):
-        """Tells if initctl service is starting and has changed pid.
-
-        Uses initctl to view the status of a given initctl_name to check
-        that it is running and has a status different from initial_status
-        (meaning it has a new pid).
-
-        @param process: Process object to be restarted. See above for process
-                        class definition.
-        @param status_command: String containing the syscall that
-                               queries the current status.
-        @param initial_status: String containing original output from initctl
-                               status called. This is what we compare to for
-                               detection of change.
-
-        Returns:
-            A boolean which is true if the process is running and has a
-            status which is different from initial_status.
-        """
-        name = process.get_name()
-        initctl_name = process.get_initctl_name()
-        current_status = utils.system_output(status_command)
-        logging.debug('Initial status: %s', initial_status)
-        logging.debug('Current status: %s', current_status)
-        regex = r'%s start/running' % initctl_name
-        is_running = re.match(regex, current_status)
-        is_new_pid = initial_status != current_status
-        try:
-            utils.system('ps -C %s' % name)
-        except:
-            logging.debug('Restart done: False')
-            return False
-        logging.debug('Restart done: %r', (is_running and is_new_pid))
-        return (is_running and is_new_pid)
 
 
     def map(self, pid):
@@ -350,12 +285,12 @@ class security_ASLR(test.test):
             '00'}
         """
         # Build regex to parse one line of proc maps table.
-        memory = '(?P<start>\w+)-(?P<end>\w+)'
-        perms = '(?P<perms>(r|-)(w|-)(x|-)(s|p))'
-        something = '(?P<something>\w+)'
-        devices = '(?P<major>\w+):(?P<minor>\w+)'
-        inode = '(?P<inode>[0-9]+)'
-        name = '(?P<name>([a-zA-Z0-9/]+|\[heap\]|\[stack\]))'
+        memory = r'(?P<start>\w+)-(?P<end>\w+)'
+        perms = r'(?P<perms>(r|-)(w|-)(x|-)(s|p))'
+        something = r'(?P<something>\w+)'
+        devices = r'(?P<major>\w+):(?P<minor>\w+)'
+        inode = r'(?P<inode>[0-9]+)'
+        name = r'(?P<name>([a-zA-Z0-9/]+|\[heap\]|\[stack\]))'
         regex = r'%s +%s +%s +%s +%s +%s' % (memory, perms, something,
             devices, inode, name)
         found_match = re.match(regex, result)
@@ -365,7 +300,7 @@ class security_ASLR(test.test):
         return parsed_result
 
 
-    def run_once(self, seconds=1):
+    def run_once(self):
         """Main function.
 
         Called when test is run. Gets processes to test and calls test on
