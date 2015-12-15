@@ -17,7 +17,8 @@ class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
 
-    def __init__(self, hostname='localhost', adb_serials=None):
+    def __init__(self, hostname='localhost', host_attributes={},
+                 adb_serials=None):
         """Initialize a TestBed.
 
         This will create the Test Station Host and connected hosts (ADBHost for
@@ -30,7 +31,13 @@ class TestBed(object):
         self.hostname = hostname
         self.teststation = teststation_host.create_teststationhost(
                 hostname=hostname)
-        self.adb_device_serials = adb_serials or self.query_adb_device_serials()
+        serials_from_attributes = host_attributes.get('serials')
+        if serials_from_attributes:
+            serials_from_attributes.split(',')
+
+        self.adb_device_serials = (adb_serials or
+                                   serials_from_attributes or
+                                   self.query_adb_device_serials())
         self.adb_devices = {}
         for adb_serial in self.adb_device_serials:
             self.adb_devices[adb_serial] = adb_host.ADBHost(

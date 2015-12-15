@@ -149,12 +149,20 @@ def create_host(machine, host_class=None, **args):
     return host_instance
 
 
-def create_testbed(hostname, **kwargs):
+def create_testbed(machine, **kwargs):
     """Create the testbed object.
 
-    @param hostname: The hostname of the test station for this testbed.
+    @param machine: A dict representing the test bed under test or a String
+                    representing the testbed hostname (for legacy caller
+                    support).
+                    If it is a machine dict, the 'hostname' key is required.
+                    Optional 'host_attributes' key will pipe in host_attributes
+                    from the autoserv runtime or the AFE.
     @param kwargs: Keyword args to pass to the testbed initialization.
 
     @returns: The testbed object with all associated host objects instantiated.
     """
+    hostname, host_attributes = server_utils.get_host_info_from_machine(
+            machine)
+    kwargs['host_attributes'] = host_attributes
     return testbed.TestBed(hostname, kwargs)
