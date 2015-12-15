@@ -27,10 +27,11 @@ class kernel_ConfigVerify(test.test):
         'STRICT_DEVMEM',
         # Security; provides some protections against SYN flooding.
         'SYN_COOKIES',
-        # Security; make sure both PID_NS and NET_NS are enabled
-        # for the SUID sandbox.
+        # Security; make sure PID_NS, NET_NS, and USER_NS are enabled for
+        # chrome's layer 1 sandbox.
         'PID_NS',
         'NET_NS',
+        'USER_NS',
         # Security; perform additional validation of credentials.
         'DEBUG_CREDENTIALS',
         # Security; make sure the Chrome OS LSM is in use.
