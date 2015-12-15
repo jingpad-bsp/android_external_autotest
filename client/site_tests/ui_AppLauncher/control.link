@@ -20,9 +20,6 @@ DOC = """
 Collects screenshots of the default apps in App Launcher. Compares them to a
 golden image to look for unwanted changes and regressions.
 
-All images that don't match will be uploaded to the biopic web interface for
-easy comparison later.
-
 This test makes use of keyboard emulation to bring up the launcher.
 
 This test is to be used by the test team as part of their daily build

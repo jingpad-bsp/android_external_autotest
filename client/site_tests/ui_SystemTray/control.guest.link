@@ -20,8 +20,6 @@ DOC = """
 This test collects system tray images of different devices. The goal is collect
 data that helps us understand how system tray looks in the lab for purposes of
 establishing some sort of a control/reference behavior.
-
-All images will be uploaded to biopic and examined via biopic web interface.
 """
 
 job.run_test('ui_SystemTray',

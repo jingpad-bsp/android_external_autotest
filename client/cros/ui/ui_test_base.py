@@ -26,9 +26,7 @@ class ui_TestBase(test.test):
     ui_SettingsPage for the Chrome Settings page, etc.
 
     2. Abstract property test_area:
-    This will get appended to screenshot file names so we know what image it is,
-    it will also get appended to to Biopic project names so that screenshots
-    from the same area collect nicely in biopic webview.
+    This will get appended to screenshot file names so we know what image it is.
 
     Flow at runtime:
     At run time, autotest will call run_once() method on a particular child
@@ -71,11 +69,10 @@ class ui_TestBase(test.test):
 
         1. Set up test dirs.
         2. Create folder name
-        3. Create bp project name.
-        4. Download golden image.
-        5. Capture test image.
-        6. Compare images locally, if FAIL upload to bp for analysis later.
-        7. Clean up test dirs.
+        3. Download golden image.
+        4. Capture test image.
+        5. Compare images locally, if FAIL upload to remote for analysis later.
+        6. Clean up test dirs.
 
         """
 
@@ -84,13 +81,6 @@ class ui_TestBase(test.test):
 
         img_comp_factory = image_comparison_factory.ImageComparisonFactory(
                 img_comp_conf_path)
-
-        project_specs = [img_comp_factory.bp_base_projname,
-                         utils.get_current_board(),
-                         utils.get_chromeos_release_version().replace('.', '_'),
-                         self.folder_name]
-
-        project_name = '.'.join(project_specs)
 
         golden_image_local_dir = os.path.join(ui_TestBase.WORKING_DIR,
                                               'golden_images')

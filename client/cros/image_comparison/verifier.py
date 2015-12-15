@@ -79,19 +79,14 @@ class Verifier(object):
                 diff_pixels = comp_res.diff_pixel_count
 
                 """
-                If biopic was used, compare() returns a comparison url of this
-                form https://biopic.corp.google.com/a/b/this_comparison_result/
-                We want this: https://biopic.corp.google.com/a/b, so we can see
-                links for the entire test run (many comparison urls).
+                If remote comparer was used, compare() returns a comparison
+                url.
 
-                If biopic was not invoked (local comparer succeeded) compare()
-                returns '' as comparison url. The first one you get will be
-                the same for all since they are part of the same test run.
-
+                If remote comparer was not invoked (local comparer succeeded)
+                compare() returns '' as comparison url. The first one you get
+                will be the same for all since they are part of the same test
+                run.
                 """
-
-                #TODO(mussa): Use the more robust urlparse.ParseResult if
-                # biopic URL scheme changes
                 if test_run_comp_url == '' and comp_res.comparison_url != '':
                     test_run_comp_url = os.path.dirname(comp_res.comparison_url)
 

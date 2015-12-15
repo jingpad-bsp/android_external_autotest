@@ -20,8 +20,6 @@ DOC = """
 Collects screenshots of settings page. Goal is to observe how the settings page
 looks over multiple builds before writing image comparison based tests.
 
-All images will be uploaded to biopic and examined via biopic web interface.
-
 This test is currently only run on link so the mask points are link
 specific.
 

@@ -22,8 +22,6 @@ the system tray is unaffected by the users profile photo. As the profile
 photo used by telemetry autotests are randomly generated, we apply a mask over
 the image.
 
-All images will be uploaded to biopic and examined via biopic web interface.
-
 This test is currently only run on link so the mask points are link
 specific.
 
