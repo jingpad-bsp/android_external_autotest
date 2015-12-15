@@ -38,10 +38,20 @@ class firmware_ECBootTime(FirmwareTest):
         else:
             boot_anchors = ["\[([0-9\.]+) power state 1 = S5",
                             "\[([0-9\.]+) power state 3 = S0"]
+        # regular expression to say that EC is ready. For systems that
+        # run out of ram there is a second boot where the PMIC is
+        # asked to power cycle the EC to be 100% sure (I wish) that
+        # the code is clean. Looking for the "Inits done" generates a
+        # match after the first boot, and introduces a race between
+        # the EC booting the second time and the test sending the
+        # power_cmd.
+        if self._doubleboot:
+            ec_ready = ["\[([0-9.]+) power state 0"]
+        else:
+            ec_ready = ["([0-9.]+) Inits done"]
         power_cmd = "powerbtn"  if self._x86 or self._ryu else "power on"
         reboot = self.ec.send_command_get_output(
-            "reboot ap-off",
-            ["([0-9\.]+) Inits done"])
+            "reboot ap-off", ec_ready)
         power_press = self.ec.send_command_get_output(
             power_cmd, boot_anchors)
         reboot_time = float(reboot[0][1])
@@ -68,6 +78,7 @@ class firmware_ECBootTime(FirmwareTest):
         if not self.check_ec_capability():
             raise error.TestNAError("Nothing needs to be tested on this device")
         self._x86 = ('x86' in self.faft_config.ec_capability)
+        self._doubleboot = ('doubleboot' in self.faft_config.ec_capability)
         self._arm_legacy = self.is_arm_legacy_board()
         self._ryu = self.is_ryu_board()
         dev_mode = self.checkers.crossystem_checker({'devsw_boot': '1'})

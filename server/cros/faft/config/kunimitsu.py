@@ -11,6 +11,6 @@ class Values(object):
     wp_voltage = 'pp3300'
     spi_voltage = 'pp3300'
     ec_boot_to_console = 0.2
-    ec_capability = ['battery', 'charging', 'keyboard',
+    ec_capability = ['battery', 'charging', 'doubleboot', 'keyboard',
                      'lid', 'x86', 'usb', 'usbpd_uart' ]
 
