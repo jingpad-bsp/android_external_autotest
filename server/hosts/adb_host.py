@@ -197,9 +197,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self._fastboot_serial
         logging.debug(msg)
 
-        self._restart_adbd_with_root_permissions()
-        self._connect_over_tcpip_as_needed()
-
+        self._reset_adbd_connection()
         self._os_type = None
 
 
@@ -225,6 +223,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         time.sleep(5)
         # Switch back to using TCP/IP.
         self._use_tcpip = True
+
+
+    def _restart_adbd_with_root_permissions(self):
+        """Restarts the adb daemon with root permissions."""
+        self.adb_run('root')
+        # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
+        time.sleep(1)
+        self.adb_run('wait-for-device')
+
+
+    def _reset_adbd_connection(self):
+        """Resets adbd connection to the device after a reboot/initialization"""
+        self._restart_adbd_with_root_permissions()
+        self._connect_over_tcpip_as_needed()
 
 
     # pylint: disable=missing-docstring
@@ -474,16 +486,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self.wait_up():
             raise error.AutoservRebootError(
                     'ADB Device failed to return from reboot.')
-        # Reconnect via TCP/IP.
-        self._connect_over_tcpip_as_needed()
-
-
-    def _restart_adbd_with_root_permissions(self):
-        """Restarts the adb daemon with root permissions."""
-        self.adb_run('root')
-        # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
-        time.sleep(1)
-        self.adb_run('wait-for-device')
+        self._reset_adbd_connection()
 
 
     def remount(self):
@@ -927,6 +930,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self.wait_up(timeout=timeout):
             raise error.AutoservError(
                     'The device failed to reboot into adb mode.')
+        self._reset_adbd_connection()
 
 
     @classmethod
