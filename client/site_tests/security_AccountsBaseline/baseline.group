@@ -39,7 +39,9 @@ debugd:!:216:
 openvpn:!:217:
 bluetooth:!:218:
 wpa:!:219:root
-cras:!:220:chronos,power
+cras:!:600:chronos,power
+wayland:!:601:chronos
+arc-bridge:!:602:chronos
 chaps:!:223:
 dhcp:!:224:
 mtp:!:226:

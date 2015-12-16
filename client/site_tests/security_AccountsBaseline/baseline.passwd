@@ -24,7 +24,9 @@ debugd:!:216:216::/dev/null:/bin/false
 openvpn:!:217:217::/dev/null:/bin/false
 bluetooth:!:218:218::/dev/null:/bin/false
 wpa:!:219:219::/dev/null:/bin/false
-cras:!:220:220::/dev/null:/bin/false
+cras:!:600:600::/dev/null:/bin/false
+wayland:!:601:601::/dev/null:/bin/false
+arc-bridge:!:602:602::/dev/null:/bin/false
 input:!:222:222::/dev/null:/bin/false
 chaps:!:223:223::/dev/null:/bin/false
 dhcp:!:224:224::/dev/null:/bin/false
