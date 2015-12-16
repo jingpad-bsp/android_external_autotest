@@ -7,7 +7,7 @@
 """Counts the number of jobs created in the last 24 hours."""
 
 import argparse
-import datetime
+from datetime import datetime, timedelta
 import sys
 
 import common
@@ -21,7 +21,7 @@ def number_of_jobs_since(delta):
 
     @param delta: A timedelta which indicates the maximum age of the jobs to count
     """
-    cutoff = datetime.datetime.now() - delta
+    cutoff = datetime.now() - delta
     return models.Job.objects.filter(created_on__gt=cutoff).count()
 
 
@@ -30,7 +30,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=('A script which records the number of afe jobs run in a time interval.'))
     parser.parse_args(sys.argv[1:])
-    count = number_of_jobs_since(datetime.timedelta(days=1))
+    count = number_of_jobs_since(timedelta(days=1))
     autotest_stats.Gauge('jobs_rate').send('afe_daily_count', count)
 
 

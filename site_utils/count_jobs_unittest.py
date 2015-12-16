@@ -49,8 +49,8 @@ class TestCountJobs(test.TestCase):
             def now(self):
                 """Return a fake 'now', rather than rely on the system's clock."""
                 return some_day
-        with mock.patch('datetime.datetime', FakeDatetime):
-            for i in range(1, 10):
+        with mock.patch.object(count_jobs, 'datetime', FakeDatetime):
+            for i in range(1, 24):
                  models.Job(created_on=some_day - timedelta(hours=i)).save()
                  for count, days in ((i, 1), (0, 0), (0, -1)):
                      self.assertEqual(
