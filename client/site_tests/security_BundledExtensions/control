@@ -10,8 +10,8 @@ This test will fail if the set of expected extensions -- and every
 permission requested by those extensions -- does not exactly match
 the expected set.
 """
-ATTRIBUTES = "suite:security"
-SUITE = "security"
+ATTRIBUTES = ""
+SUITE = ""
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "security"

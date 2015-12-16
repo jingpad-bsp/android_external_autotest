@@ -79,7 +79,6 @@ class security_SysVIPC(test.test):
         missing = self.expected_shm.difference(observed_shm)
         extra = observed_shm.difference(self.expected_shm)
         if missing:
-            test_fail = True
             logging.error('Expected shm(s) not found:')
             logging.error(missing)
         if extra:
@@ -92,7 +91,6 @@ class security_SysVIPC(test.test):
         missing = self.expected_sem.difference(observed_sem)
         extra = observed_sem.difference(self.expected_sem)
         if missing:
-            test_fail = True
             logging.error('Expected semaphore(s) not found:')
             logging.error(missing)
         if extra:
