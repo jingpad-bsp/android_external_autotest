@@ -13,7 +13,26 @@ import logging
 # test_droid user.
 logging.basicConfig(level=logging.INFO)
 
+
 import common
+# Unfortunately, autotest depends on external packages for assorted
+# functionality regardless of whether or not it is needed in a particular
+# context.
+# Since we can't depend on people to import these utilities in any principled
+# way, we dynamically download code before any autotest imports.
+try:
+    import chromite.lib.terminal  # pylint: disable=unused-import
+    import django.http  # pylint: disable=unused-import
+except ImportError:
+    # Ensure the chromite site-package is installed.
+    import subprocess
+    build_externals_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+            'utils', 'build_externals.py')
+    subprocess.check_call([build_externals_path, 'chromiterepo', 'django'])
+    # Restart the script so python now finds the autotest site-packages.
+    sys.exit(os.execv(__file__, sys.argv))
+
 from autotest_lib.site_utils import test_runner_utils
 
 
