@@ -571,6 +571,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if command == ADB_CMD:
             devices = self.adb_devices()
             serial = self._adb_serial
+            # ADB has a device state, if the device is not online, no
+            # subsequent ADB command will complete.
+            if len(devices) == 0 or not self.is_device_ready():
+                logging.debug('Waiting for device to enter the ready state.')
+                return False
         elif command == FASTBOOT_CMD:
             devices = self.fastboot_devices()
             serial = self._fastboot_serial
@@ -614,12 +619,18 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return '/data/autotest'
 
 
+    def is_device_ready(self):
+        """Return the if the device is ready for ADB commands."""
+        dev_state = self.adb_run('get-state').stdout.strip()
+        logging.debug('Current device state: %s', dev_state)
+        return dev_state == 'device'
+
+
     def verify_connectivity(self):
         """Verify we can connect to the device."""
-        dev_state = self.adb_run('get-state').stdout.strip()
-        if dev_state != 'device':
-            raise error.AutoservHostError('device state is not \'device\': %s' %
-                                          dev_state)
+        if not self.is_device_ready():
+            raise error.AutoservHostError('device state is not in the '
+                                          '\'device\' state.')
 
 
     def verify_software(self):
