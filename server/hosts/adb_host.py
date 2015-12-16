@@ -128,7 +128,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservRunError: If the command failed.
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
-        ssh_user = host.user
+        # host object may not have user attribute if it's a LocalHost object.
+        current_user = host.user if hasattr(host, 'user') else None
         try:
             if not (host.hostname == 'localhost' or
                     host.verify_ssh_user_access()):
@@ -137,7 +138,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     'test -f %s' % server_constants.ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
         except (error.AutoservRunError, error.AutoservSSHTimeout):
-            host.user = ssh_user
+            if current_user is not None:
+                host.user = current_user
             return False
         return result.exit_status == 0
 
