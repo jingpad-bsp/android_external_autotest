@@ -1307,7 +1307,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         if self._servo_host and not self.servo:
             try:
-                self._servo_host.repair_full()
+                self._servo_host.repair()
             except Exception as e:
                 logging.error('Could not create a healthy servo: %s', e)
             self.servo = self._servo_host.get_servo()
