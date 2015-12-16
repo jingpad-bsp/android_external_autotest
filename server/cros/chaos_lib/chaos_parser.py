@@ -123,6 +123,10 @@ class ChaosParser(object):
         @returns a board with device name and OS version.
 
         """
+        # Android information does not exist in the keyfile, add temporary
+        # information into the dictionary.  crbug.com/570408
+        lsb_dict = {'board': 'unknown',
+                    'version': 'unknown'}
         f = open(filepath, 'r')
         for line in f:
             line = line.split('=')
@@ -290,14 +294,13 @@ class ChaosParser(object):
 
         for root, dir_name, file_name in os.walk(path):
             for name in file_name:
-                if name == 'status.log':
-                    path = os.path.join(root, name)
-                    if not status:
-                       status = path
-                elif name == 'keyval' and 'CHROMEOS_BUILD' in open(os.path.join(
-                                                            root, name)).read():
-                    path = os.path.join(root, name)
-                    keyval = path
+                current_path = os.path.join(root, name)
+                if name == 'status.log' and not status:
+                       status = current_path
+                elif name == 'keyval' and ('param-debug_info' in
+                                           open(current_path).read()):
+                    # This is a keyval file for a single test and not a suite.
+                    keyval = os.path.join(root, name)
                     break
                 else:
                     continue
