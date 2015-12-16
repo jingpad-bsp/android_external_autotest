@@ -5,11 +5,10 @@
 """This module provides some utilities used by LXC and its tools.
 """
 
-import netifaces
-
 import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros.network import interface
 
 
 def path_exists(path):
@@ -38,13 +37,19 @@ def get_host_ip():
 
     @return: IP address of the host running containers.
     """
+    # The kernel publishes symlinks to various network devices in /sys.
+    result = utils.run('ls /sys/class/net', ignore_status=True)
+    # filter out empty strings
+    interface_names = [x for x in result.stdout.split() if x]
+
     lxc_network = None
-    for name in netifaces.interfaces():
+    for name in interface_names:
         if name.startswith('lxcbr'):
             lxc_network = name
             break
     if not lxc_network:
         raise error.ContainerError('Failed to find network interface used by '
                                    'lxc. All existing interfaces are: %s' %
-                                   netifaces.interfaces())
-    return netifaces.ifaddresses(lxc_network)[netifaces.AF_INET][0]['addr']
+                                   interface_names)
+    netif = interface.Interface(lxc_network)
+    return netif.ipv4_address
