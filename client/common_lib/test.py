@@ -128,7 +128,7 @@ class base_test(object):
         """
         if len(description) > 256:
             raise ValueError('The description must be at most 256 characters.')
-        if len(units) > 32:
+        if units and len(units) > 32:
             raise ValueError('The units must be at most 32 characters.')
 
         # If |replacement| is legal replace illegal characters with it.
