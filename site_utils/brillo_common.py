@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import hosts
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import moblab_host
+from autotest_lib.server.hosts import ssh_host
 
 
 _LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
@@ -59,6 +60,7 @@ def get_moblab_and_devserver_port(moblab_hostname):
     try:
         host = hosts.create_host(moblab_hostname,
                                  host_class=moblab_host.MoblabHost,
+                                 connectivity_class=ssh_host.SSHHost,
                                  web_address=web_address,
                                  retain_image_storage=True,
                                  rpc_timeout_min=rpc_timeout_min)

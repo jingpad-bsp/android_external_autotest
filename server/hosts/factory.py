@@ -84,9 +84,33 @@ def _detect_host(connectivity_class, hostname, **args):
     return cros_host.CrosHost
 
 
+def _choose_connectivity_class(hostname):
+    """Choose a connectivity class for this hostname.
+
+    @param hostname: hostname that we need a connectivity class for.
+
+    @returns a connectivity host class.
+    """
+    if hostname == 'localhost':
+        return local_host.LocalHost
+    # by default assume we're using SSH support
+    elif SSH_ENGINE == 'paramiko':
+        # Not all systems have paramiko installed so only import paramiko host
+        # if the global_config settings call for it.
+        from autotest_lib.server.hosts import paramiko_host
+        return paramiko_host.ParamikoHost
+    elif SSH_ENGINE == 'raw_ssh':
+        return ssh_host.SSHHost
+    else:
+        raise error.AutoServError("Unknown SSH engine %s. Please verify the "
+                                  "value of the configuration key 'ssh_engine' "
+                                  "on autotest's global_config.ini file." %
+                                  SSH_ENGINE)
+
+
 # TODO(kevcheng): Update the creation method so it's not a research project
 # determining the class inheritance model.
-def create_host(machine, host_class=None, **args):
+def create_host(machine, host_class=None, connectivity_class=None, **args):
     """Create a host object.
 
     This method mixes host classes that are needed into a new subclass
@@ -99,6 +123,8 @@ def create_host(machine, host_class=None, **args):
                     from the autoserv runtime or the AFE.
     @param host_class: Host class to use, if None, will attempt to detect
                        the correct class.
+    @param connectivity_class: Connectivity class to use, if None will decide
+                               based off of hostname and config settings.
     @param args: Args that will be passed to the constructor of
                  the new host class.
 
@@ -116,19 +142,8 @@ def create_host(machine, host_class=None, **args):
     args['ssh_verbosity_flag'] = ssh_verbosity_flag
     args['ssh_options'] = ssh_options
 
-    if hostname == 'localhost':
-        connectivity_class = local_host.LocalHost
-    # by default assume we're using SSH support
-    elif SSH_ENGINE == 'paramiko':
-        from autotest_lib.server.hosts import paramiko_host
-        connectivity_class = paramiko_host.ParamikoHost
-    elif SSH_ENGINE == 'raw_ssh':
-        connectivity_class = ssh_host.SSHHost
-    else:
-        raise error.AutoServError("Unknown SSH engine %s. Please verify the "
-                                  "value of the configuration key 'ssh_engine' "
-                                  "on autotest's global_config.ini file." %
-                                  SSH_ENGINE)
+    if not connectivity_class:
+        connectivity_class = _choose_connectivity_class(hostname)
     host_attributes = args.get('host_attributes', {})
     host_class = host_class or OS_HOST_DICT.get(host_attributes.get('os_type'))
     if host_class:
