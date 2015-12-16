@@ -131,7 +131,7 @@ def autoserv_run_job_command(autoserv_directory, machines,
 
 
 def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
-                           verbose=True):
+                           verbose=True, in_lab=False):
     """
     @returns The autoserv command line as a list of executable + parameters.
 
@@ -142,6 +142,10 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
             and client -c or server -s parameters will be added.
     @param queue_entry - A HostQueueEntry object - If supplied and no Job
             object was supplied, this will be used to lookup the Job object.
+    @param in_lab: If true, informs autoserv it is running within a lab
+                   environment. This information is useful as autoserv knows
+                   the database is available and can make database calls such
+                   as looking up host attributes at runtime.
     """
     if drone_manager is None:
         raise ImportError('Unable to import drone_manager in autoserv_utils')
@@ -149,4 +153,4 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
     return autoserv_run_job_command(autoserv_directory,
             machines, results_directory=drone_manager.WORKING_DIRECTORY,
             extra_args=extra_args, job=job, queue_entry=queue_entry,
-            verbose=verbose)
+            verbose=verbose, in_lab=in_lab)

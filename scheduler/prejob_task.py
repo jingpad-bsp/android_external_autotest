@@ -341,7 +341,8 @@ class ProvisionTask(PreJobTask):
         # required to stage whatever content we need, and the job itself will
         # force autotest to be staged if it isn't already.
         return autoserv_utils._autoserv_command_line(self.host.hostname,
-                                                     self._extra_command_args)
+                                                     self._extra_command_args,
+                                                     in_lab=True)
 
 
     def prolog(self):
