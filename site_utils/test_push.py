@@ -225,7 +225,7 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         build = arguments.shard_build
 
     # Remove cros-version label to force provision.
-    afe = frontend_wrappers.RetryingAFE(timeout_min=0.1, delay_sec=10)
+    afe = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
     hosts = afe.get_hosts(label=constants.Labels.BOARD_PREFIX+board)
     for host in hosts:
         for label in [l for l in host.labels
