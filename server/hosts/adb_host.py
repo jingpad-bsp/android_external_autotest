@@ -598,6 +598,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # too quickly, we'll get an error complaining about no ADB device
         # attached.
         #self.adb_run('kill-server')
+        # |close| the associated teststation as well.
+        self.teststation.close()
         return super(ADBHost, self).close()
 
 

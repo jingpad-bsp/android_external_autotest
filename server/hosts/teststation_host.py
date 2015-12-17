@@ -73,6 +73,9 @@ class TestStationHost(base_classes.Host):
 
         # We'll want to do certain things differently if we're on a moblab.
         self._is_host_moblab = None
+        # Keep track of whether the host was closed since multiple AdbHost
+        # might have an instance of this teststation.
+        self._is_closed = False
 
 
     @property
@@ -123,3 +126,11 @@ class TestStationHost(base_classes.Host):
         if cmd.startswith('fastboot ') and self.is_moblab:
             cmd = 'sudo -n ' + cmd
         return super(TestStationHost, self).run(cmd, *args, **dargs)
+
+
+    def close(self):
+        if not self._is_closed:
+            self._is_closed = True
+            super(TestStationHost, self).close()
+        else:
+            logging.debug('Teststaion already closed.')
