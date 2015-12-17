@@ -49,7 +49,7 @@ class video_GlitchDetection(test.test):
                 full_url = cr.browser.platform.http_server.UrlOf(html_fullpath),
                 video_id = 'video',
                 video_src_path = source_path,
-                event_timeout = 30)
+                event_timeout = 120)
 
             chameleon_board = chameleon.create_chameleon_board(host.hostname,
                                                                args)
@@ -151,7 +151,6 @@ class video_GlitchDetection(test.test):
                                                constants.MAX_NONMATCHING_FCOUNT,
                                                len(golden_checksums),
                                                len(test_checksums)))
-
                 logging.debug(msg)
 
                 if (missing_frames_count + unknown_frames_count >
@@ -182,9 +181,17 @@ class video_GlitchDetection(test.test):
 
         """
 
+        logging.debug("Verify no frame is repeated more than %d",
+                      max_frame_repeat_count)
+
         counts = frame_checksum_utils.checksum_counts(checksums)
-        overreach_counts = { k: v for k, v in counts.iteritems() if v
-                                     > max_frame_repeat_count}
+        overreach_counts = {}
+
+        for k, v in counts.iteritems():
+            logging.debug("%s : %s", k, v)
+            if v > max_frame_repeat_count:
+                overreach_counts[k] = v
+
 
         if overreach_counts:
             msg = ('Frame count overreach detected for some checksums. '
