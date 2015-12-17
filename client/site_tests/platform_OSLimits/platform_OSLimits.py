@@ -162,5 +162,5 @@ class platform_OSLimits(test.test):
 
         # If self.error is not zero, there were errors.
         if len(errors) > 0:
-            raise error.TestFail('Found incorrect values: %s',
+            raise error.TestFail('Found incorrect values: %s' %
                                  ', '.join(errors))
