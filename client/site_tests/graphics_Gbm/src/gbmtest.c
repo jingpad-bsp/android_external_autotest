@@ -83,6 +83,7 @@ static const uint32_t format_list[] = {
 	GBM_FORMAT_UYVY,
 	GBM_FORMAT_VYUY,
 	GBM_FORMAT_AYUV,
+	GBM_FORMAT_NV12,
 };
 
 static const uint32_t usage_list[] = {
@@ -94,10 +95,46 @@ static const uint32_t usage_list[] = {
 
 static int check_bo(struct gbm_bo *bo)
 {
+	uint32_t format;
+	size_t num_planes, plane;
+	int fd;
+	int i;
+
 	CHECK(bo);
 	CHECK(gbm_bo_get_width(bo) >= 0);
 	CHECK(gbm_bo_get_height(bo) >= 0);
 	CHECK(gbm_bo_get_stride(bo) >= gbm_bo_get_width(bo));
+
+	format = gbm_bo_get_format(bo);
+	for (i = 0; i < ARRAY_SIZE(format_list); i++)
+		if (format_list[i] == format)
+			break;
+	CHECK(i < ARRAY_SIZE(format_list));
+
+	num_planes = gbm_bo_get_num_planes(bo);
+	if (format == GBM_FORMAT_NV12)
+		CHECK(num_planes == 2);
+	else
+		CHECK(num_planes == 1);
+
+	CHECK(gbm_bo_get_plane_handle(bo, 0).u32 == gbm_bo_get_handle(bo).u32);
+
+	CHECK(gbm_bo_get_plane_offset(bo, 0) == 0);
+	CHECK(gbm_bo_get_plane_size(bo, 0) >=
+		gbm_bo_get_width(bo) * gbm_bo_get_height(bo));
+	CHECK(gbm_bo_get_plane_stride(bo, 0) == gbm_bo_get_stride(bo));
+
+	for (plane = 0; plane < num_planes; plane++) {
+		CHECK(gbm_bo_get_plane_handle(bo, plane).u32);
+
+		fd = gbm_bo_get_plane_fd(bo, plane);
+		CHECK(fd > 0);
+		close(fd);
+
+		gbm_bo_get_plane_offset(bo, plane);
+		CHECK(gbm_bo_get_plane_size(bo, plane));
+		CHECK(gbm_bo_get_plane_stride(bo, plane));
+	}
 
 	return 1;
 }
