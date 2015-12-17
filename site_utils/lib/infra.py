@@ -86,24 +86,24 @@ def host_object_runner(host, **kwargs):
     return runner
 
 
-def become_runner(host, **kwargs):
+def googlesh_runner(host, **kwargs):
     """
     Returns a function that return the output of running a command via shelling
-    out to `become`.
+    out to `googlesh`.
 
     @param host: The host to run a command on
     @returns: A function that can invoke a command remotely.
     """
     def runner(cmd):
         """
-        Runs a command via become on the enclosed host.
+        Runs a command via googlesh on the enclosed host.
 
         @param cmd: The command to run.
         @returns: The output of cmd.
         @raises CalledProcessError: If there was a non-0 return code.
         """
-        out = subprocess.check_output(['become', 'chromeos-test@%s' % host,
-                                       '--', cmd])
+        out = subprocess.check_output(['googlesh', '-s', '-uchromeos-test',
+                                       '-m%s' % host, '%s' % cmd])
         return out
     return runner
 
@@ -125,7 +125,7 @@ def execute_command(host, cmd, **kwargs):
     elif getpass.getuser() == 'chromeos-test':
         runner = host_object_runner(host)
     else:
-        runner = become_runner(host)
+        runner = googlesh_runner(host)
 
     return runner(cmd, **kwargs)
 
