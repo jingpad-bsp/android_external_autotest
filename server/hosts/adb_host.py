@@ -20,6 +20,8 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import adb_label
+from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import teststation_host
 
 
@@ -183,6 +185,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
         self.tmp_dirs = []
+        self.labels = base_label.LabelRetriever(adb_label.ADB_LABELS)
         self._device_hostname = device_hostname
         self._use_tcpip = False
         # TODO (sbasi/kevcheng): Once the teststation host is committed,
@@ -1345,3 +1348,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Get a list of attributes to be cleared before machine_install starts.
         """
         return [self.job_repo_url_attribute]
+
+
+    def get_labels(self):
+        """Return a list of the labels gathered from the devices connected.
+
+        @return: A list of strings that denote the labels from all the devices
+                 connected.
+        """
+        return self.labels.get_labels(self)
+
+
+    def update_labels(self):
+        """Update the labels for this testbed."""
+        self.labels.update_labels(self)
