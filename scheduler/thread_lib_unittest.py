@@ -14,6 +14,7 @@ import unittest
 import common
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock, unittest
+from autotest_lib.scheduler import drone_task_queue
 from autotest_lib.scheduler import drones
 from autotest_lib.scheduler import thread_lib
 from autotest_lib.server.hosts import ssh_host
@@ -123,7 +124,7 @@ class DroneThreadLibTest(unittest.TestCase):
         master_thread.join()
 
         self.assertTrue(isinstance(master_thread.err,
-                                   thread_lib.DroneTaskQueueException))
+                                   drone_task_queue.DroneTaskQueueException))
         self.assertTrue(isinstance(failing_worker.err, ValueError))
         self.assertTrue(str(failing_worker.err) in str(master_thread.err))
         self.assertTrue(3 in list(sync_queue.queue))
@@ -153,8 +154,8 @@ class DroneThreadLibTest(unittest.TestCase):
                 thread_lib.ThreadedTaskQueue.result(drone1, self.mock_return))
         self.god.stub_function(task_queue, 'wait_on_drones')
         task_queue.wait_on_drones.expect_call()
-        self.assertRaises(
-                thread_lib.DroneTaskQueueException, task_queue.get_results)
+        self.assertRaises(drone_task_queue.DroneTaskQueueException,
+                          task_queue.get_results)
 
         # Insert results for different drones and check that they're returned
         # in a drone results dict.
@@ -179,11 +180,11 @@ class DroneThreadLibTest(unittest.TestCase):
         # Check task queue exception conditions.
         task_queue = thread_lib.ThreadedTaskQueue()
         task_queue.results_queue.put(1)
-        self.assertRaises(thread_lib.DroneTaskQueueException,
+        self.assertRaises(drone_task_queue.DroneTaskQueueException,
                           task_queue.execute, [])
         task_queue.results_queue.get()
         task_queue.drone_threads[drone1] = None
-        self.assertRaises(thread_lib.DroneTaskQueueException,
+        self.assertRaises(drone_task_queue.DroneTaskQueueException,
                           task_queue.execute, [])
         task_queue.drone_threads = {}
 

@@ -27,11 +27,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-
-
-class DroneTaskQueueException(Exception):
-    """Generic task queue exception."""
-    pass
+from autotest_lib.scheduler import drone_task_queue
 
 
 class ExceptionRememberingThread(threading.Thread):
@@ -77,7 +73,7 @@ class PersistentTimer(object):
             self.timer = None
 
 
-class ThreadedTaskQueue(object):
+class ThreadedTaskQueue(drone_task_queue.DroneTaskQueue):
     """Threaded implementation of a drone task queue."""
 
     result = collections.namedtuple('task', ['drone', 'results'])
@@ -137,7 +133,7 @@ class ThreadedTaskQueue(object):
         for drone, err in drone_exceptions:
             exception_msg += ('Drone %s raised Exception %s\n' %
                               (drone.hostname, err))
-        raise DroneTaskQueueException(exception_msg)
+        raise drone_task_queue.DroneTaskQueueException(exception_msg)
 
 
     def get_results(self):
@@ -155,7 +151,7 @@ class ThreadedTaskQueue(object):
         while not self.results_queue.empty():
             drone_results = self.results_queue.get()
             if drone_results.drone in results:
-                raise DroneTaskQueueException(
+                raise drone_task_queue.DroneTaskQueueException(
                         'Task queue has recorded results for drone %s: %s' %
                         (drone_results.drone, results))
             results[drone_results.drone] = drone_results.results
@@ -179,11 +175,11 @@ class ThreadedTaskQueue(object):
             at the time of invocation.
         """
         if not self.results_queue.empty():
-            raise DroneTaskQueueException(
+            raise drone_task_queue.DroneTaskQueueException(
                     'Cannot clobber results queue: %s, it should be cleared '
                     'through get_results.' % self.results_queue)
         if self.drone_threads:
-            raise DroneTaskQueueException(
+            raise drone_task_queue.DroneTaskQueueException(
                     'Cannot clobber thread map: %s, it should be cleared '
                     'through wait_on_drones' % self.drone_threads)
         self.timer.start()
@@ -204,5 +200,3 @@ class ThreadedTaskQueue(object):
             worker_thread.daemon = True
             worker_thread.start()
         return self.get_results() if wait else None
-
-

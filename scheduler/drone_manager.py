@@ -11,6 +11,7 @@ import common
 from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager, drone_utility, drones
+from autotest_lib.scheduler import drone_task_queue
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import thread_lib
 
@@ -29,6 +30,10 @@ ARCHIVER_PID_FILE = '.archiver_execute'
 
 ALL_PIDFILE_NAMES = (AUTOSERV_PID_FILE, CRASHINFO_PID_FILE, PARSER_PID_FILE,
                      ARCHIVER_PID_FILE)
+
+_THREADED_DRONE_MANAGER = global_config.global_config.get_config_value(
+        scheduler_config.CONFIG_SECTION, 'threaded_drone_manager',
+        type=bool, default=True)
 
 
 class DroneManagerError(Exception):
@@ -182,8 +187,11 @@ class BaseDroneManager(object):
         # has been sent about the drone hitting process limit.
         self._notify_record = {}
         # A threaded task queue used to refresh drones asynchronously.
-        self._refresh_task_queue = thread_lib.ThreadedTaskQueue(
-                name='%s.refresh_queue' % self._STATS_KEY)
+        if _THREADED_DRONE_MANAGER:
+            self._refresh_task_queue = thread_lib.ThreadedTaskQueue(
+                    name='%s.refresh_queue' % self._STATS_KEY)
+        else:
+            self._refresh_task_queue = drone_task_queue.DroneTaskQueue()
 
 
     def initialize(self, base_results_dir, drone_hostnames,
@@ -549,9 +557,12 @@ class BaseDroneManager(object):
         """
         # Invoke calls queued on all drones since the last call to execute
         # and wait for them to return.
-        thread_lib.ThreadedTaskQueue(
-                name='%s.execute_queue' % self._STATS_KEY).execute(
-                        self._drones.values())
+        if _THREADED_DRONE_MANAGER:
+            thread_lib.ThreadedTaskQueue(
+                    name='%s.execute_queue' % self._STATS_KEY).execute(
+                            self._drones.values())
+        else:
+            drone_task_queue.DroneTaskQueue().execute(self._drones.values())
 
         try:
             self._results_drone.execute_queued_calls()
