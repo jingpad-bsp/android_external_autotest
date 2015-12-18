@@ -164,6 +164,7 @@ class DriverTest(mox.MoxTestBase):
             self._ExpectHandle(event, 'events')
         self.mox.ReplayAll()
 
+        driver.POOL_SIZE = 1
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.HandleEventsOnce(self.mv)
 
@@ -179,6 +180,7 @@ class DriverTest(mox.MoxTestBase):
                 event.ShouldHandle().InAnyOrder('events').AndReturn(False)
         self.mox.ReplayAll()
 
+        driver.POOL_SIZE = 1
         self.driver.SetUpEventsAndTasks(self.config, self.mv)
         self.driver.HandleEventsOnce(self.mv)
 
