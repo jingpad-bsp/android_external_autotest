@@ -28,32 +28,7 @@ class AudioTest(test.test):
         """Warmup for the test before executing main logic of the test."""
         # test.test is an old-style class.
         test.test.warmup(self)
-        self.install_sox()
-        self.check_sox_installed()
-
-
-    def install_sox(self):
-        """Install sox command on autotest drone."""
-        try:
-            lxc.install_package('sox')
-        except error.ContainerError:
-            logging.info('Can not install sox outside of container.')
-
-
-    def check_sox_installed(self):
-        """Checks if sox is installed.
-
-        @raises: error.TestError if sox is not installed.
-
-        """
-        try:
-            utils.run('sox --help')
-            logging.info('Found sox executable.')
-        except error.CmdError:
-            error_message = 'sox command is not installed.'
-            if site_utils.is_inside_chroot():
-                error_message += ' sudo emerge sox to install sox in chroot'
-            raise error.TestError(error_message)
+        audio_test_requirement()
 
 
     def create_remote_facade_factory(self, host):
@@ -65,12 +40,55 @@ class AudioTest(test.test):
                   different functionalities provided by multimedia server.
 
         """
-        try:
-            factory = remote_facade_factory.RemoteFacadeFactory(host)
-        finally:
-            host.get_file(
-                    constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
-                    os.path.join(
-                            self.resultsdir,
-                            'multimedia_xmlrpc_server.log.init'))
-        return factory
+        return create_remote_facade_factory(host, self.resultsdir)
+
+
+def create_remote_facade_factory(host, result_dir):
+    """Creates a remote facade factory to access multimedia server.
+
+    @param host: A CrosHost object to access Cros device.
+    @param result_dir: A directory to store multimedia server init log.
+
+    @returns: A RemoteFacadeFactory object to create different facade for
+              different functionalities provided by multimedia server.
+
+    """
+    try:
+        factory = remote_facade_factory.RemoteFacadeFactory(host)
+    finally:
+        host.get_file(
+                constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
+                os.path.join(
+                        result_dir,
+                        'multimedia_xmlrpc_server.log.init'))
+    return factory
+
+
+def audio_test_requirement():
+    """Installs sox and checks it is installed correctly."""
+    install_sox()
+    check_sox_installed()
+
+
+def install_sox():
+    """Install sox command on autotest drone."""
+    try:
+        lxc.install_package('sox')
+    except error.ContainerError:
+        logging.info('Can not install sox outside of container.')
+
+
+def check_sox_installed():
+    """Checks if sox is installed.
+
+    @raises: error.TestError if sox is not installed.
+
+    """
+    try:
+        utils.run('sox --help')
+        logging.info('Found sox executable.')
+    except error.CmdError:
+        error_message = 'sox command is not installed.'
+        if site_utils.is_inside_chroot():
+            error_message += ' sudo emerge sox to install sox in chroot'
+        raise error.TestError(error_message)
