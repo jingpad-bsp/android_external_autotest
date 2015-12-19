@@ -36,7 +36,7 @@ class graphics_Gbm(test.test):
                            stdout_tee = utils.TEE_TO_LOGS,
                            stderr_tee = utils.TEE_TO_LOGS,
                            ignore_status = True)
-        report = re.findall(r'[  PASSED  ]', result.stdout)
+        report = re.findall(r'\[  PASSED  \]', result.stdout)
         if not report:
             raise error.TestFail('Gbm test failed (' + result.stdout + ')')
 

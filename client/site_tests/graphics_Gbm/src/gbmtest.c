@@ -376,6 +376,9 @@ static int test_import()
 	const int width = 123;
 	const int height = 456;
 
+	if (vgem_fd <= 0)
+		return 1;
+
 	CHECK(create_vgem_bo(vgem_fd, width * height, &prime_handle.handle) == 0);
 	CHECK(drmIoctl(vgem_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_handle) == 0);
 
