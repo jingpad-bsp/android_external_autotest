@@ -27,6 +27,10 @@ _VIRT_MACHINE_SSH_ADDR = 'localhost:9222'
 _VIRT_MACHINE_AFE_ADDR = '127.0.0.1:8888'
 _VIRT_MACHINE_DEVSERVER_PORT = '7777'
 _PHYS_MACHINE_DEVSERVER_PORT = '8080'
+_MOBLAB_MIN_VERSION = 7569
+_MOBLAB_IMAGE_DOWNLOAD_URL = ('https://storage.googleapis.com/chromeos-image-'
+                              'archive/moblab_brillo_images/'
+                              'moblab_brillo_%s.bin' % _MOBLAB_MIN_VERSION)
 
 
 class BrilloTestError(Exception):
@@ -68,6 +72,14 @@ def get_moblab_and_devserver_port(moblab_hostname):
         raise BrilloMoblabInitializationError(
                 'Unable to connect to the MobLab: %s' % e)
 
+    moblab_version = int(host.get_release_version().split('.')[0])
+    if moblab_version < _MOBLAB_MIN_VERSION:
+        raise BrilloMoblabInitializationError(
+                'The Moblab version (%s) is older than the minimum required '
+                '(%s). Download a current version from URL: %s' %
+                (moblab_version, _MOBLAB_MIN_VERSION,
+                _MOBLAB_IMAGE_DOWNLOAD_URL))
+
     try:
         host.afe.get_hosts()
     except Exception as e:
@@ -105,8 +117,9 @@ def parse_args(description, setup_parser=None, validate_args=None):
                         help='Hostname or IP of the adb_host connected to the '
                              'Brillo DUT. Default is to assume it is connected '
                              'directly to the MobLab.')
-    parser.add_argument('-q', '--quickmerge', action='store_true',
-                        help='Rsync over modified Autotest code.')
+    parser.add_argument('-n', '--no_quickmerge', dest='quickmerge',
+                        action='store_false',
+                        help='Do not update the Autotest code on the Moblab')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Print log statements.')
 
@@ -148,7 +161,7 @@ def _get_command(moblab, test_name, test_args, do_quickmerge, do_quote):
     @param moblab: MoblabHost representing the MobLab being used for testing.
     @param test_name: The name of the test to run.
     @param test_args: Dictionary of test arguments.
-    @param do_quickmerge: If True, pass the --quickmerge flag.
+    @param do_quickmerge: If False, pass the --no-quickmerge flag.
     @param do_quote: If True, add single-quotes around test arguments.
 
     @return Test launch command as a list of strings.
@@ -159,8 +172,8 @@ def _get_command(moblab, test_name, test_args, do_quickmerge, do_quote):
 
     cmd = [os.path.join(os.path.dirname(__file__), _TEST_LAUNCH_SCRIPT),
            '-t', quote(test_name)]
-    if do_quickmerge:
-        cmd.append('-q')
+    if not do_quickmerge:
+        cmd.append('-n')
     if not moblab.hostname.startswith('localhost'):
            cmd += ['-m', quote(moblab.hostname)]
     for arg_str in _get_arg_strs(test_args):
@@ -182,7 +195,7 @@ def _print_command(moblab, test_name, test_args, do_quickmerge):
     @param moblab: MoblabHost representing the MobLab being used for testing.
     @param test_name: The name of the test to run.
     @param test_args: Dictionary of test arguments.
-    @param do_quickmerge: If True, pass the --quickmerge flag.
+    @param do_quickmerge: If False, pass the --no-quickmerge flag.
     """
     print(' '.join(
             _get_command(moblab, test_name, test_args, do_quickmerge, True)))
@@ -194,7 +207,7 @@ def _run_command(moblab, test_name, test_args, do_quickmerge):
     @param moblab: MoblabHost representing the MobLab being used for testing.
     @param test_name: The name of the test to run.
     @param test_args: Dictionary of test arguments.
-    @param do_quickmerge: If True, pass the --quickmerge flag.
+    @param do_quickmerge: If False, pass the --no_quickmerge flag.
     """
     utils.run(_get_command(moblab, test_name, test_args, do_quickmerge, False),
               stdout_tee=sys.stdout, stderr_tee=sys.stderr)
