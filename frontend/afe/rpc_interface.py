@@ -330,6 +330,7 @@ def modify_hosts(host_filter_data, update_data):
     @param host_filter_data: Filters out which hosts to modify.
     @param update_data: A dictionary with the changes to make to the hosts.
     """
+    update_data = update_data.copy()
     rpc_utils.check_modify_host(update_data)
     hosts = models.Host.query_objects(host_filter_data)
 
