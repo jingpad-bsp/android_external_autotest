@@ -145,13 +145,6 @@ def _parse_arguments_internal(argv):
                         help='Ignore chrome crashes when producing test '
                              'report. This flag gets passed along to the '
                              'report generation tool.')
-    parser.add_argument('--ssh_verbosity', action='store', type=int,
-                        choices=[0, 1, 2, 3], default=0,
-                        help='Verbosity level for ssh, between 0 and 3 '
-                             'inclusive.')
-    parser.add_argument('--ssh_options', action='store', default=None,
-                        help='A string giving additional options to be '
-                        'added to ssh commands.')
     parser.add_argument('--ssh_private_key', action='store',
                         default=test_runner_utils.TEST_KEY_PATH,
                         help='Path to the private ssh key.')

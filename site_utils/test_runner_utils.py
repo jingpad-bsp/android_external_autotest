@@ -99,6 +99,13 @@ def add_common_args(parser):
                              'verbosity.')
     parser.add_argument('--iterations', action='store', type=int, default=1,
                         help='Number of times to run the tests specified.')
+    parser.add_argument('--ssh_verbosity', action='store', type=int,
+                        choices=[0, 1, 2, 3], default=0,
+                        help='Verbosity level for ssh, between 0 and 3 '
+                             'inclusive.')
+    parser.add_argument('--ssh_options', action='store', default=None,
+                        help='A string giving additional options to be '
+                        'added to ssh commands.')
 
 
 
