@@ -180,6 +180,8 @@ class Driver(object):
                              e.keyword, len(boards))
                 e.UpdateCriteria()
 
+        thread_pool.close()
+
 
     def ForceEventsOnceForBuild(self, keywords, build_name):
         """Force events with provided keywords to happen, with given build.
