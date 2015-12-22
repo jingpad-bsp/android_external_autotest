@@ -60,6 +60,15 @@ TIMEOUT_GET_DEVSERVER_LOAD = 2.0
 ANDROID_BUILD_NAME_PATTERN = CONFIG.get_config_value(
         'CROS', 'android_build_name_pattern', type=str).replace('\\', '')
 
+# A list of subnets that requires dedicated devserver in the same subnet. Each
+# item is a tuple of (subnet_ip, mask_bits), e.g., ('192.168.0.0', 24))
+restricted_subnets_list = CONFIG.get_config_value(
+        'CROS', 'restricted_subnets', type=list, default=[])
+RESTRICTED_SUBNETS = []
+for subnet in restricted_subnets_list:
+    ip, mask_bits = subnet.split(':')
+    RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
+
 # Return value from a devserver RPC indicating the call succeeded.
 SUCCESS = 'Success'
 
@@ -354,10 +363,11 @@ class DevServer(object):
 
 
     @classmethod
-    def get_devserver_in_same_subnet(cls, ip):
+    def get_devserver_in_same_subnet(cls, ip, mask_bits=19):
         """Get the devservers in the same subnet of the given ip.
 
         @param ip: The IP address of a dut to look for devserver.
+        @param mask_bits: Number of mask bits. Default is 19.
 
         @return: A list of devservers in the same subnet of the given ip.
 
@@ -367,7 +377,7 @@ class DevServer(object):
             server_name = ImageServer.get_server_name(server)
             try:
                 server_ip = socket.gethostbyname(server_name)
-                if utils.is_in_same_subnet(server_ip, ip, 19):
+                if utils.is_in_same_subnet(server_ip, ip, mask_bits):
                     devservers.append(server)
             except socket.gaierror:
                 pass
@@ -399,31 +409,45 @@ class DevServer(object):
         @param hostname: The hostname of dut that requests a devserver. It's
                          used to make sure a devserver in the same subnet is
                          preferred.
+
+        @raise DevServerException: If no devserver is available.
         """
         host_ip = None
         if hostname:
-            try:
-                host_ip = socket.gethostbyname(hostname)
-            except socket.gaierror as e:
-                logging.error('Failed to get IP address of %s, error: %s. Will '
-                              'pick a devserver without subnet constraint.',
-                              hostname, e)
-        if host_ip:
-            devservers = cls.get_devserver_in_same_subnet(host_ip)
-            devserver = cls.get_healthy_devserver(build, devservers)
-            if devserver:
-                return devserver
-            else:
-                logging.warn('All devservers in the same subnet are currently '
-                             'down. pick a devserver without subnet '
-                             'constraint.')
+            host_ip = site_utils.get_ip_address(hostname)
+            if not host_ip:
+                logging.error('Failed to get IP address of %s. Will pick a '
+                              'devserver without subnet constraint.', hostname)
+
         devservers = cls.servers()
+
+        # Go through all restricted subnet settings and check if the DUT is
+        # inside a restricted subnet. If so, get the subnet setting.
+        restricted_subnet = None
+        if host_ip:
+            for subnet in RESTRICTED_SUBNETS:
+                if utils.is_in_same_subnet(host_ip, subnet[0], subnet[1]):
+                    restricted_subnet = subnet
+                    logging.debug('The host %s (%s) is in a restricted subnet. '
+                                  'Try to locate a devserver inside subnet '
+                                  '%s:%d.', hostname, host_ip, subnet[0],
+                                  subnet[1])
+                    devservers = cls.get_devserver_in_same_subnet(
+                            subnet[0], subnet[1])
+                    break
+
         devserver = cls.get_healthy_devserver(build, devservers)
         if devserver:
             return devserver
         else:
-            logging.error('All devservers are currently down!!!')
-            raise DevServerException('All devservers are currently down!!!')
+            if restricted_subnet:
+                subnet_error = ('in the same subnet as the host %s (%s)' %
+                                (hostname, host_ip))
+            else:
+                subnet_error = ''
+            error_msg = 'All devservers %s are currently down!!!' % subnet_error
+            logging.error(error_msg)
+            raise DevServerException(error_msg)
 
 
 class CrashServer(DevServer):

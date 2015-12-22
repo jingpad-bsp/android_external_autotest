@@ -591,6 +591,21 @@ def is_in_same_subnet(ip_1, ip_2, mask_bits=24):
     return ip_1_num & mask == ip_2_num & mask
 
 
+def get_ip_address(hostname):
+    """Get the IP address of given hostname.
+
+    @param hostname: Hostname of a DUT.
+
+    @return: The IP address of given hostname. None if failed to resolve
+             hostname.
+    """
+    try:
+        if hostname:
+            return socket.gethostbyname(hostname)
+    except socket.gaierror as e:
+        logging.error('Failed to get IP address of %s, error: %s.', hostname, e)
+
+
 def parse_android_build(build_name):
     """Get branch, target, build_id from the given build_name.
 

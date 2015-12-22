@@ -1059,7 +1059,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             and the devserver instance.
         """
         logging.info('Staging build for installation: %s', build_name)
-        devserver = dev_server.AndroidBuildServer.resolve(build_name)
+        devserver = dev_server.AndroidBuildServer.resolve(build_name,
+                                                          self.hostname)
         build_name = devserver.translate(build_name)
         branch, target, build_id = utils.parse_android_build(build_name)
         is_brillo = self.get_os_type() == OS_TYPE_BRILLO

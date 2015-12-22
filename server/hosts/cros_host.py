@@ -445,7 +445,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return
 
         cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
-        devserver_url = dev_server.ImageServer.resolve(image_name).url()
+        devserver_url = dev_server.ImageServer.resolve(image_name,
+                                                       self.hostname).url()
 
         self._AFE.run('label_add_hosts', id=cros_label, hosts=[self.hostname])
         self.update_job_repo_url(devserver_url, image_name)
@@ -655,7 +656,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             image_name = self.get_repair_image_name()
 
         logging.info('Staging build for AU: %s', image_name)
-        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.trigger_download(image_name, synchronous=False)
         return (tools.image_url_pattern() % (devserver.url(), image_name),
                 devserver)
@@ -671,7 +672,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if not image_name:
             image_name = self.get_repair_image_name()
         logging.info('Staging build for servo install: %s', image_name)
-        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.stage_artifacts(image_name, ['test_image'])
         return devserver.get_test_image_url(image_name)
 
@@ -701,7 +702,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                              'artifacts.')
 
         logging.info('Staging build for servo install: %s', image_name)
-        devserver = dev_server.ImageServer.resolve(image_name)
+        devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.stage_artifacts(
                 image_name,
                 [factory_artifact],
@@ -903,7 +904,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else: # Depthcharge platform
             ap_image = 'image.bin'
         ec_image = 'ec.bin'
-        ds = dev_server.ImageServer.resolve(build)
+        ds = dev_server.ImageServer.resolve(build, self.hostname)
         ds.stage_artifacts(build, ['firmware'])
 
         tmpd = autotemp.tempdir(unique_id='fwimage')
