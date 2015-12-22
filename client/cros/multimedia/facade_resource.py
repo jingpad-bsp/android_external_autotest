@@ -39,6 +39,12 @@ class FacadeResource(object):
                 clear_enterprise_policy=not restart,
                 autotest_ext=True)
         self._browser = self._chrome.browser
+        # The opened tabs are stored by tab descriptors.
+        # Key is the tab descriptor string.
+        # We use string as the key because of RPC Call. Client can use the
+        # string to locate the tab object.
+        # Value is the tab object.
+        self._tabs = dict()
 
 
     def close(self):
@@ -91,11 +97,15 @@ class FacadeResource(object):
         """Loads the given url in a new tab. The new tab will be active.
 
         @param url: The url to load as a string.
+        @return a str, the tab descriptor of the opened tab.
 
         """
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
+        tab_descriptor = hex(id(tab))
+        self._tabs[tab_descriptor] = tab
+        return tab_descriptor
 
 
     def get_tabs(self):
@@ -107,32 +117,24 @@ class FacadeResource(object):
         return self._browser.tabs
 
 
-    def get_tab(self, index=-1):
-        """Gets a tab opened by browser.
+    def get_tab_by_descriptor(self, tab_descriptor):
+        """Gets the tab by the tab descriptor.
 
-        @param index: The tab index. Defaults to the last tab.
-
-        @returns: The tab.
+        @returns: The tab object indicated by the tab descriptor.
 
         """
-        return self.get_tabs()[index]
-
-
-    def close_tab_by_index(self, index=-1):
-        """Closes the tab of the given index.
-
-        @param index: The tab index to close. Defaults to the last tab.
-
-        """
-        self._browser.tabs[index].Close()
-        self.close_tab(self._browser.tabs[index])
+        return self._tabs[tab_descriptor]
 
 
     @retry_chrome_call
-    def close_tab(self, tab):
-        """Closes the tab with retry.
+    def close_tab(self, tab_descriptor):
+        """Closes the tab.
 
-        @param tab: The tab to be closed.
+        @param tab_descriptor: Indicate which tab to be closed.
 
         """
+        if tab_descriptor not in self._tabs:
+            raise RuntimeError('There is no tab for %s' % tab_descriptor)
+        tab = self._tabs[tab_descriptor]
+        del self._tabs[tab_descriptor]
         tab.Close()

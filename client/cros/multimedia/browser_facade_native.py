@@ -20,27 +20,25 @@ class BrowserFacadeNative(object):
 
         """
         self._resource = resource
-        self._tabs = dict()
 
 
     def new_tab(self, url):
         """Opens a new tab and loads URL.
 
         @param url: The URL to load.
+        @return a str, the tab descriptor of the opened tab.
 
         """
         logging.debug('Load URL %s', url)
-        self._resource.load_url(url)
-        self._tabs[url] = self._resource.get_tab()
+        return self._resource.load_url(url)
 
 
-    def close_tab(self, url):
+    def close_tab(self, tab_descriptor):
         """Closes a previously opened tab.
 
-        @param url: The URL loaded for this tab when it was created.
+        @param tab_descriptor: Indicate which tab to be closed.
 
         """
-        if url not in self._tabs:
-            raise BrowserFacadeNativeError('There is no tab for url %s', url)
-        self._resource.close_tab(self._tabs[url])
-        logging.debug('Closed URL %s', url)
+        tab = self._resource.get_tab_by_descriptor(tab_descriptor)
+        logging.debug('Closing URL %s', tab.url)
+        self._resource.close_tab(tab_descriptor)

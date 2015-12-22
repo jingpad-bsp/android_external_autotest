@@ -35,15 +35,16 @@ class BrowserFacadeRemoteAdapter(object):
         """Opens a new tab and loads URL.
 
         @param url: The URL to load.
+        @return a str, the tab descriptor of the opened tab.
 
         """
-        self._browser_proxy.new_tab(url)
+        return self._browser_proxy.new_tab(url)
 
 
-    def close_tab(self, url):
+    def close_tab(self, tab_descriptor):
         """Closes a previously opened tab.
 
-        @param url: The URL loaded for this tab when it was created.
+        @param tab_descriptor: Indicate which tab to be closed.
 
         """
-        self._browser_proxy.close_tab(url)
+        self._browser_proxy.close_tab(tab_descriptor)

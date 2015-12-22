@@ -9,7 +9,6 @@ import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
-from autotest_lib.client.cros.chameleon import chameleon_screen_test
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -53,7 +52,7 @@ class display_Tearing(test.test):
 
         @param test_mirrored: True to test mirrored mode. False not to.
         """
-        self._display_facade.load_url('about:blank')
+        self._test_tab_descriptor = self._display_facade.load_url('about:blank')
         if not test_mirrored:
             self._display_facade.move_to_display(
                     self._display_facade.get_first_external_display_index())
@@ -70,7 +69,8 @@ class display_Tearing(test.test):
         """
         try:
             chameleon_port.start_capturing_video()
-            self._display_facade.load_color_sequence([color])
+            self._display_facade.load_color_sequence(self._test_tab_descriptor,
+                                                     [color])
             time.sleep(self.CHAMELEON_CAPTURE_WAIT_TIME_SEC)
         finally:
             chameleon_port.stop_capturing_video()
@@ -99,12 +99,13 @@ class display_Tearing(test.test):
             if checksum in checksum_table:
                 raise error.TestFail('Bad color sequence: hash collision')
             checksum_table[checksum] = color
-            logging.info('Color %d has checksums %r' % (color, checksum))
+            logging.info('Color %d has checksums %r', (color, checksum))
         return checksum_table
 
     def _reset_background_color(self):
         """Resets the background color for displaying test color sequence."""
         self._display_facade.load_color_sequence(
+                self._test_tab_descriptor,
                 [self.INITIAL_BACKGROUND_COLOR])
 
     def _display_and_capture(self, chameleon_port, color_sequence):
@@ -121,7 +122,8 @@ class display_Tearing(test.test):
         try:
             chameleon_port.start_capturing_video()
             timestamp_list = (
-                    self._display_facade.load_color_sequence(color_sequence))
+                    self._display_facade.load_color_sequence(
+                        self._test_tab_descriptor, color_sequence))
             time.sleep(self.CHAMELEON_CAPTURE_WAIT_TIME_SEC)
         finally:
             chameleon_port.stop_capturing_video()
@@ -189,7 +191,7 @@ class display_Tearing(test.test):
                 chameleon_port, self.TEST_COLOR_SEQUENCE)
         captured_checksums, timestamp_list = self._display_and_capture(
                 chameleon_port, self.TEST_COLOR_SEQUENCE)
-        self._display_facade.close_tab()
+        self._display_facade.close_tab(self._test_tab_descriptor)
         delay_time = [timestamp_list[i] - timestamp_list[i-1]
                       for i in xrange(1, len(timestamp_list))]
         logging.info('Captured %d frames\n'
@@ -197,11 +199,11 @@ class display_Tearing(test.test):
                      'Captured_checksums: %s\n'
                      'Timestamp_list: %s\n'
                      'Delay informtaion:\n'
-                     'max = %r, min = %r, avg = %r\n'
-                     % (len(captured_checksums), checksum_table,
-                        captured_checksums, timestamp_list,
-                        max(delay_time), min(delay_time),
-                        sum(delay_time)/len(delay_time)))
+                     'max = %r, min = %r, avg = %r\n',
+                     len(captured_checksums), checksum_table,
+                     captured_checksums, timestamp_list,
+                     max(delay_time), min(delay_time),
+                     sum(delay_time)/len(delay_time))
 
         error = None
         if self._tearing_test(
@@ -220,6 +222,7 @@ class display_Tearing(test.test):
     def run_once(self, host, test_mirrored=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         self._display_facade = factory.create_display_facade()
+        self._test_tab_descriptor = None
         chameleon_board = host.chameleon
 
         chameleon_board.reset()

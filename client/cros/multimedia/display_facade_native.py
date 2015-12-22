@@ -19,6 +19,7 @@ from autotest_lib.client.cros.multimedia import image_generator
 from telemetry.internal.browser import web_contents
 
 class TimeoutException(Exception):
+    """Timeout Exception class."""
     pass
 
 
@@ -124,7 +125,6 @@ class DisplayFacadeNative(object):
                 % {'index': display_index}, timeout)
 
 
-    @facade_resource.retry_chrome_call
     def get_display_modes(self, display_index):
         """Gets all the display modes for the specified display.
 
@@ -138,15 +138,15 @@ class DisplayFacadeNative(object):
         @raise TimeoutException when the operation is timed out.
         """
         try:
-            self.load_url('chrome://settings-frame/display')
-            tab = self._resource.get_tab()
+            tab_descriptor = self.load_url('chrome://settings-frame/display')
+            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
             self._wait_for_display_options_to_appear(tab, display_index)
             return tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_"
                     "         .displays_[%(index)d].resolutions"
                     % {'index': display_index})
         finally:
-            self.close_tab()
+            self.close_tab(tab_descriptor)
 
 
     def get_available_resolutions(self, display_index):
@@ -197,8 +197,8 @@ class DisplayFacadeNative(object):
         """
 
         try:
-            self.load_url('chrome://settings-frame/display')
-            tab = self._resource.get_tab()
+            tab_descriptor = self.load_url('chrome://settings-frame/display')
+            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
             self._wait_for_display_options_to_appear(tab, display_index)
 
             tab.ExecuteJavaScript(
@@ -245,7 +245,7 @@ class DisplayFacadeNative(object):
             raise TimeoutException('Failed to change resolution to %r (%r'
                                    ' detected)' % ((width, height), r))
         finally:
-            self.close_tab()
+            self.close_tab(tab_descriptor)
 
 
     @_retry_display_call
@@ -322,6 +322,10 @@ class DisplayFacadeNative(object):
 
 
     def take_internal_screenshot(self, path):
+        """Takes internal screenshot.
+
+        @param path: path to image file.
+        """
         if utils.is_freon():
             self.take_screenshot_crtc(path, self.get_internal_crtc())
         else:
@@ -332,6 +336,10 @@ class DisplayFacadeNative(object):
 
 
     def take_external_screenshot(self, path):
+        """Takes external screenshot.
+
+        @param path: path to image file.
+        """
         if utils.is_freon():
             self.take_screenshot_crtc(path, self.get_external_crtc())
         else:
@@ -560,9 +568,9 @@ class DisplayFacadeNative(object):
         """Loads the given url in a new tab. The new tab will be active.
 
         @param url: The url to load as a string.
+        @return a str, the tab descriptor of the opened tab.
         """
-        self._resource.load_url(url)
-        return True
+        return self._resource.load_url(url)
 
 
     def load_calibration_image(self, resolution):
@@ -570,21 +578,27 @@ class DisplayFacadeNative(object):
            image from the HTTP server.
 
         @param resolution: A tuple (width, height) of resolution.
+        @return a str, the tab descriptor of the opened tab.
         """
         path = self.CALIBRATION_IMAGE_PATH
         self._image_generator.generate_image(resolution[0], resolution[1], path)
         os.chmod(path, 0644)
-        self.load_url('file://%s' % path)
-        return True
+        tab_descriptor = self.load_url('file://%s' % path)
+        return tab_descriptor
 
 
-    def load_color_sequence(self, color_sequence):
-        """Displays a series of colors on the last tab.
+    def load_color_sequence(self, tab_descriptor, color_sequence):
+        """Displays a series of colors on full screen on the tab.
+        tab_descriptor is returned by any open tab API of display facade.
+        e.g.,
+        tab_descriptor = load_url('about:blank')
+        load_color_sequence(tab_descriptor, color)
 
+        @param tab_descriptor: Indicate which tab to test.
         @param color_sequence: An integer list for switching colors.
         @return A list of the timestamp for each switch.
         """
-        tab = self._resource.get_tab()
+        tab = self._resource.get_tab_by_descriptor(tab_descriptor)
         color_sequence_for_java_script = (
                 'var color_sequence = [' +
                 ','.join("'#%06X'" % x for x in color_sequence) +
@@ -623,10 +637,19 @@ class DisplayFacadeNative(object):
         return tab.EvaluateJavaScript("window.timestamp_list")
 
 
-    def close_tab(self, index=-1):
-        """Disables fullscreen and closes the tab of the given index.
+    def close_tab(self, tab_descriptor):
+        """Disables fullscreen and closes the tab of the given tab descriptor.
+        tab_descriptor is returned by any open tab API of display facade.
+        e.g.,
+        1.
+        tab_descriptor = load_url(url)
+        close_tab(tab_descriptor)
 
-        @param index: The tab index to close. Defaults to the last tab.
+        2.
+        tab_descriptor = load_calibration_image(resolution)
+        close_tab(tab_descriptor)
+
+        @param tab_descriptor: Indicate which tab to be closed.
         """
         # set_fullscreen(False) is necessary here because currently there
         # is a bug in tabs.Close(). If the current state is fullscreen and
@@ -637,5 +660,5 @@ class DisplayFacadeNative(object):
         # (though it is not) and do nothing, which will break all the
         # following tests.
         self.set_fullscreen(False)
-        self._resource.close_tab_by_index(index)
+        self._resource.close_tab(tab_descriptor)
         return True

@@ -61,7 +61,7 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
             logging.info('Start playing %s on Cros device',
                          audio_test_file)
             browser_facade = factory.create_browser_facade()
-            browser_facade.new_tab(audio_test_file)
+            tab_descriptor = browser_facade.new_tab(audio_test_file)
 
             time.sleep(self.DELAY_BEFORE_RECORD_SECONDS)
             logging.info('Start recording from Chameleon.')
@@ -71,7 +71,7 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
 
             recorder.stop_recording()
             logging.info('Stopped recording from Chameleon.')
-            browser_facade.close_tab(audio_test_file)
+            browser_facade.close_tab(tab_descriptor)
 
             audio_test_utils.dump_cros_audio_logs(
                     host, audio_facade, self.resultsdir, 'after_recording')

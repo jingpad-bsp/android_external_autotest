@@ -72,33 +72,50 @@ class DisplayFacadeLocalAdapter(object):
         """Loads the given url in a new tab. The new tab will be active.
 
         @param url: The url to load as a string.
+        @return a str, the tab descriptor of the opened tab.
         """
-        self._display_component.load_url(url)
+        return self._display_component.load_url(url)
 
 
     def load_calibration_image(self, resolution):
         """Load a full screen calibration image from the HTTP server.
 
         @param resolution: A tuple (width, height) of resolution.
+        @return a str, the tab descriptor of the opened tab.
         """
-        self._display_component.load_calibration_image(resolution)
+        return self._display_component.load_calibration_image(resolution)
 
 
-    def load_color_sequence(self, color_sequence):
-        """Displays a series of colors on full screen on the last tab.
+    def load_color_sequence(self, tab_descriptor, color_sequence):
+        """Displays a series of colors on full screen on the tab.
+        tab_descriptor is returned by any open tab API of display facade.
+        e.g.,
+        tab_descriptor = load_url('about:blank')
+        load_color_sequence(tab_descriptor, color)
 
+        @param tab_descriptor: Indicate which tab to test.
         @param color_sequence: An integer list for switching colors.
         @return A list of the timestamp for each switch.
         """
-        return self._display_component.load_color_sequence(color_sequence)
+        return self._display_component.load_color_sequence(tab_descriptor,
+                                                           color_sequence)
 
 
-    def close_tab(self, index=-1):
-        """Disables fullscreen and closes the tab of the given index.
+    def close_tab(self, tab_descriptor):
+        """Disables fullscreen and closes the tab of the given tab descriptor.
+        tab_descriptor is returned by any open tab API of display facade.
+        e.g.,
+        1.
+        tab_descriptor = load_url(url)
+        close_tab(tab_descriptor)
 
-        @param index: The tab index to close. Defaults to the last tab.
+        2.
+        tab_descriptor = load_calibration_image(resolution)
+        close_tab(tab_descriptor)
+
+        @param tab_descriptor: Indicate which tab to close.
         """
-        self._display_component.close_tab(index)
+        self._display_component.close_tab(tab_descriptor)
 
 
     def is_mirrored_enabled(self):

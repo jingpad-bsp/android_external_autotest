@@ -27,6 +27,7 @@ class ChameleonScreenTest(object):
         self._resolution_comparer = factory.create_resolution_comparer()
         self._screen_comparer = factory.create_screen_comparer(output_dir)
         self._mirror_comparer = factory.create_mirror_comparer(output_dir)
+        self._calibration_image_tab_descriptor = None
 
 
     def test_resolution(self, expected_resolution):
@@ -81,7 +82,8 @@ class ChameleonScreenTest(object):
         """
         if test_mirrored is None:
             test_mirrored = self._display_facade.is_mirrored_enabled()
-        self._display_facade.load_calibration_image(image_size)
+        self._calibration_image_tab_descriptor = \
+            self._display_facade.load_calibration_image(image_size)
         if not test_mirrored:
             self._display_facade.move_to_display(
                     self._display_facade.get_first_external_display_index())
@@ -92,7 +94,7 @@ class ChameleonScreenTest(object):
 
     def unload_test_image(self):
         """Closes the tab in browser to unload the fullscreen test image."""
-        self._display_facade.close_tab()
+        self._display_facade.close_tab(self._calibration_image_tab_descriptor)
 
 
     def test_screen_with_image(self, expected_resolution, test_mirrored=None,
