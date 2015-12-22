@@ -6,10 +6,11 @@
 
 import logging
 import os
+import tempfile
 import time
 import threading
 
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, file_utils
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
@@ -73,11 +74,17 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
 
         browser_facade = self.factory.create_browser_facade()
 
+        host_file = os.path.join('/tmp',
+                os.path.basename(self.test_playback_file))
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            file_utils.download_file(self.test_playback_file, tmpfile.name)
+            self.host.send_file(tmpfile.name, host_file)
+            logging.debug('Copied the file on the DUT at %s', host_file)
+
         # Play, wait for some time, and then start recording.
         # This is to avoid artifact caused by codec initialization.
-        browser_facade.new_tab(self.test_playback_file)
-        logging.info('Start playing %s on Cros device',
-                     self.test_playback_file)
+        browser_facade.new_tab('file://' + host_file)
+        logging.info('Start playing %s on Cros device', host_file)
 
         time.sleep(self.SHORT_WAIT)
         logging.debug('Suspend.')
@@ -91,8 +98,6 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
 
         recorder_widget.stop_recording()
         logging.debug('Stopped recording.')
-
-        browser_facade.close_tab(self.test_playback_file)
 
         audio_test_utils.dump_cros_audio_logs(
                 self.host, self.audio_facade, self.resultsdir,
