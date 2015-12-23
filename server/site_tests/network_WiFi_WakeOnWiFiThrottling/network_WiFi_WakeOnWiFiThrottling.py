@@ -36,6 +36,8 @@ class network_WiFi_WakeOnWiFiThrottling(
         with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_DARKCONNECT):
             logging.info('Set up WoWLAN')
 
+            prev_num_dark_resumes = self.dr_utils.count_dark_resumes()
+
             logging.info('Testing short dark resume threshold')
             with self.dr_utils.suspend():
                 # Wait for suspend actions to finish.
@@ -53,12 +55,15 @@ class network_WiFi_WakeOnWiFiThrottling(
 
             client.check_wake_on_wifi_throttled()
 
-            prev_num_dark_resumes = self.dr_utils.count_dark_resumes()
-            if prev_num_dark_resumes < _SHORT_DARK_RESUME_THRESHOLD:
+            num_dark_resumes = (self.dr_utils.count_dark_resumes() -
+                                prev_num_dark_resumes)
+            if num_dark_resumes != _SHORT_DARK_RESUME_THRESHOLD:
                 raise error.TestFail('Client did not enter the expected number '
                                      'of dark resumes (actual: %d, expected: %d'
                                      ')' % (num_dark_resumes,
                                             _SHORT_DARK_RESUME_THRESHOLD))
+
+            prev_num_dark_resumes = self.dr_utils.count_dark_resumes()
 
             # Since we wake from suspend and suspend again, the throttling
             # mechanism should be reset.
@@ -81,8 +86,9 @@ class network_WiFi_WakeOnWiFiThrottling(
 
             client.check_wake_on_wifi_throttled()
 
-            if (self.dr_utils.count_dark_resumes() -
-                prev_num_dark_resumes) < _LONG_DARK_RESUME_THRESHOLD:
+            new_num_dark_resumes = (self.dr_utils.count_dark_resumes() -
+                                    prev_num_dark_resumes)
+            if new_num_dark_resumes != _LONG_DARK_RESUME_THRESHOLD:
                 raise error.TestFail('Client did not enter the expected number '
                                      'of dark resumes (actual: %d, expected: %d'
                                      ')' % (new_num_dark_resumes,
