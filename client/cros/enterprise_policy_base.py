@@ -13,7 +13,7 @@ from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import enterprise_base
 from autotest_lib.client.cros import httpd
 
-ENTERPRISE_STAGING_FLAGS = [
+CROSDEV_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
     '--lso-url=https://gaiastaging.corp.google.com',
     '--google-apis-url=https://www-googleapis-test.sandbox.google.com',
@@ -22,25 +22,29 @@ ENTERPRISE_STAGING_FLAGS = [
     ('--cloud-print-url='
      'https://cloudprint-nightly-ps.sandbox.google.com/cloudprint'),
     '--ignore-urlfetcher-cert-requests']
-ENTERPRISE_TESTDMS_FLAGS = [
+CROSAUTO_FLAGS = [
+    ('--cloud-print-url='
+     'https://cloudprint-nightly-ps.sandbox.google.com/cloudprint'),
+    '--ignore-urlfetcher-cert-requests']
+TESTDMS_FLAGS = [
     '--ignore-urlfetcher-cert-requests',
     '--enterprise-enrollment-skip-robot-auth',
     '--disable-policy-key-verification']
-ENTERPRISE_FLAGS_DICT = {
+FLAGS_DICT = {
     'prod': [],
-    'cr-dev': ENTERPRISE_STAGING_FLAGS,
-    'cr-auto': [],
-    'dm-test': ENTERPRISE_TESTDMS_FLAGS,
-    'dm-fake': ENTERPRISE_TESTDMS_FLAGS
+    'cr-dev': CROSDEV_FLAGS,
+    'cr-auto': CROSAUTO_FLAGS,
+    'dm-test': TESTDMS_FLAGS,
+    'dm-fake': TESTDMS_FLAGS
 }
-ENTERPRISE_DMS_URL_DICT = {
+DMS_URL_DICT = {
     'prod': 'http://m.google.com/devicemanagement/data/api',
     'cr-dev': 'https://cros-dev.sandbox.google.com/devicemanagement/data/api',
     'cr-auto': 'https://cros-auto.sandbox.google.com/devicemanagement/data/api',
     'dm-test': 'http://chromium-dm-test.appspot.com/d/%s',
     'dm-fake': 'http://127.0.0.1:%d/'
 }
-ENTERPRISE_DMSERVER = '--device-management-url=%s'
+DMSERVER = '--device-management-url=%s'
 
 
 class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
@@ -100,6 +104,17 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.password = args_dict.get('password')
         self.dms_name = args_dict.get('dms_name')
 
+        # If |mode| is 'list', set |env| to generic 'prod', and blank out
+        # the other key parameters: case, value.
+        if self.mode == 'list':
+            self.env = 'prod'
+            self.case = None
+            self.value = None
+
+        # If |case| is given then set |mode| to 'single'.
+        if self.case:
+            self.mode = 'single'
+
         # If |mode| is 'all', then |env| must be 'dm-fake', and
         # the |case| and |value| args must not be given.
         if self.mode == 'all':
@@ -113,24 +128,17 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 raise error.TestError('value must not be given '
                                       'when mode=all.')
 
-        # If |mode| is 'list', set |env| to generic prod, and blank out
-        # the other key parameters: case, value.
-        if self.mode == 'list':
-            self.env = 'prod'
-            self.case = None
-            self.value = None
-
         # If |value| is given, set |is_value_given| flag to True. And if
         # |value| was given as 'none' or '', then set |value| to None.
         if self.value is not None:
             self.is_value_given = True
-            if self.value.lower() == 'none' or self.value == '':
+            if self.value.lower() == 'none' or not self.value:
                 self.value = None
         else:
             self.is_value_given = False
 
         # Verify |env| is a valid environment.
-        if self.env is not None and self.env not in ENTERPRISE_FLAGS_DICT:
+        if self.env is not None and self.env not in FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
         # If |env| is 'dm-fake', ensure value and credentials are not given.
@@ -147,12 +155,9 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.username = self.USERNAME
             self.password = self.PASSWORD
 
-        # Verify |case| is given iff |mode|==single.
+        # Verify |case| is given if |mode|==single.
         if self.mode == 'single' and not self.case:
             raise error.TestError('case must be given when mode is single.')
-        if self.mode != 'single' and self.case:
-            raise error.TestError('case must not be given when mode is not '
-                                  'single.')
 
         # Verify |case| is given if a |value| is given.
         if self.is_value_given and self.case is None:
@@ -184,28 +189,30 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if self.env != 'prod':
             if self.env == 'dm-fake':
                 # Use URL provided by AutoTest DM server.
-                dmserver_str = (ENTERPRISE_DMSERVER % self.dm_server_url)
+                dmserver_str = (DMSERVER % self.dm_server_url)
             else:
                 # Use URL defined in DMS URL dictionary.
-                dmserver_str = (ENTERPRISE_DMSERVER %
-                                (ENTERPRISE_DMS_URL_DICT[self.env]))
+                dmserver_str = (DMSERVER % (DMS_URL_DICT[self.env]))
                 if self.env == 'dm-test':
                     dmserver_str = (dmserver_str % self.dms_name)
 
             # Merge with other flags needed by non-prod enviornment.
-            env_flag_list = ([dmserver_str] +
-                             ENTERPRISE_FLAGS_DICT[self.env])
+            env_flag_list = ([dmserver_str] + FLAGS_DICT[self.env])
 
         self.extra_flags = env_flag_list
         self.cr = None
 
     def setup_case(self, policy_name, policy_value, policies_json):
-        """Set up preconditions for a single test case.
+        """Set up and confirm the preconditions of a test case.
 
-        If the AutoTest fake DM Server is initialized, upload |policies_json|
-        to it. Sign in to Chrome OS. Open the Policies page. Verify that the
-        user successfully signed in. Verify that the Policies page shows the
-        specified |policy_name| and has the correct |policy_value|.
+        If the AutoTest fake DM Server is initialized, make a policy blob
+        from |policies_json|, and upload it to the fake server.
+
+        Launch a chrome browser, and sign in to Chrome OS. Examine the user's
+        cryptohome vault, to confirm it signed in successfully.
+
+        Open the Policies page, and confirm that it shows the specified
+        |policy_name| and has the correct |policy_value|.
 
         @param policy_name: Name of the policy under test.
         @param policy_value: Expected value to appear on chrome://policy page.
@@ -218,9 +225,23 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         """
         # Set up policy on AutoTest DM Server only if initialized.
         if self.env == 'dm-fake':
-            self._setup_policy(policies_json)
+            self.setup_policy(self._make_json_blob(policies_json))
 
-        # Launch Chrome browser.
+        self._launch_chrome_browser()
+        if not cryptohome.is_vault_mounted(user=self.username,
+                                           allow_fail=True):
+            raise error.TestError('Expected to find a mounted vault for %s.'
+                                  % self.username)
+        tab = self.navigate_to_url('chrome://policy')
+        value_shown = self._get_policy_value_shown(tab, policy_name)
+        if not self._policy_value_matches_shown(policy_value, value_shown):
+            raise error.TestFail('Policy value shown is not correct: %s '
+                                 '(expected: %s)' %
+                                 (value_shown, policy_value))
+        tab.Close()
+
+    def _launch_chrome_browser(self):
+        """Launch Chrome browser and sign in."""
         logging.info('Chrome Browser Arguments:')
         logging.info('  extra_browser_args: %s', self.extra_flags)
         logging.info('  username: %s', self.username)
@@ -233,34 +254,51 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                                 disable_gaia_services=False,
                                 autotest_ext=True)
 
-        # Open a tab to the chrome://policy page.
-        self.cr.browser.tabs[0].Activate()
-        policy_tab = self.cr.browser.tabs.New()
-        policy_tab.Activate()
-        policy_tab.Navigate('chrome://policy')
-        policy_tab.WaitForDocumentReadyStateToBeComplete()
+    def navigate_to_url(self, url, tab=None):
+        """Navigate tab to the specified |url|. Create new tab if none given.
 
-        # Confirm test preconditions: user is signed in, and policy set.
-        # Verify that user's cryptohome directory is mounted.
-        if not cryptohome.is_vault_mounted(user=self.username,
-                                           allow_fail=True):
-            raise error.TestError('Expected to find a mounted vault for %s.'
-                                  % self.username)
+        @param url: URL of web page to load.
+        @param tab: browser tab to load (if any).
+        @returns: browser tab loaded with web page.
 
-        # Verify that policy name & value are shown on the Policies page.
-        value_shown = self._get_policy_value_shown(policy_tab, policy_name)
-        if value_shown != policy_value:
-            raise error.TestFail('Policy value shown is not correct: %s '
-                                 '(expected: %s)' %
-                                 (value_shown, policy_value))
+        """
+        logging.info('Navigating to URL: %r', url)
+        if not tab:
+            tab = self.cr.browser.tabs.New()
+            tab.Activate()
+        """try:
+            tab.Navigate(url, timeout=5)
+        except Exception, err:
+            logging.error('Timeout Exception navigating to URL: %s\n %s',
+                          url, err)"""
+        tab.Navigate(url, timeout=5)
+        tab.WaitForDocumentReadyStateToBeComplete()
+        return tab
 
-        # Close the Policies tab.
-        policy_tab.Close()
+    def _policy_value_matches_shown(self, policy_value, value_shown):
+        """Compare |policy_value| to |value_shown| with whitespace removed.
 
-    def _setup_policy(self, policies_json):
-        """Create policy blob from JSON data, and send to AutoTest fake DMS.
+        Compare the expected policy value with the value actually shown on the
+        chrome://policies page, after removing all whitespace from both
+        strings. Whitespace is removed because Chrome OS sometimes processes
+        the value shown to make it more human readable.
 
-        @param policies_json: The policy JSON data (name-value pairs).
+        @param policy_value: Expected value to appear on chrome://policy page.
+        @param value_shown: Value as it appears on chrome://policy page.
+        @param policies_json: JSON string to set up the fake DMS policy value.
+
+        @returns: True if the strings match after removing all whitespace.
+
+        """
+        trimmed_value = ''.join(policy_value.split()) if policy_value else ''
+        trimmed_shown = ''.join(value_shown.split()) if value_shown else ''
+        return trimmed_value == trimmed_shown
+
+    def _make_json_blob(self, policies_json):
+        """Create policy blob from policies JSON object.
+
+        @param policies_json: Policies JSON object (name-value pairs).
+        @returns: Policy blob to be used to setup the policy server.
 
         """
         policies_json = self._move_modeless_to_mandatory(policies_json)
@@ -274,7 +312,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             "invalidation_source": 16,
             "invalidation_name": "test_policy"
         }""" % (json.dumps(policies_json), self.USERNAME)
-        self.setup_policy(policy_blob)
+        return policy_blob
 
     def _move_modeless_to_mandatory(self, policies_json):
         """Add the 'mandatory' mode if a policy's mode was omitted.
@@ -327,7 +365,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         policies_json_copy = policies_json.copy()
         for policies in policies_json_copy.values():
             for policy_data in policies.items():
-                if policy_data[1] is None or policy_data[1] == '':
+                if policy_data[1] is None or not policy_data[1]:
                     policies.pop(policy_data[0])
         return policies_json_copy
 
@@ -343,25 +381,25 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         """
         row_values = policy_tab.EvaluateJavaScript('''
-                var section = document.getElementsByClassName("policy-table-section")[0];
-                var table = section.getElementsByTagName('table')[0];
-                rowValues = '';
-                for (var i = 1, row; row = table.rows[i]; i++) {
-                   if (row.className !== 'expanded-value-container') {
-                      var name_div = row.getElementsByClassName('name elide')[0];
-                      var name = name_div.textContent;
-                      if (name === '%s') {
-                         var value_span = row.getElementsByClassName('value')[0];
-                         var value = value_span.textContent;
-                         var status_div = row.getElementsByClassName('status elide')[0];
-                         var status = status_div.textContent;
-                         rowValues = [name, value, status];
-                         break;
-                      }
-                   }
-                }
-                rowValues;
-            ''' % policy_name)
+            var section = document.getElementsByClassName("policy-table-section")[0];
+            var table = section.getElementsByTagName('table')[0];
+            rowValues = '';
+            for (var i = 1, row; row = table.rows[i]; i++) {
+               if (row.className !== 'expanded-value-container') {
+                  var name_div = row.getElementsByClassName('name elide')[0];
+                  var name = name_div.textContent;
+                  if (name === '%s') {
+                     var value_span = row.getElementsByClassName('value')[0];
+                     var value = value_span.textContent;
+                     var status_div = row.getElementsByClassName('status elide')[0];
+                     var status = status_div.textContent;
+                     rowValues = [name, value, status];
+                     break;
+                  }
+               }
+            }
+            rowValues;
+        ''' % policy_name)
 
         value_shown = row_values[1].encode('ascii', 'ignore')
         status_shown = row_values[2].encode('ascii', 'ignore')
@@ -369,6 +407,22 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if status_shown == 'Not set.':
             return None
         return value_shown
+
+    def get_elements_from_page(self, tab, cmd):
+        """Get collection of page elements that match the |cmd| filter.
+
+        @param tab: tab containing the page to be scraped.
+        @param cmd: JavaScript command to evaluate on the page.
+        @returns object containing elements on page that match the cmd.
+        @raises: TestFail if matching elements are not found on the page.
+
+        """
+        try:
+            elements = tab.EvaluateJavaScript(cmd)
+        except Exception as err:
+            raise error.TestFail('Unable to find matching elements on '
+                                 'the test page: %s\n %r' %(tab.url, err))
+        return elements
 
     def _validate_and_run_test_case(self, test_case, run_test):
         """Validate test case and call the test runner in the test class.
