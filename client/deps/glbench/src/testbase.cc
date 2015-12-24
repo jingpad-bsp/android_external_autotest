@@ -76,6 +76,9 @@ double Bench(TestBase* test) {
   uint64_t time_prev = 0;
   do {
     time = TimeTest(test, iterations);
+    dbg_printf("iterations: %llu: time: %llu time/iter: %llu\n",
+           iterations, time, time / iterations);
+
     // If we are running in hasty mode we will stop after a fraction of the
     // testing time and return much more noisy performance numbers. The MD5s
     // of the images should stay the same though.

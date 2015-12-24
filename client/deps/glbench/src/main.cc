@@ -32,7 +32,9 @@ DEFINE_bool(hasty, false,
             "Useful for running in BVT or debugging a failure.  Implies notemp");
 DEFINE_bool(list, false, "List available tests");
 DEFINE_bool(notemp, false, "Skip temperature checking");
+DEFINE_bool(verbose, false, "Print extra debugging messages");
 
+bool g_verbose;
 GLint g_max_texture_size;
 bool g_hasty;
 bool g_notemp;
@@ -104,6 +106,8 @@ bool PassesSanityCheck(void) {
 int main(int argc, char *argv[]) {
   SetBasePathFromArgv0(argv[0], "src");
   google::ParseCommandLineFlags(&argc, &argv, false);
+
+  g_verbose = FLAGS_verbose;
 
   g_main_gl_interface.reset(GLInterface::Create());
   if (!g_main_gl_interface->Init()) {

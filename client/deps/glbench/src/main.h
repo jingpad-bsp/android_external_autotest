@@ -6,6 +6,7 @@
 #define BENCH_GL_MAIN_H_
 
 #include <gflags/gflags.h>
+#include <stdarg.h>
 #include <sys/time.h>
 
 #if defined(USE_OPENGLES)
@@ -107,6 +108,7 @@ inline uint64_t GetUTime() {
     1000000ULL*static_cast<uint64_t>(tv.tv_sec);
 }
 
+extern bool g_verbose;
 extern bool g_hasty;
 extern GLint g_width;
 extern GLint g_height;
@@ -118,5 +120,14 @@ DECLARE_bool(override_redirect);
 // the displays we care about.
 #define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
+
+inline void dbg_printf(const char* format, ...) {
+  if (!g_verbose)
+    return;
+  va_list args;
+  va_start(args, format);
+  vprintf(format, args);
+  va_end(args);
+}
 
 #endif  // BENCH_GL_MAIN_H_
