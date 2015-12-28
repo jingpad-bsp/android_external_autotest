@@ -11,7 +11,8 @@ NAME = 'brillo_KernelVersionTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-SUITE = ''
+ATTRIBUTES = 'suite:brillo-pts'
+SUITE = 'brillo-pts'
 
 DOC = """
 Tests whether a Brillo device runs a recent enough kernel.
