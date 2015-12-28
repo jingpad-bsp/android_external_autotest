@@ -22,7 +22,8 @@ import re
 
 def _pidof(exe_name):
     """Returns PID of a process with the given name."""
-    return utils.system_output('pidof %s' % exe_name).strip()
+    return utils.system_output('pidof %s' % exe_name,
+                               ignore_status=True).strip()
 
 
 class Process(object):
