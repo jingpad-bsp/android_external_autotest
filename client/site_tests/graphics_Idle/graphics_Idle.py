@@ -10,13 +10,22 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
 
+# Kernel 3.8 to 3.14 has cur_delay_info, 3.18+ has frequency_info.
+CLOCK_PATHS = ['/sys/kernel/debug/dri/0/i915_frequency_info',
+               '/sys/kernel/debug/dri/0/i915_cur_delayinfo']
+# Kernel 3.8+ has i915_fbc_status.
+FBC_PATHS = ['/sys/kernel/debug/dri/0/i915_fbc_status']
+GEM_PATHS = ['/sys/kernel/debug/dri/0/i915_gem_active']
+PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_state']
+RC6_PATHS = ['/sys/kernel/debug/dri/0/i915_drpc_info']
+
 
 class graphics_Idle(test.test):
     """Class for graphics_Idle.  See 'control' for details."""
     version = 1
     _gpu_type = None
     _cpu_type = None
-
+    _board = None
 
     def run_once(self):
         # Try to protect against runaway previous tests.
@@ -39,14 +48,19 @@ class graphics_Idle(test.test):
             if errors:
                 raise error.TestFail(errors)
 
+    def get_valid_path(self, paths):
+        for path in paths:
+            if os.path.exists(path):
+                return path
+        logging.error('Error: %s not found.', ' '.join(paths))
+        return None
 
     def verify_lvds_downclock(self):
         """On systems which support LVDS downclock, checks the kernel log for
         a message that an LVDS downclock mode has been added."""
         logging.info('Running verify_lvds_downclock')
         board = utils.get_board()
-        if not (board == 'alex' or board == 'lumpy' or
-                board == 'stout'):
+        if not (board == 'alex' or board == 'lumpy' or board == 'stout'):
             return ''
 
         # Get the downclock message from the logs.
@@ -57,7 +71,6 @@ class graphics_Idle(test.test):
             return 'LVDS downclock quirk not applied. '
 
         return ''
-
 
     def verify_short_blanking(self):
         """On baytrail systems with a known panel, checks the kernel log for a
@@ -74,10 +87,10 @@ class graphics_Idle(test.test):
 
         with open(param_path, 'r') as edp_edid_file:
             edp_edid_file.seek(8)
-            bytes = edp_edid_file.read(2)
-            manufacturer = int(struct.unpack('<H', bytes)[0])
-            bytes = edp_edid_file.read(2)
-            product_code = int(struct.unpack('<H', bytes)[0])
+            data = edp_edid_file.read(2)
+            manufacturer = int(struct.unpack('<H', data)[0])
+            data = edp_edid_file.read(2)
+            product_code = int(struct.unpack('<H', data)[0])
 
         # This is not the panel we are looking for (AUO B116XTN02.2)
         if manufacturer != 0xaf06 or product_code != 0x225c:
@@ -92,22 +105,20 @@ class graphics_Idle(test.test):
 
         return ''
 
-
     def verify_graphics_rc6(self):
         """ On systems which support RC6 (non atom), check that we are able to
         get into rc6; idle before doing so, and retry every second for 20
         seconds."""
         logging.info('Running verify_graphics_rc6')
         if (utils.get_cpu_soc_family() == 'x86_64' and
-            self._gpu_type != 'pinetrail'):
+                self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
+            param_path = self.get_valid_path(RC6_PATHS)
+            if not param_path:
+                return 'RC6_PATHS not found.'
             while found == False and tries < 20:
                 time.sleep(1)
-                param_path = '/sys/kernel/debug/dri/0/i915_drpc_info'
-                if not os.path.exists(param_path):
-                    logging.error('Error: %s not found.', param_path)
-                    break
                 with open(param_path, 'r') as drpc_info_file:
                     for line in drpc_info_file:
                         match = re.search(r'Current RC state: (.*)', line)
@@ -124,28 +135,26 @@ class graphics_Idle(test.test):
 
         return ''
 
-
     def verify_graphics_i915_min_clock(self):
         """ On i915 systems, check that we get into the lowest clock frequency;
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_i915_min_clock')
         if (utils.get_cpu_soc_family() == 'x86_64' and
-            self._gpu_type != 'pinetrail'):
+                self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
+            param_path = self.get_valid_path(CLOCK_PATHS)
+            if not param_path:
+                return 'CLOCK_PATHS not found.'
             while not found and tries < 80:
                 time.sleep(0.25)
-                param_path = '/sys/kernel/debug/dri/0/i915_cur_delayinfo'
-                if not os.path.exists(param_path):
-                    logging.error('Error: %s not found.', param_path)
-                    break
 
                 with open(param_path, 'r') as delayinfo_file:
                     for line in delayinfo_file:
-                        # This file has a different format depending on the board,
-                        # so we parse both. Also, it would be tedious to add the
-                        # minimum clock for each board, so instead we use 650MHz
-                        # which is the max of the minimum clocks.
+                        # This file has a different format depending on the
+                        # board, so we parse both. Also, it would be tedious
+                        # to add the minimum clock for each board, so instead
+                        # we use 650MHz which is the max of the minimum clocks.
                         match = re.search(r'CAGF: (.*)MHz', line)
                         if match and int(match.group(1)) <= 650:
                             found = True
@@ -164,7 +173,6 @@ class graphics_Idle(test.test):
                 return 'Did not see the min i915 clock. '
 
         return ''
-
 
     def verify_graphics_dvfs(self):
         """ On systems which support DVFS, check that we get into the lowest
@@ -219,12 +227,11 @@ class graphics_Idle(test.test):
 
             if not found:
                 utils.log_process_activity()
-                logging.error('Error: DVFS clock (%u) > min (%u)',
-                              clock, lowest_freq)
+                logging.error('Error: DVFS clock (%u) > min (%u)', clock,
+                              lowest_freq)
                 return 'Did not see the min DVFS clock. '
 
         return ''
-
 
     def verify_graphics_fbc(self):
         """ On systems which support FBC, check that we can get into FBC;
@@ -242,19 +249,14 @@ class graphics_Idle(test.test):
             return ''
 
         if (self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
-            self._gpu_type == 'sandybridge'):
+                self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
+            param_path = self.get_valid_path(FBC_PATHS)
+            if not param_path:
+                return 'FBC_PATHS not found.'
             while not found and tries < 20:
                 time.sleep(1)
-                # Kernel 3.4 has i915_fbc, kernel 3.8+ has i915_fbc_status,
-                # so we check for both.
-                param_path = '/sys/kernel/debug/dri/0/i915_fbc_status'
-                if not os.path.exists(param_path):
-                    param_path = '/sys/kernel/debug/dri/0/i915_fbc'
-                if not os.path.exists(param_path):
-                    logging.error('Error: %s not found.', param_path)
-                    break
                 with open(param_path, 'r') as fbc_info_file:
                     for line in fbc_info_file:
                         if re.search('FBC enabled', line):
@@ -267,9 +269,7 @@ class graphics_Idle(test.test):
                 logging.error('Error: did not see FBC enabled.')
                 return 'Did not see FBC enabled. '
 
-
         return ''
-
 
     def verify_graphics_psr(self):
         """ On systems which support PSR, check that we can get into PSR;
@@ -279,15 +279,13 @@ class graphics_Idle(test.test):
         board = utils.get_board()
         if board != 'samus':
             return ''
-
         tries = 0
         found = False
+        param_path = self.get_valid_path(PSR_PATHS)
+        if not param_path:
+            return 'PSR_PATHS not found.'
         while not found and tries < 20:
             time.sleep(1)
-            param_path = '/sys/kernel/debug/dri/0/i915_edp_psr_state'
-            if not os.path.exists(param_path):
-                logging.error('Error: %s not found.', param_path)
-                break
             with open(param_path, 'r') as fbc_info_file:
                 for line in fbc_info_file:
                     match = re.search(r'Performance_Counter: (.*)', line)
@@ -301,9 +299,7 @@ class graphics_Idle(test.test):
             logging.error('Error: did not see PSR enabled.')
             return 'Did not see PSR enabled. '
 
-
         return ''
-
 
     def verify_graphics_gem_idle(self):
         """ On systems which have i915, check that we can get all gem objects
@@ -311,15 +307,14 @@ class graphics_Idle(test.test):
         idle before doing so, and retry every second for 20 seconds."""
         logging.info('Running verify_graphics_gem_idle')
         if (utils.get_cpu_soc_family() == 'x86_64' and
-            self._gpu_type != 'pinetrail'):
+                self._gpu_type != 'pinetrail'):
             tries = 0
             found = False
+            gem_path = self.get_valid_path(GEM_PATHS)
+            if not gem_path:
+                return 'GEM_PATHS not found.'
             while not found and tries < 240:
                 time.sleep(0.25)
-                gem_path = '/sys/kernel/debug/dri/0/i915_gem_active'
-                if not os.path.exists(gem_path):
-                    logging.error('Error: %s not found.', gem_path)
-                    break
                 with open(gem_path, 'r') as gem_file:
                     for line in gem_file:
                         if re.search('Total 0 objects', line):
@@ -334,5 +329,3 @@ class graphics_Idle(test.test):
                 return 'Did not reach 0 gem actives. '
 
         return ''
-
-
