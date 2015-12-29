@@ -33,7 +33,6 @@ class touch_TouchscreenScroll(
         is_down_or_right = expected == 'down' or expected == 'right'
 
         self._set_default_scroll_position(is_vertical)
-        self._wait_for_default_scroll_position(is_vertical)
         self._playback(filepath, touch_type='touchscreen')
         self._wait_for_scroll_position_to_settle(is_vertical)
         delta = self._get_scroll_position(is_vertical) - self._DEFAULT_SCROLL

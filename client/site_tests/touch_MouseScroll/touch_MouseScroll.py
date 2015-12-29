@@ -33,7 +33,6 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._set_default_scroll_position(scroll_vertical)
-        self._wait_for_default_scroll_position(scroll_vertical)
         self._playback(self._gest_file_path[name], touch_type='mouse')
         self._wait_for_scroll_position_to_settle(scroll_vertical)
         delta = self._get_scroll_position(scroll_vertical) - self._DEFAULT_SCROLL

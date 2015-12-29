@@ -255,19 +255,42 @@ class touch_playback_test_base(test.test):
                 'mouse_center_cursor_gesture')
 
 
+    def _set_scroll(self, value, scroll_vertical=True):
+        """Set scroll position to given value.  Presuposes self._tab.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+        @param value: True for enabled, False for disabled.
+
+         """
+        if scroll_vertical:
+            self._tab.ExecuteJavaScript(
+                'document.body.scrollTop=%s' % value)
+        else:
+            self._tab.ExecuteJavaScript(
+                'document.body.scrollLeft=%s' % value)
+
+
     def _set_default_scroll_position(self, scroll_vertical=True):
         """Set scroll position of page to default.  Presuposes self._tab.
 
         @param scroll_vertical: True for vertical scroll,
                                 False for horizontal Scroll.
+        @raise: TestError if page is not set to default scroll position
 
         """
-        if scroll_vertical:
-            self._tab.EvaluateJavaScript(
-                'document.body.scrollTop=%s' % self._DEFAULT_SCROLL)
-        else:
-            self._tab.EvaluateJavaScript(
-                'document.body.scrollLeft=%s' % self._DEFAULT_SCROLL)
+        total_tries = 2
+        for i in xrange(total_tries):
+            try:
+                self._set_scroll(self._DEFAULT_SCROLL, scroll_vertical)
+                self._wait_for_default_scroll_position(scroll_vertical)
+            except error.TestError as e:
+                if i == total_tries - 1:
+                   pos = self._get_scroll_position(scroll_vertical)
+                   logging.error('SCROLL POSITION: %s', pos)
+                   raise e
+            else:
+                 break
 
 
     def _get_scroll_position(self, scroll_vertical=True):
