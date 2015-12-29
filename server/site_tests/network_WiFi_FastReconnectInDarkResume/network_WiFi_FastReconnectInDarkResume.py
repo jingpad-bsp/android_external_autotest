@@ -29,6 +29,7 @@ class network_WiFi_FastReconnectInDarkResume(
         # Enable the dark connect feature in shill.
         with client.wake_on_wifi_features(wifi_client.WAKE_ON_WIFI_DARKCONNECT):
             logging.info('Set up WoWLAN')
+            prev_dark_resume_count = self.dr_utils.count_dark_resumes()
 
             with self.dr_utils.suspend():
                 # Wait for suspend actions to finish.
@@ -45,7 +46,9 @@ class network_WiFi_FastReconnectInDarkResume(
                            wifi_client.DARK_RESUME_WAIT_TIME_SECONDS)
 
             client.check_connected_on_last_resume()
-            if self.dr_utils.count_dark_resumes() != 1:
+            dark_resume_count = (self.dr_utils.count_dark_resumes() -
+                                 prev_dark_resume_count)
+            if dark_resume_count != 1:
                 # If there was more than 1 dark resume, the DUT might not have
                 # reconnected on the dark resume triggered by the disconnect.
                 raise error.TestFail('Expected exactly one dark resume')
