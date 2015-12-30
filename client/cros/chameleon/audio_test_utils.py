@@ -214,7 +214,7 @@ def check_recorded_frequency(
         golden_file, recorder,
         second_peak_ratio=DEFAULT_SECOND_PEAK_RATIO,
         frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD,
-        ignore_frequencies=None):
+        ignore_frequencies=None, check_anomaly=False):
     """Checks if the recorded data contains sine tone of golden frequency.
 
     @param golden_file: An AudioTestData object that serves as golden data.
@@ -232,6 +232,7 @@ def check_recorded_frequency(
                                close to the frequency in the list will be
                                ignored. The comparison of frequencies uses
                                frequency_diff_threshold as well.
+    @param check_anomaly: True to check anomaly in the signal.
 
     @raises error.TestFail if the recorded data does not contain sine tone of
             golden frequency.
@@ -274,6 +275,21 @@ def check_recorded_frequency(
             errors.append(
                     'Channel %d: Dominant frequency %s is away from golden %s' %
                     (test_channel, dominant_frequency, golden_frequency))
+
+        if check_anomaly:
+            detected_anomaly = audio_analysis.anomaly_detection(
+                    signal=normalized_signal,
+                    rate=data_format['rate'],
+                    freq=golden_frequency)
+            if detected_anomaly:
+                errors.append(
+                        'Channel %d: Detect anomaly near these time: %s' %
+                        (test_channel, detected_anomaly))
+            else:
+                logging.info(
+                        'Channel %d: Quality is good as there is no anomaly',
+                        test_channel)
+
 
         def should_be_ignored(frequency):
             """Checks if frequency is close to any frequency in ignore list.

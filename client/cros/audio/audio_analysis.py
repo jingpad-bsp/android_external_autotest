@@ -178,7 +178,11 @@ def _peak_detection(array, window_size):
 # amplitude is 1.
 PATTERN_MATCHING_THRESHOLD = 0.85
 
-def anomaly_detection(signal, rate, freq, block_size,
+# The default block size of pattern matching.
+ANOMALY_DETECTION_BLOCK_SIZE = 120
+
+def anomaly_detection(signal, rate, freq,
+                      block_size=ANOMALY_DETECTION_BLOCK_SIZE,
                       threshold=PATTERN_MATCHING_THRESHOLD):
     """Detects anomaly in a sine wave signal.
 
