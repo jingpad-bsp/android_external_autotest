@@ -40,6 +40,12 @@ class XmlRpcServer(threading.Thread):
         self._server = SimpleXMLRPCServer.SimpleXMLRPCServer((host, port),
                                                              allow_none=True)
         self._server.register_introspection_functions()
+        # After python 2.7.10, BaseServer.handle_request automatically retries
+        # on EINTR, so handle_request will be blocked at select.select forever
+        # if timeout is None. Set a timeout so server can be shut down
+        # gracefully. Check issue crbug.com/571737 and
+        # https://bugs.python.org/issue7978 for the explanation.
+        self._server.timeout = 0.5
         self._keep_running = True
         self._delegates = []
         # Gracefully shut down on signals.  This is how we expect to be shut
