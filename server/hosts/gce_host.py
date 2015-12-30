@@ -84,6 +84,14 @@ class GceHost(abstract_ssh.AbstractSSHHost):
         """
         self._modify_ssh_keys([], ['%s:%s' % (username, ssh_key)])
 
+    def set_instance_metadata(self, key, value):
+        """Sets a single metadata value on the DUT instance.
+
+        @param key: Metadata key to be set.
+        @param value: New value, or None if the given key should be removed.
+        """
+        self.gce.SetInstanceMetadata(self._gce_instance, key, value)
+
     def stop(self):
         """Stops the DUT instance
         """
