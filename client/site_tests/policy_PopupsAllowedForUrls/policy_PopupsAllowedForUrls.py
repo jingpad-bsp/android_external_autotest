@@ -7,7 +7,6 @@ import utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
-from autotest_lib.client.cros import httpd
 
 
 class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
@@ -60,12 +59,7 @@ class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
     def initialize(self, args=()):
         super(policy_PopupsAllowedForUrls, self).initialize(args)
-        if self.mode == 'list':
-            self._web_server = None
-        else:
-            self._web_server = httpd.HTTPListener(
-                self.URL_PORT, docroot=self.bindir)
-            self._web_server.run()
+        self.start_webserver(self.URL_PORT)
 
     def cleanup(self):
         if self._web_server:

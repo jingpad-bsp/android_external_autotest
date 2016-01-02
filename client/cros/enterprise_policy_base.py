@@ -266,11 +266,6 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if not tab:
             tab = self.cr.browser.tabs.New()
             tab.Activate()
-        """try:
-            tab.Navigate(url, timeout=5)
-        except Exception, err:
-            logging.error('Timeout Exception navigating to URL: %s\n %s',
-                          url, err)"""
         tab.Navigate(url, timeout=5)
         tab.WaitForDocumentReadyStateToBeComplete()
         return tab
