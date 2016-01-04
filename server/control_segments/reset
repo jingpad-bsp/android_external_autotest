@@ -14,17 +14,18 @@ def reset(machine):
     timer = None
     try:
         job.record('START', None, 'reset')
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        target = hosts.create_target_machine(machine, initialize=False,
+                                             auto_monitor=False)
         timer = autotest_stats.Timer('reset_time')
         timer.start()
 
         # Assume cleanup always runs first.
-        host.cleanup()
-        provision.run_special_task_actions(job, host, labels_list,
+        target.cleanup()
+        provision.run_special_task_actions(job, target, labels_list,
                                            provision.Cleanup)
 
-        host.verify()
-        provision.run_special_task_actions(job, host, labels_list,
+        target.verify()
+        provision.run_special_task_actions(job, target, labels_list,
                                            provision.Verify)
     except Exception as e:
         logging.exception(e)

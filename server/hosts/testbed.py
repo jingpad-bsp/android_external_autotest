@@ -32,6 +32,7 @@ class TestBed(object):
         self.hostname = hostname
         self.teststation = teststation_host.create_teststationhost(
                 hostname=hostname)
+        self.is_client_install_supported = False
         serials_from_attributes = host_attributes.get('serials')
         if serials_from_attributes:
             serials_from_attributes = serials_from_attributes.split(',')
@@ -143,3 +144,10 @@ class TestBed(object):
         """Run through verify on all the devices."""
         for device in self.get_all_hosts():
             device.verify()
+
+
+    def cleanup(self):
+        """Run through cleanup on all the devices."""
+        for adb_device in self.get_adb_devices().values():
+            adb_device.cleanup()
+
