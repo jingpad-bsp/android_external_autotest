@@ -3,13 +3,14 @@
 # found in the LICENSE file.
 
 import os
-import time
+import time, logging, shutil
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import native_html5_player
 
 
 class video_ChromeVidResChangeHWDecode(test.test):
@@ -21,16 +22,23 @@ class video_ChromeVidResChangeHWDecode(test.test):
         """Verify VDA and playback for the video_file.
 
         @param video_file: test video file.
+        @param video_len : test video file length.
         """
+
         with chrome.Chrome() as cr:
+            shutil.copy2(vda_constants.VIDEO_HTML_FILEPATH, self.bindir)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab1 = cr.browser.tabs[0]
-            tab1.Navigate(cr.browser.platform.http_server.UrlOf(
-                    os.path.join(self.bindir, 'video.html')))
-            tab1.WaitForDocumentReadyStateToBeComplete()
-            tab1.EvaluateJavaScript(
-                'loadVideo("%s")' % (video_file))
-
+            html_fullpath = os.path.join(self.bindir, 'video.html')
+            url = cr.browser.platform.http_server.UrlOf(html_fullpath)
+            logging.info("full url is %s", url)
+            player = native_html5_player.NativeHtml5Player(tab1,
+                 full_url = url,
+                 video_id = 'video',
+                 video_src_path = video_file,
+                 event_timeout = 120)
+            player.load_video()
+            player.play()
             # Waits for histogram updated for the test video.
             histogram_verifier.verify(
                     cr,
@@ -39,14 +47,13 @@ class video_ChromeVidResChangeHWDecode(test.test):
 
             # Verify the video playback.
             for i in range(1, video_len/2):
-                if tab1.EvaluateJavaScript(
-                        'testvideo.ended || testvideo.paused'):
+                if (player.paused() or player.ended()):
                     raise error.TestError('Video either stopped or ended.')
                 time.sleep(1)
 
             # Verify that video ends successfully.
             utils.poll_for_condition(
-                    lambda: tab1.EvaluateJavaScript('testvideo.ended'),
+                    lambda: player.ended(),
                     timeout=video_len,
                     exception=error.TestError('Video did not end successfully'),
                     sleep_interval=1)

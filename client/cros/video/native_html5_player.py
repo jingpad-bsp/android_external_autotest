@@ -49,6 +49,24 @@ class NativeHtml5Player(video_player.VideoPlayer):
         self.tab.ExecuteJavaScript('pause()')
 
 
+    def paused(self):
+        """
+        Checks whether video paused.
+
+        """
+        cmd = "%s.paused" % self.video_id
+        return self.tab.EvaluateJavaScript(cmd)
+
+
+    def ended(self):
+        """
+        Checks whether video paused.
+
+        """
+        cmd = "%s.ended" % self.video_id
+        return self.tab.EvaluateJavaScript(cmd)
+
+
     def currentTime(self):
         """
         Returns the current time of the video element.

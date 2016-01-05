@@ -8,3 +8,4 @@ MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
 RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
 MEDIA_GVD_BUCKET = 0
 RTC_VIDEO_INIT_BUCKET = 1
+VIDEO_HTML_FILEPATH = '/usr/local/autotest/cros/video/video.html'
