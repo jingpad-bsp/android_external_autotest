@@ -145,6 +145,12 @@ class test_compute_avg_stddev(unittest.TestCase):
 class test_json_config_file_sanity(unittest.TestCase):
     """Sanity tests for the JSON-formatted presentation config file."""
 
+    def test_parse_json(self):
+        """Verifies _parse_config_file function."""
+        perf_uploader._parse_config_file(
+                perf_uploader._PRESENTATION_CONFIG_FILE)
+
+
     def test_proper_json(self):
         """Verifies the file can be parsed as proper JSON."""
         try:

@@ -22,6 +22,8 @@ from autotest_lib.tko import utils as tko_utils
 _ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PRESENTATION_CONFIG_FILE = os.path.join(
         _ROOT_DIR, 'perf_dashboard_config.json')
+_PRESENTATION_SHADOW_CONFIG_FILE = os.path.join(
+        _ROOT_DIR, 'perf_dashboard_shadow_config.json')
 _DASHBOARD_UPLOAD_URL = 'https://chromeperf.appspot.com/add_point'
 
 # Format for Chrome and Chrome OS version strings.
@@ -106,12 +108,14 @@ def _compute_avg_stddev(perf_data):
             perf_dict['value'] = perf_dict['value'][0]  # Take out of list.
 
 
-def _parse_config_file():
+def _parse_config_file(config_file):
     """Parses a presentation config file and stores the info into a dict.
 
     The config file contains information about how to present the perf data
     on the perf dashboard.  This is required if the default presentation
     settings aren't desired for certain tests.
+
+    @param config_file: Path to the configuration file to be parsed.
 
     @returns A dictionary mapping each unique autotest name to a dictionary
         of presentation config information.
@@ -121,8 +125,8 @@ def _parse_config_file():
 
     """
     json_obj = []
-    if os.path.exists(_PRESENTATION_CONFIG_FILE):
-        with open(_PRESENTATION_CONFIG_FILE, 'r') as fp:
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as fp:
             json_obj = json.load(fp)
     config_dict = {}
     for entry in json_obj:
@@ -300,7 +304,7 @@ def _get_id_from_version(chrome_version, cros_version):
             version_parts = version_num.split('.')
             for i, version_part in enumerate(version_parts):
                 if column_widths[i]:
-                   computed_string += version_part.zfill(column_widths[i])
+                    computed_string += version_part.zfill(column_widths[i])
             return computed_string
         else:
             return None
@@ -370,7 +374,9 @@ def upload_test(job, test):
     hardware_id = test.attributes.get('hwid', '')
     hardware_hostname = test.machine
     variant_name = test.attributes.get(constants.VARIANT_KEY, None)
-    config_data = _parse_config_file()
+    config_data = _parse_config_file(_PRESENTATION_CONFIG_FILE)
+    shadow_config_data = _parse_config_file(_PRESENTATION_SHADOW_CONFIG_FILE)
+    config_data.update(shadow_config_data)
     try:
         cros_version, chrome_version = _get_version_numbers(test.attributes)
         presentation_info = _gather_presentation_info(config_data, test_name)
