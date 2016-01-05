@@ -92,7 +92,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
 
     def run_once(self, host, suspend=False,
-                 disable=False, disconnect=False):
+                 disable=False, disconnect=False, check_quality=False):
         """Running Bluetooth basic audio tests
 
         @param host: device under test host
@@ -100,6 +100,7 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         @param disable: disable flag to disable BT module before play/record
         @param disconnect: disconnect flag to disconnect BT module
             before play/record
+        @param check_quality: flag to check audio quality.
 
         """
 
@@ -222,4 +223,5 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         # Comparing data by frequency is more robust than comparing by
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
-        audio_test_utils.check_recorded_frequency(golden_file, recorder)
+        audio_test_utils.check_recorded_frequency(
+                golden_file, recorder, check_anomaly=check_quality)

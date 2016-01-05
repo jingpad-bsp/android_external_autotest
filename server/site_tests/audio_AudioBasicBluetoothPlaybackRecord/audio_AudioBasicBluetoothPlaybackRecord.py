@@ -95,7 +95,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
 
 
     def run_once(self, host, suspend=False,
-                 disable=False, disconnect=False):
+                 disable=False, disconnect=False, check_quality=False):
         """Running Bluetooth basic audio tests
 
         @param host: device under test host
@@ -103,6 +103,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         @param disable: disable flag to disable BT module before play/record
         @param disconnect: disconnect flag to disconnect BT module
             before play/record
+        @param check_quality: flag to check audio quality.
 
         """
         self.host = host
@@ -289,13 +290,13 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         error_messages = ''
         try:
             audio_test_utils.check_recorded_frequency(
-                    golden_file, playback_recorder)
+                    golden_file, playback_recorder, check_anomaly=check_quality)
         except error.TestFail, e:
             error_messages += str(e)
 
         try:
             audio_test_utils.check_recorded_frequency(
-                    golden_file, record_recorder)
+                    golden_file, record_recorder, check_anomaly=check_quality)
         except error.TestFail, e:
             error_messages += str(e)
 
