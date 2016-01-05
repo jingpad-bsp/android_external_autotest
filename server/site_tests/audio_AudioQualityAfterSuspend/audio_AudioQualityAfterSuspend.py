@@ -132,7 +132,8 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
         audio_test_utils.check_recorded_frequency(
                 self.audio_test_data, recorder_widget,
                 second_peak_ratio=self.second_peak_ratio,
-                ignore_frequencies=self.ignore_frequencies)
+                ignore_frequencies=self.ignore_frequencies,
+                check_anomaly=True)
 
 
     def run_once(self, host, audio_nodes, audio_test_data, test_playback_file,

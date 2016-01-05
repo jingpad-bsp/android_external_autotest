@@ -101,4 +101,4 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
         # and HDMI.
         audio_test_utils.check_recorded_frequency(
                 audio_test_data.MEDIA_HEADPHONE_TEST_FILE,
-                recorder)
+                recorder, check_anomaly=True)
