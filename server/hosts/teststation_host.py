@@ -4,6 +4,7 @@
 
 """This class defines the TestStationHost class."""
 
+import getpass
 import logging
 import os
 
@@ -45,13 +46,15 @@ class TestStationHost(base_classes.Host):
 
         @param hostname: Hostname of the machine.
         """
-        if hostname != 'localhost':
-            try:
-                self.run('true')
-            except error.AutoservRunError:
-                # Some test stations may not have root access, try user adb.
-                logging.debug('Switching to user adb.')
-                self.user = 'adb'
+        if hostname == 'localhost':
+            self.user = getpass.getuser()
+            return
+        try:
+            self.run('true')
+        except error.AutoservRunError:
+            # Some test stations may not have root access, try user adb.
+            logging.debug('Switching to user adb.')
+            self.user = 'adb'
 
 
     def _initialize(self, hostname='localhost', *args, **dargs):
@@ -116,14 +119,14 @@ class TestStationHost(base_classes.Host):
 
         This will run the command on the test station.  This method only
         exists to modify the command supplied if we're running a fastboot
-        command on a moblab, otherwise we leave the command untouched.
+        command not as the root user, otherwise we leave the command untouched.
 
         @param cmd: The command line string.
 
         @returns A CMDResult object or None if the call timed out and
                  ignore_timeout is True.
         """
-        if cmd.startswith('fastboot ') and self.is_moblab:
+        if cmd.startswith('fastboot ') and self.user != 'root':
             cmd = 'sudo -n ' + cmd
         return super(TestStationHost, self).run(cmd, *args, **dargs)
 

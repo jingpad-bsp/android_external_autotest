@@ -91,7 +91,7 @@ ANDROID_IMAGES = ANDROID_STANDALONE_IMAGES + ANDROID_ZIPPED_IMAGES
 # vendor_partition_dir: The full path of the directory that contains all the
 # Brillo vendor partitions, and provision-device script.
 BRILLO_PROVISION_CMD = (
-        'ANDROID_PROVISION_OS_PARTITIONS=%(os_image_dir)s '
+        'sudo ANDROID_PROVISION_OS_PARTITIONS=%(os_image_dir)s '
         'ANDROID_PROVISION_VENDOR_PARTITIONS=%(vendor_partition_dir)s '
         '%(vendor_partition_dir)s/provision-device')
 
