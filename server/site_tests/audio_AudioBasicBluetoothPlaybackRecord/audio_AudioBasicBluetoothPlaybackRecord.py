@@ -272,19 +272,12 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         # its playback.
         record_recorder.remove_head(0.5)
 
-        # Removes noise by a lowpass filter.
-        # This filter is determined empirically. For low quality HFP/HSP
-        # playback we need a more powerful filter.
-        # In contrast, for high quality A2DP playback, we use 2500Hz low-pass
-        # filter.
-        playback_recorder.lowpass_filter(1000)
-        recorded_file = os.path.join(self.resultsdir, "playback_filtered.raw")
-        logging.info('Saving filtered data to %s', recorded_file)
+        recorded_file = os.path.join(self.resultsdir, "playback_clipped.raw")
+        logging.info('Saving clipped data to %s', recorded_file)
         playback_recorder.save_file(recorded_file)
 
-        record_recorder.lowpass_filter(2000)
-        recorded_file = os.path.join(self.resultsdir, "record_filtered.raw")
-        logging.info('Saving filtered data to %s', recorded_file)
+        recorded_file = os.path.join(self.resultsdir, "record_clipped.raw")
+        logging.info('Saving clipped data to %s', recorded_file)
         record_recorder.save_file(recorded_file)
 
         # Compares data by frequency. Audio signal recorded by microphone has

@@ -212,10 +212,8 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         # its playback.
         recorder.remove_head(0.5)
 
-        # Removes noise by a lowpass filter.
-        recorder.lowpass_filter(2000)
-        recorded_file = os.path.join(self.resultsdir, "recorded_filtered.raw")
-        logging.info('Saving filtered data to %s', recorded_file)
+        recorded_file = os.path.join(self.resultsdir, "recorded_clipped.raw")
+        logging.info('Saving clipped data to %s', recorded_file)
         recorder.save_file(recorded_file)
 
         # Compares data by frequency. Audio signal recorded by microphone has
