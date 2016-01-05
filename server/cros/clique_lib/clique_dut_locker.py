@@ -185,7 +185,7 @@ class CliqueDUTBatchLocker(object):
                  for invoking RPC calls.
         """
         dut_host = hosts.create_host(host_name)
-        dut_wifi_client = wifi_client.WiFiClient(dut_host, './debug')
+        dut_wifi_client = wifi_client.WiFiClient(dut_host, './debug', False)
         return DUTObject(dut_host, dut_wifi_client)
 
     def _lock_dut_in_afe(self, dut_locker):

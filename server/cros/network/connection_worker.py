@@ -66,7 +66,8 @@ class ConnectionWorker(object):
             raise error.TestError('Not enough phys available to create a'
                                   'work client interface %s.' %
                                    work_client_host.hostname)
-        self.work_client = wifi_client.WiFiClient(work_client_host, './debug')
+        self.work_client = wifi_client.WiFiClient(
+                work_client_host, './debug', False)
         # Make the host object easily accessible
         self.host = self.work_client.host
 
