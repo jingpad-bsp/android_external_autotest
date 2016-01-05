@@ -36,10 +36,16 @@ def connect_bluetooth_module_full_flow(bt_adapter, target_mac_address,
 
     """
     # Resets bluetooth adapter on Cros device.
-    bt_adapter.reset_on()
+    if not bt_adapter.reset_on():
+        raise ChameleonBluetoothAudioError(
+                'Failed to reset bluetooth adapter on Cros host.'
+                ' You should check if controller is available on Cros host'
+                ' using bluetoothctl.')
 
     # Starts discovery mode of bluetooth adapter.
-    bt_adapter.start_discovery()
+    if not bt_adapter.start_discovery():
+        raise ChameleonBluetoothAudioError(
+                'Failed to start discovery on bluetooth adapter on Cros host')
 
     def _find_device():
         """Controls bluetooth adapter to search for bluetooth module.
