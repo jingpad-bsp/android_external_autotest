@@ -201,6 +201,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         self._reset()
+        if not self._adapter:
+            return False
         self._set_powered(True)
         return True
 
@@ -453,6 +455,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
+        if not self._adapter:
+            return False
         self._adapter.StartDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
         return True
 
@@ -464,6 +468,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
+        if not self._adapter:
+            return False
         self._adapter.StopDiscovery(dbus_interface=self.BLUEZ_ADAPTER_IFACE)
         return True
 
