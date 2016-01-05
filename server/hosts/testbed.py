@@ -5,18 +5,31 @@
 """This class defines the TestBed class."""
 
 import logging
+import re
+from multiprocessing import pool
 
 import common
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server import autoserv_parser
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import teststation_host
 
 
+# Thread pool size to provision multiple devices in parallel.
+_POOL_SIZE = 4
+
+# Pattern for the image name when used to provision a dut connected to testbed.
+# It should follow the naming convention of branch/target/build_id[:serial],
+# where serial is optional.
+_IMAGE_NAME_PATTERN = '(.*/.*/.*)(?::(.*))'
+
 class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
+    _parser = autoserv_parser.autoserv_parser
 
     def __init__(self, hostname='localhost', host_attributes={},
                  adb_serials=None, **dargs):
@@ -151,3 +164,71 @@ class TestBed(object):
         for adb_device in self.get_adb_devices().values():
             adb_device.cleanup()
 
+
+    def _parse_image(self, image_string):
+        """Parse the image string to a dictionary.
+
+        Sample value of image_string:
+        branch1/shamu-userdebug/LATEST:ZX1G2,branch2/shamu-userdebug/LATEST
+
+        @param image_string: A comma separated string of images. The image name
+                is in the format of branch/target/build_id[:serial]. Serial is
+                optional once testbed machine_install supports allocating DUT
+                based on board.
+
+        @returns: A list of tuples of (build, serial). serial could be None if
+                  it's not specified.
+        """
+        images = []
+        for image in image_string.split(','):
+            match = re.match(_IMAGE_NAME_PATTERN, image)
+            if not match:
+                raise error.InstallError(
+                        'Image name of "%s" has invalid format. It should '
+                        'follow naming convention of '
+                        'branch/target/build_id[:serial]', image)
+            serial = None if len(match.groups()) == 1 else match.group(2)
+            images.append((match.group(1), serial))
+        return images
+
+
+    @staticmethod
+    def _install_device(inputs):
+        """Install build to a device with the given inputs.
+
+        @param inputs: A dictionary of the arguments needed to install a device.
+            Keys include:
+            host: An ADBHost object of the device.
+            build_url: Devserver URL to the build to install.
+        """
+        host = inputs['host']
+        build_url = inputs['build_url']
+
+        logging.info('Starting installing device %s:%s from build url %s',
+                     host.hostname, host.adb_serial, build_url)
+        host.machine_install(build_url=build_url)
+        logging.info('Finished installing device %s:%s from build url %s',
+                     host.hostname, host.adb_serial, build_url)
+
+
+    def machine_install(self):
+        """Install the DUT."""
+        if not self._parser.options.image:
+            raise error.InstallError('No image string is provided to test bed.')
+        images = self._parse_image(self._parser.options.image)
+
+        arguments = []
+        for build, serial in images:
+            # TODO(crbug.com/574543): Support allocating DUT based on board, not
+            # serial.
+            if not serial in self.get_adb_devices():
+                raise error.InstallError('Serial "%s" is not found in the '
+                                         'devices connected to the test bed')
+            host = self.get_adb_devices()[serial]
+            build_url, _ = host.stage_build_for_install(build)
+            arguments.append({'host': host,
+                              'build_url': build_url})
+
+        thread_pool = pool.ThreadPool(_POOL_SIZE)
+        thread_pool.map(self._install_device, arguments)
+        thread_pool.close()

@@ -58,7 +58,7 @@ DEFAULT_WAIT_DOWN_TIME_SECONDS = 10
 # Default maximum number of seconds to wait for a device to be up.
 DEFAULT_WAIT_UP_TIME_SECONDS = 300
 # Maximum number of seconds to wait for a device to be up after it's wiped.
-WAIT_UP_AFTER_WIPE_TIME_SECONDS = 900
+WAIT_UP_AFTER_WIPE_TIME_SECONDS = 1200
 
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
@@ -184,18 +184,18 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # TODO (sbasi/kevcheng): Once the teststation host is committed,
         # refactor the serial retrieval.
         adb_serial = adb_serial or self.host_attributes.get('serials', None)
-        self._adb_serial = adb_serial
-        self._fastboot_serial = fastboot_serial or adb_serial
+        self.adb_serial = adb_serial
+        self.fastboot_serial = fastboot_serial or adb_serial
         self.teststation = (teststation if teststation
                 else teststation_host.create_teststationhost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self._device_hostname:
             msg += ', device hostname: %s' % self._device_hostname
-        if self._adb_serial:
-            msg += ', ADB serial: %s' % self._adb_serial
-        if self._fastboot_serial:
-            msg += ', fastboot serial: %s' % self._fastboot_serial
+        if self.adb_serial:
+            msg += ', ADB serial: %s' % self.adb_serial
+        if self.fastboot_serial:
+            msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
         self._reset_adbd_connection()
@@ -207,7 +207,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if not self._device_hostname:
             return
         logging.debug('Connecting to device over TCP/IP')
-        if self._device_hostname == self._adb_serial:
+        if self._device_hostname == self.adb_serial:
             # We previously had a connection to this device, restart the ADB
             # server.
             self.adb_run('kill-server')
@@ -298,9 +298,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a CMDResult object.
         """
         if function == ADB_CMD:
-            serial = self._adb_serial
+            serial = self.adb_serial
         elif function == FASTBOOT_CMD:
-            serial = self._fastboot_serial
+            serial = self.fastboot_serial
         else:
             raise NotImplementedError('Mode %s is not supported' % function)
 
@@ -536,7 +536,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """Get a list of devices currently attached to the test station and
         accessible with the adb command."""
         devices = self._get_devices(use_adb=True)
-        if self._adb_serial is None and len(devices) > 1:
+        if self.adb_serial is None and len(devices) > 1:
             raise error.AutoservError(
                     'Not given ADB serial but multiple devices detected')
         return devices
@@ -547,7 +547,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         accessible by fastboot command.
         """
         devices = self._get_devices(use_adb=False)
-        if self._fastboot_serial is None and len(devices) > 1:
+        if self.fastboot_serial is None and len(devices) > 1:
             raise error.AutoservError(
                     'Not given fastboot serial but multiple devices detected')
         return devices
@@ -567,7 +567,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if command == ADB_CMD:
             devices = self.adb_devices()
-            serial = self._adb_serial
+            serial = self.adb_serial
             # ADB has a device state, if the device is not online, no
             # subsequent ADB command will complete.
             if len(devices) == 0 or not self.is_device_ready():
@@ -575,7 +575,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 return False
         elif command == FASTBOOT_CMD:
             devices = self.fastboot_devices()
-            serial = self._fastboot_serial
+            serial = self.fastboot_serial
         else:
             raise NotImplementedError('Mode %s is not supported' % command)
 
@@ -1049,7 +1049,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
-    def _stage_build_for_install(self, build_name):
+    def stage_build_for_install(self, build_name):
         """Stage a build on a devserver and return the build_url and devserver.
 
         @param build_name: a name like git-master/shamu-userdebug/2040953
@@ -1097,7 +1097,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         delete_build_folder = bool(not build_local_path)
 
         if not build_url and self._parser.options.image:
-            build_url, _ = self._stage_build_for_install(
+            build_url, _ = self.stage_build_for_install(
                     self._parser.options.image)
 
         try:
@@ -1162,7 +1162,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         delete_build_folder = bool(not build_local_path)
 
         if not build_url and self._parser.options.image:
-            build_url, _ = self._stage_build_for_install(
+            build_url, _ = self.stage_build_for_install(
                     self._parser.options.image)
 
         try:
