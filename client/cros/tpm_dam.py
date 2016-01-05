@@ -11,7 +11,7 @@ counter to increment and when the counter exceeds some threshold, the defense
 mechanism is triggered.
 """
 
-import re
+import os, re
 
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.cros import service_stopper
@@ -43,8 +43,11 @@ def get_dictionary_attack_counter():
                         '00 00 00 02 '   # Size = 2
                         '00 04'),        # Entity Type = TPM_ET_SRK
             'response_offset': 18}}      # TPM_DA_INFO.currentCount LSB
+    caps_file='/sys/class/misc/tpm0/device/caps'
+    if not os.path.exists(caps_file):
+        caps_file='/sys/class/tpm/tpm0/device/caps'
     try:
-        with open('/sys/class/misc/tpm0/device/caps', 'r') as fp:
+        with open(caps_file, 'r') as fp:
             caps = fp.read()
     except IOError:
         return 'Could not read TPM device caps.'
