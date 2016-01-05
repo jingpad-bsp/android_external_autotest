@@ -28,7 +28,13 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
     RECORD_SECONDS = 5
     DELAY_AFTER_BINDING = 0.5
 
-    def run_once(self, host):
+    def run_once(self, host, check_quality=False):
+        """Running basic headphone audio tests.
+
+        @param host: device under test host
+        @param check_quality: flag to check audio quality.
+
+        """
         golden_file = audio_test_data.FREQUENCY_TEST_FILE
 
         chameleon_board = host.chameleon
@@ -101,4 +107,5 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
         # path. Comparing data by frequency is more robust than comparing by
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
-        audio_test_utils.check_recorded_frequency(golden_file, recorder)
+        audio_test_utils.check_recorded_frequency(
+                golden_file, recorder, check_anomaly=check_quality)
