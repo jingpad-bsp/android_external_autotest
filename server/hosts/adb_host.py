@@ -1236,3 +1236,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if result.exit_status != 0:
             return []
         return result.stdout.splitlines()
+
+
+    def install_apk(self, apk):
+        """Install the specified apk.
+
+        This will install the apk and override it if it's already installed and
+        will also allow for downgraded apks.
+
+        @param apk: The path to apk file.
+        """
+        self.adb_run('install -r -d %s' % apk)
