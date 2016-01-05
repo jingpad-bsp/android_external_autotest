@@ -207,6 +207,10 @@ def monitor_no_nodes_changed(audio_facade, callback=None):
 # The second dominant frequency should have energy less than -26dB of the
 # first dominant frequency in the spectrum.
 DEFAULT_SECOND_PEAK_RATIO = 0.05
+
+# Tolerate more for bluetooth audio using HSP.
+HSP_SECOND_PEAK_RATIO = 0.1
+
 # The deviation of estimated dominant frequency from golden frequency.
 DEFAULT_FREQUENCY_DIFF_THRESHOLD = 5
 

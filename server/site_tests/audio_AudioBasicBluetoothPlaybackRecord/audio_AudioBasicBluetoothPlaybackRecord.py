@@ -287,16 +287,22 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         # Comparing data by frequency is more robust than comparing by
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
+        # Use a second peak ratio that can tolerate more noise because HSP
+        # is low-quality.
+        second_peak_ratio = audio_test_utils.HSP_SECOND_PEAK_RATIO
+
         error_messages = ''
         try:
             audio_test_utils.check_recorded_frequency(
-                    golden_file, playback_recorder, check_anomaly=check_quality)
+                    golden_file, playback_recorder, check_anomaly=check_quality,
+                    second_peak_ratio=second_peak_ratio)
         except error.TestFail, e:
             error_messages += str(e)
 
         try:
             audio_test_utils.check_recorded_frequency(
-                    golden_file, record_recorder, check_anomaly=check_quality)
+                    golden_file, record_recorder, check_anomaly=check_quality,
+                    second_peak_ratio=second_peak_ratio)
         except error.TestFail, e:
             error_messages += str(e)
 
