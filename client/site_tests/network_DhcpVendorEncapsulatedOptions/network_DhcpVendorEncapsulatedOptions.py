@@ -35,8 +35,8 @@ class network_DhcpVendorEncapsulatedOptions(dhcp_test_base.DhcpTestBase):
         ipconfig = proxy.get_dbus_object('org.chromium.flimflam.IPConfig',
                                          ipconfig_path)
         ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
-        ipconfig_vendor_encapsulated_options = ipconfig_properties[
-                'VendorEncapsulatedOptions']
+        ipconfig_vendor_encapsulated_options = ''.join(map(chr,
+            ipconfig_properties['VendorEncapsulatedOptions']))
         if ipconfig_vendor_encapsulated_options != option_string:
             raise error.TestFail('Shill vendor encapsulated options %s does '
                                  'not match expected %s.' %
