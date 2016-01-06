@@ -89,7 +89,7 @@ class TestStationHost(base_classes.Host):
             try:
                 self.run('cat %s | grep -q moblab' % cros_constants.LSB_RELEASE)
                 self._is_host_moblab = True
-            except error.AutoservRunError:
+            except (error.AutoservRunError, error.AutotestHostRunError):
                 self._is_host_moblab = False
         return self._is_host_moblab
 
