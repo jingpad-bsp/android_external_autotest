@@ -684,17 +684,24 @@ class LinuxSystem(object):
                                (self.role, missing))
 
 
-    def set_antenna_bitmap(self, tx_bitmap, rx_bitmap):
-        """Setup antenna bitmaps for all the phys.
+    def disable_antennas_except(self, permitted_antennas):
+        """Disable unwanted antennas.
 
-        @param tx_bitmap int bitmap of allowed antennas to use for TX
-        @param rx_bitmap int bitmap of allowed antennas to use for RX
+        Disable all antennas except those specified in |permitted_antennas|.
+        Note that one or more of them may remain disabled if the underlying
+        hardware does not support them.
+
+        @param permitted_antennas int bitmask specifying antennas that we should
+        attempt to enable.
 
         """
         for phy in self.phy_list:
             if not phy.supports_setting_antenna_mask:
                 continue
-            self.iw_runner.set_antenna_bitmap(phy.name, tx_bitmap, rx_bitmap)
+            # Determine valid bitmap values based on available antennas.
+            self.iw_runner.set_antenna_bitmap(phy.name,
+                permitted_antennas & phy.avail_tx_antennas,
+                permitted_antennas & phy.avail_rx_antennas)
 
 
     def enable_all_antennas(self):
