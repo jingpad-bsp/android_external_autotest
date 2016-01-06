@@ -25,7 +25,7 @@ class audio_AudioBasicExternalMicrophone(audio_test.AudioTest):
     """
     version = 1
     DELAY_BEFORE_RECORD_SECONDS = 0.5
-    RECORD_SECONDS = 9
+    RECORD_SECONDS = 5
     DELAY_AFTER_BINDING = 0.5
 
     def run_once(self, host):
