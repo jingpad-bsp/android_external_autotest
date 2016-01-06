@@ -72,13 +72,12 @@ def modify_label(id, **data):
     @param data: New data for a label.
     """
     label_model = models.Label.smart_get(id)
+    label_model.update_object(data)
 
     # Master forwards the RPC to shards
     if not utils.is_shard():
         rpc_utils.fanout_rpc(label_model.host_set.all(), 'modify_label', False,
                              id=id, **data)
-
-    label_model.update_object(data)
 
 
 def delete_label(id):
@@ -87,13 +86,16 @@ def delete_label(id):
     @param id: id or name of a label. More often a label name.
     """
     label_model = models.Label.smart_get(id)
+    # Hosts that have the label to be deleted. Save this info before
+    # the label is deleted to use it later.
+    hosts = []
+    for h in label_model.host_set.all():
+        hosts.append(models.Host.smart_get(h.id))
+    label_model.delete()
 
     # Master forwards the RPC to shards
     if not utils.is_shard():
-        rpc_utils.fanout_rpc(label_model.host_set.all(), 'delete_label', False,
-                             id=id)
-
-    label_model.delete()
+        rpc_utils.fanout_rpc(hosts, 'delete_label', False, id=id)
 
 
 def add_label(name, ignore_exception_if_exists=False, **kwargs):
@@ -167,6 +169,7 @@ def label_add_hosts(id, hosts):
             raise ValueError('Label id (%s) does not exist. Please specify '
                              'the argument, id, as a string (label name).'
                              % id)
+    add_label_to_hosts(id, hosts)
 
     host_objs = models.Host.smart_get_bulk(hosts)
     # Make sure the label exists on the shard with the same id
@@ -185,8 +188,6 @@ def label_add_hosts(id, hosts):
             name=label.name, ignore_exception_if_exists=True,
             id=label.id, platform=label.platform)
     rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
-
-    add_label_to_hosts(id, hosts)
 
 
 def remove_label_from_hosts(id, hosts):
@@ -209,9 +210,9 @@ def label_remove_hosts(id, hosts):
     @param hosts: A list of hostnames or ids. More often hostnames.
     """
     host_objs = models.Host.smart_get_bulk(hosts)
-    rpc_utils.fanout_rpc(host_objs, 'remove_label_from_hosts', id=id)
-
     remove_label_from_hosts(id, hosts)
+
+    rpc_utils.fanout_rpc(host_objs, 'remove_label_from_hosts', id=id)
 
 
 def get_labels(exclude_filters=(), **filter_data):
@@ -291,10 +292,10 @@ def modify_host(id, **kwargs):
     # between the master and a shard.
     if kwargs.get('locked', None) and 'lock_time' not in kwargs:
         kwargs['lock_time'] = datetime.datetime.now()
+    host.update_object(kwargs)
 
     rpc_utils.fanout_rpc([host], 'modify_host_local',
                          include_hostnames=False, id=id, **kwargs)
-    host.update_object(kwargs)
 
 
 def modify_host_local(id, **kwargs):
@@ -348,15 +349,14 @@ def modify_hosts(host_filter_data, update_data):
     # between the master and a shard.
     if update_data.get('locked', None) and 'lock_time' not in update_data:
         update_data['lock_time'] = datetime.datetime.now()
+    for host in hosts:
+        host.update_object(update_data)
 
     # Caution: Changing the filter from the original here. See docstring.
     rpc_utils.run_rpc_on_multiple_hostnames(
             'modify_hosts_local', affected_shard_hostnames,
             host_filter_data={'id__in': affected_host_ids},
             update_data=update_data)
-
-    for host in hosts:
-        host.update_object(update_data)
 
 
 def modify_hosts_local(host_filter_data, update_data):
@@ -398,10 +398,10 @@ def host_add_labels(id, labels):
     host_obj = models.Host.smart_get(id)
     if len(platforms) == 1:
         models.Host.check_no_platform([host_obj])
+    add_labels_to_host(id, labels)
 
     rpc_utils.fanout_rpc([host_obj], 'add_labels_to_host', False,
                          id=id, labels=labels)
-    add_labels_to_host(id, labels)
 
 
 def remove_labels_from_host(id, labels):
@@ -421,10 +421,11 @@ def host_remove_labels(id, labels):
     @param id: id or hostname for a host.
     @param labels: ids or names for labels.
     """
+    remove_labels_from_host(id, labels)
+
     host_obj = models.Host.smart_get(id)
     rpc_utils.fanout_rpc([host_obj], 'remove_labels_from_host', False,
                          id=id, labels=labels)
-    remove_labels_from_host(id, labels)
 
 
 def get_host_attribute(attribute, **host_filter_data):
@@ -455,14 +456,13 @@ def set_host_attribute(attribute, value, **host_filter_data):
     assert host_filter_data # disallow accidental actions on all hosts
     hosts = models.Host.query_objects(host_filter_data)
     models.AclGroup.check_for_acl_violation_hosts(hosts)
+    for host in hosts:
+        host.set_or_delete_attribute(attribute, value)
 
     # Master forwards this RPC to shards.
     if not utils.is_shard():
         rpc_utils.fanout_rpc(hosts, 'set_host_attribute', False,
                 attribute=attribute, value=value, **host_filter_data)
-
-    for host in hosts:
-        host.set_or_delete_attribute(attribute, value)
 
 
 @rpc_utils.forward_single_host_rpc_to_shard

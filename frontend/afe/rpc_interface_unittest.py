@@ -581,5 +581,53 @@ class RpcInterfaceTest(unittest.TestCase,
         self.god.check_playback()
 
 
+    def test_modify_label(self):
+        label1 = models.Label.objects.all()[0]
+        self.assertEqual(label1.invalid, 0)
+
+        host2 = models.Host.objects.all()[1]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host2.shard = shard1
+        host2.labels.add(label1)
+        host2.save()
+
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
+                                                  'MockAFE')
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(
+                server='shard1', user=None)
+        mock_afe1.run.expect_call('modify_label', id=label1.id, invalid=1)
+
+        rpc_interface.modify_label(label1.id, invalid=1)
+
+        self.assertEqual(models.Label.objects.all()[0].invalid, 1)
+        self.god.check_playback()
+
+
+    def test_delete_label(self):
+        label1 = models.Label.objects.all()[0]
+
+        host2 = models.Host.objects.all()[1]
+        shard1 = models.Shard.objects.create(hostname='shard1')
+        host2.shard = shard1
+        host2.labels.add(label1)
+        host2.save()
+
+        mock_afe = self.god.create_mock_class_obj(frontend_wrappers.RetryingAFE,
+                                                  'MockAFE')
+        self.god.stub_with(frontend_wrappers, 'RetryingAFE', mock_afe)
+
+        mock_afe1 = frontend_wrappers.RetryingAFE.expect_new(
+                server='shard1', user=None)
+        mock_afe1.run.expect_call('delete_label', id=label1.id)
+
+        rpc_interface.delete_label(id=label1.id)
+
+        self.assertRaises(models.Label.DoesNotExist,
+                          models.Label.smart_get, label1.id)
+        self.god.check_playback()
+
+
 if __name__ == '__main__':
     unittest.main()

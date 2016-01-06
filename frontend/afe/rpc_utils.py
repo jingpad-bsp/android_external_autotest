@@ -1183,42 +1183,20 @@ def forward_single_host_rpc_to_shard(func):
         # Only keyword arguments can be accepted here, as we need the argument
         # names to send the rpc. serviceHandler always provides arguments with
         # their keywords, so this is not a problem.
+
+        # A host record (identified by kwargs['id']) can be deleted in
+        # func(). Therefore, we should save the data that can be needed later
+        # before func() is called.
+        shard_hostname = None
         host = models.Host.smart_get(kwargs['id'])
-        if host.shard and not server_utils.is_shard():
+        if host and host.shard:
+            shard_hostname = host.shard.rpc_hostname()
+        ret = func(**kwargs)
+        if shard_hostname and not server_utils.is_shard():
             run_rpc_on_multiple_hostnames(func.func_name,
-                                          [host.shard.rpc_hostname()],
+                                          [shard_hostname],
                                           **kwargs)
-        return func(**kwargs)
-
-    return replacement
-
-
-def forward_multi_host_rpc_to_shards(func):
-    """This decorator forwards rpc calls that modify multiple hosts.
-
-    If a host is assigned to a shard, rpcs that change his attributes should be
-    forwarded to the shard. Some calls however, take a list of hosts and a
-    single id to modify, eg: label_add_hosts. This wrapper will sift through
-    the list of hosts, find each of their shards, and forward the rpc for
-    those hosts to that shard before calling the local version of the given rpc.
-
-    This assumes:
-        1. The rpc call uses `smart_get` to retrieve host objects, not the
-           stock django `get` call. This is true for most, if not all rpcs in
-           the rpc_interface.
-        2. The kwargs to the function contain either a list of host ids or
-           hostnames, keyed under 'hosts'. This is true for all the rpc
-           functions that use 'smart_get'.
-
-    @param func: The function to decorate
-
-    @returns: The function to replace func with.
-    """
-    def replacement(**kwargs):
-        fanout_rpc(
-                models.Host.smart_get_bulk(kwargs['hosts']),
-                func.func_name, **kwargs)
-        return func(**kwargs)
+        return ret
 
     return replacement
 
