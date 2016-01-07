@@ -274,7 +274,8 @@ class SuiteSpec(object):
                  bug_template={}, devserver_url=None,
                  priority=priorities.Priority.DEFAULT, predicate=None,
                  wait_for_results=True, job_retry=False, max_retries=None,
-                 offload_failures_only=False, test_source_build=None, **dargs):
+                 offload_failures_only=False, test_source_build=None,
+                 run_prod_code=False, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -350,6 +351,9 @@ class SuiteSpec(object):
                             Default to None, no max.
         @param offload_failures_only: Only enable gs_offloading for failed
                                       jobs.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -430,6 +434,7 @@ class SuiteSpec(object):
         self.job_retry = job_retry
         self.max_retries = max_retries
         self.offload_failures_only = offload_failures_only
+        self.run_prod_code = run_prod_code
 
 
 def skip_reimage(g):
@@ -555,8 +560,9 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
     # control_files and test_suites packages so that we can get the control
     # files we should schedule.
     try:
-        spec.devserver.stage_artifacts(spec.test_source_build,
-                                       ['control_files', 'test_suites'])
+        if not spec.run_prod_code:
+            spec.devserver.stage_artifacts(spec.test_source_build,
+                                           ['control_files', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
         raise error.AsynchronousBuildFailure(e)
@@ -578,7 +584,8 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         priority=spec.priority, wait_for_results=spec.wait_for_results,
         job_retry=spec.job_retry, max_retries=spec.max_retries,
         offload_failures_only=spec.offload_failures_only,
-        test_source_build=spec.test_source_build)
+        test_source_build=spec.test_source_build,
+        run_prod_code=spec.run_prod_code)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)

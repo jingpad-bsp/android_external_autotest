@@ -2,7 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.server import autotest, test
+from autotest_lib.server import afe_utils
+from autotest_lib.server import autotest
+from autotest_lib.server import test
 
 class platform_CryptohomeMigrateChapsToken(test.test):
     """ This test checks to see if Chaps generated keys are
@@ -16,7 +18,7 @@ class platform_CryptohomeMigrateChapsToken(test.test):
     def run_once(self, host, baseline_version=None):
         # Save the build on the DUT, because we want to provision it after
         # the test.
-        final_version = host.get_build()
+        final_version = afe_utils.get_build(host)
         if baseline_version:
             version = baseline_version
         else:

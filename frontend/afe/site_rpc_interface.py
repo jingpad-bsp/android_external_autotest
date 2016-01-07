@@ -128,7 +128,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      suite_args=None, wait_for_results=True, job_retry=False,
                      max_retries=None, max_runtime_mins=None, suite_min_duts=0,
                      offload_failures_only=False, builds={},
-                     test_source_build=None, **kwargs):
+                     test_source_build=None, run_prod_code=False, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -170,6 +170,11 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                            competing with another suite that has a higher
                            priority but already got minimum machines it needs.
     @param offload_failures_only: Only enable gs_offloading for failed jobs.
+    @param run_prod_code: If True, the suite will run the test code that
+                          lives in prod aka the test code currently on the
+                          lab servers. If False, the control files and test
+                          code for this suite run will be retrieved from the
+                          build artifacts.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -201,7 +206,16 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     test_source_build = Suite.get_test_source_build(
             builds, test_source_build=test_source_build)
 
-    (ds, keyvals) = _stage_build_artifacts(test_source_build)
+    suite_name = canonicalize_suite_name(name)
+    if run_prod_code:
+        ds = dev_server.ImageServer.resolve(build)
+        keyvals = {}
+        getter = control_file_getter.FileSystemGetter(
+                [_CONFIG.get_config_value('SCHEDULER',
+                                          'drone_installation_directory')])
+        control_file = getter.get_control_file_contents_by_name(suite_name)
+    else:
+        (ds, keyvals) = _stage_build_artifacts(test_source_build)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
     if not control_file:
@@ -223,7 +237,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     # R45 falls out of stable channel.
     # Prepend build and board to the control file.
     inject_dict = {'board': board,
-                   'build': builds[provision.CROS_VERSION_PREFIX],
+                   'build': builds.get(provision.CROS_VERSION_PREFIX),
                    'builds': builds,
                    'check_hosts': check_hosts,
                    'pool': pool,
@@ -239,7 +253,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'max_retries': max_retries,
                    'max_runtime_mins': max_runtime_mins,
                    'offload_failures_only': offload_failures_only,
-                   'test_source_build': test_source_build
+                   'test_source_build': test_source_build,
+                   'run_prod_code': run_prod_code
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)

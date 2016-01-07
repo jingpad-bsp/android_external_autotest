@@ -154,14 +154,21 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
             directory = directories.pop()
             if not os.path.exists(directory):
                 continue
-            for name in os.listdir(directory):
-                fullpath = os.path.join(directory, name)
-                if os.path.isfile(fullpath):
-                    if regexp.search(name):
-                        # if we are a control file
-                        self._files.append(fullpath)
-                elif os.path.isdir(fullpath):
-                    directories.append(fullpath)
+            try:
+                for name in os.listdir(directory):
+                    fullpath = os.path.join(directory, name)
+                    if os.path.isfile(fullpath):
+                        if regexp.search(name):
+                            # if we are a control file
+                            self._files.append(fullpath)
+                    elif os.path.isdir(fullpath):
+                        directories.append(fullpath)
+            except OSError:
+                # Some directories under results/ like the Chrome Crash
+                # Reports will cause issues when attempted to be searched.
+                logging.error('Unable to search directory %d for control '
+                              'files.', directory)
+                pass
         if not self._files:
             msg = 'No control files under ' + ','.join(self._paths)
             raise error.NoControlFileList(msg)

@@ -37,6 +37,7 @@ except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -309,7 +310,7 @@ def check_dut_image(build, suite_job_id):
     hostnames = set([hqe.host.hostname for hqe in hqes])
     for hostname in hostnames:
         host = cros_host.CrosHost(hostname)
-        found_build = host.get_build()
+        found_build = afe_utils.get_build(hostname)
         if found_build != build:
             raise TestPushException('DUT is not imaged properly. Host %s has '
                                     'build %s, while build %s is expected.' %

@@ -153,6 +153,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
         spec.devserver.stage_artifacts(
                 spec.builds[provision.CROS_VERSION_PREFIX],
                 ['control_files', 'test_suites']).WithSideEffects(suicide)
+        spec.run_prod_code = False
 
         self.mox.ReplayAll()
 

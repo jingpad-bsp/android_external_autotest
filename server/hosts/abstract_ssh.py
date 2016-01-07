@@ -22,6 +22,7 @@ class AbstractSSHHost(remote.RemoteHost):
     almost all of the abstract Host methods, except for the core
     Host.run method.
     """
+    VERSION_PREFIX = ''
 
     def _initialize(self, hostname, user="root", port=22, password="",
                     is_client_install_supported=True, host_attributes={},

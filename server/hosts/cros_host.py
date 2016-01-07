@@ -24,6 +24,7 @@ from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.video import constants as video_test_constants
+from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
@@ -56,6 +57,8 @@ class FactoryImageCheckerException(error.AutoservError):
 
 class CrosHost(abstract_ssh.AbstractSSHHost):
     """Chromium OS specific subclass of Host."""
+
+    VERSION_PREFIX = provision.CROS_VERSION_PREFIX
 
     _parser = autoserv_parser.autoserv_parser
     _AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
@@ -378,14 +381,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return stable_version
 
 
-    def _host_in_AFE(self):
-        """Check if the host is an object the AFE knows.
-
-        @returns the host object.
-        """
-        return self._AFE.get_hosts(hostname=self.hostname)
-
-
     def lookup_job_repo_url(self):
         """Looks up the job_repo_url for the host.
 
@@ -400,19 +395,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             return None
 
 
-    def clear_cros_version_labels_and_job_repo_url(self):
-        """Clear cros_version labels and host attribute job_repo_url."""
-        if not self._host_in_AFE():
+    def clear_job_repo_url(self):
+        """Clear host attribute job_repo_url."""
+        if not afe_utils.host_in_lab(self):
             return
-
-        host_list = [self.hostname]
-        labels = self._AFE.get_labels(
-                name__startswith=ds_constants.VERSION_PREFIX,
-                host__hostname=self.hostname)
-
-        for label in labels:
-            label.remove_hosts(hosts=host_list)
-
         self.update_job_repo_url(None, None)
 
 
@@ -435,21 +421,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       'host %s' % (repo_url, self.hostname))
 
 
-    def add_cros_version_labels_and_job_repo_url(self, image_name):
+    def add_job_repo_url(self, image_name):
         """Add cros_version labels and host attribute job_repo_url.
 
         @param image_name: The name of the image e.g.
                 lumpy-release/R27-3837.0.0
 
         """
-        if not self._host_in_AFE():
+        if not afe_utils.host_in_lab(self):
             return
 
-        cros_label = '%s%s' % (ds_constants.VERSION_PREFIX, image_name)
         devserver_url = dev_server.ImageServer.resolve(image_name,
                                                        self.hostname).url()
-
-        self._AFE.run('label_add_hosts', id=cros_label, hosts=[self.hostname])
         self.update_job_repo_url(devserver_url, image_name)
 
 
@@ -723,9 +706,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         failed to do a stateful update, full update, including kernel update,
         will be applied to the DUT.
 
-        Once a host enters machine_install its cros_version label will be
-        removed as well as its host attribute job_repo_url (used for
-        package install).
+        Once a host enters machine_install its host attribute job_repo_url
+        (used for package install) will be removed and then updated.
 
         @param update_url: The url to use for the update
                 pattern: http://$devserver:###/update/$build
@@ -743,6 +725,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 first when the dut is already installed with the same version.
         @raises autoupdater.ChromiumOSError
 
+        @returns Name of the image installed.
         """
         devserver = None
         if repair:
@@ -768,7 +751,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Update URL is %s', update_url)
 
         # Remove cros-version and job_repo_url host attribute from host.
-        self.clear_cros_version_labels_and_job_repo_url()
+        self.clear_job_repo_url()
 
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
@@ -838,8 +821,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
         self._post_update_processing(updater, inactive_kernel)
-        self.add_cros_version_labels_and_job_repo_url(
-                autoupdater.url_to_image_name(update_url))
+        image_name = autoupdater.url_to_image_name(update_url)
+        self.add_job_repo_url(image_name)
+        return image_name
 
 
     def _clear_fw_version_labels(self, rw_only):
@@ -966,17 +950,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return server_utils.get_board_from_afe(self.hostname, self._AFE)
 
 
-    def get_build(self):
-        """Retrieve the current build for this Host from the AFE.
-
-        Looks through this host's labels in the AFE to determine its build.
-
-        @returns The current build or None if it could not find it or if there
-                 were multiple build labels assigned to this host.
-        """
-        return server_utils.get_build_from_afe(self.hostname, self._AFE)
-
-
     def _install_repair(self):
         """Attempt to repair this host using the update-engine.
 
@@ -993,7 +966,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservRepairMethodNA('DUT unreachable for install.')
         logging.info('Attempting to reimage machine to repair image.')
         try:
-            self.machine_install(repair=True)
+            afe_utils.machine_install_and_update_labels(self, repair=True)
         except autoupdater.ChromiumOSError as e:
             logging.exception(e)
             logging.info('Repair via install failed.')

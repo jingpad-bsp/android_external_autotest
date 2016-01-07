@@ -12,6 +12,7 @@ import StringIO
 
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import afe_utils
 
 
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
@@ -271,7 +272,7 @@ class TelemetryRunner(object):
         logging.debug('Setting up telemetry for devserver testing')
         logging.debug('Grabbing build from AFE.')
 
-        build = self._host.get_build()
+        build = afe_utils.get_build(self._host)
         if not build:
             logging.error('Unable to locate build label for host: %s.',
                           self._host.hostname)

@@ -18,6 +18,7 @@ from autotest_lib.frontend.afe.json_rpc import proxy
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import enum
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import time_utils
@@ -46,6 +47,9 @@ except ImportError:
 _FILE_BUG_SUITES = ['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_au_beta',
                     'paygen_au_canary', 'paygen_au_dev', 'paygen_au_stable',
                     'sanity', 'push_to_prod']
+_AUTOTEST_DIR = global_config.global_config.get_config_value(
+        'SCHEDULER', 'drone_installation_directory')
+
 
 class RetryHandler(object):
     """Maintain retry information.
@@ -514,7 +518,8 @@ class Suite(object):
 
     @staticmethod
     def create_from_predicates(predicates, builds, board, devserver,
-                               cf_getter=None, name='ad_hoc_suite', **dargs):
+                               cf_getter=None, name='ad_hoc_suite',
+                               run_prod_code=False, **dargs):
         """
         Create a Suite using a given predicate test filters.
 
@@ -534,16 +539,22 @@ class Suite(object):
         @param cf_getter: control_file_getter.ControlFileGetter. Defaults to
                           using DevServerGetter.
         @param name: name of suite. Defaults to 'ad_hoc_suite'
+        @param run_prod_code: If true, the suite will run the tests that
+                              lives in prod aka the test code currently on the
+                              lab servers.
         @param **dargs: Any other Suite constructor parameters, as described
                         in Suite.__init__ docstring.
         @return a Suite instance.
         """
         if cf_getter is None:
             build = Suite.get_test_source_build(builds, **dargs)
-            cf_getter = Suite.create_ds_getter(build, devserver)
+            if run_prod_code:
+                cf_getter = Suite.create_fs_getter(_AUTOTEST_DIR)
+            else:
+                cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(predicates,
-                     name, builds, board, cf_getter, **dargs)
+                     name, builds, board, cf_getter, run_prod_code, **dargs)
 
 
     @staticmethod
@@ -576,11 +587,11 @@ class Suite(object):
                      name, builds, board, cf_getter, **dargs)
 
 
-    def __init__(self, predicates, tag, builds, board, cf_getter, afe=None,
-                 tko=None, pool=None, results_dir=None, max_runtime_mins=24*60,
-                 timeout_mins=24*60, file_bugs=False,
-                 file_experimental_bugs=False, suite_job_id=None,
-                 ignore_deps=False, extra_deps=[],
+    def __init__(self, predicates, tag, builds, board, cf_getter,
+                 run_prod_code=False, afe=None, tko=None, pool=None,
+                 results_dir=None, max_runtime_mins=24*60, timeout_mins=24*60,
+                 file_bugs=False, file_experimental_bugs=False,
+                 suite_job_id=None, ignore_deps=False, extra_deps=[],
                  priority=priorities.Priority.DEFAULT, forgiving_parser=True,
                  wait_for_results=True, job_retry=False,
                  max_retries=sys.maxint, offload_failures_only=False,
@@ -600,6 +611,9 @@ class Suite(object):
         @param tko: an instance of TKO as defined in server/frontend.py.
         @param pool: Specify the pool of machines to use for scheduling
                 purposes.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers.
         @param results_dir: The directory where the job can write results to.
                             This must be set if you want job_id of sub-jobs
                             list in the job keyvals.
@@ -651,7 +665,8 @@ class Suite(object):
         self._jobs_to_tests = {}
         self._tests = Suite.find_and_parse_tests(self._cf_getter,
                         self._predicate, self._tag, add_experimental=True,
-                        forgiving_parser=forgiving_parser)
+                        forgiving_parser=forgiving_parser,
+                        run_prod_code=run_prod_code)
 
         self._max_runtime_mins = max_runtime_mins
         self._timeout_mins = timeout_mins
@@ -1076,7 +1091,7 @@ class Suite(object):
 
     @staticmethod
     def find_all_tests(cf_getter, suite_name='', add_experimental=False,
-                       forgiving_parser=True):
+                       forgiving_parser=True, run_prod_code=False):
         """
         Function to scan through all tests and find all tests.
 
@@ -1100,6 +1115,10 @@ class Suite(object):
                                  files. Note that this can raise an exception
                                  for syntax errors in unrelated files, because
                                  we parse them before applying the predicate.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers by disabling SSP for the discovered
+                              tests.
 
         @raises ControlVariableException: If forgiving_parser is False and there
                                           is a syntax error in a control file.
@@ -1122,6 +1141,8 @@ class Suite(object):
                     continue
                 found_test.text = text
                 found_test.path = file
+                if run_prod_code:
+                    found_test.require_ssp = False
                 tests[file] = found_test
             except control_data.ControlVariableException, e:
                 if not forgiving_parser:
@@ -1135,7 +1156,8 @@ class Suite(object):
 
     @staticmethod
     def find_and_parse_tests(cf_getter, predicate, suite_name='',
-                             add_experimental=False, forgiving_parser=True):
+                             add_experimental=False, forgiving_parser=True,
+                             run_prod_code=False):
         """
         Function to scan through all tests and find eligible tests.
 
@@ -1156,6 +1178,10 @@ class Suite(object):
                                  files. Note that this can raise an exception
                                  for syntax errors in unrelated files, because
                                  we parse them before applying the predicate.
+        @param run_prod_code: If true, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers by disabling SSP for the discovered
+                              tests.
 
         @raises ControlVariableException: If forgiving_parser is False and there
                                           is a syntax error in a control file.
@@ -1165,7 +1191,8 @@ class Suite(object):
                 on the TIME setting in control file, slowest test comes first.
         """
         tests = Suite.find_all_tests(cf_getter, suite_name, add_experimental,
-                                     forgiving_parser)
+                                     forgiving_parser,
+                                     run_prod_code=run_prod_code)
         logging.debug('Parsed %s control files.', len(tests))
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:

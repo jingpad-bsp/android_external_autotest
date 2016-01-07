@@ -40,6 +40,7 @@ We are taking the risk because
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
+from autotest_lib.server import afe_utils
 from autotest_lib.server import utils as server_utils
 
 
@@ -59,7 +60,7 @@ def run(machine):
         # Save preserved log after autoupdate is completed.
         job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
         host = hosts.create_host(machine)
-        value = host.get_build()
+        value = afe_utils.get_build(host)
     job.run_test('provision_AutoUpdate', host=host, value=value, force=True,
                  disable_sysinfo=False, tag='double', is_test_na=is_test_na)
 

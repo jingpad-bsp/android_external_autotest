@@ -30,6 +30,7 @@ class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
     _parser = autoserv_parser.autoserv_parser
+    VERSION_PREFIX = 'testbed-version'
 
     def __init__(self, hostname='localhost', host_attributes={},
                  adb_serials=None, **dargs):
@@ -270,7 +271,10 @@ class TestBed(object):
 
 
     def machine_install(self):
-        """Install the DUT."""
+        """Install the DUT.
+
+        @returns The name of the image installed.
+        """
         if not self._parser.options.image:
             raise error.InstallError('No image string is provided to test bed.')
         images = self._parse_image(self._parser.options.image)
@@ -287,3 +291,4 @@ class TestBed(object):
         thread_pool = pool.ThreadPool(_POOL_SIZE)
         thread_pool.map(self._install_device, arguments)
         thread_pool.close()
+        return self._parser.options.image

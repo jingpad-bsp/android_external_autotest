@@ -11,6 +11,7 @@ from autotest_lib.server.cros import provision_actionables as actionables
 
 ### Constants for label prefixes
 CROS_VERSION_PREFIX = 'cros-version'
+ANDROID_BUILD_VERSION_PREFIX = 'ab-version'
 FW_RW_VERSION_PREFIX = 'fwrw-version'
 FW_RO_VERSION_PREFIX = 'fwro-version'
 
@@ -171,6 +172,8 @@ class Provision(_SpecialTaskAction):
         FW_RW_VERSION_PREFIX: actionables.TestActionable(
                 'provision_FirmwareUpdate',
                 extra_kwargs={'rw_only': True}),
+        ANDROID_BUILD_VERSION_PREFIX : actionables.TestActionable(
+                'provision_AndroidUpdate'),
     }
 
     name = 'provision'

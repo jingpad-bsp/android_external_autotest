@@ -80,6 +80,7 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.SUITE_TIMEOUT: 2,
             RETURN_CODES.INFRA_FAILURE: 3,
             RETURN_CODES.ERROR: 4}
+ANDROID_BUILD_REGEX = r'.+/.+/[0-9]+'
 
 
 def get_worse_code(code1, code2):
@@ -187,6 +188,10 @@ def parse_options():
     parser.add_option('--json_dump', dest='json_dump', action='store_true',
                       default=False,
                       help='Dump the output of run_suite to stdout.')
+    parser.add_option('--run_prod_code', dest='run_prod_code',
+                      action='store_true', default=False,
+                      help='Run the test code that lives in prod aka the test '
+                           'code currently on the lab servers.')
     options, args = parser.parse_args()
     return parser, options, args
 
@@ -1405,7 +1410,10 @@ def create_suite(afe, options):
     """
     builds = {}
     if options.build:
-        builds[provision.CROS_VERSION_PREFIX] = options.build
+        if re.match(ANDROID_BUILD_REGEX, options.build):
+            builds[provision.ANDROID_BUILD_VERSION_PREFIX] = options.build
+        else:
+            builds[provision.CROS_VERSION_PREFIX] = options.build
     if options.firmware_rw_build:
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
@@ -1437,7 +1445,8 @@ def create_suite(afe, options):
                    max_runtime_mins=options.max_runtime_mins,
                    job_retry=retry, max_retries=options.max_retries,
                    suite_min_duts=options.suite_min_duts,
-                   offload_failures_only=offload_failures_only)
+                   offload_failures_only=offload_failures_only,
+                   run_prod_code=options.run_prod_code)
 
 
 def main_without_exception_handling(options):

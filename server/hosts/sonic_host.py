@@ -267,7 +267,10 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, update_url):
-        """Installs a build on the Sonic device."""
+        """Installs a build on the Sonic device.
+
+        @returns String of the current build number.
+        """
         old_build_number = self.get_build_number()
         self._remount_root(permissions='rw')
         self._setup_coredump_dirs()
@@ -284,3 +287,5 @@ class SonicHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservRunError('Build number did not change on: '
                                          '%s after update with %s' %
                                          (self.hostname, update_url()))
+
+        return str(new_build_number)

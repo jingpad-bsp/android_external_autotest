@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 
 
@@ -79,10 +80,12 @@ class provision_AutoUpdate(test.test):
         """The method called by the control file to start the test.
 
         @param host: The host object to update to |value|.
-        @param value: The build type and version to install on the host.
-        @param force: If False, will only provision the host if it is not
-                      already running the build. If True, force the
-                      provisioning regardless, and force a full-reimage.
+        @param value: The host object to provision with a build corresponding
+                      to |value|.
+        @param force: True iff we should re-provision the machine regardless of
+                      the current image version.  If False and the image
+                      version matches our expected image version, no
+                      provisioning will be done.
 
         """
         logging.debug('Start provisioning %s to %s', host, value)
@@ -94,7 +97,7 @@ class provision_AutoUpdate(test.test):
         # We could just not pass |force_update=True| to |machine_install|,
         # but I'd like the semantics that a provision test 'returns' TestNA
         # if the machine is already properly provisioned.
-        if not force and host.get_build() == value:
+        if not force and afe_utils.get_build(host) == value:
             # We can't raise a TestNA, as would make sense, as that makes
             # job.run_test return False as if the job failed.  However, it'd
             # still be nice to get this into the status.log, so we manually
@@ -127,8 +130,10 @@ class provision_AutoUpdate(test.test):
 
         logging.debug('Installing image')
         try:
-            host.machine_install(force_update=True, update_url=url,
-                                 force_full_update=force)
+            afe_utils.machine_install_and_update_labels(host,
+                                                        force_update=True,
+                                                        update_url=url,
+                                                        force_full_update=force)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))

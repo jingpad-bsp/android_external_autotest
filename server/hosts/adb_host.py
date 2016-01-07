@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import teststation_host
@@ -104,6 +105,7 @@ class AndroidInstallError(error.InstallError):
 class ADBHost(abstract_ssh.AbstractSSHHost):
     """This class represents a host running an ADB server."""
 
+    VERSION_PREFIX = provision.ANDROID_BUILD_VERSION_PREFIX
     _LABEL_FUNCTIONS = []
     _DETECTABLE_LABELS = []
     label_decorator = functools.partial(utils.add_label_detector,
@@ -1104,10 +1106,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # folder used to store image files after the provision is completed.
         delete_build_folder = bool(not build_local_path)
 
-        if not build_url and self._parser.options.image:
-            build_url, _ = self.stage_build_for_install(
-                    self._parser.options.image)
-
         try:
             # Download image files needed for provision to a local directory.
             if not build_local_path:
@@ -1169,10 +1167,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # folder used to store image files after the provision is completed.
         delete_build_folder = bool(not build_local_path)
 
-        if not build_url and self._parser.options.image:
-            build_url, _ = self.stage_build_for_install(
-                    self._parser.options.image)
-
         try:
             # Download image files needed for provision to a local directory.
             if not build_local_path:
@@ -1213,7 +1207,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param wipe: If true, userdata will be wiped before flashing.
         @param flash_all: If True, all img files found in img_path will be
                 flashed. Otherwise, only boot and system are flashed.
+
+        @returns Name of the image installed.
         """
+        if not build_url and self._parser.options.image:
+            build_url, _ = self.stage_build_for_install(
+                    self._parser.options.image)
         if self.get_os_type() == OS_TYPE_ANDROID:
             self.install_android(
                     build_url=build_url, build_local_path=build_local_path,
@@ -1225,6 +1224,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.InstallError(
                     'Installation of os type %s is not supported.' %
                     self.get_os_type())
+        return build_url.split('static/')[-1]
 
 
     def list_files_glob(self, path_glob):
