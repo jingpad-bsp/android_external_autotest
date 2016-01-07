@@ -8,6 +8,8 @@ import common
 from chromite.lib import gce
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server.hosts import abstract_ssh
 
 SSH_KEYS_METADATA_KEY = "sshKeys"
@@ -83,6 +85,19 @@ class GceHost(abstract_ssh.AbstractSSHHost):
         @param ssh_key: the key to delete.
         """
         self._modify_ssh_keys([], ['%s:%s' % (username, ssh_key)])
+
+
+    def get_release_version(self):
+        """Get the value of attribute CHROMEOS_RELEASE_VERSION from lsb-release.
+
+        @returns The version string in lsb-release, under attribute
+                CHROMEOS_RELEASE_VERSION.
+        """
+        lsb_release_content = self.run(
+                    'cat "%s"' % client_constants.LSB_RELEASE).stdout.strip()
+        return lsbrelease_utils.get_chromeos_release_version(
+                    lsb_release_content=lsb_release_content)
+
 
     def set_instance_metadata(self, key, value):
         """Sets a single metadata value on the DUT instance.
