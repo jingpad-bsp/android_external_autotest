@@ -1,4 +1,6 @@
 Vagrant.configure("2") do |config|
+  config.puppet_install.puppet_version = "3.4.2"
+
   config.vm.box = "base"
   config.vm.synced_folder "/usr/local/autotest", "/usr/local/autotest", type: "rsync",
     owner: "chromoes-test", group: "root",
