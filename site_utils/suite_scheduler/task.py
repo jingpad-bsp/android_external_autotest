@@ -279,6 +279,12 @@ class Task(object):
         ChromeOS build on dev channel (ToT-1). The test source build is the
         firmware RW build.
 
+        branch_specs: ==tot
+        firmware_rw_build_spec: cros
+        test_source: cros
+        This will run test using latest ChromeOS and firmware RW build on ToT.
+        ChromeOS build on ToT. The test source build is ChromeOS build.
+
         @param name: name of this task, e.g. 'NightlyPower'
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param branch_specs: a pre-vetted iterable of branch specifiers,
@@ -328,14 +334,14 @@ class Task(object):
                     'You cannot specify both firmware_rw_build_spec and '
                     'cros_build_spec. firmware_rw_build_spec is used to specify'
                     ' a firmware build when the suite requires firmware to be '
-                    'updated in the dut, its value can only be `firmware`. '
-                    'cros_build_spec is used to specify a ChromeOS build when '
-                    'build_specs is set to firmware.')
+                    'updated in the dut, its value can only be `firmware` or '
+                    '`cros`. cros_build_spec is used to specify a ChromeOS '
+                    'build when build_specs is set to firmware.')
         if (self._firmware_rw_build_spec and
-            self._firmware_rw_build_spec != 'firmware'):
+            self._firmware_rw_build_spec not in ['firmware', 'cros']):
             raise MalformedConfigEntry(
-                    'firmware_rw_build_spec can only be empty or firmware. It '
-                    'does not support other build type yet.')
+                    'firmware_rw_build_spec can only be empty, firmware or '
+                    'cros. It does not support other build type yet.')
 
         self._bare_branches = []
         self._version_equal_constraint = False
@@ -556,13 +562,15 @@ class Task(object):
         """Get the firmware rw build name to test with ChromeOS build.
 
         The firmware rw build to be used is determined by
-        `self.firmware_rw_build_spec`. Its value can be `firmware` or empty:
+        `self.firmware_rw_build_spec`. Its value can be `firmware`, `cros` or
+        empty:
         firmware: use the ToT build in firmware branch.
+        cros: use the ToT build in release (ChromeOS) branch.
 
         @param mv: an instance of manifest_versions.ManifestVersions.
         @param board: the board against which to run self._suite.
-        @param build_type: Build type of the firmware build, e.g., factory or
-                           firmware.
+        @param build_type: Build type of the firmware build, e.g., factory,
+                           firmware or release.
 
         @return: The firmware rw build name to test with ChromeOS build.
 
@@ -641,8 +649,12 @@ class Task(object):
                 # When firmware_rw_build_spec is specified, the test involves
                 # updating the firmware by firmware build specified in
                 # firmware_rw_build_spec.
+                if self.firmware_rw_build_spec == 'cros':
+                    build_type = 'release'
+                else:
+                    build_type = self.firmware_rw_build_spec
                 firmware_rw_build = self._GetFirmwareRWBuild(
-                        mv, board, self.firmware_rw_build_spec)
+                        mv, board, build_type)
         except manifest_versions.QueryException as e:
             logging.error(e)
             logging.error('Running %s on %s is failed. Failed to find build '
