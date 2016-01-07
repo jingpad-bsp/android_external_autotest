@@ -111,12 +111,18 @@ class _BaseProgrammer(object):
 class FlashromProgrammer(_BaseProgrammer):
     """Class for programming AP flashrom."""
 
-    def __init__(self, servo):
-        """Configure required servo state."""
+    def __init__(self, servo, keep_ro=False):
+        """Configure required servo state.
+
+        @param servo: a servo object controlling the servo device
+        @param keep_ro: True to keep the RO portion unchanged
+        """
         super(FlashromProgrammer, self).__init__(servo, ['flashrom',])
+        self._keep_ro = keep_ro
         self._fw_path = None
         self._tmp_path = '/tmp'
         self._fw_main = os.path.join(self._tmp_path, 'fw_main')
+        self._wp_ro = os.path.join(self._tmp_path, 'wp_ro')
         self._ro_vpd = os.path.join(self._tmp_path, 'ro_vpd')
         self._rw_vpd = os.path.join(self._tmp_path, 'rw_vpd')
         self._gbb = os.path.join(self._tmp_path, 'gbb')
@@ -127,8 +133,16 @@ class FlashromProgrammer(_BaseProgrammer):
         assert self._fw_path is not None
         self._set_servo_state()
         try:
-            vpd_sections = [('RW_VPD', self._rw_vpd), ('RO_VPD', self._ro_vpd)]
+            wp_ro_section = [('WP_RO', self._wp_ro)]
+            rw_vpd_section = [('RW_VPD', self._rw_vpd)]
+            ro_vpd_section = [('RO_VPD', self._ro_vpd)]
             gbb_section = [('GBB', self._gbb)]
+            if self._keep_ro:
+                # Keep the whole RO portion
+                preserved_sections = wp_ro_section + rw_vpd_section
+            else:
+                preserved_sections = ro_vpd_section + rw_vpd_section
+
             servo_version = self._servo.get_servo_version()
             servo_v2_programmer = 'ft2232_spi:type=servo-v2'
             servo_v3_programmer = 'linux_spi'
@@ -142,7 +156,7 @@ class FlashromProgrammer(_BaseProgrammer):
                 raise Exception('Servo version %s is not supported.' %
                                 servo_version)
             # Save needed sections from current firmware
-            for section in vpd_sections + gbb_section:
+            for section in preserved_sections + gbb_section:
                 self._servo.system(' '.join([
                     'flashrom', '-V', '-p', programmer,
                     '-r', self._fw_main, '-i', '%s:%s' % section]),
@@ -156,20 +170,22 @@ class FlashromProgrammer(_BaseProgrammer):
                     '-p', 'dummy:image=%s,size=%s,emulate=VARIABLE_SIZE' % (
                         self._fw_main, img_size),
                     '-w', self._fw_main]
-            for section in vpd_sections:
+            for section in preserved_sections:
                 pack_cmd.extend(['-i', '%s:%s' % section])
             self._servo.system(' '.join(pack_cmd),
                                timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
 
-            # Read original HWID. The output format is:
-            #    hardware_id: RAMBI TEST A_A 0128
-            gbb_hwid_output = self._servo.system_output(
-                    'gbb_utility -g --hwid %s' % self._gbb)
-            original_hwid = gbb_hwid_output.split(':', 1)[1].strip()
+            # HWID is inside the RO portion. Don't preserve HWID if we keep RO.
+            if not self._keep_ro:
+                # Read original HWID. The output format is:
+                #    hardware_id: RAMBI TEST A_A 0128
+                gbb_hwid_output = self._servo.system_output(
+                        'gbb_utility -g --hwid %s' % self._gbb)
+                original_hwid = gbb_hwid_output.split(':', 1)[1].strip()
 
-            # Write HWID to new firmware
-            self._servo.system("gbb_utility -s --hwid='%s' %s" %
-                    (original_hwid, self._fw_main))
+                # Write HWID to new firmware
+                self._servo.system("gbb_utility -s --hwid='%s' %s" %
+                        (original_hwid, self._fw_main))
 
             # Flash the new firmware
             self._servo.system(' '.join([
