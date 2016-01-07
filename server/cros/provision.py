@@ -4,11 +4,8 @@
 
 
 import abc
-import logging
 
 import common
-from autotest_lib.frontend.afe.json_rpc import proxy
-from autotest_lib.server import frontend
 from autotest_lib.server.cros import provision_actionables as actionables
 
 
@@ -169,8 +166,11 @@ class Provision(_SpecialTaskAction):
                               'disable_before_iteration_sysinfo': True,
                               'disable_after_test_sysinfo': True,
                               'disable_after_iteration_sysinfo': True}),
-        FW_RW_VERSION_PREFIX: actionables.TestActionable(
+        FW_RO_VERSION_PREFIX: actionables.TestActionable(
                 'provision_FirmwareUpdate'),
+        FW_RW_VERSION_PREFIX: actionables.TestActionable(
+                'provision_FirmwareUpdate',
+                extra_kwargs={'rw_only': True}),
     }
 
     name = 'provision'
