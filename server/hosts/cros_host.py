@@ -841,23 +841,36 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 autoupdater.url_to_image_name(update_url))
 
 
-    def _clear_fw_version_labels(self):
-        """Clear firmware version labels from the machine."""
+    def _clear_fw_version_labels(self, rw_only):
+        """Clear firmware version labels from the machine.
+
+        @param rw_only: True to only clear fwrw_version; otherewise, clear
+                        both fwro_version and fwrw_version.
+        """
         labels = self._AFE.get_labels(
                 name__startswith=provision.FW_RW_VERSION_PREFIX,
                 host__hostname=self.hostname)
+        if not rw_only:
+            labels = labels + self._AFE.get_labels(
+                    name__startswith=provision.FW_RO_VERSION_PREFIX,
+                    host__hostname=self.hostname)
         for label in labels:
             label.remove_hosts(hosts=[self.hostname])
 
 
-    def _add_fw_version_label(self, build):
+    def _add_fw_version_label(self, build, rw_only):
         """Add firmware version label to the machine.
 
         @param build: Build of firmware.
+        @param rw_only: True to only add fwrw_version; otherwise, add both
+                        fwro_version and fwrw_version.
 
         """
-        fw_label = provision.fw_version_to_label(build)
+        fw_label = provision.fwrw_version_to_label(build)
         self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
+        if not rw_only:
+            fw_label = provision.fwro_version_to_label(build)
+            self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
 
 
     def firmware_install(self, build=None, rw_only=False):
@@ -869,9 +882,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         failed to do a stateful update, full update, including kernel update,
         will be applied to the DUT.
 
-        Once a host enters firmware_install its fw_version label will be
-        removed. After the firmware is updated successfully, a new fw_version
-        label will be added to the host.
+        Once a host enters firmware_install its fw[ro|rw]_version label will
+        be removed. After the firmware is updated successfully, a new
+        fw[ro|rw]_version label will be added to the host.
 
         @param build: The build version to which we want to provision the
                       firmware of the machine,
@@ -922,14 +935,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                 (local_tarball, tmpd.name),
                                 timeout=60, ignore_status=True)
 
-            self._clear_fw_version_labels()
+            self._clear_fw_version_labels(rw_only)
             logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
             self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
             logging.info('Will re-program BIOS %snow', 'RW ' if rw_only else '')
             self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
-            self._add_fw_version_label(build)
+            self._add_fw_version_label(build, rw_only)
         finally:
             tmpd.clean()
 

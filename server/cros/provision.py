@@ -34,9 +34,20 @@ def cros_version_to_label(image):
     return CROS_VERSION_PREFIX + ':' + image
 
 
-def fw_version_to_label(image):
+def fwro_version_to_label(image):
     """
-    Returns the proper label name for a firmware build of |image|.
+    Returns the proper label name for a RO firmware build of |image|.
+
+    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
+    @returns: A string that is the appropriate label name.
+
+    """
+    return FW_RO_VERSION_PREFIX + ':' + image
+
+
+def fwrw_version_to_label(image):
+    """
+    Returns the proper label name for a RW firmware build of |image|.
 
     @param image: A string of the form 'lumpy-release/R28-3993.0.0'
     @returns: A string that is the appropriate label name.
