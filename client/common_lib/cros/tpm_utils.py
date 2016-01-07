@@ -4,9 +4,8 @@
 
 import logging, os
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import cros_ui, cryptohome
+from autotest_lib.client.cros import cros_ui
 
 
 _PASSWD_FILE = '/var/tmp/tpm_password'
@@ -118,25 +117,3 @@ def CleanupAndReboot(client):
     client.run('sudo rm -rf ' + _RM_DIRS, ignore_status=True)
     client.run('sync', ignore_status=True)
     client.reboot()
-
-
-def SaveTPMPassword():
-    """Save TPM Password to /var/tpm/tpm_password.
-
-    The TPM password is visible until enrollment completes and the TPM is owned.
-    We capture it and save it in to a local file, so we can clear the TPM at the
-    end of the test.
-    """
-    if cryptohome.get_tpm_status()['Owned']:
-        return
-
-    password = utils.poll_for_condition(
-            lambda: cryptohome.get_tpm_status()['Password'],
-            sleep_interval=0.5, timeout=60)
-    if password:
-        with open(_PASSWD_FILE, 'w') as f:
-            f.write(password)
-    else:
-        logging.warn('Could not save TPM password')
-    logging.info('TPM Password: ' + password)
-    return password
