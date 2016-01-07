@@ -861,7 +861,6 @@ def wflinfo_cmd():
 def is_sw_rasterizer():
     """Return true if OpenGL is using a software rendering."""
     cmd = wflinfo_cmd() + ' | grep "OpenGL renderer string"'
-    cmd = xcommand(cmd)
     output = utils.run(cmd)
     result = output.stdout.splitlines()[0]
     logging.info('wflinfo: %s', result)
