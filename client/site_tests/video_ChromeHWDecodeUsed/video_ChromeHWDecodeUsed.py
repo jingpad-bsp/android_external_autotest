@@ -5,7 +5,6 @@
 import time
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import vda_constants
@@ -17,16 +16,12 @@ class video_ChromeHWDecodeUsed(test.test):
 
 
     def run_once(self, video_file):
-        """Tests whether VDA works by verifying histogram for the loaded video.
+        """
+        Tests whether VDA works by verifying histogram for the loaded video.
 
         @param video_file: Sample video file to be loaded in Chrome.
+
         """
-
-        # TODO(hshi): Remove this once hw decode hang issue is fixed on sandybridge.
-        # See http://crbug.com/521249.
-        if utils.get_board() in ['lumpy', 'stumpy', 'parrot', 'butterfly']:
-            return
-
         with chrome.Chrome() as cr:
             tab1 = cr.browser.tabs[0]
             tab1.Navigate(video_file)
