@@ -27,6 +27,7 @@ from autotest_lib.frontend.afe import rpc_interface, site_rpc_interface
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.hosts import moblab_host
 
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
@@ -445,6 +446,24 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                 boto_key, site_rpc_interface.MOBLAB_BOTO_LOCATION)
         self.mox.ReplayAll()
         site_rpc_interface.set_boto_key(boto_key)
+
+
+    def testSetLaunchControlKey(self):
+        """Ensure that the Launch Control key path supplied is copied correctly.
+        """
+        self.setIsMoblab(True)
+        launch_control_key = '/tmp/launch_control'
+        site_rpc_interface.os = self.mox.CreateMockAnything()
+        site_rpc_interface.os.path = self.mox.CreateMockAnything()
+        site_rpc_interface.os.path.exists(launch_control_key).AndReturn(
+                True)
+        site_rpc_interface.shutil = self.mox.CreateMockAnything()
+        site_rpc_interface.shutil.copyfile(
+                launch_control_key,
+                moblab_host.MOBLAB_LAUNCH_CONTROL_KEY_LOCATION)
+        site_rpc_interface.os.system('sudo restart moblab-devserver-init')
+        self.mox.ReplayAll()
+        site_rpc_interface.set_launch_control_key(launch_control_key)
 
 
     def _get_records_for_sending_to_master(self):

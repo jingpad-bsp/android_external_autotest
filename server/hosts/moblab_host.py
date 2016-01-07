@@ -24,6 +24,7 @@ SUBNET_DUT_SEARCH_RE = (
         '(?P<mac>[0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])')
 MOBLAB_IMAGE_STORAGE = '/mnt/moblab/static'
 MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
+MOBLAB_LAUNCH_CONTROL_KEY_LOCATION = '/home/moblab/.launch_control_key'
 MOBLAB_AUTODIR = '/usr/local/autodir'
 DHCPD_LEASE_FILE = '/var/lib/dhcp/dhcpd.leases'
 MOBLAB_SERVICES = ['moblab-scheduler-init',

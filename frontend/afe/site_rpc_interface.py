@@ -325,6 +325,22 @@ def set_boto_key(boto_key):
     shutil.copyfile(boto_key, moblab_host.MOBLAB_BOTO_LOCATION)
 
 
+@moblab_only
+def set_launch_control_key(launch_control_key):
+    """Update the launch_control_key file.
+
+    @param launch_control_key: File name of launch_control_key uploaded through
+            handle_file_upload.
+    """
+    if not os.path.exists(launch_control_key):
+        raise error.RPCException('Launch Control key: %s does not exist!' %
+                                 launch_control_key)
+    shutil.copyfile(launch_control_key,
+                    moblab_host.MOBLAB_LAUNCH_CONTROL_KEY_LOCATION)
+    # Restart the devserver service.
+    os.system('sudo restart moblab-devserver-init')
+
+
 def get_job_history(**filter_data):
     """Get history of the job, including the special tasks executed for the job
 

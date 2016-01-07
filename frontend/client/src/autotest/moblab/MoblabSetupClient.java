@@ -12,6 +12,7 @@ import com.google.gwt.user.client.ui.RootPanel;
 public class MoblabSetupClient implements EntryPoint {
     private ConfigSettingsView configSettingsView;
     private BotoKeyView botoKeyView;
+    private LaunchControlKeyView launchControlKeyView;
 
     public CustomTabPanel mainTabPanel = new CustomTabPanel();
 
@@ -24,8 +25,10 @@ public class MoblabSetupClient implements EntryPoint {
 
         configSettingsView = new ConfigSettingsView();
         botoKeyView = new BotoKeyView();
+        launchControlKeyView = new LaunchControlKeyView();
         mainTabPanel.addTabView(configSettingsView);
         mainTabPanel.addTabView(botoKeyView);
+        mainTabPanel.addTabView(launchControlKeyView);
 
         final RootPanel rootPanel = RootPanel.get("tabs");
         rootPanel.add(mainTabPanel);
