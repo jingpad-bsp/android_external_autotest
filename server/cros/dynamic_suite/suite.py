@@ -43,7 +43,8 @@ except ImportError:
     print '  - (not yet supported) be run after running '
     print '    ../utils/build_externals.py'
 
-_FILE_BUG_SUITES = ['au', 'bvt-.*', 'paygen_.*', 'sanity', 'push_to_prod']
+_FILE_BUG_SUITES = (['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_.*',
+                     'sanity', 'push_to_prod'])
 
 class RetryHandler(object):
     """Maintain retry information.
