@@ -399,3 +399,38 @@ class ProgrammerV3(object):
         """
         self._ec_programmer.prepare_programmer(image)
         self._ec_programmer.program()
+
+
+class ProgrammerV3RwOnly(object):
+    """Main programmer class which provides programmer for only updating the RW
+    portion of BIOS with servo V3.
+
+    It does nothing on EC, as EC software sync on the next boot will
+    automatically overwrite the EC RW portion, using the EC RW image inside
+    the BIOS RW image.
+
+    """
+
+    def __init__(self, servo):
+        self._servo = servo
+        self._bios_programmer = FlashromProgrammer(servo, keep_ro=True)
+
+
+    def program_bios(self, image):
+        """Programs the DUT with provide bios image.
+
+        @param image: (required) location of bios image file.
+
+        """
+        self._bios_programmer.prepare_programmer(image)
+        self._bios_programmer.program()
+
+
+    def program_ec(self, image):
+        """Programs the DUT with provide ec image.
+
+        @param image: (required) location of ec image file.
+
+        """
+        # Do nothing. EC software sync will update the EC RW.
+        pass

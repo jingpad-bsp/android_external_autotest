@@ -687,7 +687,12 @@ class Servo(object):
         return self._server.get_version()
 
 
-    def _initialize_programmer(self):
+    def _initialize_programmer(self, rw_only=False):
+        """Initialize the firmware programmer.
+
+        @param rw_only: True to initialize a programmer which only
+                        programs the RW portions.
+        """
         if self._programmer:
             return
         # Initialize firmware programmer
@@ -696,36 +701,45 @@ class Servo(object):
             self._programmer = firmware_programmer.ProgrammerV2(self)
         elif servo_version.startswith('servo_v3'):
             self._programmer = firmware_programmer.ProgrammerV3(self)
+            self._programmer_rw = firmware_programmer.ProgrammerV3RwOnly(self)
         else:
             raise error.TestError(
                     'No firmware programmer for servo version: %s' %
                          servo_version)
 
 
-    def program_bios(self, image):
+    def program_bios(self, image, rw_only=False):
         """Program bios on DUT with given image.
 
         @param image: a string, file name of the BIOS image to program
                       on the DUT.
+        @param rw_only: True to only program the RW portion of BIOS.
 
         """
         self._initialize_programmer()
         if not self.is_localhost():
             image = self._scp_image(image)
-        self._programmer.program_bios(image)
+        if rw_only:
+            self._programmer_rw.program_bios(image)
+        else:
+            self._programmer.program_bios(image)
 
 
-    def program_ec(self, image):
+    def program_ec(self, image, rw_only=False):
         """Program ec on DUT with given image.
 
         @param image: a string, file name of the EC image to program
                       on the DUT.
+        @param rw_only: True to only program the RW portion of EC.
 
         """
         self._initialize_programmer()
         if not self.is_localhost():
             image = self._scp_image(image)
-        self._programmer.program_ec(image)
+        if rw_only:
+           self._programmer_rw.program_ec(image)
+        else:
+           self._programmer.program_ec(image)
 
 
     def _switch_usbkey_power(self, power_state, detection_delay=False):

@@ -860,7 +860,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
 
 
-    def firmware_install(self, build=None):
+    def firmware_install(self, build=None, rw_only=False):
         """Install firmware to the DUT.
 
         Use stateful update if the DUT is already running the same build.
@@ -876,6 +876,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param build: The build version to which we want to provision the
                       firmware of the machine,
                       e.g. 'link-firmware/R22-2695.1.144'.
+        @param rw_only: True to only install firmware to its RW portions. Keep
+                        the RO portions unchanged.
 
         TODO(dshi): After bug 381718 is fixed, update here with corresponding
                     exceptions that could be raised.
@@ -921,10 +923,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                 timeout=60, ignore_status=True)
 
             self._clear_fw_version_labels()
-            logging.info('Will re-program EC now')
-            self.servo.program_ec(os.path.join(tmpd.name, ec_image))
-            logging.info('Will re-program BIOS now')
-            self.servo.program_bios(os.path.join(tmpd.name, ap_image))
+            logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
+            self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
+            logging.info('Will re-program BIOS %snow', 'RW ' if rw_only else '')
+            self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
             self._add_fw_version_label(build)
