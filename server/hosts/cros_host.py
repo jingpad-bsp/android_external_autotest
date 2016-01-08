@@ -1185,7 +1185,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.info('Firmware repaired. Check if the DUT can boot. If not, '
                      'reinstall the CrOS using servo.')
         try:
-            self.servo.reset()
             self.verify()
         except Exception as e:
             logging.warn('Failed to verify DUT, error: %s. Will try to repair '
