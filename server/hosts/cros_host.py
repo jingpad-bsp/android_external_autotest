@@ -1275,7 +1275,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @raise AutoservError: If servo is not initialized and verified.
         """
-        if self._servo_host.required_by_test and self.servo:
+        if self.servo and self._servo_host.required_by_test:
             return
 
         # Force to re-create the servo object to make sure servo is verified.
