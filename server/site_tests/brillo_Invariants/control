@@ -6,8 +6,8 @@ AUTHOR = 'zeuthen'
 NAME = 'brillo_Invariants'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-pts'
-SUITE = 'brillo-pts'
+ATTRIBUTES = 'suite:brillo-bvt'
+SUITE = 'brillo-bvt'
 
 DOC = """
 Check for things that should look the same on all Brillo devices.

@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "sbasi"
-NAME = "BrilloPTS"
+NAME = "BrilloBVT"
 TIME = "LONG"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "suite"
 TEST_TYPE = "server"
 
 DOC = """
-Sequence for kicking off the Brillo PTS tests.
+Sequence for kicking off the Brillo BVT tests.
 """
 from autotest_lib.server import sequence
 

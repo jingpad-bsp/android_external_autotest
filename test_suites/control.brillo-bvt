@@ -3,9 +3,9 @@
 # found in the LICENSE file.
 
 AUTHOR = "Brillo Team"
-NAME = "brillo-pts"
+NAME = "brillo-bvt"
 PURPOSE = "Test critical brillo functionality."
-CRITERIA = "All tests with SUITE=brillo-pts must pass."
+CRITERIA = "All tests with SUITE=brillo-bvt must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"
@@ -21,7 +21,7 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
 
 args_dict['max_runtime_mins'] = 20
-args_dict['name'] = 'brillo-pts'
+args_dict['name'] = 'brillo-bvt'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
 

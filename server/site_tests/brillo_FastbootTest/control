@@ -11,8 +11,8 @@ NAME = 'brillo_FastbootTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-pts'
-SUITE = 'brillo-pts'
+ATTRIBUTES = 'suite:brillo-bvt'
+SUITE = 'brillo-bvt'
 
 DOC = """
 Tests whether a Brillo device can reboot into and out of the bootloader.
