@@ -19,21 +19,21 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
 def retry_mock(ExceptionToCheck, timeout_min):
-  """A mock retry decorator to use in place of the actual one for testing.
+    """A mock retry decorator to use in place of the actual one for testing.
 
-  @param ExceptionToCheck: the exception to check.
-  @param timeout_mins: Amount of time in mins to wait before timing out.
-
-  """
-  def inner_retry(func):
-    """The actual decorator.
-
-    @param func: Function to be called in decorator.
+    @param ExceptionToCheck: the exception to check.
+    @param timeout_mins: Amount of time in mins to wait before timing out.
 
     """
-    return func
+    def inner_retry(func):
+        """The actual decorator.
 
-  return inner_retry
+        @param func: Function to be called in decorator.
+
+        """
+        return func
+
+    return inner_retry
 
 
 class DevServerTest(mox.MoxTestBase):
@@ -51,8 +51,11 @@ class DevServerTest(mox.MoxTestBase):
         super(DevServerTest, self).setUp()
         self.crash_server = dev_server.CrashServer(DevServerTest._CRASH_HOST)
         self.dev_server = dev_server.ImageServer(DevServerTest._HOST)
-        self.android_dev_server = dev_server.AndroidBuildServer(DevServerTest._HOST)
+        self.android_dev_server = dev_server.AndroidBuildServer(
+                DevServerTest._HOST)
         self.mox.StubOutWithMock(urllib2, 'urlopen')
+        # Hide local restricted_subnets setting.
+        dev_server.RESTRICTED_SUBNETS = []
 
 
     def testSimpleResolve(self):
@@ -78,7 +81,8 @@ class DevServerTest(mox.MoxTestBase):
                 dev_server.DevServerException())
         # Good host is good.
         to_return = StringIO.StringIO('{"free_disk": 1024}')
-        urllib2.urlopen(mox.StrContains(good_host), data=None).AndReturn(to_return)
+        urllib2.urlopen(mox.StrContains(good_host),
+                        data=None).AndReturn(to_return)
 
         self.mox.ReplayAll()
         host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
@@ -363,7 +367,6 @@ class DevServerTest(mox.MoxTestBase):
 
     def testCrashesAreSetToTheCrashServer(self):
         """Should send symbolicate dump rpc calls to crash_server."""
-        hv = 'iliketacos'
         self.mox.ReplayAll()
         call = self.crash_server.build_call('symbolicate_dump')
         self.assertTrue(call.startswith(self._CRASH_HOST))
@@ -518,7 +521,8 @@ class DevServerTest(mox.MoxTestBase):
         target = 'test_target'
         branch = 'test_branch'
         build_id = '123456'
-        self.mox.StubOutWithMock(dev_server.AndroidBuildServer, '_finish_download')
+        self.mox.StubOutWithMock(dev_server.AndroidBuildServer,
+                                 '_finish_download')
         to_return = StringIO.StringIO('Success')
         urllib2.urlopen(mox.And(mox.StrContains(self._HOST),
                                 mox.StrContains(target),
@@ -558,6 +562,19 @@ class DevServerTest(mox.MoxTestBase):
     def testSuccessfulTriggerDownloadAndroidAsync(self):
         """Call the dev server's download method with synchronous=False."""
         self._testSuccessfulTriggerDownloadAndroid(synchronous=False)
+
+
+    def testGetUnrestrictedDevservers(self):
+        """Test method get_unrestricted_devservers works as expected."""
+        restricted_devserver = 'http://192.168.0.100:8080'
+        unrestricted_devserver = 'http://172.1.1.3:8080'
+        self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
+        dev_server.RESTRICTED_SUBNETS = [('192.168.0.0', 24),]
+        dev_server.ImageServer.servers().AndReturn([restricted_devserver,
+                                                    unrestricted_devserver])
+        self.mox.ReplayAll()
+        self.assertEqual(dev_server.ImageServer.get_unrestricted_devservers(),
+                         [unrestricted_devserver])
 
 
 if __name__ == "__main__":

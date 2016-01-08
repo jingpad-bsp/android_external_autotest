@@ -385,6 +385,31 @@ class DevServer(object):
 
 
     @classmethod
+    def get_unrestricted_devservers(cls):
+        """Get the devservers not in any restricted subnet specified in
+        RESTRICTED_SUBNETS.
+
+        @return: A list of devservers not in any restricted subnet.
+
+        """
+        devservers = []
+        for server in cls.servers():
+            server_name = ImageServer.get_server_name(server)
+            try:
+                server_ip = socket.gethostbyname(server_name)
+                is_resctricted = False
+                for ip, mask_bits in RESTRICTED_SUBNETS:
+                    if utils.is_in_same_subnet(server_ip, ip, mask_bits):
+                        is_resctricted = True
+                        break
+                if not is_resctricted:
+                    devservers.append(server)
+            except socket.gaierror:
+                pass
+        return devservers
+
+
+    @classmethod
     def get_healthy_devserver(cls, build, devservers):
         """"Get a healthy devserver instance from the list of devservers.
 
@@ -435,7 +460,11 @@ class DevServer(object):
                     devservers = cls.get_devserver_in_same_subnet(
                             subnet[0], subnet[1])
                     break
-
+        # If devserver election is not restricted, select a devserver from
+        # unrestricted servers. Otherwise, drone will not be able to access
+        # devserver in restricted subnet.
+        if not restricted_subnet and RESTRICTED_SUBNETS:
+            devservers = cls.get_unrestricted_devservers()
         devserver = cls.get_healthy_devserver(build, devservers)
         if devserver:
             return devserver
