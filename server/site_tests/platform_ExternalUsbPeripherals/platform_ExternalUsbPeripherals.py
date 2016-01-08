@@ -243,6 +243,13 @@ class platform_ExternalUsbPeripherals(test.test):
                                      (self.action_step, reason))
 
 
+
+    def cleanup(self):
+        """Disconnect servo hub"""
+        self.set_hub_power(False)
+        self.host.servo.set('usb_mux_sel3', 'servo_sees_usbkey')
+
+
     def run_once(self, host, client_autotest, action_sequence, repeat,
                  usb_list=None, usb_checks=None, crash_check=False):
         self.client_autotest = client_autotest
@@ -251,7 +258,6 @@ class platform_ExternalUsbPeripherals(test.test):
         self.usb_list = usb_list
         self.usb_checks = usb_checks
         self.crash_check = crash_check
-
 
         self.suspend_status = False
         self.login_status = False

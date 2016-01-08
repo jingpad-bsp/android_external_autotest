@@ -68,7 +68,7 @@ def run(machine):
             ["\"TeckNet: USB Audio|USB 2.0 PC Camera\"",
              "\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\""],
         # USB stick four partitions volumes
-        "loggedin:ls -l /media/removable/ | grep " :
+        "loggedin:ls -l /media/removable/ | grep -i " :
             ["\"USB Drive\"", "\"SD Card\"", "ExFAT", "Ext4", "FAT", "NTFS"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name | grep -E " :
