@@ -3,10 +3,10 @@ recorded should be unaccelerated and done in a single motion (i.e. do not
 lift fingers and continue to scroll). Having the scroll stop in the middle of
 the test would break the test. The gesture files for each device recorded are:
 
-<DEVICE NAME>_scroll_down  - Two finger scroll on touchpad in downward direction.
-<DEVICE NAME>_scroll_right - Two finger scroll on touchpad in right direction.
-<DEVICE NAME>_scroll_left  - Two finger scroll on touchpad in left direction.
-<DEVICE NAME>_scroll_up    - Two finger scroll on touchpad in upward direction.
+<DEVICE NAME>_touchpad_Touch ID_scroll-down  - Two finger scroll on touchpad in downward direction.
+<DEVICE NAME>_touchpad_Touch ID_scroll-right - Two finger scroll on touchpad in right direction.
+<DEVICE NAME>_touchpad_Touch ID_scroll-left  - Two finger scroll on touchpad in left direction.
+<DEVICE NAME>_touchpad_Touch ID_scroll-up    - Two finger scroll on touchpad in upward direction.
 
 To position the cursor on center of page, center_cursor gesture file is used:
 

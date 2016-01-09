@@ -5,13 +5,12 @@ middle of the test (tap and no drag) or multiple drag recording etc would break
 the test. The gesture files for each device
 recorded are:
 
-<DEVICE NAME>_tap_drag  - Tap_drag means: Tap (one full tap) and then half tap
-                          (do not release tap) to start the drag. Without lifting
-                          it, drag your finger to the right to record a drag action.
+<DEVICE NAME>_touchpad_Touch ID_tap-drag-right - Tap_drag means: Tap (one full tap) and then half tap
+                                                 (do not release tap) to start the drag. Without lifting it,
+                                                 drag your finger to the right to record a drag action.
 
-<DEVICE NAME>_tap_click - Tap on touchpad and record the gestures.
-                          Note: Tap is a gentle touch on the touchpad and
-                                NOT a physical click.
+<DEVICE NAME>_touchpad_Touch ID_tap-click - Tap on touchpad and record the gestures.
+                                            Note: Tap is a gentle touch on the touchpad and NOT a physical click.
 
 To position the cursor on center of page, center_cursor gesture file is used:
 
