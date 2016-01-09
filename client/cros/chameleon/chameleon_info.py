@@ -39,6 +39,7 @@ _CHAMELEON_BOARD_INFO = {
         '94:eb:2c:10:06:6c': ChameleonInfo('00:1F:84:01:03:2E'),
         '94:eb:2c:10:06:6d': ChameleonInfo('00:1F:84:01:03:84'),
         '94:eb:2c:10:06:6e': ChameleonInfo('00:1F:84:01:03:98'),
+        '94:eb:2c:10:06:72': ChameleonInfo('00:1F:84:01:03:61'),
 }
 
 class ChameleonInfoError(Exception):
