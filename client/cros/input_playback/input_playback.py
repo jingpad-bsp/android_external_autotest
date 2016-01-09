@@ -235,20 +235,21 @@ class InputPlayback(object):
         return utils.run('cat %s' % filepath).stdout.strip()
 
 
-    def _find_device_ids(self, input_type):
-        """Find the fw_id and hw_id for the given input_type.
+    def _find_device_ids(self, device_dir, input_type):
+        """Find the fw_id and hw_id for the given device directory.
 
-        fw_id and hw_id mostly just make sense for touchpads and touchscreens.
-        This function modifies the devices[] entry for the given input_type.
+        Finding fw_id and hw_id applicable only for touchpads and touchscreens.
 
+        @param device_dir: the device directory.
         @param input_type: string of input type.
 
-        """
-        device_dir = self.devices[input_type].device_dir
-        if not device_dir:
-            return
+        @returns: firmware id, hardware id
 
+        """
         fw_id, hw_id = None, None
+
+        if not device_dir:
+            return fw_id, hw_id
 
         # Note: 2nd gen Synaptics touchpads do not report fw_id.
         fw_filenames = ['fw_version', 'firmware_version', 'firmware_id']
@@ -280,8 +281,7 @@ class InputPlayback(object):
                 else:
                     hw_id = product
 
-        self.devices[input_type].fw_id = fw_id
-        self.devices[input_type].hw_id = hw_id
+        return fw_id, hw_id
 
 
     def find_connected_inputs(self):
@@ -302,8 +302,8 @@ class InputPlayback(object):
             properties = self._find_device_properties(event)
             input_type = self._determine_input_type(properties)
             if input_type:
-                self.devices[input_type] = Device(input_type)
-                self.devices[input_type].node = event
+                new_device = Device(input_type)
+                new_device.node = event
 
                 class_folder = event.replace('dev', 'sys/class')
                 name_file = os.path.join(class_folder, 'device', 'name')
@@ -317,21 +317,24 @@ class InputPlayback(object):
                     if self._emulated_device.name != name:
                         continue
                     else:
-                        self.devices[input_type].emulated = True
+                        new_device.emulated = True
                         process = self._emulated_device.emulation_process
-                        self.devices[input_type].emulation_process = process
-                self.devices[input_type].name = name
+                        new_device.emulation_process = process
+                new_device.name = name
 
                 # Find the devices folder containing power info
                 # e.g. /sys/class/event4/device/device
                 # Search that folder for hwid and fwid
                 device_dir = os.path.join(class_folder, 'device', 'device')
                 if os.path.exists(device_dir):
-                    self.devices[input_type].device_dir = device_dir
-                    self._find_device_ids(input_type)
+                    new_device.device_dir = device_dir
+                    fw_id, hw_id = self._find_device_ids(device_dir, input_type)
+                    new_device.fw_id, new_device.hw_id = fw_id, hw_id
 
-                if self.devices[input_type].emulated:
-                    self._emulated_device = self.devices[input_type]
+                if new_device.emulated:
+                    self._emulated_device = new_device
+
+                self.devices[input_type] = new_device
                 logging.debug(self.devices[input_type])
 
 

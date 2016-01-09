@@ -4,6 +4,7 @@
 
 import logging
 import os
+import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
@@ -122,7 +123,7 @@ class touch_playback_test_base(test.test):
         self.player.emulate(input_type='mouse', property_file=property_file)
         self.player.find_connected_inputs()
         if not self._has_mouse:
-          raise error.TestError('Mouse emulation failed!')
+            raise error.TestError('Mouse emulation failed!')
 
 
     def _playback(self, filepath, touch_type='touchpad'):
@@ -159,14 +160,16 @@ class touch_playback_test_base(test.test):
 
         """
         if self._has_inputcontrol:
-          self._set_touch_setting_by_inputcontrol(inputcontrol_setting, value)
+            self._set_touch_setting_by_inputcontrol(inputcontrol_setting, value)
         elif self._autotest_ext is not None:
-          self._autotest_ext.EvaluateJavaScript(
-                  'chrome.autotestPrivate.set%s(%s);'
-                  % (autotest_ext_setting, ("%s" % value).lower()))
+            self._autotest_ext.EvaluateJavaScript(
+                    'chrome.autotestPrivate.set%s(%s);'
+                    % (autotest_ext_setting, ("%s" % value).lower()))
+            # TODO: remove this sleep once checking for value is available.
+            time.sleep(1)
         else:
-          raise error.TestFail('Both inputcontrol and the autotest '
-                               'extension are not availble.')
+            raise error.TestFail('Both inputcontrol and the autotest '
+                                 'extension are not availble.')
 
 
     def _set_australian_scrolling(self, value):
@@ -203,7 +206,6 @@ class touch_playback_test_base(test.test):
 
         """
         self._tab.Navigate(self._tab.url)
-        self._tab.WaitForDocumentReadyStateToBeComplete()
         self._wait_for_page_ready()
 
 
@@ -227,7 +229,6 @@ class touch_playback_test_base(test.test):
         self._tab = cr.browser.tabs[0]
         self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, filename)))
-        self._tab.WaitForDocumentReadyStateToBeComplete()
         self._wait_for_page_ready()
 
 
@@ -239,20 +240,20 @@ class touch_playback_test_base(test.test):
         @raises error.TestError if page is not ready after timeout.
 
         """
+        self._tab.WaitForDocumentReadyStateToBeComplete()
         utils.poll_for_condition(
                 lambda: self._tab.EvaluateJavaScript('pageReady'),
                 exception=error.TestError('Test page is not ready!'))
 
 
     def _center_cursor(self):
-        """Playback mouse movement and check whether cursor moved as recorded.
+        """Playback mouse movement to center cursor.
 
         Requres that self._emulate_mouse() has been called.
 
         """
-        self._reload_page()
         self.player.blocking_playback_of_default_file(
-                'mouse_center_cursor_gesture')
+                'mouse_center_cursor_gesture', input_type='mouse')
 
 
     def _set_scroll(self, value, scroll_vertical=True):
