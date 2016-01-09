@@ -110,7 +110,11 @@ class site_host_create(site_host, host.host_create):
                         host_dut = hosts.create_testbed(
                                 host, adb_serials=self.serials)
                     else:
-                        host_dut = hosts.create_host(host, serials=self.serials)
+                        adb_serial = None
+                        if self.serials:
+                            adb_serial = self.serials[0]
+                        host_dut = hosts.create_host(host,
+                                                     adb_serial=adb_serial)
                     host_info = host_information(host,
                                                  host_dut.get_platform(),
                                                  host_dut.get_labels())
