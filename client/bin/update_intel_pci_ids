@@ -29,7 +29,8 @@ def map_gpu_name(mesa_name):
         'Broadwell': 'broadwell',
         'Cherryview': 'braswell',
         'Skylake': 'skylake',
-        'Broxton': 'broxton'
+        'Broxton': 'broxton',
+        'Kabylake': 'kabylake'
     }
 
     for name in family_name_map:
