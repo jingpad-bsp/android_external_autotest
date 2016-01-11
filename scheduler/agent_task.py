@@ -116,7 +116,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import drone_manager, pidfile_monitor
-from autotest_lib.scheduler import host_scheduler
+from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
@@ -430,14 +430,14 @@ class BaseAgentTask(object):
         class_name = self.__class__.__name__
         for entry in queue_entries:
             if entry.status not in allowed_hqe_statuses:
-                raise host_scheduler.SchedulerError(
+                raise scheduler_lib.SchedulerError(
                         '%s attempting to start entry with invalid status %s: '
                         '%s' % (class_name, entry.status, entry))
             invalid_host_status = (
                     allowed_host_statuses is not None
                     and entry.host.status not in allowed_host_statuses)
             if invalid_host_status:
-                raise host_scheduler.SchedulerError(
+                raise scheduler_lib.SchedulerError(
                         '%s attempting to start on queue entry with invalid '
                         'host status %s: %s'
                         % (class_name, entry.host.status, entry))

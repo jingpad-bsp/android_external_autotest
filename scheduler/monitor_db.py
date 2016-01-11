@@ -30,7 +30,6 @@ from autotest_lib.scheduler import query_managers
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
-from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import metadata_reporter

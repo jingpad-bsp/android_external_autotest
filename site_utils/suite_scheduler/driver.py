@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import contextlib
 import logging
 import time
 from multiprocessing import pool
@@ -166,8 +167,10 @@ class Driver(object):
         boards = self._enumerator.Enumerate()
         logging.info('%d boards currently in the lab: %r', len(boards), boards)
         thread_pool = pool.ThreadPool(POOL_SIZE)
-        for e in self._events.itervalues():
-            if e.ShouldHandle():
+        with contextlib.closing(thread_pool):
+            for e in self._events.itervalues():
+                if not e.ShouldHandle():
+                    continue
                 logging.info('Handling %s event for %d boards', e.keyword,
                              len(boards))
                 args = []
@@ -179,8 +182,6 @@ class Driver(object):
                 logging.info('Finished handling %s event for %d boards',
                              e.keyword, len(boards))
                 e.UpdateCriteria()
-
-        thread_pool.close()
 
 
     def ForceEventsOnceForBuild(self, keywords, build_name):
