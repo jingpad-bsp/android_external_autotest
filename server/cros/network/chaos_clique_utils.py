@@ -340,7 +340,7 @@ def get_firmware_ver(host):
             elif 'mwifiex' in result_str:
                 pattern = '%s [\d.]+ \([\w.]+\)' % firmware_ver
             elif 'loaded firmware version' in result_str:
-                pattern = '(\d+\.\d+\.\d+.\d)'
+                pattern = '(\d+\.\d+\.\d+)'
             elif 'Firmware version' in result_str:
                 pattern = '\d+\.\d+\.\d+ \([\w.]+\)'
             else:
