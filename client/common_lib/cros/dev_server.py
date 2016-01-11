@@ -11,7 +11,6 @@ import logging
 import multiprocessing
 import os
 import re
-import socket
 import sys
 import urllib2
 
@@ -59,15 +58,6 @@ TIMEOUT_GET_DEVSERVER_LOAD = 2.0
 # Android artifact path in devserver
 ANDROID_BUILD_NAME_PATTERN = CONFIG.get_config_value(
         'CROS', 'android_build_name_pattern', type=str).replace('\\', '')
-
-# A list of subnets that requires dedicated devserver in the same subnet. Each
-# item is a tuple of (subnet_ip, mask_bits), e.g., ('192.168.0.0', 24))
-restricted_subnets_list = CONFIG.get_config_value(
-        'CROS', 'restricted_subnets', type=list, default=[])
-RESTRICTED_SUBNETS = []
-for subnet in restricted_subnets_list:
-    ip, mask_bits = subnet.split(':')
-    RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
 
 # Return value from a devserver RPC indicating the call succeeded.
 SUCCESS = 'Success'
@@ -366,7 +356,7 @@ class DevServer(object):
 
 
     @classmethod
-    def get_devserver_in_same_subnet(cls, ip, mask_bits=19):
+    def get_devservers_in_same_subnet(cls, ip, mask_bits=19):
         """Get the devservers in the same subnet of the given ip.
 
         @param ip: The IP address of a dut to look for devserver.
@@ -375,22 +365,27 @@ class DevServer(object):
         @return: A list of devservers in the same subnet of the given ip.
 
         """
-        devservers = []
+        # server from cls.servers() is a URL, e.g., http://10.1.1.10:8082, so
+        # we need a dict to return the full devserver path once the IPs are
+        # filtered in get_servers_in_same_subnet.
+        server_names = {}
+        all_devservers = []
         for server in cls.servers():
             server_name = ImageServer.get_server_name(server)
-            try:
-                server_ip = socket.gethostbyname(server_name)
-                if utils.is_in_same_subnet(server_ip, ip, mask_bits):
-                    devservers.append(server)
-            except socket.gaierror:
-                pass
-        return devservers
+            server_names[server_name] = server
+            all_devservers.append(server_name)
+        devservers = utils.get_servers_in_same_subnet(ip, mask_bits,
+                                                      all_devservers)
+        return [server_names[s] for s in devservers]
 
 
     @classmethod
-    def get_unrestricted_devservers(cls):
+    def get_unrestricted_devservers(
+                cls, restricted_subnet=utils.RESTRICTED_SUBNETS):
         """Get the devservers not in any restricted subnet specified in
-        RESTRICTED_SUBNETS.
+        restricted_subnet.
+
+        @param restricted_subnet: A list of restriected subnets.
 
         @return: A list of devservers not in any restricted subnet.
 
@@ -398,17 +393,8 @@ class DevServer(object):
         devservers = []
         for server in cls.servers():
             server_name = ImageServer.get_server_name(server)
-            try:
-                server_ip = socket.gethostbyname(server_name)
-                is_resctricted = False
-                for ip, mask_bits in RESTRICTED_SUBNETS:
-                    if utils.is_in_same_subnet(server_ip, ip, mask_bits):
-                        is_resctricted = True
-                        break
-                if not is_resctricted:
-                    devservers.append(server)
-            except socket.gaierror:
-                pass
+            if not utils.get_restricted_subnet(server_name, restricted_subnet):
+                devservers.append(server)
         return devservers
 
 
@@ -453,21 +439,21 @@ class DevServer(object):
         # inside a restricted subnet. If so, get the subnet setting.
         restricted_subnet = None
         if host_ip:
-            for subnet in RESTRICTED_SUBNETS:
-                if utils.is_in_same_subnet(host_ip, subnet[0], subnet[1]):
-                    restricted_subnet = subnet
+            for subnet_ip, mask_bits in utils.RESTRICTED_SUBNETS:
+                if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
+                    restricted_subnet = subnet_ip
                     logging.debug('The host %s (%s) is in a restricted subnet. '
                                   'Try to locate a devserver inside subnet '
-                                  '%s:%d.', hostname, host_ip, subnet[0],
-                                  subnet[1])
-                    devservers = cls.get_devserver_in_same_subnet(
-                            subnet[0], subnet[1])
+                                  '%s:%d.', hostname, host_ip, subnet_ip,
+                                  mask_bits)
+                    devservers = cls.get_devservers_in_same_subnet(
+                            subnet_ip, mask_bits)
                     break
         # If devserver election is not restricted, select a devserver from
         # unrestricted servers. Otherwise, drone will not be able to access
         # devserver in restricted subnet.
         can_retry = False
-        if not restricted_subnet and RESTRICTED_SUBNETS:
+        if not restricted_subnet and utils.RESTRICTED_SUBNETS:
             devservers = cls.get_unrestricted_devservers()
             if PREFER_LOCAL_DEVSERVER and host_ip:
                 can_retry = True

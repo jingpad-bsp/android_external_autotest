@@ -120,6 +120,7 @@ from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
+from autotest_lib.server import system_utils
 
 
 AUTOSERV_NICE_LEVEL = 10
@@ -145,6 +146,8 @@ class BaseAgentTask(object):
         self.monitor = None
         self.queue_entry_ids = []
         self.host_ids = []
+        # A map between host id and hostname.
+        self.hostnames = {}
         self._log_file_name = log_file_name
 
 
@@ -152,9 +155,12 @@ class BaseAgentTask(object):
         if queue_entries and queue_entries != [None]:
             self.host_ids = [entry.host.id for entry in queue_entries]
             self.queue_entry_ids = [entry.id for entry in queue_entries]
+            self.hostnames = dict((entry.host.id, entry.host.hostname)
+                                  for entry in queue_entries)
         else:
             assert host
             self.host_ids = [host.id]
+            self.hostnames = {host.id: host.hostname}
 
 
     def poll(self):
@@ -355,9 +361,59 @@ class BaseAgentTask(object):
                 drone_hostnames_allowed=self.get_drone_hostnames_allowed())
 
 
-    def get_drone_hostnames_allowed(self):
+    def get_drone_hostnames_allowed(
+            self, restricted_subnets=utils.RESTRICTED_SUBNETS):
+        filtered_drones = None
+        has_unrestricted_host = False
+        if self.hostnames and restricted_subnets:
+            for hostname in self.hostnames.values():
+                subnet = utils.get_restricted_subnet(hostname,
+                                                     restricted_subnets)
+
+                # Return an empty set if the list of hosts exists both in
+                # restricted and unrestricted subnet. No drone can work in such
+                # case.
+                if ((not subnet and filtered_drones is not None) or
+                    (subnet and has_unrestricted_host)):
+                    logging.error('The test has some DUT in restricted subnet, '
+                                  'but some in unrestricted subnet. Therefore, '
+                                  'no drone is available to run the test.')
+                    return set()
+
+                if not subnet:
+                    has_unrestricted_host = True
+                    continue
+
+                server_ip_map=system_utils.DroneCache.get_drone_ip_map()
+                filtered_drones_for_host = set(
+                        utils.get_servers_in_same_subnet(
+                                subnet[0], subnet[1],
+                                server_ip_map=server_ip_map))
+                logging.info('DUT %s is in restricted subnet, drone can only '
+                             'be chosen from %s', hostname,
+                             filtered_drones_for_host)
+                if filtered_drones is None:
+                    filtered_drones = filtered_drones_for_host
+                else:
+                    filtered_drones = set.intersection(
+                            filtered_drones, filtered_drones_for_host)
+
+                # If filtered_drones is an empty set, that means no drone is
+                # allowed to run the task. This is different fron None, which
+                # means all drones are allowed.
+                if filtered_drones == set():
+                    logging.error('DUT(s) is in restricted subnet, but no '
+                                  'drone is available to run the test.')
+                    return filtered_drones
+
+        # If host is not in restricted subnet, use the unrestricted drones only.
+        if filtered_drones is None and restricted_subnets:
+            filtered_drones = set(
+                    system_utils.DroneCache.get_unrestricted_drones(
+                            restricted_subnets=restricted_subnets))
+
         if not models.DroneSet.drone_sets_enabled():
-            return None
+            return filtered_drones
 
         hqes = models.HostQueueEntry.objects.filter(id__in=self.queue_entry_ids)
         if not hqes:
@@ -375,7 +431,11 @@ class BaseAgentTask(object):
         if not drone_set:
             return self._user_or_global_default_drone_set(job, job.user())
 
-        return drone_set.get_drone_hostnames()
+        if filtered_drones:
+            return set.intersection(filtered_drones,
+                                    drone_set.get_drone_hostnames())
+        else:
+            return drone_set.get_drone_hostnames()
 
 
     def _user_or_global_default_drone_set(self, obj_with_owner, user):

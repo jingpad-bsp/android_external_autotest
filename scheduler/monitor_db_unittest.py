@@ -4,6 +4,7 @@ import gc, time
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
@@ -14,7 +15,6 @@ from autotest_lib.scheduler import pidfile_monitor
 from autotest_lib.scheduler import scheduler_config, gc_stats
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
-from autotest_lib.client.common_lib import global_config
 
 _DEBUG = False
 
@@ -31,6 +31,7 @@ class DummyAgent(object):
     started = False
     _is_done = False
     host_ids = ()
+    hostnames = {}
     queue_entry_ids = ()
 
     def __init__(self):
@@ -80,6 +81,8 @@ def _set_host_and_qe_ids(agent_or_task, id_list=None):
     if id_list is None:
         id_list = []
     agent_or_task.host_ids = agent_or_task.queue_entry_ids = id_list
+    agent_or_task.hostnames = dict((host_id, '192.168.1.1')
+                                   for host_id in id_list)
 
 
 class BaseSchedulerTest(unittest.TestCase,
@@ -1164,7 +1167,7 @@ class AgentTaskTest(unittest.TestCase,
     def test_get_drone_hostnames_allowed_success(self):
         hqes, task = self._setup_drones()
         task.queue_entry_ids = (hqes[0].id,)
-        self.assertEqual(set(('0','1')), task.get_drone_hostnames_allowed())
+        self.assertEqual(set(('0','1')), task.get_drone_hostnames_allowed([]))
         self.god.check_playback()
 
 
@@ -1184,7 +1187,7 @@ class AgentTaskTest(unittest.TestCase,
             task = MockSpecialTask()
             queue_entry_ids = []
             def __init__(self, *args, **kwargs):
-                pass
+                super(agent_task.SpecialAgentTask, self).__init__()
 
         task = MockSpecialAgentTask()
         self.god.stub_function(models.DroneSet, 'drone_sets_enabled')

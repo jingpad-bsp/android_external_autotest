@@ -36,6 +36,16 @@ DEFAULT_OFFLOAD_GSURI = global_config.global_config.get_config_value(
 # Default Moblab Ethernet Interface.
 MOBLAB_ETH = 'eth0'
 
+# A list of subnets that requires dedicated devserver and drone in the same
+# subnet. Each item is a tuple of (subnet_ip, mask_bits), e.g.,
+# ('192.168.0.0', 24))
+RESTRICTED_SUBNETS = []
+restricted_subnets_list = global_config.global_config.get_config_value(
+        'CROS', 'restricted_subnets', type=list, default=[])
+for subnet in restricted_subnets_list:
+    ip, mask_bits = subnet.split(':')
+    RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
+
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
 
@@ -605,6 +615,51 @@ def get_ip_address(hostname):
             return socket.gethostbyname(hostname)
     except socket.gaierror as e:
         logging.error('Failed to get IP address of %s, error: %s.', hostname, e)
+
+
+def get_servers_in_same_subnet(host_ip, mask_bits, servers=None,
+                               server_ip_map=None):
+    """Get the servers in the same subnet of the given host ip.
+
+    @param host_ip: The IP address of a dut to look for devserver.
+    @param mask_bits: Number of mask bits.
+    @param servers: A list of servers to be filtered by subnet specified by
+                    host_ip and mask_bits.
+    @param server_ip_map: A map between the server name and its IP address.
+            The map can be pre-built for better performance, e.g., when
+            allocating a drone for an agent task.
+
+    @return: A list of servers in the same subnet of the given host ip.
+
+    """
+    matched_servers = []
+    if not servers and not server_ip_map:
+        raise ValueError('Either `servers` or `server_ip_map` must be given.')
+    if not servers:
+        servers = server_ip_map.keys()
+    for server in servers:
+        server_ip = server_ip_map.get(server) or get_ip_address(server)
+        if server_ip and is_in_same_subnet(server_ip, host_ip, mask_bits):
+            matched_servers.append(server)
+    return matched_servers
+
+
+def get_restricted_subnet(hostname, restricted_subnets=RESTRICTED_SUBNETS):
+    """Get the restricted subnet of given hostname.
+
+    @param hostname: Name of the host to look for matched restricted subnet.
+    @param restricted_subnets: A list of restricted subnets, default is set to
+            RESTRICTED_SUBNETS.
+
+    @return: A tuple of (subnet_ip, mask_bits), which defines a restricted
+             subnet.
+    """
+    host_ip = get_ip_address(hostname)
+    if not host_ip:
+        return
+    for subnet_ip, mask_bits in restricted_subnets:
+        if is_in_same_subnet(subnet_ip, host_ip, mask_bits):
+            return subnet_ip, mask_bits
 
 
 def parse_android_build(build_name):

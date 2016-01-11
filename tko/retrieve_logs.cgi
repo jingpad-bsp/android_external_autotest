@@ -8,8 +8,9 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.bin import utils
 from autotest_lib.frontend.afe.json_rpc import serviceHandler
+from autotest_lib.server import system_utils
 from autotest_lib.server import utils as server_utils
-from autotest_lib.site_utils import server_manager_utils
+
 
 _PAGE = """\
 Status: 302 Found
@@ -111,16 +112,8 @@ def find_repository_host(job_path):
     # always point them to localhost or google storage.
     if (not server_utils.is_shard() and
         not server_utils.is_restricted_user(os.environ.get('REMOTE_USER'))):
-        shards = []
-        if server_manager_utils.use_server_db():
-            drones = server_manager_utils.get_drones()
-            shards = server_manager_utils.get_shards()
-        else:
-            config = global_config.global_config
-            drones = config.get_config_value(
-                    'SCHEDULER', 'drones', default='').split(',')
-            shards = config.get_config_value(
-                    'SERVER', 'shards', default='').split(',')
+        drones = system_utils.get_drones()
+        shards = system_utils.get_shards()
 
         host_set = set()
         tpool_args = _get_tpool_args(drones, job_path, False, host_set)

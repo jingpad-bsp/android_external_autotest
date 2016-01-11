@@ -62,7 +62,8 @@ class DevServerTest(mox.MoxTestBase):
         """One devserver, verify we resolve to it."""
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
         self.mox.StubOutWithMock(dev_server.DevServer, 'devserver_healthy')
-        dev_server._get_dev_server_list().AndReturn([DevServerTest._HOST])
+        dev_server._get_dev_server_list().MultipleTimes().AndReturn(
+                [DevServerTest._HOST])
         dev_server.DevServer.devserver_healthy(DevServerTest._HOST).AndReturn(
                                                                         True)
         self.mox.ReplayAll()
@@ -74,7 +75,8 @@ class DevServerTest(mox.MoxTestBase):
         """Ensure we rehash on a failed ping on a bad_host."""
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
         bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
-        dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
+        dev_server._get_dev_server_list().MultipleTimes().AndReturn(
+                [bad_host, good_host])
 
         # Mock out bad ping failure to bad_host by raising devserver exception.
         urllib2.urlopen(mox.StrContains(bad_host), data=None).AndRaise(
@@ -96,7 +98,8 @@ class DevServerTest(mox.MoxTestBase):
         retry.retry = retry_mock
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
         bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
-        dev_server._get_dev_server_list().AndReturn([bad_host, good_host])
+        dev_server._get_dev_server_list().MultipleTimes().AndReturn(
+                [bad_host, good_host])
 
         # Mock out bad ping failure to bad_host by raising devserver exception.
         urllib2.urlopen(mox.StrContains(bad_host),
@@ -569,11 +572,11 @@ class DevServerTest(mox.MoxTestBase):
         restricted_devserver = 'http://192.168.0.100:8080'
         unrestricted_devserver = 'http://172.1.1.3:8080'
         self.mox.StubOutWithMock(dev_server.ImageServer, 'servers')
-        dev_server.RESTRICTED_SUBNETS = [('192.168.0.0', 24),]
         dev_server.ImageServer.servers().AndReturn([restricted_devserver,
                                                     unrestricted_devserver])
         self.mox.ReplayAll()
-        self.assertEqual(dev_server.ImageServer.get_unrestricted_devservers(),
+        self.assertEqual(dev_server.ImageServer.get_unrestricted_devservers(
+                                [('192.168.0.0', 24)]),
                          [unrestricted_devserver])
 
 

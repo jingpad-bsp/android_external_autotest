@@ -31,6 +31,7 @@ from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.scheduler import scheduler_models
 from autotest_lib.scheduler import status_server, scheduler_config
 from autotest_lib.server import autoserv_utils
+from autotest_lib.server import system_utils
 from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils import server_manager_utils
@@ -231,12 +232,7 @@ def initialize():
     initialize_globals()
     scheduler_models.initialize()
 
-    if server_manager_utils.use_server_db():
-        drone_list = server_manager_utils.get_drones()
-    else:
-        drones = global_config.global_config.get_config_value(
-                scheduler_config.CONFIG_SECTION, 'drones', default='localhost')
-        drone_list = [hostname.strip() for hostname in drones.split(',')]
+    drone_list = system_utils.get_drones()
     results_host = global_config.global_config.get_config_value(
         scheduler_config.CONFIG_SECTION, 'results_host', default='localhost')
     _drone_manager.initialize(RESULTS_DIR, drone_list, results_host)
@@ -337,6 +333,7 @@ class BaseDispatcher(object):
         of the tick time.
         """
         timer = autotest_stats.Timer('scheduler.tick')
+        system_utils.DroneCache.refresh()
         self._log_tick_msg('Calling new tick, starting garbage collection().')
         self._garbage_collection()
         self._log_tick_msg('Calling _drone_manager.trigger_refresh().')
