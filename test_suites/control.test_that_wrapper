@@ -29,6 +29,7 @@ import logging, shlex
 
 import common
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
+from autotest_lib.site_utils import test_runner_utils
 from autotest_lib.site_utils import test_that
 from autotest_lib.server.cros import provision
 
@@ -52,7 +53,7 @@ except SystemExit:
                   shlex.split(suite_args))
     raise
 
-parsed_test_arguments = [test_that.get_predicate_for_test_arg(test_arg)
+parsed_test_arguments = [test_runner_utils.get_predicate_for_test_arg(test_arg)
                          for test_arg in arguments.tests]
 sub_predicates, descriptions = zip(*parsed_test_arguments)
 
