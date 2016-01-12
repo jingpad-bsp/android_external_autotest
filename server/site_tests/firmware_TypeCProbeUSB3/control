@@ -20,9 +20,13 @@ DUT can't probe the USB3 super speed device on Plankton.
 """
 
 args_dict = utils.args_to_dict(args)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
+plankton_args = hosts.CrosHost.get_plankton_arguments(args_dict)
 
 def run(machine):
-    host = hosts.create_host(machine)
-    job.run_test("firmware_TypeCProbeUSB3", host=host, args_dict=args_dict)
+    host = hosts.create_host(machine, servo_args=servo_args,
+                             plankton_args=plankton_args)
+    job.run_test("firmware_TypeCProbeUSB3", host=host, cmdline_args=args,
+                 disable_sysinfo=True)
 
 parallel_simple(run, machines)

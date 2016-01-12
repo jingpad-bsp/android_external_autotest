@@ -145,7 +145,8 @@ class FirmwareTest(FAFTBase):
             # If no separate USBPD console, then PD exists on EC console
             self.usbpd = self.ec
         # Get plankton console
-        self.plankton = host.plankton_console
+        self.plankton = host.plankton
+        self.plankton_host = host._plankton_host
 
         self._setup_uart_capture()
         self._setup_servo_log()

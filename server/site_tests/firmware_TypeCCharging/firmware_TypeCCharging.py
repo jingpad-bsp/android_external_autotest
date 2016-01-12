@@ -6,21 +6,23 @@
 
 import logging
 import math
+import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import test
-from autotest_lib.server.cros.servo import plankton
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
+from autotest_lib.server.cros.servo import pd_console
 
-class firmware_TypeCCharging(test.test):
+class firmware_TypeCCharging(FirmwareTest):
     """USB type C charging test."""
     version = 1
 
     USBC_SINK_VOLTAGE = 5
     VBUS_TOLERANCE = 0.12
     VBUS_5V_CURRENT_RANGE = (2, 3.4)
+    VBUS_CHANGE_DELAY = 4
 
 
-    def run_once(self, host, args_dict):
+    def run_once(self):
         """Compares VBUS voltage and current with charging setting.
 
         When charging voltage == 0, Plankton will act as a power sink and draws
@@ -33,18 +35,26 @@ class firmware_TypeCCharging(test.test):
 
         @raise TestFail: If VBUS voltage or current is not in range.
         """
-        plankton_host = plankton.Plankton(args_dict)
+        self.pd_console_utils = pd_console.PDConsoleUtils(self.plankton)
 
-        for charging_voltage in plankton_host.get_charging_voltages():
-            plankton_host.charge(charging_voltage)
-            plankton_host.poll_pd_state(
-                    'source' if charging_voltage > 0 else 'sink')
+        for charging_voltage in self.plankton.get_charging_voltages():
+            self.plankton.charge(charging_voltage)
+            time.sleep(self.VBUS_CHANGE_DELAY)
+            pd_state = self.pd_console_utils.get_pd_state(0)
+            if charging_voltage > 0:
+                 expected_state = self.pd_console_utils.SRC_CONNECT
+            else:
+                 expected_state = self.pd_console_utils.SNK_CONNECT
+            logging.info('Plankton state = %s', pd_state)
+            if pd_state != expected_state:
+                raise error.TestFail('PD state != expected state, (%s != %s)' %
+                                     (pd_state, expected_state))
             expected_vbus_voltage = float(
                     charging_voltage if charging_voltage > 0 else
                     self.USBC_SINK_VOLTAGE)
             tolerance = self.VBUS_TOLERANCE * expected_vbus_voltage
-            vbus_voltage = plankton_host.vbus_voltage
-            vbus_current = plankton_host.vbus_current
+            vbus_voltage = self.plankton.vbus_voltage
+            vbus_current = self.plankton.vbus_current
             logging.info('Charging %dV: VBUS V=%f I=%f', charging_voltage,
                          vbus_voltage, vbus_current)
 

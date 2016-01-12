@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
 import time
 
 from autotest_lib.client.common_lib import error
@@ -28,6 +29,15 @@ class PDConsoleUtils(object):
     dualrole_cmd = ['on', 'off', 'sink', 'source']
     dualrole_resp = ['on', 'off', 'force sink', 'force source']
 
+    # Dictionary for 'pd 0/1 state' parsing
+    PD_STATE_DICT = {
+        'port': 'Port\s+([\w]+)',
+        'role': 'Role:\s+([\w]+-[\w]+)',
+        'pd_state': 'State:\s+([\w]+_[\w]+)',
+        'flags': 'Flags:\s+([\w]+)',
+        'polarity': '(CC\d)'
+    }
+
     def __init__(self, console):
         """ Console can be either usbpd, ec, or plankton_ec UART
         This object with then be used by the class which creates
@@ -42,6 +52,14 @@ class PDConsoleUtils(object):
         @param cmd: pd command string
         """
         self.console.send_command(cmd)
+
+    def send_pd_command_get_output(self, cmd, regexp):
+        """Send command to PD console, wait for response
+
+        @param cmd: pd command string
+        @param regexp: regular expression for desired output
+        """
+        return self.console.send_command_get_output(cmd, regexp)
 
     def verify_pd_console(self):
         """Verify that PD commands exist on UART console
@@ -59,11 +77,9 @@ class PDConsoleUtils(object):
     def execute_pd_state_cmd(self, port):
         """Get PD state for specified channel
 
-        pd 0/1 state command gives produces 5 fields. An example
-        is shown here:
-        Port C1 CC2, Ena - Role: SRC-DFP-VC State: SRC_READY, Flags: 0x1954
-
-        A dict is created containing port, polarity, role, pd_state, and flags
+        pd 0/1 state command gives produces 5 fields. The full response
+        line is captured and then parsed to extract each field to fill
+        the dict containing port, polarity, role, pd_state, and flags.
 
         @param port: Type C PD port 0 or 1
 
@@ -72,19 +88,18 @@ class PDConsoleUtils(object):
         cmd = 'pd'
         subcmd = 'state'
         pd_cmd = cmd +" " + str(port) + " " + subcmd
-        pd_state_list = self.console.send_command_get_output(pd_cmd,
-                                        ['Port\s+([\w]+)\s+([\w]+)',
-                                         'Role:\s+([\w]+-[\w]+)',
-                                         'State:\s+([\w]+_[\w]+)',
-                                         'Flags:\s+([\w]+)'])
+        # Two FW versions for this command, get full line.
+        m = self.send_pd_command_get_output(pd_cmd,
+                                            ['(Port.*) - (Role:.*)\r'])
 
-        # Fill the dict fields from the list
+        # Extract desired values from result string
         state_result = {}
-        state_result['port'] = pd_state_list[0][1]
-        state_result['polarity'] = pd_state_list[0][2]
-        state_result['role'] = pd_state_list[1][1]
-        state_result['pd_state'] = pd_state_list[2][1]
-        state_result['flags'] = pd_state_list[3][1]
+        for key, regexp in self.PD_STATE_DICT.iteritems():
+            value = re.search(regexp, m[0][0])
+            if value:
+                state_result[key] = value.group(1)
+            else:
+                raise error.TestFail('pd 0/1 state: %r value not found' % (key))
 
         return state_result
 
@@ -131,7 +146,7 @@ class PDConsoleUtils(object):
         @returns: current PD dualrole setting
         """
         cmd = 'pd dualrole'
-        dual_list = self.console.send_command_get_output(cmd,
+        dual_list = self.send_pd_command_get_output(cmd,
                                 ['dual-role toggling:\s+([\w ]+)'])
         return dual_list[0][1]
 

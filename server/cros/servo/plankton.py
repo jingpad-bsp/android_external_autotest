@@ -4,7 +4,6 @@
 
 import re
 import time
-import xmlrpclib
 
 from autotest_lib.client.bin import utils
 from autotest_lib.server.cros.servo import chrome_ec
@@ -14,25 +13,27 @@ class PlanktonError(Exception):
     pass
 
 
-class Plankton(object):
-    """Manages control of a Plankton board via servod XMLRPC.
+class Plankton(chrome_ec.ChromeEC):
+    """Manages control of a Plankton PD console.
 
     Plankton is a testing board developed to aid in USB type C debug and
     control of various type C host devices. Plankton's features include the
     simulation of charger, USB 2.0 pass through, USB 3.0 hub, and display port
-    pass through. This class manages setting up and communication with a servo
-    daemon (servod) process. It provides high level functions for setting and
-    reading USB type C role, mux and common controls.
-    """
+    pass through.
 
-    DEFAULT_SERVO_HOST = 'localhost'
-    DEFAULT_SERVO_PORT = 9999
+    We control the PD console via the UART of a Servo board. Plankton
+    provides many interfaces that access the servo directly. It can
+    also be passed into the PDConsoleUtils as a console which then
+    provides methods to access the pd console.
+
+    This class is to abstract these interfaces.
+    """
     # USB charging command delays in seconds.
     USBC_COMMAND_DELAY = 0.5
     # Plankton USBC commands.
     USBC_ROLE = 'usbc_role'
     USBC_MUX = 'usbc_mux'
-    RE_USBC_ROLE_VOLTAGE = re.compile(r'src(\d+)v')
+    RE_USBC_ROLE_VOLTAGE = r'src(\d+)v'
     USBC_CHARGING_VOLTAGES = {
         0: 'sink',
         5: 'src5v',
@@ -47,20 +48,15 @@ class Plankton(object):
         'source': 'SRC_READY'}
     POLL_STATE_SECS = 2
 
+    def __init__(self, servo, servod_proxy):
+        """Initialize and keep the servo object.
 
-    def __init__(self, args_dict=None):
-        """Sets up servo daemon communication.
-
-        @param args_dict: A dictionary contains plankton servod host and port.
-                          Example: {'plankton_host': 'localhost',
-                                    'plankton_port': 9999}
+        @param servo: A Servo object
+        @param servod_proxy: Servod proxy for plankton host
         """
-        if args_dict is None:
-            args_dict = {}
-        plankton_hostname = args_dict.get('plankton_host', self.DEFAULT_SERVO_HOST)
-        plankton_port = args_dict.get('plankton_port', self.DEFAULT_SERVO_PORT)
-        remote = 'http://%s:%s' % (plankton_hostname, plankton_port)
-        self._server = xmlrpclib.ServerProxy(remote)
+        super(Plankton, self).__init__(servo)
+        # save servod proxy for methods that access Plankton servod
+        self._server = servod_proxy
         self.init_io_expander()
 
 
@@ -132,9 +128,9 @@ class Plankton(object):
     def charging_voltage(self):
         """Gets current charging voltage."""
         usbc_role = self.get(self.USBC_ROLE)
-        match = self.RE_USBC_ROLE_VOLTAGE(usbc_role)
-        if match:
-            return int(match.group(1))
+        m = re.match(self.RE_USBC_ROLE_VOLTAGE, usbc_role)
+        if m:
+            return int(m.group(1))
 
         if usbc_role == self.USBC_CHARGING_VOLTAGES[0]:
             return 0
@@ -168,13 +164,3 @@ class Plankton(object):
                                 'should be either \'dp\' or \'usb\'.' % mux)
         self.set(self.USBC_MUX, mux)
         time.sleep(self.USBC_COMMAND_DELAY)
-
-
-class PlanktonConsole(chrome_ec.ChromeEC):
-    """Manages control of a Plankton PD console.
-
-    We control the PD conolse via the UART of a Servo board. ChromePlankton
-    provides many interfaces to set and get its behavior via console commands.
-    This class is to abstract these interfaces.
-    """
-    pass

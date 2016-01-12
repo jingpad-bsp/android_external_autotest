@@ -5,15 +5,13 @@
 """This is a USB type C USB3 probing test using Plankton board."""
 
 import logging
-import math
 import re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import test
-from autotest_lib.server.cros.servo import plankton
+from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
-class firmware_TypeCProbeUSB3(test.test):
+class firmware_TypeCProbeUSB3(FirmwareTest):
     """USB type C USB3 probing test."""
     version = 1
 
@@ -25,7 +23,7 @@ class firmware_TypeCProbeUSB3(test.test):
 
     def get_usb_devices_and_buses(self):
         """Gets set from the list of USB devices and buses."""
-        result = self._host.run_short('lsusb -t')
+        result = self.plankton_host.run_short('lsusb -t')
         return set(result.stdout.splitlines())
 
 
@@ -34,31 +32,28 @@ class firmware_TypeCProbeUSB3(test.test):
         return re.search(self.RE_SUPERSPEED_DEVICE, lsusb_line)
 
 
-    def run_once(self, host, args_dict):
+    def run_once(self):
         """Checks DUT USB3 device.
 
         @raise TestFail: If USB3 can't be found when switch to USB mode.
         """
-        self._host = host
-        plankton_host = plankton.Plankton(args_dict)
-
         # Enumerate USB devices when charging.
-        plankton_host.charge(self.CHARGING_VOLTAGE)
+        self.plankton.charge(self.CHARGING_VOLTAGE)
         devices_charging = self.get_usb_devices_and_buses()
         logging.info('number of devices while charging: %d',
                      len(devices_charging))
         # Enumerate USB devices when switching to DP.
-        plankton_host.set_usbc_mux('dp')
-        plankton_host.charge(self.SINK)
-        plankton_host.poll_pd_state('sink')
+        self.plankton.set_usbc_mux('dp')
+        self.plankton.charge(self.SINK)
+        self.plankton.poll_pd_state('sink')
         devices_dp = self.get_usb_devices_and_buses()
-        plankton_host.charge(self.CHARGING_VOLTAGE)
+        self.plankton.charge(self.CHARGING_VOLTAGE)
         logging.info('number of devices when switch to dp: %d',
                      len(devices_dp))
         # Enumerate USB devices when switching to USB3
-        plankton_host.set_usbc_mux('usb')
-        plankton_host.charge(self.SINK)
-        plankton_host.poll_pd_state('sink')
+        self.plankton.set_usbc_mux('usb')
+        self.plankton.charge(self.SINK)
+        self.plankton.poll_pd_state('sink')
         # It takes a short period for DUT to get USB3.0 device.
         utils.poll_for_condition(
             lambda: len(self.get_usb_devices_and_buses()) > len(devices_dp),
@@ -67,7 +62,7 @@ class firmware_TypeCProbeUSB3(test.test):
                     'after %d seconds' % self.POLL_USB3_SECS),
             timeout=self.POLL_USB3_SECS)
         devices_usb = self.get_usb_devices_and_buses()
-        plankton_host.charge(self.CHARGING_VOLTAGE)
+        self.plankton.charge(self.CHARGING_VOLTAGE)
         logging.info('number of devices when switch to usb: %d',
                      len(devices_usb))
 

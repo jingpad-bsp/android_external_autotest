@@ -334,9 +334,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.plankton_servo = self._plankton_host.get_servo()
             logging.info('plankton_servo: %r', self.plankton_servo)
             # Create the plankton object used to access the ec uart
-            self.plankton_console = plankton.PlanktonConsole(self.plankton_servo)
+            self.plankton = plankton.Plankton(self.plankton_servo,
+                    self._plankton_host.get_servod_server_proxy())
         else:
-            self.plankton_console = None
+            self.plankton = None
 
 
     def get_repair_image_name(self, image_type='cros'):
