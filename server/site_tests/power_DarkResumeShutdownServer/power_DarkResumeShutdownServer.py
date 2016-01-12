@@ -8,8 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 
-BATTERY_MARGIN = -1.0
-BATTERY_MARGIN_PREF = '0.0'
 BOOT_WAIT_SECONDS = 100
 DARK_RESUME_SOURCE_PREF = '/sys/class/rtc/rtc0/device'
 POWER_DIR = '/var/lib/power_manager'
@@ -35,12 +33,6 @@ class power_DarkResumeShutdownServer(test.test):
                       SUSPEND_DURATION_PREF, SUSPEND_DURATION)
         host.run('echo %s %d > %s/dark_resume_suspend_durations' %
                  (SUSPEND_DURATION_PREF, SUSPEND_DURATION, TMP_POWER_DIR))
-
-        # override battery margins preference for dark resume
-        logging.info('setting dark_resume_battery_margins to %s %d',
-                     BATTERY_MARGIN_PREF, BATTERY_MARGIN)
-        host.run('echo %s %d > %s/dark_resume_battery_margins' %
-                 (BATTERY_MARGIN_PREF, BATTERY_MARGIN, TMP_POWER_DIR))
 
         # override sources preference for dark resume
         logging.info('setting dark_resume_sources to %s',
