@@ -73,7 +73,7 @@ peerd:!:260:buffet,chronos,peerd
 buffet:!:264:chronos,buffet,power
 webservd:!:266:buffet,webservd
 dnsmasq:!:268:dnsmasq
-arc-camera:!:274:
+arc-camera:!:603:
 ntfs-3g:!:300:
 avfs:!:301:
 fuse-exfat:!:302:
