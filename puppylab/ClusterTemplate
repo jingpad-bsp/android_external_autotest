@@ -13,7 +13,7 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "/usr/local/autotest", "/usr/local/autotest", type: "rsync",
     owner: "chromoes-test", group: "root",
     rsync__args: ["--chmod=ug=rwX,o=rxX", "-r"],
-    rsync__exclude: ["site-packages/", "logs/", "results/", "shadow_config.ini", ".git/", "chromeos-admin/", "*.box"]
+    rsync__exclude: ["site-packages/", "logs/", "results/", "containers/", "shadow_config.ini", ".git/", "chromeos-admin/", "*.box"]
 
   # Chown autotest, triggered via vagrant provision --provision-with shell
   config.vm.provision :shell do |shell|
@@ -61,7 +61,7 @@ Vagrant.configure("2") do |config|
         puppet.facter = {
           "is_vagrant" => "1",
           "shard_hostname" => "%(shard1_shadow_config_hostname)s",
-          "server_type" => "autotest-shard",
+          "server_type" => "testing-shard",
         }
       end
   end
