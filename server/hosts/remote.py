@@ -1,6 +1,6 @@
 """This class defines the Remote host class."""
 
-import os, logging, urllib, time, functools
+import os, logging, urllib, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import base_classes
@@ -66,9 +66,9 @@ class RemoteHost(base_classes.Host):
         single-call rule).
         """
         try:
-            self.run('rm -f %s' % self.VAR_LOG_MESSAGES_COPY_PATH)
-            self.run('cp /var/log/messages %s' %
-                     self.VAR_LOG_MESSAGES_COPY_PATH)
+            cmd = ('test ! -e /var/log/messages || cp -f /var/log/messages '
+                   '%s') % self.VAR_LOG_MESSAGES_COPY_PATH
+            self.run(cmd)
         except Exception, e:
             # Non-fatal error
             logging.info('Failed to copy /var/log/messages at startup: %s', e)
