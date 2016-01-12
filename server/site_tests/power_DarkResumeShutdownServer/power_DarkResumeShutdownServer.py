@@ -95,7 +95,7 @@ class power_DarkResumeShutdownServer(test.test):
         # don't go through sys_power for suspending since those code paths use
         # the RTC.
         # TODO(dbasehore): rework sys_power to make the RTC alarm optional
-        host.run('/usr/bin/powerd_dbus_suspend --delay 1 '
+        host.run('/usr/bin/powerd_dbus_suspend --delay=1 '
                  '> /dev/null 2>&1 < /dev/null &')
         time.sleep(SUSPEND_WAIT_SECONDS)
         host.power_off()
