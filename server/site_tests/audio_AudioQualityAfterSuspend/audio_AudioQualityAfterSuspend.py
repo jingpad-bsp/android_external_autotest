@@ -139,7 +139,8 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
     def run_once(self, host, audio_nodes, audio_test_data, test_playback_file,
                  lowpass_freq=None,
                  bind_from=None, bind_to=None,
-                 source=None, recorder=None):
+                 source=None, recorder=None,
+                 tag=None):
         """Runs the test main workflow
 
         @param host: A host object representing the DUT.
