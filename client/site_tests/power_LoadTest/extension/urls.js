@@ -86,7 +86,7 @@ var tasks = [
     duration: minutes(6),
     focus: true,
     tabs: [
-        'http://www.youtube.com/embed/YE7VzlLtp-4?start=236&autoplay=1'
+        'http://www.youtube.com/embed/YE7VzlLtp-4?start=236&vq=hd720&autoplay=1'
     ]
   },
 ];
