@@ -1195,7 +1195,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def _servo_repair_power(self):
         """Attempt to repair DUT using an attached Servo.
 
-        Attempt to power on the DUT via power_long_press.
+        Attempt to power cycle the DUT via cold_reset.
 
         @raises AutoservRepairMethodNA if the device does not have servo
                 support.
@@ -1206,9 +1206,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                                'DUT has no servo support.')
 
         logging.info('Attempting to recover servo enabled device by '
-                     'powering it off and on.')
-        self.servo.get_power_state_controller().power_off()
-        self.servo.get_power_state_controller().power_on()
+                     'powering cycling with cold reset.')
+        self.servo.get_power_state_controller().reset()
         if self.wait_up(self.BOOT_TIMEOUT):
             return
 
