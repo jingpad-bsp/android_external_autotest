@@ -21,9 +21,12 @@ import pprint
 import re
 
 def _pidof(exe_name):
-    """Returns PID of a process with the given name."""
-    return utils.system_output('pidof %s' % exe_name,
-                               ignore_status=True).strip()
+    """Returns the PID of the first process with the given name."""
+    pid = utils.system_output('pidof %s' % exe_name, ignore_status=True).strip()
+    if len(pid.split()) > 1:
+        pid = pid.split()[0]
+
+    return pid
 
 
 class Process(object):
