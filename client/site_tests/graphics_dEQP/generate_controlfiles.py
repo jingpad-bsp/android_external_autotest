@@ -35,7 +35,6 @@ tests = [
     Test('dEQP-EGL.info',          Suite.none,  shards=1,  hasty=False, notpass=True, time='SHORT'),
     Test('dEQP-EGL.performance',   Suite.none,  shards=1,  hasty=False, notpass=True, time='SHORT'),
     Test('dEQP-EGL.stress',        Suite.none,  shards=1,  hasty=False, notpass=True, time='LONG'),
-    Test('dEQP-filter_args',       Suite.none,  shards=1,  hasty=False, notpass=True, time='FAST'),
     Test('dEQP-GLES2.accuracy',    Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
     Test('dEQP-GLES2.capability',  Suite.bvtpb, shards=1,  hasty=False, notpass=True, time='FAST'),
     Test('dEQP-GLES2.functional',  Suite.daily, shards=1,  hasty=False, notpass=True, time='LENGTHY'),
