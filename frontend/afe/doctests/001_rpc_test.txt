@@ -135,14 +135,14 @@ False
 # test already locked/unlocked failures
 >>> rpc_interface.modify_host(id='ipaj1000', locked=False)
 Traceback (most recent call last):
-ValidationError: {'locked': 'Host already unlocked.'}
+ValidationError: {'locked': u'Host ipaj1000 already unlocked.'}
 >>> rpc_interface.modify_host(id='ipaj1000', locked=True, lock_reason='Locking a locked device')
 >>> try:
 ...     rpc_interface.modify_host(id='ipaj1000', locked=True)
 ... except model_logic.ValidationError, err:
 ...     pass
 >>> assert ('locked' in err.message_dict
-...         and err.message_dict['locked'].startswith('Host already locked'))
+...         and err.message_dict['locked'].startswith('Host ipaj1000 already locked'))
 >>> rpc_interface.delete_host(id='ipaj1000')
 >>> rpc_interface.get_hosts() == []
 True

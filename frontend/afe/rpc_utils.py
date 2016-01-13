@@ -469,14 +469,15 @@ def check_modify_host_locking(host, update_data):
     if locked is not None:
         if locked and host.locked:
             raise model_logic.ValidationError({
-                    'locked': 'Host already locked by %s on %s.' %
-                    (host.locked_by, host.lock_time)})
+                    'locked': 'Host %s already locked by %s on %s.' %
+                    (host.hostname, host.locked_by, host.lock_time)})
         if not locked and not host.locked:
             raise model_logic.ValidationError({
-                    'locked': 'Host already unlocked.'})
+                    'locked': 'Host %s already unlocked.' % host.hostname})
         if locked and not lock_reason and not host.locked:
             raise model_logic.ValidationError({
-                    'locked': 'Please provide a reason for locking'})
+                    'locked': 'Please provide a reason for locking Host %s' %
+                    host.hostname})
 
 
 def get_motd():

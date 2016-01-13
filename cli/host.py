@@ -311,7 +311,7 @@ class host_jobs(host):
 
 
 class host_mod(host):
-    """atest host mod --lock|--unlock|--protection
+    """atest host mod --lock|--unlock|--force_modify_locking|--protection
     --mlist <file>|<hosts>"""
     usage_action = 'mod'
     attribute_regex = r'^(?P<attribute>\w+)=(?P<value>.+)?'
@@ -328,6 +328,9 @@ class host_mod(host):
                                action='store_true')
         self.parser.add_option('-u', '--unlock',
                                help='Unlock hosts',
+                               action='store_true')
+        self.parser.add_option('-f', '--force_modify_locking',
+                               help='Forcefully lock\unlock a host',
                                action='store_true')
         self.parser.add_option('-r', '--lock_reason',
                                help='Reason for locking hosts',
@@ -349,6 +352,8 @@ class host_mod(host):
         (options, leftover) = super(host_mod, self).parse()
 
         self._parse_lock_options(options)
+        if options.force_modify_locking:
+             self.data['force_modify_locking'] = True
 
         if options.protection:
             self.data['protection'] = options.protection

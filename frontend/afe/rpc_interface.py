@@ -33,6 +33,7 @@ __author__ = 'showard@google.com (Steve Howard)'
 
 import sys
 import datetime
+import logging
 
 from django.db.models import Count
 import common
@@ -286,7 +287,13 @@ def modify_host(id, **kwargs):
     """
     rpc_utils.check_modify_host(kwargs)
     host = models.Host.smart_get(id)
-    rpc_utils.check_modify_host_locking(host, kwargs)
+    try:
+        rpc_utils.check_modify_host_locking(host, kwargs)
+    except model_logic.ValidationError as e:
+        if not kwargs.get('force_modify_locking', False):
+            raise
+        logging.exception('The following exception will be ignored and lock '
+                          'modification will be enforced. %s', e)
 
     # This is required to make `lock_time` for a host be exactly same
     # between the master and a shard.
@@ -294,6 +301,8 @@ def modify_host(id, **kwargs):
         kwargs['lock_time'] = datetime.datetime.now()
     host.update_object(kwargs)
 
+    # force_modifying_locking is not an internal field in database, remove.
+    kwargs.pop('force_modify_locking', None)
     rpc_utils.fanout_rpc([host], 'modify_host_local',
                          include_hostnames=False, id=id, **kwargs)
 
@@ -340,7 +349,14 @@ def modify_hosts(host_filter_data, update_data):
 
     # Check all hosts before changing data for exception safety.
     for host in hosts:
-        rpc_utils.check_modify_host_locking(host, update_data)
+        try:
+            rpc_utils.check_modify_host_locking(host, update_data)
+        except model_logic.ValidationError as e:
+            if not update_data.get('force_modify_locking', False):
+                raise
+            logging.exception('The following exception will be ignored and '
+                              'lock modification will be enforced. %s', e)
+
         if host.shard:
             affected_shard_hostnames.add(host.shard.rpc_hostname())
             affected_host_ids.append(host.id)
@@ -352,6 +368,7 @@ def modify_hosts(host_filter_data, update_data):
     for host in hosts:
         host.update_object(update_data)
 
+    update_data.pop('force_modify_locking', None)
     # Caution: Changing the filter from the original here. See docstring.
     rpc_utils.run_rpc_on_multiple_hostnames(
             'modify_hosts_local', affected_shard_hostnames,

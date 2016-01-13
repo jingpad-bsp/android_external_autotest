@@ -1306,6 +1306,29 @@ class host_mod_unittest(cli_mock.cli_unittest):
                      out_words_ok=['Unlocked', 'host0', 'host1'])
 
 
+    def test_execute_force_lock_one_host(self):
+        self.run_cmd(argv=['atest', 'host', 'mod',
+                           '--lock', '--force_modify_locking', 'host0',
+                           '--ignore_site_file'],
+                     rpcs=[('modify_host',
+                            {'id': 'host0', 'locked': True,
+                             'force_modify_locking': True},
+                            True, None)],
+                     out_words_ok=['Locked', 'host0'])
+
+
+    def test_execute_force_unlock_one_host(self):
+        self.run_cmd(argv=['atest', 'host', 'mod',
+                           '--unlock', '--force_modify_locking', 'host0',
+                           '--ignore_site_file'],
+                     rpcs=[('modify_host',
+                            {'id': 'host0', 'locked': False,
+                             'force_modify_locking': True,
+                             'lock_reason': ''},
+                            True, None)],
+                     out_words_ok=['Unlocked', 'host0'])
+
+
     def test_execute_lock_unknown_hosts(self):
         self.run_cmd(argv=['atest', 'host', 'mod',
                            '-l', 'host0,host1', 'host2', '--ignore_site_file'],
