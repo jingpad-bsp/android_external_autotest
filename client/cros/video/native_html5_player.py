@@ -77,7 +77,7 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
     def seek_to(self, t):
         """
-        Seeks a vimeo video to a time stamp.
+        Seeks a video to a time stamp.
 
         @param t: timedelta, time value to seek to.
 
@@ -88,7 +88,15 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
     def has_video_finished_seeking(self):
         """
-        Determines if a vimeo video has finished seeking.
+        Determines if the video has finished seeking.
 
         """
         return self.tab.EvaluateJavaScript('finishedSeeking()')
+
+
+    def wait_for_error(self):
+        """
+        Determines if the video has any errors
+
+        """
+        return self.tab.WaitForJavaScriptExpression('errorDetected();', 30)

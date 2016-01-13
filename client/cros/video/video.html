@@ -10,6 +10,7 @@ Current time (seconds): <span id='videoCurTime'>0</span>
 <script type="text/javascript">
 var can_play = false;
 var finished_seeking = false;
+var error_status = false;
 
 (function() {
      var timeEle = document.getElementById('videoCurTime');
@@ -21,6 +22,12 @@ var finished_seeking = false;
 (function() {
      video.addEventListener('canplaythrough', function(event) {
      can_play = true;
+  }, false);
+})();
+
+(function() {
+     video.addEventListener('error', function(event) {
+     error_status = true;
   }, false);
 })();
 
@@ -59,6 +66,10 @@ function pause() {
 
 function currentTime()  {
     return video.currentTime;
+}
+
+function errorDetected() {
+  return error_status;
 }
 </script>
 </html>

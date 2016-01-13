@@ -3,9 +3,12 @@
 # found in the LICENSE file.
 
 import os
+import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import native_html5_player
 
 
 class video_VideoCorruption(test.test):
@@ -18,14 +21,17 @@ class video_VideoCorruption(test.test):
         @param video: Sample corrupted video file to be played in Chrome.
         """
         with chrome.Chrome() as cr:
+            shutil.copy2(vda_constants.VIDEO_HTML_FILEPATH, self.bindir)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
-            tab.Navigate(cr.browser.platform.http_server.UrlOf(
-                    os.path.join(self.bindir, 'video.html')))
-            tab.WaitForDocumentReadyStateToBeComplete()
-
-            tab.EvaluateJavaScript(
-                    'loadSourceAndRunCorruptionTest("%s")' % video)
-            # Expect corruption being detected after playing corrupted video.
-            tab.WaitForJavaScriptExpression('corruptionDetected();', 30)
-
+            html_fullpath = os.path.join(self.bindir, 'video.html')
+            url = cr.browser.platform.http_server.UrlOf(html_fullpath)
+            player = native_html5_player.NativeHtml5Player(tab,
+                 full_url = url,
+                 video_id = 'video',
+                 video_src_path = video,
+                 event_timeout = 120)
+            #This is a corrupted video, so it cann't load for checking canplay.
+            player.load_video(wait_for_canplay=False)
+            # Expect corruption being detected after loading corrupted video.
+            player.wait_for_error()

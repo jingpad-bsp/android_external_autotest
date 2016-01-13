@@ -42,15 +42,17 @@ class VideoPlayer(object):
 
 
     @method_logger.log
-    def load_video(self):
+    def load_video(self, wait_for_canplay=True):
         """
         Loads video into browser.
+        @param wait_for_canplay: video will be verified before play
 
         """
         self.tab.Navigate(self.full_url)
         self.tab.WaitForDocumentReadyStateToBeComplete()
         self.inject_source_file()
-        self.wait_for_video_ready()
+        if wait_for_canplay:
+             self.wait_for_video_ready()
 
 
     def inject_source_file(self):
