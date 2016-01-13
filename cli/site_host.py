@@ -67,6 +67,8 @@ class site_host_create(site_host, host.host_create):
         obj.acls = acls
         if protection:
             obj.data['protection'] = protection
+        # TODO(kevcheng): Update the admin page to take in serials?
+        obj.serials = None
         return obj
 
 
