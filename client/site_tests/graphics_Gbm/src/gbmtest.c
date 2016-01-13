@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,6 +29,9 @@
 } while(0)
 
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(*(A)))
+
+#define ENODRM     -1
+#define ENODISPLAY -2
 
 static int fd;
 static struct gbm_device *gbm;
@@ -121,11 +125,13 @@ static int drm_open()
 {
 	int fd;
 	unsigned i;
-	char* dev_name;
-	drmModeRes *res = NULL;
-	int ret;
+	bool has_drm_device = false;
 
 	for (i = 0; i < DRM_MAX_MINOR; i++) {
+		char* dev_name;
+		drmModeRes *res = NULL;
+		int ret;
+
 		ret = asprintf(&dev_name, DRM_DEV_NAME, DRM_DIR_NAME, i);
 		if (ret < 0)
 			continue;
@@ -142,19 +148,21 @@ static int drm_open()
 		}
 
 		if (res->count_crtcs > 0 && res->count_connectors > 0) {
-			if (find_first_connected_connector(fd, res))
-				break;
+			has_drm_device = true;
+			if (find_first_connected_connector(fd, res)) {
+				drmModeFreeResources(res);
+				return fd;
+			}
 		}
 
 		drmClose(fd);
 		drmModeFreeResources(res);
-		res = NULL;
 	}
 
-	if (fd < 0 || res == NULL)
-		return -1;
-
-	return fd;
+	if (has_drm_device)
+		return ENODISPLAY;
+	else
+		return ENODRM;
 }
 
 static int drm_open_vgem()
@@ -218,6 +226,8 @@ static int create_vgem_bo(int fd, size_t size, uint32_t * handle)
 static int test_init()
 {
 	fd = drm_open();
+	if (fd == ENODISPLAY)
+		return ENODISPLAY;
 	CHECK(fd >= 0);
 
 	gbm = gbm_create_device(fd);
@@ -462,9 +472,17 @@ static int test_import()
 
 int main(int argc, char *argv[])
 {
-	int result = 1;
+	int result;
 
-	result &= test_init();
+	result = test_init();
+	if (result == ENODISPLAY) {
+		printf("[  PASSED  ] graphics_Gbm test no connected display found\n");
+		return EXIT_SUCCESS;
+	} else if (!result) {
+		printf("[  FAILED  ] graphics_Gbm test initialization failed\n");
+		return EXIT_FAILURE;
+	}
+
 	result &= test_reinit();
 	result &= test_alloc_free();
 	result &= test_alloc_free_sizes();
