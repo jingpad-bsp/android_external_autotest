@@ -24,9 +24,13 @@ class power_ProbeDriver(test.test):
             type_path = os.path.join(path, 'type')
             if not os.path.exists(type_path):
                 continue
-            # With the advent of USB Type-C, mains power might show up as USB.
+            # With the advent of USB Type-C, mains power might show up as
+            # one of several variants of USB.
             psu_type = utils.read_one_line(type_path)
-            if psu_type == 'Mains' or psu_type == 'USB':
+            if any( [psu_type == 'Mains', psu_type == 'USB',
+                     psu_type == 'USB_DCP', psu_type == 'USB_CDP',
+                     psu_type == 'USB_TYPE_C', psu_type == 'USB_PD',
+                     psu_type == 'USB_PD_DRP'] ):
                 ac_paths.append(path)
             elif psu_type == 'Battery':
                 bat_paths.append(path)
