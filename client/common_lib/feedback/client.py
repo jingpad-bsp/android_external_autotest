@@ -57,13 +57,14 @@ class Client(object):
         self.finalize()
 
 
-    def initialize(self, test, host):
+    def initialize(self, test, host=None):
         """Initializes the feedback object.
 
         This method should be called once prior to any other call.
 
         @param test: An object representing the test case.
-        @param host: An object representing the DUT.
+        @param host: An object representing the DUT; required for server-side
+                     tests.
 
         @raise TestError: There was an error during initialization.
         """
