@@ -223,7 +223,7 @@ def _check_servo(host):
             host._get_board_from_afe()))
     host._servo_host.run('stop servod || :')
     host._servo_host.run('start servod BOARD=%s' % servo_board)
-    time.sleep(4)
+    time.sleep(10)
     logging.debug('Starting servo host verification')
     host._servo_host.verify()
     host.servo = host._servo_host.get_servo()
