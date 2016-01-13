@@ -435,17 +435,20 @@ static int test_import()
 	struct gbm_bo *bo;
 	const int width = 123;
 	const int height = 456;
+	const int bytes_per_pixel = 4;
+	const int size = width * height * bytes_per_pixel;
 
 	if (vgem_fd <= 0)
 		return 1;
 
-	CHECK(create_vgem_bo(vgem_fd, width * height, &prime_handle.handle) == 0);
+	CHECK(create_vgem_bo(vgem_fd, size, &prime_handle.handle) == 0);
+	prime_handle.flags = DRM_CLOEXEC;
 	CHECK(drmIoctl(vgem_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &prime_handle) == 0);
 
 	fd_data.fd = prime_handle.fd;
 	fd_data.width = width;
 	fd_data.height = height;
-	fd_data.stride = width * 4;
+	fd_data.stride = width * bytes_per_pixel;
 	fd_data.format = GBM_FORMAT_XRGB8888;
 
 	bo = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
