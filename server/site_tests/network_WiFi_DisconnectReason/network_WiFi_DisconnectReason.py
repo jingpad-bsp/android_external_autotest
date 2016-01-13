@@ -19,7 +19,7 @@ class network_WiFi_DisconnectReason(wifi_cell_test_base.WiFiCellTestBase):
     version = 1
 
     INITIAL_CHANNEL = 64
-    ALT_CHANNEL = 36
+    ALT_CHANNEL = 6
     CHANNEL_SWITCH_ATTEMPTS = 5
     CHANNEL_SWITCH_WAIT_TIME_SEC = 3
 
@@ -37,7 +37,7 @@ class network_WiFi_DisconnectReason(wifi_cell_test_base.WiFiCellTestBase):
             # prep alternate Access Point
             alt_ap_config = hostap_config.HostapConfig(
                     channel=self.ALT_CHANNEL,
-                    mode=hostap_config.HostapConfig.MODE_11A)
+                    mode=hostap_config.HostapConfig.MODE_11N_MIXED)
             self.context.configure(alt_ap_config, multi_interface=True)
             alt_assoc_params = xmlrpc_datatypes.AssociationParameters()
             alt_assoc_params.ssid = self.context.router.get_ssid(instance=1)
