@@ -6,6 +6,7 @@
 // http://zarb.org/~gc/html/libpng.html
 
 #include <png.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 #include <base/files/file_util.h>
