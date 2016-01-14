@@ -142,7 +142,7 @@ class graphics_dEQP(test.test):
         subset_paths = glob.glob(os.path.join(expectations_dir, subset_spec))
         for subset_file in subset_paths:
             # Filter against hasty failures only in hasty mode.
-            if self._hasty or '.hasty.bz2' not in subset_file:
+            if self._hasty or '.hasty.' not in subset_file:
                 not_passing_cases.extend(
                     bz2.BZ2File(subset_file).read().splitlines())
 
