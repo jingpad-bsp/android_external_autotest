@@ -64,7 +64,7 @@ class DarkResumeUtils(object):
     """
 
 
-    def __init__(self, host):
+    def __init__(self, host, duration=0):
         """Set up powerd preferences so we will properly go into dark resume,
         and still be able to communicate with the DUT.
 
@@ -92,6 +92,12 @@ class DarkResumeUtils(object):
         new_dev_contents = '\n'.join(new_dev_list)
         host.run('echo -e \'%s\' > %s/dark_resume_devices' %
                  (new_dev_contents, TMP_POWER_DIR))
+
+        if duration > 0:
+            # override suspend durations preference for dark resume
+            logging.info('setting dark_resume_suspend_durations=%d', duration)
+            host.run('echo 0.0 %d > %s/dark_resume_suspend_durations' %
+                     (duration, TMP_POWER_DIR))
 
         # bind the tmp directory to the power preference directory
         host.run('mount --bind %s %s' % (TMP_POWER_DIR, POWER_DIR))
