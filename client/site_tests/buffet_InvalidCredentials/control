@@ -6,8 +6,8 @@ AUTHOR = 'zeuthen, wiley, avakulenko'
 NAME = 'buffet_InvalidCredentials'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
-ATTRIBUTES = "suite:smoke, suite:tendo_experimental"
-SUITE = 'smoke, tendo_experimental'
+ATTRIBUTES = "suite:tendo_experimental"
+SUITE = 'tendo_experimental'
 
 DOC = """
 Test that buffet transitions properly if refresh token is revoked.
