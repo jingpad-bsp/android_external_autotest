@@ -27,11 +27,12 @@ class network_WiFi_RxFrag(wifi_cell_test_base.WiFiCellTestBase):
                 mode=hostap_config.HostapConfig.MODE_11G,
                 frag_threshold=256)
         self.context.configure(configuration)
+        self.context.router.start_capture(configuration.frequency)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
         self.context.assert_connect_wifi(assoc_params)
         build_config = lambda size: ping_runner.PingConfig(
-                self.context.get_wifi_addr(), size=size)
+                self.context.client.wifi_ip, size=size)
         self.context.assert_ping_from_server(ping_config=build_config(256))
         self.context.assert_ping_from_server(ping_config=build_config(512))
         self.context.assert_ping_from_server(ping_config=build_config(1024))
