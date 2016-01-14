@@ -48,6 +48,7 @@ class network_WiFi_BgscanBackoff(wifi_cell_test_base.WiFiCellTestBase):
         # Bring up a second AP, make sure that it shows up in bgscans.
         self.context.configure(
                 hostap_config.HostapConfig(channel=11,
+                                           min_streams=1,
                                            ssid=self.context.router.get_ssid()),
                 multi_interface=True)
         logging.info('Without a ping running, ensure that bgscans succeed.')
