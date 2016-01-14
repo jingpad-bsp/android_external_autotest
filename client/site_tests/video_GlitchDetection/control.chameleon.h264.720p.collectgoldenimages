@@ -3,29 +3,25 @@
 # found in the LICENSE file.
 
 AUTHOR = "Mussa Kiroga"
-NAME = "video_GlitchDetection_chameleon_h264_720p"
-PURPOSE = "Verify that Chrome Video Playback is glitch and corruption free"
+NAME = "video_GlitchDetection_chameleon_h264_720p_collect_golden_images"
+PURPOSE = "Collects golden images to be used in image comparison video tests"
 CRITERIA = """
 
 """
-ATTRIBUTES = "suite:chameleon_hdmi_nightly"
-SUITE = "chameleon_hdmi_nightly"
 TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "video_glitch_detection, chameleon"
-BUG_TEMPLATE = {
-    'owner': 'avkodipelli@chromium.org',
-    'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
-    'labels': ['VideoTestFailure', 'OS-Chrome']
-}
 
 DOC = """
-This test uses cloud based image comparison to determine test PASS or FAIL.
-Images are captured using Chameleon and compared locally first. If that
-comparison fails, images will be save so that they can be viewed test
-results.
+Run this test to collect golden images for a certain device and  build. This
+test will use an H264 720p video to produce the images.
+
+This test is not intended to be run automatically in the lab. Instead it
+should be scheduled to run on a desired dut via autotest.
+
+Golden images can then be copied from the dut once the test is finished.
 
 """
 host = next(iter(job.hosts))
@@ -36,4 +32,5 @@ job.run_test('video_GlitchDetection',
               codec='h264',
               resolution='720p',
               host=host,
-              args=args)
+              args=args,
+              collect_only=True)
