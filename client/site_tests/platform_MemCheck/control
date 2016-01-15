@@ -14,8 +14,8 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'platform'
 TEST_TYPE = 'client'
 JOB_RETRIES = 2
-ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
-SUITE = 'arc-bvt-cq, bvt-cq'
+ATTRIBUTES = "suite:bvt-cq"
+SUITE = 'bvt-cq'
 DEPENDENCIES = 'cleanup-reboot'
 DOC = """
 Verifies that memory levels look sane.
