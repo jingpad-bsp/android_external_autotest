@@ -1367,17 +1367,17 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.info('Last provision failed, try powerwash first.')
             autotest_stats.Counter(
                     'repair_force_powerwash.TOTAL').increment()
-            repair_funcs = [self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall,
-                            self._firmware_repair]
+            repair_funcs = [self._firmware_repair,
+                            self._install_repair_with_powerwash,
+                            self._servo_repair_reinstall]
         else:
             repair_funcs = [self._reboot_repair,
                             self._servo_repair_power,
+                            self._firmware_repair,
                             self._powercycle_to_repair,
                             self._install_repair,
                             self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall,
-                            self._firmware_repair]
+                            self._servo_repair_reinstall]
         errors = []
         board = self._get_board_from_afe()
         for repair_func in repair_funcs:
