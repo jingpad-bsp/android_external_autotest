@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.video import histogram_verifier
-from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import constants
 
 
 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
@@ -236,8 +236,8 @@ class video_PlaybackPerf(test.test):
             # Check if decode is hardware accelerated.
             if histogram_verifier.is_bucket_present(
                     cr,
-                    vda_constants.MEDIA_GVD_INIT_STATUS,
-                    vda_constants.MEDIA_GVD_BUCKET):
+                    constants.MEDIA_GVD_INIT_STATUS,
+                    constants.MEDIA_GVD_BUCKET):
                 keyvals[PLAYBACK_WITH_HW_ACCELERATION] = result
             else:
                 logging.info("Can not use hardware decoding.")
@@ -254,8 +254,8 @@ class video_PlaybackPerf(test.test):
             # Make sure decode is not hardware accelerated.
             if histogram_verifier.is_bucket_present(
                     cr,
-                    vda_constants.MEDIA_GVD_INIT_STATUS,
-                    vda_constants.MEDIA_GVD_BUCKET):
+                    constants.MEDIA_GVD_INIT_STATUS,
+                    constants.MEDIA_GVD_BUCKET):
                 raise error.TestError(
                         'Video decode acceleration should not be working.')
             keyvals[PLAYBACK_WITHOUT_HW_ACCELERATION] = result

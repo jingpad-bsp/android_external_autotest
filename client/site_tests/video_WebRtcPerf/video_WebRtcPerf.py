@@ -13,7 +13,7 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.video import histogram_verifier
-from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import constants
 
 
 EXTRA_BROWSER_ARGS = ['--use-fake-device-for-media-stream',
@@ -182,8 +182,8 @@ class video_WebRtcPerf(test.test):
             # Check if decode is hardware accelerated.
             if histogram_verifier.is_bucket_present(
                     cr,
-                    vda_constants.RTC_INIT_HISTOGRAM,
-                    vda_constants.RTC_VIDEO_INIT_BUCKET):
+                    constants.RTC_INIT_HISTOGRAM,
+                    constants.RTC_VIDEO_INIT_BUCKET):
                 keyvals[WEBRTC_WITH_HW_ACCELERATION] = result
             else:
                 logging.info("Can not use hardware decoding.")
@@ -201,8 +201,8 @@ class video_WebRtcPerf(test.test):
             # Make sure decode is not hardware accelerated.
             if histogram_verifier.is_bucket_present(
                     cr,
-                    vda_constants.RTC_INIT_HISTOGRAM,
-                    vda_constants.RTC_VIDEO_INIT_BUCKET):
+                    constants.RTC_INIT_HISTOGRAM,
+                    constants.RTC_VIDEO_INIT_BUCKET):
                 raise error.TestError('HW decode should not be used.')
             keyvals[WEBRTC_WITHOUT_HW_ACCELERATION] = result
 

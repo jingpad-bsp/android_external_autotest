@@ -20,3 +20,12 @@ FCOUNT = 330
 MAX_FRAME_REPEAT_COUNT = 5
 MAX_DIFF_TOTAL_FCOUNT = 10
 MAX_NONMATCHING_FCOUNT = 10
+
+#Hardware decoding constants
+MEDIA_GVD_INIT_STATUS = 'Media.GpuVideoDecoderInitializeStatus'
+RTC_INIT_HISTOGRAM = 'Media.RTCVideoDecoderInitDecodeSuccess'
+MEDIA_GVD_BUCKET = 0
+RTC_VIDEO_INIT_BUCKET = 1
+
+#Path for video HTML file which helps for video operations
+VIDEO_HTML_FILEPATH = '/usr/local/autotest/cros/video/video.html'

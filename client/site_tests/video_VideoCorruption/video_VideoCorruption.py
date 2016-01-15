@@ -7,7 +7,7 @@ import shutil
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import native_html5_player
 
 
@@ -21,7 +21,7 @@ class video_VideoCorruption(test.test):
         @param video: Sample corrupted video file to be played in Chrome.
         """
         with chrome.Chrome() as cr:
-            shutil.copy2(vda_constants.VIDEO_HTML_FILEPATH, self.bindir)
+            shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             tab = cr.browser.tabs[0]
             html_fullpath = os.path.join(self.bindir, 'video.html')

@@ -7,7 +7,7 @@ import time
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
-from autotest_lib.client.cros.video import vda_constants
+from autotest_lib.client.cros.video import constants
 
 
 class video_ChromeHWDecodeUsed(test.test):
@@ -33,5 +33,5 @@ class video_ChromeHWDecodeUsed(test.test):
             # Waits for histogram updated for the test video.
             histogram_verifier.verify(
                     cr,
-                    vda_constants.MEDIA_GVD_INIT_STATUS,
-                    vda_constants.MEDIA_GVD_BUCKET)
+                    constants.MEDIA_GVD_INIT_STATUS,
+                    constants.MEDIA_GVD_BUCKET)
