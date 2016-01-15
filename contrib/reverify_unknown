@@ -23,7 +23,7 @@ cd $(dirname $0)/..
 # Basically, that's any host in the suites, bvt, cq, or pfq pool.
 
 GET_HOSTS='
-  /pool:suites/ || /pool:bvt/ || /pool:cq/ || /pool:pfq/ {
+  /pool:(suites|bvt|cq|continuous)/ {
     print $1
   }
 '
