@@ -72,6 +72,9 @@ for subnet in restricted_subnets_list:
 # Return value from a devserver RPC indicating the call succeeded.
 SUCCESS = 'Success'
 
+PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
+        'CROS', 'prefer_local_devserver', type=bool, default=False)
+
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
 
@@ -463,9 +466,18 @@ class DevServer(object):
         # If devserver election is not restricted, select a devserver from
         # unrestricted servers. Otherwise, drone will not be able to access
         # devserver in restricted subnet.
+        can_retry = False
         if not restricted_subnet and RESTRICTED_SUBNETS:
             devservers = cls.get_unrestricted_devservers()
+            if PREFER_LOCAL_DEVSERVER and host_ip:
+                can_retry = True
+                devservers = cls.get_devserver_in_same_subnet(
+                        host_ip, cls.get_unrestricted_devservers() )
         devserver = cls.get_healthy_devserver(build, devservers)
+
+        if not devserver and can_retry:
+            devserver = cls.get_healthy_devserver(
+                    build, cls.get_unrestricted_devservers())
         if devserver:
             return devserver
         else:
