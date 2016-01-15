@@ -4,14 +4,16 @@
 
 import bz2
 import glob
+import json
 import logging
 import os
+import re
 import shutil
 import tempfile
 import xml.etree.ElementTree as et
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import service_stopper
+from autotest_lib.client.cros import cros_logging, service_stopper
 
 
 class graphics_dEQP(test.test):
@@ -31,6 +33,9 @@ class graphics_dEQP(test.test):
     _height = 256  # Use smallest height for which all tests run/pass.
     _timeout = 70  # Larger than twice the dEQP watchdog timeout at 30s.
     _test_names = None
+    _debug = False
+    _log_reader = None
+    _log_filter = re.compile('.* .* kernel:')
 
     DEQP_BASEDIR = '/usr/local/deqp'
     DEQP_MODULES = {
@@ -245,7 +250,9 @@ class graphics_dEQP(test.test):
         for test_case in test_cases:
             i += 1
             logging.info('[%d/%d] TestCase: %s', i, len(test_cases), test_case)
-            log_file = '%s.log' % os.path.join(log_path, test_case)
+            result_prefix = os.path.join(log_path, test_case)
+            log_file = '%s.log' % result_prefix
+            debug_file = '%s.debug' % result_prefix
             command = ('%s '
                        '--deqp-case=%s '
                        '--deqp-surface-type=fbo '
@@ -255,15 +262,17 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d '
                        '--deqp-log-filename=%s' %
                        (executable, test_case, width, height, log_file))
-
             try:
                 logging.info('Running single: %s', command)
-                utils.run(command,
-                          timeout=self._timeout,
-                          stderr_is_expected=False,
-                          ignore_status=True,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS)
+                # Must initialize because some errors don't repopulate
+                # run_result, leaving old results.
+                run_result = {}
+                run_result = utils.run(command,
+                                       timeout=self._timeout,
+                                       stderr_is_expected=False,
+                                       ignore_status=True,
+                                       stdout_tee=utils.TEE_TO_LOGS,
+                                       stderr_tee=utils.TEE_TO_LOGS)
                 result_counts = self._parse_test_results(log_file)
                 if result_counts:
                     result = result_counts.keys()[0]
@@ -275,6 +284,23 @@ class graphics_dEQP(test.test):
                 result = 'CommandFailed'
             except Exception:
                 result = 'UnexpectedError'
+
+            if self._debug:
+                # Collect debug info and save to json file.
+                output_msgs = {'stdout': [], 'stderr': [], 'dmesg': []}
+                logs = self._log_reader.get_logs()
+                self._log_reader.set_start_by_current()
+                output_msgs['dmesg'] = [msg for msg in logs.splitlines()
+                                        if self._log_filter.match(msg)]
+                if run_result:
+                    output_msgs['stdout'] = run_result.stdout.splitlines()
+                    output_msgs['stderr'] = run_result.stderr.splitlines()
+                with open(debug_file, 'w') as fd:
+                    json.dump(output_msgs,
+                              fd,
+                              indent=4,
+                              separators=(',', ' : '),
+                              sort_keys=True)
 
             logging.info('Result: %s', result)
             test_results[result] = test_results.get(result, 0) + 1
@@ -366,7 +392,8 @@ class graphics_dEQP(test.test):
                        subset_to_run='Pass',  # Pass, Fail, Timeout, NotPass...
                        hasty='False',
                        shard_number='0',
-                       shard_count='1')
+                       shard_count='1',
+                       debug='False')
         if opts is None:
             opts = []
         options.update(utils.args_to_dict(opts))
@@ -377,6 +404,7 @@ class graphics_dEQP(test.test):
         self._test_names = options['test_names']
         self._shard_number = int(options['shard_number'])
         self._shard_count = int(options['shard_count'])
+        self._debug = (options['debug'] == 'True')
         if not self._test_names:
             self._filter = options['filter']
             if not self._filter:
@@ -390,13 +418,13 @@ class graphics_dEQP(test.test):
 
         if self._gpu_type == 'pinetrail':
             raise error.TestNAError('dEQP not implemented on pinetrail. '
-                                          'crbug.com/532691')
+                                    'crbug.com/532691')
         if self._gpu_type == 'mali':
             raise error.TestNAError('dEQP not implemented on mali. '
-                                          'crbug.com/543372')
+                                    'crbug.com/543372')
         if self._gpu_type == 'tegra':
             raise error.TestNAError('dEQP not implemented on tegra. '
-                                          'crbug.com/543373')
+                                    'crbug.com/543373')
 
         # Determine module from test_names or filter.
         if self._test_names:
@@ -415,6 +443,11 @@ class graphics_dEQP(test.test):
         executable = os.path.join(executable_path, 'deqp-%s' % module)
 
         self._services.stop_services()
+
+        if self._debug:
+            # LogReader works on /var/log/messages by default.
+            self._log_reader = cros_logging.LogReader()
+            self._log_reader.set_start_by_current()
 
         # Must be in the executable directory when running for it to find it's
         # test data files!
