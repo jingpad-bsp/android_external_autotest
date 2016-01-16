@@ -996,7 +996,9 @@ class GraphicsStateChecker(object):
     existing_hangs = {}
 
     _BROWSER_VERSION_COMMAND = '/opt/google/chrome/chrome --version'
-    _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung']
+    _HANGCHECK = ['drm:i915_hangcheck_elapsed', 'drm:i915_hangcheck_hung',
+                  'Hangcheck timer elapsed...']
+    _HANGCHECK_WARNING = ['render ring idle']
     _MESSAGES_FILE = '/var/log/messages'
 
     def __init__(self, raise_error_on_hang=True):
@@ -1030,6 +1032,7 @@ class GraphicsStateChecker(object):
         """
         utils.set_dirty_writeback_centisecs(self.dirty_writeback_centisecs)
         new_gpu_hang = False
+        new_gpu_warning = False
         if utils.get_cpu_arch() != 'arm':
             logging.info('Cleanup: Checking for new GPU hangs...')
             messages = open(self._MESSAGES_FILE, 'r')
@@ -1038,16 +1041,26 @@ class GraphicsStateChecker(object):
                     if hang in line:
                         if not line in self.existing_hangs.keys():
                             logging.info(line)
-                            logging.warning('Saw GPU hang during test.')
-                            new_gpu_hang = True
+                            for warn in self._HANGCHECK_WARNING:
+                                if warn in line:
+                                    new_gpu_warning = True
+                                    logging.warning(
+                                        'Saw GPU hang warning during test.')
+                                else:
+                                    logging.warning('Saw GPU hang during test.')
+                                    new_gpu_hang = True
             messages.close()
 
             if is_sw_rasterizer():
                 logging.warning('Finished test on SW rasterizer.')
                 raise error.TestFail('Finished test on SW rasterizer.')
-
             if self._raise_error_on_hang and new_gpu_hang:
-                raise error.TestFail('Detected GPU hang during test.')
+                raise error.TestError('Detected GPU hang during test.')
+            if new_gpu_hang:
+                raise error.TestWarn('Detected GPU hang during test.')
+            if new_gpu_warning:
+                raise error.TestWarn('Detected GPU warning during test.')
+
 
     def get_memory_access_errors(self):
         """ Returns the number of errors while reading memory stats. """
