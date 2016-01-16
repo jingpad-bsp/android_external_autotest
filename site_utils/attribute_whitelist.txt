@@ -13,6 +13,7 @@ suite:bvt-perbuild
 suite:cell_emulator
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
+suite:camera_perbuild
 suite:chameleon_audio
 suite:chameleon_dp
 suite:chameleon_dp_e2e
