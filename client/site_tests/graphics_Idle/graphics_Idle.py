@@ -13,10 +13,11 @@ from autotest_lib.client.cros import cros_logging
 # Kernel 3.8 to 3.14 has cur_delay_info, 3.18+ has frequency_info.
 CLOCK_PATHS = ['/sys/kernel/debug/dri/0/i915_frequency_info',
                '/sys/kernel/debug/dri/0/i915_cur_delayinfo']
-# Kernel 3.8+ has i915_fbc_status.
-FBC_PATHS = ['/sys/kernel/debug/dri/0/i915_fbc_status']
+# Kernel 3.8 has i915_fbc, kernel > 3.8 i915_fbc_status.
+FBC_PATHS = ['/sys/kernel/debug/dri/0/i915_fbc',
+             '/sys/kernel/debug/dri/0/i915_fbc_status']
 GEM_PATHS = ['/sys/kernel/debug/dri/0/i915_gem_active']
-PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_state']
+PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_status']
 RC6_PATHS = ['/sys/kernel/debug/dri/0/i915_drpc_info']
 
 
@@ -110,8 +111,11 @@ class graphics_Idle(test.test):
         get into rc6; idle before doing so, and retry every second for 20
         seconds."""
         logging.info('Running verify_graphics_rc6')
+        # TODO(ihf): Implement on baytrail/braswell using residency counters.
+        # But note the format changed since SNB, so this will be complex.
         if (utils.get_cpu_soc_family() == 'x86_64' and
-                self._gpu_type != 'pinetrail'):
+                self._gpu_type != 'pinetrail' and
+                self._gpu_type != 'baytrail' and self._gpu_type != 'braswell'):
             tries = 0
             found = False
             param_path = self.get_valid_path(RC6_PATHS)
@@ -122,7 +126,7 @@ class graphics_Idle(test.test):
                 with open(param_path, 'r') as drpc_info_file:
                     for line in drpc_info_file:
                         match = re.search(r'Current RC state: (.*)', line)
-                        if match and match.group(1) != 'on':
+                        if match and match.group(1) == 'RC6':
                             found = True
                             break
 
