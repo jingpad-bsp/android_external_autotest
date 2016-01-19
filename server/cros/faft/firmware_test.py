@@ -193,9 +193,10 @@ class FirmwareTest(FAFTBase):
         This info is used by generate_test_report later.
         """
         system_info = {
-            'fw_version': self.faft_client.ec.get_version(),
             'hwid': self.faft_client.system.get_crossystem_value('hwid'),
-            'fwid': self.faft_client.system.get_crossystem_value('fwid'),
+            'ec_version': self.faft_client.ec.get_version(),
+            'ro_fwid': self.faft_client.system.get_crossystem_value('ro_fwid'),
+            'rw_fwid': self.faft_client.system.get_crossystem_value('fwid'),
             'servod_version': self._client._servo_host.run(
                 'servod --version').stdout.strip(),
         }
