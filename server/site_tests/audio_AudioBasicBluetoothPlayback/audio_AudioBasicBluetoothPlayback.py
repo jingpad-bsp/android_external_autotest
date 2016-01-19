@@ -35,6 +35,7 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
     RESUME_TIMEOUT_SECS = 60
     PRC_RECONNECT_TIMEOUT = 60
     BLUETOOTH_RECONNECT_TIMEOUT_SECS = 30
+    DELAY_FOR_A2DP_RECONNECT_AFTER_SUSPEND = 10
 
     def disconnect_connect_bt(self, link):
         """Performs disconnect and connect BT module
@@ -163,6 +164,11 @@ class audio_AudioBasicBluetoothPlayback(audio_test.AudioTest):
                         condition=self.bluetooth_nodes_plugged,
                         timeout=self.BLUETOOTH_RECONNECT_TIMEOUT_SECS,
                         desc='bluetooth node auto-reconnect after suspend')
+                # Delay some time for A2DP to be reconnected.
+                # Normally this happens several seconds after HSP is
+                # reconnected. However, there is no event what we can wait for,
+                # so just wait some time.
+                time.sleep(self.DELAY_FOR_A2DP_RECONNECT_AFTER_SUSPEND)
 
             with audio_test_utils.monitor_no_nodes_changed(
                     self.audio_facade, self.dump_logs_after_nodes_changed):
