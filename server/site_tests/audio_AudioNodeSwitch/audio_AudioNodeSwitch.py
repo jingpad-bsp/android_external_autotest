@@ -95,10 +95,11 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         self.display_facade = factory.create_display_facade()
 
         self.check_default_nodes()
-
-        self.set_active_volume_to_node_volume('INTERNAL_SPEAKER')
-        nodes = ['INTERNAL_SPEAKER']
-        self.switch_nodes_and_check_volume(nodes)
+        nodes = []
+        if audio_test_utils.has_internal_speaker(self.host):
+            self.set_active_volume_to_node_volume('INTERNAL_SPEAKER')
+            nodes.append('INTERNAL_SPEAKER')
+            self.switch_nodes_and_check_volume(nodes)
 
 
         if hdmi_node:
