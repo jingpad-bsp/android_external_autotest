@@ -6,7 +6,7 @@
 
 import logging
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 class kernel_CpufreqMinMax(test.test):
@@ -84,6 +84,19 @@ class kernel_CpufreqMinMax(test.test):
         # exit if there are not at least two frequencies
         if (len(available_freqs) < 2):
             return
+
+        # get current maximum scaling frequency
+        f = open(self.sys_cpufreq_path + 'scaling_max_freq', 'r')
+        max_freq = int(f.readline())
+        f.close()
+
+        if max_freq < available_freqs[-1]:
+            logging.info(
+              'Current maximum frequency %d is lower than available maximum %d',
+                max_freq, available_freqs[-1])
+            # Board is probably thermally throttled
+            if not utils.wait_for_cool_machine():
+                raise error.TestFail('Could not get cold machine.')
 
         # set max to 2nd to highest frequency, then the highest
         self._test_freq_set(available_freqs[-2:], 'scaling_max_freq')
