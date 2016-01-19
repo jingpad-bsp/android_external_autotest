@@ -209,7 +209,7 @@ def monitor_no_nodes_changed(audio_facade, callback=None):
 DEFAULT_SECOND_PEAK_RATIO = 0.05
 
 # Tolerate more for bluetooth audio using HSP.
-HSP_SECOND_PEAK_RATIO = 0.1
+HSP_SECOND_PEAK_RATIO = 0.2
 
 # The deviation of estimated dominant frequency from golden frequency.
 DEFAULT_FREQUENCY_DIFF_THRESHOLD = 5
