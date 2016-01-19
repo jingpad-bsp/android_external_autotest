@@ -28,9 +28,11 @@ def _max_volume(sample_width):
 # Constants used for updating the audio policy.
 #
 _DUT_AUDIO_POLICY_PATH = 'system/etc/audio_policy.conf'
-_AUDIO_POLICY_DEFAULT_OUTPUT_DEVICE = 'default_output_device'
+_AUDIO_POLICY_ATTACHED_INPUT_DEVICES = 'attached_input_devices'
 _AUDIO_POLICY_ATTACHED_OUTPUT_DEVICES = 'attached_output_devices'
-_WIRED_HEADSET = 'AUDIO_DEVICE_OUT_WIRED_HEADSET'
+_AUDIO_POLICY_DEFAULT_OUTPUT_DEVICE = 'default_output_device'
+_WIRED_HEADSET_IN = 'AUDIO_DEVICE_IN_WIRED_HEADSET'
+_WIRED_HEADSET_OUT = 'AUDIO_DEVICE_OUT_WIRED_HEADSET'
 
 # Constants used when recording playback.
 #
@@ -94,13 +96,18 @@ class Client(client.Client):
         with open(self.orig_policy) as orig_file:
             with open(test_policy, 'w') as test_file:
                 for line in orig_file:
-                    if _WIRED_HEADSET not in line:
+                    if _WIRED_HEADSET_OUT not in line:
                         if _AUDIO_POLICY_ATTACHED_OUTPUT_DEVICES in line:
-                            line = '%s|%s\n' % (line.rstrip(), _WIRED_HEADSET)
+                            line = '%s|%s\n' % (line.rstrip(),
+                                                _WIRED_HEADSET_OUT)
                             policy_changed = True
                         elif _AUDIO_POLICY_DEFAULT_OUTPUT_DEVICE in line:
                             line = '%s %s\n' % (line.rstrip().rsplit(' ', 1)[0],
-                                                _WIRED_HEADSET)
+                                                _WIRED_HEADSET_OUT)
+                            policy_changed = True
+                    if _WIRED_HEADSET_IN not in line:
+                        if _AUDIO_POLICY_ATTACHED_INPUT_DEVICES in line:
+                            line = '%s|%s\n' % (line.rstrip(), _WIRED_HEADSET_IN)
                             policy_changed = True
 
                     test_file.write(line)
