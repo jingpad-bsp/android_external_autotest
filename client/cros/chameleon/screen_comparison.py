@@ -70,7 +70,7 @@ class ScreenComparer(object):
             if images[0].size != images[1].size:
                 message = ('Sizes of images %s and %s do not match: '
                            '%dx%d != %dx%d' %
-                           (tags + images[0].size + images[1].size))
+                           (tuple(tags) + images[0].size + images[1].size))
                 logging.error(message)
                 return message
 
