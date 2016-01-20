@@ -1001,13 +1001,16 @@ def get_gpu_family():
     return pciid_to_intel_architecture[device_id]
 
 
+_BOARDS_WITHOUT_MONITOR = [
+    'anglar', 'mccloud', 'monroe', 'ninja', 'rikku', 'guado', 'jecht', 'tidus',
+    'veyron_brian', 'beltino', 'panther', 'stumpy', 'panther', 'tricky', 'zako'
+]
+
+
 def has_no_monitor():
     """Return whether a machine doesn't have a built-in monitor"""
     board_name = get_board()
-    if (board_name == 'anglar' or board_name == 'mccloud' or
-        board_name == 'monroe' or board_name == 'stumpy' or
-        board_name == 'panther' or board_name == 'tricky' or
-        board_name == 'zako'):
+    if (board_name in _BOARDS_WITHOUT_MONITOR):
         return True
 
     return False
