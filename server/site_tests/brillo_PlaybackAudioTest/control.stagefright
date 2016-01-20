@@ -6,15 +6,15 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.server.brillo.feedback import client_factory
 
 
-AUTHOR = 'garnold'
-NAME = 'brillo_PlaybackAudioTest'
+AUTHOR = 'garnold, ralphnathan'
+NAME = 'brillo_StagefrightPlaybackAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 SUITE = ''
 
 DOC = """
-Tests audio playback on a Brillo device.
+Tests audio playback using Stagefright on a Brillo device.
 
 Test arguments:
 
@@ -32,7 +32,10 @@ def run(machine):
                  if name in args_dict}
     fb_client_name = args_dict.get('feedback', 'loop')
     fb_client = client_factory.get_audio_client(fb_client_name)
-    job.run_test(NAME, host=hosts.create_host(machine), fb_client=fb_client,
+    job.run_test('brillo_PlaybackAudioTest',
+                 host=hosts.create_host(machine),
+                 fb_client=fb_client,
+                 playback_method='stagefright',
                  **test_args)
 
 
