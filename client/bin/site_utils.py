@@ -917,7 +917,8 @@ def set_scaling_governors(value):
     for path in paths:
         cmd = 'echo %s > %s' % (value, path)
         logging.info('Writing scaling governor mode \'%s\' -> %s', value, path)
-        utils.system(cmd)
+        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
+        utils.system(cmd, ignore_status=True)
 
 
 def _get_cpufreq_paths(filename):
@@ -947,7 +948,8 @@ def restore_scaling_governor_states(path_value_list):
     """
     for (path, value) in path_value_list:
         cmd = 'echo %s > %s' % (value.rstrip('\n'), path)
-        utils.system(cmd)
+        # On Tegra CPUs can be dynamically enabled/disabled. Ignore failures.
+        utils.system(cmd, ignore_status=True)
 
 
 def get_dirty_writeback_centisecs():
