@@ -81,10 +81,7 @@ class video_WebRtcMediaRecorder(test.test):
         self.launch_recorder_test('testStartStopAndRecorderState')
         self.launch_recorder_test('testStartAndDataAvailable')
         self.launch_recorder_test('testStartWithTimeSlice')
-        self.launch_recorder_test('testStartAndStartEventTriggered')
-        self.launch_recorder_test('testStartStopAndStopEventTriggered')
         self.launch_recorder_test('testResumeAndRecorderState')
-        self.launch_recorder_test('testResumeAndResumeEventTriggered')
-        self.launch_recorder_test('testNoResumeWhileRecorderInactive')
+        self.launch_recorder_test('testIllegalResumeThrowsDOMError')
         self.launch_recorder_test('testResumeAndDataAvailable')
 
