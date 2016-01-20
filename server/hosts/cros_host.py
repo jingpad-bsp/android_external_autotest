@@ -1143,16 +1143,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.servo_install(image_url)
 
 
-    def _firmware_repair(self):
-        """Reinstall the firmware image using servo.
+    def _is_firmware_repair_supported(self):
+        """Check if the firmware repair is supported.
 
-        This repair function attempts to install the stable firmware specified
-        by the stable firmware version.
-        Then reset the DUT and try to verify it. If verify fails, it will try to
-        install the CrOS image using servo.
+        The firmware repair is only applicable to DUTs in pools listed in
+        global config CROS/pools_support_firmware_repair.
 
-        Note that the firmware repair is only applicable to DUTs in pools listed
-        in global config CROS/pools_support_firmware_repair.
+        @return: True if it is supported; otherwise False.
         """
         logging.info('Checking if host %s can be repaired with firmware '
                      'repair.', self.hostname)
@@ -1160,11 +1157,21 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                                  self._AFE)
         pools_support_firmware_repair = CONFIG.get_config_value('CROS',
                 'pools_support_firmware_repair', type=str).split(',')
-        if (not pools or not pools_support_firmware_repair or
-            not set(pools).intersection(set(pools_support_firmware_repair))):
-            logging.info('Host %s is not in pools that support firmware repair.'
-                         ' pools supporting firmware repair are: %s.',
-                         self.hostname, pools_support_firmware_repair)
+
+        return (pools and pools_support_firmware_repair and
+                set(pools).intersection(set(pools_support_firmware_repair)))
+
+
+    def _firmware_repair(self):
+        """Reinstall the firmware image using servo.
+
+        This repair function attempts to install the stable firmware specified
+        by the stable firmware version.
+        Then reset the DUT and try to verify it. If verify fails, it will try to
+        install the CrOS image using servo.
+        """
+        if not self._is_firmware_repair_supported():
+            logging.info('Host is not in pools that support firmware repair.')
             raise error.AutoservRepairMethodNA(
                     'Firmware repair is not applicable to host %s.' %
                     self.hostname)
@@ -1820,6 +1827,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.error('TPM_VERIFY: Cryptohome did not return valid status.')
 
 
+    def verify_firmware_status(self):
+        """Verify the host's firmware is in a good state.
+
+        @raise error.AutoservError: If state is not good.
+        """
+        if self._is_firmware_repair_supported():
+            # In vboot1, active firmware being B means firmware A has
+            # something wrong.
+            cmd = 'crossystem fw_vboot2?0 mainfw_act?B'
+            rv = self.run(command=cmd, ignore_status=True)
+            if rv.exit_status == 0:
+                raise error.AutoservError('Firmware A is in a bad state.')
+        else:
+            logging.info('Do not care about firmware status when the host '
+                         'is not in pools that support firmware repair.')
+
+
     def cleanup(self):
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
@@ -1942,6 +1966,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.verify_cros_version_label()
 
         self.verify_tpm_status()
+
+        self.verify_firmware_status()
 
 
     def verify_hardware(self):
