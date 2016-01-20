@@ -10,8 +10,6 @@ from time import sleep
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
-from autotest_lib.server import site_utils
-from autotest_lib.server import frontend
 from autotest_lib.server.cros.ap_configurators import \
     ap_configurator_factory
 from autotest_lib.client.common_lib.cros.network import ap_constants
@@ -151,21 +149,6 @@ class ApBatchLocker(object):
                 ap_locker.to_be_locked = False
 
         return False
-
-
-    def lock_webdriver_in_afe(self):
-        """Locks webdriver instance in AFE and returns hostname.
-
-        @return string: hostname of locked webdriver instance.
-
-        """
-        afe = frontend.AFE(debug=True)
-        self.webdriver_hostname = site_utils.lock_host_with_labels(afe,
-                                  self.manager, labels=['webdriver'])
-        if self.webdriver_hostname is not None:
-            return self.webdriver_hostname
-        logging.error("Unable to lock any webdriver instances.")
-        return None
 
 
     def get_ap_batch(self, batch_size=ap_cartridge.THREAD_MAX):

@@ -5,17 +5,15 @@
 import collections
 import logging
 import random
-import sys
 
 from time import sleep
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import utils
 from autotest_lib.server import hosts
 from autotest_lib.server import frontend
 from autotest_lib.server import site_utils
-from autotest_lib.server.cros.dynamic_suite import suite, constants
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.network import wifi_client
 
 # Max number of retry attempts to lock a DUT.
@@ -162,7 +160,8 @@ class CliqueDUTBatchLocker(object):
             else:
                 logging.error('Unable to lock device %s.', host_name)
         else:
-            afe = frontend.AFE(debug=True, server='cautotest')
+            afe = frontend.AFE(debug=True,
+                               server=site_utils.get_global_afe_hostname())
             labels = []
             labels.append(constants.BOARD_PREFIX + board_name)
             labels.append('clique_dut')

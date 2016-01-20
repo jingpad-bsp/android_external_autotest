@@ -32,7 +32,8 @@ def allocate_packet_capturer(lock_manager, hostname):
     if hostname is not None:
         return hosts.SSHHost(hostname)
 
-    afe = frontend.AFE(server='cautotest', debug=True)
+    afe = frontend.AFE(debug=True,
+                       server=site_utils.get_global_afe_hostname())
     return hosts.SSHHost(site_utils.lock_host_with_labels(
             afe, lock_manager, labels=['packet_capture']) + '.cros')
 
@@ -47,7 +48,8 @@ def allocate_webdriver_instance(lock_manager):
 
     @return string hostname of locked webdriver instance
     """
-    afe = frontend.AFE(debug=True)
+    afe = frontend.AFE(debug=True,
+                       server=site_utils.get_global_afe_hostname())
     webdriver_hostname = site_utils.lock_host_with_labels(afe, lock_manager,
                                     labels=['webdriver'])
     if webdriver_hostname is not None:
