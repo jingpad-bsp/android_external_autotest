@@ -65,6 +65,10 @@ SUCCESS = 'Success'
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
 
+ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
+        'CROS', 'enable_devserver_in_restricted_subnet', type=bool,
+        default=False)
+
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
 
@@ -438,7 +442,7 @@ class DevServer(object):
         # Go through all restricted subnet settings and check if the DUT is
         # inside a restricted subnet. If so, get the subnet setting.
         restricted_subnet = None
-        if host_ip:
+        if host_ip and ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET:
             for subnet_ip, mask_bits in utils.RESTRICTED_SUBNETS:
                 if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
                     restricted_subnet = subnet_ip
@@ -449,11 +453,13 @@ class DevServer(object):
                     devservers = cls.get_devservers_in_same_subnet(
                             subnet_ip, mask_bits)
                     break
-        # If devserver election is not restricted, select a devserver from
-        # unrestricted servers. Otherwise, drone will not be able to access
-        # devserver in restricted subnet.
+        # If devserver election is not restricted and
+        # enable_devserver_in_restricted_subnet in global config is set to True,
+        # select a devserver from unrestricted servers. Otherwise, drone will
+        # not be able to access devserver in restricted subnet.
         can_retry = False
-        if not restricted_subnet and utils.RESTRICTED_SUBNETS:
+        if (not restricted_subnet and utils.RESTRICTED_SUBNETS and
+            ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET):
             devservers = cls.get_unrestricted_devservers()
             if PREFER_LOCAL_DEVSERVER and host_ip:
                 can_retry = True

@@ -112,6 +112,7 @@ import os
 import urllib
 import time
 
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
@@ -122,8 +123,12 @@ from autotest_lib.scheduler import scheduler_models
 from autotest_lib.server import autoserv_utils
 from autotest_lib.server import system_utils
 
-
+CONFIG = global_config.global_config
 AUTOSERV_NICE_LEVEL = 10
+
+ENABLE_DRONE_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
+        'CROS', 'enable_drone_in_restricted_subnet', type=bool,
+        default=False)
 
 
 class BaseAgentTask(object):
@@ -362,10 +367,11 @@ class BaseAgentTask(object):
 
 
     def get_drone_hostnames_allowed(
-            self, restricted_subnets=utils.RESTRICTED_SUBNETS):
+            self, restricted_subnets=utils.RESTRICTED_SUBNETS,
+            enable_drone_in_subnet=ENABLE_DRONE_IN_RESTRICTED_SUBNET):
         filtered_drones = None
         has_unrestricted_host = False
-        if self.hostnames and restricted_subnets:
+        if (self.hostnames and restricted_subnets and enable_drone_in_subnet):
             for hostname in self.hostnames.values():
                 subnet = utils.get_restricted_subnet(hostname,
                                                      restricted_subnets)
@@ -407,7 +413,8 @@ class BaseAgentTask(object):
                     return filtered_drones
 
         # If host is not in restricted subnet, use the unrestricted drones only.
-        if filtered_drones is None and restricted_subnets:
+        if (filtered_drones is None and restricted_subnets and
+            enable_drone_in_subnet):
             filtered_drones = set(
                     system_utils.DroneCache.get_unrestricted_drones(
                             restricted_subnets=restricted_subnets))

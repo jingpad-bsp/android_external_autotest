@@ -45,7 +45,7 @@ class RestrictedSubnetTest(unittest.TestCase,
         task.hostnames = {1: self.HOST_IN_RESTRICTED_SUBNET}
         self.assertEqual(
                 set([self.DRONE_IN_RESTRICTED_SUBNET]),
-                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS))
+                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS, True))
         self.god.check_playback()
 
 
@@ -62,7 +62,7 @@ class RestrictedSubnetTest(unittest.TestCase,
         task.hostnames = {1: self.HOST_NOT_IN_RESTRICTED_SUBNET}
         self.assertEqual(
                 set([self.DRONE_NOT_IN_RESTRICTED_SUBNET]),
-                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS))
+                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS, True))
         self.god.check_playback()
 
 
@@ -76,7 +76,7 @@ class RestrictedSubnetTest(unittest.TestCase,
                           2: self.HOST_IN_RESTRICTED_SUBNET}
         self.assertEqual(
                 set(),
-                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS))
+                task.get_drone_hostnames_allowed(self.RESTRICTED_SUBNETS, True))
         self.god.check_playback()
 
 
