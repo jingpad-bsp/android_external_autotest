@@ -43,8 +43,9 @@ except ImportError:
     print '  - (not yet supported) be run after running '
     print '    ../utils/build_externals.py'
 
-_FILE_BUG_SUITES = (['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_.*',
-                     'sanity', 'push_to_prod'])
+_FILE_BUG_SUITES = ['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_au_beta',
+                    'paygen_au_canary', 'paygen_au_dev', 'paygen_au_stable',
+                    'sanity', 'push_to_prod']
 
 class RetryHandler(object):
     """Maintain retry information.
@@ -936,15 +937,6 @@ class Suite(object):
                 not result.is_testna() and
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
-    def should_report_as_bug(self, suite):
-        """
-        Whether the test failures should be reported as bug.
-
-        @param suite: the suite name the failed tests belong to.
-        @return: True is reported as bug False if reported as email.
-        """
-        regrex = "(" + ")|(".join(_FILE_BUG_SUITES) + ")"
-        return bool(re.match(regrex, suite))
 
     def wait(self, record, bug_template={}):
         """
@@ -1016,7 +1008,7 @@ class Suite(object):
 
                     # File bug when failure is one of the _FILE_BUG_SUITES,
                     # otherwise send an email to the owner anc cc.
-                    if self.should_report_as_bug(self._tag):
+                    if self._tag in _FILE_BUG_SUITES:
                         bug_id, bug_count = bug_reporter.report(failure,
                                                                 merged_template)
 
