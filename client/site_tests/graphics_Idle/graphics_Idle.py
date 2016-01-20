@@ -77,7 +77,7 @@ class graphics_Idle(test.test):
         """On baytrail systems with a known panel, checks the kernel log for a
         message that a short blanking mode has been added."""
         logging.info('Running verify_short_blanking')
-        if self._gpu_type != 'baytrail':
+        if self._gpu_type != 'baytrail' or utils.has_no_monitor():
             return ''
 
         # Open the EDID to find the panel model.
