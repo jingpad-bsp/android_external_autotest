@@ -22,6 +22,7 @@ class PDConsoleUtils(object):
     SNK_CONNECT = 'SNK_READY'
     SRC_DISC = 'SRC_DISCONNECTED'
     SNK_DISC = 'SNK_DISCONNECTED'
+    PD_MAX_PORTS = 2
 
     # dualrole input/ouput values
     DUALROLE_QUERY_DELAY = 0.25
@@ -36,6 +37,32 @@ class PDConsoleUtils(object):
         'pd_state': 'State:\s+([\w]+_[\w]+)',
         'flags': 'Flags:\s+([\w]+)',
         'polarity': '(CC\d)'
+    }
+
+    # Dictionary for PD control message types
+    PD_CONTROL_MSG_MASK = 0x1f
+    PD_CONTROL_MSG_DICT = {
+        'GoodCRC': 1,
+        'GotoMin': 2,
+        'Accept': 3,
+        'Reject': 4,
+        'Ping': 5,
+        'PS_RDY': 6,
+        'Get_Source_Cap': 7,
+        'Get_Sink_Cap': 8,
+        'DR_Swap': 9,
+        'PR_Swap': 10,
+        'VCONN_Swap': 11,
+        'Wait': 12,
+        'Soft_Reset': 13
+    }
+
+    # Dictionary for PD firmware state flags
+    PD_STATE_FLAGS_DICT = {
+        'power_swap': 1 << 1,
+        'data_swap': 1 << 2,
+        'data_swap_active': 1 << 3,
+        'vconn_on': 1 << 12
     }
 
     def __init__(self, console):
@@ -205,4 +232,41 @@ class PDConsoleUtils(object):
 
         return status
 
+    def disable_pd_console_debug(self):
+        """Turn off PD console debug
+
+        """
+        cmd = 'pd dump 0'
+        self.send_pd_command(cmd)
+
+    def enable_pd_console_debug(self):
+        """Enable PD console debug level 1
+
+        """
+        cmd = 'pd dump 1'
+        self.send_pd_command(cmd)
+
+    def is_pd_flag_set(self, port, key):
+        """Test a bit in PD protocol state flags
+
+        The flag word contains various PD protocol state information.
+        This method allows for a specific flag to be tested.
+
+        @param port: Port which has the active PD connection
+        @param key: dict key to retrieve the flag bit mapping
+
+        @returns True if the bit to be tested is set
+        """
+        pd_flags = self.get_pd_flags(port)
+        return bool(self.PD_STATE_FLAGS_DICT[key] & int(pd_flags, 16))
+
+    def is_pd_connected(self, port):
+        """Check if a PD connection is active
+
+        @param port: port to be used for pd console commands
+
+        @returns True if port is in connected state
+        """
+        state = self.get_pd_state(port)
+        return bool(state == self.SRC_CONNECT or state == self.SNK_CONNECT)
 
