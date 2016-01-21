@@ -24,7 +24,7 @@ _POOL_SIZE = 4
 # Pattern for the image name when used to provision a dut connected to testbed.
 # It should follow the naming convention of branch/target/build_id[:serial],
 # where serial is optional.
-_IMAGE_NAME_PATTERN = '(.*/.*/.*)(?::(.*))'
+_IMAGE_NAME_PATTERN = '(.*/.*/[^:]*)(?::(.*))?'
 
 class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
@@ -187,8 +187,7 @@ class TestBed(object):
                         'Image name of "%s" has invalid format. It should '
                         'follow naming convention of '
                         'branch/target/build_id[:serial]', image)
-            serial = None if len(match.groups()) == 1 else match.group(2)
-            images.append((match.group(1), serial))
+            images.append((match.group(1), match.group(2)))
         return images
 
 
@@ -211,6 +210,65 @@ class TestBed(object):
                      host.hostname, host.adb_serial, build_url)
 
 
+    def locate_devices(self, images):
+        """Locate device for each image in the given images list.
+
+        @param images: A list of tuples of (build, serial). serial could be None
+                if it's not specified. Following are some examples:
+                [('branch1/shamu-userdebug/100', None),
+                 ('branch1/shamu-userdebug/100', None)]
+                [('branch1/hammerhead-userdebug/100', 'XZ123'),
+                 ('branch1/hammerhead-userdebug/200', None)]
+                where XZ123 is serial of one of the hammerheads connected to the
+                testbed.
+
+        @return: A dictionary of (serial, build). Note that build here should
+                 not have a serial specified in it.
+        @raise InstallError: If not enough duts are available to install the
+                given images. Or there are more duts with the same board than
+                the images list specified.
+        """
+        # The map between serial and build to install in that dut.
+        serial_build_pairs = {}
+        builds_without_serial = [build for build, serial in images
+                                 if not serial]
+        for build, serial in images:
+            if serial:
+                serial_build_pairs[serial] = build
+        # Return the mapping if all builds have serial specified.
+        if not builds_without_serial:
+            return serial_build_pairs
+
+        # serials grouped by the board of duts.
+        duts_by_board = {}
+        for serial, host in self.get_adb_devices().iteritems():
+            # Excluding duts already assigned to a build.
+            if serial in serial_build_pairs:
+                continue
+            board = host.get_board_name()
+            duts_by_board.setdefault(board, []).append(serial)
+
+        # Builds grouped by the board name.
+        builds_by_board = {}
+        for build in builds_without_serial:
+            match = re.match(adb_host.BUILD_REGEX, build)
+            if not match:
+                raise error.InstallError('Build %s is invalid. Failed to parse '
+                                         'the board name.' % build)
+            board = match.group('BOARD')
+            builds_by_board.setdefault(board, []).append(build)
+
+        # Pair build with dut with matching board.
+        for board, builds in builds_by_board.iteritems():
+            duts = duts_by_board.get(board, None)
+            if not duts or len(duts) != len(builds):
+                raise error.InstallError(
+                        'Expected number of DUTs for board %s is %d, got %d' %
+                        (board, len(builds), len(duts) if duts else 0))
+            serial_build_pairs.update(dict(zip(duts, builds)))
+        return serial_build_pairs
+
+
     def machine_install(self):
         """Install the DUT."""
         if not self._parser.options.image:
@@ -218,12 +276,9 @@ class TestBed(object):
         images = self._parse_image(self._parser.options.image)
 
         arguments = []
-        for build, serial in images:
-            # TODO(crbug.com/574543): Support allocating DUT based on board, not
-            # serial.
-            if not serial in self.get_adb_devices():
-                raise error.InstallError('Serial "%s" is not found in the '
-                                         'devices connected to the test bed')
+        for serial, build in self.locate_devices(images).iteritems():
+            logging.info('Installing build %s on DUT with serial %s.', build,
+                         serial)
             host = self.get_adb_devices()[serial]
             build_url, _ = host.stage_build_for_install(build)
             arguments.append({'host': host,

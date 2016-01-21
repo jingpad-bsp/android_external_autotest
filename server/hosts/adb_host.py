@@ -63,10 +63,12 @@ WAIT_UP_AFTER_WIPE_TIME_SECONDS = 1200
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
 
+# Regex to parse build name to get the detailed build information.
+BUILD_REGEX = ('(?P<BRANCH>([^/]+))/(?P<BOARD>([^/]+))-'
+               '(?P<BUILD_TYPE>([^/]+))/(?P<BUILD_ID>([^/]+))')
 # Regex to parse devserver url to get the detailed build information. Sample
 # url: http://$devserver:8080/static/branch/target/build_id
-DEVSERVER_URL_REGEX = ('.*/(?P<BRANCH>([^/]+))/(?P<BOARD>([^/]+))-'
-                       '(?P<BUILD_TYPE>([^/]+))/(?P<BUILD_ID>([^/]+))/*')
+DEVSERVER_URL_REGEX = '.*/%s/*' % BUILD_REGEX
 
 ANDROID_IMAGE_FILE_FMT = '%(board)s-img-%(build_id)s.zip'
 ANDROID_BOOTLOADER = 'bootloader.img'
@@ -328,13 +330,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 connect_timeout=connect_timeout, args=args)
 
 
+    def get_board_name(self):
+        """Get the name of the board, e.g., shamu, dragonboard etc.
+        """
+        return self.run_output('getprop %s' % BOARD_FILE)
+
+
     @label_decorator()
     def get_board(self):
         """Determine the correct board label for the device.
 
         @returns a string representing this device's board.
         """
-        board = self.run_output('getprop %s' % BOARD_FILE)
+        board = self.get_board_name()
         board_os = self.get_os_type()
         return constants.BOARD_PREFIX + '-'.join([board_os, board])
 
