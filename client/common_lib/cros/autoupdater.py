@@ -202,7 +202,7 @@ class BaseUpdater(object):
         try:
             autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
                               (self.updater_ctrl_bin, self.update_url))
-            self.host.run(autoupdate_cmd, timeout=1200)
+            self.host.run(autoupdate_cmd, timeout=3600)
         except error.AutoservRunError as e:
             list_image_dir_contents(self.update_url)
             update_error = RootFSUpdateError(
