@@ -34,7 +34,7 @@ SOURCES_GL_BENCH += md5.cc png_helper.cc utils.cc waffle_stuff.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc utils.cc waffle_stuff.cc
 
 PKG_CONFIG ?= pkg-config
-BASE_VER ?= 334380
+BASE_VER ?= 369476
 PC_DEPS = libchrome-$(BASE_VER) libpng
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
