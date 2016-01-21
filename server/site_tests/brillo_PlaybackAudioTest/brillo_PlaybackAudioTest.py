@@ -35,9 +35,9 @@ class brillo_PlaybackAudioTest(test.test):
         @raises TestError: Invalid playback method.
         """
         if method == 'libmedia':
-            return 'brillo_audio_test play_libmedia'
+            return 'brillo_audio_test --playback --libmedia --sine'
         elif method == 'stagefright':
-            return 'brillo_audio_test play_stagefright_sine'
+            return 'brillo_audio_test --playback --stagefright --sine'
         elif method == 'opensles':
             return 'slesTest_sawtoothBufferQueue'
         else:
