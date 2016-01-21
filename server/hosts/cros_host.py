@@ -1859,6 +1859,20 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                          'is not in pools that support firmware repair.')
 
 
+    def verify_filesystem_write_status(self):
+        """Verify the DUT's filesystem is read/writable
+
+        @raise error.AutoservError: if filesystem is not writable.
+        """
+        # try to create & delete a file
+        filename = "/mnt/stateful_partition/test.txt"
+        cmd = 'touch %s && rm %s' % (filename, filename)
+        rv = self.run(command=cmd, ignore_status=True)
+
+        if rv.exit_status == 1:
+            raise error.AutoservError('DUT filesystem is read-only.')
+
+
     def cleanup(self):
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
@@ -1983,6 +1997,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.verify_tpm_status()
 
         self.verify_firmware_status()
+
+        self.verify_filesystem_write_status()
 
 
     def verify_hardware(self):
