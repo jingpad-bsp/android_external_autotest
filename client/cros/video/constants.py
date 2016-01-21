@@ -2,9 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-SUPPORTED_BOARDS = ['butterfly', 'daisy', 'falco', 'link', 'nyan_big',
-                    'parrot', 'peppy', 'peach_pi', 'peach_pit', 'samus',
-                    'squawks', 'veyron_jerry']
+SUPPORTED_BOARDS = ['lumpy', 'daisy', 'falco', 'link', 'parrot', 'peppy',
+                    'peach_pi', 'peach_pit', 'samus', 'squawks', 'veyron_jerry']
 
 DESIRED_WIDTH = 864
 DESIRED_HEIGHT = 494
