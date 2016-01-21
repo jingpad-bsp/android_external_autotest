@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import common
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 
@@ -28,9 +29,7 @@ class brillo_KernelVersionTest(test.test):
         except error.AutoservRunError:
             raise error.TestFail('Failed to check kernel version')
 
-        for actual_comp, min_comp in zip(result.split('-')[0].split('.'),
-                                         min_version.split('.')):
-            if actual_comp < min_comp:
-                raise error.TestFail(
-                        'Device kernel version (%s) older than required (%s)' %
-                        (result, min_version))
+        if utils.compare_versions(result, min_version) < 0:
+            raise error.TestFail(
+                    'Device kernel version (%s) older than required (%s)' %
+                    (result, min_version))
