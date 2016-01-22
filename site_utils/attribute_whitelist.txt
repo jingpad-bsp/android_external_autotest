@@ -109,6 +109,7 @@ suite:telemetry_unit
 suite:tendo_experimental
 suite:touch
 suite:video
+suite:video_image_comparison_chameleon
 suite:wifi_atten_perf
 suite:wifi_correctness_cros_core
 suite:wifi_flaky
