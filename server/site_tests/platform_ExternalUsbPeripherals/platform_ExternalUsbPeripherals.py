@@ -302,6 +302,7 @@ class platform_ExternalUsbPeripherals(test.test):
 
                 if action == 'RESUME':
                     self.action_resume(boot_id)
+                    time.sleep(_WAIT_DELAY)
                 elif action == 'UNPLUG':
                     self.set_hub_power(False)
                 elif action == 'PLUG':
