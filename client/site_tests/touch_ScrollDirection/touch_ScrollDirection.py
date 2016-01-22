@@ -4,7 +4,6 @@
 
 import logging
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import touch_playback_test_base
@@ -17,12 +16,6 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
     _DIRECTIONS = ['down', 'up', 'right', 'left']
     _REVERSES = {'down': 'up', 'up': 'down', 'right': 'left', 'left': 'right'}
     _FILENAME_FMT_STR = 'scroll-%s'
-
-
-    def _wait_for_page_ready(self):
-        utils.poll_for_condition(
-                lambda: self._tab.EvaluateJavaScript('pageReady'),
-                exception=error.TestError('Test page is not ready!'))
 
 
     def _check_scroll_direction(self, filepath, expected):
