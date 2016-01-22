@@ -32,6 +32,7 @@ suite:experimental
 suite:factory
 suite:faft
 suite:faft_bios
+suite:faft_bios_ec3po
 suite:faft_dev
 suite:faft_dev_ryu
 suite:faft_ec
