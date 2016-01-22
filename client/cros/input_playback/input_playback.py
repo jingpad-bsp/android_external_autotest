@@ -248,10 +248,10 @@ class InputPlayback(object):
         """
         fw_id, hw_id = None, None
 
-        if not device_dir:
+        if not device_dir or input_type not in ['touchpad', 'touchscreen']:
             return fw_id, hw_id
 
-        # Note: 2nd gen Synaptics touchpads do not report fw_id.
+        # Touch devices with custom drivers save this info as a file.
         fw_filenames = ['fw_version', 'firmware_version', 'firmware_id']
         for fw_filename in fw_filenames:
             fw_path = os.path.join(device_dir, fw_filename)
@@ -266,7 +266,7 @@ class InputPlayback(object):
                 hw_id = self._get_contents_of_file(hw_path)
                 break
 
-        # hw_ids for Weida and 2nd gen Synaptics are different.
+        # Hw_ids for Weida and 2nd gen Synaptics are different.
         if not hw_id:
             id_folder = os.path.abspath(os.path.join(device_dir, '..', 'id'))
             product_path = os.path.join(id_folder, 'product')
@@ -280,6 +280,23 @@ class InputPlayback(object):
                         hw_id = vendor + product
                 else:
                     hw_id = product
+
+        # Fw_ids for 2nd gen Synaptics can only be found via rmi4update.
+        # See if any /dev/hidraw* link to this device's input event.
+        if not fw_id:
+            input_name_path = os.path.join(device_dir, 'input')
+            input_name = utils.run('ls %s' % input_name_path,
+                                   ignore_status=True).stdout.strip()
+            hidraws = utils.run('ls /dev/hidraw*').stdout.strip().split()
+            for hidraw in hidraws:
+                class_folder = hidraw.replace('dev', 'sys/class/hidraw')
+                input_folder_path = os.path.join(class_folder, 'device',
+                                                 'input', input_name)
+                if os.path.exists(input_folder_path):
+                    fw_id = utils.run('rmi4update -p -d %s' % hidraw,
+                                      ignore_status=True).stdout.strip()
+                    if fw_id == '':
+                        fw_id = None
 
         return fw_id, hw_id
 
