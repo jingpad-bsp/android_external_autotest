@@ -11,7 +11,8 @@ NAME = 'brillo_OpenSLESRecordingAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-SUITE = ''
+ATTRIBUTES = 'suite:brillo-audio'
+SUITE = 'brillo-audio'
 
 DOC = """
 Tests audio recording using OpenSL ES on a Brillo device.

@@ -11,7 +11,8 @@ NAME = 'brillo_LibmediaPlaybackAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-SUITE = ''
+ATTRIBUTES = 'suite:brillo-audio'
+SUITE = 'brillo-audio'
 
 DOC = """
 Tests audio playback using libmedia on a Brillo device.

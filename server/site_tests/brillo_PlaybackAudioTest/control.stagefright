@@ -11,7 +11,8 @@ NAME = 'brillo_StagefrightPlaybackAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-SUITE = ''
+ATTRIBUTES = 'suite:brillo-audio'
+SUITE = 'brillo-audio'
 
 DOC = """
 Tests audio playback using Stagefright on a Brillo device.
