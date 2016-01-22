@@ -128,12 +128,14 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 raise error.TestError('value must not be given '
                                       'when mode=all.')
 
-        # If |value| is given, set |is_value_given| flag to True. And if
-        # |value| was given as 'none' or '', then set |value| to None.
+        # If |value| is given, set |is_value_given| flag to True. If it
+        # was given as 'none', 'null', or '', then set |value| to 'null'.
         if self.value is not None:
             self.is_value_given = True
-            if self.value.lower() == 'none' or not self.value:
-                self.value = None
+            if (self.value.lower() == 'none' or
+                self.value.lower() == 'null' or
+                self.value == ''):
+                self.value = 'null'
         else:
             self.is_value_given = False
 
@@ -274,9 +276,10 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         """Compare |policy_value| to |value_shown| with whitespace removed.
 
         Compare the expected policy value with the value actually shown on the
-        chrome://policies page, after removing all whitespace from both
-        strings. Whitespace is removed because Chrome OS sometimes processes
-        the value shown to make it more human readable.
+        chrome://policies page. Before comparing, convert both values to JSON
+        formatted strings, and remove all whitespace. Whitespace is removed
+        because Chrome processes some policy values to show them in a more
+        human readable format.
 
         @param policy_value: Expected value to appear on chrome://policy page.
         @param value_shown: Value as it appears on chrome://policy page.
@@ -285,8 +288,17 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         @returns: True if the strings match after removing all whitespace.
 
         """
-        trimmed_value = ''.join(policy_value.split()) if policy_value else ''
-        trimmed_shown = ''.join(value_shown.split()) if value_shown else ''
+        # Convert Python None or '' to JSON formatted 'null' string.
+        if value_shown is None or value_shown == '':
+            value_shown = 'null'
+        if policy_value is None or policy_value == '':
+            policy_value = 'null'
+
+        # Remove whitespace.
+        trimmed_value = ''.join(policy_value.split())
+        trimmed_shown = ''.join(value_shown.split())
+        logging.info('Trimmed policy value shown: %r (expected: %r)',
+                     trimmed_shown, trimmed_value)
         return trimmed_value == trimmed_shown
 
     def _make_json_blob(self, policies_json):
@@ -325,7 +337,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         recommended_policies = {}
         collated_json = {}
 
-        # Extract mandatory and recommended policies.
+        # Extract mandatory and recommended mode dicts.
         if 'mandatory' in policies_json:
             mandatory_policies = policies_json['mandatory']
             del policies_json['mandatory']
@@ -333,7 +345,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             recommended_policies = policies_json['recommended']
             del policies_json['recommended']
 
-        # Move remaining modeless policies into mandatory dict.
+        # Move any remaining modeless policies into mandatory dict.
         if policies_json:
             mandatory_policies.update(policies_json)
 
@@ -360,7 +372,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         policies_json_copy = policies_json.copy()
         for policies in policies_json_copy.values():
             for policy_data in policies.items():
-                if policy_data[1] is None or not policy_data[1]:
+                if policy_data[1] is None or policy_data[1] == '':
                     policies.pop(policy_data[0])
         return policies_json_copy
 
@@ -398,7 +410,6 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         value_shown = row_values[1].encode('ascii', 'ignore')
         status_shown = row_values[2].encode('ascii', 'ignore')
-
         if status_shown == 'Not set.':
             return None
         return value_shown
@@ -418,6 +429,14 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             raise error.TestFail('Unable to find matching elements on '
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
+
+    def json_string(self, policy_value):
+         """Convert policy value to a JSON formatted string.
+
+         @param policy_value: object containing a policy value.
+         @returns: string in JSON format.
+         """
+         return json.dumps(policy_value)
 
     def _validate_and_run_test_case(self, test_case, run_test):
         """Validate test case and call the test runner in the test class.
@@ -448,3 +467,8 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 logging.info('  case=%s, value="%s"', test_case, value)
         else:
             raise error.TestError('Run mode is not valid: %s' % self.mode)
+
+    def run_once(self):
+        # The run_once() method is core to all autotest tests. We define it
+        # herein to support tests that do not define their own override.
+        self.run_once_impl(self.run_test_case)
