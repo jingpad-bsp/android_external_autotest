@@ -7,7 +7,7 @@ import datetime, logging
 import common
 from autotest_lib.client.common_lib import priorities
 
-import base_event, forgiving_config_parser, task
+import base_event, task
 
 
 class TimedEvent(base_event.BaseEvent):
@@ -80,48 +80,27 @@ class Nightly(TimedEvent):
 
     @var KEYWORD: the keyword to use in a run_on option to associate a task
                   with the Nightly event.
-    @var _DEFAULT_HOUR: can be overridden in the "nightly_params" config section
+    @var _DEFAULT_HOUR: the default hour to trigger the nightly event.
     """
 
     KEYWORD = 'nightly'
+    # Each task may have different setting of `hour`. Therefore, nightly tasks
+    # can run at each hour. The default is set to 9PM.
     _DEFAULT_HOUR = 21
     PRIORITY = priorities.Priority.DAILY
     TIMEOUT = 24  # Kicked off once a day, so they get the full day to run
 
-
-    @classmethod
-    def _ParseConfig(cls, config):
-        """Create args to pass to __init__ by parsing |config|.
-
-        Calls super class' _ParseConfig() method, then parses these additonal
-        options:
-          hour: Integer hour, on a 24 hour clock.
-        """
-        from_base = super(Nightly, cls)._ParseConfig(config)
-
-        section = base_event.SectionName(cls.KEYWORD)
-        event_time = config.getint(section, 'hour') or cls._DEFAULT_HOUR
-
-        from_base.update({'event_time': event_time})
-        return from_base
-
-
-    def __init__(self, manifest_versions, always_handle, event_time):
+    def __init__(self, manifest_versions, always_handle):
         """Constructor.
 
         @param manifest_versions: ManifestVersions instance to use for querying.
         @param always_handle: If True, make ShouldHandle() always return True.
-        @param event_time: The hour of the day to set |self._deadline| at.
         """
-        # determine if we're past today's nightly event and set the
-        # next deadline for this suite appropriately.
+        # Set the deadline to the next even hour.
         now = self._now()
-        tonight = datetime.datetime.combine(now, datetime.time(event_time))
-        # tonight is now set to today at event_time:00:00
-        if tonight >= now:
-            deadline = tonight
-        else:
-            deadline = tonight + datetime.timedelta(days=1)
+        now_hour = datetime.datetime(now.year, now.month, now.day, now.hour)
+        extra_hour = 0 if now == now_hour else 1
+        deadline = now_hour + datetime.timedelta(hours=extra_hour)
         super(Nightly, self).__init__(self.KEYWORD, manifest_versions,
                                       always_handle, deadline)
 
@@ -144,7 +123,22 @@ class Nightly(TimedEvent):
 
 
     def UpdateCriteria(self):
-        self._deadline = self._deadline + datetime.timedelta(days=1)
+        self._deadline = self._deadline + datetime.timedelta(hours=1)
+
+
+    def FilterTasks(self):
+        """Filter the tasks to only return tasks should run now.
+
+        Nightly task can run at each hour. this function only return the tasks
+        set to run in current hour.
+
+        @return: A list of tasks can run now.
+        """
+        current_hour = self._now().hour
+        return [task for task in self.tasks
+                if ((task.hour is not None and task.hour == current_hour) or
+                    (task.hour is None and
+                     current_hour == self._DEFAULT_HOUR))]
 
 
 class Weekly(TimedEvent):

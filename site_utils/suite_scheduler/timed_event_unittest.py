@@ -6,11 +6,11 @@
 
 """Unit tests for site_utils/timed_event.py."""
 
-import datetime, logging, mox, unittest
+import collections, datetime, mox, unittest
 
 # driver must be imported first due to circular imports in base_event and task
 import driver  # pylint: disable-msg=W0611
-import base_event, deduping_scheduler, forgiving_config_parser
+import base_event, forgiving_config_parser
 import manifest_versions, task, timed_event
 
 
@@ -73,7 +73,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         init_now = self.BaseTime() - datetime.timedelta(seconds=1)
         fire_now = self.BaseTime() + datetime.timedelta(seconds=1)
         timed_event.TimedEvent._now().AndReturn(init_now)
-        timed_event.TimedEvent._now().AndReturn(fire_now)
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(fire_now)
         self.mox.ReplayAll()
 
         t = self.CreateEvent()  # Deadline gets set for later tonight...
@@ -81,7 +81,7 @@ class TimedEventTestBase(mox.MoxTestBase):
         self.assertTrue(t.ShouldHandle())
 
 
-    def doTestDeadlineUpdate(self, days_to_jump):
+    def doTestDeadlineUpdate(self, days_to_jump, hours_to_jump=0):
         fake_now = self.TimeBefore(self.BaseTime())
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
@@ -96,12 +96,13 @@ class TimedEventTestBase(mox.MoxTestBase):
         self.mox.ReplayAll()
 
         self.assertTrue(nightly.ShouldHandle())
-        nightly.UpdateCriteria()  # Deadline moves to tomorrow night
+        nightly.UpdateCriteria()  # Deadline moves to an hour later
         self.assertFalse(nightly.ShouldHandle())
         self.mox.VerifyAll()
 
         self.mox.ResetAll()
-        fake_now += datetime.timedelta(days=days_to_jump)  # Jump past deadline.
+        # Jump past deadline.
+        fake_now += datetime.timedelta(days=days_to_jump, hours=hours_to_jump)
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
         self.assertTrue(nightly.ShouldHandle())
@@ -132,11 +133,7 @@ class TimedEventTestBase(mox.MoxTestBase):
 
 class NightlyTest(TimedEventTestBase):
     """Unit tests for Weekly.
-
-    @var _HOUR: The time of night to use in these unit tests.
     """
-
-    _HOUR = 20
 
 
     def setUp(self):
@@ -144,12 +141,12 @@ class NightlyTest(TimedEventTestBase):
 
 
     def BaseTime(self):
-        return datetime.datetime(2012, 1, 1, self._HOUR)
+        return datetime.datetime(2012, 1, 1, 0, 0)
 
 
     def CreateEvent(self):
         """Return an instance of timed_event.Nightly."""
-        return timed_event.Nightly(self.mv, False, self._HOUR)
+        return timed_event.Nightly(self.mv, False)
 
 
     def testCreateFromConfig(self):
@@ -157,7 +154,6 @@ class NightlyTest(TimedEventTestBase):
         config = forgiving_config_parser.ForgivingConfigParser()
         section = base_event.SectionName(timed_event.Nightly.KEYWORD)
         config.add_section(section)
-        config.set(section, 'hour', '%d' % self._HOUR)
 
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
@@ -174,8 +170,7 @@ class NightlyTest(TimedEventTestBase):
         self.mox.ReplayAll()
 
         self.assertEquals(
-            timed_event.Nightly(self.mv, False,
-                                timed_event.Nightly._DEFAULT_HOUR),
+            timed_event.Nightly(self.mv, False),
             timed_event.Nightly.CreateFromConfig(config, self.mv))
 
 
@@ -184,7 +179,6 @@ class NightlyTest(TimedEventTestBase):
         config = forgiving_config_parser.ForgivingConfigParser()
         section = base_event.SectionName(timed_event.Nightly.KEYWORD)
         config.add_section(section)
-        config.set(section, 'hour', '%d' % (self._HOUR + 1))
         config.set(section, 'always_handle', 'True')
 
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
@@ -199,9 +193,8 @@ class NightlyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        old = timed_event.Nightly(self.mv, False, self._HOUR)
-        new = timed_event.Nightly(self.mv, False, (self._HOUR + 23) % 24)
-        self.assertNotEquals(old._deadline, new._deadline)
+        old = timed_event.Nightly(self.mv, False)
+        new = timed_event.Nightly(self.mv, False)
         old.Merge(new)
         self.assertEquals(old._deadline, new._deadline)
 
@@ -211,8 +204,8 @@ class NightlyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        old = timed_event.Nightly(self.mv, False, self._HOUR)
-        new = timed_event.Nightly(self.mv, False, self._HOUR)
+        old = timed_event.Nightly(self.mv, False)
+        new = timed_event.Nightly(self.mv, False)
         new._deadline += datetime.timedelta(days=1)
         self.assertNotEquals(old._deadline, new._deadline)
         saved_deadline = old._deadline
@@ -222,7 +215,7 @@ class NightlyTest(TimedEventTestBase):
 
     def testDeadlineInPast(self):
         """Ensure we work if the deadline aready passed today."""
-        fake_now = self.BaseTime() + datetime.timedelta(hours=1)
+        fake_now = self.BaseTime() + datetime.timedelta(hours=0.5)
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
@@ -238,11 +231,11 @@ class NightlyTest(TimedEventTestBase):
 
 
     def TimeBefore(self, now):
-        return now - datetime.timedelta(hours=1)
+        return now - datetime.timedelta(minutes=1)
 
 
     def TimeLaterThan(self, now):
-        return now + datetime.timedelta(hours=2)
+        return now + datetime.timedelta(hours=0.5)
 
 
     def testDeadlineInFuture(self):
@@ -262,12 +255,25 @@ class NightlyTest(TimedEventTestBase):
 
     def testDeadlineUpdate(self):
         """Ensure we update the deadline correctly."""
-        self.doTestDeadlineUpdate(days_to_jump=1)
+        self.doTestDeadlineUpdate(days_to_jump=0, hours_to_jump=1)
 
 
     def testGetBranchBuilds(self):
         """Ensure Nightly gets most recent builds in last day."""
         self.doTestGetBranchBuilds(days=1)
+
+
+    def testFilterTasks(self):
+        """Test FilterTasks function can filter tasks by current hour."""
+        Task = collections.namedtuple('Task', 'hour')
+        task_1 = Task(hour=0)
+        task_2 = Task(hour=10)
+        task_3 = Task(hour=11)
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+        event = self.CreateEvent()
+        event.tasks = set([task_1, task_2, task_3])
+        self.assertEquals([task_1], event.FilterTasks())
 
 
 class WeeklyTest(TimedEventTestBase):

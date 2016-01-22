@@ -7,7 +7,6 @@ import logging
 import common
 from autotest_lib.client.common_lib import priorities
 
-import task
 
 """Module containing base class and methods for working with scheduler events.
 
@@ -163,6 +162,18 @@ class BaseEvent(object):
         raise NotImplementedError()
 
 
+    def FilterTasks(self):
+        """Filter the tasks to only return tasks should run now.
+
+        One use case is that Nightly task can run at each hour. The override of
+        this function in Nightly class will only return the tasks set to run in
+        current hour.
+
+        @return: A list of tasks can run now.
+        """
+        return list(self.tasks)
+
+
     def Handle(self, scheduler, branch_builds, board, force=False):
         """Runs all tasks in self._tasks that if scheduled, can be
         successfully run.
@@ -179,7 +190,7 @@ class BaseEvent(object):
         """
         logging.info('Handling %s for %s', self.keyword, board)
         # we need to iterate over an immutable copy of self._tasks
-        for task in list(self.tasks):
+        for task in self.FilterTasks():
             if task.AvailableHosts(scheduler, board):
                 if not task.Run(scheduler, branch_builds, board, force,
                                 self._mv):

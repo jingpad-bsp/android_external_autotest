@@ -139,6 +139,7 @@ class Task(object):
         [TaskName]
         suite: suite_to_run  # Required
         run_on: event_on which to run  # Required
+        hour: integer of the hour to run, only applies to nightly. # Optional
         branch_specs: factory,firmware,>=R12 or ==R12 # Optional
         pool: pool_of_devices  # Optional
         num: sharding_factor  # int, Optional
@@ -156,7 +157,8 @@ class Task(object):
 
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
-                       'firmware_rw_build_spec', 'test_source', 'job_retry'])
+                       'firmware_rw_build_spec', 'test_source', 'job_retry',
+                       'hour'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -168,6 +170,7 @@ class Task(object):
                       ", ".join(map(str, section_headers.difference(allowed))))
 
         keyword = config.getstring(section, 'run_on')
+        hour = config.getstring(section, 'hour')
         suite = config.getstring(section, 'suite')
         branches = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
@@ -189,11 +192,22 @@ class Task(object):
         try:
             num = config.getint(section, 'num')
         except ValueError as e:
-            raise MalformedConfigEntry("Ill-specified 'num': %r" %e)
+            raise MalformedConfigEntry("Ill-specified 'num': %r" % e)
         if not keyword:
             raise MalformedConfigEntry('No event to |run_on|.')
         if not suite:
             raise MalformedConfigEntry('No |suite|')
+        try:
+            hour = config.getint(section, 'hour')
+        except ValueError as e:
+            raise MalformedConfigEntry("Ill-specified 'hour': %r" % e)
+        if hour is not None and (hour < 0 or hour > 23):
+            raise MalformedConfigEntry(
+                    '`hour` must be an integer between 0 and 23.')
+        if hour is not None and keyword != 'nightly':
+            raise MalformedConfigEntry(
+                    '`hour` is the trigger time that can only apply to nightly '
+                    'event.')
         specs = []
         if branches:
             specs = re.split('\s*,\s*', branches)
@@ -203,7 +217,8 @@ class Task(object):
                              file_bugs=file_bugs if file_bugs else False,
                              cros_build_spec=cros_build_spec,
                              firmware_rw_build_spec=firmware_rw_build_spec,
-                             test_source=test_source, job_retry=job_retry)
+                             test_source=test_source, job_retry=job_retry,
+                             hour=hour)
 
 
     @staticmethod
@@ -236,7 +251,7 @@ class Task(object):
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
                  boards=None, priority=None, timeout=None, file_bugs=False,
                  cros_build_spec=None, firmware_rw_build_spec=None,
-                 test_source=None, job_retry=False):
+                 test_source=None, job_retry=False, hour=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -294,7 +309,7 @@ class Task(object):
         @param num: the number of devices across which to shard the test suite.
                     Type: integer or None
                     Default: None
-        @param boards: A comma seperated list of boards to run this task on.
+        @param boards: A comma separated list of boards to run this task on.
                        Default: Run on all boards.
         @param priority: The string name of a priority from
                          client.common_lib.priorities.Priority.
@@ -310,6 +325,8 @@ class Task(object):
                             or `cros`.
         @param job_retry: Set to True to enable job-level retry. Default is
                           False.
+        @param hour: An integer specifying the hour that a nightly run should
+                     be triggered, default is set to 21.
         """
         self._name = name
         self._suite = suite
@@ -323,6 +340,7 @@ class Task(object):
         self._firmware_rw_build_spec = firmware_rw_build_spec
         self._test_source = test_source
         self._job_retry = job_retry
+        self.hour = hour
 
         if ((self._firmware_rw_build_spec or cros_build_spec) and
             not self.test_source in [Builds.FIRMWARE_RW, Builds.CROS]):
