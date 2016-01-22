@@ -1833,12 +1833,27 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raise error.AutoservError: If state is not good.
         """
         if self._is_firmware_repair_supported():
-            # In vboot1, active firmware being B means firmware A has
-            # something wrong.
-            cmd = 'crossystem fw_vboot2?0 mainfw_act?B'
-            rv = self.run(command=cmd, ignore_status=True)
-            if rv.exit_status == 0:
-                raise error.AutoservError('Firmware A is in a bad state.')
+            try:
+                # Read the AP firmware and dump the sections we are interested.
+                cmd = ('mkdir /tmp/verify_firmware; '
+                       'cd /tmp/verify_firmware; '
+                       'for section in VBLOCK_A VBLOCK_B FW_MAIN_A FW_MAIN_B; '
+                       'do flashrom -r image.bin -i $section:$section; '
+                       'done')
+                self.run(cmd)
+
+                # Verify the firmware blocks A and B.
+                cmd = ('vbutil_firmware --verify /tmp/verify_firmware/VBLOCK_%c'
+                       ' --signpubkey /usr/share/vboot/devkeys/root_key.vbpubk'
+                       ' --fv /tmp/verify_firmware/FW_MAIN_%c')
+                for c in ('A', 'B'):
+                    rv = self.run(cmd % (c, c), ignore_status=True)
+                    if rv.exit_status:
+                       raise error.AutoservError(
+                               'Firmware %c is in a bad state.' % c)
+            finally:
+                # Remove the tempoary files.
+                self.run('rm -rf /tmp/verify_firmware')
         else:
             logging.info('Do not care about firmware status when the host '
                          'is not in pools that support firmware repair.')
