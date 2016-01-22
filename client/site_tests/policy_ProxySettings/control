@@ -1,0 +1,34 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "krishnargv"
+NAME = "policy_ProxySettings"
+ATTRIBUTES = "suite:regression"
+SUITE = "regression"
+TIME = "SHORT"
+TEST_CATEGORY = "General"
+TEST_CLASS = "enterprise"
+TEST_TYPE = "client"
+
+DOC = """
+Verify effects of policy_ProxySettings policy on client behavior.
+
+This test verifies the effect of the ProxySettings user policy on Chrome OS
+client behavior and appearance. It exercises a range of policy values using
+three unique test cases, named: FixedProxy, NotSet, and TBD. See the test file
+for a full description of what each test case does.
+
+Usage example:
+$ test_that <IPAddress> policy_ProxySettings --args="mode=single
+case=FixedProxy nv=dm-test dms_name=xot-dmst
+username=test@crosprqa1.com password=test1234"
+
+This command runs a single test case (e.g., FixedProxy) using the specified
+test DM Server environment, and signing in with the specified username and
+password.
+
+"""
+
+job.run_test("policy_ProxySettings", args=args)
+
