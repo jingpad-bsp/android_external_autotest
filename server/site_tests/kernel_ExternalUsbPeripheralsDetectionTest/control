@@ -52,8 +52,8 @@ def run(machine):
         #str("lsusb -v -d 1004:61fa") :
         #    ["idVendor\s+0x1004\s+LG\s+Elect", "iProduct.*LGE\s+Android"],
         # Webcam
-        str("lsusb -v -d 058f:3832") :
-            ["idVendor\s+0x058f\s+Alcor", "iProduct.*TeckNet"],
+        str("lsusb -v -d 058f:") :
+            ["idVendor\s+0x058f\s+Alcor", "iProduct.*(TeckNet|2.0 PC Camera)"],
         # Mouse
         str("lsusb -v -d 04f2:0939") :
             ["idVendor\s+0x04f2\s+Chicony", "iProduct.*Optical\s+Mouse"],
