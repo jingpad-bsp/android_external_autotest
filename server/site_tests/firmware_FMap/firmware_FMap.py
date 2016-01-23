@@ -122,6 +122,44 @@ class firmware_FMap(FirmwareTest):
         return (min(region1[1], region2[1]) > max(region1[0], region2[0]))
 
 
+    def check_section(self):
+        """Check RW_SECTION_[AB] and RW_LEGACY.
+
+        1- check RW_SECTION_[AB] exist, non-zero, same size
+        2- RW_LEGACY exist and > 1MB in size
+        """
+        # Parse map into dictionary.
+        bios = {}
+        for e in self._TARGET_AREA[TARGET_BIOS]:
+           bios[e['name']] = {'offset': e['offset'], 'size': e['size']}
+        succeed = True
+        # Check RW_SECTION_[AB] sections.
+        if 'RW_SECTION_A' not in bios:
+            succeed = False
+            logging.error('Missing RW_SECTION_A section in FMAP')
+        elif 'RW_SECTION_B' not in bios:
+            succeed = False
+            logging.error('Missing RW_SECTION_B section in FMAP')
+        else:
+            if bios['RW_SECTION_A']['size'] != bios['RW_SECTION_B']['size']:
+                succeed = False
+                logging.error('RW_SECTION_A size != RW_SECTION_B size')
+            if (bios['RW_SECTION_A']['size'] == 0
+                or bios['RW_SECTION_B']['size'] == 0):
+                succeed = False
+                logging.error('RW_SECTION_A size or RW_SECTION_B size == 0')
+        # Check RW_LEGACY section.
+        if 'RW_LEGACY' not in bios:
+            succeed = False
+            logging.error('Missing RW_LEGACY section in FMAP')
+        else:
+            if bios['RW_LEGACY']['size'] < 1024*1024:
+                succeed = False
+                logging.error('RW_LEGACY size is < 1M')
+        if not succeed:
+            raise error.TestFail('SECTION check failed.')
+
+
     def check_areas(self, areas, expected_tree, bounds=None):
         """Check the given area list met the hierarchy of the expected_tree.
 
@@ -194,7 +232,8 @@ class firmware_FMap(FirmwareTest):
         self.get_areas()
 
         for key in self._TARGET_AREA.keys():
-            if self._TARGET_AREA[key] and \
-               not self.check_areas(self._TARGET_AREA[key],
-                                    self._EXPECTED_FMAP_TREE[key]):
+            if (self._TARGET_AREA[key] and
+                    not self.check_areas(self._TARGET_AREA[key],
+                                         self._EXPECTED_FMAP_TREE[key])):
                 raise error.TestFail("%s FMap is not qualified.", key)
+        self.check_section()
