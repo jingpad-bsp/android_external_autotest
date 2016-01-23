@@ -34,8 +34,9 @@ class brillo_StorageWriteSpeedTest(test.test):
         """
         try:
             tmp_file = os.path.join(host.get_tmp_dir(), 'testfile')
-            result = host.run_output('dd if=/dev/zero of=%s bs=%s count=%s' %
-                                     (tmp_file, block_size, num_blocks))
+            result = host.run_output(
+                    'dd if=/dev/zero of=%s bs=%s count=%s 2>&1' %
+                    (tmp_file, block_size, num_blocks))
             actual_speed = None
             for line in result.splitlines():
                 match = re.match('.*\(([0-9]+) bytes/sec\)$', line)
@@ -46,8 +47,9 @@ class brillo_StorageWriteSpeedTest(test.test):
                 raise error.TestError('Error finding storage write speed')
             logging.info('Actual write speed is %d bytes/sec', actual_speed)
             if actual_speed < int(min_speed):
-                logging.error('Write speed lower than required (%s bytes/sec)',
-                              min_speed)
+                logging.error('Write speed (%s bytes/sec) is lower than '
+                              'required (%s bytes/sec)',
+                              actual_speed, min_speed)
                 raise error.TestFail(
                         'Storage write speed is lower than required')
         except error.AutoservRunError:
