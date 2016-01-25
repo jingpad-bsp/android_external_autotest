@@ -115,7 +115,7 @@ class DarkResumeUtils(object):
         logging.info('Tearing down dark resume preferences')
 
         logging.debug('Cleaning up temporary powerd bind mounts')
-        self._host.run('umount %s' % POWER_DIR, ignore_status=True)
+        self._host.run('umount %s' % POWER_DIR)
 
         logging.debug('Restarting powerd to revert to old settings')
         self._host.run('restart powerd')
