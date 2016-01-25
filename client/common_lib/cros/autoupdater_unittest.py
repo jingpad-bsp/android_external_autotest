@@ -458,7 +458,7 @@ class TestAutoUpdater(mox.MoxTestBase):
                                 REMOTE_STATEUL_UPDATE_PATH),
                         mox.StrContains(static_update_url),
                         mox.Not(mox.StrContains('--stateful_change=clean'))),
-                timeout=1200)
+                timeout=mox.IgnoreArg())
 
         self.mox.ReplayAll()
         updater = autoupdater.ChromiumOSUpdater(update_url)
@@ -476,7 +476,7 @@ class TestAutoUpdater(mox.MoxTestBase):
                                 REMOTE_STATEUL_UPDATE_PATH),
                         mox.StrContains(static_update_url),
                         mox.StrContains('--stateful_change=clean')),
-                timeout=1200)
+                timeout=mox.IgnoreArg())
         self.mox.ReplayAll()
         updater = autoupdater.ChromiumOSUpdater(update_url)
         updater.update_stateful(clobber=True)
