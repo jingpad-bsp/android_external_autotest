@@ -684,7 +684,8 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
     @param sample_rate: Sample rate to expect (None to not check).
     @param sample_width: Sample width to expect (None to not check).
 
-    @return The absolute maximum PCM value in the WAV file.
+    @return A list of the absolute maximum PCM values for each channel in the
+            WAV file.
 
     @raise ValueError: Failed to process the WAV file or validate an attribute.
     """
@@ -698,7 +699,15 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
         if sample_width is not None and chk_file.getsampwidth() != sample_width:
             raise ValueError('Incorrect sample width')
         num_frames = chk_file.getnframes()
-        frames = struct.unpack('%dh' % num_frames,
+        if chk_file.getsampwidth() == 1:
+            fmt = '%iB'  # Read 1 byte.
+        elif chk_file.getsampwidth() == 2:
+            fmt = '%ih'  # Read 2 bytes.
+        elif chk_file.getsampwidth() == 4:
+            fmt = '%il'  # Read 4 bytes.
+        else:
+            raise ValueError('Unsupported sample width')
+        frames = struct.unpack(fmt % num_frames * chk_file.getnchannels(),
                                chk_file.readframes(num_frames))
     except wave.Error as e:
         raise ValueError('Error processing WAV file: %s' % e)
@@ -706,4 +715,7 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
         if chk_file is not None:
             chk_file.close()
 
-    return max(map(abs, frames))
+    peaks = [];
+    for i in range(chk_file.getnchannels()):
+        peaks.append(max(map(abs, frames[i::chk_file.getnchannels()])))
+    return peaks;

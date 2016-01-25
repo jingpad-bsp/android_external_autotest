@@ -188,7 +188,7 @@ class _PlaybackAudioQuery(client.OutputQuery):
     def _process_recording(self):
         """Waits for recording to finish and processes the result.
 
-        @return The highest recorded peak value.
+        @return A list of the highest recorded peak value for each channel.
 
         @raise error.TestError: Error while validating the recording.
         @raise error.TestFail: Recording file failed to validate.
@@ -239,13 +239,12 @@ class SilentPlaybackAudioQuery(_PlaybackAudioQuery):
     #
     def _validate_impl(self):
         """Implementation of query validation logic."""
-        silence_peak = self._process_recording()
-
+        silence_peaks = self._process_recording()
+        silence_peak = max(silence_peaks)
         # Fail if the silence peak volume exceeds the maximum allowed.
         if silence_peak > _SILENCE_MAX:
-            logging.error(
-                    'Silence peak level (%d) exceeds the max allowed (%d)',
-                    silence_peak, _SILENCE_MAX)
+            logging.error('Silence peak level (%d) exceeds the max allowed (%d)',
+                          silence_peak, _SILENCE_MAX)
             raise error.TestFail('Environment is too noisy')
 
         # Update the client audible threshold, if so instructed.
@@ -272,11 +271,14 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
         # compare actual audio content.
 
         # Ensure that peak recording volume exceeds the threshold.
-        audible_peak = self._process_recording()
-        if audible_peak < self.client.audible_threshold:
+        audible_peaks = self._process_recording()
+        min_channel, min_audible_peak = min(enumerate(audible_peaks),
+                                            key=lambda p: p[1])
+        if min_audible_peak < self.client.audible_threshold:
             logging.error(
-                    'Audible peak level (%d) is less than expected (%d)',
-                    audible_peak, self.client.audible_threshold)
+                    'Audible peak level (%d) is less than expected (%d) for '
+                    'channel %d', min_audible_peak,
+                    self.client.audible_threshold, min_channel)
             raise error.TestFail(
                     'The played audio peak level is below the expected '
                     'threshold. Either playback did not work, or the volume '
@@ -284,7 +286,7 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
                     'settings on the DUT.')
 
         logging.info('Audible peak level (%d) exceeds the threshold (%d)',
-                     audible_peak, self.client.audible_threshold)
+                     min_audible_peak, self.client.audible_threshold)
 
 
 class RecordingAudioQuery(client.InputQuery):
@@ -319,7 +321,7 @@ class RecordingAudioQuery(client.InputQuery):
         # TODO(garnold) Currently, we just test whether anything audible was
         # recorded. We should compare the captured audio to the one produced.
         try:
-            recorded_peak = site_utils.check_wav_file(
+            recorded_peaks = site_utils.check_wav_file(
                     captured_audio_file, num_channels=num_channels,
                     sample_rate=sample_rate, sample_width=sample_width)
         except ValueError as e:
@@ -328,22 +330,23 @@ class RecordingAudioQuery(client.InputQuery):
         max_volume = _max_volume(sample_width)
         peak_min = max_volume * peak_percent_min / 100
         peak_max = max_volume * peak_percent_max / 100
-        if recorded_peak < peak_min:
-            logging.error(
-                    'Recorded audio peak level (%d) is less than expected (%d)',
-                    recorded_peak, peak_min)
-            raise error.TestFail(
-                    'The recorded audio peak level is below the expected '
-                    'threshold. Either recording did not capture the produced '
-                    'audio, or the recording level is too low. Check the audio '
-                    'connections and settings on the DUT.')
+        for channel, recorded_peak in enumerate(recorded_peaks):
+            if recorded_peak < peak_min:
+                logging.error(
+                        'Recorded audio peak level (%d) is less than expected '
+                        '(%d) for channel %d', recorded_peak, peak_min, channel)
+                raise error.TestFail(
+                        'The recorded audio peak level is below the expected '
+                        'threshold. Either recording did not capture the '
+                        'produced audio, or the recording level is too low. '
+                        'Check the audio connections and settings on the DUT.')
 
-        if recorded_peak > peak_max:
-            logging.error(
-                    'Recorded audio peak level (%d) is more than expected (%d)',
-                    recorded_peak, peak_max)
-            raise error.TestFail(
-                    'The recorded audio peak level exceeds the expected '
-                    'maximum. Either recording captured much background noise, '
-                    'or the recording level is too high. Check the audio '
-                    'connections and settings on the DUT.')
+            if recorded_peak > peak_max:
+                logging.error(
+                        'Recorded audio peak level (%d) is more than expected '
+                        '(%d) for channel %d', recorded_peak, peak_max, channel)
+                raise error.TestFail(
+                        'The recorded audio peak level exceeds the expected '
+                        'maximum. Either recording captured much background '
+                        'noise, or the recording level is too high. Check the '
+                        'audio connections and settings on the DUT.')

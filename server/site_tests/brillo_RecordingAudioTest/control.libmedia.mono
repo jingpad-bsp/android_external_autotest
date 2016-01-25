@@ -7,7 +7,7 @@ from autotest_lib.server.brillo.feedback import client_factory
 
 
 AUTHOR = 'garnold, ralphnathan'
-NAME = 'brillo_LibmediaRecordingAudioTest'
+NAME = 'brillo_MonoLibmediaRecordingAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
@@ -37,6 +37,7 @@ def run(machine):
                  host=hosts.create_host(machine),
                  fb_client=fb_client,
                  recording_method='libmedia',
+                 num_channels=1,
                  **test_args)
 
 
