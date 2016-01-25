@@ -428,7 +428,7 @@ class ChromiumOSUpdater(BaseUpdater):
 
         statefuldev_cmd.append('2>&1')
         try:
-            self._run(' '.join(statefuldev_cmd), timeout=600)
+            self._run(' '.join(statefuldev_cmd), timeout=1200)
         except error.AutoservRunError:
             update_error = StatefulUpdateError(
                     'Failed to perform stateful update on %s' %
