@@ -14,6 +14,8 @@ import urllib2
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+
 
 # Local stateful update path is relative to the CrOS source directory.
 LOCAL_STATEFUL_UPDATE_PATH = 'src/platform/dev/stateful_update'
@@ -237,15 +239,16 @@ class ChromiumOSUpdater(BaseUpdater):
     # auto update.
     KERNEL_UPDATE_TIMEOUT = 120
 
+    _timer = autotest_stats.Timer('cros_autoupdater')
 
     def __init__(self, update_url, host=None, local_devserver=False):
         super(ChromiumOSUpdater, self).__init__(self.UPDATER_BIN, update_url,
                                                 host)
         self.local_devserver = local_devserver
         if not local_devserver:
-          self.update_version = url_to_version(update_url)
+            self.update_version = url_to_version(update_url)
         else:
-          self.update_version = None
+            self.update_version = None
 
 
     def reset_update_engine(self):
@@ -392,7 +395,7 @@ class ChromiumOSUpdater(BaseUpdater):
 
         rollback_cmd = '%s --rollback --follow' % self.UPDATER_BIN
         if not powerwash:
-          rollback_cmd += ' --nopowerwash'
+            rollback_cmd += ' --nopowerwash'
 
         logging.info('Performing rollback.')
         try:
@@ -406,11 +409,13 @@ class ChromiumOSUpdater(BaseUpdater):
 
     # TODO(garnold) This is here for backward compatibility and should be
     # deprecated once we shift to using update_image() everywhere.
+    @_timer.decorate
     def update_rootfs(self):
         """Run the standard command to force an update."""
         return self.update_image()
 
 
+    @_timer.decorate
     def update_stateful(self, clobber=True):
         """Updates the stateful partition.
 
@@ -441,6 +446,7 @@ class ChromiumOSUpdater(BaseUpdater):
             raise e
 
 
+    @_timer.decorate
     def run_update(self, update_root=True):
         """Update the DUT with image of specific version.
 
