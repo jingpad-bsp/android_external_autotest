@@ -757,3 +757,24 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
     for i in range(chk_file.getnchannels()):
         peaks.append(max(map(abs, frames[i::chk_file.getnchannels()])))
     return peaks;
+
+
+def which(exec_file):
+    """Finds an executable file.
+
+    If the file name contains a path component, it is checked as-is.
+    Otherwise, we check with each of the path components found in the system
+    PATH prepended. This behavior is similar to the 'which' command-line tool.
+
+    @param exec_file: Name or path to desired executable.
+
+    @return: An actual path to the executable, or None if not found.
+    """
+    if os.path.dirname(exec_file):
+        return exec_file if os.access(exec_file, os.X_OK) else None
+    sys_path = os.environ.get('PATH')
+    prefix_list = sys_path.split(os.pathsep) if sys_path else []
+    for prefix in prefix_list:
+        path = os.path.join(prefix, exec_file)
+        if os.access(path, os.X_OK):
+            return path

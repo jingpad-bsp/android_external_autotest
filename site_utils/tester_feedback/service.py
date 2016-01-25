@@ -12,6 +12,8 @@ import request_multiplexer
 
 # TODO(garnold) Load query delegate implementations as they become available
 # (b/26769927).
+# pylint: disable=unused-import
+import audio_query_delegate_impl
 
 
 class FeedbackService(object):
