@@ -84,14 +84,15 @@ def _detect_host(connectivity_class, hostname, **args):
     return cros_host.CrosHost
 
 
-def _choose_connectivity_class(hostname):
+def _choose_connectivity_class(hostname, ssh_port):
     """Choose a connectivity class for this hostname.
 
     @param hostname: hostname that we need a connectivity class for.
+    @param ssh_port: SSH port to connect to the host.
 
     @returns a connectivity host class.
     """
-    if hostname == 'localhost':
+    if (hostname == 'localhost' and ssh_port == DEFAULT_SSH_PORT):
         return local_host.LocalHost
     # by default assume we're using SSH support
     elif SSH_ENGINE == 'paramiko':
@@ -137,13 +138,14 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
             _get_host_arguments()
 
-    hostname, args['user'], args['password'], args['port'] = \
+    hostname, args['user'], args['password'], ssh_port = \
             server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
     args['ssh_verbosity_flag'] = ssh_verbosity_flag
     args['ssh_options'] = ssh_options
+    args['port'] = ssh_port
 
     if not connectivity_class:
-        connectivity_class = _choose_connectivity_class(hostname)
+        connectivity_class = _choose_connectivity_class(hostname, ssh_port)
     host_attributes = args.get('host_attributes', {})
     host_class = host_class or OS_HOST_DICT.get(host_attributes.get('os_type'))
     if host_class:
