@@ -2418,9 +2418,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # development devices have {board_name}-signed-{key_type}. The board
         # name may also begin with 'x86-' which we need to keep.
         board_format_string = ds_constants.BOARD_PREFIX + '%s'
-        if 'x86' not in board:
-            return board_format_string % board.split('-')[0]
-        return board_format_string % '-'.join(board.split('-')[0:2])
+        splitted_board = board.split('-')
+        try:
+            end = splitted_board.index('generic')
+        except ValueError:
+            end = 0
+        return board_format_string % '-'.join(board.split('-')[0:end + 1])
 
 
     @label_decorator('lightsensor')
