@@ -105,19 +105,6 @@ class Nightly(TimedEvent):
                                       always_handle, deadline)
 
 
-    def Merge(self, to_merge):
-        """Merge this event with to_merge, changing some mutable properties.
-
-        keyword remains unchanged; the following take on values from to_merge:
-          _deadline iff the time of day in to_merge._deadline is different.
-
-        @param to_merge: A TimedEvent instance to merge into this isntance.
-        """
-        super(Nightly, self).Merge(to_merge)
-        if self._deadline.time() != to_merge._deadline.time():
-            self._deadline = to_merge._deadline
-
-
     def GetBranchBuildsForBoard(self, board):
         return self._LatestPerBranchBuildsSince(board, 1)
 
