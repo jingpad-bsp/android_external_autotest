@@ -39,8 +39,8 @@ class network_WiFi_UpdateRouter(test.test):
                                 '7424.0.2015_09_03_1514'),
         'panther': StableVersion('trybot-panther-test-ap/R47-7424.0.0-b10',
                                  '7424.0.2015_09_03_1532'),
-        'whirlwind': StableVersion('trybot-whirlwind-test-ap/R49-7819.0.0-b12',
-                                   '7819.0.2016_01_11_1500')
+        'whirlwind': StableVersion('trybot-whirlwind-test-ap/R50-7849.0.0-b13',
+                                   '7849.0.2016_01_20_2033')
     }
 
 
