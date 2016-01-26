@@ -14,7 +14,7 @@ TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "video_glitch_detection, chameleon"
+DEPENDENCIES = "video_glitch_detection, chameleon:hdmi"
 BUG_TEMPLATE = {
     'owner': 'avkodipelli@chromium.org',
     'cc': ['mussa@chromium.org', 'rohitbm@chromium.org'],
