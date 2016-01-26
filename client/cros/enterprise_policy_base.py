@@ -230,11 +230,11 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.setup_policy(self._make_json_blob(policies_json))
 
         self._launch_chrome_browser()
+        tab = self.navigate_to_url('chrome://policy')
         if not cryptohome.is_vault_mounted(user=self.username,
                                            allow_fail=True):
             raise error.TestError('Expected to find a mounted vault for %s.'
                                   % self.username)
-        tab = self.navigate_to_url('chrome://policy')
         value_shown = self._get_policy_value_shown(tab, policy_name)
         if not self._policy_value_matches_shown(policy_value, value_shown):
             raise error.TestFail('Policy value shown is not correct: %s '
