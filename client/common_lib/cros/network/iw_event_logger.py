@@ -6,6 +6,7 @@ import collections
 import logging
 import os
 import re
+import StringIO
 
 IW_REMOTE_EVENT_LOG_FILE_NAME = 'iw_event.log'
 
@@ -99,16 +100,17 @@ class IwEventLogger(object):
         @yields LogEntry tuples for each log entry.
 
         """
-        with open(self._local_file, 'r') as file:
-            for line in file.readlines():
-                parse_line = re.match('\s*(\d+).(\d+): (\w.*): (\w.*)', line)
-                if parse_line:
-                    time_integer = parse_line.group(1)
-                    time_decimal = parse_line.group(2)
-                    timestamp = float('%s.%s' % (time_integer, time_decimal))
-                    yield LogEntry(timestamp=timestamp,
-                                   interface=parse_line.group(3),
-                                   message=parse_line.group(4))
+        iw_log = self._host.run('cat %s' % self._iw_event_log_path).stdout
+        iw_log_file = StringIO.StringIO(iw_log)
+        for line in iw_log_file.readlines():
+            parse_line = re.match('\s*(\d+).(\d+): (\w.*): (\w.*)', line)
+            if parse_line:
+                time_integer = parse_line.group(1)
+                time_decimal = parse_line.group(2)
+                timestamp = float('%s.%s' % (time_integer, time_decimal))
+                yield LogEntry(timestamp=timestamp,
+                               interface=parse_line.group(3),
+                               message=parse_line.group(4))
 
 
     def get_reassociation_time(self):
