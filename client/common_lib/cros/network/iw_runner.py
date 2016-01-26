@@ -706,10 +706,10 @@ class IwRunner(object):
             scan_failure_attempts = 0
             matching_iwbsses = set()
             for iwbss in scan_results:
-                if iwbss.bss in bsses:
+              if iwbss.bss in bsses and len(remaining_bsses) > 0:
                     remaining_bsses.remove(iwbss.bss)
                     matching_iwbsses.add(iwbss)
-                if iwbss.ssid in ssids:
+              if iwbss.ssid in ssids and len(remaining_ssids) > 0:
                     remaining_ssids.remove(iwbss.ssid)
                     matching_iwbsses.add(iwbss)
             if wait_for_all:
