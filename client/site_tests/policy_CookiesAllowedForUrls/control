@@ -16,20 +16,20 @@ Verify effects of CookiesAllowedForUrls policy on client behavior.
 
 This test verifies the effect of the CookiesAllowedForUrls user policy on
 Chrome OS client behavior when the DefaultCookiesSetting user policy is set
-to 2. It exercises a range of policy values using four unique test cases,
-named: NotSet_CookiesBlocked, SingleUrl_CookiesAllowed,
-MultipleUrls_CookiesAllowed and MultipleUrls_CookiesBlocked.
-See the test file for a full description of what each test case does.
+to 2. It exercises a range of policy values using four unique test cases:
+NotSet_CookiesBlocked, SingleUrl_CookiesAllowed, MultipleUrls_CookiesAllowed,
+and MultipleUrls_CookiesBlocked. See the test file for a full description of
+what each test case does.
 
 In general, a test shall pass if the browser allows cookies on a test page
 with a URL that matches one or more of the URL patterns listed in the
-CookiesAllowedForUrls.
+CookiesAllowedForUrls policy value.
 
 A test shall fail if the browser:
--Does not store cookies for Urls that match the url patterns listed in the
- CookiesAllowedForUrls policy value.
--Stores cookies for Urls that do not match the url patterns listed in the
- CookiesAllowedForUrls policy value.
+- Does not store cookies for URLs that match the URL patterns listed in the
+  CookiesAllowedForUrls policy value.
+- Stores cookies for URLs that do not match the URL patterns listed in the
+  CookiesAllowedForUrls policy value.
 
 
 Usage example:
