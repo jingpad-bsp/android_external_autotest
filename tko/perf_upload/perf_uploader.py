@@ -375,8 +375,12 @@ def upload_test(job, test):
     hardware_hostname = test.machine
     variant_name = test.attributes.get(constants.VARIANT_KEY, None)
     config_data = _parse_config_file(_PRESENTATION_CONFIG_FILE)
-    shadow_config_data = _parse_config_file(_PRESENTATION_SHADOW_CONFIG_FILE)
-    config_data.update(shadow_config_data)
+    try:
+        shadow_config_data = _parse_config_file(_PRESENTATION_SHADOW_CONFIG_FILE)
+        config_data.update(shadow_config_data)
+    except ValueError as e:
+        tko_utils.dprint('Failed to parse config file %s: %s.' %
+                         (_PRESENTATION_SHADOW_CONFIG_FILE, e))
     try:
         cros_version, chrome_version = _get_version_numbers(test.attributes)
         presentation_info = _gather_presentation_info(config_data, test_name)
