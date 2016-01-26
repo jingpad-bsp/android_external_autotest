@@ -8,4 +8,4 @@ from autotest_lib.server.cros.faft.config import strago
 
 class Values(strago.Values):
     """Inherit overrides from Strago."""
-    pass
+    spi_voltage = 'pp3300'
