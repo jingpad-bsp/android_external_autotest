@@ -158,7 +158,7 @@ class Task(object):
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
                        'firmware_rw_build_spec', 'test_source', 'job_retry',
-                       'hour'])
+                       'hour', 'day'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -208,6 +208,20 @@ class Task(object):
             raise MalformedConfigEntry(
                     '`hour` is the trigger time that can only apply to nightly '
                     'event.')
+
+        try:
+            day = config.getint(section, 'day')
+        except ValueError as e:
+            raise MalformedConfigEntry("Ill-specified 'day': %r" % e)
+        if day is not None and (day < 0 or day > 6):
+            raise MalformedConfigEntry(
+                    '`day` must be an integer between 0 and 6, where 0 is for '
+                    'Monday and 6 is for Sunday.')
+        if day is not None and keyword != 'weekly':
+            raise MalformedConfigEntry(
+                    '`day` is the trigger of the day of a week, that can only '
+                    'apply to weekly events.')
+
         specs = []
         if branches:
             specs = re.split('\s*,\s*', branches)
@@ -218,7 +232,7 @@ class Task(object):
                              cros_build_spec=cros_build_spec,
                              firmware_rw_build_spec=firmware_rw_build_spec,
                              test_source=test_source, job_retry=job_retry,
-                             hour=hour)
+                             hour=hour, day=day)
 
 
     @staticmethod
@@ -251,7 +265,7 @@ class Task(object):
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
                  boards=None, priority=None, timeout=None, file_bugs=False,
                  cros_build_spec=None, firmware_rw_build_spec=None,
-                 test_source=None, job_retry=False, hour=None):
+                 test_source=None, job_retry=False, hour=None, day=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -327,6 +341,8 @@ class Task(object):
                           False.
         @param hour: An integer specifying the hour that a nightly run should
                      be triggered, default is set to 21.
+        @param day: An integer specifying the day of a week that a weekly run
+                    should be triggered, default is set to 5, which is Saturday.
         """
         self._name = name
         self._suite = suite
@@ -341,6 +357,7 @@ class Task(object):
         self._test_source = test_source
         self._job_retry = job_retry
         self.hour = hour
+        self.day = day
 
         if ((self._firmware_rw_build_spec or cros_build_spec) and
             not self.test_source in [Builds.FIRMWARE_RW, Builds.CROS]):

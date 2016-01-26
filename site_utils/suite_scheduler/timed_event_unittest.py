@@ -279,11 +279,9 @@ class NightlyTest(TimedEventTestBase):
 class WeeklyTest(TimedEventTestBase):
     """Unit tests for Weekly.
 
-    @var _DAY: The day of the week to use in these unit tests.
     @var _HOUR: The time of night to use in these unit tests.
     """
 
-    _DAY = 5
     _HOUR = 22
 
 
@@ -293,13 +291,12 @@ class WeeklyTest(TimedEventTestBase):
 
     def BaseTime(self):
         basetime = datetime.datetime(2012, 1, 1, self._HOUR)
-        basetime += datetime.timedelta(self._DAY-basetime.weekday())
         return basetime
 
 
     def CreateEvent(self):
         """Return an instance of timed_event.Weekly."""
-        return timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        return timed_event.Weekly(self.mv, False, self._HOUR)
 
 
     def testCreateFromConfig(self):
@@ -307,7 +304,6 @@ class WeeklyTest(TimedEventTestBase):
         config = forgiving_config_parser.ForgivingConfigParser()
         section = base_event.SectionName(timed_event.Weekly.KEYWORD)
         config.add_section(section)
-        config.set(section, 'day', '%d' % self._DAY)
         config.set(section, 'hour', '%d' % self._HOUR)
 
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
@@ -322,21 +318,8 @@ class WeeklyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
-        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR + 1)
-        self.assertNotEquals(old._deadline, new._deadline)
-        old.Merge(new)
-        self.assertEquals(old._deadline, new._deadline)
-
-
-    def testMergeDueToDayChange(self):
-        """Test that Merge() works when the deadline day of week changes."""
-        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
-        self.mox.ReplayAll()
-
-        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
-        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
-        new._deadline += datetime.timedelta(days=1)
+        old = timed_event.Weekly(self.mv, False, self._HOUR)
+        new = timed_event.Weekly(self.mv, False, self._HOUR + 1)
         self.assertNotEquals(old._deadline, new._deadline)
         old.Merge(new)
         self.assertEquals(old._deadline, new._deadline)
@@ -347,8 +330,8 @@ class WeeklyTest(TimedEventTestBase):
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
         self.mox.ReplayAll()
 
-        old = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
-        new = timed_event.Weekly(self.mv, False, self._DAY, self._HOUR)
+        old = timed_event.Weekly(self.mv, False, self._HOUR)
+        new = timed_event.Weekly(self.mv, False, self._HOUR)
         new._deadline += datetime.timedelta(days=7)
         self.assertNotEquals(old._deadline, new._deadline)
         saved_deadline = old._deadline
@@ -358,7 +341,7 @@ class WeeklyTest(TimedEventTestBase):
 
     def testDeadlineInPast(self):
         """Ensure we work if the deadline already passed this week."""
-        fake_now = self.BaseTime() + datetime.timedelta(days=1)
+        fake_now = self.BaseTime() + datetime.timedelta(days=0.5)
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
 
@@ -370,7 +353,7 @@ class WeeklyTest(TimedEventTestBase):
         fake_now += datetime.timedelta(days=1)  # Jump to tomorrow.
         timed_event.TimedEvent._now().MultipleTimes().AndReturn(fake_now)
         self.mox.ReplayAll()
-        self.assertFalse(weekly.ShouldHandle())
+        self.assertTrue(weekly.ShouldHandle())
         self.mox.VerifyAll()
 
         self.mox.ResetAll()
@@ -381,11 +364,11 @@ class WeeklyTest(TimedEventTestBase):
 
 
     def TimeBefore(self, now):
-        return now - datetime.timedelta(days=1)
+        return now - datetime.timedelta(days=0.5)
 
 
     def TimeLaterThan(self, now):
-        return now + datetime.timedelta(days=2)
+        return now + datetime.timedelta(days=0.5)
 
 
     def testDeadlineInFuture(self):
@@ -405,12 +388,25 @@ class WeeklyTest(TimedEventTestBase):
 
     def testDeadlineUpdate(self):
         """Ensure we update the deadline correctly."""
-        self.doTestDeadlineUpdate(days_to_jump=7)
+        self.doTestDeadlineUpdate(days_to_jump=1)
 
 
     def testGetBranchBuilds(self):
         """Ensure Weekly gets most recent builds in last 7 days."""
         self.doTestGetBranchBuilds(days=7)
+
+
+    def testFilterTasks(self):
+        """Test FilterTasks function can filter tasks by current day."""
+        Task = collections.namedtuple('Task', 'day')
+        task_1 = Task(day=6)
+        task_2 = Task(day=2)
+        task_3 = Task(day=5)
+        timed_event.TimedEvent._now().MultipleTimes().AndReturn(self.BaseTime())
+        self.mox.ReplayAll()
+        event = self.CreateEvent()
+        event.tasks = set([task_1, task_2, task_3])
+        self.assertEquals([task_1], event.FilterTasks())
 
 
 if __name__ == '__main__':
