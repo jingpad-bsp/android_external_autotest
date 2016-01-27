@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 SUPPORTED_BOARDS = ['lumpy', 'daisy', 'falco', 'link', 'parrot', 'peppy',
-                    'peach_pi', 'peach_pit', 'samus', 'squawks', 'veyron_jerry']
+                    'peach_pi', 'peach_pit', 'auron_paine', 'squawks', 'cyan'
+                    'veyron_jerry']
 
 DESIRED_WIDTH = 864
 DESIRED_HEIGHT = 494
