@@ -28,6 +28,6 @@ bssplit=4k/78:8k/5:16k/5:128k/12,4k/57:8k/13:16k/6:64k/20:512k/4
 ; norandommap
 ; verify=crc32c-intel
 verify=crc32
-verify_pattern=ecryptfs
+verify_pattern="ecryptfs"
 verify_backlog=1
 stonewall

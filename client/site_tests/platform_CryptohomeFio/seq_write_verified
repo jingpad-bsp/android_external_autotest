@@ -24,7 +24,7 @@ bs=1m
 
 ; verify=crc32c-intel
 verify=crc32
-verify_pattern=ecryptfs
+verify_pattern="ecryptfs"
 verify_backlog=1
 verifysort=1
 verify_fatal=1
