@@ -22,6 +22,9 @@ Test arguments:
     feedback=NAME  Name of the feedback client implementation to use. See
                    server.brillo.feedback.client_factory for supported values.
                    Default: 'loop'.
+
+    feedback_args  Comma-separated list of initialization arguments for the
+                   feedback client. Default: no additional arguments.
 """
 
 TEST_ARG_NAMES = ()
@@ -32,7 +35,8 @@ def run(machine):
     test_args = {name: args_dict[name] for name in TEST_ARG_NAMES
                  if name in args_dict}
     fb_client_name = args_dict.get('feedback', 'loop')
-    fb_client = client_factory.get_audio_client(fb_client_name)
+    fb_client = client_factory.get_audio_client(fb_client_name, NAME, machine,
+                                                args_dict.get('feedback_args'))
     job.run_test('brillo_PlaybackAudioTest',
                  host=hosts.create_host(machine),
                  fb_client=fb_client,
