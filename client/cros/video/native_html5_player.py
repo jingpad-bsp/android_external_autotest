@@ -33,6 +33,17 @@ class NativeHtml5Player(video_player.VideoPlayer):
         return self.tab.EvaluateJavaScript('canplay()')
 
 
+    def is_javascript_ready(self):
+        """
+        returns: True if javascript variables and functions have been defined,
+
+        else False.
+
+        """
+        return self.tab.EvaluateJavaScript(
+                    'typeof script_ready!="undefined" && script_ready == true')
+
+
     def play(self):
         """
         Plays the video.
@@ -100,3 +111,11 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
         """
         return self.tab.WaitForJavaScriptExpression('errorDetected();', 30)
+
+
+    def reload_page(self):
+        """
+        Reloads current page
+
+        """
+        self.tab.ExecuteJavaScript('location.reload()')

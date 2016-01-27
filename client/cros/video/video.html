@@ -9,6 +9,7 @@ Current time (seconds): <span id='videoCurTime'>0</span>
 
 <script type="text/javascript">
 var can_play = false;
+var script_ready = false;
 var finished_seeking = false;
 var error_status = false;
 
@@ -71,5 +72,6 @@ function currentTime()  {
 function errorDetected() {
   return error_status;
 }
+script_ready = true;
 </script>
 </html>

@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -22,5 +22,7 @@ BUG_TEMPLATE = {
 DOC = """
 This test verifies Chrome can reload mp4 video after reloading the page.
 """
+video = ('http://commondatastorage.googleapis.com/'
+            'chromiumos-test-assets-public/Shaka-Dash/720.mp4')
 
-job.run_test('video_VideoReload', tag='h264', html='mp4video.html')
+job.run_test('video_VideoReload', tag='h264', video_file=video)
