@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import datetime, logging, os, time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -79,16 +79,32 @@ class video_GlitchDetection(test.test):
 
                 box = (0, 0, constants.DESIRED_WIDTH, constants.DESIRED_HEIGHT)
 
-                raw_test_checksums = capturer.capture_only(
-                    player,
-                    max_frame_count = constants.FCOUNT,
-                    box = box)
+                #TODO: mussa, Revisit once crbug/580736 is fixed
+                for n in xrange(constants.NUM_CAPTURE_TRIES):
+                    logging.debug('Trying to capture frames. TRY #%d', n + 1)
+                    raw_test_checksums = capturer.capture_only(
+                        player, max_frame_count = constants.FCOUNT,
+                        box = box)
 
-                raw_test_checksums = [tuple(checksum) for checksum in
-                                      raw_test_checksums]
+                    raw_test_checksums = [tuple(checksum) for checksum in
+                                          raw_test_checksums]
 
-                self.verify_frame_counts(raw_test_checksums,
-                                         constants.MAX_FRAME_REPEAT_COUNT)
+                    overreach_counts = self.overreach_frame_counts(
+                            raw_test_checksums,
+                            constants.MAX_FRAME_REPEAT_COUNT)
+
+                    if not overreach_counts: # no checksums exceeded threshold
+                        break
+
+                    player.pause()
+                    player.seek_to(datetime.timedelta(seconds=0))
+
+                else:
+                    msg = ('Framecount overreach detected even after %d '
+                           'tries. Checksums: %s' % (constants.NUM_CAPTURE_TRIES,
+                                                     overreach_counts))
+                    raise error.TestFail(msg)
+
 
                 # produces unique checksums mapped to their occur. indices
                 test_checksum_indices = frame_checksum_utils.checksum_indices(
@@ -175,14 +191,13 @@ class video_GlitchDetection(test.test):
                     raise error.TestFail("Too many non-matching frames")
 
 
-    def verify_frame_counts(self, checksums, max_frame_repeat_count):
+    def overreach_frame_counts(self, checksums, max_frame_repeat_count):
         """
         Checks that captured frames have not exceed the max repeat count.
 
         @param checksums: list of frame checksums received from chameleon.
         @param max_frame_repeat_count: int. max allowed count.
-        @throws: error.TestFail() if any captured frame repeated more than
-        allowed max.
+        @return : dictionary, checksums and their counts
 
         """
 
@@ -197,11 +212,8 @@ class video_GlitchDetection(test.test):
             if v > max_frame_repeat_count:
                 overreach_counts[k] = v
 
+        return overreach_counts
 
-        if overreach_counts:
-            msg = ('Frame count overreach detected for some checksums. '
-                   'Checksums : %s' % overreach_counts)
-            raise error.TestFail(msg)
 
 
     def read_checksum_file(self, path):
