@@ -676,10 +676,9 @@ class AtForkPackage(ExternalPackage):
 class ParamikoPackage(ExternalPackage):
     """paramiko package"""
     version = '1.7.5'
-    local_filename = 'paramiko-%s.tar.gz' % version
-    urls = ('http://www.lag.net/paramiko/download/' + local_filename,
-            'ftp://mirrors.kernel.org/gentoo/distfiles/' + local_filename,)
-    hex_sum = '592be7a08290070b71da63a8e6f28a803399e5c5'
+    local_filename = 'paramiko-%s.zip' % version
+    urls = ('https://pypi.python.org/packages/source/p/paramiko/' + local_filename,)
+    hex_sum = 'd23e437c0d8bd6aeb181d9990a9d670fb30d0c72'
 
 
     _build_and_install = ExternalPackage._build_and_install_from_package
