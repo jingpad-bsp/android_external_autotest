@@ -8,6 +8,7 @@ from autotest_lib.server import test, utils
 from optparse import OptionParser
 
 class platform_GCC(test.test):
+    """Class for running the GCC dejagnu tests."""
     version = 1
     results = {}
 
@@ -63,7 +64,7 @@ class platform_GCC(test.test):
         parser = OptionParser()
         parser.add_option('--gcc_dir',
                           dest='gcc_dir',
-                          default='/var/tmp/portage/cross-*/gcc-*/work/build',
+                          default='/var/tmp/portage/cross-*/gcc-*/work/gcc-*build*',
                           help='Path to the gcc build directory.')
         parser.add_option('--test_flags',
                           dest='test_flags',
