@@ -58,8 +58,7 @@ def _run_client_test(machine):
     try:
         client_at.run_test('power_LoadTest', loop_count=1, loop_time=3600,
                            check_network=False, tag='WIRED_1hr')
-        wifi_ap = global_config.global_config.get_config_value('CLIENT',
-                'wireless_ssid', default=None)
+        wifi_ap = utils.get_wireless_ssid(machine)
         wifi_sec = global_config.global_config.get_config_value('CLIENT',
                 'wireless_security', default=None)
         wifi_pw = global_config.global_config.get_config_value('CLIENT',

@@ -31,6 +31,14 @@ value_1: nobody@localhost
 
 [SECTION_D]
 value_1: 1
+
+[SECTION_E]
+value_1: 1
+value_2: 2
+value_a: A
+random: 1
+wireless_ssid_1.2.3.4/24: ssid_1
+wireless_ssid_4.3.2.1/16: ssid_2
 """
 
 moblab_config_ini_contents = """
@@ -201,6 +209,20 @@ class global_config_test(mox.MoxTestBase):
         self.assertRaises(
                 Exception, self.conf.get_config_value_with_fallback,
                 "SECTION_A", "not_existing", "also_not_existing", bool)
+
+
+    def test_get_config_value_regex(self):
+        """Test get_config_value_regex works."""
+        configs = self.conf.get_config_value_regex('SECTION_E', 'value_\d+',
+                                                   int)
+        self.assertEquals(configs, {'value_1': 1, 'value_2': 2})
+        configs = self.conf.get_config_value_regex('SECTION_E', 'value_.*')
+        self.assertEquals(configs, {'value_1': '1', 'value_2': '2',
+                                    'value_a': 'A'})
+        configs = self.conf.get_config_value_regex('SECTION_E',
+                                                   'wireless_ssid_.*')
+        self.assertEquals(configs, {'wireless_ssid_1.2.3.4/24': 'ssid_1',
+                                    'wireless_ssid_4.3.2.1/16': 'ssid_2'})
 
 
 # this is so the test can be run in standalone mode

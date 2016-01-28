@@ -15,7 +15,11 @@ provides access to global configuration file
 
 __author__ = 'raphtee@google.com (Travis Miller)'
 
-import os, sys, ConfigParser
+import ConfigParser
+import os
+import re
+import sys
+
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import lsbrelease_utils
 
@@ -147,6 +151,25 @@ class global_config_class(object):
             return self._handle_no_value(section, key, default)
 
         return self._convert_value(key, section, val, type)
+
+
+    def get_config_value_regex(self, section, key_regex, type=str):
+        """Get a dict of configs in given section with key matched to key-regex.
+
+        @param section: Section the key is in.
+        @param key_regex: The regex that key should match.
+        @param type: data type the value should have.
+
+        @return: A dictionary of key:value with key matching `key_regex`. Return
+                 an empty dictionary if no matching key is found.
+        """
+        configs = {}
+        self._ensure_config_parsed()
+        for option, value in self.config.items(section):
+            if re.match(key_regex, option):
+                configs[option] = self._convert_value(option, section, value,
+                                                      type)
+        return configs
 
 
     # This order of parameters ensures this can be called similar to the normal

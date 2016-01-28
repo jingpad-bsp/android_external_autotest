@@ -21,6 +21,8 @@ from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.cros import constants
 
 
+CONFIG = global_config.global_config
+
 # Keep checking if the pid is alive every second until the timeout (in seconds)
 CHECK_PID_IS_ALIVE_TIMEOUT = 6
 
@@ -30,7 +32,7 @@ _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 DEFAULT_VM_GATEWAY = '10.0.2.2'
 
 # Google Storage bucket URI to store results in.
-DEFAULT_OFFLOAD_GSURI = global_config.global_config.get_config_value(
+DEFAULT_OFFLOAD_GSURI = CONFIG.get_config_value(
         'CROS', 'results_storage_server', default=None)
 
 # Default Moblab Ethernet Interface.
@@ -40,11 +42,17 @@ MOBLAB_ETH = 'eth0'
 # subnet. Each item is a tuple of (subnet_ip, mask_bits), e.g.,
 # ('192.168.0.0', 24))
 RESTRICTED_SUBNETS = []
-restricted_subnets_list = global_config.global_config.get_config_value(
+restricted_subnets_list = CONFIG.get_config_value(
         'CROS', 'restricted_subnets', type=list, default=[])
 for subnet in restricted_subnets_list:
     ip, mask_bits = subnet.split(':')
     RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
+
+# regex pattern for CLIENT/wireless_ssid_ config. For example, global config
+# can have following config in CLIENT section to indicate that hosts in subnet
+# 192.168.0.1/24 should use wireless ssid of `ssid_1`
+# wireless_ssid_192.168.0.1/24: ssid_1
+WIRELESS_SSID_PATTERN = 'wireless_ssid_(.*)/(\d+)'
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -82,8 +90,7 @@ def host_is_in_lab_zone(hostname):
     @returns True if hostname.dns_zone resolves, otherwise False.
     """
     host_parts = hostname.split('.')
-    dns_zone = global_config.global_config.get_config_value('CLIENT', 'dns_zone',
-                                                            default=None)
+    dns_zone = CONFIG.get_config_value('CLIENT', 'dns_zone', default=None)
     fqdn = '%s.%s' % (host_parts[0], dns_zone)
     try:
         socket.gethostbyname(fqdn)
@@ -176,8 +183,7 @@ def get_offload_gsuri():
         with open(moblab_id_filepath, 'w') as moblab_id_file:
             moblab_id_file.write('%s' % random_id)
     return '%sresults/%s/%s/' % (
-            global_config.global_config.get_config_value(
-                    'CROS', 'image_storage_server'),
+            CONFIG.get_config_value('CROS', 'image_storage_server'),
             get_interface_mac_address(MOBLAB_ETH), random_id)
 
 
@@ -660,6 +666,38 @@ def get_restricted_subnet(hostname, restricted_subnets=RESTRICTED_SUBNETS):
     for subnet_ip, mask_bits in restricted_subnets:
         if is_in_same_subnet(subnet_ip, host_ip, mask_bits):
             return subnet_ip, mask_bits
+
+
+def get_wireless_ssid(hostname):
+    """Get the wireless ssid based on given hostname.
+
+    The method tries to locate the wireless ssid in the same subnet of given
+    hostname first. If none is found, it returns the default setting in
+    CLIENT/wireless_ssid.
+
+    @param hostname: Hostname of the test device.
+
+    @return: wireless ssid for the test device.
+    """
+    default_ssid = CONFIG.get_config_value('CLIENT', 'wireless_ssid',
+                                           default=None)
+    host_ip = get_ip_address(hostname)
+    if not host_ip:
+        return default_ssid
+
+    # Get all wireless ssid in the global config.
+    ssids = CONFIG.get_config_value_regex('CLIENT', WIRELESS_SSID_PATTERN)
+
+    for key, value in ssids.items():
+        # The config key filtered by regex WIRELESS_SSID_PATTERN has a format of
+        # wireless_ssid_[subnet_ip]/[maskbit], for example:
+        # wireless_ssid_192.168.0.1/24
+        # Following line extract the subnet ip and mask bit from the key name.
+        match = re.match(WIRELESS_SSID_PATTERN, key)
+        subnet_ip, maskbit = match.groups()
+        if is_in_same_subnet(subnet_ip, host_ip, int(maskbit)):
+            return value
+    return default_ssid
 
 
 def parse_android_build(build_name):

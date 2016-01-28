@@ -5,6 +5,7 @@ import unittest
 
 import common
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.test_utils import mock
 
 
 def test_function(arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
@@ -137,6 +138,26 @@ class IsInSameSubnetUnittest(unittest.TestCase):
                                                 24))
         self.assertFalse(utils.is_in_same_subnet('191.168.0.0', '192.168.0.0',
                                                 24))
+
+class GetWirelessSsidUnittest(unittest.TestCase):
+    """Test get_wireless_ssid function."""
+
+    DEFAULT_SSID = 'default'
+    SSID_1 = 'ssid_1'
+    SSID_2 = 'ssid_2'
+
+    def test_get_wireless_ssid(self):
+        """Test is_in_same_subnet function."""
+        god = mock.mock_god()
+        god.stub_function_to_return(utils.CONFIG, 'get_config_value',
+                                    self.DEFAULT_SSID)
+        god.stub_function_to_return(utils.CONFIG, 'get_config_value_regex',
+                                    {'wireless_ssid_1.2.3.4/24': self.SSID_1,
+                                     'wireless_ssid_4.3.2.1/16': self.SSID_2})
+        self.assertEqual(self.SSID_1, utils.get_wireless_ssid('1.2.3.100'))
+        self.assertEqual(self.SSID_2, utils.get_wireless_ssid('4.3.2.100'))
+        self.assertEqual(self.DEFAULT_SSID,
+                         utils.get_wireless_ssid('100.0.0.100'))
 
 
 if __name__ == "__main__":
