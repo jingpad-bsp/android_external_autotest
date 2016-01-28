@@ -14,8 +14,8 @@ from autotest_lib.server.cros import telemetry_runner
 
 TELEMETRY_TIMEOUT_MINS = 60
 CHROME_SRC_ROOT = '/var/cache/chromeos-cache/distfiles/target/'
-CLIENT_CHROME_ROOT = '/usr/local/telemetry/'
-RUN_BENCHMARK  = 'src/tools/perf/run_benchmark'
+CLIENT_CHROME_ROOT = '/usr/local/telemetry/src'
+RUN_BENCHMARK  = 'tools/perf/run_benchmark'
 
 
 def _find_chrome_root_dir():
@@ -35,7 +35,7 @@ def _find_chrome_root_dir():
         raise error.TestError('Chrome source directory not found.')
 
     logging.info('Using Chrome source tree at %s', chrome_root_dir)
-    return chrome_root_dir
+    return os.path.join(chrome_root_dir, 'src')
 
 
 def _ensure_deps(dut, test_name):
@@ -47,7 +47,7 @@ def _ensure_deps(dut, test_name):
     """
     # Get DEPs using host's telemetry.
     chrome_root_dir = _find_chrome_root_dir()
-    format_string = ('python %s/src/tools/perf/fetch_benchmark_deps.py %s')
+    format_string = ('python %s/tools/perf/fetch_benchmark_deps.py %s')
     command = format_string % (chrome_root_dir, test_name)
     logging.info('Getting DEPs: %s', command)
     stdout = StringIO.StringIO()
