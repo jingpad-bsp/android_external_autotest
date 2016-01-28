@@ -34,6 +34,7 @@ except ImportError:
     sys.exit(os.execv(__file__, sys.argv))
 
 from autotest_lib.site_utils import test_runner_utils
+from autotest_lib.site_utils import tester_feedback
 
 
 def parse_arguments(argv):
@@ -73,6 +74,8 @@ def _parse_arguments_internal(argv):
                              'to a remote machine. Ensure this workstation '
                              'is configured for passwordless ssh access as '
                              'users "root" or "adb"')
+    parser.add_argument('-i', '--interactive', action='store_true',
+                        help='Enable interactive feedback requests from tests.')
     test_runner_utils.add_common_args(parser)
     return parser.parse_args(argv)
 
@@ -97,13 +100,31 @@ def main(argv):
     host_attributes = {'serials' : arguments.serials,
                        'os_type' : 'android'}
 
-    return test_runner_utils.perform_run_from_autotest_root(
-                autotest_path, argv, arguments.tests, arguments.remote,
-                args=arguments.args, ignore_deps=not arguments.enforce_deps,
-                results_directory=results_directory,
-                iterations=arguments.iterations,
-                fast_mode=arguments.fast_mode, debug=arguments.debug,
-                host_attributes=host_attributes)
+    fb_service = None
+    try:
+        # Start the feedback service if needed.
+        if arguments.interactive:
+            fb_service = tester_feedback.FeedbackService()
+            fb_service.start()
+
+            if arguments.args:
+                arguments.args += ' '
+            else:
+                arguments.args = ''
+            arguments.args += (
+                    'feedback=interactive feedback_args=localhost:%d' %
+                    fb_service.server_port)
+
+        return test_runner_utils.perform_run_from_autotest_root(
+                    autotest_path, argv, arguments.tests, arguments.remote,
+                    args=arguments.args, ignore_deps=not arguments.enforce_deps,
+                    results_directory=results_directory,
+                    iterations=arguments.iterations,
+                    fast_mode=arguments.fast_mode, debug=arguments.debug,
+                    host_attributes=host_attributes)
+    finally:
+        if fb_service is not None:
+            fb_service.stop()
 
 
 if __name__ == '__main__':
