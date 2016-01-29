@@ -233,7 +233,7 @@ class security_ASLR(test.test):
             else:
                 test_result['results'].append('[FAIL] Address for %s had '
                         'deterministic value: %s' % (case,
-                        mappings[case].get_start()))
+                        mappings[0][case].get_start()))
             test_result['pass'] = test_result['pass'] and result['pass']
         return test_result
 
