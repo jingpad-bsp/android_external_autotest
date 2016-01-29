@@ -22,6 +22,9 @@ Test arguments:
     feedback=NAME  Name of the feedback client implementation to use. See
                    server.brillo.feedback.client_factory for supported values.
                    Default: 'loop'.
+
+    feedback_args  Comma-separated list of initialization arguments for the
+                   feedback client. Default: no additional arguments.
 """
 
 TEST_ARG_NAMES = ()
