@@ -914,7 +914,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._forward(reverse, args)
 
 
-    def rpc_port_forward(self, port, local_port):
+    def create_ssh_tunnel(self, port, local_port):
         """
         Forwards a port securely through a tunnel process from the server
         to the DUT for RPC server connection.
@@ -927,10 +927,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @return: the tunnel process.
         """
         self.add_forwarding('tcp:%s' % port, 'tcp:%s' % port)
-        return super(ADBHost, self).rpc_port_forward(port, local_port)
+        return super(ADBHost, self).create_ssh_tunnel(port, local_port)
 
 
-    def rpc_port_disconnect(self, tunnel_proc, port):
+    def disconnect_ssh_tunnel(self, tunnel_proc, port):
         """
         Disconnects a previously forwarded port from the server to the DUT for
         RPC server connection.
@@ -938,12 +938,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         packets from the AdbHost to the DUT.
 
         @param tunnel_proc: the original tunnel process returned from
-                            |rpc_port_forward|.
+                            |create_ssh_tunnel|.
         @param port: remote port on the DUT.
 
         """
         self.remove_forwarding('tcp:%s' % port)
-        super(ADBHost, self).rpc_port_disconnect(tunnel_proc, port)
+        super(ADBHost, self).disconnect_ssh_tunnel(tunnel_proc, port)
 
 
     def ensure_bootloader_mode(self):

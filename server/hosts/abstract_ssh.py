@@ -1,4 +1,5 @@
 import os, time, socket, shutil, glob, logging, traceback, tempfile, re
+import shlex
 import subprocess
 
 from multiprocessing import Lock
@@ -817,8 +818,11 @@ class AbstractSSHHost(remote.RemoteHost):
                 raise
 
 
-    def _create_ssh_tunnel(self, port, local_port):
+    def create_ssh_tunnel(self, port, local_port):
         """Create an ssh tunnel from local_port to port.
+
+        This is used to forward a port securely through a tunnel process from
+        the server to the DUT for RPC server connection.
 
         @param port: remote port on the host.
         @param local_port: local forwarding port.
@@ -829,34 +833,24 @@ class AbstractSSHHost(remote.RemoteHost):
         ssh_cmd = self.make_ssh_command(opts=tunnel_options)
         tunnel_cmd = '%s %s' % (ssh_cmd, self.hostname)
         logging.debug('Full tunnel command: %s', tunnel_cmd)
-        tunnel_proc = subprocess.Popen(tunnel_cmd, shell=True, close_fds=True)
+        # Exec the ssh process directly here rather than using a shell.
+        # Using a shell leaves a dangling ssh process, because we deliver
+        # signals to the shell wrapping ssh, not the ssh process itself.
+        args = shlex.split(tunnel_cmd)
+        tunnel_proc = subprocess.Popen(args, close_fds=True)
         logging.debug('Started ssh tunnel, local = %d'
                       ' remote = %d, pid = %d',
                       local_port, port, tunnel_proc.pid)
         return tunnel_proc
 
 
-    def rpc_port_forward(self, port, local_port):
-        """
-        Forwards a port securely through a tunnel process from the server
-        to the DUT for RPC server connection.
-
-        @param port: remote port on the DUT.
-        @param local_port: local forwarding port.
-
-        @return: the tunnel process.
-        """
-        return self._create_ssh_tunnel(port, local_port)
-
-
-    def rpc_port_disconnect(self, tunnel_proc, port):
+    def disconnect_ssh_tunnel(self, tunnel_proc, port):
         """
         Disconnects a previously forwarded port from the server to the DUT for
         RPC server connection.
 
-        @param tunnel_proc: the original tunnel process returned from
-                            |rpc_port_forward|.
-        @param port: remote port on the DUT.
+        @param tunnel_proc: a tunnel process returned from |create_ssh_tunnel|.
+        @param port: remote port on the DUT, used in ADBHost.
 
         """
         if tunnel_proc.poll() is None:

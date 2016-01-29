@@ -21,6 +21,8 @@ CHAMELEON_HOST_ATTR = 'chameleon_host'
 CHAMELEON_PORT_ATTR = 'chameleon_port'
 
 _CONFIG = global_config.global_config
+ENABLE_SSH_TUNNEL_FOR_CHAMELEON = _CONFIG.get_config_value(
+        'CROS', 'enable_ssh_tunnel_for_chameleon', type=bool, default=False)
 
 class ChameleonHostError(Exception):
     """Error in ChameleonHost."""
@@ -61,7 +63,7 @@ class ChameleonHost(ssh_host.SSHHost):
         self._local_port = None
         self._tunneling_process = None
 
-        if self._is_in_lab:
+        if self._is_in_lab and not ENABLE_SSH_TUNNEL_FOR_CHAMELEON:
             self._chameleon_connection = chameleon.ChameleonConnection(
                     self.hostname, chameleon_port)
         else:
@@ -88,7 +90,7 @@ class ChameleonHost(ssh_host.SSHHost):
         """
         try:
             self._local_port = utils.get_unused_port()
-            self._tunneling_process = self._create_ssh_tunnel(
+            self._tunneling_process = self.create_ssh_tunnel(
                     self._chameleon_port, self._local_port)
 
             self._wait_for_connection_established()

@@ -39,6 +39,8 @@ SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 
 _CONFIG = global_config.global_config
+ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
+        'CROS', 'enable_ssh_tunnel_for_servo', type=bool, default=False)
 
 class ServoHostException(error.AutoservError):
     """This is the base class for exceptions raised by ServoHost."""
@@ -92,6 +94,8 @@ class ServoHost(ssh_host.SSHHost):
     SERVOD_PROCESS = 'servod'
     # Timeout for initializing servo signals.
     INITIALIZE_SERVO_TIMEOUT_SECS = 30
+    # Ready test function
+    SERVO_READY_METHOD = 'get_version'
 
     _MAX_POWER_CYCLE_ATTEMPTS = 3
     _timer = autotest_stats.Timer('servo_host')
@@ -119,8 +123,15 @@ class ServoHost(ssh_host.SSHHost):
         else:
             self._is_in_lab = is_in_lab
         self._is_localhost = (self.hostname == 'localhost')
-        remote = 'http://%s:%s' % (self.hostname, servo_port)
-        self._servod_server = xmlrpclib.ServerProxy(remote)
+
+        if ENABLE_SSH_TUNNEL_FOR_SERVO:
+            self._servod_server = self.rpc_server_tracker.xmlrpc_connect(
+                    None, servo_port, ready_test_name=self.SERVO_READY_METHOD,
+                    timeout_seconds=60)
+        else:
+            remote = 'http://%s:%s' % (self.hostname, servo_port)
+            self._servod_server = xmlrpclib.ServerProxy(remote)
+
         # Commands on the servo host must be run by the superuser. Our account
         # on Beaglebone is root, but locally we might be running as a
         # different user. If so - `sudo ' will have to be added to the

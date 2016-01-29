@@ -78,7 +78,7 @@ class RpcServerTracker(object):
         """
         self.disconnect(port)
         local_port = utils.get_unused_port()
-        tunnel_proc = self._host.rpc_port_forward(port, local_port)
+        tunnel_proc = self._host.create_ssh_tunnel(port, local_port)
         self._rpc_proxy_map[port] = (command_name, tunnel_proc, remote_pid)
         return self._RPC_PROXY_URL_FORMAT % local_port
 
@@ -131,13 +131,15 @@ class RpcServerTracker(object):
         # to believe their server is down, we ought to clean up
         # any tunnels we might have sitting around.
         self.disconnect(port)
-        if logfile:
-            remote_cmd = '%s > %s 2>&1' % (command, logfile)
-        else:
-            remote_cmd = command
-        remote_pid = self._host.run_background(remote_cmd)
-        logging.debug('Started XMLRPC server on host %s, pid = %s',
-                      self._host.hostname, remote_pid)
+        remote_pid = None
+        if command is not None:
+            if logfile:
+                remote_cmd = '%s > %s 2>&1' % (command, logfile)
+            else:
+                remote_cmd = command
+            remote_pid = self._host.run_background(remote_cmd)
+            logging.debug('Started XMLRPC server on host %s, pid = %s',
+                        self._host.hostname, remote_pid)
 
         # Tunnel through SSH to be able to reach that remote port.
         rpc_url = self._setup_rpc(port, command_name, remote_pid=remote_pid)
@@ -247,7 +249,7 @@ class RpcServerTracker(object):
                     raise error.TestError('Failed to shutdown RPC server %s' %
                                           remote_name)
 
-        self._host.rpc_port_disconnect(tunnel_proc, port)
+        self._host.disconnect_ssh_tunnel(tunnel_proc, port)
         del self._rpc_proxy_map[port]
 
 
