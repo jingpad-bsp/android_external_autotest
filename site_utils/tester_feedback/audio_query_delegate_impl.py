@@ -151,7 +151,81 @@ class SilentPlaybackQueryDelegate(query_delegate.OutputQueryDelegate):
                     'User did not hear silence')
 
 
-# TODO(garnold) Implement and resigter RecordingQueryDelegate (b/26769297).
+class RecordingQueryDelegate(query_delegate.InputQueryDelegate, PlaybackMixin):
+    """Query delegate for validating audible feedback."""
+
+    def _prepare_impl(self):
+        """Prepare for audio recording (interface override)."""
+        req = sequenced_request.SequencedFeedbackRequest(
+                self.test, self.dut, 'Audio recording')
+        # TODO(ralphnathan) Lift the restriction regarding recording time once
+        # the test allows recording for arbitrary periods of time (b/26924426).
+        req.append_question(
+                'Device %(dut)s will start recording audio for 10 seconds. '
+                'Please prepare for producing sound and hit Enter to '
+                'continue...',
+                input_handlers.PauseInputHandler())
+        self._process_request(req)
+
+
+    def _emit_impl(self):
+        """Emit sound for recording (interface override)."""
+        req = sequenced_request.SequencedFeedbackRequest(
+                self.test, self.dut, None)
+        req.append_question(
+                'Device %(dut)s is recording audio, hit Enter when done '
+                'producing sound...',
+                input_handlers.PauseInputHandler())
+        self._process_request(req)
+
+
+    def _validate_impl(self, captured_audio_file, sample_width,
+                       sample_rate=None, num_channels=None, peak_percent_min=1,
+                       peak_percent_max=100):
+        """Validate recording (interface override).
+
+        @param captured_audio_file: Path to the recorded WAV file.
+        @param sample_width: The recorded sample width.
+        @param sample_rate: The recorded sample rate.
+        @param num_channels: The number of recorded channels.
+        @peak_percent_min: Lower bound on peak recorded volume as percentage of
+                           max molume (0-100). Default is 1%.
+        @peak_percent_max: Upper bound on peak recorded volume as percentage of
+                           max molume (0-100). Default is 100% (no limit).
+        """
+        # Check the WAV file properties first.
+        try:
+            site_utils.check_wav_file(
+                    captured_audio_file, num_channels=num_channels,
+                    sample_rate=sample_rate, sample_width=sample_width)
+        except ValueError as e:
+            return (tester_feedback_client.QUERY_RET_FAIL,
+                    'Recorded audio file is invalid: %s' % e)
+
+        # Verify playback of the recorded audio.
+        props = ['has sample width of %d' % sample_width]
+        if sample_rate is not None:
+            props.append('has sample rate of %d' % sample_rate)
+        if num_channels is not None:
+            props.append('has %d recorded channels' % num_channels)
+        props_str = '%s%s%s' % (', '.join(props[:-1]),
+                                ', and ' if len(props) > 1 else '',
+                                props[-1])
+
+        msg = 'Recording finished on %%(dut)s. It %s.' % props_str
+        if not self._playback_wav_file(msg, captured_audio_file):
+            return (tester_feedback_client.QUERY_RET_ERROR,
+                    'Failed to playback recorded audio')
+
+        req = sequenced_request.SequencedFeedbackRequest(
+                self.test, self.dut, None)
+        req.append_question(
+                None,
+                input_handlers.YesNoInputHandler(default=True),
+                prompt='Did the recording capture the sound produced?')
+        if not self._process_request(req):
+            return (tester_feedback_client.QUERY_RET_FAIL,
+                    'Recorded audio is not identical to what the user produced')
 
 
 query_delegate.register_delegate_cls(client.QUERY_AUDIO_PLAYBACK_AUDIBLE,
@@ -159,3 +233,6 @@ query_delegate.register_delegate_cls(client.QUERY_AUDIO_PLAYBACK_AUDIBLE,
 
 query_delegate.register_delegate_cls(client.QUERY_AUDIO_PLAYBACK_SILENT,
                                      SilentPlaybackQueryDelegate)
+
+query_delegate.register_delegate_cls(client.QUERY_AUDIO_RECORDING,
+                                     RecordingQueryDelegate)
