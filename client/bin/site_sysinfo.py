@@ -7,7 +7,7 @@ import os
 
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.common_lib import error, utils, global_config
-from autotest_lib.client.bin import base_sysinfo
+from autotest_lib.client.bin import base_sysinfo, utils
 from autotest_lib.client.cros import constants, tpm_dam
 
 get_value = global_config.global_config.get_config_value
@@ -304,6 +304,9 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         for log in self.diffable_loggables:
             log.run(log_dir=None, collect_init_status=True)
 
+        # Start each log with the board name for orientation.
+        logging.info("ChromeOS BOARD = %s",
+                     utils.get_board_with_frequency_and_memory())
 
     @log.log_and_ignore_errors("post-test sysinfo error:")
     def log_after_each_test(self, test):
