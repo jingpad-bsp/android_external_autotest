@@ -14,8 +14,8 @@ Fails if any of the following conditions occur:
   - core pattern is not recognized as as 'core'
   - crash is sent without user consent
 """
-ATTRIBUTES = "suite:smoke"
-SUITE = "smoke"
+ATTRIBUTES = "suite:bvt-perbuild, suite:smoke"
+SUITE = "bvt-perbuild, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
