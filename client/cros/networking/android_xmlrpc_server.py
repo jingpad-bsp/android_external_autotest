@@ -18,7 +18,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 from acts.utils import get_current_epoch_time
 import acts.controllers.android_device as android_device
-import acts.test_utils.wifi_test_utils as utils
+import acts.test_utils.wifi.wifi_test_utils as utils
 
 
 class Map(dict):
