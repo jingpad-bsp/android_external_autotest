@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import re
+import logging
 import time
 
 from autotest_lib.client.common_lib import error
@@ -23,6 +24,7 @@ class PDConsoleUtils(object):
     SRC_DISC = 'SRC_DISCONNECTED'
     SNK_DISC = 'SNK_DISCONNECTED'
     PD_MAX_PORTS = 2
+    CONNECT_TIME = 4
 
     # dualrole input/ouput values
     DUALROLE_QUERY_DELAY = 0.25
@@ -270,3 +272,78 @@ class PDConsoleUtils(object):
         state = self.get_pd_state(port)
         return bool(state == self.SRC_CONNECT or state == self.SNK_CONNECT)
 
+    def is_pd_dual_role_enabled(self):
+        """Check if a PD device is in dualrole mode
+
+        @returns True is dualrole mode is active, false otherwise
+        """
+        drp = self.get_pd_dualrole()
+        return bool(drp == self.dualrole_resp[self.dual_index['on']])
+
+
+class PDConnectionUtils(PDConsoleUtils):
+    """Provides a set of methods common to USB PD FAFT tests
+
+    This Class is used for PD utility methods that require access
+    to both Plankton and DUT PD consoles.
+
+    """
+
+    def __init__(self, dut_console, plankton_console):
+        """
+        @param dut_console: PD console object for DUT
+        @param plankton_console: PD console object for Plankton
+        """
+        # save console for DUT PD UART access functions
+        self.dut_console = dut_console
+        # save console for Plankton UART access functions
+        self.plankton_console = plankton_console
+        super(PDConnectionUtils, self).__init__(dut_console)
+
+    def _verify_plankton_connection(self, port):
+        """Verify DUT to Plankton PD connection
+
+        This method checks for a Plankton PD connection for the
+        given port by first verifying if a PD connection is present.
+        If found, then it uses a Plankton feature to force a PD disconnect.
+        If the port is no longer in the connected state, and following
+        a delay, is found to be back in the connected state, then
+        a DUT pd to Plankton connection is verified.
+
+        @param port: DUT pd port to test
+
+        @returns True if DUT to Plankton pd connection is verified
+        """
+        DISCONNECT_CHECK_TIME = 0.5
+        DISCONNECT_TIME_SEC = 2
+        # plankton console command to force PD disconnect
+        disc_cmd = 'fake_disconnect 100 %d' % (DISCONNECT_TIME_SEC * 1000)
+        # Only check for Plankton if DUT has active PD connection
+        if self.dut_console.is_pd_connected(port):
+            # Attempt to force PD disconnection
+            self.plankton_console.send_pd_command(disc_cmd)
+            time.sleep(DISCONNECT_CHECK_TIME)
+            # Verify that DUT PD port is no longer connected
+            if self.dut_console.is_pd_connected(port) == False:
+                # Wait for disconnect timer and give time to reconnect
+                time.sleep(self.dut_console.CONNECT_TIME + DISCONNECT_TIME_SEC)
+                if self.dut_console.is_pd_connected(port):
+                    logging.info('Plankton connection verfied on port %d', port)
+                    return True
+            else:
+                # Could have disconnected other port, allow it to reconnect
+                # before exiting.
+                time.sleep(self.dut_console.CONNECT_TIME + DISCONNECT_TIME_SEC)
+        return False
+
+    def find_dut_to_plankton_connection(self):
+        """Find the PD port which is connected to Plankton
+
+        @returns DUT pd port number if found, None otherwise
+        """
+        for port in xrange(self.dut_console.PD_MAX_PORTS):
+            # Check for DUT to Plankton connection on port
+            if self._verify_plankton_connection(port):
+                # Plankton PD connection found so exit
+                return port
+        return None
