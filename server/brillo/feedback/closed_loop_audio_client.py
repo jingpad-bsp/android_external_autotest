@@ -5,24 +5,16 @@
 """Feedback implementation for audio with closed-loop cable."""
 
 import logging
+import numpy
 import os
 import tempfile
+import wave
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.feedback import client
 from autotest_lib.server.brillo import host_utils
-
-
-def _max_volume(sample_width):
-    """Returns the maximum possible volume.
-
-    This is the highest absolute value of a signed integer of a given width.
-
-    @param sample_width: The sample width in bytes.
-    """
-    return (1 << (sample_width * 8 - 1))
 
 
 # Constants used for updating the audio policy.
@@ -38,14 +30,40 @@ _WIRED_HEADSET_OUT = 'AUDIO_DEVICE_OUT_WIRED_HEADSET'
 #
 _REC_FILENAME = 'rec_file.wav'
 _REC_DURATION = 10
+
 # Number of channels to record.
-_NUM_CHANNELS = 1
+_DEFAULT_NUM_CHANNELS = 1
 # Recording sample rate (48kHz).
-_SAMPLE_RATE = 48000
+_DEFAULT_SAMPLE_RATE = 48000
 # Recording sample format is signed 16-bit PCM (two bytes).
-_SAMPLE_WIDTH = 2
+_DEFAULT_SAMPLE_WIDTH = 2
+
 # The peak when recording silence is 5% of the max volume.
-_SILENCE_MAX = _max_volume(_SAMPLE_WIDTH) / 20
+_SILENCE_THRESHOLD = 0.05
+
+# Thresholds used when comparing files.
+#
+# The frequency threshold used when comparing files. The frequency of the
+# recorded audio has to be within _FREQUENCY_THRESHOLD percent of the frequency
+# of the original audio.
+_FREQUENCY_THRESHOLD = 0.01
+# Noise threshold controls how much noise is allowed as a fraction of the
+# magnitude of the peak frequency after taking an FFT. The power of all the
+# other frequencies in the signal should be within _FFT_NOISE_THRESHOLD percent
+# of the power of the main frequency.
+_FFT_NOISE_THRESHOLD = 0.05
+
+
+def _max_volume(sample_width):
+    """Returns the maximum possible volume.
+
+    This is the highest absolute value of an integer of a given width.
+    If the sample width is one, then we assume an unsigned intger. For all other
+    sample sizes, we assume that the format is signed.
+
+    @param sample_width: The sample width in bytes.
+    """
+    return (1 << 8) if sample_width == 1 else (1 << (sample_width * 8 - 1))
 
 
 class Client(client.Client):
@@ -65,8 +83,6 @@ class Client(client.Client):
         self.dut_tmp_dir = None
         self.tmp_dir = None
         self.orig_policy = None
-        # By default, the audible threshold is equivalent to the silence cap.
-        self.audible_threshold = _SILENCE_MAX
 
 
     def set_audible_threshold(self, threshold):
@@ -107,7 +123,8 @@ class Client(client.Client):
                             policy_changed = True
                     if _WIRED_HEADSET_IN not in line:
                         if _AUDIO_POLICY_ATTACHED_INPUT_DEVICES in line:
-                            line = '%s|%s\n' % (line.rstrip(), _WIRED_HEADSET_IN)
+                            line = '%s|%s\n' % (line.rstrip(),
+                                                _WIRED_HEADSET_IN)
                             policy_changed = True
 
                     test_file.write(line)
@@ -185,13 +202,12 @@ class _PlaybackAudioQuery(client.OutputQuery):
         self.recording_pid = None
 
 
-    def _process_recording(self):
-        """Waits for recording to finish and processes the result.
+    def _get_local_rec_filename(self):
+        """Waits for recording to finish and copies the file to the host.
 
-        @return A list of the highest recorded peak value for each channel.
+        @return A string of the local filename containing the recorded audio.
 
         @raise error.TestError: Error while validating the recording.
-        @raise error.TestFail: Recording file failed to validate.
         """
         # Wait for recording to finish.
         timeout = _REC_DURATION + 5
@@ -202,29 +218,38 @@ class _PlaybackAudioQuery(client.OutputQuery):
 
         _, local_rec_filename = tempfile.mkstemp(
                 prefix='recording-', suffix='.wav', dir=self.local_tmp_dir)
-        try:
-            self.client.host.get_file(self.dut_rec_filename,
-                                      local_rec_filename, delete_dest=True)
-            return site_utils.check_wav_file(local_rec_filename,
-                                             num_channels=_NUM_CHANNELS,
-                                             sample_rate=_SAMPLE_RATE,
-                                             sample_width=_SAMPLE_WIDTH)
-        except ValueError as e:
-            raise error.TestFail('Invalid file attributes: %s' % e)
+        self.client.host.get_file(self.dut_rec_filename,
+                                  local_rec_filename, delete_dest=True)
+        return local_rec_filename
 
 
     # Implementation overrides.
     #
-    def _prepare_impl(self):
-        """Implementation of query preparation logic."""
+    def _prepare_impl(self,
+                      sample_width=_DEFAULT_SAMPLE_WIDTH,
+                      sample_rate=_DEFAULT_SAMPLE_RATE,
+                      num_channels=_DEFAULT_NUM_CHANNELS,
+                      duration_secs=_REC_DURATION):
+        """Implementation of query preparation logic.
+
+        @sample_width: Sample width to record at.
+        @sample_rate: Sample rate to record at.
+        @num_channels: Number of channels to record at.
+        @duration_secs: Duration (in seconds) to record for.
+        """
+        self.num_channels = num_channels
+        self.sample_rate = sample_rate
+        self.sample_width = sample_width
         self.dut_rec_filename = os.path.join(self.client.dut_tmp_dir,
                                              _REC_FILENAME)
         self.local_tmp_dir = tempfile.mkdtemp(dir=self.client.tmp_dir)
 
         # Trigger recording in the background.
         # TODO(garnold) Remove 'su root' once b/25663983 is resolved.
-        cmd = ('su root slesTest_recBuffQueue -d%d %s' %
-               (_REC_DURATION, self.dut_rec_filename))
+        cmd = ('su root slesTest_recBuffQueue -c%d -d%d -r%d -%d %s' %
+               (num_channels, duration_secs, sample_rate, sample_width,
+                self.dut_rec_filename))
+        logging.info("Recording cmd: %s", cmd)
         self.recording_pid = host_utils.run_in_background(self.client.host, cmd)
 
 
@@ -239,19 +264,29 @@ class SilentPlaybackAudioQuery(_PlaybackAudioQuery):
     #
     def _validate_impl(self):
         """Implementation of query validation logic."""
-        silence_peaks = self._process_recording()
+        local_rec_filename = self._get_local_rec_filename()
+        try:
+              silence_peaks = site_utils.check_wav_file(
+                      local_rec_filename,
+                      num_channels=self.num_channels,
+                      sample_rate=self.sample_rate,
+                      sample_width=self.sample_width)
+        except ValueError as e:
+            raise error.TestFail('Invalid file attributes: %s' % e)
+
         silence_peak = max(silence_peaks)
         # Fail if the silence peak volume exceeds the maximum allowed.
-        if silence_peak > _SILENCE_MAX:
-            logging.error('Silence peak level (%d) exceeds the max allowed (%d)',
-                          silence_peak, _SILENCE_MAX)
+        max_vol = _max_volume(self.sample_width) * _SILENCE_THRESHOLD
+        if silence_peak > max_vol:
+            logging.error('Silence peak level (%d) exceeds the max allowed '
+                          '(%d)', silence_peak, max_vol)
             raise error.TestFail('Environment is too noisy')
 
         # Update the client audible threshold, if so instructed.
         audible_threshold = silence_peak * 15
         logging.info('Silent peak level (%d) is below the max allowed (%d); '
                      'setting audible threshold to %d',
-                     silence_peak, _SILENCE_MAX, audible_threshold)
+                     silence_peak, max_vol, audible_threshold)
         self.client.set_audible_threshold(audible_threshold)
 
 
@@ -262,16 +297,18 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
         super(AudiblePlaybackAudioQuery, self).__init__(client)
 
 
-    # Implementation overrides.
-    #
-    def _validate_impl(self, audio_file=None):
-        """Implementation of query validation logic."""
-        # TODO(garnold) This currently ignores the audio_file argument entirely
-        # and just ensures that peak levels look reasonable. We should probably
-        # compare actual audio content.
+    def _check_peaks(self):
+        """Ensure that peak recording volume exceeds the threshold."""
+        local_rec_filename = self._get_local_rec_filename()
+        try:
+              audible_peaks = site_utils.check_wav_file(
+                      local_rec_filename,
+                      num_channels=self.num_channels,
+                      sample_rate=self.sample_rate,
+                      sample_width=self.sample_width)
+        except ValueError as e:
+            raise error.TestFail('Invalid file attributes: %s' % e)
 
-        # Ensure that peak recording volume exceeds the threshold.
-        audible_peaks = self._process_recording()
         min_channel, min_audible_peak = min(enumerate(audible_peaks),
                                             key=lambda p: p[1])
         if min_audible_peak < self.client.audible_threshold:
@@ -289,6 +326,109 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
                      min_audible_peak, self.client.audible_threshold)
 
 
+    def _is_outside_frequency_threshold(self, freq_golden, freq_rec):
+        """Compares the frequency of the recorded audio with the golden audio.
+
+        This function checks to see if the frequencies corresponding to the peak
+        FFT values are similiar meaning that the dominant frequency in the audio
+        signal is the same for the recorded audio as that in the audio played.
+
+        @freq_golden: The dominant frequency in the reference audio file.
+        @freq_rec: The dominant frequency in the recorded audio file.
+
+        @returns: True is freq_rec is with _FREQUENCY_THRESHOLD percent of
+                  freq_golden.
+        """
+        ratio = float(freq_rec) / freq_golden
+        if ratio > 1 + _FREQUENCY_THRESHOLD or ratio < 1 - _FREQUENCY_THRESHOLD:
+            return True
+        return False
+
+
+    def _compare_file(self, audio_file):
+        """Compares the recorded audio file to the golden audio file.
+
+        This method checks for two things:
+          1. That the main frequency is the same in both the files. This is done
+             using the FFT and observing the frequency corresponding to the
+             peak.
+          2. That there is no other dominant frequency in the recorded file.
+             This is done by sweeping the frequency domain and checking that the
+             frequency is always less than _FFT_NOISE_THRESHOLD percentage of
+             the peak.
+
+        The key assumption here is that the reference audio file contains only
+        one frequency.
+
+        @param audio_file: Reference audio file containing the golden signal.
+
+        @raise error.TestFail: The frequency of the recorded signal doesn't
+                               match that of the golden signal.
+        @raise error.TestFail: There is too much noise in the recorded signal.
+        """
+        local_rec_filename = self._get_local_rec_filename()
+
+        # Open both files and extract data.
+        golden_file = wave.open(audio_file, 'rb')
+        golden_file_frames = site_utils.extract_wav_frames(golden_file)
+        rec_file = wave.open(local_rec_filename, 'rb')
+        rec_file_frames = site_utils.extract_wav_frames(rec_file)
+
+        num_channels = golden_file.getnchannels()
+        for channel in range(num_channels):
+            golden_data = golden_file_frames[channel::num_channels]
+            rec_data = rec_file_frames[channel::num_channels]
+
+            # Get fft and frequencies corresponding to the fft values.
+            fft_golden = numpy.fft.rfft(golden_data)
+            fft_rec = numpy.fft.rfft(rec_data)
+            fft_freqs_golden = numpy.fft.rfftfreq(
+                    len(golden_data), 1.0 / golden_file.getframerate())
+            fft_freqs_rec = numpy.fft.rfftfreq(len(rec_data),
+                                               1.0 / rec_file.getframerate())
+
+            # Get frequency at highest peak.
+            freq_golden = fft_freqs_golden[numpy.argmax(numpy.abs(fft_golden))]
+            abs_fft_rec = numpy.abs(fft_rec)
+            freq_rec = fft_freqs_rec[numpy.argmax(abs_fft_rec)]
+
+            # Compare the two frequencies.
+            logging.info('Golden frequency = %f', freq_golden)
+            logging.info('Recorded frequency = %f', freq_rec)
+            if self._is_outside_frequency_threshold(freq_golden, freq_rec):
+                raise error.TestFail('The recorded audio frequency does not '
+                                     'match that of the audio played.')
+
+            # Check for noise in the frequency domain.
+            fft_rec_peak_val = numpy.max(abs_fft_rec)
+            noise_detected = False
+            for fft_index, fft_val in enumerate(abs_fft_rec):
+                if self._is_outside_frequency_threshold(freq_golden, freq_rec):
+                    # If the frequency exceeds _FFT_NOISE_THRESHOLD, then fail
+                    # the test.
+                    if fft_val > _FFT_NOISE_THRESHOLD * fft_rec_peak_val:
+                        logging.warning('Unexpected frequency peak detected at '
+                                        '%f Hz.', fft_freqs_rec[fft_index])
+                        noise_detected = True
+
+            if noise_detected:
+                raise error.TestFail('Signal is noiser than expected.')
+
+
+    # Implementation overrides.
+    #
+    def _validate_impl(self, audio_file=None):
+        """Implementation of query validation logic.
+
+        @audio_file: File to compare recorded audio to.
+        """
+        self._check_peaks()
+        # If the reference audio file is available, then perform an additional
+        # check.
+        if audio_file:
+            self._compare_file(audio_file)
+
+
 class RecordingAudioQuery(client.InputQuery):
     """Implementation of a recording query."""
 
@@ -297,7 +437,7 @@ class RecordingAudioQuery(client.InputQuery):
         self.client = client
 
 
-    def _prepare_impl(self):
+    def _prepare_impl(self, **kwargs):
         """Implementation of query preparation logic (no-op)."""
         pass
 

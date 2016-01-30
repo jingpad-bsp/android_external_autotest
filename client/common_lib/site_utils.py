@@ -713,9 +713,30 @@ def parse_android_build(build_name):
     return branch, target, build_id
 
 
+def extract_wav_frames(wave_file):
+    """Extract all frames from a WAV file.
+
+    wave_file: A Wave_read object representing a WAV file opened for reading.
+
+    @return: A list containing the frames in the WAV file.
+    """
+    num_frames = wave_file.getnframes()
+    sample_width = wave_file.getsampwidth()
+    if sample_width == 1:
+        fmt = '%iB'  # Read 1 byte.
+    elif sample_width == 2:
+        fmt = '%ih'  # Read 2 bytes.
+    elif sample_width == 4:
+        fmt = '%ii'  # Read 4 bytes.
+    else:
+        raise ValueError('Unsupported sample width')
+    return list(struct.unpack(fmt % num_frames * wave_file.getnchannels(),
+                              wave_file.readframes(num_frames)))
+
+
 def check_wav_file(filename, num_channels=None, sample_rate=None,
                    sample_width=None):
-    """Checks a WAV file and returns its peak PCM value.
+    """Checks a WAV file and returns its peak PCM values.
 
     @param filename: Input WAV file to analyze.
     @param num_channels: Number of channels to expect (None to not check).
@@ -731,29 +752,27 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
     try:
         chk_file = wave.open(filename, 'r')
         if num_channels is not None and chk_file.getnchannels() != num_channels:
-            raise ValueError('Incorrect number of channels')
+            raise ValueError('Expected %d channels but got %d instead.',
+                             num_channels, chk_file.getnchannels())
         if sample_rate is not None and chk_file.getframerate() != sample_rate:
-            raise ValueError('Incorrect sample rate')
+            raise ValueError('Expected sample rate %d but got %d instead.',
+                             sample_rate, chk_file.getframerate())
         if sample_width is not None and chk_file.getsampwidth() != sample_width:
-            raise ValueError('Incorrect sample width')
-        num_frames = chk_file.getnframes()
-        if chk_file.getsampwidth() == 1:
-            fmt = '%iB'  # Read 1 byte.
-        elif chk_file.getsampwidth() == 2:
-            fmt = '%ih'  # Read 2 bytes.
-        elif chk_file.getsampwidth() == 4:
-            fmt = '%il'  # Read 4 bytes.
-        else:
-            raise ValueError('Unsupported sample width')
-        frames = struct.unpack(fmt % num_frames * chk_file.getnchannels(),
-                               chk_file.readframes(num_frames))
+            raise ValueError('Expected sample width %d but got %d instead.',
+                             sample_width, chk_file.getsampwidth())
+        frames = extract_wav_frames(chk_file)
     except wave.Error as e:
         raise ValueError('Error processing WAV file: %s' % e)
     finally:
         if chk_file is not None:
             chk_file.close()
 
-    peaks = [];
+    # Since 8-bit PCM is unsigned with an offset of 128, we subtract the offset
+    # to make it signed since the rest of the code assumes signed numbers.
+    if chk_file.getsampwidth() == 1:
+        frames = [val - 128 for val in frames]
+
+    peaks = []
     for i in range(chk_file.getnchannels()):
         peaks.append(max(map(abs, frames[i::chk_file.getnchannels()])))
     return peaks;
