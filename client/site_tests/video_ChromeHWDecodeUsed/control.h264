@@ -27,4 +27,4 @@ This test verifies H.264 video decode acceleration works.
 
 video = str('http://commondatastorage.googleapis.com/'
             'chromiumos-test-assets-public/Shaka-Dash/720.mp4')
-job.run_test('video_ChromeHWDecodeUsed', video_file=video)
+job.run_test('video_ChromeHWDecodeUsed', is_mse=0, video_file=video)
