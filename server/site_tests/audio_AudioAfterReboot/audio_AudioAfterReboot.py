@@ -9,7 +9,6 @@ import os
 import time
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import audio_widget_link
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
@@ -187,7 +186,7 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         chameleon_board = self.host.chameleon
         self.factory = self.create_remote_facade_factory(self.host)
         self.audio_facade = self.factory.create_audio_facade()
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 self.factory, host)
         self.audio_board = chameleon_board.get_audio_board()

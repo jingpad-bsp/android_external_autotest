@@ -90,7 +90,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         audio_board = chameleon_board.get_audio_board()
         factory = self.create_remote_facade_factory(host)
 
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
         self.audio_facade = factory.create_audio_facade()
         self.display_facade = factory.create_display_facade()
 

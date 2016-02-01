@@ -97,7 +97,7 @@ class network_WiFi_BluetoothStreamPerf(wifi_cell_test_base.WiFiCellTestBase):
         audio_test.audio_test_requirement()
         factory = audio_test.create_remote_facade_factory(host, self.resultsdir)
         chameleon_board = host.chameleon
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 factory, host)
         source = widget_factory.create_widget(

@@ -54,7 +54,7 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         self._system_facade = factory.create_system_facade()
         self.set_high_performance_mode()
 
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
 
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 factory, host)

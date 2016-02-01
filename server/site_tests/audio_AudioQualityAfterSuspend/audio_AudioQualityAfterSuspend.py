@@ -178,7 +178,7 @@ class audio_AudioQualityAfterSuspend(audio_test.AudioTest):
         chameleon_board = self.host.chameleon
         self.factory = self.create_remote_facade_factory(self.host)
         self.audio_facade = self.factory.create_audio_facade()
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 self.factory, host)
 

@@ -5,10 +5,8 @@
 """This is a server side bluetooth connection test using the Chameleon board."""
 
 import logging
-import os
-import time, threading
+import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
@@ -41,7 +39,7 @@ class audio_AudioBluetoothConnectionStability(audio_test.AudioTest):
         self.audio_facade = factory.create_audio_facade()
 
         chameleon_board = host.chameleon
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
 
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 factory, host)

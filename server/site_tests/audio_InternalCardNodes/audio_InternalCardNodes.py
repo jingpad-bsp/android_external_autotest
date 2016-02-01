@@ -4,14 +4,9 @@
 
 """This is a server side test to check nodes created for internal card."""
 
-import logging
-import os
 import time
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import audio_test_utils
-from autotest_lib.client.cros.chameleon import chameleon_audio_ids
-from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.server.cros.audio import audio_test
 
 
@@ -31,7 +26,7 @@ class audio_InternalCardNodes(audio_test.AudioTest):
         factory = self.create_remote_facade_factory(host)
         audio_facade = factory.create_audio_facade()
 
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
 
         jack_plugger = chameleon_board.get_audio_board().get_jack_plugger()
 

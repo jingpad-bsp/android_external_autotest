@@ -31,7 +31,7 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
     def run_once(self, host, audio_test_file):
         chameleon_board = host.chameleon
         factory = self.create_remote_facade_factory(host)
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
 
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 factory, host)

@@ -2,8 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import atexit
 import httplib
 import logging
+import os
 import socket
 import time
 import xmlrpclib
@@ -19,6 +21,7 @@ from autotest_lib.client.cros.chameleon import usb_controller
 
 
 CHAMELEON_PORT = 9992
+CHAMELEOND_LOG_REMOTE_PATH = '/var/log/chameleond'
 
 
 class ChameleonConnectionError(error.TestError):
@@ -91,6 +94,7 @@ class ChameleonBoard(object):
                                is not created by a ChameleonHost.
         """
         self.host = chameleon_host
+        self._output_log_file = None
         self._chameleond_proxy = chameleon_connection.chameleond_proxy
         self._usb_ctrl = usb_controller.USBController(chameleon_connection)
         if self._chameleond_proxy.HasAudioBoard():
@@ -99,9 +103,40 @@ class ChameleonBoard(object):
             self._audio_board = None
             logging.info('There is no audio board on this Chameleon.')
 
+
     def reset(self):
         """Resets Chameleon board."""
         self._chameleond_proxy.Reset()
+
+
+    def setup_and_reset(self, output_dir=None):
+        """Setup and reset Chameleon board.
+
+        @param output_dir: Setup the output directory.
+                           None for just reset the board.
+        """
+        if output_dir and self.host is not None:
+            logging.info('setup_and_reset: dir %s, chameleon host %s',
+                         output_dir, self.host.hostname)
+            log_dir = os.path.join(output_dir, 'chameleond', self.host.hostname)
+            # Only clear the chameleon board log and register get log callback
+            # when we first create the log_dir.
+            if not os.path.exists(log_dir):
+                # remove old log.
+                self.host.run('>%s' % CHAMELEOND_LOG_REMOTE_PATH)
+                os.makedirs(log_dir)
+                self._output_log_file = os.path.join(log_dir, 'log')
+                atexit.register(self._get_log)
+        self.reset()
+
+
+    def _get_log(self):
+        """Get log from chameleon. It will be registered by atexit.
+
+        It's a private method. We will setup output_dir before using this
+        method.
+        """
+        self.host.get_file(CHAMELEOND_LOG_REMOTE_PATH, self._output_log_file)
 
 
     def get_all_ports(self):

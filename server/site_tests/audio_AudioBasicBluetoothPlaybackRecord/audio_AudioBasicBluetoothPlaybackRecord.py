@@ -9,7 +9,7 @@ board.
 
 import logging
 import os
-import time, threading
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -118,7 +118,7 @@ class audio_AudioBasicBluetoothPlaybackRecord(audio_test.AudioTest):
         self.audio_facade = factory.create_audio_facade()
 
         chameleon_board = host.chameleon
-        chameleon_board.reset()
+        chameleon_board.setup_and_reset(self.outputdir)
 
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
                 factory, host)
