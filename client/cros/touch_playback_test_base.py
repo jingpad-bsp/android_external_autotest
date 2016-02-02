@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shutil
 import time
 
 from autotest_lib.client.bin import test
@@ -225,11 +226,20 @@ class touch_playback_test_base(test.test):
         @param filename: name of file in self.bindir to open
 
         """
-        cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-        self._tab = cr.browser.tabs[0]
-        self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
-                os.path.join(self.bindir, filename)))
-        self._wait_for_page_ready()
+        self._test_page = TestPage(cr, self.bindir, filename)
+        self._tab = self._test_page._tab
+
+
+    def _open_events_page(self, cr):
+        """Open the test events page.  Set self._events with EventsPage class.
+
+        Also set self._tab as this page and self.bindir as the http server dir.
+
+        @param cr: chrome.Chrome() object
+
+        """
+        self._events = EventsPage(cr, self.bindir)
+        self._tab = self._events._tab
 
 
     def _wait_for_page_ready(self):
@@ -353,3 +363,147 @@ class touch_playback_test_base(test.test):
 
     def cleanup(self):
         self.player.close()
+
+
+class TestPage(object):
+    """Wrapper around a Telemtry tab for utility functions.
+
+    Provides functions such as reload and setting scroll height on page.
+
+    """
+    def __init__(self, cr, httpdir, filename):
+        """Open a given test page in the given httpdir.
+
+        @param cr: chrome.Chrome() object
+        @param httpdir: the directory to use for SetHTTPServerDirectories
+        @param filename: path to the file to open, relative to httpdir
+
+        """
+        cr.browser.platform.SetHTTPServerDirectories(httpdir)
+        self._tab = cr.browser.tabs[0]
+        self._tab.Navigate(cr.browser.platform.http_server.UrlOf(
+                os.path.join(httpdir, filename)))
+        self.wait_for_page_ready()
+
+
+    def reload_page(self):
+        """Reloads test page."""
+        self._tab.Navigate(self._tab.url)
+        self._wait_for_page_ready()
+
+
+    def wait_for_page_ready(self):
+        """Wait for a variable pageReady on the test page to be true.
+
+        Presuposes that a pageReady variable exists.
+
+        @raises error.TestError if page is not ready after timeout.
+
+        """
+        self._tab.WaitForDocumentReadyStateToBeComplete()
+        utils.poll_for_condition(
+                lambda: self._tab.EvaluateJavaScript('pageReady'),
+                exception=error.TestError('Test page is not ready!'))
+
+
+class EventsPage(TestPage):
+    """Functions to monitor input events on the DUT, as seen by a webpage.
+
+    A subclass of TestPage which uses and interacts with a specific page.
+
+    """
+    def __init__(self, cr, httpdir):
+        """Open the website and save the tab in self._tab.
+
+        @param cr: chrome.Chrome() object
+        @param httpdir: the directory to use for SetHTTPServerDirectories
+
+        """
+        filename = 'touch_events_test_page.html'
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        shutil.copyfile(os.path.join(current_dir, filename),
+                        os.path.join(httpdir, filename))
+
+        super(EventsPage, self).__init__(cr, httpdir, filename)
+
+
+    def clear_previous_events(self):
+        """Wipe the test page back to its original state."""
+        self._tab.ExecuteJavaScript('pageReady = false')
+        self._tab.ExecuteJavaScript('clearPreviousEvents()')
+        self.wait_for_page_ready()
+
+
+    def get_events_log(self):
+        """Return the event log from the test page."""
+        return self._tab.EvaluateJavaScript('eventLog')
+
+
+    def log_events(self):
+        """Put the test page's event log into logging.info."""
+        logging.info('EVENTS LOG:')
+        logging.info(self.get_events_log())
+
+
+    def get_event_count(self):
+        """Return the number of events that the test page has seen."""
+        return self._tab.EvaluateJavaScript('eventCount')
+
+
+    def get_scroll_delta(self, is_vertical):
+        """Return the net scrolling the test page has seen.
+
+        @param is_vertical: True for vertical scrolling; False for horizontal.
+
+        """
+        if is_vertical:
+            axis = 'y'
+        else:
+            axis = 'x'
+        return self._tab.EvaluateJavaScript('netScrollDelta.%s' % axis)
+
+
+    def get_click_count(self):
+        """Return the number of clicks the test page has seen."""
+        return self._tab.EvaluateJavaScript('clickCount')
+
+
+    def wait_for_events_to_complete(self, delay_secs=1, timeout=60):
+        """Wait until test page stops seeing events for delay_secs seconds.
+
+        @param delay_secs: the polling frequency in seconds.
+        @param timeout: the number of seconds to wait for events to complete.
+        @raises: error.TestError if no events occurred.
+        @raises: error.TestError if events did not stop after timeout seconds.
+
+        """
+        self._tmp_previous_event_count = -1
+        def _events_stopped_coming():
+            most_recent_event_count = self.get_event_count()
+            delta = most_recent_event_count - self._tmp_previous_event_count
+            self._tmp_previous_event_count = most_recent_event_count
+            return most_recent_event_count != 0 and delta == 0
+
+        try:
+            utils.poll_for_condition(
+                    _events_stopped_coming, exception=error.TestError(),
+                    sleep_interval=delay_secs, timeout=timeout)
+        except error.TestError:
+            if self._tmp_previous_event_count == 0:
+                raise error.TestError('No touch event was seen!')
+            else:
+                self._log_events()
+                raise error.TestError('Touch events did not stop!')
+
+
+    def set_prevent_defaults(self, value):
+        """Set whether to allow default event actions to go through.
+
+        E.g. if this is True, a two finger horizontal scroll will not actually
+        produce history navigation on the browser.
+
+        @param value: True for prevent defaults; False to allow them.
+
+        """
+        js_value = str(value).lower()
+        self._tab.ExecuteJavaScript('preventDefaults = %s;' % js_value)

@@ -31,15 +31,16 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         is_vertical = expected == 'up' or expected == 'down'
         is_down_or_right = expected == 'down' or expected == 'right'
 
-        self._set_default_scroll_position(is_vertical)
+        self._events.clear_previous_events()
         self._playback(filepath)
-        self._wait_for_scroll_position_to_settle(is_vertical)
-        delta = self._get_scroll_position(is_vertical) - self._DEFAULT_SCROLL
+        self._events.wait_for_events_to_complete()
+        delta = self._events.get_scroll_delta(is_vertical)
         logging.info('Scroll delta was %d', delta)
 
         # Check if scrolling went in correct direction.
         if ((is_down_or_right and delta <= 0) or
             (not is_down_or_right and delta >= 0)):
+            self._events.log_events()
             raise error.TestFail('Page scroll was in wrong direction! '
                                  'Delta=%d, Australian=%s, Touchscreen=%s'
                                   % (delta, self._australian_state,
@@ -48,7 +49,6 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
 
     def _verify_scrolling(self):
         """Check scrolling direction for down then up."""
-
         if not self._australian_state:
             for direction in self._DIRECTIONS:
                 self._check_scroll_direction(self._filepaths[direction],
@@ -88,7 +88,7 @@ class touch_ScrollDirection(touch_playback_test_base.touch_playback_test_base):
         with chrome.Chrome(autotest_ext=True) as cr:
             # Setup.
             self._set_autotest_ext(cr.autotest_ext)
-            self._open_test_page(cr)
+            self._open_events_page(cr)
             self._emulate_mouse()
             self._center_cursor()
 
