@@ -193,6 +193,8 @@ class base_sysinfo(object):
         # other large "spam" that fill it up...
         self.test_loggables.add(command("dmesg -c", logf="dmesg",
                                         compress_log=True))
+        self.test_loggables.add(command("journalctl -o export", logf="journal",
+                                        compress_log=True))
         self.boot_loggables.add(logfile("/proc/cmdline",
                                              log_in_keyval=True))
         # log /proc/mounts but with custom filename since we already
@@ -281,6 +283,17 @@ class base_sysinfo(object):
             self._messages_size = stat.st_size
             self._messages_inode = stat.st_ino
 
+        if os.path.exists("/var/log/journal"):
+            # Find the current journal cursor so we later can save new messages.
+            cmd = "/usr/bin/journalctl  -n0 --show-cursor -q"
+            try:
+                cursor = utils.system_output(cmd)
+                prefix = "-- cursor: "
+                pos = cursor.find(prefix) + len(prefix)
+                self._journal_cursor = cursor[pos:]
+            except Exception, e:
+                logging.error("error running journalctl --show-cursor: %s", e)
+
 
     @log.log_and_ignore_errors("post-test sysinfo error:")
     def log_after_each_test(self, test):
@@ -308,6 +321,9 @@ class base_sysinfo(object):
 
         # grab any new data from /var/log/messages
         self._log_messages(test_sysinfodir)
+
+        # grab any new data from systemd journal
+        self._log_journal(test_sysinfodir)
 
         # log some sysinfo data into the test keyval file
         keyval = self.log_test_keyvals(test_sysinfodir)
@@ -355,7 +371,7 @@ class base_sysinfo(object):
 
 
     def _log_messages(self, logdir):
-        """ Log all of the new data in /var/log/messages. """
+        """Log all of the new data in /var/log/messages."""
         try:
             # log all of the new data in /var/log/messages
             bytes_to_skip = 0
@@ -371,6 +387,19 @@ class base_sysinfo(object):
             out_messages.close()
         except Exception, e:
             logging.error("/var/log/messages collection failed with %s", e)
+
+
+    def _log_journal(self, logdir):
+        """Log all of the new data in systemd journal."""
+        if not hasattr(self, "_journal_cursor"):
+            return
+
+        cmd = "/usr/bin/journalctl --after-cursor \"%s\"" % (self._journal_cursor)
+        try:
+            with open(os.path.join(logdir, "journal"), "w") as journal:
+              journal.write(utils.system_output(cmd))
+        except Exception, e:
+            logging.error("journal collection failed with %s", e)
 
 
     @staticmethod
