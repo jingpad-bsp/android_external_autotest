@@ -15,20 +15,17 @@ DOC = """
 Verify effects of policy_ProxySettings policy on client behavior.
 
 This test verifies the effect of the ProxySettings user policy on Chrome OS
-client behavior and appearance. It exercises a range of policy values using
-three unique test cases, named: FixedProxy, NotSet, and TBD. See the test file
-for a full description of what each test case does.
+client behavior. It exercises a variety of policy values using three unique
+test cases: FixedProxy_UseFixedProxy, DirectProxy_UseNoProxy, and
+NotSet_UseNoProxy.
 
 Usage example:
-$ test_that <IPAddress> policy_ProxySettings --args="mode=single
-case=FixedProxy nv=dm-test dms_name=xot-dmst
-username=test@crosprqa1.com password=test1234"
+$ test_that <IPAddress> policy_ProxySettings --args=
+'case=FixedProxy_UseFixedProxy'
 
-This command runs a single test case (e.g., FixedProxy) using the specified
-test DM Server environment, and signing in with the specified username and
-password.
+This command runs a single test case (e.g., FixedProxy_UseFixedProxy) using
+the default fake DM server.
 
 """
 
 job.run_test("policy_ProxySettings", args=args)
-
