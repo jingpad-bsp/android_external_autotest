@@ -558,6 +558,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @returns: True if the DUT was updated with stateful update.
 
         """
+        # Stop service ap-update-manager to prevent rebooting during autoupdate.
+        # The service is used in jetstream boards, but not other CrOS devices.
+        self.run('sudo stop ap-update-manager', ignore_status=True)
+
         # TODO(jrbarnette):  Yes, I hate this re.match() test case.
         # It's better than the alternative:  see crbug.com/360944.
         image_name = autoupdater.url_to_image_name(update_url)
@@ -775,6 +779,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             logging.info('DUT requires full update.')
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
+            # Stop service ap-update-manager to prevent rebooting during
+            # autoupdate. The service is used in jetstream boards, but not other
+            # CrOS devices.
+            self.run('sudo stop ap-update-manager', ignore_status=True)
+
             num_of_attempts = provision.FLAKY_DEVSERVER_ATTEMPTS
 
             while num_of_attempts > 0:
