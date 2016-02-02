@@ -14,10 +14,10 @@ class APConfiguratorConfig(object):
     MODE_B = 0x00010
     MODE_G = 0x00100
     MODE_N = 0x01000
-    MODE_AUTO = 0x10000
+    MODE_AC = 0x10000
+    MODE_AUTO = 0x100000
     MODE_M = 0x0111  # Used for standard maintenance
     MODE_D = 0x1011  # International roaming extensions
-
     SECURITY_TYPE_DISABLED = 'disabled'
     SECURITY_TYPE_WEP = 'wep'
     SECURITY_TYPE_WPAPSK = 'wpa-psk'
@@ -29,7 +29,8 @@ class APConfiguratorConfig(object):
     VALID_BANDS = [BAND_2GHZ, BAND_5GHZ]
 
     # List of valid modes.
-    VALID_MODES = [MODE_A, MODE_AUTO, MODE_B, MODE_D, MODE_G, MODE_M, MODE_N]
+    VALID_MODES = [MODE_A, MODE_AC, MODE_AUTO, MODE_B, MODE_D, MODE_G, MODE_M,
+                   MODE_N]
 
 
     # List of valid securities.

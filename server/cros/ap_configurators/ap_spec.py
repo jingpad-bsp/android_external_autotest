@@ -17,14 +17,16 @@ MODE_A = 0x01
 MODE_B = 0x02
 MODE_G = 0x04
 MODE_N = 0x08
-MODE_AUTO = 0x10
+MODE_AC = 0x10
+MODE_AUTO = 0x20
 MODE_M = MODE_A | MODE_B | MODE_G # Used for standard maintenance
 MODE_D = MODE_A | MODE_B | MODE_N # International roaming extensions
 
 # List of valid modes.
-VALID_MODES = [MODE_A, MODE_AUTO, MODE_B, MODE_D, MODE_G, MODE_M, MODE_N]
+VALID_MODES = [MODE_A, MODE_AC, MODE_AUTO, MODE_B, MODE_D, MODE_G, MODE_M,
+               MODE_N]
 VALID_2GHZ_MODES = [MODE_B, MODE_G, MODE_N]
-VALID_5GHZ_MODES = [MODE_A, MODE_N]
+VALID_5GHZ_MODES = [MODE_A, MODE_AC, MODE_N]
 
 # Supported security types
 SECURITY_TYPE_DISABLED = iw_runner.SECURITY_OPEN
@@ -96,7 +98,8 @@ def mode_string_for_mode(mode):
     @param mode: integer, the mode to convert.
     @returns: string representation of the mode
     """
-    string_table = {MODE_A:'a', MODE_B:'b', MODE_G:'g', MODE_N:'n'}
+    string_table = {MODE_A:'a', MODE_AC:'ac', MODE_B:'b', MODE_G:'g',
+                    MODE_N:'n'}
 
     if mode == MODE_AUTO:
         return 'Auto'
