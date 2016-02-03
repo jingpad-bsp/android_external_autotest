@@ -202,7 +202,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
-        self._reset_adbd_connection()
+        # Try resetting the ADB daemon on the device, however if we are
+        # creating the host to do a repair job, the device maybe inaccesible
+        # via ADB.
+        try:
+            self._reset_adbd_connection()
+        except (error.AutotestHostRunError, error.AutoservRunError) as e:
+            logging.error('Unable to reset the device adb daemon connection: '
+                          '%s.', e)
         self._os_type = None
 
 
@@ -664,6 +671,22 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return
 
 
+    def repair(self):
+        """Attempt to get the DUT to pass `self.verify()`."""
+        try:
+            self.ensure_adb_mode(timeout=30)
+            return
+        except error.AutoservError as e:
+            logging.error(e)
+        logging.debug('Verifying the device is accessible via fastboot.')
+        self.ensure_bootloader_mode()
+        if not self.job.run_test(
+                'provision_AndroidUpdate', host=self, value=None,
+                force=True, repair=True):
+            raise error.AutoservRepairTotalFailure(
+                    'Unable to repair the device.')
+
+
     def send_file(self, source, dest, delete_dest=False,
                   preserve_symlinks=False):
         """Copy files from the drone to the device.
@@ -1059,7 +1082,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
-    def stage_build_for_install(self, build_name):
+    def stage_build_for_install(self, build_name, os_type=None):
         """Stage a build on a devserver and return the build_url and devserver.
 
         @param build_name: a name like git-master/shamu-userdebug/2040953
@@ -1068,12 +1091,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             http://172.22.50.122:8080/git-master/shamu-userdebug/2040953
             and the devserver instance.
         """
+        os_type = os_type or self.get_os_type()
         logging.info('Staging build for installation: %s', build_name)
         devserver = dev_server.AndroidBuildServer.resolve(build_name,
                                                           self.hostname)
         build_name = devserver.translate(build_name)
         branch, target, build_id = utils.parse_android_build(build_name)
-        is_brillo = self.get_os_type() == OS_TYPE_BRILLO
+        is_brillo = os_type == OS_TYPE_BRILLO
         devserver.trigger_download(target, build_id, branch, is_brillo,
                                    synchronous=False)
         return '%s/static/%s' % (devserver.url(), build_name), devserver
@@ -1195,7 +1219,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def machine_install(self, build_url=None, build_local_path=None, wipe=True,
-                        flash_all=False):
+                        flash_all=False, os_type=None):
         """Install the DUT.
 
         @param build_url: The url to use for downloading Android artifacts.
@@ -1210,14 +1234,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns Name of the image installed.
         """
+        os_type = os_type or self.get_os_type()
         if not build_url and self._parser.options.image:
             build_url, _ = self.stage_build_for_install(
-                    self._parser.options.image)
-        if self.get_os_type() == OS_TYPE_ANDROID:
+                    self._parser.options.image, os_type=os_type)
+        if os_type == OS_TYPE_ANDROID:
             self.install_android(
                     build_url=build_url, build_local_path=build_local_path,
                     wipe=wipe, flash_all=flash_all)
-        elif self.get_os_type() == OS_TYPE_BRILLO:
+        elif os_type == OS_TYPE_BRILLO:
             self.install_brillo(
                     build_url=build_url, build_local_path=build_local_path)
         else:

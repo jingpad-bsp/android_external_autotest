@@ -48,6 +48,20 @@ def get_build(host):
     return utils.get_build_from_afe(host.hostname, AFE)
 
 
+def get_board(host):
+    """Retrieve the board for a given host from the AFE.
+
+    Contacts the AFE to retrieve the board for a given host.
+
+    @param host: Host object to get board.
+
+    @returns The current board or None if it could not find it.
+    """
+    if not host_in_lab(host):
+        return None
+    return utils.get_board_from_afe(host.hostname, AFE)
+
+
 def clear_version_labels(host):
     """Clear version labels for a given host.
 
@@ -87,3 +101,17 @@ def machine_install_and_update_labels(host, *args, **dargs):
     clear_version_labels(host)
     image_name = host.machine_install(*args, **dargs)
     add_version_label(host, image_name)
+
+
+def get_stable_version(board, android=False):
+    """Retrieves a board's stable version from the AFE.
+
+    @param board: Board to lookup.
+    @param android: If True, indicates we are looking up a Android/Brillo-based
+                    board. There is no default version that works for all
+                    Android/Brillo boards. If False, we are looking up a Chrome
+                    OS based board.
+
+    @returns Stable version of the given board.
+    """
+    return AFE.run('get_stable_version', board=board, android=android)

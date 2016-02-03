@@ -365,7 +365,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       'cannot be repaired.')
         if image_type != 'cros':
             board = '%s/%s' % (board, image_type)
-        stable_version = self._AFE.run('get_stable_version', board=board)
+        stable_version = afe_utils.get_stable_version(board=board)
         if image_type == 'cros':
             build_pattern = CONFIG.get_config_value(
                     'CROS', 'stable_build_pattern')
