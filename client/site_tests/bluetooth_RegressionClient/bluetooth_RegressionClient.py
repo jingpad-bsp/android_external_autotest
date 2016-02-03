@@ -29,7 +29,7 @@ class bluetooth_RegressionClient(
         self._test_init('os_idle')
         self.ask_user('OS Idle test: after pressing PASS, the OS will idle '
                       'after a short delay.  Do not prevent it from idling.'
-                      '<br>After OS has idled for at least 5 seconds, use '
+                      '<br>After OS has idled for at least 10 seconds, use '
                       'a Bluetooth device to wake machine (or use onboard '
                       'inputs if no Bluetooth device is capable).<br>'
                       'Make sure audio continues to play over Bluetooth.')
