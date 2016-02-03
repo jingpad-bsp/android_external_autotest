@@ -29,11 +29,11 @@ def host_in_lab(host):
 
 
 def get_build(host):
-    """Retrieve the current build for a given hostname from the AFE.
+    """Retrieve the current build for a given host from the AFE.
 
     Looks through a host's labels in the AFE to determine its build.
 
-    @param hostname: Hostname of the host whose build we want to retrieve.
+    @param host: Host object to get build.
 
     @returns The current build or None if it could not find it or if there
              were multiple build labels assigned to the host.
