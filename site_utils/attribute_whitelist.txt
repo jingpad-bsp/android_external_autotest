@@ -2,6 +2,7 @@ suite:AFDO_page_replay
 suite:AFDO_record
 suite:another_suite
 suite:arc-bvt-cq
+suite:arc-bvt-perbuild
 suite:au
 suite:audio
 suite:bluetooth
@@ -22,6 +23,8 @@ suite:chameleon_hdmi
 suite:chameleon_hdmi_e2e
 suite:chameleon_hdmi_weekly
 suite:chameleon_vga
+suite:crosbolt_arc_perf_perbuild
+suite:crosbolt_arc_perf_nightly
 suite:crosbolt_perf_nightly
 suite:crosbolt_perf_perbuild
 suite:dummy
