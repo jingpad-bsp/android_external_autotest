@@ -37,17 +37,17 @@ except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
-from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import factory
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
 CONFIG = global_config.global_config
+
+AFE = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
 
 MAIL_FROM = 'chromeos-test@google.com'
 DEVSERVERS = CONFIG.get_config_value('CROS', 'dev_server', type=list,
@@ -226,12 +226,11 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         build = arguments.shard_build
 
     # Remove cros-version label to force provision.
-    afe = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
-    hosts = afe.get_hosts(label=constants.Labels.BOARD_PREFIX+board)
+    hosts = AFE.get_hosts(label=constants.Labels.BOARD_PREFIX+board)
     for host in hosts:
         for label in [l for l in host.labels
                       if l.startswith(provision.CROS_VERSION_PREFIX)]:
-            afe.run('host_remove_labels', id=host.id, labels=[label])
+            AFE.run('host_remove_labels', id=host.id, labels=[label])
 
         if use_shard and not create_and_return:
             # Let's verify the repair flow and powerwash the duts.  We can
@@ -243,7 +242,7 @@ def do_run_suite(suite_name, arguments, use_shard=False,
                 raise TestPushException('Failed to powerwash dut %s. Make '
                                         'sure the dut is working first. '
                                         'Error: %s' % (host.hostname, e))
-            afe.reverify_hosts(hostnames=[host.hostname])
+            AFE.reverify_hosts(hostnames=[host.hostname])
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
     cmd = [os.path.join(current_dir, RUN_SUITE_COMMAND),
@@ -281,11 +280,11 @@ def do_run_suite(suite_name, arguments, use_shard=False,
     # If create_and_return specified, wait for the suite to finish.
     if create_and_return:
         end = time.time() + arguments.timeout_min * 60
-        while not afe.get_jobs(id=suite_job_id, finished=True):
+        while not AFE.get_jobs(id=suite_job_id, finished=True):
             if time.time() < end:
                 time.sleep(10)
             else:
-                afe.run('abort_host_queue_entries', job=suite_job_id)
+                AFE.run('abort_host_queue_entries', job=suite_job_id)
                 raise TestPushException(
                         'Asynchronous suite triggered by create_and_return '
                         'flag has timed out after %d mins. Aborting it.' %
@@ -309,8 +308,7 @@ def check_dut_image(build, suite_job_id):
             for job_id in job_ids]
     hostnames = set([hqe.host.hostname for hqe in hqes])
     for hostname in hostnames:
-        host = cros_host.CrosHost(hostname)
-        found_build = afe_utils.get_build(hostname)
+        found_build = site_utils.get_build_from_afe(hostname, AFE)
         if found_build != build:
             raise TestPushException('DUT is not imaged properly. Host %s has '
                                     'build %s, while build %s is expected.' %
