@@ -16,13 +16,15 @@ from enum import Enum
 Test = namedtuple('Test', 'filter, suite, shards, time, hasty, notpass')
 
 ATTRIBUTES_BVT_CQ = (
-    'suite:graphics_per-day, suite:graphics_system, suite:bvt-cq')
+    'suite:deqp, suite:graphics_per-day, suite:graphics_system, suite:bvt-cq')
 ATTRIBUTES_BVT_PB = (
-    'suite:graphics_per-day, suite:graphics_system, suite:bvt-perbuild')
-ATTRIBUTES_DAILY = 'suite:graphics_per-day, suite:graphics_system'
-SUITE_BVT_CQ = 'graphics_per-day, graphics_system, bvt-cq'
-SUITE_BVT_PB = 'graphics_per-day, graphics_system, bvt-perbuild'
-SUITE_DAILY = 'graphics_per-day, graphics_system'
+    'suite:deqp, suite:graphics_per-day, suite:graphics_system, '
+    'suite:bvt-perbuild'
+)
+ATTRIBUTES_DAILY = 'suite:deqp, suite:graphics_per-day, suite:graphics_system'
+SUITE_BVT_CQ = 'deqp, graphics_per-day, graphics_system, bvt-cq'
+SUITE_BVT_PB = 'deqp, graphics_per-day, graphics_system, bvt-perbuild'
+SUITE_DAILY = 'deqp, graphics_per-day, graphics_system'
 
 class Suite(Enum):
     none = 1
@@ -146,8 +148,8 @@ def write_controlfiles(test):
             testname = get_testname(test, shard)
             filename = get_controlfilename(test, shard)
             content = CONTROLFILE_TEMPLATE.format(
-                testname, attributes, suite, time, dependencies,
-                test.filter, subset, test.hasty, shard, test.shards)
+                testname, attributes, suite, time, dependencies, test.filter,
+                subset, test.hasty, shard, test.shards)
             write_controlfile(filename, content)
     else:
         if test.notpass:
@@ -158,14 +160,19 @@ def write_controlfiles(test):
                 testname, attributes, suite, time, dependencies, test.filter,
                 subset, test.hasty, 0, test.shards)
             write_controlfile(filename, content)
-        test = Test(test.filter, test.suite, test.shards, test.time, test.hasty, notpass=False)
+        test = Test(test.filter,
+                    test.suite,
+                    test.shards,
+                    test.time,
+                    test.hasty,
+                    notpass=False)
         dependencies = get_dependencies(test)
         subset = 'Pass'
         testname = get_testname(test)
         filename = get_controlfilename(test)
-        content = CONTROLFILE_TEMPLATE.format(
-            testname, attributes, suite, time, dependencies, test.filter,
-            subset, test.hasty, 0, test.shards)
+        content = CONTROLFILE_TEMPLATE.format(testname, attributes, suite, time,
+                                              dependencies, test.filter, subset,
+                                              test.hasty, 0, test.shards)
         write_controlfile(filename, content)
 
 
