@@ -166,7 +166,7 @@ def _gather_presentation_info(config_data, test_name):
 
 def _format_for_upload(platform_name, cros_version, chrome_version,
                        hardware_id, variant_name, hardware_hostname,
-                       perf_data, presentation_info):
+                       perf_data, presentation_info, afe_job_id):
     """Formats perf data suitably to upload to the perf dashboard.
 
     The perf dashboard expects perf data to be uploaded as a
@@ -188,6 +188,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
         _compute_avg_stddev().
     @param presentation_info: A dictionary of dashboard presentation info for
         the given test, as identified by _gather_presentation_info().
+    @param afe_job_id: A string uniquely identifying the test run, this enables
+        linking back from a test result to the logs of the test run.
 
     @return A dictionary containing the formatted information ready to upload
         to the performance dashboard.
@@ -226,6 +228,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
                 'a_default_rev': 'r_chrome_version',
                 'a_hardware_identifier': hardware_id,
                 'a_hardware_hostname': hardware_hostname,
+                'a_variant_name': variant_name,
+                'a_afe_job_id': afe_job_id,
             }
         }
 
@@ -375,6 +379,7 @@ def upload_test(job, test):
     hardware_hostname = test.machine
     variant_name = test.attributes.get(constants.VARIANT_KEY, None)
     config_data = _parse_config_file(_PRESENTATION_CONFIG_FILE)
+    afe_job_id = job.afe_job_id
     try:
         shadow_config_data = _parse_config_file(_PRESENTATION_SHADOW_CONFIG_FILE)
         config_data.update(shadow_config_data)
@@ -386,7 +391,8 @@ def upload_test(job, test):
         presentation_info = _gather_presentation_info(config_data, test_name)
         formatted_data = _format_for_upload(
                 platform_name, cros_version, chrome_version, hardware_id,
-                variant_name, hardware_hostname, perf_data, presentation_info)
+                variant_name, hardware_hostname, perf_data, presentation_info,
+                afe_job_id)
         _send_to_dashboard(formatted_data)
     except PerfUploadingError as e:
         tko_utils.dprint('Error when uploading perf data to the perf '
