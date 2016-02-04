@@ -381,14 +381,6 @@ class test_format_for_upload(unittest.TestCase):
                     expected[idx]['supplemental_columns']['a_hardware_hostname'],
                     msg=fail_msg)
             self.assertEqual(
-                    actual[idx]['supplemental_columns']['a_afe_job_id'],
-                    expected[idx]['supplemental_columns']['a_afe_job_id'],
-                    msg=fail_msg)
-            self.assertEqual(
-                    actual[idx]['supplemental_columns']['a_variant_name'],
-                    expected[idx]['supplemental_columns']['a_variant_name'],
-                    msg=fail_msg)
-            self.assertEqual(
                     actual[idx]['bot'], expected[idx]['bot'], msg=fail_msg)
             self.assertEqual(
                     actual[idx]['revision'], expected[idx]['revision'], msg=fail_msg)
@@ -414,14 +406,12 @@ class test_format_for_upload(unittest.TestCase):
         """Verifies format_for_upload generates correct json data."""
         result = perf_uploader._format_for_upload(
                 'platform', '25.1200.0.0', '25.10.1000.0', 'WINKY E2A-F2K-Q35',
-                'i7', 'test_machine', self._perf_data, self._PRESENT_INFO, '52926644-username')
+                'i7', 'test_machine', self._perf_data, self._PRESENT_INFO)
         expected_result_string = (
                 '[{"supplemental_columns": {"r_cros_version": "25.1200.0.0", '
                 '"a_default_rev" : "r_chrome_version",'
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"a_afe_job_id" : "52926644-username",'
-                '"a_variant_name" : "i7",'
                 '"r_chrome_version": "25.10.1000.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": false, "value": 2.7, '
                 '"revision": 10000000120000000, '
@@ -431,8 +421,6 @@ class test_format_for_upload(unittest.TestCase):
                 '"a_default_rev" : "r_chrome_version",'
                 '"a_hardware_identifier" : "WINKY E2A-F2K-Q35",'
                 '"a_hardware_hostname" : "test_machine",'
-                '"a_afe_job_id" : "52926644-username",'
-                '"a_variant_name" : "i7",'
                 '"r_chrome_version": "25.10.1000.0"}, "bot": "cros-platform-i7", '
                 '"higher_is_better": true, "value": 101.35, '
                 '"revision": 10000000120000000, '
