@@ -2,7 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Utility functions for AFE-based interactions."""
+"""Utility functions for AFE-based interactions.
+
+NOTE: This module should only be used in the context of a running test. Any
+      utilities that require accessing the AFE, should do so by creating
+      their own instance of the AFE client and interact with it directly.
+"""
 
 import common
 from autotest_lib.server import utils
@@ -23,7 +28,7 @@ def host_in_lab(host):
 
     @returns The host model object.
     """
-    if not host.job.in_lab:
+    if not host.job or not host.job.in_lab:
         return False
     return AFE.get_hosts(hostname=host.hostname)
 
