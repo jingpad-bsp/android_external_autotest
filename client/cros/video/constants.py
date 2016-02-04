@@ -4,7 +4,7 @@
 
 SUPPORTED_BOARDS = ['lumpy', 'daisy', 'falco', 'link', 'parrot', 'peppy',
                     'peach_pi', 'peach_pit', 'auron_paine', 'squawks', 'cyan'
-                    'veyron_jerry']
+                    'veyron_jerry', 'chell']
 
 DESIRED_WIDTH = 864
 DESIRED_HEIGHT = 494
