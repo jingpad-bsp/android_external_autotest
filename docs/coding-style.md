@@ -1,33 +1,26 @@
 # Coding style for autotest in Chrome OS / Android / Brillo
-These rules are fairly standard and boring. People will bitch about something
-in here, no doubt. Get over it. Much of this was stolen from the Linux Kernel
-coding style, because most of it makes good sense. If you disagree, that's OK,
-but please stick to the rules anyway ;-)
+These rules elaborate on, but rarely deviate from PEP-8.  When in doubt, go
+with PEP-8.
 
 
 ## Language
-
-Please use Python where possible. It's not the ideal language for everything,
-but it's pretty good, and consistency goes a long way in making the project
-maintainable. (Obviously using C or whatever for writing tests is fine).
-
-
-## Base coding style
-
-When writing python code, unless otherwise stated, stick to the python style
-guide (http://www.python.org/dev/peps/pep-0008/).
+ * Use Python where possible
+ * Prefer writing more Python to a smaller amount of shell script in host
+   commands.  In practice, the Python tends to be easier to maintain.
+ * Some tests use C/C++ in test dependencies, and this is also ok.
 
 
 ## Indentation & whitespace
 
 Format your code for an 80 character wide screen.
 
-Indentation is now 4 spaces, as opposed to hard tabs (which it used to be).
+Indentation is 4 spaces, as opposed to hard tabs (which it used to be).
 This is the Python standard.
 
 For hanging indentation, use 8 spaces plus all args should be on the new line.
 
 ```
+
      # Either of the following hanging indentation is considered acceptable.
 YES: return 'class: %s, host: %s, args = %s' % (
              self.__class__.__name__, self.hostname, self.args)
@@ -49,36 +42,37 @@ NO:  return 'class: %s, host: %s, args = %s' % (self.__class__.__name__,
 Don't leave trailing whitespace, or put whitespace on blank lines.
 
 Leave TWO blank lines between functions - this is Python, there are no clear
-function end markers, and we need help.
+function end markers, and we need help.  Note that this intentionally
+contradicts PEP-8.
 
 
 ## Variable names and UpPeR cAsE
-
-Use descriptive variable names where possible - it helps to make the code
-self documenting.
-
-Don't use CamelCaps style in most places - use underscores to separate parts
-of your variable\_names please. I shall make a bedgrudging exception for class
-names I suppose, but I'll still whine about it a lot.
+ * Use descriptive variable names where possible
+ * Use `variable_names_like_this`
+ * Use `method_and_function_names_like_this`
+ * Use `UpperCamelCase` for class names
 
 
 ## Importing modules
 
 The order of imports should be as follows:
 
-Standard python modules
-Non-standard python modules
-Autotest modules
+ * Standard python modules
+ * Non-standard python modules
+ * Autotest modules
 
 Within one of these three sections, all module imports using the from
 keyword should appear after regular imports.
 Each module should be imported on its own line.
-Wildcard imports (from x import \*) should be avoided if possible.
-Classes should not be imported from modules, but modules may be imported
- from packages, i.e.:
+Do not use Wildcard imports (`from x import *`) if possible.
+
+Import modules, not classes.  For example:
 
 ```
 from common_lib import error
+
+def foo():
+    raise error.AutoservError(...)
 ```
 
 and not:
@@ -107,9 +101,9 @@ from common_lib import error
 
 ## Testing None
 
-Use "is None" rather than "== None" and "is not None" rather than "!= None".
+Use `is None` rather than `== None` and `is not None` rather than `!= None`.
 This way you'll never run into a case where someone's `__eq__` or `__ne__`
-method do the wrong thing
+method does the wrong thing.
 
 
 ## Comments
@@ -127,7 +121,7 @@ incredibly helpful in understanding code.
 
 Strings should use only single quotes for hardcoded strings in the code. Double
 quotes are acceptable when single quote is used as part of the string.
-Multiline string should not use '\' but wrap the string using parenthesises.
+Multiline strings should not use '\' but wrap the string using parentheseses.
 
 ```
 REALLY_LONG_STRING = ('This is supposed to be a really long string that is '
@@ -170,18 +164,18 @@ like doxygen. Not all places need all tags defined, so choose them wisely while
 writing code. Generally (if applicable) always list parameters, return value
 (if there is one), and exceptions that can be raised to each docstring.
 
-@author - Code author
-@param - Parameter description
-@raise - If the function can throw an exception, this tag documents the
-possible exception types.
-@raises - same as @raise.
-@return - Return value description
-@returns - Same as @return
-@see - Reference to what you have done
-@warning - Call attention to potential problems with the code
-@var -  Documentation for a variable or enum value (either global or as a
-member of a class)
-@version - Version string
+|   Tag    | Description                                                                              |
+|----------|------------------------------------------------------------------------------------------|
+| @author  | Code author                                                                              |
+| @param   | Parameter description                                                                    |
+| @raise   | If the function can throw an exception, this tag documents the possible exception types. |
+| @raises  | Same as @raise.                                                                          |
+| @return  | Return value description                                                                 |
+| @returns | Same as @return                                                                          |
+| @see     | Reference to other parts of the codebase.                                                |
+| @warning | Call attention to potential problems with the code                                       |
+| @var     | Documentation for a variable or enum value (either global or as a member of a class)     |
+| @version | Version string                                                                           |
 
 When in doubt refer to: http://doxygen.nl/commands.html
 
@@ -190,7 +184,7 @@ When in doubt refer to: http://doxygen.nl/commands.html
 Keep it simple; this is not the right place to show how smart you are. We
 have plenty of system failures to deal with without having to spend ages
 figuring out your code, thanks ;-) Readbility, readability, readability.
-I really don't care if other things are more compact.
+Strongly prefer readability and simplicity over compactness.
 
 "Debugging is twice as hard as writing the code in the first place. Therefore,
 if you write the code as cleverly as possible, you are, by definition, not
@@ -200,8 +194,8 @@ smart enough to debug it."  Brian Kernighan
 ## Function length
 
 Please keep functions short, under 30 lines or so if possible. Even though
-you are amazingly clever, and can cope with it, the rest of us are all stupid,
-so be nice and help us out. To quote the Linux Kernel coding style:
+you are amazingly clever, and can cope with it, the rest of us are busy and
+stupid, so be nice and help us out. To quote the Linux Kernel coding style:
 
 Functions should be short and sweet, and do just one thing.  They should
 fit on one or two screenfuls of text (the ISO/ANSI screen size is 80x24,
@@ -227,11 +221,6 @@ client/common\_lib/error.py.
 
 ## Submitting patches
 
-Generate universal diffs. Email them to autotest@test.kernel.org.
-Most mailers now break lines and/or changes tabs to spaces. If you know how
-to avoid that - great, put your patches inline. If you're not sure, just
-attatch them, I don't care much. Please base them off the current version.
-
-Don't worry about submitting patches to a public list - everybody makes
-mistakes, especially me ... so get over it and don't worry about it.
-(though do give your changes a test first ;-))
+Submit changes through the Chrome OS gerrit instance.  This process is
+documented on
+[chromium.org](http://dev.chromium.org/developers/contributing-code).
