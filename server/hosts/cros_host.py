@@ -2405,6 +2405,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         version_string = self.run(client_constants.CHROME_VERSION_COMMAND).stdout
         return utils.parse_chrome_version(version_string)
 
+
     @label_decorator()
     def get_board(self):
         """Determine the correct board label for this host.
@@ -2413,17 +2414,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         release_info = utils.parse_cmd_output('cat /etc/lsb-release',
                                               run_method=self.run)
-        board = release_info['CHROMEOS_RELEASE_BOARD']
-        # Devices in the lab generally have the correct board name but our own
-        # development devices have {board_name}-signed-{key_type}. The board
-        # name may also begin with 'x86-' which we need to keep.
-        board_format_string = ds_constants.BOARD_PREFIX + '%s'
-        splitted_board = board.split('-')
-        try:
-            end = splitted_board.index('generic')
-        except ValueError:
-            end = 0
-        return board_format_string % '-'.join(board.split('-')[0:end + 1])
+        return (ds_constants.BOARD_PREFIX +
+                release_info['CHROMEOS_RELEASE_BOARD'])
 
 
     @label_decorator('lightsensor')
