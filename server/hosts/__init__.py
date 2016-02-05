@@ -20,6 +20,7 @@ from kvm_guest import KVMGuest
 from cros_host import CrosHost
 from chameleon_host import ChameleonHost
 from servo_host import ServoHost
+from testbed import TestBed
 
 # bootloader classes
 from bootloader import Bootloader
