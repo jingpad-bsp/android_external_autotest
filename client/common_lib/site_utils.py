@@ -9,6 +9,8 @@ import re
 import signal
 import socket
 import struct
+import subprocess
+import tempfile
 import time
 import urllib2
 import uuid
@@ -25,6 +27,8 @@ CONFIG = global_config.global_config
 
 # Keep checking if the pid is alive every second until the timeout (in seconds)
 CHECK_PID_IS_ALIVE_TIMEOUT = 6
+
+_BITS_PER_BYTE=8
 
 _LOCAL_HOST_LIST = ('localhost', '127.0.0.1')
 
@@ -730,9 +734,15 @@ def extract_wav_frames(wave_file):
         fmt = '%ii'  # Read 4 bytes.
     else:
         raise ValueError('Unsupported sample width')
-    return list(struct.unpack(fmt % num_frames * wave_file.getnchannels(),
-                              wave_file.readframes(num_frames)))
+    frames =  list(struct.unpack(fmt % num_frames * wave_file.getnchannels(),
+                                 wave_file.readframes(num_frames)))
 
+    # Since 8-bit PCM is unsigned with an offset of 128, we subtract the offset
+    # to make it signed since the rest of the code assumes signed numbers.
+    if sample_width == 1:
+        frames = [val - 128 for val in frames]
+
+    return frames
 
 def check_wav_file(filename, num_channels=None, sample_rate=None,
                    sample_width=None):
@@ -767,15 +777,46 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
         if chk_file is not None:
             chk_file.close()
 
-    # Since 8-bit PCM is unsigned with an offset of 128, we subtract the offset
-    # to make it signed since the rest of the code assumes signed numbers.
-    if chk_file.getsampwidth() == 1:
-        frames = [val - 128 for val in frames]
-
     peaks = []
     for i in range(chk_file.getnchannels()):
         peaks.append(max(map(abs, frames[i::chk_file.getnchannels()])))
     return peaks;
+
+
+def generate_sine_file(host, num_channels, sample_rate, sample_width,
+                       duration_secs, sine_frequency, temp_dir):
+    """Generate a sine file and push it to the DUT.
+
+    @param host: An object representing the DUT.
+    @param num_channels: Number of channels to use.
+    @param sample_rate: Sample rate to use for sine wave generation.
+    @param sample_width: Sample width to use for sine wave generation.
+    @param duration_secs: Duration in seconds to generate sine wave for.
+    @param sine_frequency: Frequency to generate sine wave at.
+    @param temp_dir: A temporary directory on the host.
+
+    @return A tuple of the filename on the server and the DUT.
+    """;
+    _, local_filename = tempfile.mkstemp(
+        prefix='sine-', suffix='.wav', dir=temp_dir)
+    if sample_width == 1:
+        sine_format = '-e unsigned'
+    else:
+        sine_format = '-e signed'
+    gen_file_cmd = ('sox -n -t wav -c %d %s -b %d -r %d %s synth %d sine %d '
+                    'vol 0.9' % (num_channels, sine_format,
+                                 sample_width * _BITS_PER_BYTE, sample_rate,
+                                 local_filename, duration_secs, sine_frequency))
+    logging.info('Command to generate sine wave: %s', gen_file_cmd)
+    subprocess.call(gen_file_cmd, shell=True)
+    logging.info('Send file to DUT.')
+    # TODO(ralphnathan): Find a better place to put this file once the SELinux
+    # issues are resolved.
+    dut_tmp_dir = '/data'
+    remote_filename = os.path.join(dut_tmp_dir, 'sine.wav')
+    logging.info('remote_filename %s', remote_filename)
+    host.send_file(local_filename, remote_filename)
+    return local_filename, remote_filename
 
 
 def which(exec_file):

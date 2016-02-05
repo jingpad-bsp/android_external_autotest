@@ -7,7 +7,7 @@ from autotest_lib.server.brillo.feedback import client_factory
 
 
 AUTHOR = 'garnold, ralphnathan'
-NAME = 'brillo_FileOpenSLESPlaybackAudioTest'
+NAME = 'brillo_SweepOpenSLESPlaybackAudioTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
@@ -15,7 +15,8 @@ ATTRIBUTES = 'suite:brillo-audio'
 SUITE = 'brillo-audio'
 
 DOC = """
-Tests audio playback using OpenSL ES and a file on a Brillo device.
+Tests audio playback using OpenSL ES and a file on a Brillo device and different
+parameters.
 
 Test arguments:
 
@@ -42,6 +43,9 @@ def run(machine):
                  fb_client=fb_client,
                  playback_method='opensles',
                  use_file='true',
+                 sample_widths_arr=[1, 2],
+                 sample_rates_arr=[16000, 22000, 44100, 48000, 96000],
+                 num_channels_arr=[1, 2],
                  **test_args)
 
 
