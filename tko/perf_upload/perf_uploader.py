@@ -166,7 +166,7 @@ def _gather_presentation_info(config_data, test_name):
 
 def _format_for_upload(platform_name, cros_version, chrome_version,
                        hardware_id, variant_name, hardware_hostname,
-                       perf_data, presentation_info):
+                       perf_data, presentation_info, jobname):
     """Formats perf data suitably to upload to the perf dashboard.
 
     The perf dashboard expects perf data to be uploaded as a
@@ -188,6 +188,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
         _compute_avg_stddev().
     @param presentation_info: A dictionary of dashboard presentation info for
         the given test, as identified by _gather_presentation_info().
+    @param jobname: A string uniquely identifying the test run, this enables
+        linking back from a test result to the logs of the test run.
 
     @return A dictionary containing the formatted information ready to upload
         to the performance dashboard.
@@ -226,6 +228,8 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
                 'a_default_rev': 'r_chrome_version',
                 'a_hardware_identifier': hardware_id,
                 'a_hardware_hostname': hardware_hostname,
+                'a_variant_name': variant_name,
+                'a_jobname': jobname,
             }
         }
 
@@ -347,7 +351,7 @@ def _send_to_dashboard(data_obj):
                 'HTTPException for JSON %s\n' % data_obj['data'])
 
 
-def upload_test(job, test):
+def upload_test(job, test, jobname):
     """Uploads any perf data associated with a test to the perf dashboard.
 
     @param job: An autotest tko.models.job object that is associated with the
@@ -386,7 +390,8 @@ def upload_test(job, test):
         presentation_info = _gather_presentation_info(config_data, test_name)
         formatted_data = _format_for_upload(
                 platform_name, cros_version, chrome_version, hardware_id,
-                variant_name, hardware_hostname, perf_data, presentation_info)
+                variant_name, hardware_hostname, perf_data, presentation_info,
+                jobname)
         _send_to_dashboard(formatted_data)
     except PerfUploadingError as e:
         tko_utils.dprint('Error when uploading perf data to the perf '

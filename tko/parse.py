@@ -281,7 +281,7 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
 
     # Upload perf values to the perf dashboard, if applicable.
     for test in job.tests:
-        perf_uploader.upload_test(job, test)
+        perf_uploader.upload_test(job, test, jobname)
 
     # Although the cursor has autocommit, we still need to force it to commit
     # existing changes before we can use django models, otherwise it
