@@ -35,11 +35,11 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'Cr-OS-Kernel-Graphics', 'Chameleon'],
-    'owner': 'waihong@chromium.org',
+    'owner': 'kalin@chromium.org',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['kalin@chromium.org', 'yuli@chromium.org', 'conradlo@chromium.org']
+    'cc': ['waihong@chromium.org', 'conradlo@chromium.org']
 }
 
 args_dict['suite_dependencies'] = 'chameleon:hdmi'
