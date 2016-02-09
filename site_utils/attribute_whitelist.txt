@@ -3,6 +3,7 @@ suite:AFDO_record
 suite:another_suite
 suite:arc-bvt-cq
 suite:arc-bvt-perbuild
+suite:arc-nightly
 suite:au
 suite:audio
 suite:bluetooth
