@@ -375,7 +375,6 @@ class SuiteSpec(object):
         self._verify_builds(build, builds)
 
         self.board = 'board:%s' % board
-        self.devserver = dev_server.ImageServer(devserver_url)
 
         if builds:
             self.builds = builds
@@ -395,10 +394,17 @@ class SuiteSpec(object):
                           else provision.CROS_VERSION_PREFIX)
             self.builds = {prefix: build}
 
-        if provision.CROS_VERSION_PREFIX in self.builds:
-            translated_build = self.devserver.translate(
-                    self.builds[provision.CROS_VERSION_PREFIX])
-            self.builds[provision.CROS_VERSION_PREFIX] = translated_build
+        if provision.ANDROID_BUILD_VERSION_PREFIX in self.builds:
+            self.devserver = dev_server.AndroidBuildServer(devserver_url)
+        else:
+            self.devserver = dev_server.ImageServer(devserver_url)
+
+        for system_image_prefix in [provision.CROS_VERSION_PREFIX,
+                                    provision.ANDROID_BUILD_VERSION_PREFIX]:
+            if system_image_prefix in self.builds:
+                translated_build = self.devserver.translate(
+                    self.builds[system_image_prefix])
+                self.builds[system_image_prefix] = translated_build
 
         if test_source_build:
             test_source_build = self.devserver.translate(test_source_build)
