@@ -3,11 +3,12 @@
 # found in the LICENSE file.
 
 import json
+import logging
 import os
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import enterprise_base
+from autotest_lib.client.cros import enterprise_base, power_status
 from autotest_lib.client.bin import utils
 
 
@@ -21,15 +22,34 @@ class enterprise_PowerManagement(enterprise_base.EnterpriseTest):
         utils.make('OUT_DIR=.')
 
 
-    def initialize(self):
+    def initialize(self, percent_initial_charge_min=10):
         self.import_dmserver(self.srcdir)
+        self._power_status = power_status.get_status()
+        if not self._power_status.on_ac():
+            # Make sure on battery with some charge.
+            self._power_status.assert_battery_state(percent_initial_charge_min)
+
+        logging.info("Device power type is %s", self._power_type)
         super(enterprise_PowerManagement, self).initialize()
+
+    @property
+    def _power_type(self):
+        """Returns appropriate power type based on whether DUT is on AC or not.
+
+        Returns:
+          String of power type.
+        """
+        if self._power_status.on_ac():
+            return "AC"
+
+        return "Battery"
 
 
     def _setup_lock_policy(self):
         """Setup policy to lock screen in 10 seconds of idle time."""
         self._screen_lock_delay = 10
-        screen_lock_policy = '{ "AC": %d }' % (self._screen_lock_delay*1000)
+        screen_lock_policy = '{ "%s": %d }' % (self._power_type,
+                                               self._screen_lock_delay*1000)
 
         policy_blob = """{
             "google/chromeos/user": {
@@ -51,7 +71,7 @@ class enterprise_PowerManagement(enterprise_base.EnterpriseTest):
         """Setup policy to logout in 10 seconds of idle time."""
         self._screen_logout_delay = 10
         idle_settings_policy = '''{
-            "AC": {
+            "%s": {
                 "Delays": {
                     "ScreenDim": 2000,
                     "ScreenOff": 3000,
@@ -60,7 +80,7 @@ class enterprise_PowerManagement(enterprise_base.EnterpriseTest):
                  },
                  "IdleAction": "Logout"
             }
-        }''' % (self._screen_logout_delay*1000)
+        }''' % (self._power_type, self._screen_logout_delay*1000)
 
         policy_blob = """{
             "google/chromeos/user": {
