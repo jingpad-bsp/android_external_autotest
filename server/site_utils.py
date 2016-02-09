@@ -500,8 +500,11 @@ def is_restricted_user(username):
     restricted_groups = global_config.global_config.get_config_value(
             'AUTOTEST_WEB', 'restricted_groups', default='').split(',')
     for group in restricted_groups:
-        if group and username in grp.getgrnam(group).gr_mem:
-            return True
+        try:
+            if group and username in grp.getgrnam(group).gr_mem:
+                return True
+        except KeyError as e:
+            logging.debug("%s is not a valid group.", group)
     return False
 
 
