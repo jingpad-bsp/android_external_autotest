@@ -41,7 +41,7 @@ def run(machine):
                  host=hosts.create_host(machine),
                  fb_client=fb_client,
                  recording_method='libmedia',
-                 num_channels=1,
+                 num_channels_arr=[1],
                  **test_args)
 
 

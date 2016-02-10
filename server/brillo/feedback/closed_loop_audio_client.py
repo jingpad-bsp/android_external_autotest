@@ -4,6 +4,7 @@
 
 """Feedback implementation for audio with closed-loop cable."""
 
+import contextlib
 import logging
 import numpy
 import os
@@ -37,6 +38,8 @@ _DEFAULT_NUM_CHANNELS = 1
 _DEFAULT_SAMPLE_RATE = 48000
 # Recording sample format is signed 16-bit PCM (two bytes).
 _DEFAULT_SAMPLE_WIDTH = 2
+# Default frequency to generate audio at (used for recording).
+_DEFAULT_FREQUENCY = 440
 
 # The peak when recording silence is 5% of the max volume.
 _SILENCE_THRESHOLD = 0.05
@@ -64,6 +67,113 @@ def _max_volume(sample_width):
     @param sample_width: The sample width in bytes.
     """
     return (1 << 8) if sample_width == 1 else (1 << (sample_width * 8 - 1))
+
+
+def _is_outside_frequency_threshold(freq_reference, freq_rec):
+    """Compares the frequency of the recorded audio with the reference audio.
+
+    This function checks to see if the frequencies corresponding to the peak
+    FFT values are similiar meaning that the dominant frequency in the audio
+    signal is the same for the recorded audio as that in the audio played.
+
+    @freq_reference: The dominant frequency in the reference audio file.
+    @freq_rec: The dominant frequency in the recorded audio file.
+
+    @returns: True is freq_rec is with _FREQUENCY_THRESHOLD percent of
+              freq_reference.
+    """
+    ratio = float(freq_rec) / freq_reference
+    if ratio > 1 + _FREQUENCY_THRESHOLD or ratio < 1 - _FREQUENCY_THRESHOLD:
+        return True
+    return False
+
+
+def _compare_frames(reference_file_frames, rec_file_frames, num_channels,
+                    sample_rate):
+    """Compares audio frames from the reference file and the recorded file.
+
+    This method checks for two things:
+      1. That the main frequency is the same in both the files. This is done
+         using the FFT and observing the frequency corresponding to the
+         peak.
+      2. That there is no other dominant frequency in the recorded file.
+         This is done by sweeping the frequency domain and checking that the
+         frequency is always less than _FFT_NOISE_THRESHOLD percentage of
+         the peak.
+
+    The key assumption here is that the reference audio file contains only
+    one frequency.
+
+    @param reference_file_frames: Audio frames from the reference file.
+    @param rec_file_frames: Audio frames from the recorded file.
+    @param num_channels: Number of channels in the files.
+    @param sample_rate: Sample rate of the files.
+
+    @raise error.TestFail: The frequency of the recorded signal doesn't
+                           match that of the reference signal.
+    @raise error.TestFail: There is too much noise in the recorded signal.
+    """
+    for channel in range(num_channels):
+        reference_data = reference_file_frames[channel::num_channels]
+        rec_data = rec_file_frames[channel::num_channels]
+
+        # Get fft and frequencies corresponding to the fft values.
+        fft_reference = numpy.fft.rfft(reference_data)
+        fft_rec = numpy.fft.rfft(rec_data)
+        fft_freqs_reference = numpy.fft.rfftfreq(len(reference_data),
+                                                 1.0 / sample_rate)
+        fft_freqs_rec = numpy.fft.rfftfreq(len(rec_data), 1.0 / sample_rate)
+
+        # Get frequency at highest peak.
+        freq_reference = fft_freqs_reference[
+                numpy.argmax(numpy.abs(fft_reference))]
+        abs_fft_rec = numpy.abs(fft_rec)
+        freq_rec = fft_freqs_rec[numpy.argmax(abs_fft_rec)]
+
+        # Compare the two frequencies.
+        logging.info('Golden frequency of channel %i is %f', channel,
+                     freq_reference)
+        logging.info('Recorded frequency of channel %i is  %f', channel,
+                     freq_rec)
+        if _is_outside_frequency_threshold(freq_reference, freq_rec):
+            raise error.TestFail('The recorded audio frequency does not match '
+                                 'that of the audio played.')
+
+        # Check for noise in the frequency domain.
+        fft_rec_peak_val = numpy.max(abs_fft_rec)
+        noise_detected = False
+        for fft_index, fft_val in enumerate(abs_fft_rec):
+            if _is_outside_frequency_threshold(freq_reference, freq_rec):
+                # If the frequency exceeds _FFT_NOISE_THRESHOLD, then fail.
+                if fft_val > _FFT_NOISE_THRESHOLD * fft_rec_peak_val:
+                    logging.warning('Unexpected frequency peak detected at %f '
+                                    'Hz.', fft_freqs_rec[fft_index])
+                    noise_detected = True
+
+        if noise_detected:
+            raise error.TestFail('Signal is noiser than expected.')
+
+def _compare_file(reference_audio_filename, test_audio_filename):
+    """Compares the recorded audio file to the reference audio file.
+
+    @param reference_audio_filename : Reference audio file containing the
+                                      reference signal.
+    @param test_audio_filename: Audio file containing audio captured from
+                                the test.
+    """
+    with contextlib.closing(wave.open(reference_audio_filename,
+                                      'rb')) as reference_file:
+        with contextlib.closing(wave.open(test_audio_filename,
+                                          'rb')) as rec_file:
+            # Extract data from files.
+            reference_file_frames = site_utils.extract_wav_frames(
+                    reference_file)
+            rec_file_frames = site_utils.extract_wav_frames(rec_file)
+
+            num_channels = reference_file.getnchannels()
+            _compare_frames(reference_file_frames, rec_file_frames,
+                            reference_file.getnchannels(),
+                            reference_file.getframerate())
 
 
 class Client(client.Client):
@@ -326,95 +436,6 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
                      min_audible_peak, self.client.audible_threshold)
 
 
-    def _is_outside_frequency_threshold(self, freq_golden, freq_rec):
-        """Compares the frequency of the recorded audio with the golden audio.
-
-        This function checks to see if the frequencies corresponding to the peak
-        FFT values are similiar meaning that the dominant frequency in the audio
-        signal is the same for the recorded audio as that in the audio played.
-
-        @freq_golden: The dominant frequency in the reference audio file.
-        @freq_rec: The dominant frequency in the recorded audio file.
-
-        @returns: True is freq_rec is with _FREQUENCY_THRESHOLD percent of
-                  freq_golden.
-        """
-        ratio = float(freq_rec) / freq_golden
-        if ratio > 1 + _FREQUENCY_THRESHOLD or ratio < 1 - _FREQUENCY_THRESHOLD:
-            return True
-        return False
-
-
-    def _compare_file(self, audio_file):
-        """Compares the recorded audio file to the golden audio file.
-
-        This method checks for two things:
-          1. That the main frequency is the same in both the files. This is done
-             using the FFT and observing the frequency corresponding to the
-             peak.
-          2. That there is no other dominant frequency in the recorded file.
-             This is done by sweeping the frequency domain and checking that the
-             frequency is always less than _FFT_NOISE_THRESHOLD percentage of
-             the peak.
-
-        The key assumption here is that the reference audio file contains only
-        one frequency.
-
-        @param audio_file: Reference audio file containing the golden signal.
-
-        @raise error.TestFail: The frequency of the recorded signal doesn't
-                               match that of the golden signal.
-        @raise error.TestFail: There is too much noise in the recorded signal.
-        """
-        local_rec_filename = self._get_local_rec_filename()
-
-        # Open both files and extract data.
-        golden_file = wave.open(audio_file, 'rb')
-        golden_file_frames = site_utils.extract_wav_frames(golden_file)
-        rec_file = wave.open(local_rec_filename, 'rb')
-        rec_file_frames = site_utils.extract_wav_frames(rec_file)
-
-        num_channels = golden_file.getnchannels()
-        for channel in range(num_channels):
-            golden_data = golden_file_frames[channel::num_channels]
-            rec_data = rec_file_frames[channel::num_channels]
-
-            # Get fft and frequencies corresponding to the fft values.
-            fft_golden = numpy.fft.rfft(golden_data)
-            fft_rec = numpy.fft.rfft(rec_data)
-            fft_freqs_golden = numpy.fft.rfftfreq(
-                    len(golden_data), 1.0 / golden_file.getframerate())
-            fft_freqs_rec = numpy.fft.rfftfreq(len(rec_data),
-                                               1.0 / rec_file.getframerate())
-
-            # Get frequency at highest peak.
-            freq_golden = fft_freqs_golden[numpy.argmax(numpy.abs(fft_golden))]
-            abs_fft_rec = numpy.abs(fft_rec)
-            freq_rec = fft_freqs_rec[numpy.argmax(abs_fft_rec)]
-
-            # Compare the two frequencies.
-            logging.info('Golden frequency = %f', freq_golden)
-            logging.info('Recorded frequency = %f', freq_rec)
-            if self._is_outside_frequency_threshold(freq_golden, freq_rec):
-                raise error.TestFail('The recorded audio frequency does not '
-                                     'match that of the audio played.')
-
-            # Check for noise in the frequency domain.
-            fft_rec_peak_val = numpy.max(abs_fft_rec)
-            noise_detected = False
-            for fft_index, fft_val in enumerate(abs_fft_rec):
-                if self._is_outside_frequency_threshold(freq_golden, freq_rec):
-                    # If the frequency exceeds _FFT_NOISE_THRESHOLD, then fail
-                    # the test.
-                    if fft_val > _FFT_NOISE_THRESHOLD * fft_rec_peak_val:
-                        logging.warning('Unexpected frequency peak detected at '
-                                        '%f Hz.', fft_freqs_rec[fft_index])
-                        noise_detected = True
-
-            if noise_detected:
-                raise error.TestFail('Signal is noiser than expected.')
-
-
     # Implementation overrides.
     #
     def _validate_impl(self, audio_file=None):
@@ -426,7 +447,9 @@ class AudiblePlaybackAudioQuery(_PlaybackAudioQuery):
         # If the reference audio file is available, then perform an additional
         # check.
         if audio_file:
-            self._compare_file(audio_file)
+            local_rec_filename = self._get_local_rec_filename()
+            _compare_file(reference_audio_filename=audio_file,
+                         test_audio_filename=local_rec_filename)
 
 
 class RecordingAudioQuery(client.InputQuery):
@@ -437,18 +460,47 @@ class RecordingAudioQuery(client.InputQuery):
         self.client = client
 
 
-    def _prepare_impl(self, **kwargs):
-        """Implementation of query preparation logic (no-op)."""
-        pass
+    def _prepare_impl(self, use_file=False,
+                      sample_width=_DEFAULT_SAMPLE_WIDTH,
+                      sample_rate=_DEFAULT_SAMPLE_RATE,
+                      num_channels=_DEFAULT_NUM_CHANNELS,
+                      duration_secs=_REC_DURATION,
+                      frequency=_DEFAULT_FREQUENCY):
+        """Implementation of query preparation logic.
+
+        @param use_file: A bool to indicate whether a file should be used for
+                         playback. The other arguments are only valid if
+                         use_file is True.
+        @param sample_width: Size of samples in bytes.
+        @param sample_rate: Recording sample rate in hertz.
+        @param num_channels: Number of channels to use for playback.
+        @param duration_secs: Number of seconds to play audio for.
+        @param frequency: Frequency of sine wave to generate.
+        """
+        self.use_file = use_file
+        self.sample_rate = sample_rate
+        self.sample_width = sample_width
+        self.num_channels = num_channels
+        self.duration_secs = duration_secs
+        self.frequency = frequency
 
 
     def _emit_impl(self):
         """Implementation of query emission logic."""
-        self.client.host.run('slesTest_sawtoothBufferQueue')
+        if self.use_file:
+            self.reference_filename, dut_play_file = \
+                    site_utils.generate_sine_file(
+                            self.client.host, self.num_channels,
+                            self.sample_rate, self.sample_width,
+                            self.duration_secs, self.frequency,
+                            self.client.tmp_dir)
+            playback_cmd = 'su root slesTest_playFdPath %s 0' % dut_play_file
+            self.client.host.run(playback_cmd)
+        else:
+            self.client.host.run('slesTest_sawtoothBufferQueue')
 
 
-    def _validate_impl(self, captured_audio_file, sample_width,
-                       sample_rate=None, num_channels=None,
+    def _validate_impl(self, captured_audio_file,
                        peak_percent_min=1, peak_percent_max=100):
         """Implementation of query validation logic.
 
@@ -462,12 +514,13 @@ class RecordingAudioQuery(client.InputQuery):
         # recorded. We should compare the captured audio to the one produced.
         try:
             recorded_peaks = site_utils.check_wav_file(
-                    captured_audio_file, num_channels=num_channels,
-                    sample_rate=sample_rate, sample_width=sample_width)
+                    captured_audio_file, num_channels=self.num_channels,
+                    sample_rate=self.sample_rate,
+                    sample_width=self.sample_width)
         except ValueError as e:
             raise error.TestFail('Recorded audio file is invalid: %s' % e)
 
-        max_volume = _max_volume(sample_width)
+        max_volume = _max_volume(self.sample_width)
         peak_min = max_volume * peak_percent_min / 100
         peak_max = max_volume * peak_percent_max / 100
         for channel, recorded_peak in enumerate(recorded_peaks):
@@ -490,3 +543,6 @@ class RecordingAudioQuery(client.InputQuery):
                         'maximum. Either recording captured much background '
                         'noise, or the recording level is too high. Check the '
                         'audio connections and settings on the DUT.')
+        if self.use_file:
+            _compare_file(reference_audio_filename=self.reference_filename,
+                         test_audio_filename=captured_audio_file)
