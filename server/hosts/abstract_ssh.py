@@ -8,7 +8,7 @@ from autotest_lib.server.hosts import remote
 from autotest_lib.server.hosts import rpc_server_tracker
 from autotest_lib.client.common_lib.global_config import global_config
 
-# pylint: disable-msg=C0111
+# pylint: disable=C0111
 
 get_value = global_config.get_config_value
 enable_master_ssh = get_value('AUTOSERV', 'enable_master_ssh', type=bool,
@@ -118,10 +118,12 @@ class AbstractSSHHost(remote.RemoteHost):
         return True
 
 
-    def _encode_remote_paths(self, paths, escape=True):
+    def _encode_remote_paths(self, paths, escape=True, use_scp=False):
         """
         Given a list of file paths, encodes it as a single remote path, in
         the style used by rsync and scp.
+        escape: add \\ to protect special characters.
+        use_scp: encode for scp if true, rsync if false.
         """
         if escape:
             paths = [utils.scp_remote_escape(path) for path in paths]
@@ -134,12 +136,26 @@ class AbstractSSHHost(remote.RemoteHost):
         if re.search(r':.*:', remote):
             remote = '[%s]' % remote
 
-        return '%s@%s:"%s"' % (self.user, remote, " ".join(paths))
+        if use_scp:
+            return '%s@%s:"%s"' % (self.user, remote, " ".join(paths))
+        else:
+            return '%s@%s:%s' % (
+                    self.user, remote,
+                    " :".join('"%s"' % p for p in paths))
 
+    def _encode_local_paths(self, paths, escape=True):
+        """
+        Given a list of file paths, encodes it as a single local path.
+        escape: add \\ to protect special characters.
+        """
+        if escape:
+            paths = [utils.sh_escape(path) for path in paths]
+
+        return " ".join('"%s"' % p for p in paths)
 
     def _make_rsync_cmd(self, sources, dest, delete_dest, preserve_symlinks):
         """
-        Given a list of source paths and a destination path, produces the
+        Given a string of source paths and a destination path, produces the
         appropriate rsync command for copying them. Remote paths must be
         pre-encoded.
         """
@@ -156,8 +172,7 @@ class AbstractSSHHost(remote.RemoteHost):
             symlink_flag = "-L"
         command = ("rsync %s %s --timeout=1800 --rsh='%s' -az --no-o --no-g "
                    "%s \"%s\"")
-        return command % (symlink_flag, delete_flag, ssh_cmd,
-                          " ".join(['"%s"' % p for p in sources]), dest)
+        return command % (symlink_flag, delete_flag, ssh_cmd, sources, dest)
 
 
     def _make_ssh_cmd(self, cmd):
@@ -173,14 +188,14 @@ class AbstractSSHHost(remote.RemoteHost):
 
     def _make_scp_cmd(self, sources, dest):
         """
-        Given a list of source paths and a destination path, produces the
+        Given a string of source paths and a destination path, produces the
         appropriate scp command for encoding it. Remote paths must be
         pre-encoded.
         """
         command = ("scp -rq %s -o StrictHostKeyChecking=no "
                    "-o UserKnownHostsFile=%s -P %d %s '%s'")
         return command % (self.master_ssh_option, self.known_hosts_file,
-                          self.port, " ".join(sources), dest)
+                          self.port, sources, dest)
 
 
     def _make_rsync_compatible_globs(self, path, is_local):
@@ -325,7 +340,7 @@ class AbstractSSHHost(remote.RemoteHost):
             try:
                 remote_source = self._encode_remote_paths(source)
                 local_dest = utils.sh_escape(dest)
-                rsync = self._make_rsync_cmd([remote_source], local_dest,
+                rsync = self._make_rsync_cmd(remote_source, local_dest,
                                              delete_dest, preserve_symlinks)
                 utils.run(rsync)
                 try_scp = False
@@ -342,10 +357,10 @@ class AbstractSSHHost(remote.RemoteHost):
             remote_source = self._make_rsync_compatible_source(source, False)
             if remote_source:
                 # _make_rsync_compatible_source() already did the escaping
-                remote_source = self._encode_remote_paths(remote_source,
-                                                          escape=False)
+                remote_source = self._encode_remote_paths(
+                        remote_source, escape=False, use_scp=True)
                 local_dest = utils.sh_escape(dest)
-                scp = self._make_scp_cmd([remote_source], local_dest)
+                scp = self._make_scp_cmd(remote_source, local_dest)
                 try:
                     utils.run(scp)
                 except error.CmdError, e:
@@ -397,20 +412,19 @@ class AbstractSSHHost(remote.RemoteHost):
 
         if isinstance(source, basestring):
             source = [source]
-        remote_dest = self._encode_remote_paths([dest])
 
-        local_sources = [utils.sh_escape(path) for path in source]
+        local_sources = self._encode_local_paths(source)
         if not local_sources:
-            raise error.TestError('source |%s| yielded an empty list' % (
+            raise error.TestError('source |%s| yielded an empty string' % (
                 source))
-        if any([local_source.find('\x00') != -1 for
-                local_source in local_sources]):
+        if local_sources.find('\x00') != -1:
             raise error.TestError('one or more sources include NUL char')
 
         # If rsync is disabled or fails, try scp.
         try_scp = True
         if self.use_rsync():
             logging.debug('Using Rsync.')
+            remote_dest = self._encode_remote_paths([dest])
             try:
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
                                              delete_dest, preserve_symlinks)
@@ -430,6 +444,7 @@ class AbstractSSHHost(remote.RemoteHost):
                     cmd %= (dest, dest)
                     self.run(cmd)
 
+            remote_dest = self._encode_remote_paths([dest], use_scp=True)
             local_sources = self._make_rsync_compatible_source(source, True)
             if local_sources:
                 scp = self._make_scp_cmd(local_sources, remote_dest)
