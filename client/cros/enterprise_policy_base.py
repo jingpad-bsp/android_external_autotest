@@ -28,7 +28,6 @@ CROSAUTO_FLAGS = [
     '--ignore-urlfetcher-cert-requests']
 TESTDMS_FLAGS = [
     '--ignore-urlfetcher-cert-requests',
-    '--enterprise-enrollment-skip-robot-auth',
     '--disable-policy-key-verification']
 FLAGS_DICT = {
     'prod': [],

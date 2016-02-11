@@ -15,7 +15,11 @@ policy_testserver = None
 class EnterpriseTest(test.test):
     """Base class for policy tests."""
 
-    USERNAME = 'autotest@managedchrome.com'
+    # All policy tests started failing in the lab because GAIA started serving a
+    # captcha to autotest@managedchrome.com. Temporarily work around this by
+    # using a different account. Eventually, remove the dependency on real GAIA.
+    # See crbug.com/582615 and crbug.com/586195.
+    USERNAME = 'autotest-2@managedchrome.com'
     PASSWORD = 'test0000'
 
     def import_dmserver(self, proto_path):
@@ -92,8 +96,7 @@ class EnterpriseTest(test.test):
         """
         extra_browser_args = (extra_browser_args +
                               '--device-management-url=%s ' %
-                              self.dm_server_url +
-                              '--enterprise-enrollment-skip-robot-auth')
+                              self.dm_server_url)
         username = self.USERNAME if username is None else username
         password = self.PASSWORD if password is None else password
         return chrome.Chrome(extra_browser_args=extra_browser_args,
