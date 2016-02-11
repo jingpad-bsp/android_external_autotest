@@ -98,48 +98,52 @@ class video_WebRtcCamera(test.test):
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
-            if not self.check_loopback_result():
-                raise error.TestFail('Failed webrtc camera test')
+            err = self.check_loopback_result()
+            if err:
+                raise error.TestFail(err)
 
 
     def check_loopback_result(self):
         """Get the WebRTC Camera results."""
+        err = ''
         if not self.is_test_completed():
-            logging.error('loopback.html did not complete')
-            return False
+            err = 'loopback.html did not complete'
+            logging.error(err)
+            return err
         try:
             results = self.tab.EvaluateJavaScript('getResults()')
         except:
-            logging.error('Cannot retrieve results from loopback.html page')
-            return False
+            err = 'Cannot retrieve results from loopback.html page'
+            logging.error(err)
+            return err
         logging.info('Results: %s', results)
         for resolution in results:
             item = results[resolution]
             if (item['cameraErrors'] and resolution == '1280,720'
                     and self.webcam_supports_720p()):
-                logging.error('Camera error: %s', item['cameraErrors'])
-                return False
+                err = 'Camera error: %s' % item['cameraErrors']
+                logging.error(err)
+                return err
             if not item['frameStats']:
                 output_resolution = re.sub(',', 'x', resolution)
-                logging.error('Frame Stats is empty for resolution: %s',
-                              output_resolution)
-                return False
+                err = 'Frame Stats is empty for resolution: %s' % output_resolution
+                logging.error(err)
+                return err
 
             if item['frameStats']['numBlackFrames'] > BLACK_FRAMES_THRESHOLD:
-                logging.error('BlackFrames threshold overreach: '
-                              'got %s > %s allowed',
-                              item['frameStats']['numBlackFrames'],
-                              BLACK_FRAMES_THRESHOLD)
-                return False
+                err = ('BlackFrames threshold overreach: got %s > %s allowed' %
+                              (item['frameStats']['numBlackFrames'],
+                              BLACK_FRAMES_THRESHOLD))
+                logging.error(err)
+                return err
             if item['frameStats']['numFrozenFrames'] > FROZEN_FRAMES_THRESHOLD:
-                logging.error('FrozenFrames threshold overreach: '
-                              'got %s > %s allowed',
-                              item['frameStats']['numFrozenFrames'],
-                              FROZEN_FRAMES_THRESHOLD)
-                return False
+                err = ('FrozenFrames threshold overreach: got %s > %s allowed' %
+                              (item['frameStats']['numFrozenFrames'],
+                              FROZEN_FRAMES_THRESHOLD))
+                logging.error(err)
+                return err
             if item['frameStats']['numFrames'] == 0:
-                logging.error('%s Frames were found',
-                              item['frameStats']['numFrames'])
-                return False
+                err = '%s Frames were found' % item['frameStats']['numFrames']
+                return err
 
-        return True
+        return err
