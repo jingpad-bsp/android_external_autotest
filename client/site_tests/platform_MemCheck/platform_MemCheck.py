@@ -121,6 +121,17 @@ class platform_MemCheck(test.test):
                 error_list += ['speed_dimm_%d' % dimm]
                 errors += 1
 
+        # Log memory ids
+        cmd = 'mosys memory spd print id'
+        # result example (1 module of memory per result line)
+        # 0 | 1-45: SK Hynix (Hyundai) | 128d057e | HMT425S6CFR6A-PB
+        # 1 | 1-45: SK Hynix (Hyundai) | 121d0581 | HMT425S6CFR6A-PB
+        mem_ids = utils.run(cmd).stdout.split('\n')
+        for dimm, line in enumerate(mem_ids):
+            if not line:
+                continue
+            keyval['memory_id_dimm_%d' % dimm] = line
+
         # If self.error is not zero, there were errors.
         if errors > 0:
             error_list_str = ', '.join(error_list)
