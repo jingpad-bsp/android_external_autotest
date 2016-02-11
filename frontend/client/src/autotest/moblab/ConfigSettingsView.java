@@ -12,6 +12,7 @@ import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
+import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.TextBox;
@@ -20,9 +21,19 @@ import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.Set;
 
 public class ConfigSettingsView extends TabView {
+    private static final Set<String> GOOGLE_STORAGE_CONFIG_KEY = new HashSet<String>();
+    static {
+      GOOGLE_STORAGE_CONFIG_KEY.add("image_storage_server");
+      GOOGLE_STORAGE_CONFIG_KEY.add("results_storage_server");
+      GOOGLE_STORAGE_CONFIG_KEY.add("canary_channel_server");
+      GOOGLE_STORAGE_CONFIG_KEY.add("chromeos_image_archive");
+    }
+
     private Button submitButton;
     private Button resetButton;
     private HashMap<String, HashMap<String, TextBox> > configValueTextBoxes;
@@ -149,6 +160,9 @@ public class ConfigSettingsView extends TabView {
                 configValueTable.setWidget(row, 0, new Label(configKey));
                 configValueTable.setWidget(row, 1, configInput);
                 configInput.setText(configValue);
+                if (GOOGLE_STORAGE_CONFIG_KEY.contains(configKey)) {
+                  addGoogleStorageLink(row, configValue);
+                }
                 sectionKeyValues.put(configKey, configInput);
             }
 
@@ -161,6 +175,25 @@ public class ConfigSettingsView extends TabView {
             // Add an empty row after each section.
             configValueTable.setText(configValueTable.getRowCount(), 0, "");
         }
+    }
+
+    private void addGoogleStorageLink(int row, String bucketPath) {
+      if (bucketPath != null) {
+        String bucketName = bucketPath;
+        if (bucketPath.startsWith("gs://")) {
+          if (bucketPath.length() >= 5) {
+            bucketName = bucketPath.substring(5);
+          } else {
+            // invalid value.
+            return;
+          }
+        }
+
+        Anchor a =
+            new Anchor("link", "https://pantheon.corp.google.com/storage/browser/" + bucketName);
+        a.setTarget("_blank");
+        configValueTable.setWidget(row, 2, a);
+      }
     }
 
     public void rpcCallSubmit(JSONObject params) {
