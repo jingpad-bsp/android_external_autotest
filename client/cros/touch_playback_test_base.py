@@ -389,7 +389,7 @@ class TestPage(object):
     def reload_page(self):
         """Reloads test page."""
         self._tab.Navigate(self._tab.url)
-        self._wait_for_page_ready()
+        self.wait_for_page_ready()
 
 
     def wait_for_page_ready(self):
