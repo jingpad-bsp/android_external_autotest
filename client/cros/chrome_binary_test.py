@@ -4,6 +4,7 @@
 
 import os, shutil, tempfile
 
+import common
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants

@@ -384,56 +384,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def lookup_job_repo_url(self):
         """Looks up the job_repo_url for the host.
 
+        This is kept for backwards compatibility as AU test code in older
+        branch does not use server-side packaging and calls this method through
+        the host object.
+
+        TODO(dshi): Once R50 falls off the stable branch, we should remove this
+        method.
+
         @returns job_repo_url from AFE or None if not found.
 
         @raises KeyError if the host does not have a job_repo_url
         """
-        hosts = self._AFE.get_hosts(hostname=self.hostname)
-        if hosts and ds_constants.JOB_REPO_URL in hosts[0].attributes:
-            return hosts[0].attributes[ds_constants.JOB_REPO_URL]
-        else:
-            return None
-
-
-    def clear_job_repo_url(self):
-        """Clear host attribute job_repo_url."""
-        if not afe_utils.host_in_lab(self):
-            return
-        self.update_job_repo_url(None, None)
-
-
-    def update_job_repo_url(self, devserver_url, image_name):
-        """
-        Updates the job_repo_url host attribute and asserts it's value.
-
-        @param devserver_url: The devserver to use in the job_repo_url.
-        @param image_name: The name of the image to use in the job_repo_url.
-
-        @raises AutoservError: If we failed to update the job_repo_url.
-        """
-        repo_url = None
-        if devserver_url and image_name:
-            repo_url = tools.get_package_url(devserver_url, image_name)
-        self._AFE.set_host_attribute(ds_constants.JOB_REPO_URL, repo_url,
-                                     hostname=self.hostname)
-        if self.lookup_job_repo_url() != repo_url:
-            raise error.AutoservError('Failed to update job_repo_url with %s, '
-                                      'host %s' % (repo_url, self.hostname))
-
-
-    def add_job_repo_url(self, image_name):
-        """Add cros_version labels and host attribute job_repo_url.
-
-        @param image_name: The name of the image e.g.
-                lumpy-release/R27-3837.0.0
-
-        """
-        if not afe_utils.host_in_lab(self):
-            return
-
-        devserver_url = dev_server.ImageServer.resolve(image_name,
-                                                       self.hostname).url()
-        self.update_job_repo_url(devserver_url, image_name)
+        return afe_utils.lookup_job_repo_url(self)
 
 
     def verify_job_repo_url(self, tag=''):
@@ -459,7 +421,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raises urllib2.URLError: If the devserver embedded in job_repo_url
                                   doesn't respond within the timeout.
         """
-        job_repo_url = self.lookup_job_repo_url()
+        job_repo_url = afe_utils.lookup_job_repo_url(self)
         if not job_repo_url:
             logging.warning('No job repo url set on host %s', self.hostname)
             return
@@ -513,7 +475,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         'Failed to parse build name from %s' % image)
             ds = dev_server.ImageServer.resolve(image_name)
         else:
-            job_repo_url = self.lookup_job_repo_url()
+            job_repo_url = afe_utils.lookup_job_repo_url(self)
             if job_repo_url:
                 devserver_url, image_name = (
                     tools.get_devserver_build_from_package_url(job_repo_url))
@@ -755,7 +717,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Update URL is %s', update_url)
 
         # Remove cros-version and job_repo_url host attribute from host.
-        self.clear_job_repo_url()
+        afe_utils.clear_job_repo_url(self)
 
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
@@ -831,7 +793,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         self._post_update_processing(updater, inactive_kernel)
         image_name = autoupdater.url_to_image_name(update_url)
-        self.add_job_repo_url(image_name)
+        afe_utils.add_job_repo_url(self, image_name)
         return image_name
 
 

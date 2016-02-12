@@ -15,7 +15,7 @@ from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.server import autotest, hosts, test
+from autotest_lib.server import afe_utils, autotest, hosts, test
 from autotest_lib.server.cros.dynamic_suite import tools
 
 
@@ -1029,7 +1029,7 @@ class ChromiumOSTestPlatform(TestPlatform):
             # Attempt to get the job_repo_url to find the stateful payload for
             # the target image.
             try:
-                job_repo_url = self._host.lookup_job_repo_url()
+                job_repo_url = afe_utils.lookup_job_repo_url(self._host)
             except KeyError:
                 # If this failed, assume the stateful update is next to the
                 # update payload.

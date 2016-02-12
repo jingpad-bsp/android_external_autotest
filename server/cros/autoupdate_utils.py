@@ -9,6 +9,7 @@ import logging
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import autoupdater, dev_server
+from autotest_lib.server import afe_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 
 
@@ -34,7 +35,7 @@ def get_updater_from_repo_url(host, job_repo_url=None):
     # specified in the host attributes for the host.
     if not job_repo_url:
         try:
-            job_repo_url = host.lookup_job_repo_url()
+            job_repo_url = afe_utils.lookup_job_repo_url(host)
         except KeyError:
             logging.fatal('Could not lookup job_repo_url from afe.')
 
