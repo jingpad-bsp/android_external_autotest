@@ -807,12 +807,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         self._post_update_processing(updater, inactive_kernel)
         image_name = autoupdater.url_to_image_name(update_url)
-
         # update_url is different from devserver url needed to stage autotest
         # packages, therefore, resolve a new devserver url here.
         devserver_url = dev_server.ImageServer.resolve(image_name,
                                                        self.hostname).url()
         repo_url = tools.get_package_url(devserver_url, image_name)
+        self.verify_software()
         return image_name, {ds_constants.JOB_REPO_URL: repo_url}
 
 
