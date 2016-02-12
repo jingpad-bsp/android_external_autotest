@@ -37,6 +37,7 @@ from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.servo import plankton
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import chameleon_host
+from autotest_lib.server.hosts import cros_repair
 from autotest_lib.server.hosts import plankton_host
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
@@ -304,6 +305,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         super(CrosHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
+        self._repair_strategy = cros_repair.create_repair_strategy()
         # self.env is a dictionary of environment variable settings
         # to be exported for commands run on the host.
         # LIBC_FATAL_STDERR_ can be useful for diagnosing certain
@@ -1993,6 +1995,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             logging.info('Device %s power adapter connected and charging.',
                          'has' if self.is_ac_connected() else 'does not have')
+
+
+    def verify(self):
+        self._repair_strategy.verify(self)
 
 
     def make_ssh_command(self, user='root', port=22, opts='', hosts_file=None,
