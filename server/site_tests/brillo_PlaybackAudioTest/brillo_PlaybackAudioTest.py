@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.feedback import client
 from autotest_lib.server import test
+from autotest_lib.server.brillo import audio_utils
 
 
 # The amount of time to wait when producing silence (i.e. no playback).
@@ -106,7 +107,7 @@ class brillo_PlaybackAudioTest(test.test):
         dut_play_file = None
         host_filename = None
         if self.use_file:
-           host_filename, dut_play_file = site_utils.generate_sine_file(
+           host_filename, dut_play_file = audio_utils.generate_sine_file(
                    self.host, num_channels, sample_rate, sample_width,
                    self.duration_secs, _DEFAULT_SINE_FREQUENCY, self.temp_dir)
 

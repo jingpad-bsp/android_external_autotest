@@ -10,6 +10,7 @@ import common
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.feedback import client
 from autotest_lib.client.common_lib.feedback import tester_feedback_client
+from autotest_lib.server.brillo import audio_utils
 
 import input_handlers
 import query_delegate
@@ -195,7 +196,7 @@ class RecordingQueryDelegate(query_delegate.InputQueryDelegate, PlaybackMixin):
         """
         # Check the WAV file properties first.
         try:
-            site_utils.check_wav_file(
+            audio_utils.check_wav_file(
                     captured_audio_file, num_channels=num_channels,
                     sample_rate=sample_rate, sample_width=sample_width)
         except ValueError as e:
