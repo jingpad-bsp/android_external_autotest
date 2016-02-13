@@ -163,6 +163,9 @@ def parse_local_arguments(argv):
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-w', '--web', dest='web', default=None,
                         help='Address of a webserver to receive test requests.')
+    parser.add_argument('-x', '--max_runtime_mins', type=int,
+                        dest='max_runtime_mins', default=20,
+                        help='Default time allowed for the tests to complete.')
     _, remaining_argv = parser.parse_known_args(argv)
     return parser, remaining_argv
 
@@ -312,6 +315,7 @@ def _main_for_lab_run(argv, arguments):
                '--build', arguments.build,
                '--suite_name', 'test_that_wrapper',
                '--pool', arguments.pool,
+               '--max_runtime_mins', str(arguments.max_runtime_mins),
                '--suite_args', flattened_argv]
     if arguments.web:
         command.extend(['--web', arguments.web])
