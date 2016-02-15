@@ -1218,6 +1218,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                      build_url)
 
 
+    @property
+    def job_repo_url_attribute(self):
+        """Get the host attribute name for job_repo_url, which should append the
+        adb serial.
+        """
+        return '%s_%s' % (constants.JOB_REPO_URL, self.adb_serial)
+
+
     def machine_install(self, build_url=None, build_local_path=None, wipe=True,
                         flash_all=False, os_type=None):
         """Install the DUT.
@@ -1232,7 +1240,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param flash_all: If True, all img files found in img_path will be
                 flashed. Otherwise, only boot and system are flashed.
 
-        @returns Name of the image installed.
+        @returns A tuple of (image_name, host_attributes).
+                image_name is the name of image installed, e.g.,
+                git_mnc-release/shamu-userdebug/1234
+                host_attributes is a dictionary of (attribute, value), which
+                can be saved to afe_host_attributes table in database. This
+                method returns a dictionary with a single entry of
+                `job_repo_url_[adb_serial]`: devserver_url, where devserver_url
+                is a url to the build staged on devserver.
         """
         os_type = os_type or self.get_os_type()
         if not build_url and self._parser.options.image:
@@ -1249,7 +1264,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise error.InstallError(
                     'Installation of os type %s is not supported.' %
                     self.get_os_type())
-        return build_url.split('static/')[-1]
+        return (build_url.split('static/')[-1],
+                {self.job_repo_url_attribute: build_url})
 
 
     def list_files_glob(self, path_glob):
@@ -1280,3 +1296,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param apk: The path to apk file.
         """
         self.adb_run('install -r -d %s' % apk)
+
+
+    def get_attributes_to_clear_before_provision(self):
+        """Get a list of attributes to be cleared before machine_install starts.
+        """
+        return [self.job_repo_url_attribute]

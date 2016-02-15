@@ -273,11 +273,26 @@ class TestBed(object):
     def machine_install(self):
         """Install the DUT.
 
-        @returns The name of the image installed.
+        @returns A tuple of (the name of the image installed, None), where None
+                is a placeholder for update_url. Testbed does not have a single
+                update_url, thus it's set to None.
+        @returns A tuple of (image_name, host_attributes).
+                image_name is the name of images installed, e.g.,
+                `branch1/shamu-eng/1001,branch2/shamu-eng/1002`
+                host_attributes is a dictionary of (attribute, value), which
+                can be saved to afe_host_attributes table in database. This
+                method returns a dictionary with entries of job_repo_urls for
+                each provisioned devices:
+                `job_repo_url_[adb_serial]`: devserver_url, where devserver_url
+                is a url to the build staged on devserver.
+                For example:
+                {'job_repo_url_XZ001': 'http://10.1.1.3/branch1/shamu-eng/1001',
+                 'job_repo_url_XZ002': 'http://10.1.1.3/branch2/shamu-eng/1002'}
         """
         if not self._parser.options.image:
             raise error.InstallError('No image string is provided to test bed.')
         images = self._parse_image(self._parser.options.image)
+        host_attributes = {}
 
         arguments = []
         for serial, build in self.locate_devices(images).iteritems():
@@ -287,8 +302,17 @@ class TestBed(object):
             build_url, _ = host.stage_build_for_install(build)
             arguments.append({'host': host,
                               'build_url': build_url})
+            attribute_name = '%s_%s' % (constants.JOB_REPO_URL, host.adb_serial)
+            host_attributes[attribute_name] = build_url
 
         thread_pool = pool.ThreadPool(_POOL_SIZE)
         thread_pool.map(self._install_device, arguments)
         thread_pool.close()
-        return self._parser.options.image
+        return self._parser.options.image, host_attributes
+
+
+    def get_attributes_to_clear_before_provision(self):
+        """Get a list of attribute to clear before machine_install starts.
+        """
+        return [host.job_repo_url_attribute for host in
+                self.adb_devices.values()]

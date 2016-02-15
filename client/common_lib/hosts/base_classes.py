@@ -15,12 +15,11 @@ poirier@google.com (Benjamin Poirier),
 stutsman@google.com (Ryan Stutsman)
 """
 
-import cPickle, cStringIO, logging, os, re, time
+import cPickle, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib.cros import path_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.client.bin import partition
 
 
 class Host(object):
@@ -565,3 +564,17 @@ class Host(object):
         # the regex match should keep us safe from removing the wrong files
         for moddir in unused_moddirs:
             self.run('rm -fr', args=(moddir,), ignore_status=True)
+
+
+    def get_attributes_to_clear_before_provision(self):
+        """Get a list of attributes to be cleared before machine_install starts.
+
+        If provision runs in a lab environment, it is necessary to clear certain
+        host attributes for the host in afe_host_attributes table. For example,
+        `job_repo_url` is a devserver url pointed to autotest packages for
+        CrosHost, it needs to be removed before provision starts for tests to
+        run reliably.
+        For ADBHost, the job repo url has a different format, i.e., appended by
+        adb_serial, so this method should be overriden in ADBHost.
+        """
+        return ['job_repo_url']

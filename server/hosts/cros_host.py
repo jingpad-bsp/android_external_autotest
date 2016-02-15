@@ -395,7 +395,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @raises KeyError if the host does not have a job_repo_url
         """
-        return afe_utils.lookup_job_repo_url(self)
+        return afe_utils.get_host_attribute(self, ds_constants.JOB_REPO_URL)
 
 
     def verify_job_repo_url(self, tag=''):
@@ -421,7 +421,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raises urllib2.URLError: If the devserver embedded in job_repo_url
                                   doesn't respond within the timeout.
         """
-        job_repo_url = afe_utils.lookup_job_repo_url(self)
+        job_repo_url = afe_utils.get_host_attribute(self,
+                                                    ds_constants.JOB_REPO_URL)
         if not job_repo_url:
             logging.warning('No job repo url set on host %s', self.hostname)
             return
@@ -475,7 +476,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         'Failed to parse build name from %s' % image)
             ds = dev_server.ImageServer.resolve(image_name)
         else:
-            job_repo_url = afe_utils.lookup_job_repo_url(self)
+            job_repo_url = afe_utils.get_host_attribute(
+                    self, ds_constants.JOB_REPO_URL)
             if job_repo_url:
                 devserver_url, image_name = (
                     tools.get_devserver_build_from_package_url(job_repo_url))
@@ -691,7 +693,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 first when the dut is already installed with the same version.
         @raises autoupdater.ChromiumOSError
 
-        @returns Name of the image installed.
+        @returns A tuple of (image_name, host_attributes).
+                image_name is the name of image installed, e.g.,
+                veyron_jerry-release/R50-7871.0.0
+                host_attributes is a dictionary of (attribute, value), which
+                can be saved to afe_host_attributes table in database. This
+                method returns a dictionary with a single entry of
+                `job_repo_url`: repo_url, where repo_url is a devserver url to
+                autotest packages.
         """
         devserver = None
         if repair:
@@ -715,9 +724,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 update_url = requested_build
 
         logging.debug('Update URL is %s', update_url)
-
-        # Remove cros-version and job_repo_url host attribute from host.
-        afe_utils.clear_job_repo_url(self)
 
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
@@ -793,8 +799,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         self._post_update_processing(updater, inactive_kernel)
         image_name = autoupdater.url_to_image_name(update_url)
-        afe_utils.add_job_repo_url(self, image_name)
-        return image_name
+
+        # update_url is different from devserver url needed to stage autotest
+        # packages, therefore, resolve a new devserver url here.
+        devserver_url = dev_server.ImageServer.resolve(image_name,
+                                                       self.hostname).url()
+        repo_url = tools.get_package_url(devserver_url, image_name)
+        return image_name, {ds_constants.JOB_REPO_URL: repo_url}
 
 
     def _clear_fw_version_labels(self, rw_only):

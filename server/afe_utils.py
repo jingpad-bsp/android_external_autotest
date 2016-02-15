@@ -11,11 +11,8 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import utils
-from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import tools
 
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
@@ -96,18 +93,6 @@ def add_version_label(host, image_name):
     AFE.run('label_add_hosts', id=label, hosts=[host.hostname])
 
 
-def machine_install_and_update_labels(host, *args, **dargs):
-    """Calls machine_install and updates the version labels on a host.
-
-    @param host: Host object to run machine_install on.
-    @param *args: Args list to pass to machine_install.
-    @param **dargs: dargs dict to pass to machine_install.
-    """
-    clear_version_labels(host)
-    image_name = host.machine_install(*args, **dargs)
-    add_version_label(host, image_name)
-
-
 def get_stable_version(board, android=False):
     """Retrieves a board's stable version from the AFE.
 
@@ -122,63 +107,73 @@ def get_stable_version(board, android=False):
     return AFE.run('get_stable_version', board=board, android=android)
 
 
-def lookup_job_repo_url(host):
+def get_host_attribute(host, attribute):
     """Looks up the job_repo_url for the host.
 
-    @param host: A Host object to lookup for job_repo_url.
+    @param host: A Host object to lookup for attribute value.
+    @param attribute: Name of the host attribute.
 
-    @returns job_repo_url from AFE or None if not found.
+    @returns value for the given attribute or None if not found.
 
     @raises KeyError if the host does not have a job_repo_url
     """
+    local_value = host.host_attributes.get(attribute)
+    if not host_in_lab(host):
+        return local_value
+
     hosts = AFE.get_hosts(hostname=host.hostname)
-    if hosts and ds_constants.JOB_REPO_URL in hosts[0].attributes:
-        return hosts[0].attributes[ds_constants.JOB_REPO_URL]
+    if hosts and attribute in hosts[0].attributes:
+        return hosts[0].attributes[attribute]
     else:
-        return None
+        return local_value
 
 
-def clear_job_repo_url(host):
+def clear_host_attributes_before_provision(host):
     """Clear host attribute job_repo_url.
 
-    @param host: A Host object to clear job_repo_url.
+    @param host: A Host object to clear attributes before provision.
     """
+    attributes = host.get_attributes_to_clear_before_provision()
+    for attribute in attributes:
+        if attribute in host.host_attributes:
+            del host.host_attributes[attribute]
     if not host_in_lab(host):
         return
-    update_job_repo_url(host, None, None)
+
+    for attribute in attributes:
+        update_host_attribute(host, attribute, None)
 
 
-def update_job_repo_url(host, devserver_url, image_name):
-    """
-    Updates the job_repo_url host attribute and asserts it's value.
+def update_host_attribute(host, attribute, value):
+    """Updates the host attribute with given value.
 
-    @param host: A Host object to update job_repo_url.
-    @param devserver_url: The devserver to use in the job_repo_url.
-    @param image_name: The name of the image to use in the job_repo_url.
+    @param host: A Host object to update attribute value.
+    @param attribute: Name of the host attribute.
+    @param value: Value for the host attribute.
 
     @raises AutoservError: If we failed to update the job_repo_url.
     """
-    repo_url = None
-    if devserver_url and image_name:
-        repo_url = tools.get_package_url(devserver_url, image_name)
-    AFE.set_host_attribute(ds_constants.JOB_REPO_URL, repo_url,
-                           hostname=host.hostname)
-    if lookup_job_repo_url(host) != repo_url:
-        raise error.AutoservError('Failed to update job_repo_url with %s, '
-                                  'host %s' % (repo_url, host.hostname))
-
-
-def add_job_repo_url(host, image_name):
-    """Add cros_version labels and host attribute job_repo_url.
-
-    @param host: A Host object to add job_repo_url.
-    @param image_name: The name of the image e.g.
-            lumpy-release/R27-3837.0.0
-
-    """
+    host.host_attributes[attribute] = value
     if not host_in_lab(host):
         return
 
-    devserver_url = dev_server.ImageServer.resolve(image_name,
-                                                   host.hostname).url()
-    update_job_repo_url(host, devserver_url, image_name)
+    AFE.set_host_attribute(attribute, value, hostname=host.hostname)
+    if get_host_attribute(host, attribute) != value:
+        raise error.AutoservError(
+                'Failed to update host attribute `%s` with %s, host %s' %
+                (attribute, value, host.hostname))
+
+
+def machine_install_and_update_labels(host, *args, **dargs):
+    """Calls machine_install and updates the version labels on a host.
+
+    @param host: Host object to run machine_install on.
+    @param *args: Args list to pass to machine_install.
+    @param **dargs: dargs dict to pass to machine_install.
+    """
+    clear_version_labels(host)
+    clear_host_attributes_before_provision(host)
+    image_name, host_attributes = host.machine_install(*args, **dargs)
+    add_version_label(host, image_name)
+    for attribute, value in host_attributes.items():
+        update_host_attribute(host, attribute, value)
