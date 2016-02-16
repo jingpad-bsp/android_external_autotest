@@ -144,7 +144,8 @@ CameraTest.prototype = {
     this.remotePeerConnection.onaddstream = this.gotRemoteStream.bind(this);
 
     this.localPeerConnection.addStream(this.localStream);
-    this.localPeerConnection.createOffer(this.gotLocalDescription.bind(this));
+    this.localPeerConnection.createOffer(this.gotLocalDescription.bind(this),
+        function(error) {});
     this.localVideo.src = URL.createObjectURL(stream);
 
     this.results.cameraType = stream.getVideoTracks()[0].label;
@@ -257,7 +258,7 @@ CameraTest.prototype = {
     this.localPeerConnection.setLocalDescription(description);
     this.remotePeerConnection.setRemoteDescription(description);
     this.remotePeerConnection.createAnswer(this.gotRemoteDescription.bind(
-        this));
+        this), function(error) {});
   },
 
   gotRemoteDescription: function(description) {
