@@ -154,7 +154,10 @@ def parse_options():
     # other levels.
     parser.add_option("-r", "--priority", dest="priority",
                       default=priorities.Priority.DEFAULT,
-                      action="store", help="Priority of suite")
+                      action="store",
+                      help="Priority of suite. Either numerical value, or "
+                      "one of (" + ", ".join(priorities.Priority.names)
+                      + ").")
     parser.add_option('--retry', dest='retry', default='False',
                       action='store', help='Enable test retry. '
                       'Must pass "True" or "False" if used.')
