@@ -711,10 +711,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the threshold.
 
         """
-        return TemporaryDBusProperty(self._shill_proxy,
-                                     self.wifi_if,
-                                     self.ROAM_THRESHOLD,
-                                     value)
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.ROAM_THRESHOLD,
+                                           value)
 
 
     def set_device_enabled(self, wifi_interface, value,
@@ -833,10 +833,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the features.
 
         """
-        return TemporaryDBusProperty(self._shill_proxy,
-                                     self.wifi_if,
-                                     self.WAKE_ON_WIFI_FEATURES,
-                                     features)
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.WAKE_ON_WIFI_FEATURES,
+                                           features)
 
 
     def net_detect_scan_period_seconds(self, period):
@@ -849,10 +849,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the net detect scan period
 
         """
-        return TemporaryDBusProperty(self._shill_proxy,
-                                     self.wifi_if,
-                                     self.NET_DETECT_SCAN_PERIOD,
-                                     period)
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.NET_DETECT_SCAN_PERIOD,
+                                           period)
 
 
     def wake_to_scan_period_seconds(self, period):
@@ -866,10 +866,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the net detect scan period
 
         """
-        return TemporaryDBusProperty(self._shill_proxy,
-                                     self.wifi_if,
-                                     self.WAKE_TO_SCAN_PERIOD,
-                                     period)
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.WAKE_TO_SCAN_PERIOD,
+                                           period)
 
 
     def force_wake_to_scan_timer(self, is_forced):
@@ -883,10 +883,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         @return a context manager for the net detect scan period
 
         """
-        return TemporaryDBusProperty(self._shill_proxy,
-                                     self.wifi_if,
-                                     self.FORCE_WAKE_TO_SCAN_TIMER,
-                                     is_forced)
+        return TemporaryDeviceDBusProperty(self._shill_proxy,
+                                           self.wifi_if,
+                                           self.FORCE_WAKE_TO_SCAN_TIMER,
+                                           is_forced)
 
 
     def request_roam(self, bssid):
@@ -917,6 +917,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
         2) There is a BSS with an appropriate ID in our scan results.
 
         @param bssid: string MAC address of bss to roam to.
+        @param interface: interface to use
 
         """
         self._assert_method_supported('request_roam_dbus')
@@ -1294,7 +1295,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
                                             dhcp_prop_value)
 
 
-class TemporaryDBusProperty:
+class TemporaryDeviceDBusProperty:
     """Utility class to temporarily change a dbus property for the WiFi device.
 
     Since dbus properties are global and persistent settings, we want
@@ -1304,10 +1305,11 @@ class TemporaryDBusProperty:
     """
 
     def __init__(self, shill_proxy, interface, prop_name, value):
-        """Construct a TemporaryDBusProperty context manager.
+        """Construct a TemporaryDeviceDBusProperty context manager.
+
 
         @param shill_proxy: the shill proxy to use to communicate via dbus
-        @param interface: the name of the interface we are setting the property for
+        @param interface: device whose property to change (e.g. 'wlan0')
         @param prop_name: the name of the property we want to set
         @param value: the desired value of the property
 
@@ -1321,7 +1323,8 @@ class TemporaryDBusProperty:
 
     def __enter__(self):
         logging.info('- Setting property %s on device %s',
-                     self._prop_name, self._interface)
+                     self._prop_name,
+                     self._interface)
 
         self._saved_value = self._shill.get_dbus_property_on_device(
                 self._interface, self._prop_name)
