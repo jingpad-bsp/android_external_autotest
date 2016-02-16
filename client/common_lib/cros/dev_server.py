@@ -171,6 +171,7 @@ class DevServer(object):
     server = SubClassServer(host)
     """
     _MIN_FREE_DISK_SPACE_GB = 20
+    _MAX_APACHE_CLIENT_COUNT = 75
     # Threshold for the CPU load percentage for a devserver to be selected.
     MAX_CPU_LOAD = 80.0
     # Threshold for the network IO, set to 80MB/s
@@ -180,6 +181,7 @@ class DevServer(object):
     CPU_LOAD = 'cpu_percent'
     FREE_DISK = 'free_disk'
     STAGING_THREAD_COUNT = 'staging_thread_count'
+    APACHE_CLIENT_COUNT = 'apache_client_count'
 
 
     def __init__(self, devserver):
@@ -275,6 +277,33 @@ class DevServer(object):
 
 
     @staticmethod
+    def is_apache_client_count_ok(load):
+        """Check if a devserver has enough Apache connections available.
+
+        Apache server by default has maximum of 150 concurrent connections. If
+        a devserver has too many live connections, it likely indicates the
+        server is busy handling many long running download requests, e.g.,
+        downloading stateful partitions. It is better not to add more requests
+        to it.
+
+        @param load: A dict of the load of the devserver.
+
+        @return: True if the devserver has enough Apache connections available,
+                 or disk check is skipped in global config.
+
+        """
+        if SKIP_DEVSERVER_HEALTH_CHECK:
+            logging.debug('devserver health check is skipped.')
+        elif DevServer.APACHE_CLIENT_COUNT not in load:
+            logging.debug('Apache client count is not collected from devserver.')
+        elif (load[DevServer.APACHE_CLIENT_COUNT] >
+              DevServer._MAX_APACHE_CLIENT_COUNT):
+            return False
+
+        return True
+
+
+    @staticmethod
     def devserver_healthy(devserver, timeout_min=0.1):
         """Returns True if the |devserver| is healthy to stage build.
 
@@ -291,6 +320,15 @@ class DevServer(object):
         load = DevServer.get_devserver_load(devserver, timeout_min=timeout_min)
         if not load:
             # Failed to get the load of devserver.
+            autotest_stats.Counter(server_name +
+                                   '.devserver_not_healthy').increment()
+            return False
+
+        apache_ok = DevServer.is_apache_client_count_ok(load)
+        if not apache_ok:
+            logging.error('Devserver check_health failed. Live Apache client '
+                          'count is too high: %d.',
+                          load[DevServer.APACHE_CLIENT_COUNT])
             autotest_stats.Counter(server_name +
                                    '.devserver_not_healthy').increment()
             return False
@@ -1492,7 +1530,8 @@ def get_least_loaded_devserver(devserver_type=ImageServer):
     loads = [output.get() for p in processes]
     # Filter out any load failed to be retrieved or does not support load check.
     loads = [load for load in loads if load and DevServer.CPU_LOAD in load and
-             DevServer.is_free_disk_ok(load)]
+             DevServer.is_free_disk_ok(load) and
+             DevServer.is_apache_client_count_ok(load)]
     if not loads:
         logging.debug('Failed to retrieve load stats from any devserver. No '
                       'load balancing can be applied.')
