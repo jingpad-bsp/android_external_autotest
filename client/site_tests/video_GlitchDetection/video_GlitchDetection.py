@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import datetime, logging, os, time
+import datetime, logging, os, time, shutil
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -36,6 +36,8 @@ class video_GlitchDetection(test.test):
                  collect_only = False):
 
         board = utils.get_current_board()
+
+        shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
 
         file_utils.make_leaf_dir(constants.TEST_DIR)
 
