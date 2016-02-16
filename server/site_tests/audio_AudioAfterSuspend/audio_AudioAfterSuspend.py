@@ -289,7 +289,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
             success, error_message = self.save_and_check_data(recorder_widget)
             if not success:
                 self.errors.append('%s: Comparison failed: %s' %
-                                   test_case, error_message)
+                                   (test_case, error_message))
 
         if self.errors:
             raise error.TestFail('; '.join(set(self.errors)))
