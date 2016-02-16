@@ -61,8 +61,15 @@ class video_GlitchDetection(test.test):
             finder = chameleon_port_finder.ChameleonVideoInputFinder(
                 chameleon_board, display_facade)
 
+            ports = finder.find_all_ports().connected
+
+            logging.debug(finder)
+
+            if not ports:
+                raise error.TestError(finder)
+
             capturer = chameleon_video_capturer.ChameleonVideoCapturer(
-                finder.find_port(interface = 'hdmi'), display_facade)
+                    ports[0], display_facade)
 
             with capturer:
                 player.load_video()
