@@ -18,6 +18,7 @@ class firmware_ECBootTime(FirmwareTest):
         super(firmware_ECBootTime, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.switcher.setup_mode('normal')
+        self.host = host
 
     def check_boot_time(self):
         """Check EC and AP boot times"""
@@ -50,8 +51,25 @@ class firmware_ECBootTime(FirmwareTest):
         else:
             ec_ready = ["([0-9.]+) Inits done"]
         power_cmd = "powerbtn"  if self._x86 or self._ryu else "power on"
-        reboot = self.ec.send_command_get_output(
-            "reboot ap-off", ec_ready)
+        # Try the EC reboot command several times in case the console
+        # output is not clean enough for the full string to be found.
+        retry = 10
+        while retry > 0:
+            retry = retry - 1
+            try:
+                reboot = self.ec.send_command_get_output(
+                    "reboot ap-off", ec_ready)
+                break
+            except error.TestFail:
+                logging.info("Unable to parse EC console output, "
+                             "%d more attempts", retry)
+        if retry == 0:
+            # If the magic string was not found reboot the EC and wait
+            # for the host to come up so it is ready for the next test.
+            self.ec.reboot()
+            self.host.wait_up(timeout=30)
+            raise error.TestFail("Unable to reboot EC cleanly, " +
+                                 "Please try removing AC power")
         power_press = self.ec.send_command_get_output(
             power_cmd, boot_anchors)
         reboot_time = float(reboot[0][1])
