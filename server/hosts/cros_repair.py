@@ -117,8 +117,10 @@ class CrosHostVerifier(hosts.Verifier):
 
 def create_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
-    return hosts.RepairStrategy((
-            (ssh_verify.SshVerifier, 'ssh', []),
-            (ACPowerVerifier, 'power', ['ssh']),
-            (TPMStatusVerifier, 'tpm', ['ssh']),
-            (CrosHostVerifier, 'cros', ['ssh'])))
+    verify_dag = [
+        (ssh_verify.SshVerifier,  'ssh',     []),
+        (ACPowerVerifier,         'power',   ['ssh']),
+        (TPMStatusVerifier,       'tpm',     ['ssh']),
+        (CrosHostVerifier,        'cros',    ['ssh']),
+    ]
+    return hosts.RepairStrategy(verify_dag, [])

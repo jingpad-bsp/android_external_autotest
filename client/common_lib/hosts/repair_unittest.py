@@ -67,8 +67,9 @@ class _StubVerifier(hosts.Verifier):
     passes or fails.
 
     A `_StubVerifier()` will pass whenever the value of `_fail_count`
-    is non-zero.  Calls to `try_repair()` will reduce this count,
-    eventually "repairing" the verifier.
+    is non-zero.  Calls to `try_repair()` (typically made by a
+    `_StubRepairAction()`) will reduce this count, eventually
+    "repairing" the verifier.
 
     @property verify_count  The number of calls made to the instance's
                             `verify()` method.
@@ -82,19 +83,17 @@ class _StubVerifier(hosts.Verifier):
     """
 
     def __init__(self, tag, deps, fail_count):
-        """
-        Initialize a `_StubVerifier` object.
-
-        @param tag          As for the `hosts.Verifer` constructor.
-        @param deps         As for the `hosts.Verifer` constructor.
-        @param fail_count   A number of repair attempts that must be
-                            made in order to fix this verifier.
-        """
         super(_StubVerifier, self).__init__(tag, deps)
         self.verify_count = 0
         self.message = 'Failing "%s" by request' % tag
         self._fail_count = fail_count
         self._description = 'Testing verify() for "%s"' % tag
+        self._log_record_map = {
+            r[0]: r for r in [
+                ('GOOD', None, self._verify_tag, ''),
+                ('FAIL', None, self._verify_tag, self.message),
+            ]
+        }
 
 
     def __repr__(self):
@@ -119,23 +118,18 @@ class _StubVerifier(hosts.Verifier):
         self._fail_count += 1
 
 
-    def get_log_record(self, success):
+    def get_log_record(self, status):
         """
         Return a host log record for this verifier.
 
         Calculates the arguments expected to be passed to
         `Host.record()` by `Verifier._verify_host()` when this verifier
-        runs.  If `success` is true, the returned record will be for
-        a successful verification.  Otherwise, the returned record will
-        be for a failure.
+        runs.  The passed in `status` corresponds to the argument of the
+        same name to be passed to `Host.record()`.
 
-        @param success  If true, return a success record.  Otherwise,
-                        return a failure record.
+        @param status   Status value of the log record.
         """
-        if success:
-            return ('GOOD', None, self._verify_tag, '')
-        else:
-            return ('FAIL', None, self._verify_tag, self.message)
+        return self._log_record_map[status]
 
 
     @property
@@ -143,20 +137,96 @@ class _StubVerifier(hosts.Verifier):
         return self._description
 
 
-class _VerifierTestCases(unittest.TestCase):
-    """
-    Abstract base class for all Repair and Verify test cases.
+class _StubRepairFailure(Exception):
+    """Exception to be raised by `_StubRepairAction.repair()`."""
+    pass
 
-    This class provides a `_make_verifier()` method to create
-    `_StubVerifier` instances for test cases.  Constructed verifiers
-    are remembered in `self.verifiers`, a dictionary indexed by the tag
-    used to construct the verifier.
+
+class _StubRepairAction(hosts.RepairAction):
+    """Stub implementation of `RepairAction` for testing purposes.
+
+    This is a full implementation of a concrete `RepairAction` subclass
+    designed to allow calling unit tests control over whether repair
+    passes or fails.
+
+    The behavior of `repair()` depends on the `_success` property of a
+    `_StubRepairAction`.  When the property is true, repair will call
+    `try_repair()` for all triggers, and then report success.  When the
+    property is false, repair reports failure.
+
+    @property repair_count  The number of calls made to the instance's
+                            `repair()` method.
+    @property message       If repair fails, the exception raised, when
+                            converted to a string, will have this value.
+    @property _success      Whether repair will follow its "success" or
+                            "failure" paths.
+    @property _description  The value of the `description` property.
+    """
+
+    def __init__(self, tag, deps, triggers, success):
+        super(_StubRepairAction, self).__init__(tag, deps, triggers)
+        self.repair_count = 0
+        self.message = 'Failed repair for "%s"' % tag
+        self._success = success
+        self._description = 'Testing repair for "%s"' % tag
+        self._log_record_map = {
+            r[0]: r for r in [
+                ('START', None, self._repair_tag, ''),
+                ('FAIL', None, self._repair_tag, self.message),
+                ('END FAIL', None, self._repair_tag, ''),
+                ('END GOOD', None, self._repair_tag, ''),
+            ]
+        }
+
+
+    def __repr__(self):
+        return '_StubRepairAction(%r, %r, %r, %r)' % (
+                self.tag, self._dependency_list,
+                self._trigger_list, self._success)
+
+
+    def repair(self, host):
+        self.repair_count += 1
+        if not self._success:
+            raise _StubRepairFailure(self.message)
+        for v in self._trigger_list:
+            v.try_repair()
+
+
+    def get_log_record(self, status):
+        """
+        Return a host log record for this repair action.
+
+        Calculates the arguments expected to be passed to
+        `Host.record()` by `RepairAction._repair_host()` when repair
+        runs.  The passed in `status` corresponds to the argument of the
+        same name to be passed to `Host.record()`.
+
+        @param status   Status value of the log record.
+        """
+        return self._log_record_map[status]
+
+
+    @property
+    def description(self):
+        return self._description
+
+
+class _DependencyNodeTestCase(unittest.TestCase):
+    """
+    Abstract base class for `RepairAction` and `Verifier` test cases.
+
+    This class provides `_make_verifier()` and `_make_repair_action()`
+    methods to create `_StubVerifier` and `_StubRepairAction` instances,
+    respectively, for testing.  Constructed verifiers and repair actions
+    are remembered in `self.nodes`, a dictionary indexed by the tag
+    used to construct the object.
     """
 
     def setUp(self):
         logging.disable(logging.CRITICAL)
         self._fake_host = _StubHost()
-        self.verifiers = {}
+        self.nodes = {}
 
 
     def tearDown(self):
@@ -165,18 +235,29 @@ class _VerifierTestCases(unittest.TestCase):
 
     def _make_verifier(self, count, tag, deps):
         """
-        Make a `_StubVerifier`, and remember it.
-
-        Constructs a `_StubVerifier` from the given arguments,
-        and remember it in `self.verifiers`.
+        Make a `_StubVerifier` and remember it in `self.nodes`.
 
         @param count  As for the `_StubVerifer` constructor.
         @param tag    As for the `_StubVerifer` constructor.
         @param deps   As for the `_StubVerifer` constructor.
         """
         verifier = _StubVerifier(tag, deps, count)
-        self.verifiers[tag] = verifier
+        self.nodes[tag] = verifier
         return verifier
+
+
+    def _make_repair_action(self, success, tag, deps, triggers):
+        """
+        Make a `_StubRepairAction` and remember it in `self.nodes`.
+
+        @param success    As for the `_StubRepairAction` constructor.
+        @param tag        As for the `_StubRepairAction` constructor.
+        @param deps       As for the `_StubRepairAction` constructor.
+        @param triggers   As for the `_StubRepairAction` constructor.
+        """
+        repair_action = _StubRepairAction(tag, deps, triggers, success)
+        self.nodes[tag] = repair_action
+        return repair_action
 
 
     def _check_log_records(self, *record_data):
@@ -184,31 +265,26 @@ class _VerifierTestCases(unittest.TestCase):
         Assert that log records occurred as expected.
 
         Elements of `record_data` should be tuples of the form
-        `(tag, success)`, describing one expected log record.
-        The verifier provides the expected log record based on the
-        success flag.
-
-        The actually logged records are extracted from
-        `self._fake_host`.  Only log records from verifiers in
-        `self.verifiers` are considered.  Other log records (i.e. the
-        special null verifiers in `RepairStrategy`) are ignored.
+        `(tag, status)`, describing one expected log record.
+        The verifier or repair action for `tag` provides the expected
+        log record based on the status value.
 
         @param record_data  List describing the expected record events.
         """
         expected_records = []
-        for tag, success in record_data:
+        for tag, status in record_data:
             expected_records.append(
-                    self.verifiers[tag].get_log_record(success))
+                    self.nodes[tag].get_log_record(status))
         actual_records = self._fake_host.get_log_records()
         self.assertEqual(expected_records, actual_records)
 
 
-class VerifyTests(_VerifierTestCases):
+class VerifyTests(_DependencyNodeTestCase):
     """
     Unit tests for `Verifier`.
 
-    The tests in this class test the fundamental behaviors of
-    the `Verifier` class:
+    The tests in this class test the fundamental behaviors of the
+    `Verifier` class:
       * Results from the `verify()` method are cached; the method is
         only called the first time that `_verify_host()` is called.
       * The `_verify_host()` method uses `Host.record()` to log the
@@ -270,7 +346,7 @@ class VerifyTests(_VerifierTestCases):
         for i in self._generate_reverify(verifier):
             verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, i+1)
-            self._check_log_records(('pass', True))
+            self._check_log_records(('pass', 'GOOD'))
 
 
     def test_fail(self):
@@ -293,7 +369,7 @@ class VerifyTests(_VerifierTestCases):
                 verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, i+1)
             self.assertEqual(verifier.message, str(e.exception))
-            self._check_log_records(('fail', False))
+            self._check_log_records(('fail', 'FAIL'))
 
 
     def test_dependency_success(self):
@@ -316,8 +392,8 @@ class VerifyTests(_VerifierTestCases):
             parent._verify_host(self._fake_host)
             self.assertEqual(parent.verify_count, i+1)
             self.assertEqual(child.verify_count, i+1)
-            self._check_log_records(('pass', True),
-                                    ('parent', True))
+            self._check_log_records(('pass', 'GOOD'),
+                                    ('parent', 'GOOD'))
 
 
     def test_dependency_fail(self):
@@ -346,7 +422,7 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(e.exception.args, (child.description,))
             self.assertEqual(child.verify_count, i+1)
             self.assertEqual(parent.verify_count, 0)
-            self._check_log_records(('fail', False))
+            self._check_log_records(('fail', 'FAIL'))
 
 
     def test_two_dependencies_pass(self):
@@ -371,9 +447,9 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(top.verify_count, i+1)
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', True),
-                                    ('right', True),
-                                    ('top', True))
+            self._check_log_records(('left', 'GOOD'),
+                                    ('right', 'GOOD'),
+                                    ('top', 'GOOD'))
 
 
     def test_two_dependencies_fail(self):
@@ -406,8 +482,8 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', False),
-                                    ('right', False))
+            self._check_log_records(('left', 'FAIL'),
+                                    ('right', 'FAIL'))
 
 
     def test_two_dependencies_mixed(self):
@@ -438,8 +514,8 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', False),
-                                    ('right', True))
+            self._check_log_records(('left', 'FAIL'),
+                                    ('right', 'GOOD'))
 
 
     def test_diamond_pass(self):
@@ -473,10 +549,10 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
             self.assertEqual(bottom.verify_count, i+1)
-            self._check_log_records(('bottom', True),
-                                    ('left', True),
-                                    ('right', True),
-                                    ('top', True))
+            self._check_log_records(('bottom', 'GOOD'),
+                                    ('left', 'GOOD'),
+                                    ('right', 'GOOD'),
+                                    ('top', 'GOOD'))
 
 
     def test_diamond_fail(self):
@@ -516,19 +592,185 @@ class VerifyTests(_VerifierTestCases):
             self.assertEqual(left.verify_count, 0)
             self.assertEqual(right.verify_count, 0)
             self.assertEqual(bottom.verify_count, i+1)
-            self._check_log_records(('bottom', False))
+            self._check_log_records(('bottom', 'FAIL'))
 
 
-class RepairStrategyTests(_VerifierTestCases):
+class RepairActionTests(_DependencyNodeTestCase):
     """
-    Unit tests for `RepairStrategy`.
+    Unit tests for `RepairAction`.
 
-    These unit tests focus on verifying that the `RepairStrategy`
-    constructor creates the expected DAG structure.  Functional testing
-    here is confined to asserting that `RepairStrategy.verify()`
-    properly distinguishes success from failure.  Testing the behavior
-    of specific DAG structures is left to tests in `VerifyTests`.
+    The tests in this class test the fundamental behaviors of the
+    `RepairAction` class:
+      * Repair doesn't run unless all dependencies pass.
+      * Repair doesn't run unless at least one trigger fails.
+      * The `_repair_host()` method uses `Host.record()` to log the
+        outcome of every call to the `repair()` method.
+
+    The test cases don't use `RepairStrategy` to build repair
+    graphs, but instead rely on custom-built structures.
     """
+
+    def test_repair_not_triggered(self):
+        """
+        Test a repair that doesn't trigger.
+
+        Construct and call a repair action with a verification trigger
+        that passes.  Assert the following:
+          * The `verify()` method for the trigger is called.
+          * The `repair()` method is not called.
+          * The verifier logs the expected 'GOOD' message with
+            `Host.record()`.
+          * The repair action logs no messages with `Host.record()`.
+        """
+        verifier = self._make_verifier(0, 'check', [])
+        repair_action = self._make_repair_action(True, 'unneeded',
+                                                 [], [verifier])
+        repair_action._repair_host(self._fake_host)
+        self.assertEqual(verifier.verify_count, 1)
+        self.assertEqual(repair_action.repair_count, 0)
+        self._check_log_records(('check', 'GOOD'))
+
+
+    def test_repair_fails(self):
+        """
+        Test a repair that triggers and fails.
+
+        Construct and call a repair action with a verification trigger
+        that fails.  The repair fails by raising `_StubRepairFailure`.
+        Assert the following:
+          * The repair action fails with the `_StubRepairFailure` raised
+            by `repair()`.
+          * The `verify()` method for the trigger is called once.
+          * The `repair()` method is called once.
+          * The expected 'START', 'FAIL', and 'END FAIL' messages are
+            logged with `Host.record()` for the failed verifier and the
+            failed repair.
+        """
+        verifier = self._make_verifier(1, 'fail', [])
+        repair_action = self._make_repair_action(False, 'nofix',
+                                                 [], [verifier])
+        with self.assertRaises(_StubRepairFailure) as e:
+            repair_action._repair_host(self._fake_host)
+        self.assertEqual(repair_action.message, str(e.exception))
+        self.assertEqual(verifier.verify_count, 1)
+        self.assertEqual(repair_action.repair_count, 1)
+        self._check_log_records(('fail', 'FAIL'),
+                                ('nofix', 'START'),
+                                ('nofix', 'FAIL'),
+                                ('nofix', 'END FAIL'))
+
+
+    def test_repair_success(self):
+        """
+        Test a repair that fixes its trigger.
+
+        Construct and call a repair action that raises no exceptions,
+        using a repair trigger that fails first, then passes after
+        repair.  Assert the following:
+          * The `repair()` method is called once.
+          * The trigger's `verify()` method is called twice.
+          * The expected 'START', 'FAIL', 'GOOD', and 'END GOOD'
+            messages are logged with `Host.record()` for the verifier
+            and the repair.
+        """
+        verifier = self._make_verifier(1, 'fail', [])
+        repair_action = self._make_repair_action(True, 'fix',
+                                                 [], [verifier])
+        repair_action._repair_host(self._fake_host)
+        self.assertEqual(repair_action.repair_count, 1)
+        self.assertEqual(verifier.verify_count, 2)
+        self._check_log_records(('fail', 'FAIL'),
+                                ('fix', 'START'),
+                                ('fail', 'GOOD'),
+                                ('fix', 'END GOOD'))
+
+
+    def test_repair_noop(self):
+        """
+        Test a repair that doesn't fix a failing trigger.
+
+        Construct and call a repair action with a trigger that fails.
+        The repair action raises no exceptions, and after repair, the
+        trigger still fails.  Assert the following:
+          * The `_repair_host()` call fails with `AutoservRepairError`.
+          * The `repair()` method is called once.
+          * The trigger's `verify()` method is called twice.
+          * The expected 'START', 'FAIL', and 'END FAIL' messages are
+            logged with `Host.record()` for the verifier and the repair.
+        """
+        verifier = self._make_verifier(2, 'fail', [])
+        repair_action = self._make_repair_action(True, 'nofix',
+                                                 [], [verifier])
+        with self.assertRaises(hosts.AutoservRepairError) as e:
+            repair_action._repair_host(self._fake_host)
+        self.assertEqual(repair_action.repair_count, 1)
+        self.assertEqual(verifier.verify_count, 2)
+        self._check_log_records(('fail', 'FAIL'),
+                                ('nofix', 'START'),
+                                ('fail', 'FAIL'),
+                                ('nofix', 'END FAIL'))
+
+
+    def test_dependency_pass(self):
+        """
+        Test proper handling of repair dependencies that pass.
+
+        Construct and call a repair action with a dependency and a
+        trigger.  The dependency will pass and the trigger will fail and
+        be repaired.  Assert the following:
+          * Repair passes.
+          * The `verify()` method for the dependency is called once.
+          * The `verify()` method for the trigger is called twice.
+          * The `repair()` method is called once.
+          * The expected records are logged via `Host.record()`
+            for the successful dependency, the failed trigger, and
+            the successful repair.
+        """
+        dep = self._make_verifier(0, 'dep', [])
+        trigger = self._make_verifier(1, 'trig', [])
+        repair = self._make_repair_action(True, 'fixit',
+                                          [dep], [trigger])
+        repair._repair_host(self._fake_host)
+        self.assertEqual(dep.verify_count, 1)
+        self.assertEqual(trigger.verify_count, 2)
+        self.assertEqual(repair.repair_count, 1)
+        self._check_log_records(('dep', 'GOOD'),
+                                ('trig', 'FAIL'),
+                                ('fixit', 'START'),
+                                ('trig', 'GOOD'),
+                                ('fixit', 'END GOOD'))
+
+
+    def test_dependency_fail(self):
+        """
+        Test proper handling of repair dependencies that fail.
+
+        Construct and call a repair action with a dependency and a
+        trigger, both of which fail.  Assert the following:
+          * Repair fails with `AutoservVerifyDependencyError`,
+            and the exception argument is the description of the failed
+            dependency.
+          * The `verify()` method for the failing dependency is called
+            once.
+          * The trigger and the repair action aren't invoked at all.
+          * The expected 'FAIL' record is logged via `Host.record()`
+            for the single failed dependency.
+        """
+        dep = self._make_verifier(1, 'dep', [])
+        trigger = self._make_verifier(1, 'trig', [])
+        repair = self._make_repair_action(True, 'fixit',
+                                          [dep], [trigger])
+        with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
+            repair._repair_host(self._fake_host)
+        self.assertEqual(e.exception.args, (dep.description,))
+        self.assertEqual(dep.verify_count, 1)
+        self.assertEqual(trigger.verify_count, 0)
+        self.assertEqual(repair.repair_count, 0)
+        self._check_log_records(('dep', 'FAIL'))
+
+
+class _RepairStrategyTestCase(_DependencyNodeTestCase):
+    """Shared base class for testing `RepairStrategy` methods."""
 
     def _make_verify_data(self, *input_data):
         """
@@ -557,6 +799,61 @@ class RepairStrategyTests(_VerifierTestCases):
         return strategy_data
 
 
+    def _make_repair_data(self, *input_data):
+        """
+        Create `repair_data` for the `RepairStrategy` constructor.
+
+        `RepairStrategy` expects `repair_data` as a list of tuples
+        of the form `(constructor, tag, deps, triggers)`.  Each item in
+        `input_data` is a tuple of the form `(tag, success, deps, triggers)`
+        that creates one entry in the returned list of `repair_data`
+        tuples as follows:
+          * `success` is used to create a constructor function that calls
+            `self._make_verifier()` with that value plus plus the
+            arguments provided by the `RepairStrategy` constructor.
+          * `tag`, `deps`, and `triggers` will be passed as-is to the
+            `RepairStrategy` constructor.
+
+        @param input_data   A list of tuples, each representing one
+                            tuple in the `repair_data` list.
+        @return   A list suitable to be the `repair_data` parameter for
+                  the `RepairStrategy` constructor.
+        """
+        strategy_data = []
+        for tag, success, deps, triggers in input_data:
+            construct = functools.partial(self._make_repair_action, success)
+            strategy_data.append((construct, tag, deps, triggers))
+        return strategy_data
+
+
+    def _make_strategy(self, verify_input, repair_input):
+        """
+        Create a `RepairStrategy` from the given arguments.
+
+        @param verify_input   As for `input_data` in
+                              `_make_verify_data()`.
+        @param repair_input   As for `input_data` in
+                              `_make_repair_data()`.
+        """
+        verify_data = self._make_verify_data(*verify_input)
+        repair_data = self._make_repair_data(*repair_input)
+        return hosts.RepairStrategy(verify_data, repair_data)
+
+
+
+
+class RepairStrategyVerifyTests(_RepairStrategyTestCase):
+    """
+    Unit tests for `RepairStrategy.verify()`.
+
+    These unit tests focus on verifying that the `RepairStrategy`
+    constructor creates the expected DAG structure from given
+    `verify_data`.  Functional testing here is mainly confined to
+    asserting that `RepairStrategy.verify()` properly distinguishes
+    success from failure.  Testing the behavior of specific DAG
+    structures is left to tests in `VerifyTests`.
+    """
+
     def test_single_node(self):
         """
         Test construction of a single-node verification DAG.
@@ -566,8 +863,8 @@ class RepairStrategyTests(_VerifierTestCases):
             Root Node -> Main Node
         """
         verify_data = self._make_verify_data(('main', 0, ()))
-        strategy = hosts.RepairStrategy(verify_data)
-        verifier = self.verifiers['main']
+        strategy = hosts.RepairStrategy(verify_data, [])
+        verifier = self.nodes['main']
         self.assertEqual(
                 strategy._verify_root._dependency_list,
                 [verifier])
@@ -585,9 +882,9 @@ class RepairStrategyTests(_VerifierTestCases):
         verify_data = self._make_verify_data(
                 ('child', 0, ()),
                 ('parent', 0, ('child',)))
-        strategy = hosts.RepairStrategy(verify_data)
-        parent = self.verifiers['parent']
-        child = self.verifiers['child']
+        strategy = hosts.RepairStrategy(verify_data, [])
+        parent = self.nodes['parent']
+        child = self.nodes['child']
         self.assertEqual(
                 strategy._verify_root._dependency_list, [parent])
         self.assertEqual(
@@ -610,10 +907,10 @@ class RepairStrategyTests(_VerifierTestCases):
                 ('bottom', 0, ()),
                 ('left', 0, ('bottom',)),
                 ('right', 0, ('bottom',)))
-        strategy = hosts.RepairStrategy(verify_data)
-        bottom = self.verifiers['bottom']
-        left = self.verifiers['left']
-        right = self.verifiers['right']
+        strategy = hosts.RepairStrategy(verify_data, [])
+        bottom = self.nodes['bottom']
+        left = self.nodes['left']
+        right = self.nodes['right']
         self.assertEqual(
                 strategy._verify_root._dependency_list,
                 [left, right])
@@ -642,10 +939,10 @@ class RepairStrategyTests(_VerifierTestCases):
                 ('one', 0, ()),
                 ('two', 0, ()),
                 ('three', 0, ()))
-        strategy = hosts.RepairStrategy(verify_data)
-        one = self.verifiers['one']
-        two = self.verifiers['two']
-        three = self.verifiers['three']
+        strategy = hosts.RepairStrategy(verify_data, [])
+        one = self.nodes['one']
+        two = self.nodes['two']
+        three = self.nodes['three']
         self.assertEqual(
                 strategy._verify_root._dependency_list,
                 [one, two, three])
@@ -662,12 +959,12 @@ class RepairStrategyTests(_VerifierTestCases):
         following:
           * If the verifier passes, `verify()` passes.
           * If the verifier fails, `verify()` fails.
-          * The verifier's `verify()` method is called once each time we
-            call the strategy's `verify()` method.
+          * The verifier is reinvoked with every call to `verify()`;
+            cached results are not re-used.
         """
         verify_data = self._make_verify_data(('tester', 0, ()))
-        strategy = hosts.RepairStrategy(verify_data)
-        verifier = self.verifiers['tester']
+        strategy = hosts.RepairStrategy(verify_data, [])
+        verifier = self.nodes['tester']
         count = 0
         for i in range(0, 2):
             for j in range(0, 2):
@@ -681,6 +978,200 @@ class RepairStrategyTests(_VerifierTestCases):
                 count += 1
                 self.assertEqual(verifier.verify_count, count)
             verifier.try_repair()
+
+
+class RepairStrategyRepairTests(_RepairStrategyTestCase):
+    """
+    Unit tests for `RepairStrategy.repair()`.
+
+    These unit tests focus on verifying that the `RepairStrategy`
+    constructor creates the expected repair list from given
+    `repair_data`.  Functional testing here is confined to asserting
+    that `RepairStrategy.repair()` properly distinguishes success from
+    failure.  Testing the behavior of specific repair structures is left
+    to tests in `RepairActionTests`.
+    """
+
+    def _check_common_trigger(self, strategy, repair_tags, triggers):
+        self.assertEqual(strategy._repair_actions,
+                         [self.nodes[tag] for tag in repair_tags])
+        for tag in repair_tags:
+            self.assertEqual(self.nodes[tag]._trigger_list,
+                             triggers)
+            self.assertEqual(self.nodes[tag]._dependency_list, [])
+
+
+    def test_single_repair_with_trigger(self):
+        """
+        Test constructing a strategy with a single repair trigger.
+
+        Build a `RepairStrategy` with a single repair action and a
+        single trigger.  Assert that the trigger graph looks like this:
+
+            Repair -> Trigger
+
+        Assert that there are no repair dependencies.
+        """
+        verify_input = (('base', 0, ()),)
+        repair_input = (('fixit', True, (), ('base',)),)
+        strategy = self._make_strategy(verify_input, repair_input)
+        self._check_common_trigger(strategy,
+                                   ['fixit'],
+                                   [self.nodes['base']])
+
+
+    def test_repair_with_root_trigger(self):
+        """
+        Test construction of a repair triggering on the root verifier.
+
+        Build a `RepairStrategy` with a single repair action that
+        triggers on the root verifier.  Assert that the trigger graph
+        looks like this:
+
+            Repair -> Root Verifier
+
+        Assert that there are no repair dependencies.
+        """
+        root_tag = hosts.RepairStrategy.ROOT_TAG
+        repair_input = (('fixit', True, (), (root_tag,)),)
+        strategy = self._make_strategy([], repair_input)
+        self._check_common_trigger(strategy,
+                                   ['fixit'],
+                                   [strategy._verify_root])
+
+
+    def test_three_repairs(self):
+        """
+        Test constructing a strategy with three repair actions.
+
+        Build a `RepairStrategy` with a three repair actions sharing a
+        single trigger.  Assert that the trigger graph looks like this:
+
+            Repair A -> Trigger
+            Repair B -> Trigger
+            Repair C -> Trigger
+
+        Assert that there are no repair dependencies.
+
+        N.B.  This test exists to enforce ordering expectations of
+        repair nodes.  Three nodes are used to make it unlikely that
+        randomly ordered actions will match expectations.
+        """
+        verify_input = (('base', 0, ()),)
+        repair_tags = ['a', 'b', 'c']
+        repair_input = (
+            (tag, True, (), ('base',)) for tag in repair_tags)
+        strategy = self._make_strategy(verify_input, repair_input)
+        self._check_common_trigger(strategy,
+                                   repair_tags,
+                                   [self.nodes['base']])
+
+
+    def test_repair_dependency(self):
+        """
+        Test construction of a repair with a dependency.
+
+        Build a `RepairStrategy` with a single repair action that
+        depends on a single verifier.  Assert that the dependency graph
+        looks like this:
+
+            Repair -> Verifier
+
+        Assert that there are no repair triggers.
+        """
+        verify_input = (('base', 0, ()),)
+        repair_input = (('fixit', True, ('base',), ()),)
+        strategy = self._make_strategy(verify_input, repair_input)
+        self.assertEqual(strategy._repair_actions,
+                         [self.nodes['fixit']])
+        self.assertEqual(self.nodes['fixit']._trigger_list, [])
+        self.assertEqual(self.nodes['fixit']._dependency_list,
+                         [self.nodes['base']])
+
+
+    def _check_repair_failure(self, strategy):
+        """
+        Check the effects of a call to `repair()` that fails.
+
+        For the given strategy object, call the `repair()` method; the
+        call is expected to fail and all repair actions are expected to
+        trigger.
+
+        Assert the following:
+          * The call raises an exception.
+          * For each repair action in the strategy, its `repair()`
+            method is called exactly once.
+
+        @param strategy   The strategy to be tested.
+        """
+        action_counts = [(a, a.repair_count)
+                                 for a in strategy._repair_actions]
+        with self.assertRaises(Exception) as e:
+            strategy.repair(self._fake_host)
+        for action, count in action_counts:
+              self.assertEqual(action.repair_count, count + 1)
+
+
+    def _check_repair_success(self, strategy):
+        """
+        Check the effects of a call to `repair()` that succeeds.
+
+        For the given strategy object, call the `repair()` method; the
+        call is expected to succeed without raising an exception and all
+        repair actions are expected to trigger.
+
+        Assert that for each repair action in the strategy, its
+        `repair()` method is called exactly once.
+
+        @param strategy   The strategy to be tested.
+        """
+        action_counts = [(a, a.repair_count)
+                                 for a in strategy._repair_actions]
+        strategy.repair(self._fake_host)
+        for action, count in action_counts:
+              self.assertEqual(action.repair_count, count + 1)
+
+
+    def test_repair(self):
+        """
+        Test behavior of the `repair()` method.
+
+        Build a `RepairStrategy` with two repair actions each depending
+        on its own verifier.  Set up calls to `repair()` for each of
+        the following conditions:
+          * Both repair actions trigger and fail.
+          * Both repair actions trigger and succeed.
+          * Both repair actions trigger; the first one fails, but the
+            second one succeeds.
+          * Both repair actions trigger; the first one succeeds, but the
+            second one fails.
+
+        Assert the following:
+          * When both repair actions succeed, `repair()` succeeds.
+          * When either repair action fails, `repair()` fails.
+          * After each call to the strategy's `repair()` method, each
+            repair action triggered exactly once.
+        """
+        verify_input = (('a', 2, ()), ('b', 2, ()))
+        repair_input = (('afix', True, (), ('a',)),
+                        ('bfix', True, (), ('b',)))
+        strategy = self._make_strategy(verify_input, repair_input)
+
+        # call where both 'afix' and 'bfix' fail
+        self._check_repair_failure(strategy)
+
+        # call where both 'afix' and 'bfix' succeed
+        self._check_repair_success(strategy)
+
+        # call where 'afix' fails and 'bfix' succeeds
+        for tag in ['a', 'a', 'b']:
+            self.nodes[tag].unrepair()
+        self._check_repair_failure(strategy)
+
+        # call where 'afix' succeeds and 'bfix' fails
+        for tag in ['b', 'b']:
+            self.nodes[tag].unrepair()
+        self._check_repair_failure(strategy)
 
 
 if __name__ == '__main__':
