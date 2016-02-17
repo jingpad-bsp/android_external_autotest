@@ -49,15 +49,22 @@ class brillo_PlaybackAudioTest(test.test):
         @raises TestError: Invalid playback method.
         """
         if dut_play_file:
-            return 'su root slesTest_playFdPath %s 0' % dut_play_file
-        if method == 'libmedia':
-            return 'brillo_audio_test --playback --libmedia --sine'
-        elif method == 'stagefright':
-            return 'brillo_audio_test --playback --stagefright --sine'
-        elif method == 'opensles':
-            return 'slesTest_sawtoothBufferQueue'
+            if method == 'libmedia':
+                return ('su root brillo_audio_test --playback --libmedia '
+                        '--filename=%s' % dut_play_file)
+            elif method == 'stagefright':
+                return ('su root brillo_audio_test --playback --stagefright '
+                        '--filename=%s' % dut_play_file)
+            elif method == 'opensles':
+                return 'su root slesTest_playFdPath %s 0' % dut_play_file
         else:
-            raise error.TestError('Test called with invalid playback method.')
+            if method == 'libmedia':
+                return 'brillo_audio_test --playback --libmedia --sine'
+            elif method == 'stagefright':
+                return 'brillo_audio_test --playback --stagefright --sine'
+            elif method == 'opensles':
+                return 'slesTest_sawtoothBufferQueue'
+        raise error.TestError('Test called with invalid playback method.')
 
 
     def test_playback(self, fb_query, playback_cmd, sample_width, sample_rate,
