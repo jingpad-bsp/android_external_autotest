@@ -19,7 +19,12 @@ TEST_CONFIG_FILE_FOLDER = 'autotest_config'
 TEST_CAMPAIGN_FILE_FOLDER = 'autotest_campaign'
 
 class android_ACTS(test.test):
-    '''Run an Android CTS test case.'''
+    """Run an Android CTS test case.
+
+    Component relationship:
+    Workstation ----(ssh)---> TestStation -----(adb)-----> Android DUT
+    This code runs on Workstation.
+    """
     version = 1
     acts_result_to_autotest = {
         'PASS': 'GOOD',
@@ -28,18 +33,20 @@ class android_ACTS(test.test):
         'SKIP': 'ABORT'
     }
 
-    def fetch_file(self, input_path, sub_dir_name):
-        """Ensures the file specified by a path exists locally. If the file
-        specified by input_path does not exist, attempt to locate it in ACTS
-        dirctory.
+
+    def push_file_to_teststation(self, input_path, sub_dir_name):
+        """Ensures the file specified by a path exists on test station. If the
+        file specified by input_path does not exist, attempt to locate it in
+        ACTS dirctory.
 
         @param input_path: A string that's the path to a file.
         @param sub_dir_name: A string that's the subdirectory name of where the
                              file exists.
+        @returns: The actual path of the file on work station.
         """
         if os.path.exists(input_path):
             self.test_station.send_file(input_path, self.ts_tempfolder)
-            return
+            return input_path
         actual_path = os.path.join(CONFIG_FOLDER_LOCATION,
                                    sub_dir_name,
                                    input_path)
@@ -47,6 +54,7 @@ class android_ACTS(test.test):
         if not os.path.exists(actual_path):
             raise error.TestFail('File: %s does not exist' % actual_path)
         self.test_station.send_file(actual_path, self.ts_tempfolder)
+        return actual_path
 
 
     def run_once(self, testbed=None, config_file=None, testbed_name=None,
@@ -67,19 +75,21 @@ class android_ACTS(test.test):
         self.ts_tempfolder = self.test_station.get_tmp_dir()
         if not config_file:
             raise error.TestFail('A config file must be specified.')
-        self.fetch_file(config_file, TEST_CONFIG_FILE_FOLDER)
+        config_file = self.push_file_to_teststation(config_file,
+                                                    TEST_CONFIG_FILE_FOLDER)
 
         if test_file:
-            self.fetch_file(test_file, TEST_CAMPAIGN_FILE_FOLDER)
+            self.push_file_to_teststation(test_file,
+                                          TEST_CAMPAIGN_FILE_FOLDER)
         act_base_cmd = 'act.py -c %s -tb %s ' % (
-                    os.path.join(self.ts_tempfolder, os.path.basename(config_file)),
-                    testbed_name)
+            os.path.join(self.ts_tempfolder, os.path.basename(config_file)),
+            testbed_name)
         # Run the acts script.
         if test_case:
             act_cmd = '%s -tc %s' % (act_base_cmd, test_case)
         elif test_file:
             act_cmd = '%s -tf %s' % (act_base_cmd,
-                    os.path.join(self.ts_tempfolder, os.path.basename(test_file)))
+                os.path.join(self.ts_tempfolder, os.path.basename(test_file)))
         else:
             raise error.TestFail('No test was specified,  abort!')
         logging.debug('Running: %s', act_cmd)
@@ -87,7 +97,7 @@ class android_ACTS(test.test):
         act_result = self.test_station.run(act_cmd)
         logging.debug('ACTS Output:\n%s', act_result.stdout)
 
-        # Transport all the logs to local.
+        # Transport ACTS logs from test station to work station for parsing.
         with open(config_file, 'r') as f:
             configs = json.load(f)
         log_path = os.path.join(configs['logpath'], testbed_name, 'latest')
