@@ -25,7 +25,6 @@ PERF_TESTS = [
     'kraken',
     'octane',
     'page_cycler.typical_25',
-    'session_restore.cold.typical_25',
     'smoothness.top_25_smooth',
     'speedometer',
     'startup.cold.blank_page',
