@@ -80,6 +80,10 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "longevity_Tracker",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
     "autotest_name": "network_WiFi_AttenuatedPerf.ht40_ch001",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_AttenuatedPerf"
