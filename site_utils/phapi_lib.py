@@ -85,7 +85,8 @@ class ProjectHostingApiClient():
     _start_index = 1
 
 
-    def __init__(self, oauth_credentials, project_name):
+    def __init__(self, oauth_credentials, project_name,
+                 monorail_server='staging'):
         if apiclient_build is None:
             raise ProjectHostingApiException('Cannot get apiclient library.')
 
@@ -100,8 +101,11 @@ class ProjectHostingApiClient():
 
         http = credentials.authorize(httplib2.Http())
         try:
-            self._codesite_service = apiclient_build('projecthosting',
-                                                     'v2', http=http)
+            url = ('https://monorail-%s.appspot.com/_ah/api/discovery/v1/'
+                   'apis/{api}/{apiVersion}/rest' % monorail_server)
+            self._codesite_service = apiclient_build(
+                "monorail", "v1", http=http,
+                discoveryServiceUrl=url)
         except (apiclient_errors.Error, httplib2.HttpLib2Error,
                 httplib.BadStatusLine) as e:
             raise ProjectHostingApiException(str(e))

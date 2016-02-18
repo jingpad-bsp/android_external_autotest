@@ -171,6 +171,9 @@ class TestBug(Bug):
         return template % specifics
 
 
+    # TO-DO(shuqianz) Fix the dedupe failing issue because reason contains
+    # special characters after
+    # https://bugs.chromium.org/p/monorail/issues/detail?id=806 being fixed.
     def search_marker(self):
         """Return an Anchor that we can use to dedupe this exact bug."""
         board = ''
@@ -186,7 +189,7 @@ class TestBug(Bug):
             for b in (board, board.replace('_', '-')):
                 reason = reason.replace(b, 'BOARD_PLACEHOLDER')
 
-        return "%s(%s,%s,%s)" % ('Test%s' % self.status, self.suite,
+        return "%s{%s,%s,%s}" % ('Test%s' % self.status, self.suite,
                                  self.name, reason)
 
 
@@ -270,7 +273,7 @@ class MachineKillerBug(Bug):
 
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
-        return 'MachineKiller(%s)' % self._test_name
+        return 'MachineKiller{%s}' % self._test_name
 
 
 class PoolHealthBug(Bug):
@@ -324,7 +327,7 @@ class PoolHealthBug(Bug):
 
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
-        return 'PoolHealthBug(%s, %s)' % (self._pool, self._board)
+        return 'PoolHealthBug{%s, %s}' % (self._pool, self._board)
 
 class SuiteSchedulerBug(Bug):
     """Bug filed for suite scheduler."""
@@ -387,8 +390,8 @@ class SuiteSchedulerBug(Bug):
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
         # TODO(fdeng): flaky deduping behavior, see crbug.com/486895
-        return 'SuiteSchedulerBug(%s, %s)' % (
-                self._suite, type(self._exception))
+        return 'SuiteSchedulerBug{%s, %s}' % (
+                self._suite, type(self._exception).__name__)
 
 
 class Reporter(object):
@@ -400,6 +403,8 @@ class Reporter(object):
         BUG_CONFIG_SECTION, 'project_name', default='')
     _oauth_credentials = global_config.global_config.get_config_value(
         BUG_CONFIG_SECTION, 'credentials', default='')
+    _monorail_server= global_config.global_config.get_config_value(
+        BUG_CONFIG_SECTION, 'monorail_server', default='staging')
 
     # AUTOFILED_COUNT is a label prefix used to indicate how
     # many times we think we've updated an issue automatically.
@@ -426,7 +431,8 @@ class Reporter(object):
             return
         try:
             self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                    self.get_creds_abspath(), self._project_name)
+                    self.get_creds_abspath(), self._project_name,
+                    self._monorail_server)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create project hosting api client: %s', e)
             self._phapi_client = None
@@ -477,6 +483,7 @@ class Reporter(object):
         if override:
             kwargs.update((k,v) for k,v in override.iteritems() if v)
 
+        kwargs['summary'] = kwargs['title']
         kwargs['labels'] = list(set(kwargs['labels'] + self._PREDEFINED_LABELS))
         kwargs['cc'] = list(map(lambda cc: {'name': cc},
                                 set(kwargs['cc'] + kwargs['sheriffs'])))

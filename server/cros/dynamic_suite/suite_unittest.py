@@ -653,6 +653,7 @@ class SuiteTest(mox.MoxTestBase):
 
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg(),
                                                       mox.IgnoreArg())
         self.mox.StubOutWithMock(reporting.Reporter, 'report')
         reporting.Reporter.report(mox.IgnoreArg(),
@@ -693,6 +694,7 @@ class SuiteTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
         self.mox.StubOutClassWithMocks(phapi_lib, 'ProjectHostingApiClient')
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
+                                                      mox.IgnoreArg(),
                                                       mox.IgnoreArg())
         reporting.Reporter._check_tracker().AndReturn(False)
 
