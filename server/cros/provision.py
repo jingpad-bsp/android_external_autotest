@@ -15,6 +15,9 @@ ANDROID_BUILD_VERSION_PREFIX = 'ab-version'
 FW_RW_VERSION_PREFIX = 'fwrw-version'
 FW_RO_VERSION_PREFIX = 'fwro-version'
 
+# Special label to skip provision and run reset instead.
+SKIP_PROVISION = 'skip_provision'
+
 # Default number of provisions attempts to try if we believe the devserver is
 # flaky.
 FLAKY_DEVSERVER_ATTEMPTS = 2
@@ -119,7 +122,11 @@ class _SpecialTaskAction(object):
         configurations = set()
 
         for label in labels:
-            if cls.acts_on(label):
+            if label == SKIP_PROVISION:
+                # skip_provision is neither actionable or a capability label.
+                # It doesn't need any handling.
+                continue
+            elif cls.acts_on(label):
                 configurations.add(label)
             else:
                 capabilities.add(label)
@@ -223,7 +230,8 @@ def is_for_special_action(label):
     return (Verify.acts_on(label) or
             Provision.acts_on(label) or
             Cleanup.acts_on(label) or
-            Repair.acts_on(label))
+            Repair.acts_on(label) or
+            label == SKIP_PROVISION)
 
 
 def filter_labels(labels):

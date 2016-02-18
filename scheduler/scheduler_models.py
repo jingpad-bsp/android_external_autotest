@@ -1332,6 +1332,9 @@ class Job(DBObject):
         # host_scheduler.py:is_host_eligable_for_job() where we discard all
         # actionable labels when assigning jobs to hosts.)
         job_labels = {x.name for x in queue_entry.get_labels()}
+        # Skip provision if `skip_provision` is listed in the job labels.
+        if provision.SKIP_PROVISION in job_labels:
+            return False
         _, host_labels = queue_entry.host.platform_and_labels()
         # If there are any labels on the job that are not on the host and they
         # are labels that provisioning knows how to change, then that means
