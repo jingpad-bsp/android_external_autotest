@@ -107,15 +107,31 @@ def get_stable_version(board, android=False):
     return AFE.run('get_stable_version', board=board, android=android)
 
 
-def get_host_attribute(host, attribute):
+def lookup_job_repo_url(host):
     """Looks up the job_repo_url for the host.
+
+    The method is kept for backwards compatibility with test
+    autoupdate_EndToEndTest in existing builds. It should not be used for new
+    code.
+    TODO(dshi): Update autoupdate_EndToEndTest to use get_host_attribute after
+    lab is updated. After R50 is in stable channel, this method can be removed.
+
+    @param host: A Host object to lookup for job_repo_url.
+
+    @returns Host attribute `job_repo_url` of the given host.
+    """
+    return get_host_attribute(host, host.job_repo_url_attribute)
+
+
+def get_host_attribute(host, attribute):
+    """Looks up the value of host attribute for the host.
 
     @param host: A Host object to lookup for attribute value.
     @param attribute: Name of the host attribute.
 
     @returns value for the given attribute or None if not found.
 
-    @raises KeyError if the host does not have a job_repo_url
+    @raises KeyError if the host does not have the given attribute.
     """
     local_value = host.host_attributes.get(attribute)
     if not host_in_lab(host):
@@ -129,7 +145,7 @@ def get_host_attribute(host, attribute):
 
 
 def clear_host_attributes_before_provision(host):
-    """Clear host attribute job_repo_url.
+    """Clear host attributes before provision, e.g., job_repo_url.
 
     @param host: A Host object to clear attributes before provision.
     """
@@ -151,7 +167,7 @@ def update_host_attribute(host, attribute, value):
     @param attribute: Name of the host attribute.
     @param value: Value for the host attribute.
 
-    @raises AutoservError: If we failed to update the job_repo_url.
+    @raises AutoservError: If we failed to update the attribute.
     """
     host.host_attributes[attribute] = value
     if not host_in_lab(host):

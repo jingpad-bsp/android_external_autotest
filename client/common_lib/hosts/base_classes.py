@@ -74,6 +74,13 @@ class Host(object):
         pass
 
 
+    @property
+    def job_repo_url_attribute(self):
+        """Get the host attribute name for job_repo_url.
+        """
+        return 'job_repo_url'
+
+
     def close(self):
         pass
 
