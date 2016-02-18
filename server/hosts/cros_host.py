@@ -725,6 +725,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         logging.debug('Update URL is %s', update_url)
 
+        # Report provision stats.
+        server_name = dev_server.DevServer.get_server_name(update_url)
+        server_name = server_name.replace('.', '_')
+        autotest_stats.Counter('cros_host_provision.' + server_name).increment()
+        autotest_stats.Counter('cros_host_provision.total').increment()
+
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
         self.run('touch %s' % PROVISION_FAILED)

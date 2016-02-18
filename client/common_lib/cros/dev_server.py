@@ -202,7 +202,7 @@ class DevServer(object):
         @return the server name without http:// prefix and port.
 
         """
-        return re.sub(r':\d+$', '', url.lstrip('http://'))
+        return re.sub(r':\d+.*', '', url.lstrip('http://'))
 
 
     @staticmethod
