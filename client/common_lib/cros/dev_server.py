@@ -907,6 +907,59 @@ class ImageServerBase(DevServer):
                     'finish_download timed out for %s.' % build)
 
 
+    def locate_file(self, file_name, artifacts, build, build_info):
+        """Locate a file with the given file_name on devserver.
+
+        This method calls devserver RPC `locate_file` to look up a file with
+        the given file name inside specified build artifacts.
+
+        @param file_name: Name of the file to look for a file.
+        @param artifacts: A list of artifact names to search for the file.
+        @param build: Name of the build. For Android, it's None as build_info
+                should be used.
+        @param build_info: Dictionary of build information.
+                For CrOS, it is None as build is the CrOS image name.
+                For Android, it is {'target': target,
+                                    'build_id': build_id,
+                                    'branch': branch}
+
+        @return: A devserver url to the file.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        if not build and not build_info:
+            raise DevServerException('You must specify build information to '
+                                     'look for file %s in artifacts %s.' %
+                                     (file_name, artifacts))
+        kwargs = {'file_name': file_name,
+                  'artifacts': artifacts}
+        if build_info:
+            build_path = '%(branch)s/%(target)s/%(build_id)s' % build_info
+            kwargs.update(build_info)
+            # Devserver treats Android and Brillo build in the same way as they
+            # are both retrieved from Launch Control and have similar build
+            # artifacts. Therefore, os_type for devserver calls is `android` for
+            # both Android and Brillo builds.
+            kwargs['os_type'] = 'android'
+        else:
+            build_path = build
+            kwargs['build'] = build
+        call = self.build_call('locate_file', async=False, **kwargs)
+        try:
+            file_path = urllib2.urlopen(call).read()
+            return os.path.join(self.url(), 'static', build_path, file_path)
+        except httplib.BadStatusLine as e:
+            logging.error(e)
+            raise DevServerException('Received Bad Status line, Devserver %s '
+                                     'might have gone down while handling '
+                                     'the call: %s' % (self.url(), call))
+        except error.TimeoutException:
+            error_message = ('Call `locate_file` timed out when looking for %s '
+                             'in artifacts %s in build %s' %
+                             (file_name, artifacts, build_info))
+            logging.error(error_message)
+            raise DevServerException(error_message)
+
+
 class ImageServer(ImageServerBase):
     """Class for DevServer that handles RPCs related to CrOS images.
 
@@ -1357,8 +1410,8 @@ class AndroidBuildServer(ImageServerBase):
                               **android_build_info)
 
 
-    def trigger_download(self, target, build_id, branch, is_brillo=False,
-                         synchronous=True):
+    def trigger_download(self, target, build_id, branch, artifacts=None,
+                         is_brillo=False, synchronous=True):
         """Tell the devserver to download and stage an Android build.
 
         Tells the devserver to fetch an Android build from the image storage
@@ -1374,6 +1427,8 @@ class AndroidBuildServer(ImageServerBase):
                        shamu-userdebug.
         @param build_id: Build id of the android build to stage.
         @param branch: Branch of the android build to stage.
+        @param artifacts: A string of artifacts separated by comma. If None,
+               use the default artifacts for Android or Brillo build.
         @param is_brillo: Set to True if it's a Brillo build. Default is False.
         @param synchronous: if True, waits until all components of the image are
                staged before returning.
@@ -1385,8 +1440,9 @@ class AndroidBuildServer(ImageServerBase):
                               'build_id': build_id,
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
-        artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo else
-                     _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
+        if not artifacts:
+            artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo
+                         else _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
         self._trigger_download(build, artifacts, files='',
                                synchronous=synchronous, **android_build_info)
 

@@ -979,7 +979,7 @@ class Suite(object):
                         self._afe, self._tko, self._suite_job_id)
             else:
                 logging.warning('Unknown suite_job_id, falling back to less '
-                             'efficient results_generator.')
+                                'efficient results_generator.')
                 results_generator = job_status.wait_for_results(self._afe,
                                                                 self._tko,
                                                                 self._jobs)

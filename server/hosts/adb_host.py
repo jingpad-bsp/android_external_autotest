@@ -979,7 +979,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     @classmethod
-    def _get_build_info_from_build_url(cls, build_url):
+    def get_build_info_from_build_url(cls, build_url):
         """Get the Android build information from the build url.
 
         @param build_url: The url to use for downloading Android artifacts.
@@ -1032,7 +1032,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @return: Path to the directory contains image files.
         """
-        build_info = self._get_build_info_from_build_url(build_url)
+        build_info = self.get_build_info_from_build_url(build_url)
 
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
         image_dir = self.teststation.get_tmp_dir()
@@ -1060,7 +1060,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @return: Path to the directory contains image files.
         """
-        build_info = self._get_build_info_from_build_url(build_url)
+        build_info = self.get_build_info_from_build_url(build_url)
 
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
         vendor_partitions_file = BRILLO_VENDOR_PARTITIONS_FILE_FMT % build_info
@@ -1098,8 +1098,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         build_name = devserver.translate(build_name)
         branch, target, build_id = utils.parse_android_build(build_name)
         is_brillo = os_type == OS_TYPE_BRILLO
-        devserver.trigger_download(target, build_id, branch, is_brillo,
-                                   synchronous=False)
+        devserver.trigger_download(target, build_id, branch,
+                                   is_brillo=is_brillo, synchronous=False)
         return '%s/static/%s' % (devserver.url(), build_name), devserver
 
 
