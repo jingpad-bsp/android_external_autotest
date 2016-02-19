@@ -121,7 +121,7 @@ def main(argv):
                     results_directory=results_directory,
                     iterations=arguments.iterations,
                     fast_mode=arguments.fast_mode, debug=arguments.debug,
-                    host_attributes=host_attributes)
+                    host_attributes=host_attributes, pretend=arguments.pretend)
     finally:
         if fb_service is not None:
             fb_service.stop()

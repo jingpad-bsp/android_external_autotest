@@ -296,7 +296,8 @@ def _main_for_local_run(argv, arguments):
                 ssh_options=arguments.ssh_options,
                 iterations=arguments.iterations,
                 fast_mode=arguments.fast_mode, debug=arguments.debug,
-                whitelist_chrome_crashes=arguments.whitelist_chrome_crashes)
+                whitelist_chrome_crashes=arguments.whitelist_chrome_crashes,
+                pretend=arguments.pretend)
 
 
 def _main_for_lab_run(argv, arguments):
