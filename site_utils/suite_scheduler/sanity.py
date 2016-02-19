@@ -26,6 +26,8 @@ def CheckControlFileExistance(tasks):
     for task in tasks:
         suite_path = os.path.join(common.autotest_dir,
                                   'test_suites', 'control.'+task.suite)
+        if task.suite.startswith('crosbolt_arc_perf'):
+            continue
         if not os.path.exists(suite_path):
             corrections = True
             logging.warning("No suite control file for %s", task.suite)
