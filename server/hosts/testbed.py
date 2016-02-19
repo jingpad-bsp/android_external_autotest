@@ -40,7 +40,9 @@ class TestBed(object):
         now) and allow the user to retrieve them.
 
         @param hostname: Hostname of the test station connected to the duts.
-        @param serials: List of adb device serials.
+        @param host_attributes: Attributes of the host, passed in from
+                factory.create_testbed.
+        @param adb_serials: List of adb device serials.
         """
         logging.info('Initializing TestBed centered on host: %s', hostname)
         self.hostname = hostname
@@ -59,6 +61,8 @@ class TestBed(object):
             self.adb_devices[adb_serial] = adb_host.ADBHost(
                 hostname=hostname, teststation=self.teststation,
                 adb_serial=adb_serial)
+
+        self.host_attributes = host_attributes
 
 
     def query_adb_device_serials(self):
