@@ -1005,7 +1005,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     @retry.retry(error.AutoservRunError, timeout_min=10)
-    def _download_file(self, build_url, file, dest_dir):
+    def download_file(self, build_url, file, dest_dir):
         """Download the given file from the build url.
 
         @param build_url: The url to use for downloading Android artifacts.
@@ -1013,7 +1013,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param file: Name of the file to be downloaded, e.g., boot.img.
         @param dest_dir: Destination folder for the file to be downloaded to.
         """
-        src_url = os.path.join(build_url, file)
+        # Append the file name to the url if build_url is linked to the folder
+        # containing the file.
+        if not build_url.endswith('/%s' % file):
+            src_url = os.path.join(build_url, file)
+        else:
+            src_url = build_url
         dest_file = os.path.join(dest_dir, file)
         try:
             self.teststation.run('wget -q -O "%s" "%s"' % (dest_file, src_url))
@@ -1040,7 +1045,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         try:
             for image_file in image_files:
-                self._download_file(build_url, image_file, image_dir)
+                self.download_file(build_url, image_file, image_dir)
 
             self.teststation.run('unzip "%s/%s" -x -d "%s"' %
                                  (image_dir, zipped_image_file, image_dir))
@@ -1069,7 +1074,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         try:
             for image_file in image_files:
-                self._download_file(build_url, image_file, image_dir)
+                self.download_file(build_url, image_file, image_dir)
 
             self.teststation.run('unzip "%s/%s" -x -d "%s"' %
                                  (image_dir, zipped_image_file, image_dir))
@@ -1287,15 +1292,50 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.stdout.splitlines()
 
 
-    def install_apk(self, apk):
+    def install_apk(self, apk, force_reinstall=False):
         """Install the specified apk.
 
         This will install the apk and override it if it's already installed and
         will also allow for downgraded apks.
 
         @param apk: The path to apk file.
+        @param force_reinstall: True to reinstall the apk even if it's already
+                installed. Default is set to False.
+
+        @returns a CMDResult object.
         """
-        self.adb_run('install -r -d %s' % apk)
+        return self.adb_run('install %s -d %s' %
+                            ('-r' if force_reinstall else '', apk))
+
+
+    @retry.retry(error.AutoservRunError, timeout_min=0.2)
+    def _confirm_apk_installed(self, package_name):
+        """Confirm if apk is already installed with the given name.
+
+        `pm list packages` command is not reliable some time. The retry helps to
+        reduce the chance of false negative.
+
+        @param package_name: Name of the package, e.g., com.android.phone.
+
+        @raise AutoservRunError: If the package is not found or pm list command
+                failed for any reason.
+        """
+        name = 'package:%s' % package_name
+        self.adb_run('shell pm list packages | grep -w "%s"' % name)
+
+
+    def is_apk_installed(self, package_name):
+        """Check if apk is already installed with the given name.
+
+        @param package_name: Name of the package, e.g., com.android.phone.
+
+        @return: True if package is installed. False otherwise.
+        """
+        try:
+            self._confirm_apk_installed(package_name)
+            return True
+        except:
+            return False
 
 
     def get_attributes_to_clear_before_provision(self):

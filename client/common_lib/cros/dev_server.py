@@ -206,6 +206,19 @@ class DevServer(object):
 
 
     @staticmethod
+    def get_server_url(url):
+        """Get the devserver url from a repo url, which includes build info.
+
+        @param url: A job repo url.
+
+        @return A devserver url, e.g., http://127.0.0.10:8080
+        """
+        match = re.match(r'(http://.*:\d+).*', url)
+        if match:
+            return match.group(1)
+
+
+    @staticmethod
     def get_devserver_load_wrapper(devserver, timeout_sec, output):
         """A wrapper function to call get_devserver_load in parallel.
 
