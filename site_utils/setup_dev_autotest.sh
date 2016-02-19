@@ -175,8 +175,8 @@ EOF
 fi
 
 echo "Installing needed Ubuntu packages..."
-PKG_LIST="mysql-server mysql-common libapache2-mod-wsgi python-mysqldb \
-gnuplot apache2-mpm-prefork unzip python-imaging libpng12-dev libfreetype6-dev \
+PKG_LIST="libapache2-mod-wsgi gnuplot apache2-mpm-prefork unzip \
+python-imaging libpng12-dev libfreetype6-dev \
 sqlite3 python-pysqlite2 git-core pbzip2 openjdk-6-jre openjdk-6-jdk \
 python-crypto  python-dev subversion build-essential python-setuptools \
 python-numpy python-scipy"
@@ -186,54 +186,6 @@ if ! sudo apt-get install -y ${PKG_LIST}; then
   exit 1
 fi
 echo -e "Done!\n"
-
-# Check if database exists, clobber existing database with user consent.
-#
-# Arguments: Name of the database
-check_database()
-{
-  local db_name=$1
-  echo "Setting up Database: $db_name in MySQL..."
-  if mysql -u root -e ';' 2> /dev/null ; then
-    PASSWD_STRING=
-  elif mysql -u root -p"${PASSWD}" -e ';' 2> /dev/null ; then
-    PASSWD_STRING="-p${PASSWD}"
-  else
-    PASSWD_STRING="-p"
-  fi
-
-  if ! mysqladmin -u root "${PASSWD_STRING}" ping ; then
-    sudo service mysql start
-  fi
-
-  local clobberdb='y'
-  local existing_database=$(mysql -u root "${PASSWD_STRING}" -e "SELECT \
-  SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$db_name'")
-
-  if [ -n "${existing_database}" ]; then
-    get_y_or_n clobberdb "Clobber existing MySQL database? [Y/n]: " "n"
-  fi
-
-  local sql_priv="GRANT ALL PRIVILEGES ON $db_name.* TO \
-  'chromeosqa-admin'@'localhost' IDENTIFIED BY '${PASSWD}';"
-
-  if [ "${remotedb}" = "TRUE" ]; then
-    sql_priv="${sql_priv} GRANT ALL PRIVILEGES ON $db_name.* TO \
-    'chromeosqa-admin'@'%' IDENTIFIED BY '${PASSWD}';"
-  fi
-
-  local sql_command="drop database if exists $db_name; \
-  create database $db_name; \
-  ${sql_priv} FLUSH PRIVILEGES;"
-
-  if [[ "${clobberdb}" = 'y' ]]; then
-    mysql -u root "${PASSWD_STRING}" -e "${sql_command}"
-  fi
-  echo -e "Done!\n"
-}
-
-check_database 'chromeos_autotest_db'
-check_database 'chromeos_lab_servers'
 
 AT_DIR=/usr/local/autotest
 echo -n "Bind-mounting your autotest dir at ${AT_DIR}..."
@@ -269,16 +221,17 @@ fi
 
 echo -e "Done!\n"
 
-echo "Populating autotest mysql DB..."
-"${AT_DIR}"/database/migrate.py sync -f
-"${AT_DIR}"/frontend/manage.py syncdb --noinput
-# You may have to run this twice.
-"${AT_DIR}"/frontend/manage.py syncdb --noinput
-"${AT_DIR}"/utils/test_importer.py
-echo -e "Done!\n"
+echo "Start setting up Database..."
+get_y_or_n clobberdb "Clobber MySQL database if it exists? [Y/n]: " "n"
+opts_string="-p ${PASSWD} -a ${AT_DIR}"
+if [[ "${clobberdb}" = 'y' ]]; then
+  opts_string="${opts_string} -c"
+fi
+if [[ "${remotedb}" = 'TRUE' ]]; then
+  opts_string="${opts_string} -m"
+fi
+"${AT_DIR}"/site_utils/setup_db.sh ${opts_string}
 
-echo "Initializing chromeos_lab_servers mysql DB..."
-"${AT_DIR}"/database/migrate.py sync -f -d AUTOTEST_SERVER_DB
 echo -e "Done!\n"
 
 echo "Configuring apache to run the autotest web interface..."
