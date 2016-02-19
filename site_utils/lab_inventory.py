@@ -642,6 +642,7 @@ def _generate_board_inventory_message(inventory):
     nworking = 0
     nbroken = 0
     nbroken_boards = 0
+    ntotal_boards = 0
     summaries = []
     for board in inventory.get_managed_boards():
         logging.debug('Counting board inventory for %s', board)
@@ -656,11 +657,12 @@ def _generate_board_inventory_message(inventory):
                    counts.get_working(),
                    counts.get_total(_SPARE_POOL),
                    counts.get_total())
-        summaries.append(element)
+        if element[2]:
+            summaries.append(element)
+            nbroken_boards += 1
+        ntotal_boards += 1
         nbroken += element[2]
         nworking += element[3]
-        if element[2]:
-            nbroken_boards += 1
     ntotal = nworking + nbroken
     summaries = sorted(summaries, key=lambda e: (e[1], -e[2]))
     broken_percent = int(round(100.0 * nbroken / ntotal))
@@ -673,7 +675,7 @@ def _generate_board_inventory_message(inventory):
                    ntotal),
                '',
                'Boards with failures: %d' % nbroken_boards,
-               'Boards in inventory:  %d' % len(summaries),
+               'Boards in inventory:  %d' % ntotal_boards,
                '', '',
                'Full board inventory:\n',
                '%-22s %5s %5s %5s %5s %5s' % (

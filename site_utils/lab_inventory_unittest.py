@@ -623,7 +623,6 @@ tiger                     -1     5     9     4    14
 bear                       0     7    10     7    17
 aardvark                   1     6     6     7    12
 platypus                   2     4    20     6    24
-echidna                    6     0    20     6    20
 '''
 
 
@@ -733,6 +732,16 @@ class BoardInventoryTests(_InventoryTests):
                 for board, counts in self._board_data
         }
         data['elephant'] = ((0, 0), (1, 5))
+        self._check_board_inventory(data)
+
+
+    def test_ignore_no_bad(self):
+        """Test that messages ignore boards with no bad DUTs."""
+        data = {
+            board: self._make_maximum_spares(counts)
+                for board, counts in self._board_data
+        }
+        data['elephant'] = ((5, 0), (5, 0))
         self._check_board_inventory(data)
 
 
