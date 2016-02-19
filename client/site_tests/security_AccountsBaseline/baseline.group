@@ -16,7 +16,7 @@ audio:!:18:cras,chronos,volume
 cdrom:!:19:
 tape:!:26:root
 cdrw:!:80:
-usb:!:85:mtp,brltty
+usb:!:85:mtp,brltty,dlm
 users:!:100:
 portage:!:250:portage
 utmp:!:406:
