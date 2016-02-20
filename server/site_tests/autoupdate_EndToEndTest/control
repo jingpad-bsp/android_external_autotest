@@ -19,6 +19,9 @@ BUG_TEMPLATE = {
     'labels': ['Cr-Internals-Installer'],
 }
 
+# Skip provision special task for AU tests.
+DEPENDENCIES = "skip_provision"
+
 # Disable server-side packaging support for this test.
 # This control file is used as the template for paygen_au_canary suite, which
 # creates the control files during paygen. Therefore, autotest server package
