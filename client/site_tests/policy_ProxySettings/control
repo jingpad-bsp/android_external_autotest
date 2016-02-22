@@ -15,9 +15,9 @@ DOC = """
 Verify effects of policy_ProxySettings policy on client behavior.
 
 This test verifies the effect of the ProxySettings user policy on Chrome OS
-client behavior. It exercises a variety of policy values using three unique
-test cases: FixedProxy_UseFixedProxy, DirectProxy_UseNoProxy, and
-NotSet_UseNoProxy.
+client behavior. It exercises a variety of policy values using four unique
+test cases: FixedProxy_UseFixedProxy, DirectProxy_UseNoProxy,
+PacProxy_UsePacFile and NotSet_UseNoProxy.
 
 Usage example:
 $ test_that <IPAddress> policy_ProxySettings --args=

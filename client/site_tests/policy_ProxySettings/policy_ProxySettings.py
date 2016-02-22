@@ -12,6 +12,8 @@ from SocketServer import ThreadingTCPServer, StreamRequestHandler
 POLICY_NAME = 'ProxySettings'
 PROXY_HOST = 'localhost'
 PROXY_PORT = 3128
+WEB_PORT = 8080
+PAC_FILE_URL = 'http://localhost:%d/test_data/test_proxy.pac' % WEB_PORT
 FIXED_PROXY = '''{
   "ProxyBypassList": "www.google.com,www.googleapis.com",
   "ProxyMode": "fixed_servers",
@@ -20,6 +22,10 @@ FIXED_PROXY = '''{
 DIRECT_PROXY = '''{
   "ProxyMode": "direct"
 }'''
+PAC_PROXY = '''{
+  "ProxyMode": "pac_script",
+  "ProxyPacUrl": "%s"
+}''' % PAC_FILE_URL
 TEST_URL = 'http://www.wired.com/'
 
 
@@ -36,8 +42,8 @@ class ProxyHandler(StreamRequestHandler):
         """
         # Capture URL in first 40 chars of request.
         data = self.rfile.readline(40).strip()
-        logging.info('ProxyHandler::handle(): <%s>', data)
-        self.server.store_requests_recieved(data)
+        logging.debug('ProxyHandler::handle(): <%s>', data)
+        self.server.store_requests_received(data)
         self.wfile.write('HTTP/1.1 504 Gateway Timeout\r\n'
                          'Connection: close\r\n\r\n')
 
@@ -55,23 +61,16 @@ class ThreadedProxyServer(ThreadingTCPServer):
         @param server_address: tuple of server IP and port to listen on.
         @param HandlerClass: the RequestHandler class to instantiate per req.
         """
-        self.reset_requests_received()
+        self.requests_received = []
+        ThreadingTCPServer.allow_reuse_address = True
         ThreadingTCPServer.__init__(self, server_address, HandlerClass)
 
-    def store_requests_recieved(self, request):
+    def store_requests_received(self, request):
         """Add receieved request to list.
 
         @param request: request received by the proxy server.
         """
-        self._requests_recieved.append(request)
-
-    def get_requests_recieved(self):
-        """Get list of received requests."""
-        return self._requests_recieved
-
-    def reset_requests_received(self):
-        """Clear list of received requests."""
-        self._requests_recieved = []
+        self.requests_received.append(request)
 
 
 class ProxyListener(object):
@@ -79,7 +78,7 @@ class ProxyListener(object):
 
     Define a proxy listener to detect when a CONNECT request is seen at the
     given |server_address|, and record all requests received. Requests
-    recieved are exposed to the caller.
+    received are exposed to the caller.
     """
 
     def __init__(self, server_address):
@@ -96,24 +95,16 @@ class ProxyListener(object):
 
     def stop(self):
         """Stop the server and its threads."""
-        self._server.shutdown()
-        self._server.socket.close()
+        self._server.server_close()
         self._thread.join()
 
-    def store_requests_recieved(self, request):
-        """Add receieved request to list.
-
-        @param request: request received by the proxy server.
-        """
-        self._requests_recieved.append(request)
-
-    def get_requests_recieved(self):
+    def get_requests_received(self):
         """Get list of received requests."""
-        return self._server.get_requests_recieved()
+        return self._server.requests_received
 
     def reset_requests_received(self):
         """Clear list of received requests."""
-        self._server.reset_requests_received()
+        self._server.requests_received = []
 
 
 class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
@@ -121,17 +112,19 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
 
     This test verifies the behavior of Chrome OS for specific configurations
     of the ProxySettings use policy: None (undefined), ProxyMode=direct,
-    ProxyMode=fixed_servers. None means that the policy value is not set. This
-    induces the default behavior, equivalent to what is seen by an un-managed
-    user.
+    ProxyMode=fixed_servers, ProxyMode=pac_script. None means that the policy
+    value is not set. This induces the default behavior, equivalent to what is
+    seen by an un-managed user.
 
     When ProxySettings is None (undefined), or ProxyMode=direct, then no proxy
-    server should be used. When ProxyMode=fixed_servers, then the proxy server
-    address specified by the ProxyServer entry should be used.
+    server should be used. When ProxyMode=fixed_servers or ProxyMode=pac_script,
+    then the proxy server address specified by the ProxyServer or ProxyPacUrl
+    entry should be used.
     """
     version = 1
     TEST_CASES = {
         'FixedProxy_UseFixedProxy': FIXED_PROXY,
+        'PacProxy_UsePacFile': PAC_PROXY,
         'DirectProxy_UseNoProxy': DIRECT_PROXY,
         'NotSet_UseNoProxy': None
     }
@@ -140,6 +133,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         super(policy_ProxySettings, self).initialize(args)
         self._proxy_server = ProxyListener(('', PROXY_PORT))
         self._proxy_server.run()
+        self.start_webserver(WEB_PORT)
 
     def cleanup(self):
         self._proxy_server.stop()
@@ -157,7 +151,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
 
         self._proxy_server.reset_requests_received()
         self.navigate_to_url(TEST_URL)
-        proxied_requests = self._proxy_server.get_requests_recieved()
+        proxied_requests = self._proxy_server.get_requests_received()
 
         # Determine whether TEST_URL is in |proxied_requests|. Comprehension
         # is conceptually equivalent to `TEST_URL in proxied_requests`;
@@ -172,10 +166,12 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
             if matching_requests:
                 raise error.TestFail('Requests should not have been sent '
                                      'through the proxy server.')
-        elif 'fixed_servers' in policy_value:
+        elif 'fixed_servers' in policy_value or 'pac_script' in policy_value:
             if not matching_requests:
                 raise error.TestFail('Requests should have been sent '
                                      'through the proxy server.')
+        else:
+            raise error.TestFail('Unrecognized Policy Value %s', policy_value)
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
