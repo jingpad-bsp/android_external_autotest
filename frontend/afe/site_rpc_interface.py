@@ -128,7 +128,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                      suite_args=None, wait_for_results=True, job_retry=False,
                      max_retries=None, max_runtime_mins=None, suite_min_duts=0,
                      offload_failures_only=False, builds={},
-                     test_source_build=None, run_prod_code=False, **kwargs):
+                     test_source_build=None, run_prod_code=False,
+                     delay_minutes=0, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -175,6 +176,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                           lab servers. If False, the control files and test
                           code for this suite run will be retrieved from the
                           build artifacts.
+    @param delay_minutes: Delay the creation of test jobs for a given number of
+                          minutes.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -254,7 +257,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                    'max_runtime_mins': max_runtime_mins,
                    'offload_failures_only': offload_failures_only,
                    'test_source_build': test_source_build,
-                   'run_prod_code': run_prod_code
+                   'run_prod_code': run_prod_code,
+                   'delay_minutes': delay_minutes,
                    }
 
     control_file = tools.inject_vars(inject_dict, control_file)

@@ -69,6 +69,13 @@ class site_suite_create(action_common.atest_create, site_suite):
                                      'without waiting for test jobs to finish. '
                                      'Default is True.'),
                                metavar='WAIT_FOR_RESULTS')
+        self.parser.add_option('-d', '--delay_minutes', type=int, default=0,
+                               help=('Delay the creation of test jobs for a '
+                                     'given number of minutes. This argument '
+                                     'can be used to force provision jobs '
+                                     'being delayed, which helps to distribute '
+                                     'loads across devservers.'),
+                               metavar='DELAY_MINUTES')
 
 
     def parse(self):
@@ -87,13 +94,16 @@ class site_suite_create(action_common.atest_create, site_suite):
         suite_info = topic_common.item_parse_info(attribute_name='name',
                                                   use_leftover=True)
         wait_for_results_info = topic_common.item_parse_info(
-            attribute_name='wait_for_results',
-            inline_option='wait_for_results')
+                attribute_name='wait_for_results',
+                inline_option='wait_for_results')
+        delay_minutes_info = topic_common.item_parse_info(
+                attribute_name='delay_minutes',
+                inline_option='delay_minutes')
 
         options, leftover = site_suite.parse(
             self,
             [suite_info, board_info, build_info, pool_info, num_info,
-             check_info, bugs_info, wait_for_results_info],
+             check_info, bugs_info, wait_for_results_info, delay_minutes_info],
             req_items='name')
         self.data = {}
         name = getattr(self, 'name')
@@ -106,6 +116,7 @@ class site_suite_create(action_common.atest_create, site_suite):
         self.data['check_hosts'] = options.check_hosts
         self.data['file_bugs'] = options.file_bugs
         self.data['wait_for_results'] = options.wait_for_results
+        self.data['delay_minutes'] = options.delay_minutes
         if options.board:
             self.data['board'] = options.board
         else:

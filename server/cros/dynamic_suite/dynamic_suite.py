@@ -4,6 +4,7 @@
 
 import datetime
 import logging
+import time
 
 import common
 
@@ -275,7 +276,7 @@ class SuiteSpec(object):
                  priority=priorities.Priority.DEFAULT, predicate=None,
                  wait_for_results=True, job_retry=False, max_retries=None,
                  offload_failures_only=False, test_source_build=None,
-                 run_prod_code=False, **dargs):
+                 run_prod_code=False, delay_minutes=0, **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
@@ -354,6 +355,8 @@ class SuiteSpec(object):
         @param run_prod_code: If true, the suite will run the test code that
                               lives in prod aka the test code currently on the
                               lab servers.
+        @param delay_minutes: Delay the creation of test jobs for a given number
+                              of minutes.
         @param **dargs: these arguments will be ignored.  This allows us to
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
@@ -441,6 +444,7 @@ class SuiteSpec(object):
         self.max_retries = max_retries
         self.offload_failures_only = offload_failures_only
         self.run_prod_code = run_prod_code
+        self.delay_minutes = delay_minutes
 
 
 def skip_reimage(g):
@@ -592,6 +596,14 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         offload_failures_only=spec.offload_failures_only,
         test_source_build=spec.test_source_build,
         run_prod_code=spec.run_prod_code)
+
+
+    if spec.delay_minutes:
+        logging.debug('delay_minutes is set. Sleeping %d minutes before '
+                      'creating test jobs.', spec.delay_minutes)
+        time.sleep(spec.delay_minutes*60)
+        logging.debug('Finished waiting for %d minutes before creating test '
+                      'jobs.', spec.delay_minutes)
 
     # Now we get to asychronously schedule tests.
     suite.schedule(spec.job.record_entry, spec.add_experimental)
