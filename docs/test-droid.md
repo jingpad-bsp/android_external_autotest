@@ -122,7 +122,13 @@ it to https://chromium-review.googlesource.com.
 Be sure to run pylint on every file you touch:
 
 ```
-$ ./utils/run_pylint.py <file name>
+ $ ./utils/run_pylint.py <file name>
+```
+
+Run autotest unittests:
+
+```
+ $ utils/unittest_suite.py
 ```
 
 Then upload your commit for review:
