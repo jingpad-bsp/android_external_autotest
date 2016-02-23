@@ -10,8 +10,9 @@ from autotest_lib.server import test
 
 
 class logging_GenerateCrashFiles(test.test):
+    """Tests if crash files are generated when crash is invoked"""
     version = 1
-    SHORT_WAIT = 2
+    SHORT_WAIT = 3
     REBOOT_TIMEOUT = 60
 
     def check_crash_files(self, file_path, file_pattern_list):
@@ -40,6 +41,10 @@ class logging_GenerateCrashFiles(test.test):
 
     def run_once(self, host, crash_cmd, crash_files):
         self.host = host
+
+        # Sync the file system
+        self.host.run('sync', ignore_status=True)
+        time.sleep(self.SHORT_WAIT)
 
         # Execute crash command
         self.host.run(crash_cmd, ignore_status=True)
