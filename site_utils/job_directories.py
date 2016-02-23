@@ -18,6 +18,9 @@ _AFE = frontend_wrappers.RetryingAFE()
 
 SPECIAL_TASK_PATTERN = '.*/hosts/[^/]+/(\d+)-[^/]+'
 JOB_PATTERN = '.*/(\d+)-[^/]+'
+# Pattern of a job folder, e.g., 123-debug_user, where 123 is job id and
+# debug_user is the name of user starts the job.
+JOB_FOLDER_PATTERN = '.*/(\d+-[^/]+)'
 
 def _is_job_expired(age_limit, timestamp):
   """Check whether a job timestamp is older than an age limit.
@@ -66,6 +69,26 @@ def get_job_id_or_task_id(result_dir):
     m_ssp_job_pattern = re.match(ssp_job_pattern, result_dir)
     if m_ssp_job_pattern and utils.is_in_container():
         return int(m_ssp_job_pattern.group(1))
+
+
+def get_job_folder_name(result_dir):
+    """Extract folder name of a job from result_dir.
+
+    @param result_dir: path to the result dir.
+            For test job:
+            /usr/local/autotest/results/2032-chromeos-test/chromeos1-rack5-host6
+            The hostname at the end is optional.
+            For special task:
+            /usr/local/autotest/results/hosts/chromeos1-rack5-host6/1343-cleanup
+
+    @returns: The name of the folder of a job. Returns None if fail to parse
+            the name matching pattern JOB_FOLDER_PATTERN from the result_dir.
+    """
+    if not result_dir:
+        return
+    m_job = re.findall(JOB_FOLDER_PATTERN, result_dir)
+    if m_job:
+        return m_job[-1]
 
 
 class _JobDirectory(object):

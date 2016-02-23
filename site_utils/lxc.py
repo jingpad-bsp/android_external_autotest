@@ -583,10 +583,10 @@ class Container(object):
         utils.run(APPEND_CMD_FMT % {'content': mount, 'file': config_file})
 
 
-    def verify_autotest_setup(self, job_id):
+    def verify_autotest_setup(self, job_folder):
         """Verify autotest code is set up properly in the container.
 
-        @param job_id: ID of the job, used to format job result folder.
+        @param job_folder: Name of the job result folder.
 
         @raise ContainerError: If autotest code is not set up properly.
         """
@@ -599,7 +599,7 @@ class Container(object):
                                               'site-packages')
         directories_to_check = [
                 (lxc_config.CONTAINER_AUTOTEST_DIR, 3),
-                (RESULT_DIR_FMT % job_id, 0),
+                (RESULT_DIR_FMT % job_folder, 0),
                 (site_packages_path, 3)]
         for directory, count in directories_to_check:
             result = self.attach_run(command=(COUNT_FILE_CMD %
@@ -822,7 +822,7 @@ class ContainerBucket(object):
     @timer.decorate
     @cleanup_if_fail()
     def setup_test(self, name, job_id, server_package_url, result_path,
-                   control=None, skip_cleanup=False):
+                   control=None, skip_cleanup=False, job_folder=None):
         """Setup test container for the test job to run.
 
         The setup includes:
@@ -843,6 +843,7 @@ class ContainerBucket(object):
                         set to None.
         @param skip_cleanup: Set to True to skip cleanup, used to troubleshoot
                              container failures.
+        @param job_folder: Folder name of the job, e.g., 123-debug_user.
 
         @return: A Container object for the test container.
 
@@ -893,7 +894,7 @@ class ContainerBucket(object):
                                        'puppylab'),
                           True),
                          (result_path,
-                          os.path.join(RESULT_DIR_FMT % job_id),
+                          os.path.join(RESULT_DIR_FMT % job_folder),
                           False),
                         ]
         # Update container config to mount directories.
@@ -911,7 +912,7 @@ class ContainerBucket(object):
 
         container.modify_import_order()
 
-        container.verify_autotest_setup(job_id)
+        container.verify_autotest_setup(job_folder)
 
         autotest_es.post(use_http=True,
                          type_str=CONTAINER_CREATE_METADB_TYPE,
