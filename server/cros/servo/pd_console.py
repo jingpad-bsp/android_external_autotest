@@ -138,7 +138,7 @@ class PDConsoleUtils(object):
         pd_cmd = cmd +" " + str(port) + " " + subcmd
         # Two FW versions for this command, get full line.
         m = self.send_pd_command_get_output(pd_cmd,
-                                            ['(Port.*) - (Role:.*)\r'])
+                                            ['(Port.*) - (Role:.*)\n'])
 
         # Extract desired values from result string
         state_result = {}
