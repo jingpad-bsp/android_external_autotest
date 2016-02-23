@@ -75,7 +75,8 @@ def add_common_args(parser):
     parser.add_argument('--args', metavar='ARGS',
                         help='Whitespace separated argument string to pass '
                              'through to test. Only supported for runs '
-                             'against a local DUT.')
+                             'against a local DUT. '
+                             "e.g. --args='foo=bar cat=\"in a hat\"'.")
     parser.add_argument('--results_dir', metavar='RESULTS_DIR', default=None,
                         help='Instead of storing results in a new subdirectory'
                              ' of /tmp , store results in RESULTS_DIR. If '

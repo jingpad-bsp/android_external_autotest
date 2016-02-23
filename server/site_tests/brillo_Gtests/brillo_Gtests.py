@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from collections import namedtuple
+import fnmatch
 import logging
 import os
 
@@ -57,11 +58,12 @@ class brillo_Gtests(test.test):
         return suites
 
 
-    def _find_all_gtestsuites(self, use_whitelist=False):
+    def _find_all_gtestsuites(self, use_whitelist=False, filter_tests=None):
         """Find all the gTest Suites installed on the DUT.
 
         @param use_whitelist: Only whitelisted tests found on the system will
                               be used.
+        @param filter_tests: Only tests that match these globs will be used.
         """
         list_cmd = LIST_TEST_BINARIES_TEMPLATE % {'path': NATIVE_TESTS_PATH}
         gtest_suites_path = self.host.run_output(list_cmd).splitlines()
@@ -74,6 +76,13 @@ class brillo_Gtests(test.test):
                                 if t.path in gtest_suites_path]
             except error.AutoservRunError:
                 logging.error('Failed to read whitelist %s', WHITELIST_FILE)
+
+        if filter_tests:
+            gtest_suites = [t for t in gtest_suites
+                            if any(fnmatch.fnmatch(t.path, n)
+                                   for n in filter_tests)]
+            logging.info('Running tests:\n  %s',
+                         '\n  '.join(t.path for t in gtest_suites))
 
         if not gtest_suites:
             raise error.TestWarn('No test executables found on the DUT')
@@ -131,7 +140,8 @@ class brillo_Gtests(test.test):
         return True
 
 
-    def run_once(self, host=None, gtest_suites=None, use_whitelist=False):
+    def run_once(self, host=None, gtest_suites=None, use_whitelist=False,
+                 filter_tests=None, native_tests=None):
         """Run gTest Suites on the DUT.
 
         @param host: host object representing the device under test.
@@ -140,13 +150,18 @@ class brillo_Gtests(test.test):
         @param use_whitelist: If gTestSuites is not passed in and use_whitelist
                               is true, only whitelisted tests found on the
                               system will be used.
+        @param filter_tests: If gTestSuites is not passed in, search for tests
+                             that match these globs to run instead.
+        @param native_tests: Execute these specific tests.
 
         @raise TestFail: The test failed.
         """
         self.host = host
+        if not gtest_suites and native_tests:
+            gtest_suites = [GtestSuite(t, True) for t in native_tests]
         if not gtest_suites:
             gtest_suites = self._find_all_gtestsuites(
-                    use_whitelist=use_whitelist)
+                    use_whitelist=use_whitelist, filter_tests=filter_tests)
 
         failed_gtest_suites = []
         for gtestSuite in gtest_suites:
