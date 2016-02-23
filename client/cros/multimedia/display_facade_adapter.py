@@ -296,3 +296,15 @@ class DisplayFacadeLocalAdapter(object):
         @return the index of the first external display; False if not found.
         """
         return self._display_component.get_first_external_display_index()
+
+
+    def reset_connector_if_applicable(self, connector_type):
+        """Resets video connector from host end if applicable.
+
+        This is the workaround method for remote display facade adapter only.
+        Put an empty method here in local adapter to prevent AttributeError of
+        client test.
+
+        @param connector_type: A string, like "VGA", "DVI", "HDMI", or "DP".
+        """
+        pass
