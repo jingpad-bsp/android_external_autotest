@@ -92,7 +92,7 @@ EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
          }
 
 # Anchor for the auto-filed bug for dummy_Fail tests.
-BUG_ANCHOR = 'TestFailure(push_to_prod,dummy_Fail.Fail,always fail)'
+BUG_ANCHOR = 'TestFailure{push_to_prod,dummy_Fail.Fail,always fail}'
 
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
