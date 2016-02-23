@@ -164,6 +164,9 @@ class Driver(object):
         @param mv: an instance of manifest_versions.ManifestVersions.
         @raise EnumeratorException if we can't enumerate any supported boards.
         """
+        # Reset the value of delay_minutes, as this is the beginning of
+        # handling an event for all boards.
+        self._scheduler.delay_minutes = 0
         boards = self._enumerator.Enumerate()
         logging.info('%d boards currently in the lab: %r', len(boards), boards)
         thread_pool = pool.ThreadPool(POOL_SIZE)

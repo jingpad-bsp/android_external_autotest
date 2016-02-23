@@ -4,6 +4,7 @@
 
 import datetime
 import logging
+import threading
 
 import common
 from autotest_lib.client.common_lib import error
@@ -14,6 +15,15 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
 
 # Number of days back to search for existing job.
 SEARCH_JOB_MAX_DAYS = 14
+
+# Number of minutes to increase the value of DedupingScheduler.delay_minutes.
+# This allows all suite jobs created in the same event to start provision jobs
+# at different time. 5 minutes allows 40 boards to have provision jobs started
+# with in about 200 minutes. That way, we don't add too much delay on test jobs
+# and do not keep suite jobs running for too long. Note that suite jobs created
+# by suite scheduler does not wait for test job to finish. That helps to reduce
+# the load on drone.
+DELAY_MINUTES_INCREMENTAL = 5
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
@@ -50,6 +60,11 @@ class DedupingScheduler(object):
                                                          delay_sec=10,
                                                          debug=False)
         self._file_bug = file_bug
+
+        # Number of minutes to delay a suite job from creating test jobs.
+        self.delay_minutes = 0
+        # Lock to make sure each suite created with different delay_minutes.
+        self._lock = threading.Lock()
 
 
     def _ShouldScheduleSuite(self, suite, board, test_source_build):
@@ -119,17 +134,21 @@ class DedupingScheduler(object):
                 builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, builds, board, pool)
-            if self._afe.run(
-                        'create_suite_job', name=suite, board=board,
-                        builds=builds, check_hosts=False, num=num, pool=pool,
-                        priority=priority, timeout=timeout, file_bugs=file_bugs,
-                        wait_for_results=file_bugs,
-                        test_source_build=test_source_build,
-                        job_retry=job_retry) is not None:
-                return True
-            else:
-                raise ScheduleException(
-                    "Can't schedule %s for %s." % (suite, builds))
+            with self._lock:
+                if self._afe.run(
+                            'create_suite_job', name=suite, board=board,
+                            builds=builds, check_hosts=False, num=num,
+                            pool=pool, priority=priority, timeout=timeout,
+                            file_bugs=file_bugs,
+                            wait_for_results=file_bugs,
+                            test_source_build=test_source_build,
+                            job_retry=job_retry,
+                            delay_minutes=self.delay_minutes) is not None:
+                    self.delay_minutes += DELAY_MINUTES_INCREMENTAL
+                    return True
+                else:
+                    raise ScheduleException(
+                        "Can't schedule %s for %s." % (suite, builds))
         except (error.ControlFileNotFound, error.ControlFileEmpty,
                 error.ControlFileMalformed, error.NoControlFileList) as e:
             if self._file_bug:

@@ -84,7 +84,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False,
-                     job_retry=False).AndReturn(7)
+                     job_retry=False,
+                     delay_minutes=0).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -143,7 +144,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False,
-                     job_retry=False).AndReturn(7)
+                     job_retry=False,
+                     delay_minutes=0).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -277,7 +279,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False,
-                     job_retry=False).AndRaise(exception)
+                     job_retry=False,
+                     delay_minutes=0).AndRaise(exception)
         reporting.Reporter.__init__()
         reporting.Reporter._check_tracker().AndReturn(True)
         reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(None)
