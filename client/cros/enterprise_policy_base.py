@@ -110,9 +110,13 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.case = None
             self.value = None
 
-        # If |case| is given then set |mode| to 'single'.
+        # If |case| is given, then set |mode| to 'single'.
         if self.case:
             self.mode = 'single'
+
+        # If |value| is given but not |case|, then set |mode| to 'by_value'.
+        if self.value and not self.case:
+            self.mode = 'by_value'
 
         # If |mode| is 'all', then |env| must be 'dm-fake', and
         # the |case| and |value| args must not be given.
@@ -156,16 +160,18 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             self.username = self.USERNAME
             self.password = self.PASSWORD
 
-        # Verify |case| is given if |mode|==single.
+        # Verify |case| is given if |mode| is 'single'.
         if self.mode == 'single' and not self.case:
             raise error.TestError('case must be given when mode is single.')
 
-        # Verify |case| is given if a |value| is given.
-        if self.is_value_given and self.case is None:
-            raise error.TestError('value must not be given without also '
-                                  'giving a test case.')
+        # If |mode| is not 'by_value' and |value| is given, then verify that
+        # |case| is also given.
+        if (self.mode != 'by_value' and self.is_value_given and
+            self.case is None):
+                raise error.TestError('value must not be given without '
+                                      'also giving a test case.')
 
-        # Verify |dms_name| is given iff |env|==dm-test.
+        # Verify |dms_name| is given iff |env| is 'dm-test'.
         if self.env == 'dm-test' and not self.dms_name:
             raise error.TestError('dms_name must be given when using '
                                   'env=dm-test.')
@@ -203,11 +209,11 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.extra_flags = env_flag_list
         self.cr = None
 
-    def setup_case(self, policy_name, policy_value, policies_json):
+    def setup_case(self, policy_name, policy_value, policies_dict):
         """Set up and confirm the preconditions of a test case.
 
-        If the AutoTest fake DM Server is initialized, make a policy blob
-        from |policies_json|, and upload it to the fake server.
+        If the AutoTest fake DM Server is initialized, make a JSON policy blob
+        from |policies_dict|, and upload it to the fake DM server.
 
         Launch a chrome browser, and sign in to Chrome OS. Examine the user's
         cryptohome vault, to confirm it signed in successfully.
@@ -217,7 +223,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         @param policy_name: Name of the policy under test.
         @param policy_value: Expected value to appear on chrome://policy page.
-        @param policies_json: JSON string to set up the fake DMS policy value.
+        @param policies_dict: Policy dictionary data for fake DM server.
 
         @raises error.TestError if cryptohome vault is not mounted for user.
         @raises error.TestFail if |policy_name| and |policy_value| are not
@@ -226,7 +232,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         """
         # Set up policy on AutoTest DM Server only if initialized.
         if self.env == 'dm-fake':
-            self.setup_policy(self._make_json_blob(policies_json))
+            self.setup_policy(self._make_json_blob(policies_dict))
 
         self._launch_chrome_browser()
         tab = self.navigate_to_url('chrome://policy')
@@ -276,13 +282,13 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         Compare the expected policy value with the value actually shown on the
         chrome://policies page. Before comparing, convert both values to JSON
-        formatted strings, and remove all whitespace. Whitespace is removed
-        because Chrome processes some policy values to show them in a more
-        human readable format.
+        formatted strings, and remove all whitespace. Whitespace must be
+        removed before comparison because Chrome processes some policy values
+        to show them in a more human readable format.
 
         @param policy_value: Expected value to appear on chrome://policy page.
         @param value_shown: Value as it appears on chrome://policy page.
-        @param policies_json: JSON string to set up the fake DMS policy value.
+        @param policies_dict: Policy dictionary data for the fake DM server.
 
         @returns: True if the strings match after removing all whitespace.
 
@@ -300,15 +306,15 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                      trimmed_shown, trimmed_value)
         return trimmed_value == trimmed_shown
 
-    def _make_json_blob(self, policies_json):
-        """Create policy blob from policies JSON object.
+    def _make_json_blob(self, policies_dict):
+        """Create JSON policy blob from policies dictionary object.
 
-        @param policies_json: Policies JSON object (name-value pairs).
-        @returns: Policy blob to be used to setup the policy server.
+        @param policies_dict: policies dictionary object.
+        @returns: JSON policy blob to send to the fake DM server.
 
         """
-        policies_json = self._move_modeless_to_mandatory(policies_json)
-        policies_json = self._remove_null_policies(policies_json)
+        policies_dict = self._move_modeless_to_mandatory(policies_dict)
+        policies_dict = self._remove_null_policies(policies_dict)
 
         policy_blob = """{
             "google/chromeos/user": %s,
@@ -317,10 +323,10 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             "current_key_index": 0,
             "invalidation_source": 16,
             "invalidation_name": "test_policy"
-        }""" % (json.dumps(policies_json), self.USERNAME)
+        }""" % (json.dumps(policies_dict), self.USERNAME)
         return policy_blob
 
-    def _move_modeless_to_mandatory(self, policies_json):
+    def _move_modeless_to_mandatory(self, policies_dict):
         """Add the 'mandatory' mode if a policy's mode was omitted.
 
         The AutoTest fake DM Server requires that every policy be contained
@@ -328,7 +334,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         the mode of the policy. This function moves modeless policies into
         the 'mandatory' dictionary.
 
-        @param policies_json: The policy JSON data (name-value pairs).
+        @param policies_dict: policy dictionary data.
         @returns: dict of policies grouped by mode keys.
 
         """
@@ -337,16 +343,16 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         collated_json = {}
 
         # Extract mandatory and recommended mode dicts.
-        if 'mandatory' in policies_json:
-            mandatory_policies = policies_json['mandatory']
-            del policies_json['mandatory']
-        if 'recommended' in policies_json:
-            recommended_policies = policies_json['recommended']
-            del policies_json['recommended']
+        if 'mandatory' in policies_dict:
+            mandatory_policies = policies_dict['mandatory']
+            del policies_dict['mandatory']
+        if 'recommended' in policies_dict:
+            recommended_policies = policies_dict['recommended']
+            del policies_dict['recommended']
 
         # Move any remaining modeless policies into mandatory dict.
-        if policies_json:
-            mandatory_policies.update(policies_json)
+        if policies_dict:
+            mandatory_policies.update(policies_dict)
 
         # Collate all policies into mandatory & recommended dicts.
         if recommended_policies:
@@ -356,24 +362,24 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         return collated_json
 
-    def _remove_null_policies(self, policies_json):
+    def _remove_null_policies(self, policies_dict):
         """Remove policy dict data that is set to None or ''.
 
         For the status of a policy to be shown as "Not set" on the
-        chrome://policy page, the policy blob must contain no dictionary entry
+        chrome://policy page, the policy dictionary must contain no NVP for
         for that policy. This function removes policy NVPs from a copy of the
-        |policies_json| dictionary that the test case had set to None or ''.
+        |policies_dict| dictionary that the test case has set to None or ''.
 
-        @param policies_json: setup policy JSON data (name-value pairs).
-        @returns: setup policy JSON data with all 'Not set' policies removed.
+        @param policies_dict: policy dictionary data.
+        @returns: policy dictionary data with all 'Not set' policies removed.
 
         """
-        policies_json_copy = policies_json.copy()
-        for policies in policies_json_copy.values():
+        policies_dict_copy = policies_dict.copy()
+        for policies in policies_dict_copy.values():
             for policy_data in policies.items():
                 if policy_data[1] is None or policy_data[1] == '':
                     policies.pop(policy_data[0])
-        return policies_json_copy
+        return policies_dict_copy
 
     def _get_policy_value_shown(self, policy_tab, policy_name):
         """Get the value shown for the named policy on the Policies page.
@@ -429,25 +435,40 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
 
-    def json_string(self, policy_value):
-         """Convert policy value to a JSON formatted string.
+    def packed_json_string(self, policy_value):
+         """Convert policy value to JSON formatted string with no whitespace.
 
          @param policy_value: object containing a policy value.
-         @returns: string in JSON format.
+         @returns: string in JSON format, stripped of whitespace.
+
          """
-         return json.dumps(policy_value)
+         return ''.join(json.dumps(policy_value))
 
     def _validate_and_run_test_case(self, test_case, run_test):
         """Validate test case and call the test runner in the test class.
 
         @param test_case: name of the test case to run.
         @param run_test: method in test class that runs a test case.
+        @raises: TestError if test case is not valid.
 
         """
         if test_case not in self.TEST_CASES:
             raise error.TestError('Test case is not valid: %s' % test_case)
         logging.info('Running test case: %s', test_case)
         run_test(test_case)
+
+    def _get_test_case_by_value(self, policy_value):
+        """Get test case for given |policy_value|.
+
+        @param policy_value: expected value of policy given on command line.
+        @returns: string name of test case for the given policy value.
+        @raises: TestError if there is no test case for given policy value.
+
+        """
+        for test_case, value in self.TEST_CASES.items():
+            if self.packed_json_string(value) == policy_value:
+                return test_case
+        raise error.TestError('Test case not found for: %r' % policy_value)
 
     def run_once_impl(self, run_test):
         """Dispatch the common run modes for all child test classes.
@@ -460,10 +481,14 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 self._validate_and_run_test_case(test_case, run_test)
         elif self.mode == 'single':
             self._validate_and_run_test_case(self.case, run_test)
+        elif self.mode == 'by_value':
+            self.case = self._get_test_case_by_value(self.value)
+            self._validate_and_run_test_case(self.case, run_test)
         elif self.mode == 'list':
             logging.info('List Test Cases:')
             for test_case, value in sorted(self.TEST_CASES.items()):
-                logging.info('  case=%s, value="%s"', test_case, value)
+                logging.info('  case=%s, value="%s"', test_case,
+                             self.packed_json_string(value))
         else:
             raise error.TestError('Run mode is not valid: %s' % self.mode)
 
