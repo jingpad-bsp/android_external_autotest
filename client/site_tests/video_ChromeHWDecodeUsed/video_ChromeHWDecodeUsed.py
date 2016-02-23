@@ -36,12 +36,17 @@ class video_ChromeHWDecodeUsed(test.test):
                  # for MSE videos.
                  time.sleep(30)
             else:
-            #This execute for normal video for downloading html file
+                 #This execute for normal video for downloading html file
                  shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
+                 video_path = os.path.join(constants.CROS_VIDEO_DIR,
+                                           'files', video_file)
+                 shutil.copy2(video_path, self.bindir)
+
                  cr.browser.platform.SetHTTPServerDirectories(self.bindir)
                  tab = cr.browser.tabs[0]
                  html_fullpath = os.path.join(self.bindir, 'video.html')
                  url = cr.browser.platform.http_server.UrlOf(html_fullpath)
+
                  player = native_html5_player.NativeHtml5Player(
                          tab,
                          full_url = url,

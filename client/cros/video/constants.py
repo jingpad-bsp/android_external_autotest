@@ -29,4 +29,5 @@ MEDIA_GVD_BUCKET = 0
 RTC_VIDEO_INIT_BUCKET = 1
 
 #Path for video HTML file which helps for video operations
-VIDEO_HTML_FILEPATH = '/usr/local/autotest/cros/video/video.html'
+CROS_VIDEO_DIR = '/usr/local/autotest/cros/video'
+VIDEO_HTML_FILEPATH = CROS_VIDEO_DIR + '/video.html'
