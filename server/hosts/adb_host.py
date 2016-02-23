@@ -35,9 +35,9 @@ DEVICE_NO_SERIAL_TAG = '<NO_SERIAL>'
 # 0146B5580B01801B    device
 # 018e0ecb20c97a62    device
 # 172.22.75.141:5555  device
-DEVICE_FINDER_REGEX = ('^(?P<SERIAL>([\w]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' +
+DEVICE_FINDER_REGEX = (r'^(?P<SERIAL>([\w-]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' +
                        re.escape(DEVICE_NO_SERIAL_MSG) +
-                       ')([:]5555)?[ \t]+(?:device|fastboot)')
+                       r')([:]5555)?[ \t]+(?:device|fastboot)')
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)

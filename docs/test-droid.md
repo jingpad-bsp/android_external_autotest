@@ -26,7 +26,34 @@ against a DUT connected directly to your workstation via a USB cable. Please
 note your first time running `test_droid` it will download and install a number
 of required packages locally into your autotest checkout.
 
-First lookup the device serial number:
+Run site\_utils/test\_droid.py from your autotest checkout to launch a test
+against a given DUT:
+
+```
+ $ ./site_utils/test_droid.py <Test Name>
+```
+
+For example, to run the brillo\_WhitelistedGtests test:
+
+```
+ $ ./site_utils/test_droid.py brillo_WhitelistedGtests
+```
+
+`test_droid` can run multiple tests at once:
+
+```
+ $ ./site_utils/test_droid.py brillo_WhitelistedGtests brillo_KernelVersionTest
+```
+
+As well as test suites:
+
+```
+ $ ./site_utils/test_droid.py suite:brillo-bvt
+```
+
+#### Selecting a specific device
+If you have more than one device connected, you'll have to specify its serial
+number.  First, look it up:
 
 ```
  $ adb devices
@@ -35,32 +62,11 @@ List of devices attached
 7d52318 device
 ```
 
-Run site\_utils/test\_droid.py from your autotest checkout to launch a test
-against a given DUT:
+Then use it when running:
 
 ```
- $ ./site_utils/test_droid.py <DUT Serial Number> <Test Name>
+ $ ./site_utils/test_droid.py -s 7d52318 brillo_WhitelistedGtests
 ```
-
-For example, to run the brillo\_WhitelistedGtests test:
-
-```
- $ ./site_utils/test_droid.py 7d52318 brillo_WhitelistedGtests
-```
-
-`test_droid` can run multiple tests at once:
-
-```
- $ ./site_utils/test_droid.py 7d52318 \
-      brillo_WhitelistedGtests brillo_KernelVersionTest
-```
-
-As well as test suites:
-
-```
- $ ./site_utils/test_droid.py 7d52318 suite:brillo-bvt
-```
-
 
 ### Running tests that require multiple devices under test
 Autotest now supports the concept of testbeds, which are multiple devices being
@@ -73,7 +79,7 @@ List of devices attached
 emulator-5554 device
 7d52318 device
 
- $ ./site_utils/test_droid.py emulator-5554,7d52318 testbed_DummyTest
+ $ ./site_utils/test_droid.py -s emulator-5554,7d52318 testbed_DummyTest
 ```
 
 ### Running tests against a remote device under test
@@ -103,15 +109,14 @@ To run the test:
 
 ```
  $ ./site_utils/test_droid.py \
-       -r <Remote Server IP or Hostname> <Serial Number> \
+       -r <Remote Server IP or Hostname> \
        <Test Name>
 
  $ ./site_utils/test_droid.py \
        -r <User>@<Remote Server IP or Hostname> \
-       <Serial Number> <Test Name>
+       <Test Name>
 
- $ ./site_utils/test_droid.py -r 100.96.48.119 7d52318 suite:brillo-bvt
-
+ $ ./site_utils/test_droid.py -r 100.96.48.119 suite:brillo-bvt
 ```
 
 ### Advanced: Uploading Commits for Review
