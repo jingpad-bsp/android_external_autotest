@@ -32,9 +32,9 @@ class brillo_Invariants(test.test):
 
         @raises error.TestFail
         """
-        # Example output of 'ls -Z /dev/block/by-name/misc' is:
+        # Example output of 'ls -LZ /dev/block/by-name/misc' is:
         # u:object_r:misc_block_device:s0 /dev/block/by-name/misc
-        tokens = self.dut.run_output('ls -Z %s' % path).split()
+        tokens = self.dut.run_output('ls -LZ %s' % path).split()
         path_ctx = tokens[0]
         if not ctx in path_ctx:
             raise error.TestFail('Context "%s" for path "%s" does not '
