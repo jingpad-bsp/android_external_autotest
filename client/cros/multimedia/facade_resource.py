@@ -60,6 +60,34 @@ class FacadeResource(object):
         self.close()
 
 
+    @staticmethod
+    def _generate_tab_descriptor(tab):
+        """Generate tab descriptor by tab object.
+
+        @param tab: the tab object.
+        @return a str, the tab descriptor of the tab.
+
+        """
+        return hex(id(tab))
+
+
+    def clean_unexpected_tabs(self):
+        """Clean all tabs that are not opened by facade_resource
+
+        It is used to make sure our chrome browser is clean.
+
+        """
+        # If they have the same length we can assume there is no unexpected
+        # tabs.
+        browser_tabs = self.get_tabs()
+        if len(browser_tabs) == len(self._tabs):
+            return
+
+        for tab in browser_tabs:
+            if self._generate_tab_descriptor(tab) not in self._tabs:
+                tab.Close()
+
+
     @retry_chrome_call
     def get_extension(self, extension_path=None):
         """Gets the extension from the indicated path.
@@ -103,8 +131,9 @@ class FacadeResource(object):
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
-        tab_descriptor = hex(id(tab))
+        tab_descriptor = self._generate_tab_descriptor(tab)
         self._tabs[tab_descriptor] = tab
+        self.clean_unexpected_tabs()
         return tab_descriptor
 
 
@@ -138,3 +167,4 @@ class FacadeResource(object):
         tab = self._tabs[tab_descriptor]
         del self._tabs[tab_descriptor]
         tab.Close()
+        self.clean_unexpected_tabs()
