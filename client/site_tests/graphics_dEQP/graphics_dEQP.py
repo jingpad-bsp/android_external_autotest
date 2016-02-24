@@ -33,9 +33,11 @@ class graphics_dEQP(test.test):
     _height = 256  # Use smallest height for which all tests run/pass.
     _timeout = 70  # Larger than twice the dEQP watchdog timeout at 30s.
     _test_names = None
-    _debug = False
-    _log_reader = None
-    _log_filter = re.compile('.* .* kernel:')
+    _test_names_file = None
+    _log_path = None  # Location for detailed test output logs (in /tmp/).
+    _debug = False  # Analyze kernel messages.
+    _log_reader = None  # Reader to analyze (kernel) messages log.
+    _log_filter = re.compile('.* .* kernel:')  # kernel messages filter.
 
     DEQP_BASEDIR = '/usr/local/deqp'
     DEQP_MODULES = {
@@ -125,19 +127,33 @@ class graphics_dEQP(test.test):
         not_passing_cases.sort()
         return not_passing_cases
 
-    def _bootstrap_new_test_cases(self, executable, test_filter):
+    def _get_executable(self, name):
+        # Determine module from test_names or filter.
+        test_prefix = name.split('.')[0]
+        if test_prefix in self.DEQP_MODULES:
+            module = self.DEQP_MODULES[test_prefix]
+        else:
+            raise error.TestError('Invalid test name: %s' % name)
+        executable = os.path.join(self.DEQP_BASEDIR, 'modules', module,
+                                  'deqp-%s' % module)
+        # Must be in the executable directory when running for it to find it's
+        # test data files!
+        os.chdir(os.path.dirname(executable))
+        return executable
+
+    def _bootstrap_new_test_cases(self, test_filter):
         """Ask dEQP for all test cases and removes non-Pass'ing ones.
 
         This function will query dEQP for test cases and remove all cases that
         are not in 'Pass'ing expectations from the list. This can be used
         incrementally updating failing/hangin tests over several runs.
 
-        @param executable: location '/usr/local/deqp/modules/gles2/deqp-gles2'.
         @param test_filter: string like 'dEQP-GLES2.info', 'dEQP-GLES3.stress'.
 
         @return: List of dEQP tests to run.
         """
         test_cases = []
+        executable = self._get_executable(test_filter)
         not_passing_cases = self._load_not_passing_cases(test_filter)
         # We did not find passing cases in expectations. Assume everything else
         # that is there should not be run this time.
@@ -191,7 +207,7 @@ class graphics_dEQP(test.test):
         test_cases.sort()
         return test_cases
 
-    def _get_test_cases(self, executable, test_filter, subset):
+    def _get_test_cases(self, test_filter, subset):
         """Gets the test cases for 'Pass', 'Fail' etc. expectations.
 
         This function supports bootstrapping of new GPU families and dEQP
@@ -200,7 +216,6 @@ class graphics_dEQP(test.test):
         available tests. It will then remove known non-'Pass'ing tests from this
         list to avoid getting into hangs/crashes etc.
 
-        @param executable: location '/usr/local/deqp/modules/gles2/deqp-gles2'.
         @param test_filter: string like 'dEQP-GLES2.info', 'dEQP-GLES3.stress'.
         @param subset: string from 'Pass', 'Fail', 'Timeout' etc.
 
@@ -219,7 +234,7 @@ class graphics_dEQP(test.test):
                 raise error.TestError('No subset file found for %s!' %
                                       subset_path)
             # Ask dEQP for all cases and remove the failing ones.
-            return self._bootstrap_new_test_cases(executable, test_filter)
+            return self._bootstrap_new_test_cases(test_filter)
 
         test_cases = bz2.BZ2File(subset_path).read().splitlines()
         if not test_cases:
@@ -227,14 +242,13 @@ class graphics_dEQP(test.test):
                                   subset_path)
         return test_cases
 
-    def run_tests_individually(self, executable, test_cases):
+    def run_tests_individually(self, test_cases):
         """Runs tests as isolated from each other, but slowly.
 
         This function runs each test case separately as a command.
         This means a new context for each test etc. Failures will be more
         isolated, but runtime quite high due to overhead.
 
-        @param executable: dEQP executable path.
         @param test_cases: List of dEQP test case strings.
 
         @return: dictionary of test results.
@@ -243,17 +257,14 @@ class graphics_dEQP(test.test):
         width = self._width
         height = self._height
 
-        log_path = os.path.join(tempfile.gettempdir(), '%s-logs' % self._filter)
-        shutil.rmtree(log_path, ignore_errors=True)
-        os.mkdir(log_path)
-
         i = 0
         for test_case in test_cases:
             i += 1
             logging.info('[%d/%d] TestCase: %s', i, len(test_cases), test_case)
-            result_prefix = os.path.join(log_path, test_case)
+            result_prefix = os.path.join(self._log_path, test_case)
             log_file = '%s.log' % result_prefix
             debug_file = '%s.debug' % result_prefix
+            executable = self._get_executable(test_case)
             command = ('%s '
                        '--deqp-case=%s '
                        '--deqp-surface-type=fbo '
@@ -292,7 +303,8 @@ class graphics_dEQP(test.test):
                 output_msgs = {'stdout': [], 'stderr': [], 'dmesg': []}
                 logs = self._log_reader.get_logs()
                 self._log_reader.set_start_by_current()
-                output_msgs['dmesg'] = [msg for msg in logs.splitlines()
+                output_msgs['dmesg'] = [msg
+                                        for msg in logs.splitlines()
                                         if self._log_filter.match(msg)]
                 if run_result:
                     output_msgs['stdout'] = run_result.stdout.splitlines()
@@ -309,14 +321,13 @@ class graphics_dEQP(test.test):
 
         return test_results
 
-    def run_tests_hasty(self, executable, test_cases):
+    def run_tests_hasty(self, test_cases):
         """Runs tests as quickly as possible.
 
         This function runs all the test cases, but does not isolate tests and
         may take shortcuts/not run all tests to provide maximum coverage at
         minumum runtime.
 
-        @param executable: dEQP executable path.
         @param test_cases: List of dEQP test case strings.
 
         @return: dictionary of test results.
@@ -326,10 +337,6 @@ class graphics_dEQP(test.test):
         width = self._width
         height = self._height
         results = {}
-
-        log_path = os.path.join(tempfile.gettempdir(), '%s-logs' % self._filter)
-        shutil.rmtree(log_path, ignore_errors=True)
-        os.mkdir(log_path)
 
         # All tests combined less than 1h in hasty.
         batch_timeout = min(3600, self._timeout * self._hasty_batch_size)
@@ -353,6 +360,9 @@ class graphics_dEQP(test.test):
         for batch in xrange(shard_start, shard_end, self._hasty_batch_size):
             batch_to = min(batch + self._hasty_batch_size, shard_end)
             batch_cases = '\n'.join(test_cases[batch:batch_to])
+            # This assumes all tests in the batch are kicked off via the same
+            # executable.
+            executable = self._get_executable(test_cases[batch])
             command = ('%s '
                        '--deqp-stdin-caselist '
                        '--deqp-surface-type=fbo '
@@ -364,7 +374,7 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d ' % (executable, width,
                                                       height))
 
-            log_file = os.path.join(log_path,
+            log_file = os.path.join(self._log_path,
                                     '%s_hasty_%d.log' % (self._filter, batch))
 
             command += '--deqp-log-filename=' + log_file
@@ -391,6 +401,7 @@ class graphics_dEQP(test.test):
                        test_names='',  # e.g., dEQP-GLES3.info.version,
                                        # dEQP-GLES2.functional,
                                        # dEQP-GLES3.accuracy.texture, etc.
+                       test_names_file='',
                        timeout=self._timeout,
                        subset_to_run='Pass',  # Pass, Fail, Timeout, NotPass...
                        hasty='False',
@@ -404,14 +415,26 @@ class graphics_dEQP(test.test):
 
         self._hasty = (options['hasty'] == 'True')
         self._timeout = int(options['timeout'])
+        self._test_names_file = options['test_names_file']
         self._test_names = options['test_names']
         self._shard_number = int(options['shard_number'])
         self._shard_count = int(options['shard_count'])
         self._debug = (options['debug'] == 'True')
-        if not self._test_names:
+        if not (self._test_names_file or self._test_names):
             self._filter = options['filter']
             if not self._filter:
                 raise error.TestError('No dEQP test filter specified')
+
+        # Create a place to put detailed test output logs.
+        if self._filter:
+            self._log_path = os.path.join(tempfile.gettempdir(), '%s-logs' %
+                                          self._filter)
+        else:
+            self._log_path = os.path.join(
+                tempfile.gettempdir(), '%s-logs' %
+                os.path.basename(self._test_names_file))
+        shutil.rmtree(self._log_path, ignore_errors=True)
+        os.mkdir(self._log_path)
 
         # Some information to help postprocess logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
@@ -423,48 +446,33 @@ class graphics_dEQP(test.test):
             raise error.TestNAError('dEQP not implemented on tegra. '
                                     'crbug.com/543373')
 
-        # Determine module from test_names or filter.
-        if self._test_names:
-            test_prefix = self._test_names.split('.')[0]
-            self._filter = '%s.filter_args' % test_prefix
-        elif self._filter:
-            test_prefix = self._filter.split('.')[0]
-        if test_prefix in self.DEQP_MODULES:
-            module = self.DEQP_MODULES[test_prefix]
-        elif self._test_names:
-            raise error.TestError('Invalid test names: %s' % self._test_names)
-        else:
-            raise error.TestError('Invalid test filter: %s' % self._filter)
-
-        executable_path = os.path.join(self.DEQP_BASEDIR, 'modules', module)
-        executable = os.path.join(executable_path, 'deqp-%s' % module)
-
         self._services.stop_services()
+        if self._test_names_file:
+            test_cases = [line.rstrip('\n')
+                          for line in open(os.path.join(self.bindir,
+                                                        self._test_names_file))]
+            test_cases = [test
+                          for test in test_cases if test and not test.isspace()]
+        if self._test_names:
+            test_cases = []
+            for name in self._test_names.split(','):
+                test_cases.extend(self._get_test_cases(name, 'Pass'))
+        if self._filter:
+            test_cases = self._get_test_cases(self._filter,
+                                              options['subset_to_run'])
 
         if self._debug:
             # LogReader works on /var/log/messages by default.
             self._log_reader = cros_logging.LogReader()
             self._log_reader.set_start_by_current()
 
-        # Must be in the executable directory when running for it to find it's
-        # test data files!
-        os.chdir(executable_path)
-        if self._test_names:
-            test_cases = []
-            for name in self._test_names.split(','):
-                test_cases.extend(self._get_test_cases(executable, name,
-                                                       'Pass'))
-        else:
-            test_cases = self._get_test_cases(executable, self._filter,
-                                              options['subset_to_run'])
-
         test_results = {}
         if self._hasty:
             logging.info('Running in hasty mode.')
-            test_results = self.run_tests_hasty(executable, test_cases)
+            test_results = self.run_tests_hasty(test_cases)
         else:
             logging.info('Running each test individually.')
-            test_results = self.run_tests_individually(executable, test_cases)
+            test_results = self.run_tests_individually(test_cases)
 
         logging.info('Test results:')
         logging.info(test_results)
@@ -485,7 +493,8 @@ class graphics_dEQP(test.test):
             'Completed all tests. Saw %d tests, %d passes and %d failures.',
             test_count, test_passes, test_failures)
 
-        if test_count == 0 and options['subset_to_run'] != 'NotPass':
+        if self._filter and test_count == 0 and options[
+                'subset_to_run'] != 'NotPass':
             raise error.TestWarn('No test cases found for filter: %s!' %
                                  self._filter)
 
