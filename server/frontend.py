@@ -105,7 +105,6 @@ class RpcClient(object):
                 print result
             return result
         except Exception:
-            print 'FAILED RPC CALL: %s %s' % (call, dargs)
             raise
 
 
