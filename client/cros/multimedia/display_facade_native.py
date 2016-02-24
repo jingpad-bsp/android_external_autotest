@@ -409,13 +409,19 @@ class DisplayFacadeNative(object):
         @param is_mirrored: True or False to indicate mirrored state.
         @return True if success, False otherwise.
         """
-        # TODO: Do some experiments to minimize waiting time after toggling.
-        retries = 3
-        while self.is_mirrored_enabled() != is_mirrored and retries > 0:
+        if self.is_mirrored_enabled() == is_mirrored:
+            return True
+
+        retries = 2
+        while retries > 0:
             self.toggle_mirrored()
-            time.sleep(3)
+            result = utils.wait_for_value(self.is_mirrored_enabled,
+                                          expected_value=is_mirrored,
+                                          timeout_sec=1)
+            if result == is_mirrored:
+                return True
             retries -= 1
-        return self.is_mirrored_enabled() == is_mirrored
+        return False
 
 
     def is_display_primary(self, internal=True):
