@@ -27,12 +27,12 @@ def view_is_relevant(view):
     return not view['test_name'].startswith('CLIENT_JOB')
 
 
-def view_is_for_suite_prep(view):
+def view_is_for_suite_job(view):
     """
-    Indicates whether the given test view is the view of Suite prep.
+    Indicates whether the given test view is the view of Suite job.
 
     @param view: a detailed test 'view' from the TKO DB to look at.
-    @return True if this is view of suite preparation.
+    @return True if this is view of suite job.
     """
     return view['test_name'] == 'SERVER_JOB'
 

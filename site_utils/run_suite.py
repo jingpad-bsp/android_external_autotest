@@ -501,7 +501,7 @@ class Timings(object):
             end_candidate = time_utils.time_string_to_datetime(
                     view['test_finished_time'])
 
-        if view.get_testname() == TestView.SUITE_PREP:
+        if view.get_testname() == TestView.SUITE_JOB:
             self.suite_start_time = start_candidate
         else:
             self._UpdateFirstTestStartTime(start_candidate)
@@ -626,7 +626,7 @@ class TestView(object):
     """Represents a test view and provides a set of helper functions."""
 
 
-    SUITE_PREP = 'Suite prep'
+    SUITE_JOB = 'Suite job'
     INFRA_TESTS = ['provision']
 
 
@@ -657,7 +657,7 @@ class TestView(object):
         # In this case, the abort reason will be None.
         # Update the reason with proper information.
         if (self.is_relevant_suite_view() and
-                not self.get_testname() == self.SUITE_PREP and
+                not self.get_testname() == self.SUITE_JOB and
                 self.view['status'] == 'ABORT' and
                 not self.view['reason']):
             self.view['reason'] = 'Timed out, did not run.'
@@ -695,7 +695,7 @@ class TestView(object):
 
         There are four special cases.
         1) A test view is for the suite job's SERVER_JOB.
-           In this case, this method will return 'Suite prep'.
+           In this case, this method will return 'Suite job'.
 
         2) A test view is of a child job or a solo test run not part of a
            suite, and for a SERVER_JOB or CLIENT_JOB.
@@ -737,8 +737,8 @@ class TestView(object):
 
         if (self.is_suite_view and
                 self.view['test_name'].startswith('SERVER_JOB')):
-            # Rename suite job's SERVER_JOB to 'Suite prep'.
-            self.testname = self.SUITE_PREP
+            # Rename suite job's SERVER_JOB to 'Suite job'.
+            self.testname = self.SUITE_JOB
             return self.testname
 
         if (self.view['test_name'].startswith('SERVER_JOB') or
@@ -765,7 +765,7 @@ class TestView(object):
 
         @returns: True if it is relevant. False otherwise.
         """
-        return (self.get_testname() == self.SUITE_PREP or
+        return (self.get_testname() == self.SUITE_JOB or
                 (self.is_suite_view and
                     not self.view['test_name'].startswith('CLIENT_JOB') and
                     not self.view['subdir']))
@@ -815,8 +815,8 @@ class TestView(object):
                   False otherwise.
         """
         if (self.is_relevant_suite_view() and
-                self.get_testname() != self.SUITE_PREP):
-            # Any relevant suite test view except SUITE_PREP
+                self.get_testname() != self.SUITE_JOB):
+            # Any relevant suite test view except SUITE_JOB
             # did not hit its own timeout because it was not ever run.
             return False
         start = (datetime.strptime(
@@ -835,7 +835,7 @@ class TestView(object):
     def is_aborted(self):
         """Check if the view was aborted.
 
-        For suite prep and child job test views, we check job keyval
+        For suite job and child job test views, we check job keyval
         'aborted_by' and test status.
 
         For relevant suite job test views, we only check test status
@@ -847,7 +847,7 @@ class TestView(object):
         """
 
         if (self.is_relevant_suite_view() and
-                self.get_testname() != self.SUITE_PREP):
+                self.get_testname() != self.SUITE_JOB):
             return self.view['status'] == 'ABORT'
         else:
             return (bool(self.view['job_keyvals'].get('aborted_by')) and
@@ -899,7 +899,7 @@ class TestView(object):
         will be stored in the suite job's keyvals. This method attempts to
         retrieve bug info of the test from |suite_job_keyvals|. It will return
         None if no bug info is found. No need to check bug info if the view is
-        SUITE_PREP.
+        SUITE_JOB.
 
         @param suite_job_keyvals: The job keyval dictionary of the suite job.
                 All the bug info about child jobs are stored in
@@ -910,7 +910,7 @@ class TestView(object):
                   times the bug has been seen.
 
         """
-        if self.get_testname() == self.SUITE_PREP:
+        if self.get_testname() == self.SUITE_JOB:
             return None
         if (self.view['test_name'].startswith('SERVER_JOB') or
                 self.view['test_name'].startswith('CLIENT_JOB')):
@@ -927,7 +927,7 @@ class TestView(object):
     def should_display_buildbot_link(self):
         """Check whether a buildbot link should show for this view.
 
-        For suite prep view, show buildbot link if it fails.
+        For suite job view, show buildbot link if it fails.
         For normal test view,
             show buildbot link if it is a retry
             show buildbot link if it hits its own timeout.
@@ -941,7 +941,7 @@ class TestView(object):
         """
         is_bad_status = (self.view['status'] != 'GOOD' and
                          self.view['status'] != 'TEST_NA')
-        if self.get_testname() == self.SUITE_PREP:
+        if self.get_testname() == self.SUITE_JOB:
             return is_bad_status
         else:
             if self.is_retry():
@@ -1216,7 +1216,7 @@ class ResultCollector(object):
             # The order of checking each case is important.
             if v.is_experimental():
                 continue
-            if v.get_testname() == TestView.SUITE_PREP:
+            if v.get_testname() == TestView.SUITE_JOB:
                 if v.is_aborted() and v.hit_timeout():
                     current_code = RETURN_CODES.SUITE_TIMEOUT
                 elif v.is_in_fail_status():
@@ -1236,7 +1236,7 @@ class ResultCollector(object):
                     # because the suite has timed out, but may
                     # also because it was aborted by the user.
                     # Since suite timing out is determined by checking
-                    # the suite prep view, we simply ignore this view here.
+                    # the suite job view, we simply ignore this view here.
                     current_code = RETURN_CODES.OK
                 elif v.is_in_fail_status():
                     # The test job failed.

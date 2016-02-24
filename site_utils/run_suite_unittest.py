@@ -137,9 +137,9 @@ class ResultCollectorUnittest(unittest.TestCase):
                 suite_job_id=suite_job_id)
         suite_views = collector._fetch_relevant_test_views_of_suite()
         suite_views = sorted(suite_views, key=lambda view: view['test_idx'])
-        # Verify that SERVER_JOB is renamed to 'Suite Prep'
+        # Verify that SERVER_JOB is renamed to 'Suite job'
         self.assertEqual(suite_views[0].get_testname(),
-                         run_suite.TestView.SUITE_PREP)
+                         run_suite.TestView.SUITE_JOB)
         # Verify that the test with a subidr is not included.
         self.assertEqual(suite_views[0]['test_idx'], 10)
         self.assertEqual(suite_views[1]['test_idx'], 12)
@@ -207,7 +207,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         fake_job.parent = suite_job_id
         suite_job_view = run_suite.TestView(
                 self._build_view(
-                    20, 'Suite prep', '----', 'GOOD', suite_job_id),
+                    20, 'Suite job', '----', 'GOOD', suite_job_id),
                 fake_job, suite_name, build, 'chromeos-test')
         good_test = run_suite.TestView(
                 self._build_view(
