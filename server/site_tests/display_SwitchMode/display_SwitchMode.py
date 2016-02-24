@@ -39,19 +39,20 @@ class display_SwitchMode(test.test):
             raise error.TestFail('; '.join(set(self.errors)))
 
 
-    def set_mode_and_check(self, test_mirrored):
+    def set_mode_and_check(self, test_mirrored, no_check):
         """Sets display mode and checks status
 
         @param test_mirrored: is mirrored mode active
-
+        @param no_check: True to skip the screen check.
         """
         logging.info('Set mirrored: %s', test_mirrored)
         self.display_facade.set_mirrored(test_mirrored)
-        time.sleep(self.WAIT_AFTER_SWITCH)
-        self.check_external_display(test_mirrored)
+        if not no_check:
+            time.sleep(self.WAIT_AFTER_SWITCH)
+            self.check_external_display(test_mirrored)
 
 
-    def run_once(self, host, repeat):
+    def run_once(self, host, repeat, no_check=False):
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         self.display_facade = factory.create_display_facade()
         chameleon_board = host.chameleon
@@ -75,5 +76,5 @@ class display_SwitchMode(test.test):
 
             for i in xrange(repeat):
                 logging.info("Iteration %d", (i + 1))
-                self.set_mode_and_check(False)
-                self.set_mode_and_check(True)
+                self.set_mode_and_check(False, no_check)
+                self.set_mode_and_check(True, no_check)
