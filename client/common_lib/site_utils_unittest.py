@@ -160,5 +160,34 @@ class GetWirelessSsidUnittest(unittest.TestCase):
                          utils.get_wireless_ssid('100.0.0.100'))
 
 
+class LaunchControlBuildParseUnittest(unittest.TestCase):
+    """Test various parsing functions related to Launch Control builds and
+    devices.
+    """
+
+    def test_parse_android_board_label(self):
+        """Test parse_android_board_label function."""
+        android_board_label_tests = {
+                ('android', 'board'): 'android-board',
+                ('brillo', 'board'): 'brillo-board',
+                ('brillo', 'board-name'): 'brillo-board-name',
+                (None, None): 'board',
+                (None, None): 'veyron-board'}
+        for result, label in android_board_label_tests.items():
+            self.assertEqual(result, utils.parse_android_board_label(label))
+
+
+    def test_parse_launch_control_target(self):
+        """Test parse_launch_control_target function."""
+        target_tests = {
+                ('shamu', 'userdebug'): 'shamu-userdebug',
+                ('shamu', 'eng'): 'shamu-eng',
+                ('shamu-board', 'eng'): 'shamu-board-eng',
+                (None, None): 'bad_target',
+                (None, None): 'target'}
+        for result, target in target_tests.items():
+            self.assertEqual(result, utils.parse_launch_control_target(target))
+
+
 if __name__ == "__main__":
     unittest.main()

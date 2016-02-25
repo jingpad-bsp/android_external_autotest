@@ -545,10 +545,10 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
-            build = Suite.get_test_source_build(builds, **dargs)
             if run_prod_code:
                 cf_getter = Suite.create_fs_getter(_AUTOTEST_DIR)
             else:
+                build = Suite.get_test_source_build(builds, **dargs)
                 cf_getter = Suite.create_ds_getter(build, devserver)
 
         return Suite(predicates,

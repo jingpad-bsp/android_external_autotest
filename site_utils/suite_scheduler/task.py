@@ -19,6 +19,11 @@ import common
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 
+OS_TYPE_CROS = 'cros'
+OS_TYPE_BRILLO = 'brillo'
+OS_TYPE_ANDROID = 'android'
+OS_TYPES = {OS_TYPE_CROS, OS_TYPE_BRILLO, OS_TYPE_ANDROID}
+OS_TYPES_LAUNCH_CONTROL = {OS_TYPE_BRILLO, OS_TYPE_ANDROID}
 
 class MalformedConfigEntry(Exception):
     """Raised to indicate a failure to parse a Task out of a config."""
@@ -144,6 +149,14 @@ class Task(object):
         pool: pool_of_devices  # Optional
         num: sharding_factor  # int, Optional
         boards: board1, board2  # comma seperated string, Optional
+        # Settings for Launch Control builds only:
+        os_type: brillo # Type of OS, e.g., cros, brillo, android. Default is
+                 cros. Required for android/brillo builds.
+        branches: git_mnc_release # comma separated string of Launch Control
+                  branches. Required and only applicable for android/brillo
+                  builds.
+        targets: dragonboard-eng # comma separated string of build targets.
+                 Required and only applicable for android/brillo builds.
 
         By default, Tasks run on all release branches, not factory or firmware.
 
@@ -158,7 +171,7 @@ class Task(object):
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
                        'firmware_rw_build_spec', 'test_source', 'job_retry',
-                       'hour', 'day'])
+                       'hour', 'day', 'branches', 'targets', 'os_type'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -172,7 +185,7 @@ class Task(object):
         keyword = config.getstring(section, 'run_on')
         hour = config.getstring(section, 'hour')
         suite = config.getstring(section, 'suite')
-        branches = config.getstring(section, 'branch_specs')
+        branch_specs = config.getstring(section, 'branch_specs')
         pool = config.getstring(section, 'pool')
         boards = config.getstring(section, 'boards')
         file_bugs = config.getboolean(section, 'file_bugs')
@@ -223,16 +236,49 @@ class Task(object):
                     'apply to weekly events.')
 
         specs = []
-        if branches:
-            specs = re.split('\s*,\s*', branches)
+        if branch_specs:
+            specs = re.split('\s*,\s*', branch_specs)
             Task.CheckBranchSpecs(specs)
+
+        os_type = config.getstring(section, 'os_type') or OS_TYPE_CROS
+        if os_type not in OS_TYPES:
+            raise MalformedConfigEntry('`os_type` must be one of %s' % OS_TYPES)
+
+        lc_branches = config.getstring(section, 'branches')
+        lc_targets = config.getstring(section, 'targets')
+        if os_type == OS_TYPE_CROS and (lc_branches or lc_targets):
+            raise MalformedConfigEntry(
+                    '`branches` and `targets` are only supported for Launch '
+                    'Control builds, not ChromeOS builds.')
+        if (os_type in OS_TYPES_LAUNCH_CONTROL and
+            (not lc_branches or not lc_targets)):
+            raise MalformedConfigEntry(
+                    '`branches` and `targets` must be specified for Launch '
+                    'Control builds.')
+        if os_type in OS_TYPES_LAUNCH_CONTROL and boards:
+            raise MalformedConfigEntry(
+                    '`boards` for Launch Control builds are retrieved from '
+                    '`targets` setting, it should not be set for Launch '
+                    'Control builds.')
+
+        # Extract boards from targets list.
+        if os_type in OS_TYPES_LAUNCH_CONTROL:
+            boards = ''
+            for target in lc_targets.split(','):
+                board_name, _ = server_utils.parse_launch_control_target(
+                        target.strip())
+                boards += '%s-%s,' % (os_type, board_name)
+            boards = boards.strip(',')
+
         return keyword, Task(section, suite, specs, pool, num, boards,
                              priority, timeout,
                              file_bugs=file_bugs if file_bugs else False,
                              cros_build_spec=cros_build_spec,
                              firmware_rw_build_spec=firmware_rw_build_spec,
                              test_source=test_source, job_retry=job_retry,
-                             hour=hour, day=day)
+                             hour=hour, day=day, os_type=os_type,
+                             launch_control_branches=lc_branches,
+                             launch_control_targets=lc_targets)
 
 
     @staticmethod
@@ -265,7 +311,9 @@ class Task(object):
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
                  boards=None, priority=None, timeout=None, file_bugs=False,
                  cros_build_spec=None, firmware_rw_build_spec=None,
-                 test_source=None, job_retry=False, hour=None, day=None):
+                 test_source=None, job_retry=False, hour=None, day=None,
+                 os_type=OS_TYPE_CROS, launch_control_branches=None,
+                 launch_control_targets=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -342,7 +390,15 @@ class Task(object):
         @param hour: An integer specifying the hour that a nightly run should
                      be triggered, default is set to 21.
         @param day: An integer specifying the day of a week that a weekly run
-                    should be triggered, default is set to 5, which is Saturday.
+                should be triggered, default is set to 5, which is Saturday.
+        @param os_type: Type of OS, e.g., cros, brillo, android. Default is
+                cros. The argument is required for android/brillo builds.
+        @param launch_control_branches: Comma separated string of Launch Control
+                branches. The argument is required and only applicable for
+                android/brillo builds.
+        @param launch_control_targets: Comma separated string of build targets
+                for Launch Control builds. The argument is required and only
+                applicable for android/brillo builds.
         """
         self._name = name
         self._suite = suite
@@ -356,8 +412,15 @@ class Task(object):
         self._firmware_rw_build_spec = firmware_rw_build_spec
         self._test_source = test_source
         self._job_retry = job_retry
-        self.hour = hour
-        self.day = day
+        self._hour = hour
+        self._day = day
+        self._os_type = os_type
+        self._launch_control_branches = (
+                [b.strip() for b in launch_control_branches.split(',')]
+                if launch_control_branches else [])
+        self._launch_control_targets = (
+                [t.strip() for t in launch_control_targets.split(',')]
+                if launch_control_targets else [])
 
         if ((self._firmware_rw_build_spec or cros_build_spec) and
             not self.test_source in [Builds.FIRMWARE_RW, Builds.CROS]):
@@ -423,10 +486,17 @@ class Task(object):
             self._boards = set([x.strip() for x in boards.split(',')])
             boardsStr = boards
 
-        self._str = ('%s: %s on %s with pool %s, boards [%s], file_bugs = %s '
-                     'across %s machines.' % (self.__class__.__name__,
-                     suite, branch_specs, pool, boardsStr, self._file_bugs,
-                     numStr))
+        if os_type == OS_TYPE_CROS:
+            self._str = ('%s: %s on %s with pool %s, boards [%s], file_bugs = '
+                         '%s across %s machines.' %
+                         (self.__class__.__name__, suite, branch_specs, pool,
+                          boardsStr, self._file_bugs, numStr))
+        else:
+            self._str = ('%s: %s on branches %s and targets %s with pool %s, '
+                         'boards [%s], file_bugs = %s across %s machines.' %
+                         (self.__class__.__name__, suite,
+                          launch_control_branches, launch_control_targets,
+                          pool, boardsStr, self._file_bugs, numStr))
 
 
     def _FitsSpec(self, branch):
@@ -523,6 +593,38 @@ class Task(object):
     def test_source(self):
         """Source of the test code, value can be `firmware_rw` or `cros`."""
         return self._test_source
+
+
+    @property
+    def hour(self):
+        """An integer specifying the hour that a nightly run should be triggered
+        """
+        return self._hour
+
+
+    @property
+    def day(self):
+        """An integer specifying the day of a week that a weekly run should be
+        triggered"""
+        return self._day
+
+
+    @property
+    def os_type(self):
+        """Type of OS, e.g., cros, brillo, android."""
+        return self._os_type
+
+
+    @property
+    def launch_control_branches(self):
+        """A list of Launch Control builds."""
+        return self._launch_control_branches
+
+
+    @property
+    def launch_control_targets(self):
+        """A list of Launch Control targets."""
+        return self._launch_control_targets
 
 
     def __str__(self):
@@ -651,8 +753,56 @@ class Task(object):
         return self._pool == 'bvt'
 
 
-    def Run(self, scheduler, branch_builds, board, force=False, mv=None):
-        """Run this task.  Returns False if it should be destroyed.
+    def _ScheduleSuite(self, scheduler, cros_build, firmware_rw_build,
+                       test_source_build, launch_control_build, board, force,
+                       run_prod_code=False):
+        """Try to schedule a suite with given build and board information.
+
+        @param scheduler: an instance of DedupingScheduler, as defined in
+                          deduping_scheduler.py
+        @oaran build: Build to run suite for, e.g., 'daisy-release/R18-1655.0.0'
+                      and 'git_mnc_release/shamu-eng/123'.
+        @param firmware_rw_build: Firmware RW build to run test with.
+        @param test_source_build: Test source build, used for server-side
+                                  packaging.
+        @param launch_control_build: Name of a Launch Control build, e.g.,
+                                     'git_mnc_release/shamu-eng/123'
+        @param board: the board against which to run self._suite.
+        @param force: Always schedule the suite.
+        @param run_prod_code: If True, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers. If False, the control files and test
+                              code for this suite run will be retrieved from the
+                              build artifacts. Default is False.
+        """
+        test_source_build_msg = (
+                ' Test source build is %s.' % test_source_build
+                if test_source_build else None)
+        firmware_rw_build_msg = (
+                ' Firmware RW build is %s.' % firmware_rw_build
+                if firmware_rw_build else None)
+        build_string = cros_build or launch_control_build
+        logging.debug('Schedule %s for build %s.%s%s',
+                      self._suite, build_string, test_source_build_msg,
+                      firmware_rw_build_msg)
+
+        if not scheduler.ScheduleSuite(
+                self._suite, board, cros_build, self._pool, self._num,
+                self._priority, self._timeout, force,
+                file_bugs=self._file_bugs,
+                firmware_rw_build=firmware_rw_build,
+                test_source_build=test_source_build,
+                job_retry=self._job_retry,
+                launch_control_build=launch_control_build,
+                run_prod_code=run_prod_code):
+            logging.info('Skipping scheduling %s on %s for %s',
+                         self._suite, build_string, board)
+
+
+    def _Run_CrOS_Builds(self, scheduler, branch_builds, board, force=False,
+                         mv=None):
+        """Run this task for CrOS builds. Returns False if it should be
+        destroyed.
 
         Execute this task.  Attempt to schedule the associated suite.
         Return True if this task should be kept around, False if it
@@ -715,30 +865,85 @@ class Task(object):
                     test_source_build = cros_build
                 else:
                     test_source_build = None
-                logging.debug('Schedule %s for builds %s.%s',
-                              self._suite, builds,
-                              (' Test source build is %s.' % test_source_build)
-                              if test_source_build else None)
-
-                if not scheduler.ScheduleSuite(
-                        self._suite, board, cros_build, self._pool, self._num,
-                        self._priority, self._timeout, force,
-                        file_bugs=self._file_bugs,
-                        firmware_rw_build=firmware_rw_build,
-                        test_source_build=test_source_build,
-                        job_retry=self._job_retry):
-                    logging.info('Skipping scheduling %s on %s for %s',
-                                 self._suite, builds, board)
+                self._ScheduleSuite(scheduler, cros_build, firmware_rw_build,
+                                    test_source_build, None, board, force)
             except deduping_scheduler.DedupingSchedulerException as e:
                 logging.error(e)
         return True
+
+
+    def _Run_LaunchControl_Builds(self, scheduler, launch_control_builds, board,
+                                  force=False):
+        """Run this task. Returns False if it should be destroyed.
+
+        Execute this task. Attempt to schedule the associated suite.
+        Return True if this task should be kept around, False if it
+        should be destroyed. This allows for one-shot Tasks.
+
+        @param scheduler: an instance of DedupingScheduler, as defined in
+                          deduping_scheduler.py
+        @param launch_control_builds: A list of Launch Control builds.
+        @param board: the board against which to run self._suite.
+        @param force: Always schedule the suite.
+
+        @return True if the task should be kept, False if not
+
+        """
+        logging.info('Running %s on %s', self._name, board)
+        for build in launch_control_builds:
+            try:
+                self._ScheduleSuite(scheduler, None, None, None,
+                                    launch_control_build=build, board=board,
+                                    force=force, run_prod_code=True)
+            except deduping_scheduler.DedupingSchedulerException as e:
+                logging.error(e)
+        return True
+
+
+    def Run(self, scheduler, branch_builds, board, force=False, mv=None,
+            launch_control_builds=None):
+        """Run this task.  Returns False if it should be destroyed.
+
+        Execute this task.  Attempt to schedule the associated suite.
+        Return True if this task should be kept around, False if it
+        should be destroyed.  This allows for one-shot Tasks.
+
+        @param scheduler: an instance of DedupingScheduler, as defined in
+                          deduping_scheduler.py
+        @param branch_builds: a dict mapping branch name to the build(s) to
+                              install for that branch, e.g.
+                              {'R18': ['x86-alex-release/R18-1655.0.0'],
+                               'R19': ['x86-alex-release/R19-2077.0.0']}
+        @param board: the board against which to run self._suite.
+        @param force: Always schedule the suite.
+        @param mv: an instance of manifest_versions.ManifestVersions.
+        @param launch_control_builds: A list of Launch Control builds.
+
+        @return True if the task should be kept, False if not
+
+        """
+        if ((self._os_type == OS_TYPE_CROS and not branch_builds) or
+            (self._os_type != OS_TYPE_CROS and not launch_control_builds)):
+            logging.debug('No build to run, skip running %s on %s.', self._name,
+                          board)
+            # Return True so the task will be kept, as the given build and board
+            # do not match.
+            return True
+
+        if self._os_type == OS_TYPE_CROS:
+            return self._Run_CrOS_Builds(
+                    scheduler, branch_builds, board, force, mv)
+        else:
+            return self._Run_LaunchControl_Builds(
+                    scheduler, launch_control_builds, board, force)
 
 
 class OneShotTask(Task):
     """A Task that can be run only once.  Can schedule itself."""
 
 
-    def Run(self, scheduler, branch_builds, board, force=False, mv=None):
+    def Run(self, scheduler, branch_builds, board, force=False, mv=None,
+            launch_control_builds=None):
         """Run this task.  Returns False, indicating it should be destroyed.
 
         Run this task.  Attempt to schedule the associated suite.
@@ -753,10 +958,11 @@ class OneShotTask(Task):
         @param board: the board against which to run self._suite.
         @param force: Always schedule the suite.
         @param mv: an instance of manifest_versions.ManifestVersions.
+        @param launch_control_builds: A list of Launch Control builds.
 
         @return False
 
         """
         super(OneShotTask, self).Run(scheduler, branch_builds, board, force,
-                                     mv)
+                                     mv, launch_control_builds)
         return False

@@ -100,12 +100,13 @@ class DedupingScheduler(object):
 
     def _Schedule(self, suite, board, build, pool, num, priority, timeout,
                   file_bugs=False, firmware_rw_build=None,
-                  test_source_build=None, job_retry=False):
+                  test_source_build=None, job_retry=False,
+                  launch_control_build=None, run_prod_code=False):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
         @param board: the board to run the suite on, e.g. x86-alex
-        @param build: the build to install e.g.
+        @param build: the ChromeOS build to install e.g.
                       x86-alex-release/R18-1655.0.0-a1-b1584.
         @param pool: the pool of machines to use for scheduling purposes.
                      Default: None
@@ -123,15 +124,26 @@ class DedupingScheduler(object):
                                   (defined by `build`).
         @param job_retry: Set to True to enable job-level retry. Default is
                           False.
+        @param launch_control_build: Name of a Launch Control build, e.g.,
+                                     'git_mnc_release/shamu-eng/123'
+        @param run_prod_code: If True, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers. If False, the control files and test
+                              code for this suite run will be retrieved from the
+                              build artifacts. Default is False.
 
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
 
         """
         try:
-            builds = {provision.CROS_VERSION_PREFIX: build}
+            if build:
+                builds = {provision.CROS_VERSION_PREFIX: build}
             if firmware_rw_build:
                 builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
+            if launch_control_build:
+                builds = {provision.ANDROID_BUILD_VERSION_PREFIX:
+                          launch_control_build}
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, builds, board, pool)
             with self._lock:
@@ -143,7 +155,8 @@ class DedupingScheduler(object):
                             wait_for_results=file_bugs,
                             test_source_build=test_source_build,
                             job_retry=job_retry,
-                            delay_minutes=self.delay_minutes) is not None:
+                            delay_minutes=self.delay_minutes,
+                            run_prod_code=run_prod_code) is not None:
                     self.delay_minutes += DELAY_MINUTES_INCREMENTAL
                     return True
                 else:
@@ -169,7 +182,9 @@ class DedupingScheduler(object):
 
     def ScheduleSuite(self, suite, board, build, pool, num, priority, timeout,
                       force=False, file_bugs=False, firmware_rw_build=None,
-                      test_source_build=None, job_retry=False):
+                      test_source_build=None, job_retry=False,
+                      launch_control_build=None,
+                      run_prod_code=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -193,19 +208,29 @@ class DedupingScheduler(object):
                                   None to use the ChromeOS build.
         @param job_retry: Set to True to enable job-level retry. Default is
                           False.
+        @param launch_control_build: Name of a Launch Control build, e.g.,
+                                     'git_mnc_release/shamu-eng/123'
+        @param run_prod_code: If True, the suite will run the test code that
+                              lives in prod aka the test code currently on the
+                              lab servers. If False, the control files and test
+                              code for this suite run will be retrieved from the
+                              build artifacts. Default is False.
 
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
         @raise ScheduleException if the suite cannot be scheduled.
 
         """
-        if (force or self._ShouldScheduleSuite(suite, board,
-                                               test_source_build or build)):
+        if (force or self._ShouldScheduleSuite(
+                suite, board,
+                test_source_build or build or launch_control_build)):
             return self._Schedule(suite, board, build, pool, num, priority,
                                   timeout, file_bugs=file_bugs,
                                   firmware_rw_build=firmware_rw_build,
                                   test_source_build=test_source_build,
-                                  job_retry=job_retry)
+                                  job_retry=job_retry,
+                                  launch_control_build=launch_control_build,
+                                  run_prod_code=run_prod_code)
         return False
 
 

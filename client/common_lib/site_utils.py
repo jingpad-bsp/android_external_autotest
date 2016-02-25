@@ -712,6 +712,46 @@ def parse_android_build(build_name):
     return branch, target, build_id
 
 
+def parse_android_board_label(board_label_name):
+    """Parse the os_type and board name from board label name of an
+    Android/Brillo board.
+
+    Board label for Android/Brillo DUTs is like board:android-shamu or
+    board:brillo-dragonboard. The board name, shamu or dragonboard is the one
+    used in Launch Control build's target, e.g., shamu-eng or dragonboard-eng.
+    This method extracts the os_type and board name from the board label.
+
+    @param board_label_name: Name of an Android/Brillo board label, e.g.,
+            android-shamu.
+
+    @return: (os_type, board), e.g., ('android', 'shamu').
+    """
+    match = re.match('(?P<os_type>android|brillo)-(?P<board>.+)',
+                     board_label_name)
+    if match:
+        return match.group('os_type'), match.group('board')
+    else:
+        return None, None
+
+
+def parse_launch_control_target(target):
+    """Parse the board name and target type from a Launch Control target.
+
+    The Launch Control target has the format of board-target_type, e.g.,
+    shamu-eng or dragonboard-userdebug. This method extracts the board name
+    and target type from the target name.
+
+    @param target: Name of a Launch Control target, e.g., shamu-eng.
+
+    @return: (board, target_type), e.g., ('shamu', 'userdebug')
+    """
+    match = re.match('(?P<board>.+)-(?P<target_type>[^-]+)', target)
+    if match:
+        return match.group('board'), match.group('target_type')
+    else:
+        return None, None
+
+
 def which(exec_file):
     """Finds an executable file.
 

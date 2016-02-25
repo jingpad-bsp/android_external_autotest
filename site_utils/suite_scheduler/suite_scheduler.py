@@ -38,7 +38,7 @@ import getpass, logging, logging.handlers, optparse, os, re, signal, sys
 import traceback
 import common
 import board_enumerator, deduping_scheduler, driver, forgiving_config_parser
-import manifest_versions, sanity
+import manifest_versions, sanity, task
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_config, logging_manager
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -170,6 +170,13 @@ def parse_options():
     parser.add_option('-i', '--build', dest='build',
                       help='If handling a list of events, the build to test.'\
                         ' Ignored otherwise.')
+    parser.add_option('-o', '--os_type', dest='os_type',
+                      default=task.OS_TYPE_CROS,
+                      help='If handling a list of events, the OS type to test.'\
+                        ' Ignored otherwise. This argument allows the test to '
+                        'know if it\'s testing ChromeOS or Launch Control '
+                        'builds. suite scheduler that runs without a build '
+                        'specified(using -i), does not need this argument.')
     parser.add_option('-d', '--log_dir', dest='log_dir',
                       help='Log to a file in the specified directory.')
     parser.add_option('-l', '--list_events', dest='list',
@@ -265,7 +272,7 @@ def main():
                              'manifest repo set up. This is needed for suites '
                              'requiring firmware update.')
             logging.info('Forcing events: %r', keywords)
-            d.ForceEventsOnceForBuild(keywords, options.build)
+            d.ForceEventsOnceForBuild(keywords, options.build, options.os_type)
         else:
             if not options.tmp_repo_dir:
                 mv.Initialize()

@@ -196,7 +196,7 @@ class DriverTest(mox.MoxTestBase):
         build = base_event.BuildName(board, type, milestone, manifest)
 
         events[0].Handle(mox.IgnoreArg(), {milestone: [build]}, board,
-                            force=True)
+                         force=True, launch_control_builds=None)
         self.mox.ReplayAll()
 
         self.driver.SetUpEventsAndTasks(self.config, self.mv)

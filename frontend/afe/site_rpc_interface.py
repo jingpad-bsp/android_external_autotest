@@ -205,9 +205,11 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if provision.FW_RO_VERSION_PREFIX in builds:
         raise error.SuiteArgumentException(
                 'Updating RO firmware is not supported yet.')
-    # Default test source build to CrOS build if it's not specified.
-    test_source_build = Suite.get_test_source_build(
-            builds, test_source_build=test_source_build)
+    # Default test source build to CrOS build if it's not specified and
+    # run_prod_code is set to False.
+    if not run_prod_code:
+        test_source_build = Suite.get_test_source_build(
+                builds, test_source_build=test_source_build)
 
     suite_name = canonicalize_suite_name(name)
     if run_prod_code:
@@ -228,7 +230,12 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
                                                           ds, suite_name)
     # Do not change this naming convention without updating
     # site_utils.parse_job_name.
-    name = '%s-%s' % (test_source_build, suite_name)
+    if not run_prod_code:
+        name = '%s-%s' % (test_source_build, suite_name)
+    else:
+        # If run_prod_code is True, test_source_build is not set, use the
+        # first build in the builds list for the sutie job name.
+        name = '%s-%s' % (builds.values()[0], suite_name)
 
     timeout_mins = timeout_mins or timeout * 60
     max_runtime_mins = max_runtime_mins or timeout * 60

@@ -151,8 +151,14 @@ class Driver(object):
         board = inputs['board']
 
         logging.info('Handling %s event for board %s', event.keyword, board)
-        branch_builds = event.GetBranchBuildsForBoard(board)
-        event.Handle(scheduler, branch_builds, board)
+        os_type, _ = utils.parse_android_board_label(board)
+        if os_type in {task.OS_TYPE_BRILLO, task.OS_TYPE_ANDROID}:
+            launch_control_builds = event.GetLaunchControlBuildsForBoard(board)
+            event.Handle(scheduler, branch_builds=None, board=board,
+                         launch_control_builds=launch_control_builds)
+        else:
+            branch_builds = event.GetBranchBuildsForBoard(board)
+            event.Handle(scheduler, branch_builds, board)
         logging.info('Finished handling %s event for board %s', event.keyword,
                      board)
 
@@ -187,16 +193,31 @@ class Driver(object):
                 e.UpdateCriteria()
 
 
-    def ForceEventsOnceForBuild(self, keywords, build_name):
+    def ForceEventsOnceForBuild(self, keywords, build_name,
+                                os_type=task.OS_TYPE_CROS):
         """Force events with provided keywords to happen, with given build.
 
         @param keywords: iterable of event keywords to force
         @param build_name: instead of looking up builds to test, test this one.
+        @param os_type: Type of the OS to test, default to cros.
         """
-        board, type, milestone, manifest = utils.ParseBuildName(build_name)
-        branch_builds = {task.PickBranchName(type, milestone): [build_name]}
-        logging.info('Testing build R%s-%s on %s', milestone, manifest, board)
+        branch_builds = None
+        launch_control_builds = None
+        if os_type == task.OS_TYPE_CROS:
+            board, type, milestone, manifest = utils.ParseBuildName(build_name)
+            branch_builds = {task.PickBranchName(type, milestone): [build_name]}
+            logging.info('Testing build R%s-%s on %s', milestone, manifest,
+                         board)
+        else:
+            logging.info('Build is not a ChromeOS build, try to parse as a '
+                         'Launch Control build.')
+            _,target,_ = utils.parse_android_build(build_name)
+            board = '%s-%s' % (os_type, utils.parse_launch_control_target(target)[0])
+            launch_control_builds = [build_name]
+            logging.info('Testing Launch Control build %s on %s', build_name,
+                         board)
 
         for e in self._events.itervalues():
             if e.keyword in keywords:
-                e.Handle(self._scheduler, branch_builds, board, force=True)
+                e.Handle(self._scheduler, branch_builds, board, force=True,
+                         launch_control_builds=launch_control_builds)

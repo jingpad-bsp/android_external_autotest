@@ -12,6 +12,7 @@ import multiprocessing
 import os
 import re
 import sys
+import time
 import urllib2
 
 from autotest_lib.client.bin import utils as site_utils
@@ -532,6 +533,22 @@ class DevServer(object):
             error_msg = 'All devservers %s are currently down!!!' % subnet_error
             logging.error(error_msg)
             raise DevServerException(error_msg)
+
+
+    @classmethod
+    def random(cls):
+        """Return a random devserver that's available.
+
+        Devserver election in `resolve` method is based on a hash of the
+        build that a caller wants to stage. The purpose is that different
+        callers requesting for the same build can get the same devserver,
+        while the lab is able to distribute different builds across all
+        devservers. That helps to reduce the duplication of builds across
+        all devservers.
+        This function returns a random devserver, by passing a random
+        pseudo build name to `resolve `method.
+        """
+        return cls.resolve(build=str(time.time()))
 
 
 class CrashServer(DevServer):
