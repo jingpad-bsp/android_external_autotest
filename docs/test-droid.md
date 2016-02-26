@@ -1,24 +1,19 @@
 # test\_droid: Quick Primer
 
 ## References
-[Autotest Developer Guide](https://www.chromium.org/chromium-os/testing/autotest-user-doc)
 
-[test\_that Basic Usage](docs/test-that.md)
+[Autotest Best Practices](best-practices.md)
+
+[test\_that Basic Usage](test-that.md)
 
 ## Objective
 This document contains instructions for Brillo/Android developers interested in
-running basic automated integration tests at their desk.  Developers can run
-existing autotest tests as well as write their own.  Testing on Brillo/Android
-is currently limited to server-side tests, which run on an autotest server and
-control a Brillo/Android DUT (device under test) via remote command execution.
-Running client-side autotest tests requires Python on the DUT and isn’t
-currently supported.  `test_droid` does not support the autoupdate end-to-end
-test, for instructions on how to run this test please refer to the Running
-Brillo/Android Autoupdate End-to-End Test doc.
+running automated integration tests at their desk.
 
 ## Usage
-The autotest repository is checked out in both AOSP and internal manifests at
-external/autotest.
+The autotest repository, the `test_droid` tool, and all tests are checked out
+in both AOSP and internal Android trees at external/autotest.  You need a copy
+of the autotest source code and an `adb` binary in your PATH to run tests.
 
 ### Running tests against a single local device under test
 Once you have a local copy of the autotest source, you can easily run tests
@@ -142,3 +137,15 @@ Then upload your commit for review:
  $ git push https://chromium.googlesource.com/chromiumos/third_party/autotest \
      <local branch name>:refs/for/master
 ```
+
+## Limitations
+
+Testing on Brillo/Android (and `test_droid` by extension) is currently limited
+to server-side tests, which run on an autotest server and control a
+Brillo/Android DUT (device under test) via remote command execution.  In the
+context of `test_droid`, the test logic is running on your development machine,
+and controlling devices with commands executed via `adb`.
+
+`test_droid` does not support the autoupdate end-to-end test. For instructions
+on how to run this test please refer to the Running Brillo/Android Autoupdate
+End-to-End Test doc.
