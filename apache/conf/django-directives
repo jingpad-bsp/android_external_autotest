@@ -123,7 +123,14 @@ RewriteRule ^/afe/server/admin/afe/(aclgroup|atomicgroup|host|label|profiler|tes
     </LocationMatch>
 
     WSGISocketPrefix /var/run/wsgi
-    WSGIDaemonProcess autotestapache processes=20 threads=1
+    # Note: this maximum-requests argument is required because of a memory leak in the django admin pages.
+    # The WSGIDaemonProcess directive prevents mpm_prefork from recycling the
+    # memory that Django uses, as it is tied up in the daemon. We can prevent
+    # the autotest memory leak from biting us by setting maximum-requests,
+    # which will recycle each daemon process after it gets a certain number of
+    # web requests.
+    # TODO(phobbs) consider bumping the number of processes now that the memory leak is under control.
+    WSGIDaemonProcess autotestapache processes=20 threads=1 maximum-requests=20
     WSGIProcessGroup autotestapache
     WSGIPassAuthorization On
 </IfModule>
