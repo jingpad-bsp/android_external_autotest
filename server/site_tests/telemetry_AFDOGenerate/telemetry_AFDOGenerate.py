@@ -52,8 +52,11 @@ TELEMETRY_AFDO_BENCHMARKS = (
     ('speedometer',),
     ('dromaeo.domcoreattr',),
     ('dromaeo.domcoremodify',),
-    ('smoothness.tough_webgl_cases',)
     )
+
+# Temporarily disable this benchmark because it is failing a
+# lot. Filed chromium:590127
+# ('smoothness.tough_webgl_cases',)
 
 # Some benchmarks removed from the profile set:
 # 'page_cycler.morejs' -> uninteresting, seems to fail frequently,
