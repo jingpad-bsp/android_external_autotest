@@ -728,7 +728,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Update URL is %s', update_url)
 
         # Report provision stats.
-        server_name = dev_server.DevServer.get_server_name(update_url)
+        server_name = dev_server.ImageServer.get_server_name(update_url)
         server_name = server_name.replace('.', '_')
         autotest_stats.Counter('cros_host_provision.' + server_name).increment()
         autotest_stats.Counter('cros_host_provision.total').increment()
@@ -774,7 +774,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     # instrumenting the update engine and parsing it log.
                     if (num_of_attempts <= 0 or
                             devserver is None or
-                            dev_server.DevServer.devserver_healthy(
+                            dev_server.ImageServer.devserver_healthy(
                                     devserver.url())):
                         raise
 

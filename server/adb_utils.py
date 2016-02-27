@@ -48,7 +48,7 @@ def install_apk_from_build(host, apk, build_artifact, package_name=None,
                 'The host %s has no attribute %s. `install_apk_from_build` '
                 'only works for test with image specified.' %
                 (host.hostname, host.job_repo_url_attribute))
-    devserver_url = dev_server.DevServer.get_server_url(job_repo_url)
+    devserver_url = dev_server.AndroidBuildServer.get_server_url(job_repo_url)
     devserver = dev_server.AndroidBuildServer(devserver_url)
     build_info = host.get_build_info_from_build_url(job_repo_url)
     devserver.trigger_download(build_info['target'], build_info['build_id'],

@@ -511,7 +511,7 @@ class OmahaDevserver(object):
         logging.warning('Waiting for devserver to accept network requests.')
         url = 'http://%s' % self.get_netloc()
         while time.time() < deadline:
-            if dev_server.DevServer.devserver_healthy(url, timeout_min=0.1):
+            if dev_server.ImageServer.devserver_healthy(url, timeout_min=0.1):
                 break
 
             # TODO(milleral): Refactor once crbug.com/221626 is resolved.

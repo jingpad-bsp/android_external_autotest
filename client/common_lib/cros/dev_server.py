@@ -14,6 +14,7 @@ import re
 import sys
 import time
 import urllib2
+import urlparse
 
 from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import error
@@ -63,11 +64,18 @@ ANDROID_BUILD_NAME_PATTERN = CONFIG.get_config_value(
 # Return value from a devserver RPC indicating the call succeeded.
 SUCCESS = 'Success'
 
+# The timeout minutes for a given devserver ssh call.
+DEVSERVER_SSH_TIMEOUT_MINS = 1
+
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
 
 ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
         'CROS', 'enable_devserver_in_restricted_subnet', type=bool,
+        default=False)
+
+ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
+        'CROS', 'enable_ssh_connection_for_devserver', type=bool,
         default=False)
 
 class MarkupStripper(HTMLParser.HTMLParser):
@@ -131,8 +139,8 @@ def _get_crash_server_list():
 def remote_devserver_call(timeout_min=30):
     """A decorator to use with remote devserver calls.
 
-    This decorator converts urllib2.HTTPErrors into DevServerExceptions with
-    any embedded error info converted into plain text.
+    This decorator converts urllib2.HTTPErrors and CmdError into
+    DevServerExceptions with any embedded error info converted into plain text.
     The method retries on urllib2.URLError to avoid devserver flakiness.
     """
     #pylint: disable=C0111
@@ -151,6 +159,10 @@ def remote_devserver_call(timeout_min=30):
                 except UnicodeDecodeError:
                     strip.feed(error_markup)
                 raise DevServerException(strip.get_data())
+            except error.CmdError as e:
+                error_msg = ('Error occurred with exit_code %d when executing '
+                             'ssh call' % e.result_obj.exit_status)
+                raise DevServerException(error_msg)
 
         return wrapper
 
@@ -219,8 +231,8 @@ class DevServer(object):
             return match.group(1)
 
 
-    @staticmethod
-    def get_devserver_load_wrapper(devserver, timeout_sec, output):
+    @classmethod
+    def get_devserver_load_wrapper(cls, devserver, timeout_sec, output):
         """A wrapper function to call get_devserver_load in parallel.
 
         @param devserver: url of the devserver.
@@ -228,15 +240,14 @@ class DevServer(object):
                             call.
         @param output: An output queue to save results to.
         """
-        load = DevServer.get_devserver_load(devserver,
-                                            timeout_min=timeout_sec/60.0)
+        load = cls.get_devserver_load(devserver, timeout_min=timeout_sec/60.0)
         if load:
             load['devserver'] = devserver
         output.put(load)
 
 
-    @staticmethod
-    def get_devserver_load(devserver, timeout_min=0.1):
+    @classmethod
+    def get_devserver_load(cls, devserver, timeout_min=0.1):
         """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
@@ -254,9 +265,7 @@ class DevServer(object):
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
-            return utils.urlopen_socket_timeout(
-                    call, timeout=timeout_min * 60).read()
-
+            return cls.run_call(call, timeout=timeout_min*60)
         try:
             result_dict = json.load(cStringIO.StringIO(make_call()))
             for key, val in result_dict.iteritems():
@@ -317,8 +326,8 @@ class DevServer(object):
         return True
 
 
-    @staticmethod
-    def devserver_healthy(devserver, timeout_min=0.1):
+    @classmethod
+    def devserver_healthy(cls, devserver, timeout_min=0.1):
         """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
@@ -331,7 +340,7 @@ class DevServer(object):
         server_name = DevServer.get_server_name(devserver)
         # statsd treats |.| as path separator.
         server_name = server_name.replace('.', '_')
-        load = DevServer.get_devserver_load(devserver, timeout_min=timeout_min)
+        load = cls.get_devserver_load(devserver, timeout_min=timeout_min)
         if not load:
             # Failed to get the load of devserver.
             autotest_stats.Counter(server_name +
@@ -378,7 +387,7 @@ class DevServer(object):
 
 
     def build_call(self, method, **kwargs):
-        """Builds a devserver RPC string that can be invoked using urllib.open.
+        """Builds a devserver RPC string that is used by 'run_call()'.
 
         @param method: remote devserver method to call.
         """
@@ -394,6 +403,7 @@ class DevServer(object):
 
         @param method: the dev server method to call.
         @param kwargs: a dict mapping arg names to arg values
+
         @return the URL string
         """
         calls = []
@@ -403,6 +413,29 @@ class DevServer(object):
                 calls.append(cls._build_call(server, method, **kwargs))
 
         return calls
+
+
+    @classmethod
+    def run_call(cls, call, readline=False, timeout=None):
+        """Invoke a given devserver call using urllib.open.
+
+        Open the URL with HTTP, and return the text of the response. Exceptions
+        may be raised as for urllib2.urlopen().
+
+        @param call: a url string that calls a method to a devserver.
+        @param readline: whether read http response line by line.
+        @param timeout: The timeout seconds for this urlopen call.
+
+        @return the results of this call.
+        """
+        if timeout is not None:
+            return utils.urlopen_socket_timeout(
+                    call, timeout=timeout).read()
+        elif readline:
+            response = urllib2.urlopen(call)
+            return [line.rstrip() for line in response]
+        else:
+            return urllib2.urlopen(call).read()
 
 
     @staticmethod
@@ -674,6 +707,56 @@ class ImageServerBase(DevServer):
         return metadata
 
 
+    @classmethod
+    def run_ssh_call(cls, call, readline=False, timeout=None):
+        """Construct an ssh-based rpc call, and execute it.
+
+        @param call: a url string that calls a method to a devserver.
+        @param readline: whether read http response line by line.
+        @param timeout: The timeout seconds for ssh call.
+
+        @return the results of this call.
+        """
+        hostname = urlparse.urlparse(call).hostname
+        ssh_call = 'ssh %s \'curl "%s"\'' % (hostname, utils.sh_escape(call))
+        timeout_seconds = timeout if timeout else DEVSERVER_SSH_TIMEOUT_MINS*60
+        try:
+            result = utils.run(ssh_call, timeout=timeout_seconds)
+        except error.CmdError as e:
+            logging.debug('Error occurred with exit_code %d when executing the'
+                          'ssh call:\n%s.', e.result_obj.exit_status,
+                          e.result_obj.stderr)
+            raise
+        response = result.stdout
+        if readline:
+            # Remove line terminators and trailing whitespace
+            response = response.splitlines()
+            return [line.rstrip() for line in response]
+        return response
+
+
+    @classmethod
+    def run_call(cls, call, readline=False, timeout=None):
+        """Invoke a given devserver call using urllib.open or ssh.
+
+        Open the URL with HTTP or SSH-based HTTP, and return the text of the
+        response. Exceptions may be raised as for urllib2.urlopen() or
+        utils.run().
+
+        @param call: a url string that calls a method to a devserver.
+        @param readline: whether read http response line by line.
+        @param timeout: The timeout seconds for urlopen call or ssh call.
+
+        @return the results of this call.
+        """
+        if not ENABLE_SSH_CONNECTION_FOR_DEVSERVER:
+            return super(ImageServerBase, cls).run_call(
+                    call, readline=readline, timeout=timeout)
+        else:
+            return cls.run_ssh_call(
+                    call, readline=readline, timeout=timeout)
+
+
     def _poll_is_staged(self, **kwargs):
         """Polling devserver.is_staged until all artifacts are staged.
 
@@ -690,16 +773,16 @@ class ImageServerBase(DevServer):
                      otherwise.
             @rasies DevServerException, the exception is a wrapper of all
                     exceptions that were raised when devserver tried to download
-                    the artifacts. devserver raises an HTTPError when an
-                    exception was raised in the code. Such exception should be
-                    re-raised here to stop the caller from waiting. If the call
-                    to devserver failed for connection issue, a URLError
-                    exception is raised, and caller should retry the call to
-                    avoid such network flakiness.
+                    the artifacts. devserver raises an HTTPError or a CmdError
+                    when an exception was raised in the code. Such exception
+                    should be re-raised here to stop the caller from waiting.
+                    If the call to devserver failed for connection issue, a
+                    URLError exception is raised, and caller should retry the
+                    call to avoid such network flakiness.
 
             """
             try:
-                return urllib2.urlopen(call).read() == 'True'
+                return self.run_call(call) == 'True'
             except urllib2.HTTPError as e:
                 error_markup = e.read()
                 strip = MarkupStripper()
@@ -708,10 +791,15 @@ class ImageServerBase(DevServer):
                 except UnicodeDecodeError:
                     strip.feed(error_markup)
                 raise DevServerException(strip.get_data())
-            except urllib2.URLError as e:
+            except urllib2.URLError:
                 # Could be connection issue, retry it.
                 # For example: <urlopen error [Errno 111] Connection refused>
                 return False
+            except error.CmdError:
+                # Do not retry if obtaining CmdError when using ssh
+                error_msg = ('Error occurred with exit_code %d when executing '
+                             'ssh call.' % e.result_obj.exit_status)
+                raise DevServerException(error_msg)
 
         site_utils.poll_for_condition(
                 all_staged,
@@ -741,12 +829,15 @@ class ImageServerBase(DevServer):
         """
         call = self.build_call(call_name, async=True, **kwargs)
         try:
-            response = urllib2.urlopen(call).read()
+            response = self.run_call(call)
         except httplib.BadStatusLine as e:
             logging.error(e)
             raise DevServerException('Received Bad Status line, Devserver %s '
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
+        except error.CmdError as e:
+            raise DevServerException('Received error in executing call by ssh: '
+                                     '%s' % (call))
 
         if expected_response and not response == expected_response:
                 raise DevServerException(error_message)
@@ -975,13 +1066,17 @@ class ImageServerBase(DevServer):
             kwargs['build'] = build
         call = self.build_call('locate_file', async=False, **kwargs)
         try:
-            file_path = urllib2.urlopen(call).read()
+            file_path = self.run_call(call)
             return os.path.join(self.url(), 'static', build_path, file_path)
         except httplib.BadStatusLine as e:
             logging.error(e)
             raise DevServerException('Received Bad Status line, Devserver %s '
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
+        except error.CmdError as e:
+            error_msg = ('Error occurred with exit_code %d when executing '
+                         'ssh call' % e.result_obj.exit_status)
+            raise DevServerException(error_msg)
         except error.TimeoutException:
             error_message = ('Call `locate_file` timed out when looking for %s '
                              'in artifacts %s in build %s' %
@@ -1101,8 +1196,8 @@ class ImageServer(ImageServerBase):
                      self.url(), image)
         archive_url = _get_storage_server_for_artifacts() + image
         call = self.build_call('list_image_dir', archive_url=archive_url)
-        response = urllib2.urlopen(call)
-        for line in [line.rstrip() for line in response]:
+        response = self.run_call(call, readline=True)
+        for line in response:
             logging.info(line)
 
 
@@ -1146,7 +1241,7 @@ class ImageServer(ImageServerBase):
         archive_url = _get_image_storage_server() + build
         call = self.build_call('setup_telemetry', archive_url=archive_url)
         try:
-            response = urllib2.urlopen(call).read()
+            response = self.run_call(call)
         except httplib.BadStatusLine as e:
             logging.error(e)
             raise DevServerException('Received Bad Status line, Devserver %s '
@@ -1226,8 +1321,7 @@ class ImageServer(ImageServerBase):
         build = self.translate(build)
         call = self.build_call('controlfiles', build=build,
                                suite_name=suite_name)
-        response = urllib2.urlopen(call)
-        return [line.rstrip() for line in response]
+        return self.run_call(call, readline=True)
 
 
     @remote_devserver_call()
@@ -1244,7 +1338,7 @@ class ImageServer(ImageServerBase):
         build = self.translate(build)
         call = self.build_call('controlfiles', build=build,
                                control_path=control_path)
-        return urllib2.urlopen(call).read()
+        return self.run_call(call)
 
 
     @remote_devserver_call()
@@ -1264,7 +1358,7 @@ class ImageServer(ImageServerBase):
         build = self.translate(build)
         call = self.build_call('controlfiles',
                                build=build, control_path=DEPENDENCIES_FILE)
-        return urllib2.urlopen(call).read()
+        return self.run_call(call)
 
 
     @remote_devserver_call()
@@ -1278,7 +1372,7 @@ class ImageServer(ImageServerBase):
         call = self.build_call(
                 'xbuddy_translate/remote/%s/latest-official' % board,
                 image_dir=_get_image_storage_server())
-        image_name = urllib2.urlopen(call).read()
+        image_name = self.run_call(call)
         return os.path.dirname(image_name)
 
 
@@ -1321,7 +1415,7 @@ class ImageServer(ImageServerBase):
                                     milestone=milestone)
         latest_builds = []
         for call in calls:
-            latest_builds.append(urllib2.urlopen(call).read())
+            latest_builds.append(cls.run_call(call))
 
         return max(latest_builds, key=version.LooseVersion)
 
@@ -1536,7 +1630,7 @@ class AndroidBuildServer(ImageServerBase):
             return build_name
         call = self.build_call('latestbuild', branch=branch, target=target,
                                os_type='android')
-        translated_build_id = urllib2.urlopen(call).read()
+        translated_build_id = self.run_call(call)
         translated_build = (ANDROID_BUILD_NAME_PATTERN %
                             {'branch': branch,
                              'target': target,
@@ -1606,7 +1700,7 @@ def get_least_loaded_devserver(devserver_type=ImageServer):
     processes = []
     for devserver in devserver_type.servers():
         processes.append(multiprocessing.Process(
-                target=DevServer.get_devserver_load_wrapper,
+                target=devserver_type.get_devserver_load_wrapper,
                 args=(devserver, TIMEOUT_GET_DEVSERVER_LOAD, output)))
 
     for p in processes:
