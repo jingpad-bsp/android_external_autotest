@@ -340,7 +340,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         """
         mandatory_policies = {}
         recommended_policies = {}
-        collated_json = {}
+        collated_dict = {}
 
         # Extract mandatory and recommended mode dicts.
         if 'mandatory' in policies_dict:
@@ -356,11 +356,11 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         # Collate all policies into mandatory & recommended dicts.
         if recommended_policies:
-            collated_json.update({'recommended': recommended_policies})
+            collated_dict.update({'recommended': recommended_policies})
         if mandatory_policies:
-            collated_json.update({'mandatory': mandatory_policies})
+            collated_dict.update({'mandatory': mandatory_policies})
 
-        return collated_json
+        return collated_dict
 
     def _remove_null_policies(self, policies_dict):
         """Remove policy dict data that is set to None or ''.
@@ -465,10 +465,11 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         @raises: TestError if there is no test case for given policy value.
 
         """
+        trimmed_value = ''.join(policy_value.split())
         for test_case, value in self.TEST_CASES.items():
-            if self.packed_json_string(value) == policy_value:
+            if self.packed_json_string(value) == trimmed_value:
                 return test_case
-        raise error.TestError('Test case not found for: %r' % policy_value)
+        raise error.TestError('Test case not found for: %r' % trimmed_value)
 
     def run_once_impl(self, run_test):
         """Dispatch the common run modes for all child test classes.
