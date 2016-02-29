@@ -152,39 +152,66 @@ class BaseUpdater(object):
         return update_status.stdout.strip().split('=')[-1]
 
 
+    def get_last_update_error(self):
+        """Get the last autoupdate error code."""
+        error_msg = self.host.run(
+                 '%s --last_attempt_error' % self.updater_ctrl_bin)
+        error_msg = (error_msg.stdout.strip()).replace('\n', ', ')
+        return error_msg
+
+
+    def _base_update_handler(self, run_args, err_msg_prefix=None):
+        """Base function to handle a remote update ssh call.
+
+        @param run_args: Dictionary of args passed to ssh_host.run function.
+        @param err_msg_prefix: Prefix of the exception error message.
+
+        @returns: The exception thrown, None if no exception.
+        """
+        to_raise = None
+        err_msg = err_msg_prefix
+        try:
+            self.host.run(**run_args)
+        except (error.AutoservSshPermissionDeniedError,
+                error.AutoservSSHTimeout) as e:
+            err_msg += 'SSH reports an error: %s' % type(e).__name__
+            to_raise = RootFSUpdateError(err_msg)
+        except error.AutoservRunError as e:
+            # Check if exit code is 255, if so it's probably a generic SSH error
+            result = e.args[1]
+            if result.exit_status == 255:
+                err_msg += ('SSH reports a generic error (255) which is '
+                            'probably a lab network failure')
+                to_raise = RootFSUpdateError(err_msg)
+
+            # We have ruled out all SSH cases, the error code is from
+            # update_engine_client.
+            else:
+                list_image_dir_contents(self.update_url)
+                err_msg += ('Update failed. Returned update_engine error code: '
+                            '%s. Reported error: %s' %
+                            (self.get_last_update_error(), type(e).__name__))
+                logging.error(e)
+                to_raise = RootFSUpdateError(err_msg)
+        except Exception as e:
+            to_raise = e
+
+        return to_raise
+
+
     def trigger_update(self):
         """Triggers a background update.
 
-        @raise RootFSUpdateError if anything went wrong.
+        @raise RootFSUpdateError or unknown Exception if anything went wrong.
         """
         autoupdate_cmd = ('%s --check_for_update --omaha_url=%s' %
                           (self.updater_ctrl_bin, self.update_url))
-        err_msg = 'Failed to trigger an update on %s.' % self.host.hostname
+        run_args = {'command': autoupdate_cmd}
+        err_prefix = 'Failed to trigger an update on %s. ' % self.host.hostname
         logging.info('Triggering update via: %s', autoupdate_cmd)
-        try:
-            self.host.run(autoupdate_cmd)
-        except (error.AutoservSshPermissionDeniedError,
-                error.AutoservSSHTimeout) as e:
-            err_msg += ' SSH reports an error: %s' % type(e).__name__
-            raise RootFSUpdateError(err_msg)
-        except error.AutoservRunError as e:
-            # Check if the exit code is 255, if so it's probably a generic
-            # SSH error.
-            result = e.args[1]
-            if result.exit_status == 255:
-                err_msg += (' SSH reports a generic error (255), which could '
-                            'indicate a problem with underlying connectivity '
-                            'layers.')
-                raise RootFSUpdateError(err_msg)
-
-            # We have ruled out all SSH cases, the error code is from
-            # update_engine_client, though we still don't know why.
-            list_image_dir_contents(self.update_url)
-            err_msg += (' It could be that the devserver is unreachable, the '
-                        'payload unavailable, or there is a bug in the update '
-                        'engine (unlikely). Reported error: %s' %
-                        type(e).__name__)
-            raise RootFSUpdateError(err_msg)
+        to_raise = self._base_update_handler(run_args, err_prefix)
+        if to_raise:
+          raise to_raise
 
 
     def _verify_update_completed(self):
@@ -194,29 +221,26 @@ class BaseUpdater(object):
         """
         status = self.check_update_status()
         if status != UPDATER_NEED_REBOOT:
+            error_msg = ''
+            if status == UPDATER_IDLE:
+                error_msg = 'Update error: %s' % self.get_last_update_error()
             raise RootFSUpdateError('Update did not complete with correct '
-                                    'status. Expecting %s, actual %s' %
-                                    (UPDATER_NEED_REBOOT, status))
+                                    'status. Expecting %s, actual %s. %s' %
+                                    (UPDATER_NEED_REBOOT, status, error_msg))
 
 
     def update_image(self):
         """Updates the device image and verifies success."""
-        try:
-            autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
-                              (self.updater_ctrl_bin, self.update_url))
-            self.host.run(autoupdate_cmd, timeout=3600)
-        except error.AutoservRunError as e:
-            list_image_dir_contents(self.update_url)
-            update_error = RootFSUpdateError(
-                    'Failed to install device image using payload at %s '
-                    'on %s: %s' %
-                    (self.update_url, self.host.hostname, e))
-            self._update_error_queue.put(update_error)
-            raise update_error
-        except Exception as e:
-            # Don't allow other exceptions to not be caught.
-            self._update_error_queue.put(e)
-            raise e
+        autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
+                          (self.updater_ctrl_bin, self.update_url))
+        run_args = {'command': autoupdate_cmd, 'timeout': 3600}
+        err_prefix = ('Failed to install device image using payload at %s '
+                      'on %s. ' % (self.update_url, self.host.hostname))
+        logging.info('Updating image via: %s', autoupdate_cmd)
+        to_raise = self._base_update_handler(run_args, err_prefix)
+        if to_raise:
+            self._update_error_queue.put(to_raise)
+            raise to_raise
 
         try:
             self._verify_update_completed()
@@ -504,7 +528,8 @@ class ChromiumOSUpdater(BaseUpdater):
             list_image_dir_contents(self.update_url)
             raise
         finally:
-            self.host.show_update_engine_log()
+            logging.info('Update engine log has downloaded in '
+                         'sysinfo/update_engine dir. Check the lastest.')
 
 
     def check_version(self):
