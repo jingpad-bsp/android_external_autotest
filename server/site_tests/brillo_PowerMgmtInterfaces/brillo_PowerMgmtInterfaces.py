@@ -28,6 +28,11 @@ class brillo_PowerMgmtInterfaces(test.test):
     def check_wakelocks(self, host):
         wakelock_ls = host.run_output('ls /sys/power/wake_lock')
 
+    def check_suspend(self, host):
+        pm_states = host.run_output('cat /sys/power/state')
+        if pm_states.find("mem") == -1:
+            raise error.testFail('suspend-to-mem not supported')
+
     def run_once(self, host):
         """Run the Brillo power management kernel interfaces presence test.
 
@@ -37,3 +42,4 @@ class brillo_PowerMgmtInterfaces(test.test):
         self.check_cpuidle(host)
         self.check_cpufreq(host)
         self.check_wakelocks(host)
+        self.check_suspend(host)
