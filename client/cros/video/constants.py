@@ -31,3 +31,6 @@ RTC_VIDEO_INIT_BUCKET = 1
 #Path for video HTML file which helps for video operations
 CROS_VIDEO_DIR = '/usr/local/autotest/cros/video'
 VIDEO_HTML_FILEPATH = CROS_VIDEO_DIR + '/video.html'
+
+#Playback duration to check video can play
+PLAYBACK_TEST_TIME_S = 10
