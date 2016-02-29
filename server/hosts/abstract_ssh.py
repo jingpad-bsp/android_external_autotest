@@ -447,7 +447,8 @@ class AbstractSSHHost(remote.RemoteHost):
             remote_dest = self._encode_remote_paths([dest], use_scp=True)
             local_sources = self._make_rsync_compatible_source(source, True)
             if local_sources:
-                scp = self._make_scp_cmd(local_sources, remote_dest)
+                sources = self._encode_local_paths(local_sources, escape=False)
+                scp = self._make_scp_cmd(sources, remote_dest)
                 try:
                     utils.run(scp)
                 except error.CmdError, e:
