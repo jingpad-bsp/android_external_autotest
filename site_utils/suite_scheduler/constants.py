@@ -23,4 +23,5 @@ class Builds:
     @var CROS: The string indicating the given build is used to update ChromeOS.
     """
     FIRMWARE_RW = 'firmware_rw'
+    FIRMWARE_RO = 'firmware_ro'
     CROS = 'cros'

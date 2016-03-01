@@ -100,8 +100,9 @@ class DedupingScheduler(object):
 
     def _Schedule(self, suite, board, build, pool, num, priority, timeout,
                   file_bugs=False, firmware_rw_build=None,
-                  test_source_build=None, job_retry=False,
-                  launch_control_build=None, run_prod_code=False):
+                  firmware_ro_build=None, test_source_build=None,
+                  job_retry=False, launch_control_build=None,
+                  run_prod_code=False):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -118,6 +119,8 @@ class DedupingScheduler(object):
         @param timeout: The max lifetime of the suite in hours.
         @param file_bugs: True if bug filing is desired for this suite.
         @param firmware_rw_build: Firmware build to update RW firmware. Default
+                                  to None.
+        @param firmware_ro_build: Firmware build to update RO firmware. Default
                                   to None.
         @param test_source_build: Build that contains the server-side test code.
                                   Default to None to use the ChromeOS build
@@ -141,6 +144,8 @@ class DedupingScheduler(object):
                 builds = {provision.CROS_VERSION_PREFIX: build}
             if firmware_rw_build:
                 builds[provision.FW_RW_VERSION_PREFIX] = firmware_rw_build
+            if firmware_ro_build:
+                builds[provision.FW_RO_VERSION_PREFIX] = firmware_ro_build
             if launch_control_build:
                 builds = {provision.ANDROID_BUILD_VERSION_PREFIX:
                           launch_control_build}
@@ -182,8 +187,8 @@ class DedupingScheduler(object):
 
     def ScheduleSuite(self, suite, board, build, pool, num, priority, timeout,
                       force=False, file_bugs=False, firmware_rw_build=None,
-                      test_source_build=None, job_retry=False,
-                      launch_control_build=None,
+                      firmware_ro_build=None, test_source_build=None,
+                      job_retry=False, launch_control_build=None,
                       run_prod_code=False):
         """Schedule |suite|, if it hasn't already been run.
 
@@ -203,6 +208,8 @@ class DedupingScheduler(object):
         @param force: Always schedule the suite.
         @param file_bugs: True if bug filing is desired for this suite.
         @param firmware_rw_build: Firmware build to update RW firmware. Default
+                                  to None.
+        @param firmware_ro_build: Firmware build to update RO firmware. Default
                                   to None.
         @param test_source_build: Build with the source of tests. Default to
                                   None to use the ChromeOS build.
@@ -227,6 +234,7 @@ class DedupingScheduler(object):
             return self._Schedule(suite, board, build, pool, num, priority,
                                   timeout, file_bugs=file_bugs,
                                   firmware_rw_build=firmware_rw_build,
+                                  firmware_ro_build=firmware_ro_build,
                                   test_source_build=test_source_build,
                                   job_retry=job_retry,
                                   launch_control_build=launch_control_build,

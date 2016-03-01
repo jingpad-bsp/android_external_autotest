@@ -170,8 +170,9 @@ class Task(object):
 
         allowed = set(['suite', 'run_on', 'branch_specs', 'pool', 'num',
                        'boards', 'file_bugs', 'cros_build_spec',
-                       'firmware_rw_build_spec', 'test_source', 'job_retry',
-                       'hour', 'day', 'branches', 'targets', 'os_type'])
+                       'firmware_rw_build_spec', 'firmware_ro_build_spec',
+                       'test_source', 'job_retry', 'hour', 'day', 'branches',
+                       'targets', 'os_type'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -192,6 +193,8 @@ class Task(object):
         cros_build_spec = config.getstring(section, 'cros_build_spec')
         firmware_rw_build_spec = config.getstring(
                 section, 'firmware_rw_build_spec')
+        firmware_ro_build_spec = config.getstring(
+                section, 'firmware_ro_build_spec')
         test_source = config.getstring(section, 'test_source')
         job_retry = config.getboolean(section, 'job_retry')
         for klass in driver.Driver.EVENT_CLASSES:
@@ -275,6 +278,7 @@ class Task(object):
                              file_bugs=file_bugs if file_bugs else False,
                              cros_build_spec=cros_build_spec,
                              firmware_rw_build_spec=firmware_rw_build_spec,
+                             firmware_ro_build_spec=firmware_ro_build_spec,
                              test_source=test_source, job_retry=job_retry,
                              hour=hour, day=day, os_type=os_type,
                              launch_control_branches=lc_branches,
@@ -311,9 +315,9 @@ class Task(object):
     def __init__(self, name, suite, branch_specs, pool=None, num=None,
                  boards=None, priority=None, timeout=None, file_bugs=False,
                  cros_build_spec=None, firmware_rw_build_spec=None,
-                 test_source=None, job_retry=False, hour=None, day=None,
-                 os_type=OS_TYPE_CROS, launch_control_branches=None,
-                 launch_control_targets=None):
+                 firmware_ro_build_spec=None, test_source=None, job_retry=False,
+                 hour=None, day=None, os_type=OS_TYPE_CROS,
+                 launch_control_branches=None, launch_control_targets=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -380,11 +384,13 @@ class Task(object):
                           for this task.
         @param cros_build_spec: Spec used to determine the ChromeOS build to
                                 test with a firmware build, e.g., tot, R41 etc.
-        @param firmware_rw_build_spec: Spec used to determine the firmware build
-                                       test with a ChromeOS build.
+        @param firmware_rw_build_spec: Spec used to determine the firmware RW
+                                       build test with a ChromeOS build.
+        @param firmware_ro_build_spec: Spec used to determine the firmware RO
+                                       build test with a ChromeOS build.
         @param test_source: The source of test code when firmware will be
-                            updated in the test. The value can be `firmware_rw`
-                            or `cros`.
+                            updated in the test. The value can be `firmware_rw`,
+                            `firmware_ro` or `cros`.
         @param job_retry: Set to True to enable job-level retry. Default is
                           False.
         @param hour: An integer specifying the hour that a nightly run should
@@ -410,6 +416,7 @@ class Task(object):
         self._file_bugs = file_bugs
         self._cros_build_spec = cros_build_spec
         self._firmware_rw_build_spec = firmware_rw_build_spec
+        self._firmware_ro_build_spec = firmware_ro_build_spec
         self._test_source = test_source
         self._job_retry = job_retry
         self._hour = hour
@@ -422,11 +429,13 @@ class Task(object):
                 [t.strip() for t in launch_control_targets.split(',')]
                 if launch_control_targets else [])
 
-        if ((self._firmware_rw_build_spec or cros_build_spec) and
-            not self.test_source in [Builds.FIRMWARE_RW, Builds.CROS]):
+        if ((self._firmware_rw_build_spec or self._firmware_ro_build_spec or
+             cros_build_spec) and
+            not self.test_source in [Builds.FIRMWARE_RW, Builds.FIRMWARE_RO,
+                                     Builds.CROS]):
             raise MalformedConfigEntry(
                     'You must specify the build for test source. It can only '
-                    'be `firmware_rw` or `cros`.')
+                    'be `firmware_rw`, `firmware_ro` or `cros`.')
         if self._firmware_rw_build_spec and cros_build_spec:
             raise MalformedConfigEntry(
                     'You cannot specify both firmware_rw_build_spec and '
@@ -585,13 +594,27 @@ class Task(object):
 
     @property
     def firmware_rw_build_spec(self):
-        """The build spec of firmware to test with a ChromeOS build."""
+        """The build spec of RW firmware to test with a ChromeOS build.
+
+        The value can be firmware or cros.
+        """
         return self._firmware_rw_build_spec
 
 
     @property
+    def firmware_ro_build_spec(self):
+        """The build spec of RO firmware to test with a ChromeOS build.
+
+        The value can be stable, firmware or cros, where stable is the stable
+        firmware build retrieved from stable_version table.
+        """
+        return self._firmware_ro_build_spec
+
+
+    @property
     def test_source(self):
-        """Source of the test code, value can be `firmware_rw` or `cros`."""
+        """Source of the test code, value can be `firmware_rw`, `firmware_ro` or
+        `cros`."""
         return self._test_source
 
 
@@ -695,31 +718,31 @@ class Task(object):
         return latest_build
 
 
-    def _GetFirmwareRWBuild(self, mv, board, build_type):
-        """Get the firmware rw build name to test with ChromeOS build.
+    def _GetFirmwareBuild(self, spec, mv, board):
+        """Get the firmware build name to test with ChromeOS build.
 
-        The firmware rw build to be used is determined by
-        `self.firmware_rw_build_spec`. Its value can be `firmware`, `cros` or
-        empty:
-        firmware: use the ToT build in firmware branch.
-        cros: use the ToT build in release (ChromeOS) branch.
-
+        @param spec: build spec for RO or RW firmware, e.g., firmware, cros
         @param mv: an instance of manifest_versions.ManifestVersions.
         @param board: the board against which to run self._suite.
-        @param build_type: Build type of the firmware build, e.g., factory,
-                           firmware or release.
 
-        @return: The firmware rw build name to test with ChromeOS build.
-
+        @return: The firmware build name to test with ChromeOS build.
         """
-        if not self.firmware_rw_build_spec:
+        if spec == 'stable':
+            # TODO(crbug.com/577316): Query stable RO firmware.
+            raise NotImplementedError('`stable` RO firmware build is not '
+                                      'supported yet.')
+        if not spec:
             return None
+        # build_type is the build type of the firmware build, e.g., factory,
+        # firmware or release. If spec is set to cros, build type should be
+        # mapped to release.
+        build_type = 'release' if spec == 'cros' else spec
         latest_milestone, latest_manifest = mv.GetLatestManifest(
                 board, build_type)
         latest_build = base_event.BuildName(board, build_type, latest_milestone,
                                             latest_manifest)
         logging.debug('Found latest firmware build of %s for spec %s: %s',
-                      board, self.firmware_rw_build_spec, latest_build)
+                      board, spec, latest_build)
         return latest_build
 
 
@@ -754,8 +777,8 @@ class Task(object):
 
 
     def _ScheduleSuite(self, scheduler, cros_build, firmware_rw_build,
-                       test_source_build, launch_control_build, board, force,
-                       run_prod_code=False):
+                       firmware_ro_build, test_source_build,
+                       launch_control_build, board, force, run_prod_code=False):
         """Try to schedule a suite with given build and board information.
 
         @param scheduler: an instance of DedupingScheduler, as defined in
@@ -763,6 +786,7 @@ class Task(object):
         @oaran build: Build to run suite for, e.g., 'daisy-release/R18-1655.0.0'
                       and 'git_mnc_release/shamu-eng/123'.
         @param firmware_rw_build: Firmware RW build to run test with.
+        @param firmware_ro_build: Firmware RO build to run test with.
         @param test_source_build: Test source build, used for server-side
                                   packaging.
         @param launch_control_build: Name of a Launch Control build, e.g.,
@@ -781,16 +805,20 @@ class Task(object):
         firmware_rw_build_msg = (
                 ' Firmware RW build is %s.' % firmware_rw_build
                 if firmware_rw_build else None)
+        firmware_ro_build_msg = (
+                ' Firmware RO build is %s.' % firmware_ro_build
+                if firmware_ro_build else None)
         build_string = cros_build or launch_control_build
-        logging.debug('Schedule %s for build %s.%s%s',
+        logging.debug('Schedule %s for build %s.%s%s%s',
                       self._suite, build_string, test_source_build_msg,
-                      firmware_rw_build_msg)
+                      firmware_rw_build_msg, firmware_ro_build_msg)
 
         if not scheduler.ScheduleSuite(
                 self._suite, board, cros_build, self._pool, self._num,
                 self._priority, self._timeout, force,
                 file_bugs=self._file_bugs,
                 firmware_rw_build=firmware_rw_build,
+                firmware_ro_build=firmware_ro_build,
                 test_source_build=test_source_build,
                 job_retry=self._job_retry,
                 launch_control_build=launch_control_build,
@@ -823,23 +851,23 @@ class Task(object):
         """
         logging.info('Running %s on %s', self._name, board)
         is_firmware_build = 'firmware' in self.branch_specs
-        # firmware_rw_build is only needed if firmware_rw_build_spec is given.
+
+        # firmware_xx_build is only needed if firmware_xx_build_spec is given.
         firmware_rw_build = None
+        firmware_ro_build = None
         try:
             if is_firmware_build:
                 # When build specified in branch_specs is a firmware build,
                 # we need a ChromeOS build to test with the firmware build.
                 cros_build = self._GetCrOSBuild(mv, board)
-            elif self.firmware_rw_build_spec:
-                # When firmware_rw_build_spec is specified, the test involves
-                # updating the firmware by firmware build specified in
-                # firmware_rw_build_spec.
-                if self.firmware_rw_build_spec == 'cros':
-                    build_type = 'release'
-                else:
-                    build_type = self.firmware_rw_build_spec
-                firmware_rw_build = self._GetFirmwareRWBuild(
-                        mv, board, build_type)
+            elif self.firmware_rw_build_spec or self.firmware_ro_build_spec:
+                # When firmware_xx_build_spec is specified, the test involves
+                # updating the RW firmware by firmware build specified in
+                # firmware_xx_build_spec.
+                firmware_rw_build = self._GetFirmwareBuild(
+                            self.firmware_rw_build_spec, mv, board)
+                firmware_ro_build = self._GetFirmwareBuild(
+                            self.firmware_ro_build_spec, mv, board)
         except manifest_versions.QueryException as e:
             logging.error(e)
             logging.error('Running %s on %s is failed. Failed to find build '
@@ -866,7 +894,8 @@ class Task(object):
                 else:
                     test_source_build = None
                 self._ScheduleSuite(scheduler, cros_build, firmware_rw_build,
-                                    test_source_build, None, board, force)
+                                    firmware_ro_build, test_source_build,
+                                    None, board, force)
             except deduping_scheduler.DedupingSchedulerException as e:
                 logging.error(e)
         return True
@@ -892,7 +921,7 @@ class Task(object):
         logging.info('Running %s on %s', self._name, board)
         for build in launch_control_builds:
             try:
-                self._ScheduleSuite(scheduler, None, None, None,
+                self._ScheduleSuite(scheduler, None, None, None, None,
                                     launch_control_build=build, board=board,
                                     force=force, run_prod_code=True)
             except deduping_scheduler.DedupingSchedulerException as e:

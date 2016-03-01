@@ -214,6 +214,7 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -231,6 +232,7 @@ class TaskTest(TaskTestBase):
                                  None, expected_sharding, None, None,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -245,6 +247,7 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -292,6 +295,7 @@ class TaskTest(TaskTestBase):
                                  None, None, None, None,
                                  False, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -306,9 +310,9 @@ class TaskTest(TaskTestBase):
         self.sched.ScheduleSuite(
                 self._SUITE, self._BOARD, self._BUILD, None, None,
                 self._PRIORITY, self._TIMEOUT, False, file_bugs=self._FILE_BUGS,
-                firmware_rw_build=None, test_source_build=None,
-                job_retry=False, launch_control_build=None,
-                run_prod_code=False).AndRaise(
+                firmware_rw_build=None, firmware_ro_build=None,
+                test_source_build=None, job_retry=False,
+                launch_control_build=None, run_prod_code=False).AndRaise(
                         deduping_scheduler.ScheduleException(
                                 'Simulated Failure'))
         self.mox.ReplayAll()
@@ -321,6 +325,7 @@ class TaskTest(TaskTestBase):
                                  None, None, self._PRIORITY, self._TIMEOUT,
                                  True, file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -355,6 +360,7 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, False,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -369,6 +375,7 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, False,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -383,9 +390,9 @@ class OneShotTaskTest(TaskTestBase):
         self.sched.ScheduleSuite(
                 self._SUITE, self._BOARD, self._BUILD, None, None,
                 None, None, False, file_bugs=self._FILE_BUGS,
-                firmware_rw_build=None, test_source_build=None,
-                job_retry=False, launch_control_build=None,
-                run_prod_code=False).AndRaise(
+                firmware_rw_build=None, firmware_ro_build=None,
+                test_source_build=None, job_retry=False,
+                launch_control_build=None, run_prod_code=False).AndRaise(
                         deduping_scheduler.ScheduleException(
                                 'Simulated Failure'))
         self.mox.ReplayAll()
@@ -398,6 +405,7 @@ class OneShotTaskTest(TaskTestBase):
                                  None, None, None, None, True,
                                  file_bugs=self._FILE_BUGS,
                                  firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,
@@ -412,6 +420,7 @@ class OneShotTaskTest(TaskTestBase):
         self.sched.ScheduleSuite(self._SUITE, self._BOARD, self._BUILD,
                                  None, None, None, None, True,
                                  file_bugs=True, firmware_rw_build=None,
+                                 firmware_ro_build=None,
                                  test_source_build=None,
                                  job_retry=False,
                                  launch_control_build=None,

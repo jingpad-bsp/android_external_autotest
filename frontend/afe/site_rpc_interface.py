@@ -200,11 +200,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     # R45 falls out of stable channel.
     if build and not builds:
         builds = {provision.CROS_VERSION_PREFIX: build}
-    # TODO(dshi): crbug.com/497236 Remove this check after firmware ro provision
-    # is supported in Autotest.
-    if provision.FW_RO_VERSION_PREFIX in builds:
-        raise error.SuiteArgumentException(
-                'Updating RO firmware is not supported yet.')
+
     # Default test source build to CrOS build if it's not specified and
     # run_prod_code is set to False.
     if not run_prod_code:
