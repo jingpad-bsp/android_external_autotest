@@ -18,7 +18,6 @@ class touch_playback_test_base(test.test):
     version = 1
 
     _INPUTCONTROL = '/opt/google/input/inputcontrol'
-    _DEFAULT_SCROLL = 5000
 
 
     @property
@@ -200,16 +199,6 @@ class touch_playback_test_base(test.test):
         self._set_touch_setting('tapdrag', 'TapDragging', value)
 
 
-    def _reload_page(self):
-        """Reloads test page.  Presuposes self._tab.
-
-        @raise: TestError if page is not reset.
-
-        """
-        self._tab.Navigate(self._tab.url)
-        self._wait_for_page_ready()
-
-
     def _set_autotest_ext(self, ext):
         """Set the autotest extension.
 
@@ -242,20 +231,6 @@ class touch_playback_test_base(test.test):
         self._tab = self._events._tab
 
 
-    def _wait_for_page_ready(self):
-        """Wait for a variable pageReady on the test page to be true.
-
-        Presuposes self._tab and a pageReady variable.
-
-        @raises error.TestError if page is not ready after timeout.
-
-        """
-        self._tab.WaitForDocumentReadyStateToBeComplete()
-        utils.poll_for_condition(
-                lambda: self._tab.EvaluateJavaScript('pageReady'),
-                exception=error.TestError('Test page is not ready!'))
-
-
     def _center_cursor(self):
         """Playback mouse movement to center cursor.
 
@@ -264,101 +239,6 @@ class touch_playback_test_base(test.test):
         """
         self.player.blocking_playback_of_default_file(
                 'mouse_center_cursor_gesture', input_type='mouse')
-
-
-    def _set_scroll(self, value, scroll_vertical=True):
-        """Set scroll position to given value.  Presuposes self._tab.
-
-        @param scroll_vertical: True for vertical scroll,
-                                False for horizontal Scroll.
-        @param value: True for enabled, False for disabled.
-
-         """
-        if scroll_vertical:
-            self._tab.ExecuteJavaScript(
-                'document.body.scrollTop=%s' % value)
-        else:
-            self._tab.ExecuteJavaScript(
-                'document.body.scrollLeft=%s' % value)
-
-
-    def _set_default_scroll_position(self, scroll_vertical=True):
-        """Set scroll position of page to default.  Presuposes self._tab.
-
-        @param scroll_vertical: True for vertical scroll,
-                                False for horizontal Scroll.
-        @raise: TestError if page is not set to default scroll position
-
-        """
-        total_tries = 2
-        for i in xrange(total_tries):
-            try:
-                self._set_scroll(self._DEFAULT_SCROLL, scroll_vertical)
-                self._wait_for_default_scroll_position(scroll_vertical)
-            except error.TestError as e:
-                if i == total_tries - 1:
-                   pos = self._get_scroll_position(scroll_vertical)
-                   logging.error('SCROLL POSITION: %s', pos)
-                   raise e
-            else:
-                 break
-
-
-    def _get_scroll_position(self, scroll_vertical=True):
-        """Return current scroll position of page.  Presuposes self._tab.
-
-        @param scroll_vertical: True for vertical scroll,
-                                False for horizontal Scroll.
-
-        """
-        if scroll_vertical:
-            return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
-        else:
-            return int(self._tab.EvaluateJavaScript('document.body.scrollLeft'))
-
-
-    def _wait_for_default_scroll_position(self, scroll_vertical=True):
-        """Wait for page to be at the default scroll position.
-
-        @param scroll_vertical: True for vertical scroll,
-                                False for horizontal scroll.
-
-        @raise: TestError if page either does not move or does not stop moving.
-
-        """
-        utils.poll_for_condition(
-                lambda: self._get_scroll_position(
-                        scroll_vertical) == self._DEFAULT_SCROLL,
-                exception=error.TestError('Page not set to default scroll!'))
-
-
-    def _wait_for_scroll_position_to_settle(self, scroll_vertical=True):
-        """Wait for page to move and then stop moving.
-
-        @param scroll_vertical: True for Vertical scroll and
-                                False for horizontal scroll.
-
-        @raise: TestError if page either does not move or does not stop moving.
-
-        """
-        # Wait until page starts moving.
-        utils.poll_for_condition(
-                lambda: self._get_scroll_position(
-                        scroll_vertical) != self._DEFAULT_SCROLL,
-                exception=error.TestError('No scrolling occurred!'), timeout=30)
-
-        # Wait until page has stopped moving.
-        self._previous = self._DEFAULT_SCROLL
-        def _movement_stopped():
-            current = self._get_scroll_position()
-            result = current == self._previous
-            self._previous = current
-            return result
-
-        utils.poll_for_condition(
-                lambda: _movement_stopped(), sleep_interval=1,
-                exception=error.TestError('Page did not stop moving!'),
-                timeout=30)
 
 
     def cleanup(self):
@@ -371,6 +251,8 @@ class TestPage(object):
     Provides functions such as reload and setting scroll height on page.
 
     """
+    _DEFAULT_SCROLL = 5000
+
     def __init__(self, cr, httpdir, filename):
         """Open a given test page in the given httpdir.
 
@@ -395,7 +277,7 @@ class TestPage(object):
     def wait_for_page_ready(self):
         """Wait for a variable pageReady on the test page to be true.
 
-        Presuposes that a pageReady variable exists.
+        Presuposes that a pageReady variable exists on this page.
 
         @raises error.TestError if page is not ready after timeout.
 
@@ -404,6 +286,109 @@ class TestPage(object):
         utils.poll_for_condition(
                 lambda: self._tab.EvaluateJavaScript('pageReady'),
                 exception=error.TestError('Test page is not ready!'))
+
+
+    def expand_page(self):
+        """Expand the page to be very large, to allow scrolling."""
+        cmd = 'document.body.style.%s = %d+"px"' % (
+                '%s', self._DEFAULT_SCROLL * 5)
+        self._tab.ExecuteJavaScript(cmd % 'width')
+        self._tab.ExecuteJavaScript(cmd % 'height')
+
+
+    def set_scroll_position(self, value, scroll_vertical=True):
+        """Set scroll position to given value.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+        @param value: True for enabled, False for disabled.
+
+         """
+        if scroll_vertical:
+            self._tab.ExecuteJavaScript(
+                'document.body.scrollTop=%s' % value)
+        else:
+            self._tab.ExecuteJavaScript(
+                'document.body.scrollLeft=%s' % value)
+
+
+    def set_default_scroll_position(self, scroll_vertical=True):
+        """Set scroll position of page to default.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+        @raise: TestError if page is not set to default scroll position
+
+        """
+        total_tries = 2
+        for i in xrange(total_tries):
+            try:
+                self.set_scroll_position(self._DEFAULT_SCROLL, scroll_vertical)
+                self.wait_for_default_scroll_position(scroll_vertical)
+            except error.TestError as e:
+                if i == total_tries - 1:
+                   pos = self.get_scroll_position(scroll_vertical)
+                   logging.error('SCROLL POSITION: %s', pos)
+                   raise e
+            else:
+                 break
+
+
+    def get_scroll_position(self, scroll_vertical=True):
+        """Return current scroll position of page.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal Scroll.
+
+        """
+        if scroll_vertical:
+            return int(self._tab.EvaluateJavaScript('document.body.scrollTop'))
+        else:
+            return int(self._tab.EvaluateJavaScript('document.body.scrollLeft'))
+
+
+    def wait_for_default_scroll_position(self, scroll_vertical=True):
+        """Wait for page to be at the default scroll position.
+
+        @param scroll_vertical: True for vertical scroll,
+                                False for horizontal scroll.
+
+        @raise: TestError if page either does not move or does not stop moving.
+
+        """
+        utils.poll_for_condition(
+                lambda: self.get_scroll_position(
+                        scroll_vertical) == self._DEFAULT_SCROLL,
+                exception=error.TestError('Page not set to default scroll!'))
+
+
+    def wait_for_scroll_position_to_settle(self, scroll_vertical=True):
+        """Wait for page to move and then stop moving.
+
+        @param scroll_vertical: True for Vertical scroll and
+                                False for horizontal scroll.
+
+        @raise: TestError if page either does not move or does not stop moving.
+
+        """
+        # Wait until page starts moving.
+        utils.poll_for_condition(
+                lambda: self.get_scroll_position(
+                        scroll_vertical) != self._DEFAULT_SCROLL,
+                exception=error.TestError('No scrolling occurred!'), timeout=30)
+
+        # Wait until page has stopped moving.
+        self._previous = self._DEFAULT_SCROLL
+        def _movement_stopped():
+            current = self.get_scroll_position()
+            result = current == self._previous
+            self._previous = current
+            return result
+
+        utils.poll_for_condition(
+                lambda: _movement_stopped(), sleep_interval=1,
+                exception=error.TestError('Page did not stop moving!'),
+                timeout=30)
 
 
 class EventsPage(TestPage):
@@ -492,7 +477,7 @@ class EventsPage(TestPage):
             if self._tmp_previous_event_count == 0:
                 raise error.TestError('No touch event was seen!')
             else:
-                self._log_events()
+                self.log_events()
                 raise error.TestError('Touch events did not stop!')
 
 
