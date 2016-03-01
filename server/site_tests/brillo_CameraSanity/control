@@ -6,8 +6,8 @@ AUTHOR = 'wiley'
 NAME = 'brillo_CameraSanity'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-smoke'
-SUITE = 'brillo-smoke'
+ATTRIBUTES = 'suite:brillo-bvt, suite:brillo-pts, suite:brillo-smoke'
+SUITE = 'brillo-bvt, brillo-pts, brillo-smoke'
 
 DOC = """
 Test the most basic camera functionality on a Brillo DUT.
