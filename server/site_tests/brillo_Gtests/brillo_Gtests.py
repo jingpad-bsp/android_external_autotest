@@ -116,8 +116,9 @@ class brillo_Gtests(test.test):
         if not gtestSuite.run_as_root:
           command = 'su shell %s' % command
 
+        # host.run() will print the stdout/stderr output in the debug logs
+        # properly interleaved.
         result = self.host.run(command, ignore_status=True)
-        logging.debug(result.stdout)
 
         parser = site_gtest_runner.gtest_parser()
         for line in result.stdout.splitlines():
