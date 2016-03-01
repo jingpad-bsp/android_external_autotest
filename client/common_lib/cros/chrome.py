@@ -17,6 +17,7 @@ class Chrome(object):
     """Wrapper for creating a telemetry browser instance with extensions."""
 
 
+    CHEETS = '-cheets'
     BROWSER_TYPE_LOGIN = 'system'
     BROWSER_TYPE_GUEST = 'system-guest'
 
@@ -61,6 +62,12 @@ class Chrome(object):
             extension_paths.append(self._autotest_ext_path)
 
         finder_options = browser_options.BrowserFinderOptions()
+        # Append cheets specific browser args
+        is_cheets_platform = utils.get_current_board().endswith(self.CHEETS)
+        if is_cheets_platform:
+            from autotest_lib.client.common_lib.cros import cheets
+            extra_browser_args = cheets.append_extra_args(extra_browser_args)
+            logged_in = True
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
         finder_options.browser_type = self.browser_type
@@ -112,6 +119,8 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
+                if is_cheets_platform:
+                    cheets.post_processing_after_browser()
                 break
             except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
