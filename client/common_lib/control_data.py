@@ -17,8 +17,38 @@ OBSOLETE_VARS = set(['experimental'])
 CONTROL_TYPE = enum.Enum('Server', 'Client', start_value=1)
 CONTROL_TYPE_NAMES =  enum.Enum(*CONTROL_TYPE.names, string_values=True)
 
+_SUITE_ATTRIBUTE_PREFIX = 'suite:'
+
 class ControlVariableException(Exception):
     pass
+
+def _validate_control_file_fields(control_file_path, control_file_vars,
+                                  raise_warnings):
+    """Validate the given set of variables from a control file.
+
+    @param control_file_path: string path of the control file these were
+            loaded from.
+    @param control_file_vars: dict of variables set in a control file.
+    @param raise_warnings: True iff we should raise on invalid variables.
+
+    """
+    diff = REQUIRED_VARS - set(control_file_vars)
+    if diff:
+        warning = ('WARNING: Not all required control '
+                   'variables were specified in %s.  Please define '
+                   '%s.') % (control_file_path, ', '.join(diff))
+        if raise_warnings:
+            raise ControlVariableException(warning)
+        print textwrap.wrap(warning, 80)
+
+    obsolete = OBSOLETE_VARS & set(control_file_vars)
+    if obsolete:
+        warning = ('WARNING: Obsolete variables were '
+                   'specified in %s.  Please remove '
+                   '%s.') % (control_file_path, ', '.join(obsolete))
+        if raise_warnings:
+            raise ControlVariableException(warning)
+        print textwrap.wrap(warning, 80)
 
 
 class ControlData(object):
@@ -63,23 +93,7 @@ class ControlData(object):
         self.require_ssp = None
         self.attributes = set()
 
-        diff = REQUIRED_VARS - set(vars)
-        if diff:
-            warning = ('WARNING: Not all required control '
-                       'variables were specified in %s.  Please define '
-                       '%s.') % (self.path, ', '.join(diff))
-            if raise_warnings:
-                raise ControlVariableException(warning)
-            print textwrap.wrap(warning, 80)
-
-        obsolete = OBSOLETE_VARS & set(vars)
-        if obsolete:
-            warning = ('WARNING: Obsolete variables were '
-                       'specified in %s.  Please remove '
-                       '%s.') % (self.path, ', '.join(obsolete))
-            if raise_warnings:
-                raise ControlVariableException(warning)
-            print textwrap.wrap(warning, 80)
+        _validate_control_file_fields(self.path, vars, raise_warnings)
 
         for key, val in vars.iteritems():
             try:
@@ -88,6 +102,8 @@ class ControlData(object):
                 if raise_warnings:
                     raise
                 print 'WARNING: %s; skipping' % e
+
+        self._patch_up_suites_from_attributes()
 
 
     def set_attr(self, attr, val, raise_warnings=False):
@@ -98,6 +114,30 @@ class ControlData(object):
         except AttributeError:
             # This must not be a variable we care about
             pass
+
+
+    def _patch_up_suites_from_attributes(self):
+        """Patch up the set of suites this test is part of.
+
+        This used to be its own variable, but now suites are taken only from
+        the attributes.
+
+        """
+        # Remove the suite field if it is set already.
+        if hasattr(self, 'suite'):
+            delattr(self, 'suite')
+
+        # Figure out if our attributes mention any suites.
+        suite_names = []
+        for attribute in self.attributes:
+            if not attribute.startswith(_SUITE_ATTRIBUTE_PREFIX):
+                continue
+            suite_name = attribute[len(_SUITE_ATTRIBUTE_PREFIX):]
+            suite_names.append(suite_name)
+
+        # Rebuild the suite field if necessary.
+        if suite_names:
+            self.set_suite(','.join(suite_names))
 
 
     def _set_string(self, attr, val):
