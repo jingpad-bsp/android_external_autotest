@@ -30,6 +30,7 @@ class security_StatefulPermissions(test.test):
                                  "/encrypted/var/cache/device_local_account_component_policy",
                                  "/encrypted/var/cache/device_local_account_extensions",
                                  "/encrypted/var/cache/device_local_account_external_policy_data",
+                                 "/encrypted/var/cache/display_profiles",
                                  "/encrypted/var/cache/echo",
                                  "/encrypted/var/cache/external_cache",
                                  "/encrypted/var/cache/shared_extensions",
