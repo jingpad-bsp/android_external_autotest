@@ -419,9 +419,6 @@ class graphics_dEQP(test.test):
         if self._gpu_type == 'pinetrail':
             raise error.TestNAError('dEQP not implemented on pinetrail. '
                                     'crbug.com/532691')
-        if self._gpu_type == 'mali':
-            raise error.TestNAError('dEQP not implemented on mali. '
-                                    'crbug.com/543372')
         if self._gpu_type == 'tegra':
             raise error.TestNAError('dEQP not implemented on tegra. '
                                     'crbug.com/543373')
