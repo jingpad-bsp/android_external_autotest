@@ -1286,7 +1286,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # This is just in case path_glob has no path separator.
         base_path = os.path.dirname(path_glob) or '.'
         result = self.run('find %s -path \'%s\' -print' %
-                          (base_path, path_glob))
+                          (base_path, path_glob), ignore_status=True)
         if result.exit_status != 0:
             return []
         return result.stdout.splitlines()
