@@ -91,6 +91,7 @@ static const uint32_t usage_list[] = {
 	GBM_BO_USE_CURSOR_64X64,
 	GBM_BO_USE_RENDERING,
 	GBM_BO_USE_WRITE,
+	GBM_BO_USE_LINEAR,
 };
 
 static int check_bo(struct gbm_bo *bo)
