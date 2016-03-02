@@ -53,6 +53,9 @@ class display_SwitchMode(test.test):
 
 
     def run_once(self, host, repeat, no_check=False):
+        if not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         self.display_facade = factory.create_display_facade()
         chameleon_board = host.chameleon

@@ -31,6 +31,9 @@ class display_SuspendStress(test.test):
     # TODO: Allow reading testcase_spec from command line.
     def run_once(self, host, test_mirrored=False, testcase_spec=None,
                  repeat_count=3, suspend_time_range=(5,7)):
+        if test_mirrored and not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
         if testcase_spec is None:
             testcase_spec = self.DEFAULT_TESTCASE_SPEC
 

@@ -41,6 +41,9 @@ class display_HotPlugNoisy(test.test):
 
 
     def run_once(self, host, test_mirrored=False):
+        if test_mirrored and not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         display_facade = factory.create_display_facade()
         chameleon_board = host.chameleon

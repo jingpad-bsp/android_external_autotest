@@ -49,6 +49,8 @@ class display_Resolution(test.test):
             raise error.TestError('Invalid servo object found on the host.')
         if test_lid_close_open and not host.get_board_type() == 'CHROMEBOOK':
             raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+        if test_mirrored and not host.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped')
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         display_facade = factory.create_display_facade()
