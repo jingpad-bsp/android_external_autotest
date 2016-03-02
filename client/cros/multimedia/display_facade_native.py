@@ -412,12 +412,12 @@ class DisplayFacadeNative(object):
         if self.is_mirrored_enabled() == is_mirrored:
             return True
 
-        retries = 2
+        retries = 4
         while retries > 0:
             self.toggle_mirrored()
             result = utils.wait_for_value(self.is_mirrored_enabled,
                                           expected_value=is_mirrored,
-                                          timeout_sec=1)
+                                          timeout_sec=3)
             if result == is_mirrored:
                 return True
             retries -= 1
