@@ -9,6 +9,9 @@ suite:audio
 suite:bluetooth
 suite:bluetooth_qualification
 suite:bluetooth_sanity
+suite:brillo-bvt
+suite:brillo-pts
+suite:brillo-smoke
 suite:bvt-cq
 suite:bvt-inline
 suite:bvt-perbuild
