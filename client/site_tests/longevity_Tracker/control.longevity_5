@@ -2,14 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "juanramon"
+AUTHOR = "scunningham"
 NAME = "longevity_Tracker"
 PURPOSE = "Monitors performance & stability over long periods of time."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "performance"
 TEST_TYPE = "client"
-DEPENDENCIES = "longevity_2"
+DEPENDENCIES = "longevity_5"
 
 DOC = """
 This test is used as a stability and longevity test for a Chrome OS device
