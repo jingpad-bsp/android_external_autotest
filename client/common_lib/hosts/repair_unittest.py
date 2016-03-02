@@ -4,66 +4,107 @@
 
 """Unit tests for the `repair` module."""
 
-import unittest
+import functools
 import logging
+import unittest
 
 import common
 from autotest_lib.client.common_lib import hosts
 
 
 class _StubHost(object):
-    """Stub class to fill in the relevant methods of `Host`.
+    """
+    Stub class to fill in the relevant methods of `Host`.
 
     This class provides mocking and stub behaviors for `Host` for use by
-    tests within this module.  The class implements only methods that
-    `Verifier` and `RepairAction` actually use.
+    tests within this module.  The class implements only those methods
+    that `Verifier` and `RepairAction` actually use.
     """
 
     def __init__(self):
-        self.log_records = {}
+        self._record_sequence = []
 
 
     def record(self, status_code, subdir, operation, status=''):
-        """Mock method to capture records written to `status.log`.
+        """
+        Mock method to capture records written to `status.log`.
 
         Each record is remembered in order to be checked for correctness
         by individual tests later.
 
-        @param status_code As for `Host.record()`.
-        @param subdir As for `Host.record()`.
-        @param operation As for `Host.record()`.
-        @param status As for `Host.record()`.
+        @param status_code  As for `Host.record()`.
+        @param subdir       As for `Host.record()`.
+        @param operation    As for `Host.record()`.
+        @param status       As for `Host.record()`.
         """
-        log_record = (status_code, subdir, status)
-        self.log_records.setdefault(operation, []).append(log_record)
+        full_record = (status_code, subdir, operation, status)
+        self._record_sequence.append(full_record)
+
+
+    def get_log_records(self):
+        """
+        Return the records logged for this fake host.
+
+        The returned list of records excludes records where the
+        `operation` parameter is not in `tagset`.
+
+        @param tagset   Only include log records with these tags.
+        """
+        return self._record_sequence
 
 
 class _StubVerifier(hosts.Verifier):
-    """Stub implementation of `Verifier` for testing purposes.
+    """
+    Stub implementation of `Verifier` for testing purposes.
 
-    A full implementation of a concrete `Verifier` subclass designed to
-    allow calling unit tests control over whether it passes or fails.
+    This is a full implementation of a concrete `Verifier` subclass
+    designed to allow calling unit tests control over whether it passes
+    or fails.
     """
 
-    def __init__(self, deps, repair_count, tag):
+    def __init__(self, deps, fail_count, tag):
         self.verify_count = 0
-        self._repair_count = repair_count
+        self._fail_count = fail_count
         self._tag = tag
         self._description = 'Testing verify() for "%s"' % tag
         self.message = 'Failing "%s" by request' % tag
         super(_StubVerifier, self).__init__(deps)
 
 
+    def __repr__(self):
+        return '_StubVerifier(%r, %d, %r)' % (
+                self._dependency_list, self._fail_count, self._tag)
+
+
     def verify(self, host):
         self.verify_count += 1
-        if self._repair_count:
+        if self._fail_count:
             raise hosts.AutotestHostVerifyError(self.message)
 
 
     def try_repair(self):
         """Bring ourselves one step closer to working."""
-        if self._repair_count:
-            self._repair_count -= 1
+        if self._fail_count:
+            self._fail_count -= 1
+
+
+    def get_log_record(self, success):
+        """
+        Return a host log record for this verifier.
+
+        Calculates the arguments expected to be passed to
+        `Host.record()` by `Verifier._verify_host()` when this verifier
+        runs.  If `success` is true, the returned record will be for
+        a successful verification.  Otherwise, the returned record will
+        be for a failure.
+
+        @param success  If true, return a success record.  Otherwise,
+                        return a failure record.
+        """
+        if success:
+            return ('GOOD', None, self._verify_tag, '')
+        else:
+            return ('FAIL', None, self._verify_tag, self.message)
 
 
     @property
@@ -77,91 +118,148 @@ class _StubVerifier(hosts.Verifier):
 
 
 class _VerifierTestCases(unittest.TestCase):
+    """
+    Abstract base class for all Repair and Verify test cases.
+
+    This class provides a `_make_verifier()` method to create
+    `_StubVerifier` instances for test cases.  Constructed verifiers
+    are remembered in `self.verifiers`, a dictionary indexed by the tag
+    used to construct the verifier.
+    """
+
     def setUp(self):
         logging.disable(logging.CRITICAL)
+        self._fake_host = _StubHost()
+        self.verifiers = {}
 
 
     def tearDown(self):
         logging.disable(logging.NOTSET)
 
 
-class VerifyTests(_VerifierTestCases):
-    """Unit tests for `Verifier`."""
+    def _make_verifier(self, tag, count, deps):
+        """
+        Make a `_StubVerifier`, and remember it.
 
-    def test_verify_success(self):
-        """Test proper handling of a successful verification.
+        Constructs a `_StubVerifier` from the given arguments,
+        and remember it in `self.verifiers`.
+
+        @param tag    As for the `_StubVerifer` constructor.
+        @param count  As for the `_StubVerifer` constructor.
+        @param deps   As for the `_StubVerifer` constructor.
+        """
+        verifier = _StubVerifier(deps, count, tag)
+        self.verifiers[tag] = verifier
+        return verifier
+
+
+    def _check_log_records(self, *record_data):
+        """
+        Assert that log records occurred as expected.
+
+        Elements of `record_data` should be tuples of the form
+        `(tag, success)`, describing one expected log record.
+        The verifier provides the expected log record based on the
+        success flag.
+
+        The actually logged records are extracted from
+        `self._fake_host`.  Only log records from verifiers in
+        `self.verifiers` are considered.  Other log records (i.e. the
+        special null verifiers in `RepairStrategy`) are ignored.
+
+        @param record_data  List describing the expected record events.
+        """
+        expected_records = []
+        for tag, success in record_data:
+            expected_records.append(
+                    self.verifiers[tag].get_log_record(success))
+        actual_records = self._fake_host.get_log_records()
+        self.assertEqual(expected_records, actual_records)
+
+
+class VerifyTests(_VerifierTestCases):
+    """
+    Unit tests for `Verifier`.
+
+    The tests in this class test the fundamental behaviors of
+    the `Verifier` class:
+      * Results from the `verify()` method are cached; the method is
+        only called the first time that `_verify_host()` is called.
+      * The `_verify_host()` method uses `Host.record()` to log the
+        outcome of every call to the `verify()` method.
+      * When a dependency fails, the dependent verifier isn't called.
+      * Verifier calls are made in the order required by the DAG.
+
+    The test cases don't use `RepairStrategy` to build DAG structures,
+    but instead rely on custom-built DAGs.
+    """
+
+    def test_success(self):
+        """
+        Test proper handling of a successful verification.
 
         Construct and call a simple, single-node verification that will
         pass.  Assert the following:
           * The `verify()` method is called once.
-          * The expected 'GOOD' record is logged via `host.record()`.
+          * The expected 'GOOD' record is logged via `Host.record()`.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        verifier = _StubVerifier([], 0, 'pass')
-        fake_host = _StubHost()
+        verifier = self._make_verifier('pass', 0, [])
         for i in range(0, 2):
-            verifier._verify_host(fake_host)
+            verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, 1)
-            key = verifier._verify_tag
-            self.assertEqual(fake_host.log_records.get(key),
-                             [('GOOD', None, '')])
+            self._check_log_records(('pass', True))
 
 
-    def test_verify_fail(self):
-        """Test proper handling of verification failure.
+    def test_fail(self):
+        """
+        Test proper handling of verification failure.
 
         Construct and call a simple, single-node verification that will
         fail.  Assert the following:
           * The failure is reported with the actual exception raised
             by the verifier.
           * The `verify()` method is called once.
-          * The expected 'FAIL' record is logged via `host.record()`.
+          * The expected 'FAIL' record is logged via `Host.record()`.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        verifier = _StubVerifier([], 1, 'fail')
-        message = verifier.message
-        fake_host = _StubHost()
+        verifier = self._make_verifier('fail', 1, [])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestHostVerifyError) as e:
-                verifier._verify_host(fake_host)
+                verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, 1)
             self.assertEqual(verifier.message, str(e.exception))
-            key = verifier._verify_tag
-            self.assertEqual(fake_host.log_records.get(key),
-                             [('FAIL', None, verifier.message)])
+            self._check_log_records(('fail', False))
 
 
-    def test_verify_dependency_success(self):
-        """Test proper handling of dependencies that succeed.
+    def test_dependency_success(self):
+        """
+        Test proper handling of dependencies that succeed.
 
         Construct and call a two-node verification with one node
         dependent on the other, where both nodes will pass.  Assert the
         following:
           * The `verify()` method for both nodes is called once.
-          * The expected 'GOOD' record is logged via `host.record()`
+          * The expected 'GOOD' record is logged via `Host.record()`
             for both nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        child_verifier = _StubVerifier([], 0, 'pass')
-        parent_verifier = _StubVerifier([child_verifier], 0, 'parent')
-        fake_host = _StubHost()
+        child = self._make_verifier('pass', 0, [])
+        parent = self._make_verifier('parent', 0, [child])
         for i in range(0, 2):
-            parent_verifier._verify_host(fake_host)
-            self.assertEqual(parent_verifier.verify_count, 1)
-            self.assertEqual(child_verifier.verify_count, 1)
-            key = child_verifier._verify_tag
-            self.assertEqual(fake_host.log_records.get(key),
-                             [('GOOD', None, '')])
-            key = parent_verifier._verify_tag
-            self.assertEqual(fake_host.log_records.get(key),
-                             [('GOOD', None, '')])
+            parent._verify_host(self._fake_host)
+            self.assertEqual(parent.verify_count, 1)
+            self.assertEqual(child.verify_count, 1)
+            self._check_log_records(('pass', True),
+                                    ('parent', True))
 
 
-    def test_verify_dependency_fail(self):
-        """Test proper handling of dependencies that fail.
+    def test_dependency_fail(self):
+        """
+        Test proper handling of dependencies that fail.
 
         Construct and call a two-node verification with one node
         dependent on the other, where the dependency will fail.  Assert
@@ -170,25 +268,352 @@ class VerifyTests(_VerifierTestCases):
             and the exception argument is the description of the failed
             node.
           * The `verify()` method for the failing node is called once,
-            and for the other not, not at all.
-          * The expected 'FAIL' record is logged via `host.record()`
+            and for the other node, not at all.
+          * The expected 'FAIL' record is logged via `Host.record()`
             for the single failed node.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        child_verifier = _StubVerifier([], 1, 'fail')
-        parent_verifier = _StubVerifier([child_verifier], 0, 'parent')
-        fake_host = _StubHost()
+        child = self._make_verifier('fail', 1, [])
+        parent = self._make_verifier('parent', 0, [child])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
-                parent_verifier._verify_host(fake_host)
-            self.assertEqual(list(e.exception.args),
-                             [child_verifier.description])
-            self.assertEqual(child_verifier.verify_count, 1)
-            self.assertEqual(parent_verifier.verify_count, 0)
-            key = child_verifier._verify_tag
-            self.assertEqual(fake_host.log_records.get(key),
-                             [('FAIL', None, child_verifier.message)])
+                parent._verify_host(self._fake_host)
+            self.assertEqual(e.exception.args, (child.description,))
+            self.assertEqual(child.verify_count, 1)
+            self.assertEqual(parent.verify_count, 0)
+            self._check_log_records(('fail', False))
+
+
+    def test_two_dependencies_pass(self):
+        """
+        Test proper handling with two passing dependencies.
+
+        Construct and call a three-node verification with one node
+        dependent on the other two, where all nodes will pass.  Assert
+        the following:
+          * The `verify()` method for all nodes is called once.
+          * The expected 'GOOD' records are logged via `Host.record()`
+            for all three nodes.
+          * If `_verify_host()` is called more than once, there are no
+            visible side-effects after the first call.
+        """
+        left = self._make_verifier('left', 0, [])
+        right = self._make_verifier('right', 0, [])
+        top = self._make_verifier('top', 0, [left, right])
+        for i in range(0, 2):
+            top._verify_host(self._fake_host)
+            self.assertEqual(top.verify_count, 1)
+            self.assertEqual(left.verify_count, 1)
+            self.assertEqual(right.verify_count, 1)
+            self._check_log_records(('left', True),
+                                    ('right', True),
+                                    ('top', True))
+
+
+    def test_two_dependencies_fail(self):
+        """
+        Test proper handling with two failing dependencies.
+
+        Construct and call a three-node verification with one node
+        dependent on the other two, where both dependencies will fail.
+        Assert the following:
+          * The verification exception is `AutotestVerifyDependencyError`,
+            and the exception argument has the descriptions of both the
+            failed nodes.
+          * The `verify()` method for each failing node is called once,
+            and for the parent node not at all.
+          * The expected 'FAIL' records are logged via `Host.record()`
+            for the failing nodes.
+          * If `_verify_host()` is called more than once, there are no
+            visible side-effects after the first call.
+        """
+        left = self._make_verifier('left', 1, [])
+        right = self._make_verifier('right', 1, [])
+        top = self._make_verifier('top', 0, [left, right])
+        for i in range(0, 2):
+            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+                top._verify_host(self._fake_host)
+            self.assertEqual(sorted(e.exception.args),
+                             sorted((left.description,
+                                     right.description)))
+            self.assertEqual(top.verify_count, 0)
+            self.assertEqual(left.verify_count, 1)
+            self.assertEqual(right.verify_count, 1)
+            self._check_log_records(('left', False),
+                                    ('right', False))
+
+
+    def test_two_dependencies_mixed(self):
+        """
+        Test proper handling with mixed dependencies.
+
+        Construct and call a three-node verification with one node
+        dependent on the other two, where one dependency will pass,
+        and one will fail.  Assert the following:
+          * The verification exception is `AutotestVerifyDependencyError`,
+            and the exception argument has the descriptions of the
+            single failed node.
+          * The `verify()` method for each dependency is called once,
+            and for the parent node not at all.
+          * The expected 'GOOD' and 'FAIL' records are logged via
+            `Host.record()` for the dependencies.
+          * If `_verify_host()` is called more than once, there are no
+            visible side-effects after the first call.
+        """
+        left = self._make_verifier('left', 1, [])
+        right = self._make_verifier('right', 0, [])
+        top = self._make_verifier('top', 0, [left, right])
+        for i in range(0, 2):
+            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+                top._verify_host(self._fake_host)
+            self.assertEqual(e.exception.args, (left.description,))
+            self.assertEqual(top.verify_count, 0)
+            self.assertEqual(left.verify_count, 1)
+            self.assertEqual(right.verify_count, 1)
+            self._check_log_records(('left', False),
+                                    ('right', True))
+
+
+    def test_diamond_pass(self):
+        """
+        Test a "diamond" structure DAG with all nodes passing.
+
+        Construct and call a "diamond" structure DAG:
+        ~~~~~~~~
+                TOP
+               /   \
+            LEFT   RIGHT
+               \   /
+               BOTTOM
+        ~~~~~~~~
+        All nodes will pass.  Assert the following:
+          * The `verify()` method for all nodes is called once.
+          * The expected 'GOOD' records are logged via `Host.record()`
+            for all nodes.
+          * If `_verify_host()` is called more than once, there are no
+            visible side-effects after the first call.
+        """
+        bottom = self._make_verifier('bottom', 0, [])
+        left = self._make_verifier('left', 0, [bottom])
+        right = self._make_verifier('right', 0, [bottom])
+        top = self._make_verifier('top', 0, [left, right])
+        for i in range(0, 2):
+            top._verify_host(self._fake_host)
+            self.assertEqual(top.verify_count, 1)
+            self.assertEqual(left.verify_count, 1)
+            self.assertEqual(right.verify_count, 1)
+            self.assertEqual(bottom.verify_count, 1)
+            self._check_log_records(('bottom', True),
+                                    ('left', True),
+                                    ('right', True),
+                                    ('top', True))
+
+
+    def test_diamond_fail(self):
+        """
+        Test a "diamond" structure DAG with the bottom node failing.
+
+        Construct and call a "diamond" structure DAG:
+        ~~~~~~~~
+                TOP
+               /   \
+            LEFT   RIGHT
+               \   /
+               BOTTOM
+        ~~~~~~~~
+        The "bottom" node will fail; the other two will pass.  Assert
+        the following:
+          * The verification exception is `AutotestVerifyDependencyError`,
+            and the exception argument has the description of the
+            "bottom" node.
+          * The `verify()` method for the "bottom" node is called once,
+            and for the other nodes not at all.
+          * The expected 'FAIL' records is logged via `Host.record()`
+            for the "bottom" node.
+          * If `_verify_host()` is called more than once, there are no
+            visible side-effects after the first call.
+        """
+        bottom = self._make_verifier('bottom', 1, [])
+        left = self._make_verifier('left', 0, [bottom])
+        right = self._make_verifier('right', 0, [bottom])
+        top = self._make_verifier('top', 0, [left, right])
+        for i in range(0, 2):
+            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+                top._verify_host(self._fake_host)
+            self.assertEqual(e.exception.args, (bottom.description,))
+            self.assertEqual(top.verify_count, 0)
+            self.assertEqual(left.verify_count, 0)
+            self.assertEqual(right.verify_count, 0)
+            self.assertEqual(bottom.verify_count, 1)
+            self._check_log_records(('bottom', False))
+
+
+class RepairStrategyTests(_VerifierTestCases):
+    """
+    Unit tests for `RepairStrategy`.
+
+    These unit tests focus on verifying that the `RepairStrategy`
+    constructor creates the expected DAG structure.  Functional testing
+    here is confined to asserting that `RepairStrategy.verify()`
+    properly distinguishes success from failure.  Testing the behavior
+    of specific DAG structures is left to tests in `VerifyTests`.
+    """
+
+    def _make_verify_data(self, *input_data):
+        """
+        Create `verify_data` for the `RepairStrategy` constructor.
+
+        `RepairStrategy` expects `verify_data` as a list of tuples
+        of the form `(constructor, deps)`.  Each item in `input_data` is
+        a tuple of the form `(tag, count, deps)` that creates one entry
+        in the returned list of `verify_data` tuples as follows:
+          * `tag` and `count` are used to create a constructor function
+            that calls `self._make_verifier()` with these parameters,
+            plus the dependency list provided by the `RepairStrategy`
+            constructor.
+          * `deps` is the `deps` entry expected by the
+            `RepairStrategy` constructor.
+
+        @param input_data   A list of tuples, each representing one
+                            tuple in the `verify_data` list.
+        @return   A list suitable to be the `verify_data` parameter for
+                  the `RepairStrategy` constructor.
+        """
+        strategy_data = []
+        for tag, count, deps in input_data:
+            construct = functools.partial(self._make_verifier,
+                                          tag, count)
+            strategy_data.append((construct, deps))
+        return strategy_data
+
+
+    def test_single_node(self):
+        """
+        Test construction of a single-node verification DAG.
+
+        Assert that the structure looks like this:
+        ~~~~~~~~
+          Root Node -> Main Node
+        ~~~~~~~~
+        """
+        verify_data = self._make_verify_data(('main', 0, ()))
+        strategy = hosts.RepairStrategy(verify_data)
+        verifier = self.verifiers['main']
+        self.assertEqual(
+                strategy._verify_root._dependency_list,
+                [verifier])
+        self.assertEqual(verifier._dependency_list, [])
+
+
+    def test_single_dependency(self):
+        """
+        Test construction of a two-node dependency chain.
+
+        Assert that the structure looks like this:
+        ~~~~~~~~
+          Root Node -> Parent Node -> Child Node
+        ~~~~~~~~
+        """
+        verify_data = self._make_verify_data(
+                ('child', 0, ()),
+                ('parent', 0, ('child',)))
+        strategy = hosts.RepairStrategy(verify_data)
+        parent = self.verifiers['parent']
+        child = self.verifiers['child']
+        self.assertEqual(
+                strategy._verify_root._dependency_list, [parent])
+        self.assertEqual(
+                parent._dependency_list, [child])
+        self.assertEqual(
+                child._dependency_list, [])
+
+
+    def test_two_nodes_and_dependency(self):
+        """
+        Test construction of two nodes with a shared dependency.
+
+        Assert that the structure looks like this:
+        ~~~~~~~~
+          Root Node -> Left Node ---\
+                    \                -> Bottom Node
+                      -> Right Node /
+        ~~~~~~~~
+        """
+        verify_data = self._make_verify_data(
+                ('bottom', 0, ()),
+                ('left', 0, ('bottom',)),
+                ('right', 0, ('bottom',)))
+        strategy = hosts.RepairStrategy(verify_data)
+        bottom = self.verifiers['bottom']
+        left = self.verifiers['left']
+        right = self.verifiers['right']
+        self.assertEqual(
+                strategy._verify_root._dependency_list,
+                [left, right])
+        self.assertEqual(left._dependency_list, [bottom])
+        self.assertEqual(right._dependency_list, [bottom])
+        self.assertEqual(bottom._dependency_list, [])
+
+
+    def test_three_nodes(self):
+        """
+        Test construction of three nodes with no dependencies.
+
+        Assert that the structure looks like this:
+        ~~~~~~~~
+                     -> Node One
+                    /
+          Root Node -> Node Two
+                    \
+                     -> Node Three
+        ~~~~~~~~
+
+        N.B.  This test exists to enforce ordering expectations of
+        root-level DAG nodes.  Three nodes are used to make it unlikely
+        that randomly ordered roots will match expectations.
+        """
+        verify_data = self._make_verify_data(
+                ('one', 0, ()),
+                ('two', 0, ()),
+                ('three', 0, ()))
+        strategy = hosts.RepairStrategy(verify_data)
+        one = self.verifiers['one']
+        two = self.verifiers['two']
+        three = self.verifiers['three']
+        self.assertEqual(
+                strategy._verify_root._dependency_list,
+                [one, two, three])
+        self.assertEqual(one._dependency_list, [])
+        self.assertEqual(two._dependency_list, [])
+        self.assertEqual(three._dependency_list, [])
+
+
+    def test_verify_passes(self):
+        """
+        Test with a single passing verifier.
+
+        Build a `RepairStrategy` with a single verifier that will
+        pass when called.  Assert that the strategy's `verify()`
+        method passes without rasing an exception.
+        """
+        verify_data = self._make_verify_data(('pass', 0, ()))
+        strategy = hosts.RepairStrategy(verify_data)
+        strategy.verify(self._fake_host)
+
+
+    def test_verify_fails(self):
+        """
+        Test with a single failing verifier.
+
+        Build a `RepairStrategy` with a single verifier that will
+        fail when called.  Assert that the strategy's `verify()`
+        method fails by raising an exception.
+        """
+        verify_data = self._make_verify_data(('fail', 1, ()))
+        strategy = hosts.RepairStrategy(verify_data)
+        with self.assertRaises(Exception) as e:
+            strategy.verify(self._fake_host)
 
 
 if __name__ == '__main__':

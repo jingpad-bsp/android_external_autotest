@@ -124,16 +124,16 @@ class Verifier(object):
         @raises AutotestVerifyDependencyError   Raised when at least
                         one verifier in the list has failed.
         """
-        failures = []
+        failures = set()
         for v in verifiers:
             try:
                 v._verify_host(host)
             except AutotestVerifyDependencyError as e:
-                failures.extend(e.args)
+                failures.update(e.args)
             except Exception as e:
-                failures.append(v.description)
+                failures.add(v.description)
         if failures:
-            raise AutotestVerifyDependencyError(*failures)
+            raise AutotestVerifyDependencyError(*list(failures))
 
 
     def _reverify(self):
@@ -306,11 +306,56 @@ class RepairStrategy(object):
     """
     A class for organizing `Verifier` objects.
 
-    An instance of `RepairStrategy` is organized as a set of `Verifier`
+    An instance of `RepairStrategy` is organized as a DAG of `Verifier`
     objects.  The class provides methods for invoking those objects in
     order, when needed: the `verify()` method walks the verifier DAG in
     dependency order.
+
+    The verifier DAG is constructed from a tuple (or any iterable)
+    passed to the `RepairStrategy` constructor.  Each entry is a
+    two-element iterable of the form `(constructor, deps)`:
+      * The `constructor` value is a callable that creates a `Verifier`
+        as for the interface of the default constructor.  For classes
+        that inherit the default constructor from `Verifier`, this can
+        be the class itself.
+      * The `deps` value is an iterable (e.g. list or tuple) of strings.
+        Each string corresponds to the `tag` member of a `Verifier`
+        dependency.
+
+    The tag names of verifiers in the constructed DAG must all be
+    unique.  The verifier tag name `'PASS'` is reserved and may not be
+    used by any verifier.
+
+    In the input data for the constructor, dependencies must appear
+    before the nodes that depend on them.  The entry below is valid:
+
+        ((A, ()), (B, ('a',)))
+
+    The following will fail at construction time:
+
+        ((B, ('a',)), (A, ()))
+
+    Internally, the DAG of verifiers is given unique root node.  So,
+    given this input:
+
+        ((C, ()), (A, ('c',)), (B, ('c',)))
+
+    The following DAG is constructed:
+
+          Root
+          /  \
+         A    B
+          \  /
+           C
+
+    Since nothing depends on `A` or `B`, the root node guarantees that
+    these two verifiers will both be called and properly logged.
+
+    The root node is not part of the public interface, but it _is_
+    logged in `status.log` whenever `verify()` succeeds.
     """
+
+    _ROOT_TAG = 'PASS'
 
     def __init__(self, verifier_data):
         """
@@ -318,46 +363,30 @@ class RepairStrategy(object):
 
         The input `verifier_data` object describes how to construct
         verify nodes and the dependencies that relate them, as detailed
-        below.
-
-        The `verifier_data` parameter is an iterable object (e.g. a list
-        or tuple) of entries.  Each entry is a two-element iterable of
-        the form `(constructor, deps)`:
-          * The `constructor` value is a callable that creates a
-            `Verifier` as for the interface of the default constructor.
-            For classes that inherit the default constructor from
-            `Verifier`, this can be the class itself.
-          * The `deps` value is an iterable (e.g. list or tuple) of
-            strings.  Each string corresponds to the `tag` member of a
-            `Verifier` dependency.
-
-        Note that `verifier_data` *must* be listed in dependency order.
-        That is, if `B` depends on `A`, then the constructor for `A`
-        must precede the constructor for `B` in the list.  Put another
-        way, the following is valid `verifier_data`:
-
-        ```
-            ((AlphaVerifier, ()), (BetaVerifier, ('alpha',)))
-        ```
-
-        The following will fail at construction time:
-
-        ```
-            ((BetaVerifier, ('alpha',)), (AlphaVerifier, ()))
-        ```
+        above.
 
         @param verifier_data  Iterable value with constructors for the
                               elements of the verification DAG and their
                               dependencies.
         """
+        # We use the `all_verifiers` list to guarantee that our root
+        # verifier will execute its dependencies in the order provided
+        # to us by our caller.
         verifier_map = {}
-        roots = set()
-        for construct, deps in verifier_data:
-            v = construct([verifier_map[d] for d in deps])
+        all_verifiers = []
+        dependencies = set()
+        for construct, dep_tags in verifier_data:
+            deps = [verifier_map[d] for d in dep_tags]
+            dependencies.update(deps)
+            v = construct(deps)
+            assert v.tag not in verifier_map
             verifier_map[v.tag] = v
-            roots.add(v)
-            roots.difference_update(deps)
-        self._verify_root = _RootVerifier(list(roots), 'all')
+            all_verifiers.append(v)
+        assert self._ROOT_TAG not in verifier_map
+        # Capture all the verifiers that have nothing depending on them.
+        self._verify_root = _RootVerifier(
+                [v for v in all_verifiers if v not in dependencies],
+                self._ROOT_TAG)
 
 
     def verify(self, host):
