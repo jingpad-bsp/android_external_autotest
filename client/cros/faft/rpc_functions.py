@@ -671,7 +671,14 @@ class RPCFunctions(object):
         """
         self._updater.resign_firmware(version)
 
-    def _updater_repack_shellball(self, append):
+    def _updater_extract_shellball(self, append=None):
+        """Extract shellball with the given append suffix.
+
+        @param append: use for the shellball name.
+        """
+        self._updater.extract_shellball(append)
+
+    def _updater_repack_shellball(self, append=None):
         """Repack shellball with new fwid.
 
         @param append: use for new fwid naming.

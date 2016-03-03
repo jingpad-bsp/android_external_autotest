@@ -1243,18 +1243,15 @@ class FirmwareTest(FAFTBase):
         logging.info('Successfully restore firmware.')
 
     def setup_firmwareupdate_shellball(self, shellball=None):
-        """Deside a shellball to use in firmware update test.
+        """Setup a shellball to use in firmware update test.
 
         Check if there is a given shellball, and it is a shell script. Then,
-        send it to the remote host. Otherwise, use
-        /usr/sbin/chromeos-firmwareupdate.
+        send it to the remote host. Otherwise, use the
+        /usr/sbin/chromeos-firmwareupdate in the image and replace its inside
+        BIOS and EC images with the active firmware images.
 
         @param shellball: path of a shellball or default to None.
-
-        @return: Path of shellball in remote host. If use default shellball,
-                 reutrn None.
         """
-        updater_path = None
         if shellball:
             # Determine the firmware file is a shellball or a raw binary.
             is_shellball = (utils.system_output("file %s" % shellball).find(
@@ -1262,15 +1259,23 @@ class FirmwareTest(FAFTBase):
             if is_shellball:
                 logging.info('Device will update firmware with shellball %s',
                              shellball)
-                temp_dir = self.faft_client.system.create_temp_dir(
-                            'shellball_')
-                temp_shellball = os.path.join(temp_dir, 'updater.sh')
-                self._client.send_file(shellball, temp_shellball)
-                updater_path = temp_shellball
+                temp_path = self.faft_client.updater.get_temp_path()
+                working_shellball = os.path.join(temp_path,
+                                                 'chromeos-firmwareupdate')
+                self._client.send_file(shellball, working_shellball)
+                self.faft_client.updater.extract_shellball()
             else:
                 raise error.TestFail(
                     'The given shellball is not a shell script.')
-            return updater_path
+        else:
+            logging.info('No shellball given, use the original shellball and '
+                         'replace its BIOS and EC images.')
+            work_path = self.faft_client.updater.get_work_path()
+            bios_in_work_path = os.path.join(work_path, 'bios.bin')
+            ec_in_work_path = os.path.join(work_path, 'ec.bin')
+            self.faft_client.bios.dump_whole(bios_in_work_path)
+            self.faft_client.ec.dump_firmware(ec_in_work_path)
+            self.faft_client.updater.repack_shellball()
 
     def is_kernel_changed(self):
         """Check if the current kernel is changed, by comparing its SHA1 hash.
