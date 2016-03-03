@@ -881,7 +881,7 @@ class GraphicsKernelMemory(object):
     # these, the test will read from that path.
 
     exynos_fields = {
-        'gem_objects': ['/sys/kernel/debug/dri/0/exynos_gem_objects'],
+        'gem_objects': ['/sys/kernel/debug/dri/?/exynos_gem_objects'],
         'memory': ['/sys/class/misc/mali0/device/memory',
                    '/sys/class/misc/mali0/device/gpu_memory'],
     }
