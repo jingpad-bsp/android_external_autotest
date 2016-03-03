@@ -182,6 +182,10 @@ def main_without_exception_handling():
                 time.sleep(minimum_tick_sec - curr_tick_sec)
             else:
                 time.sleep(0.0001)
+    except server_manager_utils.ServerActionError as e:
+        # This error is expected when the server is not in primary status
+        # for scheduler role. Thus do not send email for it.
+        logging.exception(e)
     except Exception:
         email_manager.manager.log_stacktrace(
             "Uncaught exception; terminating monitor_db")
