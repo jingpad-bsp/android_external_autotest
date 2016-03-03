@@ -23,7 +23,10 @@ SEARCH_JOB_MAX_DAYS = 14
 # and do not keep suite jobs running for too long. Note that suite jobs created
 # by suite scheduler does not wait for test job to finish. That helps to reduce
 # the load on drone.
-DELAY_MINUTES_INCREMENTAL = 5
+DELAY_MINUTES_INTERVAL = 5
+# Set maximum delay minutes to 4 hours. This is to prevent suite jobs from
+# running for too long.
+MAX_DELAY_MINUTES = 240
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
@@ -63,6 +66,10 @@ class DedupingScheduler(object):
 
         # Number of minutes to delay a suite job from creating test jobs.
         self.delay_minutes = 0
+        # Number of minutes to increase of decrease self.delay_minutes. When
+        # self.delay_minutes reaches MAX_DELAY_MINUTES, it should wind down
+        # to allow even distribution of test job creation.
+        self.delay_minutes_interval = DELAY_MINUTES_INTERVAL
         # Lock to make sure each suite created with different delay_minutes.
         self._lock = threading.Lock()
 
@@ -149,23 +156,50 @@ class DedupingScheduler(object):
             if launch_control_build:
                 builds = {provision.ANDROID_BUILD_VERSION_PREFIX:
                           launch_control_build}
+
+            # Suite scheduler handles all boards in parallel, to guarantee each
+            # call of `create_suite_job` use different value of delay_minutes,
+            # we need a lock around get/set attempts of self.delay_minutes.
+            # To prevent suite jobs from running too long, the value for
+            # self.delay_minutes is limited between 0 and MAX_DELAY_MINUTES (4
+            # hours). The value starts at 0 and is increased by
+            # DELAY_MINUTES_INTERVAL, when it reaches MAX_DELAY_MINUTES, the
+            # logic here allows its value to step back by DELAY_MINUTES_INTERVAL
+            # at each call of this method. When the value drops back to 0, it
+            # will increase again in the next call of this method.
+            # Such logic allows the values of delay_minutes for all calls
+            # of `create_suite_job` running in parallel to be evenly distributed
+            # between 0 and MAX_DELAY_MINUTES.
+            with self._lock:
+                delay_minutes = self.delay_minutes
+                if ((self.delay_minutes < MAX_DELAY_MINUTES and
+                     self.delay_minutes_interval > 0) or
+                    (self.delay_minutes >= DELAY_MINUTES_INTERVAL and
+                     self.delay_minutes_interval < 0)):
+                    self.delay_minutes += self.delay_minutes_interval
+                else:
+                    limit = ('Maximum' if self.delay_minutes_interval > 0 else
+                             'Minimum')
+                    logging.info(
+                            '%s delay minutes reached when scheduling '
+                            '%s on %s against %s (pool: %s)',
+                            limit, suite, builds, board, pool)
+                    self.delay_minutes_interval = -self.delay_minutes_interval
+
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, builds, board, pool)
-            with self._lock:
-                if self._afe.run(
-                            'create_suite_job', name=suite, board=board,
-                            builds=builds, check_hosts=False, num=num,
-                            pool=pool, priority=priority, timeout=timeout,
-                            file_bugs=file_bugs,
-                            wait_for_results=file_bugs,
-                            test_source_build=test_source_build,
-                            job_retry=job_retry,
-                            delay_minutes=self.delay_minutes,
-                            run_prod_code=run_prod_code) is not None:
-                    self.delay_minutes += DELAY_MINUTES_INCREMENTAL
-                    return True
-                else:
-                    raise ScheduleException(
+            if self._afe.run('create_suite_job', name=suite, board=board,
+                             builds=builds, check_hosts=False, num=num,
+                             pool=pool, priority=priority, timeout=timeout,
+                             file_bugs=file_bugs,
+                             wait_for_results=file_bugs,
+                             test_source_build=test_source_build,
+                             job_retry=job_retry,
+                             delay_minutes=delay_minutes,
+                             run_prod_code=run_prod_code) is not None:
+                return True
+            else:
+                raise ScheduleException(
                         "Can't schedule %s for %s." % (suite, builds))
         except (error.ControlFileNotFound, error.ControlFileEmpty,
                 error.ControlFileMalformed, error.NoControlFileList) as e:

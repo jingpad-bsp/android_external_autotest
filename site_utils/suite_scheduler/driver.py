@@ -7,7 +7,7 @@ import logging
 import time
 from multiprocessing import pool
 
-import base_event, board_enumerator, build_event
+import base_event, board_enumerator, build_event, deduping_scheduler
 import task, timed_event
 
 import common
@@ -170,9 +170,6 @@ class Driver(object):
         @param mv: an instance of manifest_versions.ManifestVersions.
         @raise EnumeratorException if we can't enumerate any supported boards.
         """
-        # Reset the value of delay_minutes, as this is the beginning of
-        # handling an event for all boards.
-        self._scheduler.delay_minutes = 0
         boards = self._enumerator.Enumerate()
         logging.info('%d boards currently in the lab: %r', len(boards), boards)
         thread_pool = pool.ThreadPool(POOL_SIZE)
@@ -180,6 +177,11 @@ class Driver(object):
             for e in self._events.itervalues():
                 if not e.ShouldHandle():
                     continue
+                # Reset the value of delay_minutes, as this is the beginning of
+                # handling an event for all boards.
+                self._scheduler.delay_minutes = 0
+                self._scheduler.delay_minutes_interval = (
+                        deduping_scheduler.DELAY_MINUTES_INTERVAL)
                 logging.info('Handling %s event for %d boards', e.keyword,
                              len(boards))
                 args = []

@@ -801,13 +801,13 @@ class Task(object):
         """
         test_source_build_msg = (
                 ' Test source build is %s.' % test_source_build
-                if test_source_build else None)
+                if test_source_build else '')
         firmware_rw_build_msg = (
                 ' Firmware RW build is %s.' % firmware_rw_build
-                if firmware_rw_build else None)
+                if firmware_rw_build else '')
         firmware_ro_build_msg = (
                 ' Firmware RO build is %s.' % firmware_ro_build
-                if firmware_ro_build else None)
+                if firmware_ro_build else '')
         build_string = cros_build or launch_control_build
         logging.debug('Schedule %s for build %s.%s%s%s',
                       self._suite, build_string, test_source_build_msg,
@@ -921,7 +921,8 @@ class Task(object):
         logging.info('Running %s on %s', self._name, board)
         for build in launch_control_builds:
             try:
-                self._ScheduleSuite(scheduler, None, None, None, None,
+                self._ScheduleSuite(scheduler, None, None, None,
+                                    test_source_build=build,
                                     launch_control_build=build, board=board,
                                     force=force, run_prod_code=True)
             except deduping_scheduler.DedupingSchedulerException as e:
