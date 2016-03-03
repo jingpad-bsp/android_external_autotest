@@ -56,7 +56,7 @@ saned:!:255:255:document scanning process:/dev/null:/bin/false
 volume:!:257:257::/dev/null:/bin/false
 apmanager:!:259:259::/dev/null:/bin/false
 peerd:!:260:260::/dev/null:/bin/false
-privetd:!:262:262::/dev/null:/bin/false
+dlm:!:262:262::/dev/null:/bin/false
 buffet:!:264:264:/dev/null:/bin/false
 webservd:!:266:266:/dev/null:/bin/false
 dnsmasq:!:268:268:/dev/null:/bin/false

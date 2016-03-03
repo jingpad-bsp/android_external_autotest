@@ -70,6 +70,7 @@ volume:!:257:
 uinput:!:258:bluetooth,volume
 apmanager:!:259:apmanager,buffet
 peerd:!:260:buffet,chronos,peerd
+dlm:!:262:
 buffet:!:264:chronos,buffet,power
 webservd:!:266:buffet,webservd
 dnsmasq:!:268:dnsmasq
