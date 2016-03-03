@@ -7,6 +7,8 @@ import logging, re, time
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 
+POWER_DIR = '/var/lib/power_manager'
+TMP_POWER_DIR = '/tmp/power_manager'
 
 class firmware_EventLog(FirmwareTest):
     """
@@ -18,6 +20,7 @@ class firmware_EventLog(FirmwareTest):
 
     def initialize(self, host, cmdline_args):
         super(firmware_EventLog, self).initialize(host, cmdline_args)
+        self.host = host
         self.switcher.setup_mode('normal')
 
     def _has_event(self, pattern):
@@ -47,6 +50,21 @@ class firmware_EventLog(FirmwareTest):
                 'date +"%s"' % self._TIME_FORMAT)[0]
         logging.debug('Current local system time on DUT is "%s"', time_string)
         return time.strptime(time_string, self._TIME_FORMAT)
+
+    def disable_suspend_to_idle(self):
+        """Disable the powerd preference for suspend_to_idle."""
+        logging.info('Disabling suspend_to_idle')
+        # Make temporary directory to hold powerd preferences so we
+        # do not leave behind any state if the test is aborted.
+        self.host.run('mkdir -p %s' % TMP_POWER_DIR)
+        self.host.run('echo 0 > %s/suspend_to_idle' % TMP_POWER_DIR)
+        self.host.run('mount --bind %s %s' % (TMP_POWER_DIR, POWER_DIR))
+        self.host.run('restart powerd')
+
+    def teardown_powerd_prefs(self):
+        """Clean up custom powerd preference changes."""
+        self.host.run('umount %s' % POWER_DIR)
+        self.host.run('restart powerd')
 
     def run_once(self):
         if not self.faft_config.has_eventlog:
@@ -104,10 +122,12 @@ class firmware_EventLog(FirmwareTest):
             raise error.TestError('Incorrect event logged in recovery mode.')
 
         logging.info('Verifying eventlog behavior on suspend/resume')
+        self.disable_suspend_to_idle()
         self._cutoff_time = self._now()
         self.faft_client.system.run_shell_command(
                 'powerd_dbus_suspend -wakeup_timeout=10')
         time.sleep(5)   # a little slack time for powerd to write the 'Wake'
+        self.teardown_powerd_prefs()
         self._gather_events()
         if ((not self._has_event(r'^Wake') or not self._has_event(r'Sleep')) and
             (not self._has_event(r'ACPI Enter \| S3') or
