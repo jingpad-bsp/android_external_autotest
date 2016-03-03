@@ -50,7 +50,7 @@ class RemoteFacadeProxy(object):
 
     """
 
-    XMLRPC_CONNECT_TIMEOUT = 60
+    XMLRPC_CONNECT_TIMEOUT = 90
     XMLRPC_RETRY_TIMEOUT = 180
     XMLRPC_RETRY_DELAY = 10
 

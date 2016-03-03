@@ -5,7 +5,10 @@
 """A module providing common resources for different facades."""
 
 import exceptions
+import logging
+import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
@@ -45,6 +48,14 @@ class FacadeResource(object):
         # string to locate the tab object.
         # Value is the tab object.
         self._tabs = dict()
+
+        # Workaround for issue crbug.com/588579.
+        # On daisy, Chrome freezes about 30 seconds after login because of
+        # TPM error. Avoid test accessing Chrome during this time.
+        # Check issue crbug.com/588579 and crbug.com/591646.
+        if utils.get_board() == 'daisy':
+            logging.warning('Delay 30s for issue 588579 on daisy')
+            time.sleep(30)
 
 
     def close(self):
