@@ -827,7 +827,7 @@ class CrosOutputWidgetHandler(CrosWidgetHandler):
 
     def stop_playback(self):
         """Stops playing audio."""
-        raise NotImplementedError
+        self._audio_facade.stop_playback()
 
 
 class PeripheralWidgetHandler(object):
