@@ -5,7 +5,7 @@
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_ExternalUsbPeripherals.set1"
+NAME = "platform_ExternalUsbPeripherals.detect"
 PURPOSE = "Servo based USB boot stress test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "LONG"
@@ -14,7 +14,7 @@ TEST_CLASS = "platform"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:kernel_usb"
 SUITE = "kernel_usb"
-DEPENDENCIES = "servo"
+DEPENDENCIES = "servo, usb_detect"
 
 DOC = """
 This test uses servo to connect/disconnect servo USB hub before and
@@ -28,10 +28,14 @@ The test fails if
 - USB peripherals checks(usb_checks below) on command line fail
 Other detection checks can be added for each peripheral
 
-Set1 is set of four USB peripherals plugged
+Set of four USB peripherals plugged
 - USB headset
 - USB HD Webcam - should be Logitech HD Pro Webcam C920
 - USB stick with four partitions named ExFAT  Ext4  FAT  NTFS
+- USB mouse
+- USB 3G modem
+- USB SD card reader(one microSD card plugged)
+- USB connected phone(optional)
 """
 
 args_dict = utils.args_to_dict(args)
@@ -78,6 +82,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks, tag="set1")
+                 usb_list=usb_list, usb_checks=usb_checks, tag="detect")
 
 parallel_simple(run, machines)
