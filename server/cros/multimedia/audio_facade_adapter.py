@@ -56,6 +56,11 @@ class AudioFacadeRemoteAdapter(object):
                 client_path, data_format, blocking)
 
 
+    def stop_playback(self):
+        """Stops playback process."""
+        self._audio_proxy.stop_playback()
+
+
     def set_playback_file(self, path):
         """Copies a file to client.
 

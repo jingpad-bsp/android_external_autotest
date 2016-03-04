@@ -46,6 +46,7 @@ class AudioFacadeNative(object):
         """
         self._resource = resource
         self._recorder = None
+        self._player = None
         self._counter = None
         self._extension_handler = None
         self._create_extension_handler()
@@ -128,6 +129,11 @@ class AudioFacadeNative(object):
         for path in glob.glob('/tmp/capture_*'):
             os.unlink(path)
 
+        if self._recorder:
+            self._recorder.cleanup()
+        if self._player:
+            self._player.cleanup()
+
 
     def playback(self, file_path, data_format, blocking=False):
         """Playback a file.
@@ -154,18 +160,15 @@ class AudioFacadeNative(object):
             raise AudioFacadeNativeError(
                     'data format %r is not supported' % data_format)
 
-        def _playback():
-            """Playback using cras utility."""
-            cras_utils.playback(playback_file=file_path)
-
-        if blocking:
-            _playback()
-        else:
-            p = multiprocessing.Process(target=_playback)
-            p.daemon = True
-            p.start()
+        self._player = Player()
+        self._player.start(file_path, blocking)
 
         return True
+
+
+    def stop_playback(self):
+        """Stops playback process."""
+        self._player.stop()
 
 
     def start_recording(self, data_format):
@@ -352,3 +355,77 @@ class Recorder(object):
         else:
             raise RecorderError(
                     'Recording process was terminated unexpectedly.')
+
+
+    def cleanup(self):
+        """Cleanup the resources.
+
+        Terminates the recording process if needed.
+
+        """
+        if self._capture_subprocess and self._capture_subprocess.poll() is None:
+            self._capture_subprocess.terminate()
+
+
+class PlayerError(Exception):
+    """Error in Player."""
+    pass
+
+
+class Player(object):
+    """The class to control audio playback subprocess.
+
+    Properties:
+        file_path: The path to the file to play.
+
+    """
+    def __init__(self):
+        """Initializes a Player."""
+        self._playback_subprocess = None
+
+
+    def start(self, file_path, blocking):
+        """Starts recording.
+
+        Starts recording subprocess. It can be stopped by calling stop().
+
+        @param file_path: The path to the file.
+        @param blocking: Blocks this call until playback finishes.
+
+        """
+        def _playback():
+            """Playback using cras utility."""
+            cras_utils.playback(playback_file=file_path)
+
+        if blocking:
+            _playback()
+        else:
+            self._playback_subprocess = multiprocessing.Process(
+                    target=_playback)
+            self._playback_subprocess.daemon = True
+            self._playback_subprocess.start()
+
+
+    def stop(self):
+        """Stops playback subprocess."""
+        if not self._playback_subprocess:
+            raise PlaybackError(
+                    'Playback process has not started yet')
+        # It is fine if playback process already ended.
+        self._possibly_stop_playback_process()
+
+
+    def _possibly_stop_playback_process(self):
+        """Stops playback process if needed."""
+        if self._playback_subprocess.is_alive():
+            self._playback_subprocess.terminate()
+            self._playback_subprocess.join()
+
+
+    def cleanup(self):
+        """Cleanup the resources.
+
+        Terminates the playback process if needed.
+
+        """
+        self._possibly_stop_playback_process()
