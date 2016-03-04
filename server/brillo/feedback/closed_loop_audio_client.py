@@ -10,20 +10,10 @@ import tempfile
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib.feedback import client
 from autotest_lib.server.brillo import audio_utils
 from autotest_lib.server.brillo import host_utils
 
-
-# Constants used for updating the audio policy.
-#
-_DUT_AUDIO_POLICY_PATH = 'system/etc/audio_policy.conf'
-_AUDIO_POLICY_ATTACHED_INPUT_DEVICES = 'attached_input_devices'
-_AUDIO_POLICY_ATTACHED_OUTPUT_DEVICES = 'attached_output_devices'
-_AUDIO_POLICY_DEFAULT_OUTPUT_DEVICE = 'default_output_device'
-_WIRED_HEADSET_IN = 'AUDIO_DEVICE_IN_WIRED_HEADSET'
-_WIRED_HEADSET_OUT = 'AUDIO_DEVICE_OUT_WIRED_HEADSET'
 
 # Constants used when recording playback.
 #
@@ -71,7 +61,6 @@ class Client(client.Client):
         self.host = None
         self.dut_tmp_dir = None
         self.tmp_dir = None
-        self.orig_policy = None
 
 
     def set_audible_threshold(self, threshold):
@@ -80,56 +69,6 @@ class Client(client.Client):
         @param threshold: New threshold value.
         """
         self.audible_threshold = threshold
-
-
-    def _patch_audio_policy(self):
-        """Updates the audio_policy.conf file to use the headphone jack.
-
-        Currently, there's no way to update the audio routing if a headset is
-        plugged in. This function manually changes the audio routing to play
-        through the headset.
-        TODO(ralphnathan): Remove this once b/25188354 is resolved.
-        """
-        # Fetch the DUT's original audio policy.
-        _, self.orig_policy = tempfile.mkstemp(dir=self.tmp_dir)
-        self.host.get_file(_DUT_AUDIO_POLICY_PATH, self.orig_policy,
-                           delete_dest=True)
-
-        # Patch the policy to route audio to a headset.
-        _, test_policy = tempfile.mkstemp(dir=self.tmp_dir)
-        policy_changed = False
-        with open(self.orig_policy) as orig_file:
-            with open(test_policy, 'w') as test_file:
-                for line in orig_file:
-                    if _WIRED_HEADSET_OUT not in line:
-                        if _AUDIO_POLICY_ATTACHED_OUTPUT_DEVICES in line:
-                            line = '%s|%s\n' % (line.rstrip(),
-                                                _WIRED_HEADSET_OUT)
-                            policy_changed = True
-                        elif _AUDIO_POLICY_DEFAULT_OUTPUT_DEVICE in line:
-                            line = '%s %s\n' % (line.rstrip().rsplit(' ', 1)[0],
-                                                _WIRED_HEADSET_OUT)
-                            policy_changed = True
-                    if _WIRED_HEADSET_IN not in line:
-                        if _AUDIO_POLICY_ATTACHED_INPUT_DEVICES in line:
-                            line = '%s|%s\n' % (line.rstrip(),
-                                                _WIRED_HEADSET_IN)
-                            policy_changed = True
-
-                    test_file.write(line)
-
-        # Update the DUT's audio policy if changed.
-        if policy_changed:
-            logging.info('Updating audio policy to route audio to headset')
-            self.host.remount()
-            self.host.send_file(test_policy, _DUT_AUDIO_POLICY_PATH,
-                                delete_dest=True)
-            self.host.reboot()
-        else:
-            os.remove(self.orig_policy)
-            self.orig_policy = None
-
-        os.remove(test_policy)
 
 
     # Interface overrides.
@@ -143,18 +82,11 @@ class Client(client.Client):
         self.host = host
         self.tmp_dir = test.tmpdir
         self.dut_tmp_dir = host.get_tmp_dir()
-        self._patch_audio_policy()
 
 
     def _finalize_impl(self):
         """Finalizes the feedback object."""
-        if self.orig_policy:
-            logging.info('Restoring DUT audio policy')
-            self.host.remount()
-            self.host.send_file(self.orig_policy, _DUT_AUDIO_POLICY_PATH,
-                                delete_dest=True)
-            os.remove(self.orig_policy)
-            self.orig_policy = None
+        pass
 
 
     def _new_query_impl(self, query_id):
