@@ -140,14 +140,15 @@ def suspend_bg_for_dark_resume(delay_seconds=0):
     process.start()
 
 
-def kernel_suspend(seconds):
+def kernel_suspend(seconds, state='mem'):
     """Do a kernel suspend.
 
-    Suspend the system to RAM (S3), waking up again after |seconds|, by directly
+    Suspend the system to @state, waking up again after |seconds|, by directly
     writing to /sys/power/state. Function will block until suspend/resume has
     completed or failed.
 
     @param seconds: The number of seconds to suspend the device.
+    @param state: power state to suspend to.  DEFAULT mem.
     """
     alarm, wakeup_count = prepare_wakeup(seconds)
     logging.debug('Saving wakeup count: %d', wakeup_count)
@@ -155,7 +156,7 @@ def kernel_suspend(seconds):
     try:
         logging.info('Suspending at %d', rtc.get_seconds())
         with open(SYSFS_POWER_STATE, 'w') as sysfs_file:
-            sysfs_file.write('mem')
+            sysfs_file.write(state)
     except IOError as e:
         logging.exception('Writing to %s failed', SYSFS_POWER_STATE)
         if e.errno == errno.EBUSY and rtc.get_seconds() >= alarm:
