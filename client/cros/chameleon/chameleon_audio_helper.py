@@ -419,14 +419,20 @@ def bind_widgets(binder):
     in the end.
 
     @param binder: A WidgetBinder object or a WidgetBinderChain object.
+                   If binder is None, then do nothing. This is for test user's
+                   convenience to reuse test logic among paths using binder
+                   and paths not using binder.
 
     E.g. with bind_widgets(binder):
              do something on widget.
 
     """
-    try:
-        binder.connect()
+    if not binder:
         yield
-    finally:
-        binder.disconnect()
-        binder.release()
+    else:
+        try:
+            binder.connect()
+            yield
+        finally:
+            binder.disconnect()
+            binder.release()
