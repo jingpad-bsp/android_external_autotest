@@ -306,6 +306,7 @@ class ChameleonVideoInput(ChameleonPort):
         """
         self.chameleond_proxy = chameleon_port.chameleond_proxy
         self.port_id = chameleon_port.port_id
+        self._original_edid = None
 
 
     def wait_video_input_stable(self, timeout=None):
@@ -356,6 +357,49 @@ class ChameleonVideoInput(ChameleonPort):
           self.chameleond_proxy.DestroyEdid(edid_id)
 
 
+    def set_edid_from_file(self, filename):
+        """Sets EDID from a file.
+
+        The method is similar to set_edid but reads EDID from a file.
+
+        @param filename: path to EDID file.
+        """
+        self.set_edid(edid_lib.Edid.from_file(filename))
+
+
+    def set_edid(self, edid):
+        """The complete flow of setting EDID.
+
+        Unplugs the port if needed, sets EDID, plugs back if it was plugged.
+        The original EDID is stored so user can call restore_edid after this
+        call.
+
+        @param edid: An Edid object.
+        """
+        plugged = self.plugged
+        if plugged:
+            self.unplug()
+
+        self._original_edid = self.read_edid()
+
+        logging.info('Apply EDID on port %d', self.port_id)
+        self.apply_edid(edid)
+
+        if plugged:
+            time.sleep(self._DURATION_UNPLUG_FOR_EDID)
+            self.plug()
+            self.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+
+
+    def restore_edid(self):
+        """Restores original EDID stored when set_edid was called."""
+        current_edid = self.read_edid()
+        if (self._original_edid and
+            self._original_edid.data != current_edid.data):
+            logging.info('Restore the original EDID.')
+            self.apply_edid(self._original_edid)
+
+
     @contextmanager
     def use_edid(self, edid):
         """Uses the given EDID in a with statement.
@@ -370,28 +414,14 @@ class ChameleonVideoInput(ChameleonPort):
         @param edid: An EDID object.
         """
         # Set the EDID up in the beginning.
-        plugged = self.plugged
-        if plugged:
-            self.unplug()
-
-        original_edid = self.read_edid()
-        logging.info('Apply EDID on port %d', self.port_id)
-        self.apply_edid(edid)
-
-        if plugged:
-            time.sleep(self._DURATION_UNPLUG_FOR_EDID)
-            self.plug()
-            self.wait_video_input_stable(self._TIMEOUT_VIDEO_STABLE_PROBE)
+        self.set_edid(edid)
 
         try:
             # Yeild to execute the with statement.
             yield
         finally:
             # Restore the original EDID in the end.
-            current_edid = self.read_edid()
-            if original_edid.data != current_edid.data:
-                logging.info('Restore the original EDID.')
-                self.apply_edid(original_edid)
+            self.restore_edid()
 
 
     def use_edid_file(self, filename):
