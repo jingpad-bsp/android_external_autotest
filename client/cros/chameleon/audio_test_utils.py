@@ -17,6 +17,41 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.audio import audio_analysis
 from autotest_lib.client.cros.audio import audio_data
+from autotest_lib.client.cros.chameleon import chameleon_audio_ids
+
+CHAMELEON_AUDIO_IDS_TO_CRAS_NODE_TYPES = {
+       chameleon_audio_ids.CrosIds.HDMI: 'HDMI',
+       chameleon_audio_ids.CrosIds.HEADPHONE: 'HEADPHONE',
+       chameleon_audio_ids.CrosIds.EXTERNAL_MIC: 'MIC',
+       chameleon_audio_ids.CrosIds.SPEAKER: 'INTERNAL_SPEAKER',
+       chameleon_audio_ids.CrosIds.INTERNAL_MIC: 'INTERNAL_MIC',
+       chameleon_audio_ids.CrosIds.BLUETOOTH_HEADPHONE: 'BLUETOOTH',
+       chameleon_audio_ids.CrosIds.BLUETOOTH_MIC: 'BLUETOOTH',
+       chameleon_audio_ids.CrosIds.USBIN: 'USB',
+       chameleon_audio_ids.CrosIds.USBOUT: 'USB',
+}
+
+
+def cros_port_id_to_cras_node_type(port_id):
+    """Gets Cras node type from Cros port id.
+
+    @param port_id: A port id defined in chameleon_audio_ids.CrosIds.
+
+    @returns: A Cras node type defined in cras_utils.CRAS_NODE_TYPES.
+
+    """
+    return CHAMELEON_AUDIO_IDS_TO_CRAS_NODE_TYPES[port_id]
+
+
+def check_output_port(audio_facade, port_id):
+    """Checks selected output node on Cros device is correct for a port.
+
+    @param port_id: A port id defined in chameleon_audio_ids.CrosIds.
+
+    """
+    output_node_type = cros_port_id_to_cras_node_type(port_id)
+    check_audio_nodes(audio_facade, ([output_node_type], None))
+
 
 def check_audio_nodes(audio_facade, audio_nodes):
     """Checks the node selected by Cros device is correct.
