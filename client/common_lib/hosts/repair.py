@@ -77,8 +77,6 @@ class Verifier(object):
     Subclasses must supply these properties and methods:
       * `verify()`: This is the method to perform the actual
         verification check.
-      * `tag`:  This property is a short string to uniquely identify
-        this verifier in `status.log` records.
       * `description`:  This is a property with a one-line summary of
         the verification check to be performed.  This string is used to
         identify the verifier in debug logs.
@@ -96,9 +94,10 @@ class Verifier(object):
     @property _dependency_list  Dependency pre-requisites.
     """
 
-    def __init__(self, dependencies):
+    def __init__(self, tag, dependencies):
         self._result = None
         self._dependency_list = dependencies
+        self._tag = tag
         self._verify_tag = 'verify.' + self.tag
 
 
@@ -236,19 +235,13 @@ class Verifier(object):
 
         This is a property with a short string used to identify the
         verification check in the 'status.log' file.  The tag should
-        contain only lower case letters, digits, and '_' characters.
-        This tag is not used alone, but is combined with other
-        identifiers, based on the operation being logged.
-
-        N.B. Subclasses are required to override this method, but
-        we _don't_ raise NotImplementedError here.  `_verify_host()`
-        fails in inscrutable ways if this method raises any
-        exception, so for debug purposes, it's better to return a
-        default value.
+        contain only letters, digits, and '_' characters.  This tag is
+        not used alone, but is combined with other identifiers, based on
+        the operation being logged.
 
         @return A short identifier-like string.
         """
-        return 'bogus__%s' % type(self).__name__
+        return self._tag
 
 
     @property
@@ -280,20 +273,8 @@ class _RootVerifier(Verifier):
     dependencies in an instance of `RepairStrategy`.
     """
 
-    def __init__(self, dependencies, tag):
-        # N.B. must initialize _tag before calling superclass,
-        # because the superclass constructor uses `self.tag`.
-        self._tag = tag
-        super(_RootVerifier, self).__init__(dependencies)
-
-
     def verify(self, host):
         pass
-
-
-    @property
-    def tag(self):
-        return self._tag
 
 
     @property
@@ -313,11 +294,13 @@ class RepairStrategy(object):
 
     The verifier DAG is constructed from a tuple (or any iterable)
     passed to the `RepairStrategy` constructor.  Each entry is a
-    two-element iterable of the form `(constructor, deps)`:
+    two-element iterable of the form `(constructor, tag, deps)`:
       * The `constructor` value is a callable that creates a `Verifier`
         as for the interface of the default constructor.  For classes
         that inherit the default constructor from `Verifier`, this can
         be the class itself.
+      * The `tag` value is the tag to be associated with the constructed
+        verifier.
       * The `deps` value is an iterable (e.g. list or tuple) of strings.
         Each string corresponds to the `tag` member of a `Verifier`
         dependency.
@@ -327,18 +310,17 @@ class RepairStrategy(object):
     used by any verifier.
 
     In the input data for the constructor, dependencies must appear
-    before the nodes that depend on them.  The entry below is valid:
+    before the nodes that depend on them.  Thus:
 
-        ((A, ()), (B, ('a',)))
-
-    The following will fail at construction time:
-
-        ((B, ('a',)), (A, ()))
+        ((A, 'a', ()), (B, 'b', ('a',)))     # This is valid
+        ((B, 'b', ('a',)), (A, 'a', ()))     # This will fail!
 
     Internally, the DAG of verifiers is given unique root node.  So,
     given this input:
 
-        ((C, ()), (A, ('c',)), (B, ('c',)))
+        ((C, 'c', ()),
+         (A, 'a', ('c',)),
+         (B, 'b', ('c',)))
 
     The following DAG is constructed:
 
@@ -355,6 +337,7 @@ class RepairStrategy(object):
     logged in `status.log` whenever `verify()` succeeds.
     """
 
+    # This name is reserved; clients may not use it.
     _ROOT_TAG = 'PASS'
 
     def __init__(self, verifier_data):
@@ -375,18 +358,17 @@ class RepairStrategy(object):
         verifier_map = {}
         all_verifiers = []
         dependencies = set()
-        for construct, dep_tags in verifier_data:
+        for constructor, tag, dep_tags in verifier_data:
+            assert tag not in verifier_map
             deps = [verifier_map[d] for d in dep_tags]
             dependencies.update(deps)
-            v = construct(deps)
-            assert v.tag not in verifier_map
-            verifier_map[v.tag] = v
+            v = constructor(tag, deps)
+            verifier_map[tag] = v
             all_verifiers.append(v)
         assert self._ROOT_TAG not in verifier_map
         # Capture all the verifiers that have nothing depending on them.
-        self._verify_root = _RootVerifier(
-                [v for v in all_verifiers if v not in dependencies],
-                self._ROOT_TAG)
+        root_list = [v for v in all_verifiers if v not in dependencies]
+        self._verify_root = _RootVerifier(self._ROOT_TAG, root_list)
 
 
     def verify(self, host):

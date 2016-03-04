@@ -62,18 +62,17 @@ class _StubVerifier(hosts.Verifier):
     or fails.
     """
 
-    def __init__(self, deps, fail_count, tag):
+    def __init__(self, tag, deps, fail_count):
+        super(_StubVerifier, self).__init__(tag, deps)
         self.verify_count = 0
         self._fail_count = fail_count
-        self._tag = tag
         self._description = 'Testing verify() for "%s"' % tag
         self.message = 'Failing "%s" by request' % tag
-        super(_StubVerifier, self).__init__(deps)
 
 
     def __repr__(self):
-        return '_StubVerifier(%r, %d, %r)' % (
-                self._dependency_list, self._fail_count, self._tag)
+        return '_StubVerifier(%r, %r, %r)' % (
+                self.tag, self._dependency_list, self._fail_count)
 
 
     def verify(self, host):
@@ -108,11 +107,6 @@ class _StubVerifier(hosts.Verifier):
 
 
     @property
-    def tag(self):
-        return self._tag
-
-
-    @property
     def description(self):
         return self._description
 
@@ -137,18 +131,18 @@ class _VerifierTestCases(unittest.TestCase):
         logging.disable(logging.NOTSET)
 
 
-    def _make_verifier(self, tag, count, deps):
+    def _make_verifier(self, count, tag, deps):
         """
         Make a `_StubVerifier`, and remember it.
 
         Constructs a `_StubVerifier` from the given arguments,
         and remember it in `self.verifiers`.
 
-        @param tag    As for the `_StubVerifer` constructor.
         @param count  As for the `_StubVerifer` constructor.
+        @param tag    As for the `_StubVerifer` constructor.
         @param deps   As for the `_StubVerifer` constructor.
         """
-        verifier = _StubVerifier(deps, count, tag)
+        verifier = _StubVerifier(tag, deps, count)
         self.verifiers[tag] = verifier
         return verifier
 
@@ -205,7 +199,7 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        verifier = self._make_verifier('pass', 0, [])
+        verifier = self._make_verifier(0, 'pass', [])
         for i in range(0, 2):
             verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, 1)
@@ -225,7 +219,7 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        verifier = self._make_verifier('fail', 1, [])
+        verifier = self._make_verifier(1, 'fail', [])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestHostVerifyError) as e:
                 verifier._verify_host(self._fake_host)
@@ -247,8 +241,8 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        child = self._make_verifier('pass', 0, [])
-        parent = self._make_verifier('parent', 0, [child])
+        child = self._make_verifier(0, 'pass', [])
+        parent = self._make_verifier(0, 'parent', [child])
         for i in range(0, 2):
             parent._verify_host(self._fake_host)
             self.assertEqual(parent.verify_count, 1)
@@ -274,8 +268,8 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        child = self._make_verifier('fail', 1, [])
-        parent = self._make_verifier('parent', 0, [child])
+        child = self._make_verifier(1, 'fail', [])
+        parent = self._make_verifier(0, 'parent', [child])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 parent._verify_host(self._fake_host)
@@ -298,9 +292,9 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        left = self._make_verifier('left', 0, [])
-        right = self._make_verifier('right', 0, [])
-        top = self._make_verifier('top', 0, [left, right])
+        left = self._make_verifier(0, 'left', [])
+        right = self._make_verifier(0, 'right', [])
+        top = self._make_verifier(0, 'top', [left, right])
         for i in range(0, 2):
             top._verify_host(self._fake_host)
             self.assertEqual(top.verify_count, 1)
@@ -328,9 +322,9 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        left = self._make_verifier('left', 1, [])
-        right = self._make_verifier('right', 1, [])
-        top = self._make_verifier('top', 0, [left, right])
+        left = self._make_verifier(1, 'left', [])
+        right = self._make_verifier(1, 'right', [])
+        top = self._make_verifier(0, 'top', [left, right])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
@@ -361,9 +355,9 @@ class VerifyTests(_VerifierTestCases):
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        left = self._make_verifier('left', 1, [])
-        right = self._make_verifier('right', 0, [])
-        top = self._make_verifier('top', 0, [left, right])
+        left = self._make_verifier(1, 'left', [])
+        right = self._make_verifier(0, 'right', [])
+        top = self._make_verifier(0, 'top', [left, right])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
@@ -379,25 +373,26 @@ class VerifyTests(_VerifierTestCases):
         """
         Test a "diamond" structure DAG with all nodes passing.
 
-        Construct and call a "diamond" structure DAG:
-        ~~~~~~~~
+        Construct and call a "diamond" structure DAG where all nodes
+        will pass:
+
                 TOP
                /   \
             LEFT   RIGHT
                \   /
                BOTTOM
-        ~~~~~~~~
-        All nodes will pass.  Assert the following:
+
+       Assert the following:
           * The `verify()` method for all nodes is called once.
           * The expected 'GOOD' records are logged via `Host.record()`
             for all nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        bottom = self._make_verifier('bottom', 0, [])
-        left = self._make_verifier('left', 0, [bottom])
-        right = self._make_verifier('right', 0, [bottom])
-        top = self._make_verifier('top', 0, [left, right])
+        bottom = self._make_verifier(0, 'bottom', [])
+        left = self._make_verifier(0, 'left', [bottom])
+        right = self._make_verifier(0, 'right', [bottom])
+        top = self._make_verifier(0, 'top', [left, right])
         for i in range(0, 2):
             top._verify_host(self._fake_host)
             self.assertEqual(top.verify_count, 1)
@@ -414,30 +409,30 @@ class VerifyTests(_VerifierTestCases):
         """
         Test a "diamond" structure DAG with the bottom node failing.
 
-        Construct and call a "diamond" structure DAG:
-        ~~~~~~~~
+        Construct and call a "diamond" structure DAG where the bottom
+        node will fail:
+
                 TOP
                /   \
             LEFT   RIGHT
                \   /
                BOTTOM
-        ~~~~~~~~
-        The "bottom" node will fail; the other two will pass.  Assert
-        the following:
+
+        Assert the following:
           * The verification exception is `AutotestVerifyDependencyError`,
             and the exception argument has the description of the
             "bottom" node.
           * The `verify()` method for the "bottom" node is called once,
             and for the other nodes not at all.
-          * The expected 'FAIL' records is logged via `Host.record()`
+          * The expected 'FAIL' record is logged via `Host.record()`
             for the "bottom" node.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
         """
-        bottom = self._make_verifier('bottom', 1, [])
-        left = self._make_verifier('left', 0, [bottom])
-        right = self._make_verifier('right', 0, [bottom])
-        top = self._make_verifier('top', 0, [left, right])
+        bottom = self._make_verifier(1, 'bottom', [])
+        left = self._make_verifier(0, 'left', [bottom])
+        right = self._make_verifier(0, 'right', [bottom])
+        top = self._make_verifier(0, 'top', [left, right])
         for i in range(0, 2):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
@@ -465,15 +460,15 @@ class RepairStrategyTests(_VerifierTestCases):
         Create `verify_data` for the `RepairStrategy` constructor.
 
         `RepairStrategy` expects `verify_data` as a list of tuples
-        of the form `(constructor, deps)`.  Each item in `input_data` is
-        a tuple of the form `(tag, count, deps)` that creates one entry
-        in the returned list of `verify_data` tuples as follows:
-          * `tag` and `count` are used to create a constructor function
-            that calls `self._make_verifier()` with these parameters,
-            plus the dependency list provided by the `RepairStrategy`
+        of the form `(constructor, tag, deps)`.  Each item in
+        `input_data` is a tuple of the form `(tag, count, deps)` that
+        creates one entry in the returned list of `verify_data` tuples
+        as follows:
+          * `count` is used to create a constructor function that calls
+            `self._make_verifier()` with that value plus plus the
+            arguments provided by the `RepairStrategy` constructor.
+          * `tag` and `deps` will be passed as-is to the `RepairStrategy`
             constructor.
-          * `deps` is the `deps` entry expected by the
-            `RepairStrategy` constructor.
 
         @param input_data   A list of tuples, each representing one
                             tuple in the `verify_data` list.
@@ -482,9 +477,8 @@ class RepairStrategyTests(_VerifierTestCases):
         """
         strategy_data = []
         for tag, count, deps in input_data:
-            construct = functools.partial(self._make_verifier,
-                                          tag, count)
-            strategy_data.append((construct, deps))
+            construct = functools.partial(self._make_verifier, count)
+            strategy_data.append((construct, tag, deps))
         return strategy_data
 
 
@@ -493,9 +487,8 @@ class RepairStrategyTests(_VerifierTestCases):
         Test construction of a single-node verification DAG.
 
         Assert that the structure looks like this:
-        ~~~~~~~~
-          Root Node -> Main Node
-        ~~~~~~~~
+
+            Root Node -> Main Node
         """
         verify_data = self._make_verify_data(('main', 0, ()))
         strategy = hosts.RepairStrategy(verify_data)
@@ -511,9 +504,8 @@ class RepairStrategyTests(_VerifierTestCases):
         Test construction of a two-node dependency chain.
 
         Assert that the structure looks like this:
-        ~~~~~~~~
-          Root Node -> Parent Node -> Child Node
-        ~~~~~~~~
+
+            Root Node -> Parent Node -> Child Node
         """
         verify_data = self._make_verify_data(
                 ('child', 0, ()),
@@ -534,11 +526,10 @@ class RepairStrategyTests(_VerifierTestCases):
         Test construction of two nodes with a shared dependency.
 
         Assert that the structure looks like this:
-        ~~~~~~~~
-          Root Node -> Left Node ---\
-                    \                -> Bottom Node
-                      -> Right Node /
-        ~~~~~~~~
+
+            Root Node -> Left Node ---\
+                      \                -> Bottom Node
+                        -> Right Node /
         """
         verify_data = self._make_verify_data(
                 ('bottom', 0, ()),
@@ -561,13 +552,12 @@ class RepairStrategyTests(_VerifierTestCases):
         Test construction of three nodes with no dependencies.
 
         Assert that the structure looks like this:
-        ~~~~~~~~
-                     -> Node One
-                    /
-          Root Node -> Node Two
-                    \
-                     -> Node Three
-        ~~~~~~~~
+
+                       -> Node One
+                      /
+            Root Node -> Node Two
+                      \
+                       -> Node Three
 
         N.B.  This test exists to enforce ordering expectations of
         root-level DAG nodes.  Three nodes are used to make it unlikely

@@ -31,11 +31,6 @@ class ACPowerVerifier(hosts.Verifier):
 
 
     @property
-    def tag(self):
-        return 'power'
-
-
-    @property
     def description(self):
         return 'host is plugged in to AC power'
 
@@ -55,11 +50,6 @@ class CrosHostVerifier(hosts.Verifier):
 
 
     @property
-    def tag(self):
-        return 'cros'
-
-
-    @property
     def description(self):
         return 'Miscellaneous CrOS host verification checks'
 
@@ -67,6 +57,6 @@ class CrosHostVerifier(hosts.Verifier):
 def create_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
     return hosts.RepairStrategy((
-            (ssh_verify.SshVerifier, []),
-            (ACPowerVerifier, ['ssh']),
-            (CrosHostVerifier, ['ssh'])))
+            (ssh_verify.SshVerifier, 'ssh', []),
+            (ACPowerVerifier, 'power', ['ssh']),
+            (CrosHostVerifier, 'cros', ['ssh'])))

@@ -38,10 +38,5 @@ class SshVerifier(hosts.Verifier):
 
 
     @property
-    def tag(self):
-        return 'ssh'
-
-
-    @property
     def description(self):
         return 'host is available via ssh'
