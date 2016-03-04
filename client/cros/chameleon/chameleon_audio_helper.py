@@ -159,7 +159,7 @@ class AudioLinkFactory(object):
 
         # There is only one dedicated HDMI cable, just use it.
         if link_type == audio_widget_link.HDMIWidgetLink:
-            link = audio_widget_link.HDMIWidgetLink()
+            link = audio_widget_link.HDMIWidgetLink(self._cros_host)
 
         # Acquires audio bus if there is available bus.
         # Creates a bus of AudioBusLink's subclass that is more

@@ -91,29 +91,6 @@ def _get_board_name(host):
     return host.get_board().split(':')[1]
 
 
-def correction_plug_unplug_for_audio(host, port):
-    """Plugs/unplugs several times for Cros device to detect audio.
-
-    For issue crbug.com/450101, Exynos HDMI driver has problem recognizing
-    HDMI audio, while display can be detected. Do several plug/unplug and wait
-    as a workaround. Note that port will be in unplugged state in the end if
-    extra plug/unplug is needed.
-
-    @param host: A CrosHost object.
-    @param port: A ChameleonVideoInput object.
-
-    """
-    board = _get_board_name(host)
-    if board in ['peach_pit', 'peach_pi', 'daisy', 'daisy_spring',
-                 'daisy_skate']:
-        logging.info('Need extra plug/unplug on board %s', board)
-        for _ in xrange(3):
-            port.plug()
-            time.sleep(3)
-            port.unplug()
-            time.sleep(3)
-
-
 def has_internal_speaker(host):
     """Checks if the Cros device has speaker.
 
