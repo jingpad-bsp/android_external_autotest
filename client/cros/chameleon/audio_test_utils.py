@@ -359,3 +359,19 @@ def check_recorded_frequency(
 
     if errors:
         raise error.TestFail(', '.join(errors))
+
+
+def switch_to_hsp(audio_facade):
+    """Switches to HSP profile.
+
+    Selects bluetooth microphone and runs a recording process on Cros device.
+    This triggers bluetooth profile be switched from A2DP to HSP.
+    Note the user can call stop_recording on audio facade to stop the recording
+    process, or let multimedia_xmlrpc_server terminates it in its cleanup.
+
+    """
+    audio_facade.set_chrome_active_node_type(None, 'BLUETOOTH')
+    check_audio_nodes(audio_facade, (None, ['BLUETOOTH']))
+    audio_facade.start_recording(
+            dict(file_type='raw', sample_format='S16_LE', channel=2,
+                 rate=48000))
