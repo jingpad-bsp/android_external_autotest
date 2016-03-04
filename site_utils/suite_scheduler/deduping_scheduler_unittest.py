@@ -70,7 +70,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE,
-                          created_on__gte=mox.IgnoreArg()).AndReturn([])
+                          created_on__gte=mox.IgnoreArg(),
+                          min_rpc_timeout=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to schedule; allow it to succeed.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
@@ -86,7 +87,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      wait_for_results=False,
                      job_retry=False,
                      delay_minutes=0,
-                     run_prod_code=False).AndReturn(7)
+                     run_prod_code=False,
+                     min_rpc_timeout=mox.IgnoreArg()).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -105,7 +107,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.afe.get_jobs(
             name__startswith=self._BUILD,
             name__endswith='control.'+self._SUITE,
-            created_on__gte=mox.IgnoreArg()).AndReturn(['42'])
+            created_on__gte=mox.IgnoreArg(),
+            min_rpc_timeout=mox.IgnoreArg()).AndReturn(['42'])
         self.mox.ReplayAll()
         self.assertFalse(self.scheduler.ScheduleSuite(self._SUITE,
                                                       self._BOARD,
@@ -147,7 +150,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      wait_for_results=False,
                      job_retry=False,
                      delay_minutes=0,
-                     run_prod_code=False).AndReturn(7)
+                     run_prod_code=False,
+                     min_rpc_timeout=mox.IgnoreArg()).AndReturn(7)
         self.mox.ReplayAll()
         self.assertTrue(self.scheduler.ScheduleSuite(self._SUITE,
                                                      self._BOARD,
@@ -167,7 +171,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.afe.get_jobs(
             name__startswith=self._BUILD,
             name__endswith='control.'+self._SUITE,
-            created_on__gte=mox.IgnoreArg()).AndRaise(Exception())
+            created_on__gte=mox.IgnoreArg(),
+            min_rpc_timeout=mox.IgnoreArg()).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.DedupException,
                           self.scheduler.ScheduleSuite,
@@ -187,7 +192,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE,
-                          created_on__gte=mox.IgnoreArg()).AndReturn([])
+                          created_on__gte=mox.IgnoreArg(),
+                          min_rpc_timeout=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to create a job for the suite; fail it.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
@@ -201,7 +207,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False,
-                     run_prod_code=False).AndReturn(None)
+                     run_prod_code=False,
+                     min_rpc_timeout=mox.IgnoreArg()).AndReturn(None)
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -221,7 +228,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE,
-                          created_on__gte=mox.IgnoreArg()).AndReturn([])
+                          created_on__gte=mox.IgnoreArg(),
+                          min_rpc_timeout=mox.IgnoreArg()).AndReturn([])
         # Expect an attempt to create a job for the suite; barf on it.
         self.afe.run('create_suite_job',
                      name=self._SUITE,
@@ -235,7 +243,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      timeout=self._TIMEOUT,
                      file_bugs=False,
                      wait_for_results=False,
-                     run_prod_code=False).AndRaise(Exception())
+                     run_prod_code=False,
+                     min_rpc_timeout=mox.IgnoreArg()).AndRaise(Exception())
         self.mox.ReplayAll()
         self.assertRaises(deduping_scheduler.ScheduleException,
                           self.scheduler.ScheduleSuite,
@@ -267,7 +276,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         # A similar suite has not already been scheduled.
         self.afe.get_jobs(name__startswith=self._BUILD,
                           name__endswith='control.'+self._SUITE,
-                          created_on__gte=mox.IgnoreArg()).AndReturn([])
+                          created_on__gte=mox.IgnoreArg(),
+                          min_rpc_timeout=mox.IgnoreArg()).AndReturn([])
         message = 'Control file not found.'
         exception = error.ControlFileNotFound(message)
         site_utils.get_sheriffs(lab_only=True).AndReturn(['deputy1', 'deputy2'])
@@ -285,7 +295,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      wait_for_results=False,
                      job_retry=False,
                      delay_minutes=0,
-                     run_prod_code=False).AndRaise(exception)
+                     run_prod_code=False,
+                     min_rpc_timeout=mox.IgnoreArg()).AndRaise(exception)
         reporting.Reporter.__init__()
         reporting.Reporter._check_tracker().AndReturn(True)
         reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(None)

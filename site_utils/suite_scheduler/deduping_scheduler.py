@@ -13,6 +13,13 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
 
 
+# Minimum RPC timeout setting for calls expected to take long time, e.g.,
+# create_suite_job. If default socket time (socket.getdefaulttimeout()) is
+# None or greater than this value, the default will be used.
+# The value here is set to be the same as the timeout for the RetryingAFE object
+# so long running RPCs can wait long enough before being aborted.
+_MIN_RPC_TIMEOUT = 600
+
 # Number of days back to search for existing job.
 SEARCH_JOB_MAX_DAYS = 14
 
@@ -100,7 +107,8 @@ class DedupingScheduler(object):
             return not self._afe.get_jobs(
                     name__startswith=test_source_build,
                     name__endswith='control.'+suite,
-                    created_on__gte=start_time)
+                    created_on__gte=start_time,
+                    min_rpc_timeout=_MIN_RPC_TIMEOUT)
         except Exception as e:
             raise DedupException(e)
 
@@ -196,7 +204,8 @@ class DedupingScheduler(object):
                              test_source_build=test_source_build,
                              job_retry=job_retry,
                              delay_minutes=delay_minutes,
-                             run_prod_code=run_prod_code) is not None:
+                             run_prod_code=run_prod_code,
+                             min_rpc_timeout=_MIN_RPC_TIMEOUT) is not None:
                 return True
             else:
                 raise ScheduleException(
@@ -279,6 +288,7 @@ class DedupingScheduler(object):
     def CheckHostsExist(self, *args, **kwargs):
         """Forward a request to check if hosts matching args, kwargs exist."""
         try:
+            kwargs['min_rpc_timeout'] = _MIN_RPC_TIMEOUT
             return self._afe.get_hostnames(*args, **kwargs)
         except error.TimeoutException as e:
             logging.exception(e)
