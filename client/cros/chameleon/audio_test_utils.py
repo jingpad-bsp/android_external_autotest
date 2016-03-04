@@ -283,6 +283,9 @@ def check_recorded_frequency(
             golden frequency.
 
     """
+    if not ignore_frequencies:
+        ignore_frequencies = []
+
     data_format = recorder.data_format
     recorded_data = audio_data.AudioRawData(
             binary=recorder.get_binary(),
@@ -300,10 +303,14 @@ def check_recorded_frequency(
         signal = recorded_data.channel_data[test_channel]
         saturate_value = audio_data.get_maximum_value_from_sample_format(
                 data_format['sample_format'])
+        logging.debug('Channel %d max signal: %f', test_channel, max(signal))
         normalized_signal = audio_analysis.normalize_signal(
                 signal, saturate_value)
+        logging.debug('saturate_value: %f', saturate_value)
+        logging.debug('max signal after normalized: %f', max(normalized_signal))
         spectral = audio_analysis.spectral_analysis(
                 normalized_signal, data_format['rate'])
+        logging.debug('spectral: %s', spectral)
 
         if not spectral:
             errors.append(
@@ -336,6 +343,9 @@ def check_recorded_frequency(
                         'Channel %d: Quality is good as there is no anomaly',
                         test_channel)
 
+        # Filter out the harmonics resulted from imperfect sin wave.
+        # This list is different for different channels.
+        harmonics = [dominant_frequency * n for n in xrange(2, 10)]
 
         def should_be_ignored(frequency):
             """Checks if frequency is close to any frequency in ignore list.
@@ -345,15 +355,14 @@ def check_recorded_frequency(
             @returns: True if the frequency should be ignored. False otherwise.
 
             """
-            for ignore_frequency in ignore_frequencies:
+            for ignore_frequency in ignore_frequencies + harmonics:
                 if (abs(frequency - ignore_frequency) <
                     frequency_diff_threshold):
                     logging.debug('Ignore frequency: %s', frequency)
                     return True
 
         # Filter out the frequencies to be ignored.
-        if ignore_frequencies:
-            spectral = [x for x in spectral if not should_be_ignored(x[0])]
+        spectral = [x for x in spectral if not should_be_ignored(x[0])]
 
         if len(spectral) > 1:
             first_coeff = spectral[0][1]
