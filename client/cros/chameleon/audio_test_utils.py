@@ -274,6 +274,11 @@ def check_recorded_frequency(
                                frequency_diff_threshold as well.
     @param check_anomaly: True to check anomaly in the signal.
 
+    @returns: A list containing tuples of (dominant_frequency, coefficient) for
+              valid channels. Coefficient can be a measure of signal magnitude
+              on that dominant frequency. Invalid channels where golden_channel
+              is None are ignored.
+
     @raises error.TestFail if the recorded data does not contain sine tone of
             golden frequency.
 
@@ -285,6 +290,7 @@ def check_recorded_frequency(
             sample_format=data_format['sample_format'])
 
     errors = []
+    dominant_spectrals = []
 
     for test_channel, golden_channel in enumerate(recorder.channel_map):
         if golden_channel is None:
@@ -357,8 +363,12 @@ def check_recorded_frequency(
                         'Channel %d: Found large second dominant frequencies: '
                         '%s' % (test_channel, spectral))
 
+        dominant_spectrals.append(spectral[0])
+
     if errors:
         raise error.TestFail(', '.join(errors))
+
+    return dominant_spectrals
 
 
 def switch_to_hsp(audio_facade):
