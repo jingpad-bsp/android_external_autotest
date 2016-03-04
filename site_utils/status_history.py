@@ -94,6 +94,9 @@ class _JobEvent(object):
 
     @property start_time  Time the job or task began execution.
     @property end_time    Time the job or task finished execution.
+    @property id          id of the event in the AFE database.
+    @property name        Name of the event, derived from the AFE database.
+    @property job_status  Short string describing the event's final status.
     @property job_url     URL to the logs for the event's job.
     @property diagnosis   Working status of the DUT after the event.
 
@@ -134,6 +137,24 @@ class _JobEvent(object):
 
         """
         return self.start_time - other.start_time
+
+
+    @property
+    def id(self):
+        """Return the id of the event in the AFE database."""
+        raise NotImplemented()
+
+
+    @property
+    def name(self):
+        """Return the name of the event."""
+        raise NotImplemented()
+
+
+    @property
+    def job_status(self):
+        """Return a short string describing the event's final status."""
+        raise NotImplemented()
 
 
     @property
@@ -223,6 +244,26 @@ class _SpecialTaskEvent(_JobEvent):
 
 
     @property
+    def id(self):
+        return self._afetask.id
+
+
+    @property
+    def name(self):
+        return self._afetask.task
+
+
+    @property
+    def job_status(self):
+        if self._afetask.is_aborted:
+            return 'ABORTED'
+        elif self._afetask.success:
+            return 'PASS'
+        else:
+            return 'FAIL'
+
+
+    @property
     def job_url(self):
         logdir = ('hosts/%s/%s-%s' %
                   (self._afetask.host.hostname, self._afetask.id,
@@ -280,6 +321,21 @@ class _TestJobEvent(_JobEvent):
         self._hqe = hqe
         super(_TestJobEvent, self).__init__(
                 hqe.started_on, hqe.finished_on)
+
+
+    @property
+    def id(self):
+        return self._hqe.id
+
+
+    @property
+    def name(self):
+        return self._hqe.job.name
+
+
+    @property
+    def job_status(self):
+        return self._hqe.status
 
 
     @property

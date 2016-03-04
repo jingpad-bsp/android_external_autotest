@@ -10,9 +10,11 @@ from datetime import datetime
 
 import common
 
+from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
+from autotest_lib.site_utils import status_history
 
 
 class BoardNotAvailableError(utils.TestLabException):
@@ -145,7 +147,7 @@ class RPCHelper(object):
         self.bug = ''
 
 
-    def diagnose_pool(self, board, pool, time_delta_hours, limit=5):
+    def diagnose_pool(self, board, pool, time_delta_hours, limit=10):
         """Log diagnostic information about a timeout for a board/pool.
 
         @param board: The board for which the current suite was run.
@@ -156,24 +158,44 @@ class RPCHelper(object):
 
         @raises proxy.JSONRPCException: For exceptions thrown across the wire.
         """
-        hosts = self.rpc_interface.get_hosts(
-                multiple_labels=('pool:%s' % pool, 'board:%s' % board))
-        if not hosts:
-            logging.warning('No hosts found for board:%s in pool:%s',
+        end_time = datetime.now()
+        start_time = end_time - time_delta_hours
+        get_histories = status_history.HostJobHistory.get_multiple_histories
+        host_histories = get_histories(
+                self.rpc_interface,
+                time_utils.to_epoch_time(start_time),
+                time_utils.to_epoch_time(end_time),
+                board=board, pool=pool)
+        if not host_histories:
+            logging.error('No hosts found for board:%s in pool:%s',
                             board, pool)
             return
-        cutoff = datetime.now() - time_delta_hours
-        for host in hosts:
-            jobs = self.rpc_interface.get_host_queue_entries(
-                    host__id=host.id, started_on__gte=str(cutoff))
-            job_info = ''
-            for job in jobs[-limit:]:
+        status_map = {
+            status_history.UNUSED: 'Unused',
+            status_history.UNKNOWN: 'No job history',
+            status_history.WORKING: 'Working',
+            status_history.BROKEN: 'Failed repair'
+        }
+        for history in host_histories:
+            count = 0
+            job_info =''
+            for job in history:
+                start_time = (
+                        time_utils.epoch_time_to_date_string(job.start_time))
                 job_info += ('%s %s started on: %s status %s\n' %
-                        (job.id, job.job.name, job.started_on, job.status))
-            logging.error('host:%s, status:%s, locked: %s'
-                          '\nlabels: %s\nLast %s jobs within %s:\n%s',
-                          host.hostname, host.status, host.locked, host.labels,
-                          limit, time_delta_hours, job_info)
+                        (job.id, job.name, start_time, job.job_status))
+                count += 1
+                if count >= limit:
+                    break
+            host = history.host
+            logging.error('host: %s, status: %s, locked: %s '
+                          'diagnosis: %s\n'
+                          'labels: %s\nLast %s jobs within %s:\n'
+                          '%s',
+                          history.hostname, host.status, host.locked,
+                          status_map[history.last_diagnosis()[0]],
+                          host.labels, limit, time_delta_hours,
+                          job_info)
 
 
     def check_dut_availability(self, board, pool, minimum_duts=0):
