@@ -1378,8 +1378,12 @@ class TemporaryManagerDBusProperty:
         self._saved_value = self._shill.get_manager_property(
                 self._prop_name)
         if self._saved_value is None:
-            raise error.TestFail('Manager property not found.')
-        if not self._shill.set_manager_property(self._prop_name, self._value):
+            self._saved_value = ""
+            if not self._shill.set_optional_manager_property(self._prop_name,
+                                                             self._value):
+                raise error.TestFail('Could not set optional manager property.')
+        else:
+            if not self._shill.set_manager_property(self._prop_name, self._value):
                 raise error.TestFail('Could not set manager property')
 
         logging.info('- Changed value from [%s] to [%s]',
