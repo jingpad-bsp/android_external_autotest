@@ -7,6 +7,7 @@
 import abc
 import copy
 import logging
+import os
 import tempfile
 
 from autotest_lib.client.cros.audio import audio_data
@@ -15,6 +16,8 @@ from autotest_lib.client.cros.audio import sox_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
+
+_CHAMELEON_FILE_PATH = os.path.join(os.path.dirname(__file__))
 
 class AudioWidget(object):
     """
@@ -418,6 +421,52 @@ class ChameleonInputWidgetHandler(ChameleonWidgetHandler):
             raise ValueError(
                     'Port %s is not connected to Chameleon' % interface)
         return chameleon_port
+
+
+class ChameleonHDMIInputWidgetHandlerError(Exception):
+    """Error in ChameleonHDMIInputWidgetHandler."""
+
+
+class ChameleonHDMIInputWidgetHandler(ChameleonInputWidgetHandler):
+    """This class abstracts a Chameleon HDMI audio input widget handler."""
+    _EDID_FILE_PATH = os.path.join(
+        _CHAMELEON_FILE_PATH, 'test_data/edids/HDMI_DELL_U2410.txt')
+
+    def __init__(self, chameleon_board, interface, display_facade):
+        """Initializes a ChameleonHDMIInputWidgetHandler.
+
+        @param chameleon_board: Pass to ChameleonInputWidgetHandler.
+        @param interface: Pass to ChameleonInputWidgetHandler.
+        @param display_facade: A DisplayFacadeRemoteAdapter to access
+                               Cros device display functionality.
+
+        """
+        super(ChameleonHDMIInputWidgetHandler, self).__init__(
+              chameleon_board, interface)
+        self._display_facade = display_facade
+        self._hdmi_video_port = None
+
+        self._find_video_port()
+
+
+    def _find_video_port(self):
+        """Finds HDMI as a video port."""
+        finder = chameleon_port_finder.ChameleonVideoInputFinder(
+                self._chameleon_board, self._display_facade)
+        self._hdmi_video_port = finder.find_port(self.interface)
+        if not self._hdmi_video_port:
+            raise ChameleonHDMIInputWidgetHandlerError(
+                    'Can not find HDMI port, perhaps HDMI is not connected?')
+
+
+    def set_edid_for_audio(self):
+        """Sets the EDID suitable for audio test."""
+        self._hdmi_video_port.set_edid_from_file(self._EDID_FILE_PATH)
+
+
+    def restore_edid(self):
+        """Restores the original EDID."""
+        self._hdmi_video_port.restore_edid()
 
 
 class ChameleonOutputWidgetHandler(ChameleonWidgetHandler):

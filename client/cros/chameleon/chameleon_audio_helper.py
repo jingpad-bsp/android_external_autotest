@@ -219,6 +219,9 @@ class AudioWidgetFactory(object):
         _audio_facade: An AudioFacadeRemoteAdapter to access Cros device audio
                        functionality. This is created by the
                        'factory' argument passed to the constructor.
+        _display_facade: A DisplayFacadeRemoteAdapter to access Cros device
+                         display functionality. This is created by the
+                         'factory' argument passed to the constructor.
         _chameleon_board: A ChameleonBoard object to access Chameleon
                           functionality.
         _link_factory: An AudioLinkFactory that creates link for widgets.
@@ -235,6 +238,7 @@ class AudioWidgetFactory(object):
 
         """
         self._audio_facade = factory.create_audio_facade()
+        self._display_facade = factory.create_display_facade()
         self._usb_facade = factory.create_usb_facade()
         self._cros_host = cros_host
         self._chameleon_board = cros_host.chameleon
@@ -260,8 +264,13 @@ class AudioWidgetFactory(object):
 
             """
             if audio_port.role == 'sink':
-                return audio_widget.ChameleonInputWidgetHandler(
-                        self._chameleon_board, audio_port.interface)
+                if audio_port.port_id == ids.ChameleonIds.HDMI:
+                    return audio_widget.ChameleonHDMIInputWidgetHandler(
+                            self._chameleon_board, audio_port.interface,
+                            self._display_facade)
+                else:
+                    return audio_widget.ChameleonInputWidgetHandler(
+                            self._chameleon_board, audio_port.interface)
             else:
                 if audio_port.port_id == ids.ChameleonIds.LINEOUT:
                     return audio_widget.ChameleonLineOutOutputWidgetHandler(
