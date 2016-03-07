@@ -329,12 +329,20 @@ def _extract_assignment(n):
     return (key, val)
 
 
-def parse_control_string(control, raise_warnings=False):
+def parse_control_string(control, raise_warnings=False, path=''):
+    """Parse a control file from a string.
+
+    @param control: string containing the text of a control file.
+    @param raise_warnings: True iff ControlData should raise an error on
+            warnings about control file contents.
+    @param path: string path to the control file.
+
+    """
     try:
         mod = compiler.parse(control)
     except SyntaxError, e:
         raise ControlVariableException("Error parsing data because %s" % e)
-    return finish_parse(mod, '', raise_warnings)
+    return finish_parse(mod, path, raise_warnings)
 
 
 def parse_control(path, raise_warnings=False):

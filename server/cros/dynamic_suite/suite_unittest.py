@@ -119,7 +119,9 @@ class SuiteTest(mox.MoxTestBase):
             self.getter.get_control_file_contents(
                 file).InAnyOrder().AndReturn(data.string)
             control_data.parse_control_string(
-                data.string, raise_warnings=True).InAnyOrder().AndReturn(data)
+                    data.string,
+                    raise_warnings=True,
+                    path=file).InAnyOrder().AndReturn(data)
 
 
     def testFindAndParseStableTests(self):

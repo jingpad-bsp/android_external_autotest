@@ -1143,11 +1143,10 @@ class Suite(object):
             text = cf_getter.get_control_file_contents(file)
             try:
                 found_test = control_data.parse_control_string(
-                        text, raise_warnings=True)
+                        text, raise_warnings=True, path=file)
                 if not add_experimental and found_test.experimental:
                     continue
                 found_test.text = text
-                found_test.path = file
                 if run_prod_code:
                     found_test.require_ssp = False
                 tests[file] = found_test
