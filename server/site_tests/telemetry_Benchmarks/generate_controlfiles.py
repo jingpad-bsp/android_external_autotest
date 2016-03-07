@@ -60,7 +60,7 @@ from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'sbasi, achuith, rohitbm'
 NAME = 'telemetry_Benchmarks.{1}'
-SUITE = '{0}'
+ATTRIBUTES = 'suite:{0}'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
 TEST_CLASS = 'performance'
