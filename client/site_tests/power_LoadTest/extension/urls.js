@@ -59,7 +59,7 @@ var tasks = [
     timeout: seconds(10),
     focus: false,
     urls: [
-      'http://www.bbc.co.uk/worldservice/audioconsole/?stream=live',
+      'http://www.bbc.co.uk/radio/player/bbc_world_service',
       'http://www.npr.org/templates/player/mediaPlayer.html?action=3&t=live1',
       'http://www.cbc.ca/radio2/channels/popup.html?stream=classical'
     ]
