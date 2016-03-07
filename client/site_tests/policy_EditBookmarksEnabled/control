@@ -5,7 +5,6 @@
 AUTHOR = "scunningham"
 NAME = "policy_EditBookmarksEnabled"
 ATTRIBUTES = "suite:bvt-perbuild"
-SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"

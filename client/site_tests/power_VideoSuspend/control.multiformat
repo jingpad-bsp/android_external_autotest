@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "power_VideoSuspend.multiformat"
 ATTRIBUTES = "suite:kernel_daily_regression"
-SUITE = "kernel_daily_regression"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "power"
