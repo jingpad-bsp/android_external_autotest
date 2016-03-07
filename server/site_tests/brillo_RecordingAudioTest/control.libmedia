@@ -5,7 +5,6 @@
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server.brillo.feedback import client_factory
 
-
 AUTHOR = 'garnold, ralphnathan'
 NAME = 'brillo_MonoLibmediaRecordingAudioTest'
 TIME = 'SHORT'
