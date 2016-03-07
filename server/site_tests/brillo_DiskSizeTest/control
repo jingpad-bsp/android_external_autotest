@@ -12,7 +12,6 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-bvt,suite:brillo-smoke'
-SUITE = 'brillo-bvt,brillo-smoke'
 
 DOC = """
 Tests whether a Brillo device has sufficient disk size.
