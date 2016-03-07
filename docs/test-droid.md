@@ -125,9 +125,10 @@ Be sure to run pylint on every file you touch:
  $ ./utils/run_pylint.py <file name>
 ```
 
-Run autotest unittests:
+Run autotest unittests (which usually requires external packages):
 
 ```
+ $ utils/build_externals.py  # install any missing os packages with apt-get
  $ utils/unittest_suite.py
 ```
 
