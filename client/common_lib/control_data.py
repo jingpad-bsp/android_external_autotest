@@ -119,21 +119,31 @@ class ControlData(object):
     def _patch_up_suites_from_attributes(self):
         """Patch up the set of suites this test is part of.
 
-        This used to be its own variable, but now suites are taken only from
+        Legacy builds will not have an appropriate ATTRIBUTES field set.
+        Take the union of suites specified via ATTRIBUTES and suites specified
+        via SUITE.
+
+        SUITE used to be its own variable, but now suites are taken only from
         the attributes.
 
         """
-        # Remove the suite field if it is set already.
+
+        suite_names = set()
+        # Extract any suites we know ourselves to be in based on the SUITE
+        # line.  This line is deprecated, but control files in old builds will
+        # still have it.
         if hasattr(self, 'suite'):
-            delattr(self, 'suite')
+            existing_suites = self.suite.split(',')
+            existing_suites = [name.strip() for name in existing_suites]
+            existing_suites = [name for name in existing_suites if name]
+            suite_names.update(existing_suites)
 
         # Figure out if our attributes mention any suites.
-        suite_names = []
         for attribute in self.attributes:
             if not attribute.startswith(_SUITE_ATTRIBUTE_PREFIX):
                 continue
             suite_name = attribute[len(_SUITE_ATTRIBUTE_PREFIX):]
-            suite_names.append(suite_name)
+            suite_names.add(suite_name)
 
         # Rebuild the suite field if necessary.
         if suite_names:
