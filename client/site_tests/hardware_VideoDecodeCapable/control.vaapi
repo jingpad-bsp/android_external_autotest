@@ -15,7 +15,6 @@ For each of the profiles, we expect it has the VLD entrypoint and supports
 YUV420 for the RT format.
 """
 ATTRIBUTES = "suite:video"
-SUITE = 'video'
 TIME='FAST'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'

@@ -7,7 +7,6 @@ NAME = 'network_WiFi_ChaosConnectDisconnect.open_n'
 TIME = 'LONG'
 TEST_TYPE = 'server'
 ATTRIBUTES = 'suite:wifi_interop'
-SUITE = 'wifi_interop'
 DEPENDENCIES = 'chaos_nightly, chaos_dut'
 
 DOC = """
