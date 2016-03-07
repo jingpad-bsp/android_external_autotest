@@ -9,7 +9,6 @@ CRITERIA = """
 Detection of udev event notification of a GPU hang.
 """
 ATTRIBUTES = "suite:bvt-perbuild, suite:graphics, suite:graphics_per-day, suite:graphics_system"
-SUITE = 'bvt-perbuild, graphics_per-day, graphics, graphics_system'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = "gl"

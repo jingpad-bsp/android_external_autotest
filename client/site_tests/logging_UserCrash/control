@@ -15,7 +15,6 @@ Fails if any of the following conditions occur:
   - crash is sent without user consent
 """
 ATTRIBUTES = "suite:bvt-cq, suite:smoke"
-SUITE = "bvt-cq, smoke"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"

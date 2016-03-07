@@ -11,7 +11,6 @@ TEST_CLASS = "logging"
 TEST_TYPE = "client"
 JOB_RETRIES = 0
 ATTRIBUTES = "suite:jailed_build, suite:partners"
-SUITE = "jailed_build, partners"
 
 DOC = """
 Crash all valid Chrome OS processes from a whitelist, and confirm

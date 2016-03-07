@@ -11,7 +11,6 @@ This test will also fail if more than 10 percent of the system CPU
 even after a wait of 60 seconds.
 """
 ATTRIBUTES = "suite:bvt-perbuild, suite:graphics, suite:graphics_per-day, suite:graphics_system"
-SUITE = 'bvt-perbuild, graphics_per-day, graphics, graphics_system'
 TIME='fast'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "Performance"

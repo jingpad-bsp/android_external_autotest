@@ -7,7 +7,6 @@ NAME = "graphics_Stress.ytvimeowebgl"
 PURPOSE = "Execute a graphics stress test."
 CRITERIA = "All tests must not crash/hang the GPU."
 ATTRIBUTES = "suite:graphics, suite:graphics_browser, suite:graphics_per-day"
-SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = "LENGTHY"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "graphics"

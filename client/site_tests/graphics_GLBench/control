@@ -20,7 +20,6 @@ Note: it should nearly never be required to remove old versions of good/bad
 images from these directories.
 """
 ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
-SUITE = 'graphics_per-day, graphics, graphics_system'
 TIME='LENGTHY'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
