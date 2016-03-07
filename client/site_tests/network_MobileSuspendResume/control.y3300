@@ -12,7 +12,6 @@ CRITERIA = """
     after resuming.
 """
 ATTRIBUTES = "suite:network3g_tmobile"
-SUITE = "network3g_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

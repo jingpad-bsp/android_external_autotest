@@ -9,7 +9,6 @@ CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
 """
 ATTRIBUTES = "suite:network3g"
-SUITE = "network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
