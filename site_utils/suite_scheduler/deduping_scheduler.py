@@ -31,9 +31,11 @@ SEARCH_JOB_MAX_DAYS = 14
 # by suite scheduler does not wait for test job to finish. That helps to reduce
 # the load on drone.
 DELAY_MINUTES_INTERVAL = 5
-# Set maximum delay minutes to 4 hours. This is to prevent suite jobs from
-# running for too long.
-MAX_DELAY_MINUTES = 240
+# Set maximum delay minutes to 24 hours. This is to prevent suite jobs from
+# running for too long. Nightly and new_build tasks won't create that many
+# suites that need such a long delay. However, weekly tasks can create several
+# hundreds of suites as most of them requires to run on all branches.
+MAX_DELAY_MINUTES = 1440
 
 class DedupingSchedulerException(Exception):
     """Base class for exceptions from this module."""
