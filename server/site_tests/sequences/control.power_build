@@ -68,8 +68,8 @@ def _run_client_test(machine):
         logging.info('********************%s', msg)
         raise error.TestError(msg)
 
-    client.power_off()
     try:
+        client.power_off()
         _iterate_tests(client, machine)
     finally:
         client.power_on()

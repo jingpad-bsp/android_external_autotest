@@ -43,8 +43,8 @@ def _run_client_test(machine):
     # Run the full 60/20/10/10 load test, draining a full battery
     client_at.run_test('power_BatteryCharge', percent_target_charge=100,
                        max_run_time=60*60*6, tag='CHARGE_100')
-    client.power_off()
     try:
+        client.power_off()
         if hasattr(client_attributes, 'wifi'):
             ap, sec, pw = client_attributes.wifi.split(',')
             client_at.run_test('power_LoadTest', loop_count=12, loop_time=3600,

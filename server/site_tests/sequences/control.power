@@ -49,8 +49,8 @@ def run_client_test(machine):
   client_at.run_test('power_BatteryCharge', percent_target_charge=50,
                      max_run_time=60*60*4, tag='CHARGE_50')
 
-  client.power_off()
   try:
+    client.power_off()
     for test in TESTS:
         client_at.run_test(test)
 
