@@ -22,9 +22,6 @@ ATTRIBUTES_BVT_PB = (
     'suite:bvt-perbuild'
 )
 ATTRIBUTES_DAILY = 'suite:deqp, suite:graphics_per-day, suite:graphics_system'
-SUITE_BVT_CQ = 'deqp, graphics_per-day, graphics_system, bvt-cq'
-SUITE_BVT_PB = 'deqp, graphics_per-day, graphics_system, bvt-perbuild'
-SUITE_DAILY = 'deqp, graphics_per-day, graphics_system'
 
 class Suite(Enum):
     none = 1
@@ -70,20 +67,19 @@ AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Run the drawElements Quality Program test suite.'
 CRITERIA = 'All of the individual tests must pass.'
 ATTRIBUTES = '{1}'
-SUITE = '{2}'
-TIME = '{3}'
-{4}TEST_CATEGORY = 'Functional'
+TIME = '{2}'
+{3}TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'
 TEST_TYPE = 'client'
 DOC = \"\"\"
 This test runs the drawElements Quality Program test suite.
 \"\"\"
 
-job.run_test('graphics_dEQP', opts = args + ['filter={5}',
-                                             'subset_to_run={6}',
-                                             'hasty={7}',
-                                             'shard_number={8}',
-                                             'shard_count={9}'])""")
+job.run_test('graphics_dEQP', opts = args + ['filter={4}',
+                                             'subset_to_run={5}',
+                                             'hasty={6}',
+                                             'shard_number={7}',
+                                             'shard_count={8}'])""")
 
 #Unlike the normal version it batches many tests in a single run
 #to reduce testing time. Unfortunately this is less robust and
@@ -96,15 +92,6 @@ def get_controlfilename(test, shard=0):
 def get_dependencies(test):
     if test.notpass:
         return "DEPENDENCIES = 'cleanup-reboot'\n"
-    return ''
-
-def get_suite(test):
-    if test.suite == Suite.bvtcq:
-        return SUITE_BVT_CQ
-    if test.suite == Suite.bvtpb:
-        return SUITE_BVT_PB
-    if test.suite == Suite.daily:
-        return SUITE_DAILY
     return ''
 
 def get_attributes(test):
@@ -139,7 +126,6 @@ def write_controlfile(filename, content):
 
 def write_controlfiles(test):
     attributes = get_attributes(test)
-    suite = get_suite(test)
     time = get_time(test)
     dependencies = get_dependencies(test)
     if test.shards > 1:
@@ -148,8 +134,8 @@ def write_controlfiles(test):
             testname = get_testname(test, shard)
             filename = get_controlfilename(test, shard)
             content = CONTROLFILE_TEMPLATE.format(
-                testname, attributes, suite, time, dependencies, test.filter,
-                subset, test.hasty, shard, test.shards)
+                testname, attributes, time, dependencies, test.filter, subset,
+                test.hasty, shard, test.shards)
             write_controlfile(filename, content)
     else:
         if test.notpass:
@@ -157,8 +143,8 @@ def write_controlfiles(test):
             testname = get_testname(test)
             filename = get_controlfilename(test)
             content = CONTROLFILE_TEMPLATE.format(
-                testname, attributes, suite, time, dependencies, test.filter,
-                subset, test.hasty, 0, test.shards)
+                testname, attributes, time, dependencies, test.filter, subset,
+                test.hasty, 0, test.shards)
             write_controlfile(filename, content)
         test = Test(test.filter,
                     test.suite,
@@ -170,7 +156,7 @@ def write_controlfiles(test):
         subset = 'Pass'
         testname = get_testname(test)
         filename = get_controlfilename(test)
-        content = CONTROLFILE_TEMPLATE.format(testname, attributes, suite, time,
+        content = CONTROLFILE_TEMPLATE.format(testname, attributes, time,
                                               dependencies, test.filter, subset,
                                               test.hasty, 0, test.shards)
         write_controlfile(filename, content)
