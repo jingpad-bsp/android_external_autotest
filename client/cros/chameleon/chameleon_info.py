@@ -44,6 +44,12 @@ _CHAMELEON_BOARD_INFO = {
         '94:eb:2c:10:06:76': ChameleonInfo('00:1F:84:01:03:83'),
         '94:eb:2c:10:06:74': ChameleonInfo('00:1F:84:01:03:61'),
         '94:eb:2c:00:01:18': ChameleonInfo('00:1F:84:01:03:88'),
+        '94:eb:2c:10:06:7a': ChameleonInfo('00:1F:84:01:03:1C'),
+        '94:eb:2c:10:06:7b': ChameleonInfo('00:1F:84:01:03:A7'),
+        '94:eb:2c:10:06:7c': ChameleonInfo('00:1F:84:01:03:4B'),
+        '94:eb:2c:10:06:7d': ChameleonInfo('failed to scan BT'),
+        '94:eb:2c:10:06:7e': ChameleonInfo('00:1F:84:01:03:7B'),
+        '94:eb:2c:10:06:7f': ChameleonInfo('00:1F:84:01:03:36'),
 }
 
 class ChameleonInfoError(Exception):
