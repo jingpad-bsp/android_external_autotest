@@ -14,7 +14,7 @@ To verify if prod branch can be pushed to lab, run following command in
 chromeos-autotest.cbf server:
 /usr/local/autotest/site_utils/test_push.py -e someone@company.com
 
-The script uses latest stumpy canary build as test build by default.
+The script uses latest gandof canary build as test build by default.
 
 """
 
@@ -128,13 +128,13 @@ def powerwash_dut(hostname):
     host.close()
 
 
-def get_default_build(devserver=None, board='stumpy'):
+def get_default_build(devserver=None, board='gandof'):
     """Get the default build to be used for test.
 
     @param devserver: devserver used to look for latest staged build. If value
                       is None, all devservers in config will be tried.
-    @param board: Name of board to be tested, default is stumpy.
-    @return: Build to be tested, e.g., stumpy-release/R36-5881.0.0
+    @param board: Name of board to be tested, default is gandof.
+    @return: Build to be tested, e.g., gandof-release/R36-5881.0.0
     """
     LATEST_BUILD_URL_PATTERN = '%s/latestbuild?target=%s-release'
     build = None
@@ -158,8 +158,8 @@ def parse_arguments():
 
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--board', dest='board', default='stumpy',
-                        help='Default is stumpy.')
+    parser.add_argument('-b', '--board', dest='board', default='gandof',
+                        help='Default is gandof.')
     parser.add_argument('-sb', '--shard_board', dest='shard_board',
                         default='quawks',
                         help='Default is quawks.')
