@@ -489,6 +489,14 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.shill.sync_time_to(epoch_seconds)
 
 
+    def collect_debug_info(self, test_name):
+        """Collect any debug information needed on the DUT
+
+        @param test_name string name of the test to collect info for.
+        """
+        self.shill.collect_debug_info(test_name)
+
+
     def check_iw_link_value(self, iw_link_key, desired_value):
         """Assert that the current wireless link property is |desired_value|.
 
