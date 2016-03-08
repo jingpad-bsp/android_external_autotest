@@ -850,17 +850,9 @@ def get_content_protection(output_name):
     return False
 
 
-def wflinfo_cmd():
-    """
-    Return a wflinfo command appropriate to the current graphics platform/api.
-    """
-    return 'wflinfo -p %s -a %s' % (utils.graphics_platform(),
-                                    utils.graphics_api())
-
-
 def is_sw_rasterizer():
     """Return true if OpenGL is using a software rendering."""
-    cmd = wflinfo_cmd() + ' | grep "OpenGL renderer string"'
+    cmd = utils.wflinfo_cmd() + ' | grep "OpenGL renderer string"'
     output = utils.run(cmd)
     result = output.stdout.splitlines()[0]
     logging.info('wflinfo: %s', result)

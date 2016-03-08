@@ -134,7 +134,7 @@ class graphics_GLAPICheck(test.test):
     def __check_wflinfo(self):
         # TODO(ihf): Extend this function once gl(es)_APICheck code has
         # been upstreamed to waffle.
-        cmd = graphics_utils.wflinfo_cmd()
+        cmd = utils.wflinfo_cmd()
         logging.info('Running %s', cmd)
         wflinfo = utils.system_output(cmd, retain_output=True,
                                       ignore_status=False)

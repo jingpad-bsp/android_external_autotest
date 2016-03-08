@@ -730,10 +730,6 @@ def get_ec_temperatures():
     Uses ectool to return a list of all sensor temperatures in Celsius.
     """
     temperatures = []
-    # TODO(ihf): On all ARM boards I tested 'ectool temps all' returns 200K
-    # for all sensors. Remove this check once crbug.com/358342 is fixed.
-    if 'arm' in utils.get_arch():
-        return temperatures
     try:
         full_cmd = 'ectool temps all'
         lines = utils.run(full_cmd, verbose=False).stdout.splitlines()
@@ -976,13 +972,28 @@ def set_dirty_writeback_centisecs(time=60000):
         utils.system(cmd)
 
 
+def wflinfo_cmd():
+    """
+    Return a wflinfo command appropriate to the current graphics platform/api.
+    """
+    return 'wflinfo -p %s -a %s' % (graphics_platform(), graphics_api())
+
+
 def get_gpu_family():
     """Return the GPU family name"""
     global pciid_to_intel_architecture
 
     cpuarch = base_utils.get_cpu_soc_family()
     if cpuarch == 'exynos5' or cpuarch == 'rockchip':
-        return 'mali'
+        cmd = wflinfo_cmd()
+        logging.info('Running %s', cmd)
+        wflinfo = utils.system_output(cmd, retain_output=True,
+                                      ignore_status=False)
+        version = re.findall(r'OpenGL renderer string: '
+                             r'Mali-T([0-9]+)', wflinfo)
+        if version:
+            return 'mali-t%s' % version[0]
+        return 'mali-unrecognized'
     if cpuarch == 'tegra':
         return 'tegra'
     if os.path.exists('/sys/bus/platform/drivers/pvrsrvkm'):

@@ -183,12 +183,12 @@ class graphics_Idle(test.test):
         clock frequency; idle before doing so, and retry every second for 20
         seconds."""
         logging.info('Running verify_graphics_dvfs')
-        if self._gpu_type == 'mali':
+        if self._gpu_type.startswith('mali'):
             if self._cpu_type == 'exynos5':
                 node = '/sys/devices/11800000.mali/'
                 enable_node = 'dvfs'
                 enable_value = 'on'
-            elif self._cpu_type == 'rockchip':
+            elif self._cpu_type.startswith('rockchip'):
                 node = '/sys/devices/ffa30000.gpu/'
                 enable_node = 'dvfs_enable'
                 enable_value = '1'
