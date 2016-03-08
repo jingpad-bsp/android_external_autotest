@@ -147,7 +147,7 @@ class ControlData(object):
 
         # Rebuild the suite field if necessary.
         if suite_names:
-            self.set_suite(','.join(suite_names))
+            self.set_suite(','.join(sorted(list(suite_names))))
 
 
     def _set_string(self, attr, val):

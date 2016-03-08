@@ -26,6 +26,7 @@ TEST_TYPE='client'
 RETRIES = 5
 REQUIRE_SSP = False
 ATTRIBUTES = "suite:smoke, suite:bvt"
+SUITE = "suite-listed-only-in-suite-line"
 """
 
 
@@ -57,6 +58,8 @@ class ParseControlTest(unittest.TestCase):
         self.assertEquals(cd.require_ssp, False)
         self.assertEquals(cd.attributes,
                           set(["suite:smoke","suite:bvt","subsystem:default"]))
+        self.assertEquals(cd.suite,
+                          "bvt,smoke,suite-listed-only-in-suite-line")
 
 
 class ParseControlFileBugTemplate(unittest.TestCase):
