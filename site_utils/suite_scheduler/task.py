@@ -25,6 +25,9 @@ OS_TYPE_ANDROID = 'android'
 OS_TYPES = {OS_TYPE_CROS, OS_TYPE_BRILLO, OS_TYPE_ANDROID}
 OS_TYPES_LAUNCH_CONTROL = {OS_TYPE_BRILLO, OS_TYPE_ANDROID}
 
+_WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+             'Sunday']
+
 class MalformedConfigEntry(Exception):
     """Raised to indicate a failure to parse a Task out of a config."""
     pass
@@ -495,17 +498,23 @@ class Task(object):
             self._boards = set([x.strip() for x in boards.split(',')])
             boardsStr = boards
 
+        time_str = ''
+        if self._hour:
+            time_str = ' Run at %d:00.' % self._hour
+        elif self._day:
+            time_str = ' Run on %s.' % _WEEKDAYS[self._day]
         if os_type == OS_TYPE_CROS:
             self._str = ('%s: %s on %s with pool %s, boards [%s], file_bugs = '
-                         '%s across %s machines.' %
+                         '%s across %s machines.%s' %
                          (self.__class__.__name__, suite, branch_specs, pool,
-                          boardsStr, self._file_bugs, numStr))
+                          boardsStr, self._file_bugs, numStr, time_str))
         else:
             self._str = ('%s: %s on branches %s and targets %s with pool %s, '
-                         'boards [%s], file_bugs = %s across %s machines.' %
+                         'boards [%s], file_bugs = %s across %s machines.%s' %
                          (self.__class__.__name__, suite,
                           launch_control_branches, launch_control_targets,
-                          pool, boardsStr, self._file_bugs, numStr))
+                          pool, boardsStr, self._file_bugs, numStr, time_str))
+
 
 
     def _FitsSpec(self, branch):
