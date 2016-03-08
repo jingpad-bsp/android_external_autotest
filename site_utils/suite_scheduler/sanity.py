@@ -28,6 +28,8 @@ def CheckControlFileExistance(tasks):
                                   'test_suites', 'control.'+task.suite)
         if task.suite.startswith('crosbolt_arc_perf'):
             continue
+        if task.suite.startswith('arc-nightly'):
+            continue
         if not os.path.exists(suite_path):
             corrections = True
             logging.warning("No suite control file for %s", task.suite)
