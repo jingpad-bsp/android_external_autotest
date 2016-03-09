@@ -41,7 +41,7 @@ from autotest_lib.server.cros import telemetry_runner
 # as possible and takes a short time to execute. At this point the
 # list of benchmarks is in flux.
 TELEMETRY_AFDO_BENCHMARKS = (
-    ('page_cycler.typical_25', ('--pageset-repeat=2',)),
+    ('page_cycler.typical_25', ('--pageset-repeat=1',)),
     ('page_cycler.intl_ja_zh', ('--pageset-repeat=1',)),
     ('page_cycler.intl_ar_fa_he', ('--pageset-repeat=1',)),
     ('page_cycler.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
