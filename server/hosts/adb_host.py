@@ -587,7 +587,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             serial = self.adb_serial
             # ADB has a device state, if the device is not online, no
             # subsequent ADB command will complete.
-            if len(devices) == 0 or not self.is_device_ready():
+            if serial not in devices or not self.is_device_ready():
                 logging.debug('Waiting for device to enter the ready state.')
                 return False
         elif command == FASTBOOT_CMD:
