@@ -13,7 +13,6 @@ from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
-from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.server.cros.audio import audio_test
 
 
@@ -43,8 +42,6 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
 
 
     def run_once(self, host):
-        edid_path = os.path.join(self.bindir,
-                                 'test_data/edids/HDMI_DELL_U2410.txt')
         golden_file = audio_test_data.SWEEP_TEST_FILE
 
         # Dump audio diagnostics data for debugging.
