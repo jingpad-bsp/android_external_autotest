@@ -419,9 +419,6 @@ class graphics_dEQP(test.test):
         logging.info('ChromeOS GPU family = %s', self._gpu_type)
         logging.info('dEQP test filter = %s', self._filter)
 
-        if self._gpu_type == 'pinetrail':
-            raise error.TestNAError('dEQP not implemented on pinetrail. '
-                                    'crbug.com/532691')
         if self._gpu_type.startswith('tegra'):
             raise error.TestNAError('dEQP not implemented on tegra. '
                                     'crbug.com/543373')
