@@ -7,6 +7,8 @@ import logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
+from autotest_lib.client.cros import sys_power
+
 
 class kernel_CheckArmErrata(test.test):
     """
@@ -15,6 +17,7 @@ class kernel_CheckArmErrata(test.test):
     See control file for more details.
     """
     version = 1
+    SECS_TO_SUSPEND = 15
 
     @staticmethod
     def _parse_cpu_info(cpuinfo_str):
@@ -427,6 +430,11 @@ class kernel_CheckArmErrata(test.test):
             return
 
         cpuinfo = self._parse_cpu_info(utils.read_file('/proc/cpuinfo'))
+
+        for cpu_id in sorted(cpuinfo.keys()):
+            self._check_one_cpu(cpuinfo[cpu_id])
+
+        sys_power.do_suspend(self.SECS_TO_SUSPEND)
 
         for cpu_id in sorted(cpuinfo.keys()):
             self._check_one_cpu(cpuinfo[cpu_id])
