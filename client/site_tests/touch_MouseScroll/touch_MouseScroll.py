@@ -33,9 +33,15 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
 
         """
         self._events.clear_previous_events()
+        self._events.set_default_scroll_position(scroll_vertical)
+        start_scroll = self._events.get_scroll_position(scroll_vertical)
+        self._events.clear_previous_events()
+
         self._playback(self._gest_file_path[name], touch_type='mouse')
+
         self._events.wait_for_events_to_complete()
-        delta = self._events.get_scroll_delta(scroll_vertical)
+        end_scroll = self._events.get_scroll_position(scroll_vertical)
+        delta = end_scroll - start_scroll
         logging.info('Test %s: saw scroll delta of %d.  Expected direction %d.',
                      name, delta, expected_direction)
 
@@ -105,6 +111,8 @@ class touch_MouseScroll(touch_playback_test_base.touch_playback_test_base):
         with chrome.Chrome() as cr:
             # Open test page.
             self._open_events_page(cr)
+            self._events.expand_page()
+            self._events.set_prevent_defaults(False)
 
             # Emulate mouse with vertical scroll feature.
             mouse_file = os.path.join(self.bindir, self._MOUSE_DESCRIPTION)
