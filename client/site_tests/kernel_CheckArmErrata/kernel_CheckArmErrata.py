@@ -241,6 +241,15 @@ class kernel_CheckArmErrata(test.test):
                 "Missing bit 1 for erratum 821420: %#010x" % int_feat_reg)
         logging.info("CPU %d: erratum 821420 good", cpu_id)
 
+        # Erratum 825619 applies to all A12s.  Need bit 24 in diag reg.
+        diag_reg = regid_to_val.get("(p15, 0, c15, c0, 1)")
+        if diag_reg is None:
+            raise error.TestError("Kernel didn't provide diag register")
+        elif not (diag_reg & (1 << 24)):
+            raise error.TestError(
+                "Missing bit 24 for erratum 825619: %#010x" % diag_reg)
+        logging.info("CPU %d: erratum 825619 good", cpu_id)
+
     def _check_one_cortex_a17(self, cpuinfo):
         """
         Check the errata for a Cortex-A17.
@@ -279,10 +288,10 @@ class kernel_CheckArmErrata(test.test):
         ...     print traceback.format_exc(),
         Traceback (most recent call last):
         ...
-        TestError: Missing bit 12 for erratum 852423: 0x00000000
+        TestError: Missing bit 24 for erratum 852421: 0x00000000
 
         >>> _testobj._get_regid_to_val = lambda cpu_id: \
-               {"(p15, 0, c15, c0, 1)": (1 << 12)}
+               {"(p15, 0, c15, c0, 1)": (1 << 12) | (1 << 24)}
         >>> _info_io.seek(0); _info_io.truncate()
         >>> _testobj._check_one_cortex_a17({
         ...    "processor": 2,
@@ -314,16 +323,25 @@ class kernel_CheckArmErrata(test.test):
 
         regid_to_val = self._get_regid_to_val(cpu_id)
 
-        # Erratum 852423 applies to "r1p0", "r1p1", "r1p2"
-        # Fix is to set bit 12 in diag register.  Confirm that's done.
+        # Erratum 852421 and 852423 apply to "r1p0", "r1p1", "r1p2"
         if rev_str in ("r1p0", "r1p1", "r1p2"):
             # Getting this means we're missing the change to expose debug
             # registers via arm_coprocessor_debug
             if not regid_to_val:
                 raise error.TestError("Kernel didn't provide register vals")
 
-            diag_reg = regid_to_val["(p15, 0, c15, c0, 1)"]
-            if not (diag_reg & (1 << 12)):
+            diag_reg = regid_to_val.get("(p15, 0, c15, c0, 1)")
+            if diag_reg is None:
+                raise error.TestError("Kernel didn't provide diag register")
+            elif not (diag_reg & (1 << 24)):
+                raise error.TestError(
+                    "Missing bit 24 for erratum 852421: %#010x" % diag_reg)
+            logging.info("CPU %d: erratum 852421 good",cpu_id)
+
+            diag_reg = regid_to_val.get("(p15, 0, c15, c0, 1)")
+            if diag_reg is None:
+                raise error.TestError("Kernel didn't provide diag register")
+            elif not (diag_reg & (1 << 12)):
                 raise error.TestError(
                     "Missing bit 12 for erratum 852423: %#010x" % diag_reg)
             logging.info("CPU %d: erratum 852423 good",cpu_id)
