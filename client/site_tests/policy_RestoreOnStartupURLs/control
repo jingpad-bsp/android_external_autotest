@@ -5,6 +5,7 @@
 AUTHOR = "scunningham"
 NAME = "policy_RestoreOnStartupURLs"
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"

@@ -11,6 +11,7 @@ fails. Running video_encode_accelerator_unittest is skipped on machines that are
 known not to support video encode.
 """
 ATTRIBUTES = "suite:video"
+SUITE = "video"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"

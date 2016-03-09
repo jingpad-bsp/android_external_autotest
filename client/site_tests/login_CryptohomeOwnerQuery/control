@@ -5,6 +5,7 @@
 AUTHOR = "dkrahn, dpursell"
 NAME = "login_CryptohomeOwnerQuery"
 ATTRIBUTES = "suite:experimental"
+SUITE = "experimental"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"

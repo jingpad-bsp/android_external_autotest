@@ -10,6 +10,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:kernel_usb"
+SUITE = "kernel_usb"
 
 DOC = """
 Crash process and confirm log files are generated.

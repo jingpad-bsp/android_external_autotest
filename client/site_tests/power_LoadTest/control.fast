@@ -11,6 +11,7 @@ TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "power"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:power_build"
+SUITE = "power_build"
 
 DOC = """
 This test runs a load test consisting of cycling though web pages, playing

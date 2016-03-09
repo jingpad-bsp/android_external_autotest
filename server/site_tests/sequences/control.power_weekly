@@ -5,6 +5,7 @@
 AUTHOR = "Chrome OS Team"
 NAME = "Power Requirements tests"
 ATTRIBUTES = "suite:power_requirements"
+SUITE = "power_requirements"
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "suite"

@@ -11,6 +11,7 @@ also fail if ChromeVox extension is not enabled/disabled or if ChromeVox
 indicators are not present.
 """
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "accessibility"

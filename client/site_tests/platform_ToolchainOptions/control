@@ -17,6 +17,7 @@ Fail if we find any ELF files compiled without the following options:
 5. -fPIE
 """
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TEST_CLASS = "platform"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"

@@ -5,6 +5,7 @@
 AUTHOR = "puthik"
 NAME = "MemoryQual"
 ATTRIBUTES = "suite:memory_qual"
+SUITE = "memory_qual"
 TIME = "LENGTHY"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "suite"

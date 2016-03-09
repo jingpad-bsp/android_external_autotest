@@ -11,6 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 
 DOC = """
 This tests if initialization of a user PKCS #11 token succeeds during login. It

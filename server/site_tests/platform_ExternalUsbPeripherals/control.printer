@@ -13,6 +13,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:kernel_usb"
+SUITE = "kernel_usb"
 DEPENDENCIES = "servo, usb_printer"
 
 DOC = """

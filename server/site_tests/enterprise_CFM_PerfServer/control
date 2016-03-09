@@ -8,6 +8,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "enterprise"
 ATTRIBUTES = "suite:hotrod"
+SUITE = "hotrod"
 TEST_TYPE = "server"
 DEPENDENCIES = ""
 

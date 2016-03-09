@@ -11,6 +11,7 @@ fails. Running video_decode_accelerator_unittest is skipped on machines that are
 known not to support video decode.
 """
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "video"

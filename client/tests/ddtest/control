@@ -6,6 +6,7 @@ the entire operation. Intended to detect basic performance regressions
 in disk writes.
 '''
 ATTRIBUTES = "suite:kernel_daily_benchmarks"
+SUITE = "kernel_daily_benchmarks"
 TIME = 'SHORT'
 TEST_CLASS = 'kernel'
 TEST_CATEGORY = 'Functional'

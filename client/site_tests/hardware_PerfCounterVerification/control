@@ -10,6 +10,7 @@ TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
 ATTRIBUTES = "suite:experimental"
+SUITE = "experimental"
 
 BUG_TEMPLATE = {
     'owner': 'dhsharp@chromium.org',

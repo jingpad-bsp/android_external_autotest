@@ -5,6 +5,7 @@
 AUTHOR = "usanghi"
 NAME = "platform_CryptohomeMigrateChapsTokenClient"
 ATTRIBUTES = "suite:manual"
+SUITE = "manual"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "Platform"

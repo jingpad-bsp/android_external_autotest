@@ -8,6 +8,7 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 ATTRIBUTES = "suite:bvt-perbuild"
+SUITE = "bvt-perbuild"
 TEST_TYPE = "server"
 DEPENDENCIES = "rpm, power:battery"
 BUG_TEMPLATE = {

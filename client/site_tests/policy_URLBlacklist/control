@@ -5,6 +5,7 @@
 AUTHOR = "krishnargv"
 NAME = "policy_URLBlacklist"
 ATTRIBUTES = "suite:regression"
+SUITE = "regression"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
