@@ -18,6 +18,7 @@ This test will fail if one of the following conditions is met:
 5. Kernel datakey version does not recover to original version after recovery.
 """
 ATTRIBUTES = "suite:faft, suite:faft_bios, suite:faft_dev, suite:faft_lv5, suite:faft_bios_ec3po"
+SUITE = "faft,faft_bios,faft_dev,faft_lv5,faft_bios_ec3po"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
