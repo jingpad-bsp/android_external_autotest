@@ -8,6 +8,7 @@ PURPOSE = 'Perform data integrity trim test on an unmounted partition.'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 ATTRIBUTES = "suite:experimental"
+SUITE = 'experimental'
 
 DOC = """
 Performs data integrity trim test on an unmounted partition.

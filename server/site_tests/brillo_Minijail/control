@@ -8,6 +8,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-bvt,suite:brillo-smoke'
+SUITE = 'brillo-bvt'
 
 DOC = """
 Tests basic Minijail sandboxing functionality.

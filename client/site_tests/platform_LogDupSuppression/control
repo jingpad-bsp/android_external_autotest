@@ -5,6 +5,7 @@
 AUTHOR = 'quiche'
 NAME = 'platform_LogDupSuppression'
 ATTRIBUTES = "suite:experimental"
+SUITE = 'experimental'
 TIME = 'SHORT'
 TEST_TYPE = 'client'
 

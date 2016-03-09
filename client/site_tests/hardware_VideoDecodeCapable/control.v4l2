@@ -12,6 +12,7 @@ For example, daisy should support hardware VP8 and H264 decode.
 This control file for Daisy/Snow.
 """
 ATTRIBUTES = "suite:video"
+SUITE = 'video'
 TIME='FAST'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'hardware'

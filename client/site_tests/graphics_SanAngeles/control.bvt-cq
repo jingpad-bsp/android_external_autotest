@@ -7,6 +7,7 @@ NAME = 'graphics_SanAngeles.bvt-cq'
 PURPOSE = 'Benchmark OpenGL object rendering.'
 CRITERIA = 'This test is a benchmark. It will fail if it fails to complete.'
 ATTRIBUTES = "suite:bvt-cq"
+SUITE = 'bvt-cq'
 TIME='FAST'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "graphics"
