@@ -1981,22 +1981,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self.verify_filesystem_write_status()
 
 
-    def verify_hardware(self):
-        """Verify hardware system of a Chrome OS system.
-
-        Check following hardware conditions:
-        1. Battery level.
-        2. Is power adapter connected.
-        """
-        logging.info('Battery percentage: %s', self.get_battery_percentage())
-        if self.is_ac_connected() is None:
-            logging.info('Can not determine if the device has power adapter '
-                         'connected.')
-        else:
-            logging.info('Device %s power adapter connected and charging.',
-                         'has' if self.is_ac_connected() else 'does not have')
-
-
     def verify(self):
         self._repair_strategy.verify(self)
 
