@@ -15,6 +15,7 @@ This test will fail if following requrements are met:
 2. Kernel subkey version does not match original kernel subkey version.
 """
 ATTRIBUTES = "suite:faft_lv5"
+SUITE = "faft_lv5"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"

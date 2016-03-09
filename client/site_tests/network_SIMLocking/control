@@ -11,6 +11,7 @@ handled as expected by shill / modemmanager.
 """
 
 ATTRIBUTES = "suite:network3g_pseudomodem"
+SUITE = "network3g_pseudomodem"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"

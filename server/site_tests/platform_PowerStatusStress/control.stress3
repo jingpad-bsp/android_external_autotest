@@ -12,6 +12,7 @@ TEST_CATEGORY = "Stress"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:stress3"
+SUITE = "stress3"
 DEPENDENCIES = "servo, power:battery"
 
 DOC = """

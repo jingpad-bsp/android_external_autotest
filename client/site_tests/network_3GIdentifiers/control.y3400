@@ -14,6 +14,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:network3g_tmobile"
+SUITE = "network3g_tmobile"
 DEPENDENCIES = "modem:y3400"
 DOC = """
   Tests that a cellular modem provides correct identification information

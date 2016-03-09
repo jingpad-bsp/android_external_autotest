@@ -10,6 +10,7 @@ This test will fail if a disconnect request while the modem is
 connecting is not promptly executed.
 """
 ATTRIBUTES = "suite:network3g_tmobile"
+SUITE = "network3g_tmobile"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
