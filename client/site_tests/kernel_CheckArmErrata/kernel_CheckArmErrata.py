@@ -157,7 +157,7 @@ class kernel_CheckArmErrata(test.test):
         TestError: Kernel didn't provide register vals
 
         >>> _testobj._get_regid_to_val = lambda cpu_id: \
-               {"(p15, 0, c15, c0, 1)": 0}
+               {"(p15, 0, c15, c0, 1)": 0, "(p15, 0, c15, c0, 2)": 0}
         >>> try:
         ...     _testobj._check_one_cortex_a12({
         ...         "processor": 2,
@@ -174,7 +174,8 @@ class kernel_CheckArmErrata(test.test):
         TestError: Missing bit 12 for erratum 818325 / 852422: 0x00000000
 
         >>> _testobj._get_regid_to_val = lambda cpu_id: \
-               {"(p15, 0, c15, c0, 1)": (1 << 12)}
+               { "(p15, 0, c15, c0, 1)": (1 << 12) | (1 << 24), \
+                 "(p15, 0, c15, c0, 2)": (1 << 1)}
         >>> _info_io.seek(0); _info_io.truncate()
         >>> _testobj._check_one_cortex_a12({
         ...    "processor": 2,
@@ -218,13 +219,24 @@ class kernel_CheckArmErrata(test.test):
 
         # Erratum 818325 applies to old A12s and erratum 852422 to newer.
         # Fix is to set bit 12 in diag register.  Confirm that's done.
-        diag_reg = regid_to_val["(p15, 0, c15, c0, 1)"]
-        if not (diag_reg & (1 << 12)):
+        diag_reg = regid_to_val.get("(p15, 0, c15, c0, 1)")
+        if diag_reg is None:
+            raise error.TestError("Kernel didn't provide diag register")
+        elif not (diag_reg & (1 << 12)):
             raise error.TestError(
                 "Missing bit 12 for erratum 818325 / 852422: %#010x" %
                 diag_reg)
-
         logging.info("CPU %d: erratum 818325 / 852422 good", cpu_id)
+
+        # Erratum 821420 applies to all A12s.  Make sure bit 1 of the
+        # internal feature register is set.
+        int_feat_reg = regid_to_val.get("(p15, 0, c15, c0, 2)")
+        if int_feat_reg is None:
+            raise error.TestError("Kernel didn't provide internal feature reg")
+        elif not (int_feat_reg & (1 << 1)):
+            raise error.TestError(
+                "Missing bit 1 for erratum 821420: %#010x" % int_feat_reg)
+        logging.info("CPU %d: erratum 821420 good", cpu_id)
 
     def _check_one_cortex_a17(self, cpuinfo):
         """
