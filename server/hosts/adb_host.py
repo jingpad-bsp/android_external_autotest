@@ -1155,7 +1155,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 if image not in ANDROID_IMAGES:
                     continue
                 logging.info('Flashing %s...', image_file)
-                self.fastboot_run('flash %s %s' % (image[:-4], image_file))
+                self.fastboot_run('-S 512M flash %s %s' %
+                                  (image[:-4], image_file))
                 if image == ANDROID_BOOTLOADER:
                     self.fastboot_run('reboot-bootloader')
                     self.wait_up(command=FASTBOOT_CMD)
