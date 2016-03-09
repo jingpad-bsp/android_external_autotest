@@ -16,6 +16,10 @@ from autotest_lib.server.hosts import cros_host
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value(
         'SCHEDULER', 'drone_installation_directory')
+
+ENABLE_SSH_TUNNEL_FOR_MOBLAB = global_config.global_config.get_config_value(
+        'CROS', 'enable_ssh_tunnel_for_moblab', type=bool, default=False)
+
 #'/usr/local/autotest'
 SHADOW_CONFIG_PATH = '%s/shadow_config.ini' % AUTOTEST_INSTALL_DIR
 ATEST_PATH = '%s/cli/atest' % AUTOTEST_INSTALL_DIR
@@ -36,10 +40,32 @@ MOBLAB_PROCESSES = ['apache2', 'dhcpd']
 DUT_VERIFY_SLEEP_SECS = 5
 DUT_VERIFY_TIMEOUT = 15 * 60
 MOBLAB_TMP_DIR = '/mnt/moblab/tmp'
+MOBLAB_PORT = 80
 
 
 class MoblabHost(cros_host.CrosHost):
     """Moblab specific host class."""
+
+
+    def _initialize_frontend_rpcs(self, timeout_min):
+        """Initialize frontends for AFE and TKO for a moblab host.
+
+        AFE and TKO are initialized differently based on |_use_tunnel|,
+        which indicates that whether to use ssh tunnel to connect to moblab.
+
+        @param timeout_min: The timeout minuties for AFE services.
+        """
+        if self._use_tunnel:
+            self.web_address = self.rpc_server_tracker.tunnel_connect(
+                    MOBLAB_PORT)
+        # Pass timeout_min to self.afe
+        self.afe = frontend_wrappers.RetryingAFE(timeout_min=timeout_min,
+                                                 user='moblab',
+                                                 server=self.web_address)
+        # Use default timeout_min of MoblabHost for self.tko
+        self.tko = frontend_wrappers.RetryingTKO(timeout_min=self.timeout_min,
+                                                 user='moblab',
+                                                 server=self.web_address)
 
 
     def _initialize(self, *args, **dargs):
@@ -50,13 +76,10 @@ class MoblabHost(cros_host.CrosHost):
             self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
         self._dhcpd_leasefile = None
         self.web_address = dargs.get('web_address', self.hostname)
-        timeout_min = dargs.get('rpc_timeout_min', 1)
-        self.afe = frontend_wrappers.RetryingAFE(timeout_min=timeout_min,
-                                                 user='moblab',
-                                                 server=self.web_address)
-        self.tko = frontend_wrappers.RetryingTKO(timeout_min=timeout_min,
-                                                 user='moblab',
-                                                 server=self.web_address)
+        self._use_tunnel = (ENABLE_SSH_TUNNEL_FOR_MOBLAB and
+                            self.web_address == self.hostname)
+        self.timeout_min = dargs.get('rpc_timeout_min', 1)
+        self._initialize_frontend_rpcs(self.timeout_min)
 
 
     @staticmethod
@@ -138,12 +161,14 @@ class MoblabHost(cros_host.CrosHost):
 
         @raises urllib2.HTTPError if AFE does not respond within the timeout.
         """
-        # Use a new AFE object with a longer timeout to wait for the AFE to
-        # load.
-        afe = frontend_wrappers.RetryingAFE(timeout_min=timeout_min,
-                                            server=self.hostname)
+        # Use moblabhost's own AFE object with a longer timeout to wait for the
+        # AFE to load. Also re-create the ssh tunnel for connections to moblab.
+        # Set the timeout_min to be longer than self.timeout_min for rebooting.
+        self._initialize_frontend_rpcs(timeout_min)
         # Verify the AFE can handle a simple request.
-        afe.get_hosts()
+        self.afe.get_hosts()
+        # Reset the timeout_min after rebooting checks for afe services.
+        self.afe.set_timeout(self.timeout_min)
 
 
     def _wake_devices(self):

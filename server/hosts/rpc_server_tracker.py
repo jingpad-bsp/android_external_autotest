@@ -28,9 +28,9 @@ class RpcServerTracker(object):
     """
 
     _RPC_PROXY_URL_FORMAT = 'http://localhost:%d'
+    _RPC_HOST_ADDRESS_FORMAT = 'localhost:%d'
     _RPC_SHUTDOWN_POLLING_PERIOD_SECONDS = 2
     _RPC_SHUTDOWN_TIMEOUT_SECONDS = 10
-
 
     def __init__(self, host):
         """
@@ -41,8 +41,8 @@ class RpcServerTracker(object):
         self._rpc_proxy_map = {}
 
 
-    def _setup_rpc(self, port, command_name, remote_pid=None):
-        """Sets up a tunnel process and performs rpc connection book keeping.
+    def _setup_port(self, port, command_name, remote_pid=None):
+        """Sets up a tunnel process and register it to rpc_server_tracker.
 
         Chrome OS on the target closes down most external ports for security.
         We could open the port, but doing that would conflict with security
@@ -72,15 +72,43 @@ class RpcServerTracker(object):
 
         @param port: The remote forwarding port.
         @param command_name: The name of the remote process, to terminate
-                              using pkill.
+                                using pkill.
+        @param remote_pid: The PID of the remote background process
+                            as a string.
 
-        @return A url that we can use to initiate the rpc connection.
+        @return the local port which is used for port forwarding on the ssh
+                    client.
         """
         self.disconnect(port)
         local_port = utils.get_unused_port()
         tunnel_proc = self._host.create_ssh_tunnel(port, local_port)
         self._rpc_proxy_map[port] = (command_name, tunnel_proc, remote_pid)
-        return self._RPC_PROXY_URL_FORMAT % local_port
+        return local_port
+
+
+    def _setup_rpc(self, port, command_name, remote_pid=None):
+        """Construct a URL for an rpc connection using ssh tunnel.
+
+        @param port: The remote forwarding port.
+        @param command_name: The name of the remote process, to terminate
+                              using pkill.
+        @param remote_pid: The PID of the remote background process
+                            as a string.
+
+        @return a url that we can use to initiate the rpc connection.
+        """
+        return self._RPC_PROXY_URL_FORMAT % self._setup_port(
+                port, command_name, remote_pid=remote_pid)
+
+
+    def tunnel_connect(self, port):
+        """Construct a host address using ssh tunnel.
+
+        @param port: The remote forwarding port.
+
+        @return a host address using ssh tunnel.
+        """
+        return self._RPC_HOST_ADDRESS_FORMAT % self._setup_port(port, None)
 
 
     def xmlrpc_connect(self, command, port, command_name=None,

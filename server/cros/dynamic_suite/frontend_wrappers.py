@@ -56,6 +56,14 @@ class RetryingAFE(frontend.AFE):
         super(RetryingAFE, self).__init__(**dargs)
 
 
+    def set_timeout(self, timeout_min):
+        """Set timeout minutes for the AFE server.
+
+        @param timeout_min: The timeout minutes for AFE server.
+        """
+        self.timeout_min = timeout_min
+
+
     def run(self, call, **dargs):
         if retry_util is None:
             raise ImportError('Unable to import chromite. Please consider to '
