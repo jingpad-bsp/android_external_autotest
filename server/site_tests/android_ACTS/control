@@ -8,7 +8,6 @@ AUTHOR = 'angli, sbasi'
 NAME = 'android_ACTS'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-SUITE = ''
 
 DOC = """
 This test runs ACTS against a inputed config_file, test_bed, test_case.

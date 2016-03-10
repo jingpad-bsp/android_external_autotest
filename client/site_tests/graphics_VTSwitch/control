@@ -20,7 +20,6 @@ TEST_TYPE = "client"
 
 #TODO(ihf): Port to frecon and enable again (crbug.com/413088).
 #ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
-#SUITE = 'graphics_per-day, graphics, graphics_system'
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],
 }

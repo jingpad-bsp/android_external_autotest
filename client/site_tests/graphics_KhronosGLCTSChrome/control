@@ -10,7 +10,6 @@ All of the individual GL-CTS tests must pass.
 """
 #TODO(ihf): Port to waffle and enable again (crbug.com/484467).
 #ATTRIBUTES = "suite:graphics, suite:graphics_browser, suite:graphics_per-day"
-#SUITE = 'graphics_per-day, graphics, graphics_browser'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'graphics'

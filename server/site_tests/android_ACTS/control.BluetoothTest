@@ -6,7 +6,6 @@ AUTHOR = 'angli, sbasi'
 NAME = 'android_ACTS.BluetoothTest'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
-SUITE = ''
 
 DOC = """
 This test runs BluetoothTest against a Bluetooth test bed.

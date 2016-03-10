@@ -9,7 +9,6 @@ NAME = 'brillo_RecoverFromBadImage'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-SUITE = ''
 
 DOC = """
 Tests whether a Brillo device can recover a image using fastboot.

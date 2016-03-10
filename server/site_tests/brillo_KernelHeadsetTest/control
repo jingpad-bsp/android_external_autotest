@@ -8,7 +8,6 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = ''
-SUITE = ''
 
 DOC = """
 Tests whether a Brillo device has support for headsets.

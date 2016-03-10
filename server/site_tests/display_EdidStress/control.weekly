@@ -12,7 +12,6 @@ CRITERIA = "This test will fail if DUT does not see the emulated monitor."
 # test suite runs under high load - http://crbug/560951
 # Enable the line below after logic of shorter test run is added
 #ATTRIBUTES = "suite:chameleon_dp_stress, suite:chameleon_dp_hdmi_stress, suite:chameleon_hdmi_stress"
-#SUITE = "chameleon_dp_stress, chameleon_dp_hdmi_stress, chameleon_hdmi_stress"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "display"
