@@ -15,7 +15,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:network3g"
-SUITE = "network3g"
 DEPENDENCIES = "modem:alt3100"
 DOC = """
   Tests that 3G modem can connect to the network

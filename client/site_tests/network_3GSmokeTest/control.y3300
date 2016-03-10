@@ -15,7 +15,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:network3g_tmobile"
-SUITE = "network3g_tmobile"
 DEPENDENCIES = "modem:y3300"
 DOC = """
   Tests that 3G modem can connect to the network
