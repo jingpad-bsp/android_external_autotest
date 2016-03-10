@@ -29,7 +29,7 @@ class video_VideoSanity(test.test):
         @param video_file: Sample video file to be played in Chrome.
 
         """
-        boards_to_skip = ['x86-mario', 'x86-zgb', 'peach_pit']
+        boards_to_skip = ['x86-mario', 'x86-zgb']
         dut_board = utils.get_current_board()
         if dut_board in boards_to_skip:
             logging.info("Skipping test run on this board.")

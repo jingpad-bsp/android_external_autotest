@@ -5,9 +5,8 @@
 import os
 import time
 import shutil
-import logging
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 from autotest_lib.client.cros.video import constants
@@ -27,11 +26,6 @@ class video_ChromeHWDecodeUsed(test.test):
         @param video_file: Sample video file to be loaded in Chrome.
 
         """
-        boards_to_skip = ['peach_pit']
-        dut_board = utils.get_current_board()
-        if dut_board in boards_to_skip:
-            logging.info("Skipping test run on this board.")
-            return
         with chrome.Chrome() as cr:
             # This will execute for MSE video by accesing shaka player
             if is_mse:
