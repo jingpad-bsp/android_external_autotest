@@ -8,7 +8,6 @@ TIME = 'LONG'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-bvt'
-SUITE = 'brillo-bvt'
 
 DOC = """
 A/B tests for boot loader and boot_control HAL implementation.

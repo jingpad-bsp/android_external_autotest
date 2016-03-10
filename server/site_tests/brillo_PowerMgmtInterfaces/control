@@ -8,7 +8,6 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-bvt'
-SUITE = 'brillo-bvt'
 
 DOC = """
 Check power management OS interfaces required for a Brillo starter board are

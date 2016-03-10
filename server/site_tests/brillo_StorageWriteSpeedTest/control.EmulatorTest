@@ -10,7 +10,6 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-smoke'
-SUITE = 'brillo-smoke'
 
 DOC = """
 Tests whether a Brillo emulator's storage can be written to faster than
