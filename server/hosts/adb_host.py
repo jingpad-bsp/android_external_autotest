@@ -1210,6 +1210,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             cmd = (BRILLO_PROVISION_CMD %
                    {'os_image_dir': build_local_path,
                     'vendor_partition_dir': vendor_partition_dir})
+            if self.fastboot_serial:
+                cmd += '-s %s ' % self.fastboot_serial
             self.teststation.run(cmd)
         except Exception as e:
             logging.error('Install Brillo build failed with error: %s', e)
