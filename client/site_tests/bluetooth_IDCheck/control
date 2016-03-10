@@ -9,7 +9,6 @@ CRITERIA = """
 This test will fail if the Bluetooth ID does not match the expected format.
 """
 ATTRIBUTES = "suite:bvt-perbuild"
-SUITE = "bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "bluetooth"

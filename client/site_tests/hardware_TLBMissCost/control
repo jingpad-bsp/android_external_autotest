@@ -9,7 +9,6 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "hardware"
 TEST_TYPE = "client"
 ATTRIBUTES = "suite:experimental"
-SUITE = "experimental"
 
 DOC = """
 Calculate cost of a TLB miss

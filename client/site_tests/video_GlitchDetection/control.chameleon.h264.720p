@@ -9,7 +9,6 @@ CRITERIA = """
 
 """
 ATTRIBUTES = "suite:video_image_comparison_chameleon"
-SUITE = "video_image_comparison_chameleon"
 TIME = "LONG"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"

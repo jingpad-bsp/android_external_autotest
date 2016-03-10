@@ -13,7 +13,6 @@ CRITERIA = """
 Fail if there are any files or directories writable by group/other in ~.
 """
 ATTRIBUTES = "suite:bvt-inline"
-SUITE = "bvt-inline"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
