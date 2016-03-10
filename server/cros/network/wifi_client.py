@@ -48,9 +48,13 @@ ConnectTime = namedtuple('ConnectTime', 'state, time')
 XMLRPC_BRINGUP_TIMEOUT_SECONDS = 60
 SHILL_XMLRPC_LOG_PATH = '/var/log/shill_xmlrpc_server.log'
 SHILL_BRILLO_XMLRPC_LOG_PATH = '/data/shill_xmlrpc_server.log'
-ANDROID_XMLRPC_LOG_PATH = '/var/log/android_xmlrpc_server.log'
 ANDROID_XMLRPC_SERVER_AUTOTEST_PATH = (
         '../../../client/cros/networking/android_xmlrpc_server.py')
+# Log dirs/filenames are suffixed with serial number of the DUT
+ANDROID_XMLRPC_DEBUG_DIR_FMT = '/var/log/acts-%s'
+ANDROID_XMLRPC_LOG_FILE_FMT = '/var/log/android_xmlrpc_server-%s.log'
+# Local debug dir name is suffixed by the test name
+ANDROID_LOCAL_DEBUG_DIR_FMT = 'android_debug_%s'
 
 
 def install_android_xmlrpc_server(host):
@@ -89,13 +93,14 @@ def get_xmlrpc_proxy(host):
         command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
     elif host.get_os_type() == adb_host.OS_TYPE_ANDROID:
         xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND
-        log_path = ANDROID_XMLRPC_LOG_PATH
         command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
-        # If there is more than one device attached to the host, use serial to
-        # identify the DUT.
-        if host.adb_serial:
-            xmlrpc_server_command = (
-                    '%s -s %s' % (xmlrpc_server_command, host.adb_serial))
+        if not host.adb_serial:
+            raise error.TestFail('No serial number detected')
+        debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % host.adb_serial
+        log_path = ANDROID_XMLRPC_LOG_FILE_FMT % host.adb_serial
+        xmlrpc_server_command = (
+                '%s -s %s -l %s' % (
+                xmlrpc_server_command, host.adb_serial, debug_dir))
         # For android, start the XML RPC server on the accompanying host.
         host = host.teststation
         install_android_xmlrpc_server(host)
@@ -489,12 +494,29 @@ class WiFiClient(site_linux_system.LinuxSystem):
         self.shill.sync_time_to(epoch_seconds)
 
 
-    def collect_debug_info(self, test_name):
-        """Collect any debug information needed on the DUT
+    def collect_debug_info(self, local_save_dir_prefix):
+        """Collect any debug information needed from the DUT
 
-        @param test_name string name of the test to collect info for.
+        This invokes the |collect_debug_info| RPC method to trigger
+        bugreport/logcat collection and then transfers the logs to the
+        server.
+        Only implemented for android DUT's for now.
+
+        @param local_save_dir_prefix Used as a prefix for local save directory.
         """
-        self.shill.collect_debug_info(test_name)
+        if self.host.get_os_type() == adb_host.OS_TYPE_ANDROID:
+            # First capture the bugreport to the test station
+            self.shill.collect_debug_info(local_save_dir_prefix)
+            # Now copy the file over from test station to the server.
+            debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % self.host.adb_serial
+            log_file = ANDROID_XMLRPC_LOG_FILE_FMT % self.host.adb_serial
+            local_save_dir = ANDROID_LOCAL_DEBUG_DIR_FMT % local_save_dir_prefix
+            result_dir = os.path.join(self._result_dir, local_save_dir);
+            try:
+                self.host.teststation.get_file(debug_dir, result_dir)
+                self.host.teststation.get_file(log_file, result_dir)
+            except Exception as e:
+                logging.error('Failed to fetch debug info from host: %s', e)
 
 
     def check_iw_link_value(self, iw_link_key, desired_value):

@@ -10,6 +10,7 @@ import errno
 import logging
 import queue
 import select
+import shutil
 import signal
 import threading
 import time
@@ -153,17 +154,19 @@ class AndroidXmlRpcDelegate(object):
     SHILL_CONNECTED_STATES =  ['portal', 'online', 'ready']
     DISCONNECTED_SSID = '0x'
     DISCOVERY_POLLING_INTERVAL = 1
-    ANDROID_LOG_PATH = "/var/log/"
 
 
-    def __init__(self, serial_number):
+    def __init__(self, serial_number, log_dir):
         """Initializes the ACTS library components.
 
         @param serial_number Serial number of the android device to be tested,
                None if there is only one device connected to the host.
+        @param log_dir Path to store output logs of this run.
 
         """
-        self.log = logger.get_test_logger(log_path=self.ANDROID_LOG_PATH,
+        # Cleanup all existing logs for this device when starting.
+        shutil.rmtree(log_dir, ignore_errors=True)
+        self.log = logger.get_test_logger(log_dir,
                                           TAG="ANDROID_XMLRPC",
                                           prefix="ANDROID_XMLRPC")
         if not serial_number:
@@ -469,9 +472,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Cros Wifi Xml RPC server.')
     parser.add_argument('-s', '--serial-number', action='store', default=None,
                          help='Serial Number of the device to test.')
+    parser.add_argument('-l', '--log-dir', action='store', default=None,
+                         help='Path to store output logs.')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     logging.debug("android_xmlrpc_server main...")
     server = XmlRpcServer('localhost', 9989)
-    server.register_delegate(AndroidXmlRpcDelegate(args.serial_number))
+    server.register_delegate(
+            AndroidXmlRpcDelegate(args.serial_number, args.log_dir))
     server.run()

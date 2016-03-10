@@ -56,6 +56,7 @@ class network_WiFi_ChaosConnectDisconnect(test.test):
                              'error' : assoc_result.failure_reason,
                              'start_time': start_time,
                              'end_time': end_time})
+                    client.collect_debug_info('try_%d' % i)
                 else:
                     logging.info('Connection attempt %d passed', i)
             finally:
