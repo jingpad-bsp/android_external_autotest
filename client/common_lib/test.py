@@ -16,7 +16,7 @@
 #       src             eg. tests/<test>/src
 #       tmpdir          eg. tmp/<tempname>_<testname.tag>
 
-#pylint: disable-msg=C0111
+#pylint: disable=C0111
 
 import fcntl, json, os, re, sys, shutil, stat, tempfile, time, traceback
 import logging
@@ -141,17 +141,56 @@ class base_test(object):
         description = re.sub(string_regex, replacement, description)
         units = re.sub(string_regex, replacement, units) if units else None
 
-        entry = {
-            'description': description,
-            'value': value,
-            'units': units,
-            'higher_is_better': higher_is_better,
-            'graph': graph
-        }
+        charts = {}
+        output_file = os.path.join(self.resultsdir, 'results-chart.json')
+        if os.path.isfile(output_file):
+            with open(output_file, 'r') as fp:
+                contents = fp.read()
+                if contents:
+                     charts = json.loads(contents)
 
-        output_path = os.path.join(self.resultsdir, 'perf_measurements')
-        with open(output_path, 'a') as fp:
-            fp.write(json.dumps(entry, sort_keys=True) + '\n')
+        if graph:
+            first_level =  graph
+            second_level = description
+        else:
+            first_level = description
+            second_level = 'summary'
+
+        direction = 'up' if higher_is_better else 'down'
+
+        result_type = 'scalar'
+        value_key = 'value'
+        result_value = value
+
+        # The chart json spec go/telemetry-json differenciates between a single
+        # value vs a list of values.  Lists of values get extra processing in
+        # the chromeperf dashboard ( mean, standard deviation etc)
+        # Tests can log one or more values for the same metric, to adhere stricly
+        # to the specification the first value logged is a scalar but if another
+        # value is logged the results become a list of scalar.
+        # TODO Figure out if there would be any difference of always using list
+        # of scalar even if there is just one item in the list.
+        if first_level in charts and second_level in charts[first_level]:
+            result_type = 'list_of_scalar_values'
+            value_key = 'values'
+            if 'values' in charts[first_level][second_level]:
+                result_value = charts[first_level][second_level]['values']
+                result_value.append(value)
+            else:
+                result_value = [charts[first_level][second_level]['value'], value]
+
+        charts.update({
+            first_level: {
+                second_level: {
+                    'type': result_type,
+                    'units': units,
+                    value_key: result_value,
+                    'improvement_direction': direction
+                }
+            }
+        })
+        with open(output_file, 'w') as fp:
+            fp.write(json.dumps(charts, indent=2))
 
 
     def write_perf_keyval(self, perf_dict):
@@ -829,3 +868,4 @@ def runtest(job, url, tag, args, dargs,
         if after_test_hook:
             after_test_hook(mytest)
         shutil.rmtree(mytest.tmpdir, ignore_errors=True)
+

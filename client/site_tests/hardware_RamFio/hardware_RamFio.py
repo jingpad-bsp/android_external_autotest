@@ -48,6 +48,6 @@ class hardware_RamFio(test.test):
 
         utils.run('umount /tmp/ramdisk')
 
-        dst = os.path.join(self.resultsdir, 'perf_measurements')
+        dst = os.path.join(self.resultsdir, 'results-chart.json')
         src = dst.replace('hardware_RamFio', 'hardware_StorageFio')
         shutil.copyfile(src, dst)

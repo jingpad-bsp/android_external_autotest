@@ -459,22 +459,6 @@ class db_sql(object):
                             commit=commit)
 
         data = {'test_idx': test_idx}
-        for i in test.perf_values:
-            data['iteration'] = i.index
-            for perf_dict in i.perf_measurements:
-                data['description'] = perf_dict['description']
-                data['value'] = perf_dict['value']
-                data['stddev'] = perf_dict['stddev']
-                data['units'] = perf_dict['units']
-                # TODO(fdeng): In db, higher_is_better doesn't allow null,
-                # This is a workaround to avoid altering the
-                # table (very expensive) while still allows test to send
-                # higher_is_better=None. Ideally, the table should be
-                # altered to allow this.
-                if perf_dict['higher_is_better'] is not None:
-                    data['higher_is_better'] = perf_dict['higher_is_better']
-                data['graph'] = perf_dict['graph']
-                self.insert('tko_iteration_perf_value', data, commit=commit)
 
         for key, value in test.attributes.iteritems():
             data = {'test_idx': test_idx, 'attribute': key,

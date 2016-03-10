@@ -1,3 +1,4 @@
+import json
 import os
 
 from autotest_lib.client.common_lib import utils
@@ -164,15 +165,20 @@ class test(object):
 
             # Grab perf values from the perf measurements file.
             perf_values_file = os.path.join(job.dir, subdir,
-                                            'results', 'perf_measurements')
-            perf_values = cls.load_perf_values(perf_values_file)
+                                            'results', 'results-chart.json')
+            perf_values = {}
+            if os.path.exists(perf_values_file):
+                with open(perf_values_file, 'r') as fp:
+                    contents = fp.read()
+                if contents:
+                    perf_values = json.loads(contents)
 
             # Grab test attributes from the subdir keyval.
             test_keyval = os.path.join(job.dir, subdir, 'keyval')
             attributes = test.load_attributes(test_keyval)
         else:
             iterations = []
-            perf_values = []
+            perf_values = {}
             attributes = {}
 
         # Grab test+host attributes from the host keyval.
@@ -368,48 +374,3 @@ class perf_value_iteration(object):
         """
         raise NotImplementedError
 
-
-    @classmethod
-    def load_from_perf_values_file(cls, perf_values_file):
-        """
-        Load perf values from each iteration in a perf measurements file.
-
-        Multiple measurements for the same perf metric description are assumed
-        to come from different iterations.  Makes use of the
-        parse_line_into_dict function to actually parse the individual lines.
-
-        @param perf_values_file: The string name of the output file containing
-            perf measurements.
-
-        @return A list of |perf_value_iteration| objects, where position 0 of
-            the list contains the object representing the first iteration,
-            position 1 contains the object representing the second iteration,
-            and so forth.
-
-        """
-        if not os.path.exists(perf_values_file):
-            return []
-
-        perf_value_iterations = []
-        # For each description string representing a unique perf metric, keep
-        # track of the next iteration that it belongs to (multiple occurrences
-        # of the same description are assumed to come from different
-        # iterations).
-        desc_to_next_iter = {}
-        with open(perf_values_file) as fp:
-            for line in [ln for ln in fp if ln.strip()]:
-                perf_value_dict = cls.parse_line_into_dict(line)
-                if not perf_value_dict:
-                    continue
-                desc = perf_value_dict['description']
-                iter_to_set = desc_to_next_iter.setdefault(desc, 1)
-                desc_to_next_iter[desc] = iter_to_set + 1
-                if iter_to_set > len(perf_value_iterations):
-                    # We have information that needs to go into a new
-                    # |perf_value_iteration| object.
-                    perf_value_iterations.append(cls(iter_to_set, []))
-                # Add the perf measurement to the appropriate
-                # |perf_value_iteration| object.
-                perf_value_iterations[iter_to_set - 1].add_measurement(
-                        perf_value_dict)
-        return perf_value_iterations
