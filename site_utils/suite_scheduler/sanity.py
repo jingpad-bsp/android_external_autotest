@@ -9,6 +9,8 @@ import os
 import common
 
 
+_WHITELISTED_SUITES = ['arc-cts', 'arc-nightly','crosbolt_arc_perf']
+
 def CheckControlFileExistance(tasks):
     """
     Make sure that for any task that schedules a suite, that
@@ -26,9 +28,7 @@ def CheckControlFileExistance(tasks):
     for task in tasks:
         suite_path = os.path.join(common.autotest_dir,
                                   'test_suites', 'control.'+task.suite)
-        if task.suite.startswith('crosbolt_arc_perf'):
-            continue
-        if task.suite.startswith('arc-nightly'):
+        if task.suite in _WHITELISTED_SUITES:
             continue
         if not os.path.exists(suite_path):
             corrections = True
