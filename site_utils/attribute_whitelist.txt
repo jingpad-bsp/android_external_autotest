@@ -49,6 +49,7 @@ suite:faft_dev
 suite:faft_dev_ryu
 suite:faft_ec
 suite:faft_ec_ryu
+suite:faft_ec_tot
 suite:faft_ec_wp
 suite:faft_ec3po
 suite:faft_lab
