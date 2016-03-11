@@ -40,9 +40,17 @@ def infrastructure_user():
     return _CONFIG.get_config_value('CROS', 'infrastructure_user', type=str)
 
 
-def package_url_pattern():
-    """Returns package_url_pattern from global_config."""
-    return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
+def package_url_pattern(is_launch_control_build=False):
+    """Returns package_url_pattern from global_config.
+
+    @param is_launch_control_build: True if the package url is for Launch
+            Control build. Default is False.
+    """
+    if is_launch_control_build:
+        return _CONFIG.get_config_value('ANDROID', 'package_url_pattern',
+                                        type=str)
+    else:
+        return _CONFIG.get_config_value('CROS', 'package_url_pattern', type=str)
 
 
 def try_job_timeout_mins():
@@ -62,14 +70,17 @@ def get_package_url(devserver_url, build):
     return package_url_pattern() % (devserver_url, build)
 
 
-def get_devserver_build_from_package_url(package_url):
+def get_devserver_build_from_package_url(package_url,
+                                         is_launch_control_build=False):
     """The inverse method of get_package_url.
 
     @param package_url: a string specifying the package url.
+    @param is_launch_control_build: True if the package url is for Launch
+                Control build. Default is False.
 
     @return tuple containing the devserver_url, build.
     """
-    pattern = package_url_pattern()
+    pattern = package_url_pattern(is_launch_control_build)
     re_pattern = pattern.replace('%s', '(\S+)')
 
     devserver_build_tuple = re.search(re_pattern, package_url).groups()

@@ -1085,6 +1085,41 @@ class ImageServerBase(DevServer):
             raise DevServerException(error_message)
 
 
+    @remote_devserver_call()
+    def list_control_files(self, build, suite_name=''):
+        """Ask the devserver to list all control files for |build|.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files the caller wants listed.
+        @param suite_name: The name of the suite for which we require control
+                           files.
+        @return None on failure, or a list of control file paths
+                (e.g. server/site_tests/autoupdate/control)
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        build = self.translate(build)
+        call = self.build_call('controlfiles', build=build,
+                               suite_name=suite_name)
+        return self.run_call(call, readline=True)
+
+
+    @remote_devserver_call()
+    def get_control_file(self, build, control_path):
+        """Ask the devserver for the contents of a control file.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control file the caller wants to fetch.
+        @param control_path: The file to fetch
+                             (e.g. server/site_tests/autoupdate/control)
+        @return The contents of the desired file.
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        build = self.translate(build)
+        call = self.build_call('controlfiles', build=build,
+                               control_path=control_path)
+        return self.run_call(call)
+
+
 class ImageServer(ImageServerBase):
     """Class for DevServer that handles RPCs related to CrOS images.
 
@@ -1157,7 +1192,7 @@ class ImageServer(ImageServerBase):
 
 
     @remote_devserver_call()
-    def stage_artifacts(self, image, artifacts=None, files='',
+    def stage_artifacts(self, image=None, artifacts=None, files='',
                         archive_url=None):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
@@ -1304,41 +1339,6 @@ class ImageServer(ImageServerBase):
 
         """
         return self._get_image_url(image) + '/chromiumos_test_image.bin'
-
-
-    @remote_devserver_call()
-    def list_control_files(self, build, suite_name=''):
-        """Ask the devserver to list all control files for |build|.
-
-        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
-                      whose control files the caller wants listed.
-        @param suite_name: The name of the suite for which we require control
-                           files.
-        @return None on failure, or a list of control file paths
-                (e.g. server/site_tests/autoupdate/control)
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        build = self.translate(build)
-        call = self.build_call('controlfiles', build=build,
-                               suite_name=suite_name)
-        return self.run_call(call, readline=True)
-
-
-    @remote_devserver_call()
-    def get_control_file(self, build, control_path):
-        """Ask the devserver for the contents of a control file.
-
-        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
-                      whose control file the caller wants to fetch.
-        @param control_path: The file to fetch
-                             (e.g. server/site_tests/autoupdate/control)
-        @return The contents of the desired file.
-        @raise DevServerException upon any return code that's not HTTP OK.
-        """
-        build = self.translate(build)
-        call = self.build_call('controlfiles', build=build,
-                               control_path=control_path)
-        return self.run_call(call)
 
 
     @remote_devserver_call()
@@ -1497,8 +1497,8 @@ class AndroidBuildServer(ImageServerBase):
 
 
     @remote_devserver_call()
-    def stage_artifacts(self, target, build_id, branch, artifacts=None,
-                        files='', archive_url=None):
+    def stage_artifacts(self, target=None, build_id=None, branch=None,
+                        image=None, artifacts=None, files='', archive_url=None):
         """Tell the devserver to download and stage |artifacts| from |image|.
 
          This is the main call point for staging any specific artifacts for a
@@ -1512,6 +1512,8 @@ class AndroidBuildServer(ImageServerBase):
                                shamu-userdebug.
         @param build_id: Build id of the android build to stage.
         @param branch: Branch of the android build to stage.
+        @param image: Name of a build to test, in the format of
+                      branch/target/build_id
         @param artifacts: A list of artifacts.
         @param files: A list of files to stage.
         @param archive_url: Optional parameter that has the archive_url to stage
@@ -1520,6 +1522,12 @@ class AndroidBuildServer(ImageServerBase):
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
+        if image and not target and not build_id and not branch:
+            branch, target, build_id = utils.parse_launch_control_build(image)
+        if not target or not build_id or not branch:
+            raise DevServerException('Must specify all build info (target, '
+                                     'build_id and branch) to stage.')
+
         android_build_info = {'target': target,
                               'build_id': build_id,
                               'branch': branch}
@@ -1625,7 +1633,7 @@ class AndroidBuildServer(ImageServerBase):
 
         @return The actual build name to use.
         """
-        branch, target, build_id = utils.parse_android_build(build_name)
+        branch, target, build_id = utils.parse_launch_control_build(build_name)
         if build_id != 'LATEST':
             return build_name
         call = self.build_call('latestbuild', branch=branch, target=target,
@@ -1722,3 +1730,21 @@ def get_least_loaded_devserver(devserver_type=ImageServer):
         return None
     loads = sorted(loads, cmp=_compare_load)
     return loads[0]['devserver']
+
+
+def resolve(build, hostname=None):
+    """Resolve a devserver can be used for given build and hostname.
+
+    @param build: Name of a build to stage on devserver, e.g.,
+                  ChromeOS build: daisy-release/R50-1234.0.0
+                  Launch Control build: git_mnc_release/shamu-eng
+    @param hostname: Hostname of a devserver for, default is None, which means
+            devserver is not restricted by the network location of the host.
+
+    @return: A DevServer instance that can be used to stage given build for the
+             given host.
+    """
+    if utils.is_launch_control_build(build):
+        return AndroidBuildServer.resolve(build, hostname)
+    else:
+        return ImageServer.resolve(build, hostname)

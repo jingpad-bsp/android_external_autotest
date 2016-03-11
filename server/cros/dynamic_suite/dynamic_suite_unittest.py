@@ -123,10 +123,11 @@ class DynamicSuiteTest(mox.MoxTestBase):
 
     def testReimageAndSIGTERM(self):
         """Should reimage_and_run that causes a SIGTERM and fails cleanly."""
-        def suicide(*_):
+        def suicide(*_, **__):
             """Send SIGTERM to current process to exit.
 
             @param _: Ignored.
+            @param __: Ignored.
             """
             os.kill(os.getpid(), signal.SIGTERM)
 
@@ -151,8 +152,9 @@ class DynamicSuiteTest(mox.MoxTestBase):
         spec.test_source_build = Suite.get_test_source_build(self._BUILDS)
         spec.devserver = self.mox.CreateMock(dev_server.ImageServer)
         spec.devserver.stage_artifacts(
-                spec.builds[provision.CROS_VERSION_PREFIX],
-                ['control_files', 'test_suites']).WithSideEffects(suicide)
+                image=spec.builds[provision.CROS_VERSION_PREFIX],
+                artifacts=['control_files', 'test_suites']
+                ).WithSideEffects(suicide)
         spec.run_prod_code = False
 
         self.mox.ReplayAll()

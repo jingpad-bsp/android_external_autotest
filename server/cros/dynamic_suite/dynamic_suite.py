@@ -571,8 +571,9 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
     # files we should schedule.
     try:
         if not spec.run_prod_code:
-            spec.devserver.stage_artifacts(spec.test_source_build,
-                                           ['control_files', 'test_suites'])
+            spec.devserver.stage_artifacts(
+                    image=spec.test_source_build,
+                    artifacts=['control_files', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
         raise error.AsynchronousBuildFailure(e)

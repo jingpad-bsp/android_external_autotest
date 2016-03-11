@@ -12,18 +12,23 @@ import time
 import common
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
+from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import abstract_ssh
 from autotest_lib.server.hosts import adb_label
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import teststation_host
 
+
+CONFIG = global_config.global_config
 
 ADB_CMD = 'adb'
 FASTBOOT_CMD = 'fastboot'
@@ -67,20 +72,22 @@ OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
 
 # Regex to parse build name to get the detailed build information.
-BUILD_REGEX = ('(?P<BRANCH>([^/]+))/(?P<BOARD>([^/]+))-'
+BUILD_REGEX = ('(?P<BRANCH>([^/]+))/(?P<BUILD_TARGET>([^/]+))-'
                '(?P<BUILD_TYPE>([^/]+))/(?P<BUILD_ID>([^/]+))')
 # Regex to parse devserver url to get the detailed build information. Sample
 # url: http://$devserver:8080/static/branch/target/build_id
 DEVSERVER_URL_REGEX = '.*/%s/*' % BUILD_REGEX
 
-ANDROID_IMAGE_FILE_FMT = '%(board)s-img-%(build_id)s.zip'
+ANDROID_IMAGE_FILE_FMT = '%(build_target)s-img-%(build_id)s.zip'
 ANDROID_BOOTLOADER = 'bootloader.img'
 ANDROID_RADIO = 'radio.img'
 ANDROID_BOOT = 'boot.img'
 ANDROID_SYSTEM = 'system.img'
 ANDROID_VENDOR = 'vendor.img'
 BRILLO_VENDOR_PARTITIONS_FILE_FMT = (
-        '%(board)s-vendor_partitions-%(build_id)s.zip')
+        '%(build_target)s-vendor_partitions-%(build_id)s.zip')
+AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
+        '%(build_target)s-autotest_server_package-%(build_id)s.tar.bz2')
 
 # Image files not inside the image zip file. These files should be downloaded
 # directly from devserver.
@@ -115,6 +122,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                         _DETECTABLE_LABELS)
 
     _parser = autoserv_parser.autoserv_parser
+
+    # Minimum build id that supports server side packaging. Older builds may
+    # not have server side package built or with Autotest code change to support
+    # server-side packaging.
+    MIN_VERSION_SUPPORT_SSP = CONFIG.get_config_value(
+            'AUTOSERV', 'min_launch_control_build_id_support_ssp', type=int)
 
     @staticmethod
     def check_host(host, timeout=10):
@@ -590,7 +603,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             serial = self.adb_serial
             # ADB has a device state, if the device is not online, no
             # subsequent ADB command will complete.
-            if serial not in devices or not self.is_device_ready():
+            # DUT with single device connected may not have adb_serial set.
+            # Therefore, skip checking if serial is in the list of adb devices
+            # if self.adb_serial is not set.
+            if (serial and serial not in devices) or not self.is_device_ready():
                 logging.debug('Waiting for device to enter the ready state.')
                 return False
         elif command == FASTBOOT_CMD:
@@ -988,8 +1004,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param build_url: The url to use for downloading Android artifacts.
                 pattern: http://$devserver:###/static/branch/target/build_id
 
-        @return: A dictionary of build information, including keys: board,
-                 branch, target, build_id.
+        @return: A dictionary of build information, including keys:
+                 build_target, branch, target, build_id.
         @raise AndroidInstallError: If failed to parse build_url.
         """
         if not build_url:
@@ -997,9 +1013,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         try:
             match = re.match(DEVSERVER_URL_REGEX, build_url)
-            return {'board': match.group('BOARD'),
+            return {'build_target': match.group('BUILD_TARGET'),
                     'branch': match.group('BRANCH'),
-                    'target': ('%s-%s' % (match.group('BOARD'),
+                    'target': ('%s-%s' % (match.group('BUILD_TARGET'),
                                           match.group('BUILD_TYPE'))),
                     'build_id': match.group('BUILD_ID')}
         except (AttributeError, IndexError, ValueError) as e:
@@ -1104,7 +1120,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         devserver = dev_server.AndroidBuildServer.resolve(build_name,
                                                           self.hostname)
         build_name = devserver.translate(build_name)
-        branch, target, build_id = utils.parse_android_build(build_name)
+        branch, target, build_id = utils.parse_launch_control_build(build_name)
         is_brillo = os_type == OS_TYPE_BRILLO
         devserver.trigger_download(target, build_id, branch,
                                    is_brillo=is_brillo, synchronous=False)
@@ -1362,3 +1378,57 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def update_labels(self):
         """Update the labels for this testbed."""
         self.labels.update_labels(self)
+
+
+    def stage_server_side_package(self, image=None):
+        """Stage autotest server-side package on devserver.
+
+        @param image: A build name, e.g., git_mnc_dev/shamu-eng/123
+
+        @return: A url to the autotest server-side package. Return None if
+                 server-side package is not supported.
+        @raise: error.AutoservError if fail to locate the build to test with.
+        """
+        if image:
+            ds = dev_server.AndroidBuildServer.resolve(image, self.hostname)
+        else:
+            job_repo_url = afe_utils.get_host_attribute(
+                    self, self.job_repo_url_attribute)
+            if job_repo_url:
+                devserver_url, image = (
+                        tools.get_devserver_build_from_package_url(
+                                job_repo_url, True))
+                ds = dev_server.AndroidBuildServer(devserver_url)
+            else:
+                labels = afe_utils.get_labels(self, self.VERSION_PREFIX)
+                if not labels:
+                    raise error.AutoservError(
+                            'Failed to stage server-side package. The host has '
+                            'no job_report_url attribute or version label.')
+                image = labels[0].name[len(self.VERSION_PREFIX)+1:]
+                ds = dev_server.AndroidBuildServer.resolve(image, self.hostname)
+
+        branch, target, build_id = utils.parse_launch_control_build(image)
+        build_target, _ = utils.parse_launch_control_target(target)
+
+        # For any build older than MIN_VERSION_SUPPORT_SSP, server side
+        # packaging is not supported.
+        try:
+            if int(build_id) < self.MIN_VERSION_SUPPORT_SSP:
+                logging.warn('Build %s is older than %s. Server side packaging '
+                             'is disabled.', image,
+                             self.MIN_VERSION_SUPPORT_SSP)
+                return None
+        except ValueError:
+            logging.warn('Failed to compare build id in %s with the minimum '
+                         'version that supports server side packaging. Server '
+                         'side packaging is disabled.', image)
+            return None
+
+        ds.stage_artifacts(target, build_id, branch,
+                           artifacts=['autotest_server_package'])
+        autotest_server_package_name = (AUTOTEST_SERVER_PACKAGE_FILE_FMT %
+                                        {'build_target': build_target,
+                                         'build_id': build_id})
+        return '%s/static/%s/%s' % (ds.url(), image,
+                                    autotest_server_package_name)

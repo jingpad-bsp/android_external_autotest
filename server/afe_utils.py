@@ -193,3 +193,11 @@ def machine_install_and_update_labels(host, *args, **dargs):
     add_version_label(host, image_name)
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
+
+
+def get_labels(host, prefix):
+    """Get labels of a host with name started with given prefix.
+
+    @param prefix: Prefix of label names.
+    """
+    return AFE.get_labels(name__startswith=prefix, host__hostname=host.hostname)

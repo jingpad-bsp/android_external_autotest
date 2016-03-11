@@ -64,7 +64,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
     def _setupDevserver(self):
         self.mox.StubOutClassWithMocks(dev_server, 'ImageServer')
-        dev_server.ImageServer.resolve(self._BUILD).AndReturn(self.dev_server)
+        dev_server.resolve(self._BUILD).AndReturn(self.dev_server)
 
 
     def _mockDevServerGetter(self, get_control_file=True):
@@ -114,7 +114,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.dev_server.stage_artifacts(
-            self._BUILD, ['test_suites']).AndRaise(
+                image=self._BUILD, artifacts=['test_suites']).AndRaise(
                 dev_server.DevServerException())
         self.mox.ReplayAll()
         self.assertRaises(error.StageControlFileFailure,
@@ -131,8 +131,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -153,8 +153,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -201,8 +201,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -225,8 +225,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -251,8 +251,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -276,8 +276,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
@@ -304,8 +304,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
         self.dev_server.url().AndReturn('mox_url')
         self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
-        self.dev_server.stage_artifacts(self._BUILD,
-                                        ['test_suites']).AndReturn(True)
+        self.dev_server.stage_artifacts(
+                image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
         self.dev_server.url().AndReturn('mox_url')
         job_id = 5
         self._mockRpcUtils(job_id)

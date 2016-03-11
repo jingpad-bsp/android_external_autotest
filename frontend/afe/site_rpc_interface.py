@@ -107,13 +107,13 @@ def _stage_build_artifacts(build):
     # Ensure components of |build| necessary for installing images are staged
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
-    ds = dev_server.ImageServer.resolve(build)
+    ds = dev_server.resolve(build)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     timer = autotest_stats.Timer('control_files.stage.%s' % (
             ds.get_server_name(ds.url()).replace('.', '_')))
     try:
         with timer:
-            ds.stage_artifacts(build, ['test_suites'])
+            ds.stage_artifacts(image=build, artifacts=['test_suites'])
     except dev_server.DevServerException as e:
         raise error.StageControlFileFailure(
                 "Failed to stage %s: %s" % (build, e))
@@ -209,7 +209,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
 
     suite_name = canonicalize_suite_name(name)
     if run_prod_code:
-        ds = dev_server.ImageServer.resolve(build)
+        ds = dev_server.resolve(build)
         keyvals = {}
         getter = control_file_getter.FileSystemGetter(
                 [_CONFIG.get_config_value('SCHEDULER',
@@ -641,7 +641,7 @@ def get_tests_by_build(build):
         raise ValueError('Could not resolve build %s: %s' % (build, e))
 
     try:
-        ds.stage_artifacts(build, ['test_suites'])
+        ds.stage_artifacts(image=build, artifacts=['test_suites'])
     except dev_server.DevServerException as e:
         raise error.StageControlFileFailure(
                 'Failed to stage %s: %s' % (build, e))

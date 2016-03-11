@@ -4,6 +4,7 @@ import logging
 from contextlib import closing
 
 from autotest_lib.client.bin import local_host
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.hosts import cros_host, ssh_host
@@ -11,9 +12,9 @@ from autotest_lib.server.hosts import moblab_host, sonic_host
 from autotest_lib.server.hosts import adb_host, testbed
 
 
-SSH_ENGINE = global_config.global_config.get_config_value('AUTOSERV',
-                                                          'ssh_engine',
-                                                          type=str)
+CONFIG = global_config.global_config
+
+SSH_ENGINE = CONFIG.get_config_value('AUTOSERV', 'ssh_engine', type=str)
 
 # Default ssh options used in creating a host.
 DEFAULT_SSH_USER = 'root'
@@ -198,6 +199,24 @@ def create_target_machine(machine, **kwargs):
 
     @returns: The target machine to be used for verify/repair.
     """
+    # For Brillo/Android devices connected to moblab, the `machine` name is
+    # either `localhost` or `127.0.0.1`. It needs to be translated to the host
+    # container IP if the code is running inside a container. This way, autoserv
+    # can ssh to the moblab and run actual adb/fastboot commands.
+    is_moblab = CONFIG.get_config_value('SSP', 'is_moblab', type=bool,
+                                        default=False)
+    hostname = machine['hostname'] if isinstance(machine, dict) else machine
+    if (utils.is_in_container() and is_moblab and
+        hostname in ['localhost', '127.0.0.1']):
+        hostname = CONFIG.get_config_value('SSP', 'host_container_ip', type=str,
+                                           default=None)
+        if isinstance(machine, dict):
+            machine['hostname'] = hostname
+        else:
+            machine = hostname
+        logging.debug('Hostname of machine is converted to %s for the test to '
+                      'run inside a container.', hostname)
+
     # TODO(kevcheng): We'll want to have a smarter way of figuring out which
     # host to create (checking host labels).
     if server_utils.machine_is_testbed(machine):

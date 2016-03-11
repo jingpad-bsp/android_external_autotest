@@ -699,10 +699,10 @@ def get_wireless_ssid(hostname):
     return default_ssid
 
 
-def parse_android_build(build_name):
-    """Get branch, target, build_id from the given build_name.
+def parse_launch_control_build(build_name):
+    """Get branch, target, build_id from the given Launch Control build_name.
 
-    @param build_name: Name of an Android build, should be formated as
+    @param build_name: Name of a Launch Control build, should be formated as
                        branch/target/build_id
 
     @return: Tuple of branch, target, build_id
@@ -710,6 +710,18 @@ def parse_android_build(build_name):
     """
     branch, target, build_id = build_name.split('/')
     return branch, target, build_id
+
+
+def parse_android_target(target):
+    """Get board and build type from the given target.
+
+    @param target: Name of an Android build target, e.g., shamu-eng.
+
+    @return: Tuple of board, build_type
+    @raise ValueError: If the target is not correctly formated.
+    """
+    board, build_type = target.split('-')
+    return board, build_type
 
 
 def parse_android_board_label(board_label_name):
@@ -735,21 +747,42 @@ def parse_android_board_label(board_label_name):
 
 
 def parse_launch_control_target(target):
-    """Parse the board name and target type from a Launch Control target.
+    """Parse the build target and type from a Launch Control target.
 
-    The Launch Control target has the format of board-target_type, e.g.,
-    shamu-eng or dragonboard-userdebug. This method extracts the board name
-    and target type from the target name.
+    The Launch Control target has the format of build_target-build_type, e.g.,
+    shamu-eng or dragonboard-userdebug. This method extracts the build target
+    and type from the target name.
 
     @param target: Name of a Launch Control target, e.g., shamu-eng.
 
-    @return: (board, target_type), e.g., ('shamu', 'userdebug')
+    @return: (build_target, build_type), e.g., ('shamu', 'userdebug')
     """
-    match = re.match('(?P<board>.+)-(?P<target_type>[^-]+)', target)
+    match = re.match('(?P<build_target>.+)-(?P<build_type>[^-]+)', target)
     if match:
-        return match.group('board'), match.group('target_type')
+        return match.group('build_target'), match.group('build_type')
     else:
         return None, None
+
+
+def is_launch_control_build(build):
+    """Check if a given build is a Launch Control build.
+
+    @param build: Name of a build, e.g.,
+                  ChromeOS build: daisy-release/R50-1234.0.0
+                  Launch Control build: git_mnc_release/shamu-eng
+
+    @return: True if the build name matches the pattern of a Launch Control
+             build, False otherwise.
+    """
+    try:
+        _, target, _ = parse_launch_control_build(build)
+        build_target, _ = parse_launch_control_target(target)
+        if build_target:
+            return True
+    except ValueError:
+        # parse_launch_control_build or parse_launch_control_target failed.
+        pass
+    return False
 
 
 def which(exec_file):

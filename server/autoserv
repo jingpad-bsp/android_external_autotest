@@ -672,9 +672,10 @@ def main():
         logging.warn(
                 'Autoserv is required to run with server-side packaging. '
                 'However, no server-side package can be found based on '
-                '`--image`, host attribute job_repo_url or host label of '
-                'cros-version. The test will be executed without '
-                'server-side packaging supported.')
+                '`--image`, host attribute job_repo_url or host OS version '
+                'label. It could be that the build to test is older than the '
+                'minimum version that supports server-side packaging. The test '
+                'will be executed without using erver-side packaging.')
 
     if results:
         logging.info("Results placed in %s" % results)
