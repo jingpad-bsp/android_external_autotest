@@ -472,16 +472,6 @@ class AutoservRepairTotalFailure(AutoservError):
     pass
 
 
-class AutoservRepairFailure(AutoservError):
-    """Raised by a repair method if it is unable to repair a DUT."""
-    pass
-
-
-class AutoservRepairMethodNA(AutoservError):
-    """Raised when for any reason a praticular repair method is NA."""
-    pass
-
-
 class AutoservInstallError(AutoservError):
     """Error occured while installing autotest on a host"""
     pass

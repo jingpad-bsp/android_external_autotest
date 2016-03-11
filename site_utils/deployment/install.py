@@ -177,12 +177,12 @@ def _create_host(hostname, board):
     # Monkey patch our host object to think there's a board label
     # in the AFE.  The horror!  The horror!
     #
-    # TODO(jrbarnette):  This is wrong; we patch the method because
-    # CrosHost._servo_repair_reinstall() calls it, but that means
-    # we're coupled to the implementation of CrosHost.  Alas, it's
-    # hard to do better without either 1) copying large chunks of
-    # _servo_repair_reinstall(), or 2) extensively refactoring
-    # CrosHost.
+    # TODO(jrbarnette):  This is wrong, wrong, wrong; we patch the
+    # method because CrosHost.stage_image_for_servo() calls it, but
+    # that means we're coupled to the implementation of CrosHost.
+    # Alas, it's hard to do better without either 1) copying large
+    # chunks of stage_image_for_servo(), or 2) extensively
+    # refactoring CrosHost.
     host._get_board_from_afe = lambda: board
     return host
 

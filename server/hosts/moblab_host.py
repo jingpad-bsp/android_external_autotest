@@ -1,17 +1,18 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import common
+
 import logging
 import os
 import re
-import tempfile
 import time
 import urllib2
 
+import common
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import cros_host
+from autotest_lib.server.hosts import cros_repair
 
 
 AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value(
@@ -70,11 +71,15 @@ class MoblabHost(cros_host.CrosHost):
 
     def _initialize(self, *args, **dargs):
         super(MoblabHost, self)._initialize(*args, **dargs)
+        # TODO(jrbarnette):  Our superclass already initialized
+        # _repair_strategy, and now we're re-initializing it here.
+        # That's awkward, if not actually wrong.
+        self._repair_strategy = cros_repair.create_moblab_repair_strategy()
+
         # Clear the Moblab Image Storage so that staging an image is properly
         # tested.
         if dargs.get('retain_image_storage') is not True:
             self.run('rm -rf %s/*' % MOBLAB_IMAGE_STORAGE)
-        self._dhcpd_leasefile = None
         self.web_address = dargs.get('web_address', self.hostname)
         self._use_tunnel = (ENABLE_SSH_TUNNEL_FOR_MOBLAB and
                             self.web_address == self.hostname)
@@ -276,45 +281,6 @@ class MoblabHost(cros_host.CrosHost):
             for host in self.afe.get_hosts():
                 logging.error('DUT: %s Status: %s', host, host.status)
             raise error.AutoservError('Moblab has 0 Ready DUTs')
-
-
-    def check_device(self):
-        """Moblab specific check_device.
-
-        Runs after a repair method has been attempted:
-        * Reboots the moblab to start its services.
-        * Creates the autotest client directory in case powerwash was used to
-          wipe stateful and repair.
-        * Reinstall the dhcp lease file if it was preserved.
-        """
-        # Moblab requires a reboot to initialize it's services prior to
-        # verification.
-        self.reboot()
-        self.wait_afe_up()
-        # Stateful could have been wiped so setup an empty autotest client
-        # directory.
-        self.run('mkdir -p %s' % self.get_autodir(), ignore_status=True)
-        # Restore the dhcpd lease file if it was backed up.
-        # TODO (sbasi) - Currently this is required for repairs but may need
-        # to be expanded to regular installs as well.
-        if self._dhcpd_leasefile:
-            self.send_file(self._dhcpd_leasefile.name, DHCPD_LEASE_FILE)
-            self.run('chown dhcp:dhcp %s' % DHCPD_LEASE_FILE)
-        super(MoblabHost, self).check_device()
-
-
-    def repair(self):
-        """Moblab specific repair.
-
-        Preserves the dhcp lease file prior to repairing the device.
-        """
-        try:
-            temp = tempfile.TemporaryFile()
-            self.get_file(DHCPD_LEASE_FILE, temp.name)
-            self._dhcpd_leasefile = temp
-        except error.AutoservRunError:
-            logging.debug('Failed to retrieve dhcpd lease file from host.')
-        super(MoblabHost, self).repair()
 
 
     def get_platform(self):

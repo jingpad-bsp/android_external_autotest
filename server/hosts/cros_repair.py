@@ -2,11 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import json
+import logging
 
 import common
 from autotest_lib.client.common_lib import hosts
+from autotest_lib.server import afe_utils
 from autotest_lib.server.hosts import ssh_verify
 
 
@@ -33,7 +34,36 @@ class ACPowerVerifier(hosts.Verifier):
 
     @property
     def description(self):
-        return 'host is plugged in to AC power'
+        return 'The DUT is plugged in to AC power'
+
+
+class UpdateSuccessVerifier(hosts.Verifier):
+    """
+    Checks that the DUT has not failed its last provision job.
+
+    At the start of update (e.g. for a Provision job), the code touches
+    the file named in `host.PROVISION_FAILED`.  The file is located
+    in a part of the stateful partition that will be removed when the
+    update finishes.  Thus, the presence of the file indicates that a
+    prior update failed.
+
+    @return: True if there exists file /var/tmp/provision_failed, which
+             indicates the last provision job failed.
+             False if the file does not exist or the dut can't be reached.
+    """
+    def verify(self, host):
+        result = host.run('test -f %s' % host.PROVISION_FAILED,
+                          ignore_status=True, timeout=5)
+        if result.exit_status == 0:
+            raise hosts.AutoservVerifyError(
+                    'Last AU on this DUT failed')
+
+
+    @property
+    def description(self):
+        return 'The most recent AU attempt on this DUT succeeded'
+
+
 
 
 class TPMStatusVerifier(hosts.Verifier):
@@ -115,12 +145,203 @@ class CrosHostVerifier(hosts.Verifier):
         return 'Miscellaneous CrOS host verification checks'
 
 
-def create_repair_strategy():
+class RPMCycleRepair(hosts.RepairAction):
+    """
+    Cycle AC power using the RPM infrastructure.
+
+    This is meant to catch two distinct kinds of failure:
+      * If the DUT is wedged and has no battery (i.e. a chromebox),
+        power cycling it may force it back on.
+      * If the DUT has had AC power incorrectly turned off, power
+        cycling will turn AC power back on.
+    """
+
+    def repair(self, host):
+        if not host.has_power():
+            raise hosts.AutoservRepairError(
+                    '%s has no RPM connection.' % host.hostname)
+        host.power_cycle()
+        if not host.wait_up(timeout=host.BOOT_TIMEOUT):
+            raise hosts.AutoservRepairError(
+                    '%s is still offline after powercycling' %
+                    host.hostname)
+
+
+    @property
+    def description(self):
+        return 'Power cycle the DUT with RPM'
+
+
+class ServoResetRepair(hosts.RepairAction):
+    """Repair a Chrome device by resetting it with servo."""
+
+    def repair(self, host):
+        if not host.servo:
+            raise hosts.AutoservRepairError(
+                    '%s has no servo support.' % host.hostname)
+        host.servo.get_power_state_controller().reset()
+        if host.wait_up(host.BOOT_TIMEOUT):
+            return
+        raise hosts.AutoservRepairError(
+                '%s is still offline after reset.' % host.hostname)
+
+
+    @property
+    def description(self):
+        return 'Reset the DUT via servo'
+
+
+class FirmwareRepair(hosts.RepairAction):
+    """
+    Reinstall the firmware image using servo.
+
+    This repair function attempts to use servo to install the DUT's
+    designated "stable firmware version".
+
+    This repair method only applies to DUTs used for FAFT.
+    """
+
+    def repair(self, host):
+        if not host._is_firmware_repair_supported():
+            raise hosts.AutoservRepairError(
+                    'Firmware repair is not applicable to host %s.' %
+                    host.hostname)
+        if not host.servo:
+            raise hosts.AutoservRepairError(
+                    '%s has no servo support.' % host.hostname)
+        host.firmware_install()
+
+
+    @property
+    def description(self):
+        return 'Re-install the stable firmware'
+
+
+class AutoUpdateRepair(hosts.RepairAction):
+    """
+    Repair by re-installing a test image using autoupdate.
+
+    Try to install the DUT's designated "stable test image" using the
+    standard procedure for installing a new test image via autoupdate.
+    """
+
+    def repair(self, host):
+        afe_utils.machine_install_and_update_labels(host, repair=True)
+
+
+    @property
+    def description(self):
+        return 'Re-install the stable build via AU'
+
+
+class PowerWashRepair(AutoUpdateRepair):
+    """
+    Powerwash the DUT, then re-install using autoupdate.
+
+    Powerwash the DUT, then attempt to re-install a stable test image as
+    for `AutoUpdateRepair`.
+    """
+
+    def repair(self, host):
+        host.run('echo "fast safe" > '
+                 '/mnt/stateful_partition/factory_install_reset')
+        host.reboot(timeout=host.POWERWASH_BOOT_TIMEOUT, wait=True)
+        super(PowerWashRepair, self).repair(host)
+
+
+    @property
+    def description(self):
+        return 'Powerwash and then re-install the stable build via AU'
+
+
+class ServoInstallRepair(hosts.RepairAction):
+    """
+    Reinstall a test image from USB using servo.
+
+    Use servo to re-install the DUT's designated "stable test image"
+    from servo-attached USB storage.
+    """
+
+    def repair(self, host):
+        if not host.servo:
+            raise hosts.AutoservRepairError(
+                    '%s has no servo support.' % host.hostname)
+        host.servo_install(host.stage_image_for_servo())
+
+
+    @property
+    def description(self):
+        return 'Reinstall from USB using servo'
+
+
+def create_cros_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
+    verify_dag = [
+        (ssh_verify.SshVerifier,  'ssh',     []),
+        (ACPowerVerifier,         'power',   ['ssh']),
+        (TPMStatusVerifier,       'tpm',     ['ssh']),
+        (UpdateSuccessVerifier,   'good_au', ['ssh']),
+        (CrosHostVerifier,        'cros',    ['ssh']),
+    ]
+    repair_actions = [
+        # RPM cycling must precede Servo reset:  if the DUT has a dead
+        # battery, we need to reattach AC power before we reset via servo.
+        (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
+        (ServoResetRepair, 'reset', [], ['ssh']),
+
+        # TODO(jrbarnette):  the real dependency for firmware isn't
+        # 'cros', but rather a to-be-created verifier that replaces
+        # CrosHost.verify_firmware_status()
+        #
+        # N.B. FirmwareRepair can't fix a 'good_au' failure directly,
+        # because it doesn't remove the flag file that triggers the
+        # failure.  We include it as a repair trigger because it's
+        # possible the the last update failed because of the firmware,
+        # and we want the repair steps below to be able to trust the
+        # firmware.
+        (FirmwareRepair, 'firmware', [], ['ssh', 'cros', 'good_au']),
+
+        # TODO(jrbarnette):  AU repair can't fix all problems reported
+        # by the 'cros' verifier; some problems require powerwash.  Once
+        # the 'cros' verifier is properly split into its component
+        # parts, some of the 'cros' checks will be dependencies, others
+        # will be triggers.
+        (AutoUpdateRepair, 'au', ['ssh', 'good_au'], ['cros']),
+        (PowerWashRepair, 'powerwash', ['ssh'], ['good_au', 'cros']),
+        (ServoInstallRepair, 'usb', [], ['ssh', 'good_au', 'cros']),
+    ]
+    return hosts.RepairStrategy(verify_dag, repair_actions)
+
+
+
+def create_moblab_repair_strategy():
+    """
+    Return a `RepairStrategy` for a `MoblabHost`.
+
+    Moblab is a subset of the CrOS verify and repair.  Several pieces
+    are removed, for various reasons:
+
+    'good_au':  This verifier can't pass, because the Moblab AU
+        procedure doesn't properly delete CrosHost.PROVISION_FAILED.
+        TODO(jrbarnette) We should refactor _machine_install() so that it
+        can be different for Moblab.
+
+    'firmware':  Moblab DUTs shouldn't be in FAFT pools, so we don't try
+        this.
+
+    'powerwash':  Powerwash on Moblab causes trouble with deleting the
+        DHCP leases file, so we skip it.
+    """
     verify_dag = [
         (ssh_verify.SshVerifier,  'ssh',     []),
         (ACPowerVerifier,         'power',   ['ssh']),
         (TPMStatusVerifier,       'tpm',     ['ssh']),
         (CrosHostVerifier,        'cros',    ['ssh']),
     ]
-    return hosts.RepairStrategy(verify_dag, [])
+    repair_actions = [
+        (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
+        (ServoResetRepair, 'reset', [], ['ssh']),
+        (AutoUpdateRepair, 'au', ['ssh'], ['cros']),
+        (ServoInstallRepair, 'usb', [], ['ssh', 'cros']),
+    ]
+    return hosts.RepairStrategy(verify_dag, repair_actions)

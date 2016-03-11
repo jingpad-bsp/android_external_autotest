@@ -13,6 +13,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
@@ -45,9 +46,6 @@ CONFIG = global_config.global_config
 
 LUCID_SLEEP_BOARDS = ['samus', 'lulu']
 
-# A file to indicate provision failure and require Repair job to powerwash the
-# dut.
-PROVISION_FAILED = '/var/tmp/provision_failed'
 
 class FactoryImageCheckerException(error.AutoservError):
     """Exception raised when an image is a factory image."""
@@ -115,7 +113,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _RPM_RECOVERY_BOARDS = CONFIG.get_config_value('CROS',
             'rpm_recovery_boards', type=str).split(',')
 
-    _MAX_POWER_CYCLE_ATTEMPTS = 6
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
@@ -162,8 +159,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _FW_IMAGE_URL_PATTERN = CONFIG.get_config_value(
             'CROS', 'firmware_url_pattern', type=str)
 
-    # Time duration waiting for host up/down check
-    _CHECK_HOST_UP_TIMEOUT_SECS = 15
+
+    # A flag file to indicate provision failures.  The file is created
+    # at the start of any AU procedure (see `machine_install()`).  The
+    # file's location in stateful means that on successul update it will
+    # be removed.  Thus, if this file exists, it indicates that we've
+    # tried and failed in a previous attempt to update.
+    PROVISION_FAILED = '/var/tmp/provision_failed'
 
 
     @staticmethod
@@ -265,8 +267,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 args_dict, ('servo_host', 'servo_port'))
 
 
-    def _initialize(self, hostname, chameleon_args=None, servo_args=None, plankton_args=None,
-                    try_lab_servo=False, ssh_verbosity_flag='', ssh_options='',
+    def _initialize(self, hostname, chameleon_args=None, servo_args=None,
+                    plankton_args=None, try_lab_servo=False,
+                    ssh_verbosity_flag='', ssh_options='',
                     *args, **dargs):
         """Initialize superclasses, |self.chameleon|, and |self.servo|.
 
@@ -290,7 +293,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         super(CrosHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
-        self._repair_strategy = cros_repair.create_repair_strategy()
+        self._repair_strategy = cros_repair.create_cros_repair_strategy()
         # self.env is a dictionary of environment variable settings
         # to be exported for commands run on the host.
         # LIBC_FATAL_STDERR_ can be useful for diagnosing certain
@@ -720,7 +723,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
-        self.run('touch %s' % PROVISION_FAILED)
+        self.run('touch %s' % self.PROVISION_FAILED)
 
         update_complete = False
         updater = autoupdater.ChromiumOSUpdater(
@@ -945,57 +948,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return afe_utils.get_build(self)
 
 
-    def _install_repair(self):
-        """Attempt to repair this host using the update-engine.
-
-        If the host is up, try installing the DUT with a stable
-        "repair" version of Chrome OS as defined in afe_stable_versions table.
-        If the table is not setup, global_config value under
-        CROS.stable_cros_version will be used instead.
-
-        @raises AutoservRepairMethodNA if the DUT is not reachable.
-        @raises ChromiumOSError if the install failed for some reason.
-
-        """
-        if not self.is_up():
-            raise error.AutoservRepairMethodNA('DUT unreachable for install.')
-        logging.info('Attempting to reimage machine to repair image.')
-        try:
-            afe_utils.machine_install_and_update_labels(self, repair=True)
-        except autoupdater.ChromiumOSError as e:
-            logging.exception(e)
-            logging.info('Repair via install failed.')
-            raise
-
-
-    def _install_repair_with_powerwash(self):
-        """Attempt to powerwash first then repair this host using update-engine.
-
-        update-engine may fail due to a bad image. In such case, powerwash
-        may help to cleanup the DUT for update-engine to work again.
-
-        @raises AutoservRepairMethodNA if the DUT is not reachable.
-        @raises ChromiumOSError if the install failed for some reason.
-
-        """
-        if not self.is_up():
-            raise error.AutoservRepairMethodNA('DUT unreachable for install.')
-
-        logging.info('Attempting to powerwash the DUT.')
-        self.run('echo "fast safe" > '
-                 '/mnt/stateful_partition/factory_install_reset')
-        self.reboot(timeout=self.POWERWASH_BOOT_TIMEOUT, wait=True)
-        if not self.is_up():
-            logging.error('Powerwash failed. DUT did not come back after '
-                          'reboot.')
-            raise error.AutoservRepairFailure(
-                    'DUT failed to boot from powerwash after %d seconds' %
-                    self.POWERWASH_BOOT_TIMEOUT)
-
-        logging.info('Powerwash succeeded.')
-        self._install_repair()
-
-
     def servo_install(self, image_url=None, usb_boot_timeout=USB_BOOT_TIMEOUT,
                       install_timeout=INSTALL_TIMEOUT):
         """
@@ -1024,7 +976,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         timer.start()
         self.servo.install_recovery_image(image_url)
         if not self.wait_up(timeout=usb_boot_timeout):
-            raise error.AutoservRepairFailure(
+            raise hosts.AutoservRepairError(
                     'DUT failed to boot from USB after %d seconds' %
                     usb_boot_timeout)
         timer.stop()
@@ -1086,31 +1038,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.error('Failed to create servo object: %s', e)
 
 
-    def _servo_repair_reinstall(self):
-        """Reinstall the DUT utilizing servo and a test image.
-
-        Re-install the OS on the DUT by:
-        1) installing a test image on a USB storage device attached to the Servo
-                board,
-        2) booting that image in recovery mode,
-        3) resetting the TPM status, and then
-        4) installing the image with chromeos-install.
-
-        @raises AutoservRepairMethodNA if the device does not have servo
-                support.
-
-        """
-        if not self.servo:
-            raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
-                                               'DUT has no servo support.')
-
-        logging.info('Attempting to recovery servo enabled device with '
-                     'servo_repair_reinstall')
-
-        image_url = self.stage_image_for_servo()
-        self.servo_install(image_url)
-
-
     def _is_firmware_repair_supported(self):
         """Check if the firmware repair is supported.
 
@@ -1130,121 +1057,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 set(pools).intersection(set(pools_support_firmware_repair)))
 
 
-    def _firmware_repair(self):
-        """Reinstall the firmware image using servo.
-
-        This repair function attempts to install the stable firmware specified
-        by the stable firmware version.
-        Then reset the DUT and try to verify it. If verify fails, it will try to
-        install the CrOS image using servo.
-        """
-        if not self._is_firmware_repair_supported():
-            logging.info('Host is not in pools that support firmware repair.')
-            raise error.AutoservRepairMethodNA(
-                    'Firmware repair is not applicable to host %s.' %
-                    self.hostname)
-
-        # To repair a DUT connected to a moblab, try to create a servo object if
-        # it was failed to be created earlier as there may be a servo_host host
-        # attribute for this host.
-        if utils.is_moblab():
-            self._setup_servo()
-
-        if not self.servo:
-            raise error.AutoservRepairMethodNA('Repair Reinstall NA: '
-                                               'DUT has no servo support.')
-
-        logging.info('Attempting to recovery servo enabled device with '
-                     'firmware_repair.')
-        self.firmware_install()
-
-        logging.info('Firmware repaired. Check if the DUT can boot. If not, '
-                     'reinstall the CrOS using servo.')
-        try:
-            self.verify()
-        except Exception as e:
-            logging.warn('Failed to verify DUT, error: %s. Will try to repair '
-                         'the DUT with servo_repair_reinstall.', e)
-            self._servo_repair_reinstall()
-
-
-    def _servo_repair_power(self):
-        """Attempt to repair DUT using an attached Servo.
-
-        Attempt to power cycle the DUT via cold_reset.
-
-        @raises AutoservRepairMethodNA if the device does not have servo
-                support.
-        @raises AutoservRepairFailure if the repair fails for any reason.
-        """
-        if not self.servo:
-            raise error.AutoservRepairMethodNA('Repair Power NA: '
-                                               'DUT has no servo support.')
-
-        logging.info('Attempting to recover servo enabled device by '
-                     'powering cycling with cold reset.')
-        self.servo.get_power_state_controller().reset()
-        if self.wait_up(self.BOOT_TIMEOUT):
-            return
-
-        raise error.AutoservRepairFailure('DUT did not boot after long_press.')
-
-
-    def _powercycle_to_repair(self):
-        """Utilize the RPM Infrastructure to bring the host back up.
-
-        If the host is not up/repaired after the first powercycle we utilize
-        auto fallback to the last good install by powercycling and rebooting the
-        host 6 times.
-
-        @raises AutoservRepairMethodNA if the device does not support remote
-                power.
-        @raises AutoservRepairFailure if the repair fails for any reason.
-
-        """
-        if not self.has_power():
-            raise error.AutoservRepairMethodNA('Device does not support power.')
-
-        logging.info('Attempting repair via RPM powercycle.')
-        failed_cycles = 0
-        self.power_cycle()
-        while not self.wait_up(timeout=self.BOOT_TIMEOUT):
-            failed_cycles += 1
-            if failed_cycles >= self._MAX_POWER_CYCLE_ATTEMPTS:
-                raise error.AutoservRepairFailure(
-                        'Powercycled host %s %d times; device did not come back'
-                        ' online.' % (self.hostname, failed_cycles))
-            self.power_cycle()
-        if failed_cycles == 0:
-            logging.info('Powercycling was successful first time.')
-        else:
-            logging.info('Powercycling was successful after %d failures.',
-                         failed_cycles)
-
-
-    def _reboot_repair(self):
-        """SSH to this host and reboot."""
-        if not self.is_up(self._CHECK_HOST_UP_TIMEOUT_SECS):
-            raise error.AutoservRepairMethodNA('DUT unreachable for reboot.')
-        logging.info('Attempting repair via SSH reboot.')
-        self.reboot(timeout=self.BOOT_TIMEOUT, wait=True)
-
-
-    def check_device(self):
-        """Check if a device is ssh-able, and if so, clean and verify it.
-
-        @raise AutoservSSHTimeout: If the ssh ping times out.
-        @raise AutoservSshPermissionDeniedError: If ssh ping fails due to
-                                                 permissions.
-        @raise AutoservSshPingHostError: For other AutoservRunErrors during
-                                         ssh_ping.
-        @raises AutoservError: As appropriate, during cleanup and verify.
-        """
-        self.ssh_ping()
-        self.cleanup()
-        self.verify()
-
-
     def confirm_servo(self):
         """Confirm servo is initialized and verified.
 
@@ -1262,67 +1074,22 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('Failed to create servo object.')
 
 
-    def _is_last_provision_failed(self):
-        """Checks if the last provision job failed.
-
-        @return: True if there exists file /var/tmp/provision_failed, which
-                 indicates the last provision job failed.
-                 False if the file does not exist or the dut can't be reached.
-        """
-        try:
-            result = self.run('test -f %s' % PROVISION_FAILED,
-                              ignore_status=True, timeout=5)
-            return result.exit_status == 0
-        except (error.AutoservRunError, error.AutoservSSHTimeout):
-            # Default to False, for repair to try all repair method if the dut
-            # can't be reached.
-            return False
-
-
     def repair(self):
         """Attempt to get the DUT to pass `self.verify()`.
 
         This overrides the base class function for repair; it does
-        not call back to the parent class, but instead offers a
-        simplified implementation based on the capabilities in the
-        Chrome OS test lab.
+        not call back to the parent class, but instead relies on
+        `self._repair_strategy` to coordinate the verification and
+        repair steps needed to get the DUT working.
 
-        It first verifies and repairs servo if it is a DUT in CrOS
-        lab and a servo is attached.
-
-        This escalates in order through the following procedures and verifies
-        the status using `self.check_device()` after each of them. This is done
-        until both the repair and the veryfing step succeed.
-
-        Escalation order of repair procedures from less intrusive to
-        more intrusive repairs:
-          1. SSH to the DUT and reboot.
-          2. If there's a servo for the DUT, try to power the DUT off and
-             on.
-          3. If the DUT can be power-cycled via RPM, try to repair
-             by power-cycling.
-          4. Try to re-install to a known stable image using
-             auto-update.
-          5. If there's a servo for the DUT, try to re-install via
-             the servo.
-
-        As with the parent method, the last operation performed on
-        the DUT must be to call `self.check_device()`; If that call fails the
-        exception it raises is passed back to the caller.
-
-        @raises AutoservRepairTotalFailure if the repair process fails to
-                fix the DUT.
-        @raises ServoHostRepairTotalFailure if the repair process fails to
-                fix the servo host if one is attached to the DUT.
-        @raises AutoservSshPermissionDeniedError if it is unable
-                to ssh to the servo host due to permission error.
-
+        TODO(jrbarnette) Prior to invoking the repair strategy's
+        `repair()` method, repair checks our servo, and if necessary,
+        tries to repair it.  This flow should instead be integrated
+        into the main repair strategy.
         """
-        # Caution: Deleting shards relies on repair to always reboot the DUT.
-
-        # To repair a DUT connected to a moblab, try to create a servo object if
-        # it was failed to be created earlier as there may be a servo_host host
-        # attribute for this host.
+        # For a DUT connected to a moblab, the servo host creation flow
+        # may not have created the servo object.  Try again now that we
+        # know we want the servo.
         if utils.is_moblab():
             self._setup_servo()
 
@@ -1333,70 +1100,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 logging.error('Could not create a healthy servo: %s', e)
             self.servo = self._servo_host.get_servo()
 
-        # TODO(scottz): This should use something similar to label_decorator,
-        # but needs to be populated in order so DUTs are repaired with the
-        # least amount of effort.
-        force_powerwash = self._is_last_provision_failed()
-        if force_powerwash:
-            logging.info('Last provision failed, try powerwash first.')
-            autotest_stats.Counter(
-                    'repair_force_powerwash.TOTAL').increment()
-            repair_funcs = [self._firmware_repair,
-                            self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
-        else:
-            repair_funcs = [self._reboot_repair,
-                            self._servo_repair_power,
-                            self._firmware_repair,
-                            self._powercycle_to_repair,
-                            self._install_repair,
-                            self._install_repair_with_powerwash,
-                            self._servo_repair_reinstall]
-        errors = []
-        board = self._get_board_from_afe()
-        for repair_func in repair_funcs:
-            try:
-                repair_func()
-                self.check_device()
-                autotest_stats.Counter(
-                        '%s.SUCCEEDED' % repair_func.__name__).increment()
-                if board:
-                    autotest_stats.Counter(
-                            '%s.%s.SUCCEEDED' % (repair_func.__name__,
-                                             board)).increment()
-                if force_powerwash:
-                    autotest_stats.Counter(
-                            'repair_force_powerwash.SUCCEEDED').increment()
-                return
-            except error.AutoservRepairMethodNA as e:
-                autotest_stats.Counter(
-                        '%s.RepairNA' % repair_func.__name__).increment()
-                if board:
-                    autotest_stats.Counter(
-                            '%s.%s.RepairNA' % (repair_func.__name__,
-                                                board)).increment()
-                logging.warning('Repair function NA: %s', e)
-                errors.append(str(e))
-            except Exception as e:
-                autotest_stats.Counter(
-                        '%s.FAILED' % repair_func.__name__).increment()
-                if board:
-                    autotest_stats.Counter(
-                            '%s.%s.FAILED' % (repair_func.__name__,
-                                              board)).increment()
-                logging.warning('Failed to repair device: %s', e)
-                errors.append(str(e))
+        self._repair_strategy.repair(self)
 
-        if force_powerwash:
-            autotest_stats.Counter(
-                    'repair_force_powerwash.FAILED').increment()
-        autotest_stats.Counter('Full_Repair_Failed').increment()
-        if board:
-            autotest_stats.Counter(
-                    'Full_Repair_Failed.%s' % board).increment()
-        raise error.AutoservRepairTotalFailure(
-                'All attempts at repairing the device failed:\n%s' %
-                '\n'.join(errors))
+        # TODO(jrbarnette) When deleting a shard, the shard's DUTs may
+        # be left still running jobs.  The master can't know what's going
+        # on with the DUT, so the first thing it does is to schedule
+        # a repair job.  If we get here (meaning, if the DUT is now
+        # working), reboot the DUT to handle that situation.
+        #
+        # This is a gross hack.  crbug.com/499865.
+        self.reboot()
 
 
     def close(self):
