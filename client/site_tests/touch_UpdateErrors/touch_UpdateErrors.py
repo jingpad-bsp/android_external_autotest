@@ -20,6 +20,9 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
     # Devices which have errors in older builds but not newer ones.
     _IGNORE_OLDER_LOGS = ['expresso', 'enguarde', 'cyan']
 
+    # Devices which have errors in the first build after update.
+    _IGNORE_AFTER_UPDATE_LOGS = ['link']
+
     def _find_logs_start_line(self):
         """Find where in /var/log/messages this build's logs start.
 
@@ -33,7 +36,8 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
         @returns: string of the line number to start looking at logs
 
         """
-        if self._platform not in self._IGNORE_OLDER_LOGS:
+        if not (self._platform in self._IGNORE_OLDER_LOGS or
+                self._platform in self._IGNORE_AFTER_UPDATE_LOGS):
             return '0'
 
         log_cmd = 'grep -ni "Linux version " /var/log/messages'
@@ -47,6 +51,7 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             dates.append(entry[entry.find('Linux version '):])
         latest = dates[-1]
         start_line = lines[-1]
+        start_line_index = -1
 
         # Find where logs from this build start by checking backwards for the
         # first change in build.  Some of these dates may be duplicated.
@@ -54,6 +59,22 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             if dates[i] != latest:
                 break
             start_line = lines[i]
+            start_line_index = i
+
+        if start_line_index == 0:
+            return '0'
+
+        logging.info('This build has an older build; skipping some logs, '
+                     'as was hardcoded for this platform.')
+
+        # Ignore the first build after update if required.
+        if self._platform in self._IGNORE_AFTER_UPDATE_LOGS:
+            start_line_index += 1
+            if start_line_index >= len(lines):
+                raise error.TestError(
+                        'Insufficent logs: aborting test to avoid a known '
+                        'issue!  Please reboot and try again.')
+            start_line = lines[start_line_index]
 
         return start_line
 
