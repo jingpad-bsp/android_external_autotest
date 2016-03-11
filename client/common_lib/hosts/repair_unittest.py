@@ -53,21 +53,48 @@ class _StubHost(object):
         return self._record_sequence
 
 
+    def reset_log_records(self):
+        """Clear our history of log records to allow re-testing."""
+        self._record_sequence = []
+
+
 class _StubVerifier(hosts.Verifier):
     """
     Stub implementation of `Verifier` for testing purposes.
 
     This is a full implementation of a concrete `Verifier` subclass
-    designed to allow calling unit tests control over whether it passes
-    or fails.
+    designed to allow calling unit tests control over whether verify
+    passes or fails.
+
+    A `_StubVerifier()` will pass whenever the value of `_fail_count`
+    is non-zero.  Calls to `try_repair()` will reduce this count,
+    eventually "repairing" the verifier.
+
+    @property verify_count  The number of calls made to the instance's
+                            `verify()` method.
+    @property message       If verification fails, the exception raised,
+                            when converted to a string, will have this
+                            value.
+    @property _fail_count   The number of repair attempts required
+                            before this verifier will succeed.  A
+                            non-zero value means verification will fail.
+    @property _description  The value of the `description` property.
     """
 
     def __init__(self, tag, deps, fail_count):
+        """
+        Initialize a `_StubVerifier` object.
+
+        @param tag          As for the `hosts.Verifer` constructor.
+        @param deps         As for the `hosts.Verifer` constructor.
+        @param fail_count   A number of repair attempts that must be
+                            made in order to fix this verifier.
+        """
         super(_StubVerifier, self).__init__(tag, deps)
         self.verify_count = 0
+        self.message = 'Failing "%s" by request' % tag
         self._fail_count = fail_count
         self._description = 'Testing verify() for "%s"' % tag
-        self.message = 'Failing "%s" by request' % tag
 
 
     def __repr__(self):
@@ -85,6 +112,11 @@ class _StubVerifier(hosts.Verifier):
         """Bring ourselves one step closer to working."""
         if self._fail_count:
             self._fail_count -= 1
+
+
+    def unrepair(self):
+        """Make ourselves more broken."""
+        self._fail_count += 1
 
 
     def get_log_record(self, success):
@@ -188,6 +220,40 @@ class VerifyTests(_VerifierTestCases):
     but instead rely on custom-built DAGs.
     """
 
+    def _generate_reverify(self, verifier):
+        """
+        Iterator to force a standard sequence with calls to `_reverify()`.
+
+        This iterator exists to standardize testing two common
+        assertions:
+          * The side effects from calling `_verify_host()` only
+            happen on the first call to the method, except...
+          * Calling `_reverify()` resets a verifier so that the
+            next call to `_verify_host()` will repeat the side
+            effects.
+
+        The iterator is meant to be used like this:
+
+            for i in self._generate_verify_cases(verifier):
+                # run a verifier._verify_host() test case
+                self.assertEqual(verifier.verify_count, i+1)
+                self._check_log_records( ... expected records ... )
+
+        The code above will run the `_verify_host()` test case twice,
+        then call `_reverify()` to clear cached results, then re-run
+        the test case two more times.
+
+        @param verifier   The verifier to be tested and reverified.
+        @yields Each iteration yields the number of times `_reverify()`
+                has been called.
+        """
+        for i in range(0, 2):
+            for _ in range(0, 2):
+                yield i
+            verifier._reverify()
+            self._fake_host.reset_log_records()
+
+
     def test_success(self):
         """
         Test proper handling of a successful verification.
@@ -198,11 +264,12 @@ class VerifyTests(_VerifierTestCases):
           * The expected 'GOOD' record is logged via `Host.record()`.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         verifier = self._make_verifier(0, 'pass', [])
-        for i in range(0, 2):
+        for i in self._generate_reverify(verifier):
             verifier._verify_host(self._fake_host)
-            self.assertEqual(verifier.verify_count, 1)
+            self.assertEqual(verifier.verify_count, i+1)
             self._check_log_records(('pass', True))
 
 
@@ -218,12 +285,13 @@ class VerifyTests(_VerifierTestCases):
           * The expected 'FAIL' record is logged via `Host.record()`.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         verifier = self._make_verifier(1, 'fail', [])
-        for i in range(0, 2):
+        for i in self._generate_reverify(verifier):
             with self.assertRaises(hosts.AutotestHostVerifyError) as e:
                 verifier._verify_host(self._fake_host)
-            self.assertEqual(verifier.verify_count, 1)
+            self.assertEqual(verifier.verify_count, i+1)
             self.assertEqual(verifier.message, str(e.exception))
             self._check_log_records(('fail', False))
 
@@ -240,13 +308,14 @@ class VerifyTests(_VerifierTestCases):
             for both nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         child = self._make_verifier(0, 'pass', [])
         parent = self._make_verifier(0, 'parent', [child])
-        for i in range(0, 2):
+        for i in self._generate_reverify(parent):
             parent._verify_host(self._fake_host)
-            self.assertEqual(parent.verify_count, 1)
-            self.assertEqual(child.verify_count, 1)
+            self.assertEqual(parent.verify_count, i+1)
+            self.assertEqual(child.verify_count, i+1)
             self._check_log_records(('pass', True),
                                     ('parent', True))
 
@@ -267,14 +336,15 @@ class VerifyTests(_VerifierTestCases):
             for the single failed node.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         child = self._make_verifier(1, 'fail', [])
         parent = self._make_verifier(0, 'parent', [child])
-        for i in range(0, 2):
+        for i in self._generate_reverify(parent):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 parent._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (child.description,))
-            self.assertEqual(child.verify_count, 1)
+            self.assertEqual(child.verify_count, i+1)
             self.assertEqual(parent.verify_count, 0)
             self._check_log_records(('fail', False))
 
@@ -291,15 +361,16 @@ class VerifyTests(_VerifierTestCases):
             for all three nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         left = self._make_verifier(0, 'left', [])
         right = self._make_verifier(0, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
-        for i in range(0, 2):
+        for i in self._generate_reverify(top):
             top._verify_host(self._fake_host)
-            self.assertEqual(top.verify_count, 1)
-            self.assertEqual(left.verify_count, 1)
-            self.assertEqual(right.verify_count, 1)
+            self.assertEqual(top.verify_count, i+1)
+            self.assertEqual(left.verify_count, i+1)
+            self.assertEqual(right.verify_count, i+1)
             self._check_log_records(('left', True),
                                     ('right', True),
                                     ('top', True))
@@ -321,19 +392,20 @@ class VerifyTests(_VerifierTestCases):
             for the failing nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         left = self._make_verifier(1, 'left', [])
         right = self._make_verifier(1, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
-        for i in range(0, 2):
+        for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(sorted(e.exception.args),
                              sorted((left.description,
                                      right.description)))
             self.assertEqual(top.verify_count, 0)
-            self.assertEqual(left.verify_count, 1)
-            self.assertEqual(right.verify_count, 1)
+            self.assertEqual(left.verify_count, i+1)
+            self.assertEqual(right.verify_count, i+1)
             self._check_log_records(('left', False),
                                     ('right', False))
 
@@ -354,17 +426,18 @@ class VerifyTests(_VerifierTestCases):
             `Host.record()` for the dependencies.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         left = self._make_verifier(1, 'left', [])
         right = self._make_verifier(0, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
-        for i in range(0, 2):
+        for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (left.description,))
             self.assertEqual(top.verify_count, 0)
-            self.assertEqual(left.verify_count, 1)
-            self.assertEqual(right.verify_count, 1)
+            self.assertEqual(left.verify_count, i+1)
+            self.assertEqual(right.verify_count, i+1)
             self._check_log_records(('left', False),
                                     ('right', True))
 
@@ -388,17 +461,18 @@ class VerifyTests(_VerifierTestCases):
             for all nodes.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         bottom = self._make_verifier(0, 'bottom', [])
         left = self._make_verifier(0, 'left', [bottom])
         right = self._make_verifier(0, 'right', [bottom])
         top = self._make_verifier(0, 'top', [left, right])
-        for i in range(0, 2):
+        for i in self._generate_reverify(top):
             top._verify_host(self._fake_host)
-            self.assertEqual(top.verify_count, 1)
-            self.assertEqual(left.verify_count, 1)
-            self.assertEqual(right.verify_count, 1)
-            self.assertEqual(bottom.verify_count, 1)
+            self.assertEqual(top.verify_count, i+1)
+            self.assertEqual(left.verify_count, i+1)
+            self.assertEqual(right.verify_count, i+1)
+            self.assertEqual(bottom.verify_count, i+1)
             self._check_log_records(('bottom', True),
                                     ('left', True),
                                     ('right', True),
@@ -428,19 +502,20 @@ class VerifyTests(_VerifierTestCases):
             for the "bottom" node.
           * If `_verify_host()` is called more than once, there are no
             visible side-effects after the first call.
+          * Calling `_reverify()` clears all cached results.
         """
         bottom = self._make_verifier(1, 'bottom', [])
         left = self._make_verifier(0, 'left', [bottom])
         right = self._make_verifier(0, 'right', [bottom])
         top = self._make_verifier(0, 'top', [left, right])
-        for i in range(0, 2):
+        for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (bottom.description,))
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, 0)
             self.assertEqual(right.verify_count, 0)
-            self.assertEqual(bottom.verify_count, 1)
+            self.assertEqual(bottom.verify_count, i+1)
             self._check_log_records(('bottom', False))
 
 
@@ -579,31 +654,33 @@ class RepairStrategyTests(_VerifierTestCases):
         self.assertEqual(three._dependency_list, [])
 
 
-    def test_verify_passes(self):
+    def test_verify(self):
         """
-        Test with a single passing verifier.
+        Test behavior of the `verify()` method.
 
-        Build a `RepairStrategy` with a single verifier that will
-        pass when called.  Assert that the strategy's `verify()`
-        method passes without rasing an exception.
+        Build a `RepairStrategy` with a single verifier.  Assert the
+        following:
+          * If the verifier passes, `verify()` passes.
+          * If the verifier fails, `verify()` fails.
+          * The verifier's `verify()` method is called once each time we
+            call the strategy's `verify()` method.
         """
-        verify_data = self._make_verify_data(('pass', 0, ()))
+        verify_data = self._make_verify_data(('tester', 0, ()))
         strategy = hosts.RepairStrategy(verify_data)
-        strategy.verify(self._fake_host)
-
-
-    def test_verify_fails(self):
-        """
-        Test with a single failing verifier.
-
-        Build a `RepairStrategy` with a single verifier that will
-        fail when called.  Assert that the strategy's `verify()`
-        method fails by raising an exception.
-        """
-        verify_data = self._make_verify_data(('fail', 1, ()))
-        strategy = hosts.RepairStrategy(verify_data)
-        with self.assertRaises(Exception) as e:
-            strategy.verify(self._fake_host)
+        verifier = self.verifiers['tester']
+        count = 0
+        for i in range(0, 2):
+            for j in range(0, 2):
+                strategy.verify(self._fake_host)
+                count += 1
+                self.assertEqual(verifier.verify_count, count)
+            verifier.unrepair()
+            for j in range(0, 2):
+                with self.assertRaises(Exception) as e:
+                    strategy.verify(self._fake_host)
+                count += 1
+                self.assertEqual(verifier.verify_count, count)
+            verifier.try_repair()
 
 
 if __name__ == '__main__':
