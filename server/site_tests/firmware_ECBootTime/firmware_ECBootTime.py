@@ -47,7 +47,7 @@ class firmware_ECBootTime(FirmwareTest):
         # the EC booting the second time and the test sending the
         # power_cmd.
         if self._doubleboot:
-            ec_ready = ["\[([0-9.]+) power state 0"]
+            ec_ready = ["(?ms)UART.*UART.*?\[([0-9.]+) "]
         else:
             ec_ready = ["([0-9.]+) Inits done"]
         power_cmd = "powerbtn"  if self._x86 or self._ryu else "power on"
