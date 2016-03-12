@@ -304,9 +304,6 @@ class site_sysinfo(base_sysinfo.base_sysinfo):
         for log in self.diffable_loggables:
             log.run(log_dir=None, collect_init_status=True)
 
-        # Start each log with the board name for orientation.
-        logging.info("ChromeOS BOARD = %s",
-                     utils.get_board_with_frequency_and_memory())
 
     @log.log_and_ignore_errors("post-test sysinfo error:")
     def log_after_each_test(self, test):

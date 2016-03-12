@@ -353,6 +353,12 @@ class base_sysinfo(object):
 
         for log in self.before_iteration_loggables:
             log.run(logdir)
+        # Start each log with the board name for orientation.
+        board = utils.get_board_with_frequency_and_memory()
+        logging.info("ChromeOS BOARD = %s", board)
+        # Leave some autotest bread crumbs in the system logs.
+        utils.system('logger "autotest starting iteration %s on %s"' % (logdir,
+                                                                        board))
 
 
     @log.log_and_ignore_errors("post-test siteration sysinfo error:")
@@ -368,6 +374,7 @@ class base_sysinfo(object):
 
         for log in self.after_iteration_loggables:
             log.run(logdir)
+        utils.system('logger "autotest finished iteration %s"' % logdir)
 
 
     def _log_messages(self, logdir):
