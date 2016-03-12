@@ -56,7 +56,7 @@ if [ -z "${PASSWD}" ]; then
 fi
 
 echo "Installing needed Ubuntu packages for mysql db."
-DB_PKG_LIST="mysql-server-5.6 mysql-common python-mysqldb"
+DB_PKG_LIST="mysql-server mysql-common python-mysqldb"
 
 if ! sudo apt-get install -y ${DB_PKG_LIST}; then
   echo "Could not install packages: $?"
