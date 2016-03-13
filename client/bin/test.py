@@ -109,7 +109,7 @@ class test(common_test.base_test):
 
 def runtest(job, url, tag, args, dargs):
     # Leave some autotest bread crumbs in the system logs.
-    utils.system('logger "autotest runtest %s"' % url)
+    utils.system('logger "autotest runtest %s"' % url, ignore_status=True)
     common_test.runtest(job, url, tag, args, dargs, locals(), globals(),
                         job.sysinfo.log_before_each_test,
                         job.sysinfo.log_after_each_test,
