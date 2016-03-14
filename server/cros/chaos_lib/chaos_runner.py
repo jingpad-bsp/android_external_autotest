@@ -123,7 +123,10 @@ class ChaosRunner(object):
                 healthy_dut = True
 
                 with contextlib.closing(wifi_client.WiFiClient(
-                    self._host, './debug', False)) as client:
+                    hosts.create_host({'hostname' : self._host.hostname,
+                                'host_attributes' : self._host.host_attributes},
+                                host_class=self._host.__class__),
+                    './debug', False)) as client:
 
                     aps = batch_locker.get_ap_batch(batch_size=batch_size)
                     if not aps:
