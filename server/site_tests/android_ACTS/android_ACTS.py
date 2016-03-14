@@ -70,10 +70,12 @@ class android_ACTS(test.test):
         @param testbed: Testbed representing the testbed under test. Required.
         @param config_file: Path to config file locally. Required.
         @param testbed_name: A string that's passed to act.py's -tb option.
-                             Required.
+                             If testbed_name is not provided, set it to the
+                             testbed's hostname without the DNS zone.
         @param test_case: A string that's passed to act.py's -tc option.
         @param test_file: A string that's passed to act.py's -tf option.
         """
+        testbed_name = testbed_name or testbed.hostname.split('.')[0]
         for serial, adb_host in testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
                     adb_host, SL4A_APK, SL4A_PACKAGE,
