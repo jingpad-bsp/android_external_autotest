@@ -6,7 +6,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.server.brillo.feedback import client_factory
 
 AUTHOR = 'ralphnathan'
-NAME = 'brillo_SweepOpenSLESRecordingAudioTest'
+NAME = 'brillo_RecordingAudioTest.opensles.may'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
@@ -36,6 +36,7 @@ def run(machine):
     fb_client = client_factory.get_audio_client(fb_client_name, NAME, machine,
                                                 args_dict.get('feedback_args'))
     job.run_test('brillo_RecordingAudioTest',
+                 tag=NAME.split('.', 1)[1],
                  host=hosts.create_host(machine),
                  fb_client=fb_client,
                  recording_method='opensles',
