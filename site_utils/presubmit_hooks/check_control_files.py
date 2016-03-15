@@ -117,12 +117,12 @@ def CheckSuites(ctrl_data, test_name, useflags):
                 '<your_ebuild>. 3. emerge-<board> <your_ebuild>' % test_name)
 
 
-def CheckSuitesAttrMatch(ctrl_data, whitelist, test_name):
+def CheckValidAttr(ctrl_data, whitelist, test_name):
     """
-    Check whether ATTRIBUTES match to SUITE and also in the whitelist.
+    Check whether ATTRIBUTES are in the whitelist.
 
-    Throw a ControlFileCheckerError if suite tags in ATTRIBUTES doesn't match to
-    SUITE. This check is needed until SUITE is eliminated from control files.
+    Throw a ControlFileCheckerError if tags in ATTRIBUTES don't exist in the
+    whitelist.
 
     @param ctrl_data: The control_data object for a test.
     @param whitelist: whitelist set parsed from the attribute_whitelist file.
@@ -130,29 +130,28 @@ def CheckSuitesAttrMatch(ctrl_data, whitelist, test_name):
 
     @returns: None
     """
-    # unmatch case 1: attributes not in the whitelist.
     if not (whitelist >= ctrl_data.attributes):
         attribute_diff = ctrl_data.attributes - whitelist
         raise ControlFileCheckerError(
-            'Attribute(s): %s not in the whitelist in control file for test'
+            'Attribute(s): %s not in the whitelist in control file for test '
             'named %s.' % (attribute_diff, test_name))
-    suite_in_attr = set(
-            [a for a in ctrl_data.attributes if a.startswith('suite:')])
-    # unmatch case 2: ctrl_data has suite, but not match to attributes.
-    if hasattr(ctrl_data, 'suite'):
-        target_attrs = set(
-            'suite:' + x.strip() for x in ctrl_data.suite.split(',')
-            if x.strip())
-        if target_attrs != suite_in_attr:
-            raise ControlFileCheckerError(
-                'suite tags in ATTRIBUTES : %s does not match to SUITE : %s in '
-                'the control file for %s.' % (suite_in_attr, ctrl_data.suite,
-                                              test_name))
-    # unmatch case 3: ctrl_data doesn't have suite, suite_in_attr is not empty.
-    elif suite_in_attr:
-        raise ControlFileCheckerError(
-            'SUITE does not exist in the control file %s, ATTRIBUTES = %s'
-            'should not have suite tags.' % (test_name, ctrl_data.attributes))
+
+
+def CheckSuiteLineRemoved(ctrl_file_path):
+    """
+    Check whether the SUITE line has been removed since it is obsolete.
+
+    @param ctrl_file_path: The path to the control file.
+
+    @raises: ControlFileCheckerError if check fails.
+    """
+    with open(ctrl_file_path, 'r') as f:
+        for line in f.readlines():
+            if line.startswith('SUITE'):
+                raise ControlFileCheckerError(
+                    'SUITE is an obsolete variable, please remove it from %s. '
+                    'Instead, add suite:<your_suite> to the ATTRIBUTES field.'
+                    % ctrl_file_path)
 
 
 def CheckRetry(ctrl_data, test_name):
@@ -195,7 +194,9 @@ def main():
     for file_path in file_list.split('\n'):
         control_file = re.search(r'.*/control(?:\.\w+)?$', file_path)
         if control_file:
-            ctrl_data = control_data.parse_control(control_file.group(0),
+            ctrl_file_path = control_file.group(0)
+            CheckSuiteLineRemoved(ctrl_file_path)
+            ctrl_data = control_data.parse_control(ctrl_file_path,
                                                    raise_warnings=True)
             test_name = os.path.basename(os.path.split(file_path)[0])
             try:
@@ -208,7 +209,7 @@ def main():
             if not useflags:
                 useflags = GetUseFlags()
             CheckSuites(ctrl_data, test_name, useflags)
-            CheckSuitesAttrMatch(ctrl_data, whitelist, test_name)
+            CheckValidAttr(ctrl_data, whitelist, test_name)
             CheckRetry(ctrl_data, test_name)
 
 
