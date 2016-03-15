@@ -1532,7 +1532,7 @@ def main_without_exception_handling(options):
                  job_timer.format_time(job_timer.job_created_time),
                  job_url)
     # TODO(akeshet): Move this link-printing to chromite.
-    logging.info(GetBuildbotStepLink('Suite created', job_url))
+    logging.info(GetBuildbotStepLink('Link to suite', job_url))
 
     if options.create_and_return:
         msg = '--create_and_return was specified, terminating now.'
