@@ -154,6 +154,10 @@ class graphics_dEQP(test.test):
         """
         test_cases = []
         executable = self._get_executable(test_filter)
+        # On pinetrail we only can run gles2 tests. The rest crash.
+        if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+            return test_cases
+
         not_passing_cases = self._load_not_passing_cases(test_filter)
         # We did not find passing cases in expectations. Assume everything else
         # that is there should not be run this time.
@@ -275,28 +279,32 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d '
                        '--deqp-log-filename=%s' %
                        (executable, test_case, width, height, log_file))
-            try:
+            if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+                result = 'Skipped'
+                logging.info('Skipping on %s: %s', self._gpu_type, test_case)
+            else:
                 logging.info('Running single: %s', command)
                 # Must initialize because some errors don't repopulate
                 # run_result, leaving old results.
                 run_result = {}
-                run_result = utils.run(command,
-                                       timeout=self._timeout,
-                                       stderr_is_expected=False,
-                                       ignore_status=True,
-                                       stdout_tee=utils.TEE_TO_LOGS,
-                                       stderr_tee=utils.TEE_TO_LOGS)
-                result_counts = self._parse_test_results(log_file)
-                if result_counts:
-                    result = result_counts.keys()[0]
-                else:
-                    result = 'Unknown'
-            except error.CmdTimeoutError:
-                result = 'TestTimeout'
-            except error.CmdError:
-                result = 'CommandFailed'
-            except Exception:
-                result = 'UnexpectedError'
+                try:
+                    run_result = utils.run(command,
+                                           timeout=self._timeout,
+                                           stderr_is_expected=False,
+                                           ignore_status=True,
+                                           stdout_tee=utils.TEE_TO_LOGS,
+                                           stderr_tee=utils.TEE_TO_LOGS)
+                    result_counts = self._parse_test_results(log_file)
+                    if result_counts:
+                        result = result_counts.keys()[0]
+                    else:
+                        result = 'Unknown'
+                except error.CmdTimeoutError:
+                    result = 'TestTimeout'
+                except error.CmdError:
+                    result = 'CommandFailed'
+                except Exception:
+                    result = 'UnexpectedError'
 
             if self._debug:
                 # Collect debug info and save to json file.
@@ -378,22 +386,27 @@ class graphics_dEQP(test.test):
                                     '%s_hasty_%d.log' % (self._filter, batch))
 
             command += '--deqp-log-filename=' + log_file
-            logging.info('Running tests %d...%d out of %d:\n%s\n%s', batch + 1,
-                         batch_to, num_test_cases, command, batch_cases)
 
-            try:
-                utils.run(command,
-                          timeout=batch_timeout,
-                          stderr_is_expected=False,
-                          ignore_status=False,
-                          stdin=batch_cases,
-                          stdout_tee=utils.TEE_TO_LOGS,
-                          stderr_tee=utils.TEE_TO_LOGS)
-            except Exception:
-                pass
-            # We are trying to handle all errors by parsing the log file.
-            results = self._parse_test_results(log_file, results)
-            logging.info(results)
+            if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+                logging.info('Skipping tests on %s: %s', self._gpu_type,
+                             batch_cases)
+            else:
+                logging.info('Running tests %d...%d out of %d:\n%s\n%s',
+                             batch + 1, batch_to, num_test_cases, command,
+                             batch_cases)
+                try:
+                    utils.run(command,
+                              timeout=batch_timeout,
+                              stderr_is_expected=False,
+                              ignore_status=False,
+                              stdin=batch_cases,
+                              stdout_tee=utils.TEE_TO_LOGS,
+                              stderr_tee=utils.TEE_TO_LOGS)
+                except Exception:
+                    pass
+                # We are trying to handle all errors by parsing the log file.
+                results = self._parse_test_results(log_file, results)
+                logging.info(results)
         return results
 
     def run_once(self, opts=None):
@@ -427,12 +440,12 @@ class graphics_dEQP(test.test):
 
         # Create a place to put detailed test output logs.
         if self._filter:
-            self._log_path = os.path.join(tempfile.gettempdir(), '%s-logs' %
-                                          self._filter)
+            self._log_path = os.path.join(tempfile.gettempdir(),
+                                          '%s-logs' % self._filter)
         else:
             self._log_path = os.path.join(
-                tempfile.gettempdir(), '%s-logs' %
-                os.path.basename(self._test_names_file))
+                tempfile.gettempdir(),
+                '%s-logs' % os.path.basename(self._test_names_file))
         shutil.rmtree(self._log_path, ignore_errors=True)
         os.mkdir(self._log_path)
 
@@ -481,12 +494,16 @@ class graphics_dEQP(test.test):
         test_count = 0
         test_failures = 0
         test_passes = 0
+        test_skipped = 0
         for result in test_results:
             test_count += test_results[result]
             if result.lower() in ['pass']:
                 test_passes += test_results[result]
-            if result.lower() not in ['pass', 'notsupported', 'internalerror']:
+            if result.lower() not in ['pass', 'notsupported', 'internalerror',
+                                      'skipped']:
                 test_failures += test_results[result]
+            if result.lower() in ['skipped']:
+                test_skipped += test_results[result]
         # The text "Completed all tests." is used by the process_log.py script
         # and should always appear at the end of a completed test run.
         logging.info(
@@ -505,3 +522,6 @@ class graphics_dEQP(test.test):
         elif test_failures:
             raise error.TestFail('%d/%d tests failed.' %
                                  (test_failures, test_count))
+        if test_skipped > 0:
+            raise error.TestWarn('%d tests skipped, %d passes' %
+                                 (test_skipped, test_passes))
