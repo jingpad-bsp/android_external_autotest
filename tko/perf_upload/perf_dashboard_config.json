@@ -109,6 +109,16 @@
     "dashboard_test_name": "network_WiFi_AttenuatedPerf"
   },
   {
+    "autotest_name": "network_WiFi_BluetoothStreamPerf.11a",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_BluetoothStreamPerf"
+  },
+  {
+    "autotest_name": "network_WiFi_BluetoothStreamPerf.11b",
+    "master_name": "ChromeOSWiFi",
+    "dashboard_test_name": "network_WiFi_BluetoothStreamPerf"
+  },
+  {
     "autotest_name": "network_WiFi_Perf.11a",
     "master_name": "ChromeOSWiFi",
     "dashboard_test_name": "network_WiFi_Perf"
