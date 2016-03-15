@@ -166,11 +166,13 @@ class TelemetryRunner(object):
         @returns SCP command to copy the results json to the specified directory.
         """
         scp_cmd = []
-        if self._devserver and perf_results_dir:
-            devserver_hostname = dev_server.DevServer.get_server_name(
-                    self._devserver.url())
+        devserver_hostname = ''
+        if perf_results_dir:
+            if self._devserver:
+                devserver_hostname = dev_server.DevServer.get_server_name(
+                        self._devserver.url()) + ':'
             scp_cmd.extend(['scp',
-                            '%s:%s/results-chart.json' % (
+                            '%s%s/results-chart.json' % (
                                     devserver_hostname, self._telemetry_path),
                             perf_results_dir])
 
