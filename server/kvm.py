@@ -16,7 +16,7 @@ stutsman@google.com (Ryan Stutsman)
 import os
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import hypervisor, utils, hosts
+from autotest_lib.server import hypervisor, utils
 
 
 _qemu_ifup_script= """\
@@ -155,30 +155,26 @@ class KVM(hypervisor.Hypervisor):
         qemu are run from where they were built, therefore not
         conflicting with what might already be installed.
 
-        Args:
-                addresses: a list of dict entries of the form
-                        {"mac" : "xx:xx:xx:xx:xx:xx",
-                        "ip" : "yyy.yyy.yyy.yyy"} where x and y
-                        are replaced with sensible values. The ip
-                        address may be a hostname or an IPv6 instead.
+        @param addresses: a list of dict entries of the form
+                      {"mac" : "xx:xx:xx:xx:xx:xx", "ip" : "yyy.yyy.yyy.yyy"}
+                      where x and y are replaced with sensible values. The ip
+                      address may be a hostname or an IPv6 instead.
 
-                        When a new virtual machine is created, the
-                        first available entry in that list will be
-                        used. The network card in the virtual machine
-                        will be assigned the specified mac address and
-                        autoserv will use the specified ip address to
-                        connect to the virtual host via ssh. The virtual
-                        machine os must therefore be configured to
-                        configure its network with the ip corresponding
-                        to the mac.
-                build: build kvm from the source material, if False,
-                        it is assumed that the package contains the
-                        source tree after a 'make'.
-                insert_modules: build kvm modules from the source
-                        material and insert them. Otherwise, the
-                        running kernel is assumed to already have
-                        kvm support and nothing will be done concerning
-                        the modules.
+                      When a new virtual machine is created, the first
+                      available entry in that list will be used. The network
+                      card in the virtual machine will be assigned the
+                      specified mac address and autoserv will use the specified
+                      ip address to connect to the virtual host via ssh. The
+                      virtual machine os must therefore be configured to
+                      configure its network with the ip corresponding to the
+                      mac.
+        @param build: build kvm from the source material, if False,
+                      it is assumed that the package contains the source tree
+                      after a 'make'.
+        @param insert_modules: build kvm modules from the source material and
+                      insert them. Otherwise, the running kernel is assumed to
+                      already have kvm support and nothing will be done
+                      concerning the modules.
 
         TODO(poirier): check dependencies before building
         kvm needs:
@@ -261,8 +257,8 @@ class KVM(hypervisor.Hypervisor):
         initialize - deinitialize many times. But why you would do that
         has yet to be figured.
 
-        Raises:
-                AutoservVirtError: cpuid doesn't report virtualization
+
+        @raises AutoservVirtError: cpuid doesn't report virtualization
                         extentions (vmx for intel or svm for amd), in
                         this case, kvm cannot run.
         """
@@ -294,12 +290,10 @@ class KVM(hypervisor.Hypervisor):
         """
         Start a new guest ("virtual machine").
 
-        Returns:
-                The ip that was picked from the list supplied to
-                install() and assigned to this guest.
+        @returns: The ip that was picked from the list supplied to
+                  install() and assigned to this guest.
 
-        Raises:
-                AutoservVirtError: no more addresses are available.
+        @raises AutoservVirtError: no more addresses are available.
         """
         for address in self.addresses:
             if not address["is_used"]:
@@ -375,13 +369,11 @@ class KVM(hypervisor.Hypervisor):
         """
         Terminate a virtual machine.
 
-        Args:
-                guest_hostname: the ip (as it was specified in the
+        @param guest_hostname: the ip (as it was specified in the
                         address list given to install()) of the guest
                         to terminate.
 
-        Raises:
-                AutoservVirtError: the guest_hostname argument is
+        @raises AutoservVirtError: the guest_hostname argument is
                         invalid
 
         TODO(poirier): is there a difference in qemu between
@@ -455,13 +447,11 @@ class KVM(hypervisor.Hypervisor):
         """
         Perform a hard reset on a virtual machine.
 
-        Args:
-                guest_hostname: the ip (as it was specified in the
+        @param guest_hostname: the ip (as it was specified in the
                         address list given to install()) of the guest
                         to terminate.
 
-        Raises:
-                AutoservVirtError: the guest_hostname argument is
+        @Raises AutoservVirtError: the guest_hostname argument is
                         invalid
         """
         for address in self.addresses:
