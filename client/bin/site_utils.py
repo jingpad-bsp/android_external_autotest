@@ -89,9 +89,8 @@ def get_oldest_pid_by_name(name):
     Raises:
       ValueError if pgrep returns something odd.
     """
-    str_pid = utils.system_output(
-        'pgrep -o ^%s$' % name,
-        ignore_status=True).rstrip()
+    str_pid = utils.system_output('pgrep -o ^%s$' % name,
+                                  ignore_status=True).rstrip()
     if str_pid:
         return int(str_pid)
 
@@ -153,9 +152,8 @@ def get_process_list(name, command_line=None):
     # TODO(rohitbm) crbug.com/268861
     flag = '-x' if not command_line else '-f'
     name = '\'%s.*%s\'' % (name, command_line) if command_line else name
-    str_pid = utils.system_output(
-        'pgrep %s %s' % (flag, name),
-        ignore_status=True).rstrip()
+    str_pid = utils.system_output('pgrep %s %s' % (flag, name),
+                                  ignore_status=True).rstrip()
     return str_pid.split()
 
 
@@ -175,8 +173,8 @@ def nuke_process_by_name(name, with_prejudice=False):
         logging.error(e)
         return
     if pid is None:
-        raise error.AutoservPidAlreadyDeadError(
-            'No process matching %s.' % name)
+        raise error.AutoservPidAlreadyDeadError('No process matching %s.' %
+                                                name)
     if with_prejudice:
         utils.nuke_pid(pid, [signal.SIGKILL])
     else:
@@ -194,6 +192,7 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
       error.AutoservPidAlreadyDeadError: no existing process matches name.
       site_utils.TimeoutError: if processes still exist after timeout_sec.
     """
+
     def list_and_kill_processes(name):
         process_list = get_process_list(name)
         try:
@@ -207,8 +206,11 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
                        timeout=timeout_sec)
 
 
-def poll_for_condition(condition, exception=None, timeout=10,
-                       sleep_interval=0.1, desc=None):
+def poll_for_condition(condition,
+                       exception=None,
+                       timeout=10,
+                       sleep_interval=0.1,
+                       desc=None):
     """Poll until a condition becomes true.
 
     Arguments:
@@ -244,6 +246,10 @@ def poll_for_condition(condition, exception=None, timeout=10,
         time.sleep(sleep_interval)
 
 
+def is_virtual_machine():
+    return 'QEMU' in platform.processor()
+
+
 def save_vm_state(checkpoint):
     """Saves the current state of the virtual machine.
 
@@ -259,11 +265,10 @@ def save_vm_state(checkpoint):
     # The QEMU monitor has been redirected to the guest serial port located at
     # /dev/ttyUSB0. To save the state of the VM, we just send the 'savevm'
     # command to the serial port.
-    proc = platform.processor()
-    if 'QEMU' in proc and os.path.exists('/dev/ttyUSB0'):
+    if is_virtual_machine() and os.path.exists('/dev/ttyUSB0'):
         logging.info('Saving VM state "%s"', checkpoint)
         serial = open('/dev/ttyUSB0', 'w')
-        serial.write("savevm %s\r\n" % checkpoint)
+        serial.write('savevm %s\r\n' % checkpoint)
         logging.info('Done saving VM state "%s"', checkpoint)
 
 
@@ -290,6 +295,7 @@ def check_raw_dmesg(dmesg, message_level, whitelist):
                 continue
             unexpected.append(stripped_line)
     return unexpected
+
 
 def verify_mesg_set(mesg, regex, whitelist):
     """Verifies that the exact set of messages are present in a text.
@@ -858,11 +864,14 @@ def get_board_with_frequency_and_memory():
     link -> link_1.8GHz_4GB.
     """
     board_name = get_board()
-    # Rounded to nearest GB and GHz.
-    memory = int(round(get_mem_total() / 1024.0))
-    # Convert frequency to GHz with 1 digit accuracy after the decimal point.
-    frequency = int(round(get_cpu_max_frequency() * 1e-8)) * 0.1
-    board = "%s_%1.1fGHz_%dGB" % (board_name, frequency, memory)
+    if is_virtual_machine():
+        board = '%s_VM' % board_name
+    else:
+        # Rounded to nearest GB and GHz.
+        memory = int(round(get_mem_total() / 1024.0))
+        # Convert frequency to GHz with 1 digit accuracy after the decimal point.
+        frequency = int(round(get_cpu_max_frequency() * 1e-8)) * 0.1
+        board = '%s_%1.1fGHz_%dGB' % (board_name, frequency, memory)
     return board
 
 
@@ -987,7 +996,8 @@ def get_gpu_family():
     if cpuarch == 'exynos5' or cpuarch == 'rockchip':
         cmd = wflinfo_cmd()
         logging.info('Running %s', cmd)
-        wflinfo = utils.system_output(cmd, retain_output=True,
+        wflinfo = utils.system_output(cmd,
+                                      retain_output=True,
                                       ignore_status=False)
         version = re.findall(r'OpenGL renderer string: '
                              r'Mali-T([0-9]+)', wflinfo)
@@ -1023,7 +1033,7 @@ _BOARDS_WITHOUT_MONITOR = [
 def has_no_monitor():
     """Return whether a machine doesn't have a built-in monitor"""
     board_name = get_board()
-    if (board_name in _BOARDS_WITHOUT_MONITOR):
+    if board_name in _BOARDS_WITHOUT_MONITOR:
         return True
 
     return False
