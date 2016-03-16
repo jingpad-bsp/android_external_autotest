@@ -1593,7 +1593,9 @@ def get_static_data():
     label_exclude_filters = [{'name__startswith': 'cros-version'},
                              {'name__startswith': 'fw-version'},
                              {'name__startswith': 'fwrw-version'},
-                             {'name__startswith': 'fwro-version'}]
+                             {'name__startswith': 'fwro-version'},
+                             {'name__startswith': 'ab-version'},
+                             {'name__startswith': 'testbed-version'}]
     result['labels'] = get_labels(
         label_exclude_filters,
         sort_by=['-platform', 'name'])
