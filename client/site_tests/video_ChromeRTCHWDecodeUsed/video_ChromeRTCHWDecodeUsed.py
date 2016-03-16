@@ -7,7 +7,7 @@ import logging
 import os
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import file_utils
+from autotest_lib.client.common_lib import file_utils, utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 
