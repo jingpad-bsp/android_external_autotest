@@ -35,7 +35,7 @@ def wait_for_logcat_log(message_tag, message_pattern,
     process_id_pattern = '[0-9]+'
     if process_id is not None:
         process_id_pattern = str(process_id)
-    grep_pattern = r'^.\( %s\) %s  \(%s\)$' % (
+    grep_pattern = r'^.\( *%s\) %s  \(%s\)$' % (
             process_id_pattern, message_pattern, message_tag)
     # This super exciting command works as follows:
     #  1) logcat streams logs to a subshell.
@@ -51,7 +51,7 @@ def wait_for_logcat_log(message_tag, message_pattern,
                              message_pattern)
 
     line = result.stdout.strip()
-    match = re.match(r'^.\( (\d+)\) (.*) \(([^(]+)\)$', line)
+    match = re.match(r'^.\( *(\d+)\) (.*) \(([^(]+)\)$', line)
     if match:
         return LogcatLine(pid=match.group(1),
                           message=match.group(2),
