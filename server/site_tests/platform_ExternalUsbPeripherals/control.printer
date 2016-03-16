@@ -51,6 +51,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks, tag="set1")
+                 usb_list=usb_list, usb_checks=usb_checks, tag="printer")
 
 parallel_simple(run, machines)
