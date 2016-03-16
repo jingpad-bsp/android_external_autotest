@@ -18,7 +18,7 @@ STABILIZATION_DURATION = 60  # Time for test stabilization in seconds.
 TMP_DIRECTORY = '/tmp/'
 PERF_FILE_NAME_PREFIX = 'perf'
 EXIT_FLAG_FILE = TMP_DIRECTORY + 'longevity_terminate'
-OLD_FILE_AGE = 10080  # Age of old files to be deleted, in minutes.
+OLD_FILE_AGE = 10080  # Age of old files to be deleted in minutes.
 CMD_REMOVE_OLD_FILES = ('find %s -name %s* -type f -mmin +%s -delete' %
                         (TMP_DIRECTORY, PERF_FILE_NAME_PREFIX, OLD_FILE_AGE))
 MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
@@ -56,23 +56,16 @@ class longevity_Tracker(test.test):
         free_memory = site_utils.get_mem_free()
         return ((total_memory - free_memory) / total_memory) * 100
 
-    def _get_ec_temperature(self):
-        """Returns CPU temperature sensor data in Fahrenheit."""
-        if utils.system('which ectool', ignore_status=True) == 0:
-            ec_temp = site_utils.get_ec_temperatures()
-            return ec_temp[1]
-        else:
-            values = {}
-            cmd = 'mosys -k sensor print thermal temp0'
-            for kv in MOSYS_OUTPUT_RE.finditer(utils.system_output(cmd)):
-                key, value = kv.groups()
-                if key == 'reading':
-                    value = int(value)
-                values[key] = value
-            if values:
-                return values['reading']
-            else:
-                return 0
+    def _get_max_temperature(self):
+        """Gets temperature of hottest sensor in Celsius.
+
+        @returns float of temperature of hottest sensor.
+
+        """
+        temperature = utils.get_current_temperature_max()
+        if not temperature:
+            temperature = 0
+        return temperature
 
     def elapsed_time(self, mark_time):
         """Get time elapsed since |mark_time|.
@@ -116,16 +109,16 @@ class longevity_Tracker(test.test):
         @param writer: file for writing performance values.
 
         """
-        cpu_usage = self._get_cpu_usage()
-        mem_usage = self._get_mem_usage()
-        ec_temperature = self._get_ec_temperature()
+        cpu_usage = '%.3f' % self._get_cpu_usage()
+        mem_usage = '%.3f' % self._get_mem_usage()
+        max_temp = '%.3f' % self._get_max_temperature()
         time_stamp = time.strftime('%Y/%m/%d %H:%M:%S')
-        writer.writerow([time_stamp, cpu_usage, mem_usage, ec_temperature])
+        writer.writerow([time_stamp, cpu_usage, mem_usage, max_temp])
         logging.info('Time: %s, CPU: %s, Mem: %s, Temp: %s',
-                     time_stamp, cpu_usage, mem_usage, ec_temperature)
+                     time_stamp, cpu_usage, mem_usage, max_temp)
         perf_values['cpu'].append(cpu_usage)
         perf_values['mem'].append(mem_usage)
-        perf_values['ec'].append(ec_temperature)
+        perf_values['temp'].append(max_temp)
 
     def _record_90th_metrics(self, perf_values, perf_metrics):
         """Records 90th percentile metric of attribute performance values.
@@ -137,18 +130,18 @@ class longevity_Tracker(test.test):
         # Calculate 90th percentile for each attribute.
         cpu_values = perf_values['cpu']
         mem_values = perf_values['mem']
-        ec_values = perf_values['ec']
+        temp_values = perf_values['temp']
         cpu_metric = sorted(cpu_values)[(len(cpu_values) * 9) // 10]
         mem_metric = sorted(mem_values)[(len(mem_values) * 9) // 10]
-        ec_metric = sorted(ec_values)[(len(ec_values) * 9) // 10]
+        temp_metric = sorted(temp_values)[(len(temp_values) * 9) // 10]
         logging.info('== Performance values: %s', perf_values)
-        logging.info('== 90th percentile: cpu: %s, mem: %s, ec: %s',
-                     cpu_metric, mem_metric, ec_metric)
+        logging.info('== 90th percentile: cpu: %s, mem: %s, temp: %s',
+                     cpu_metric, mem_metric, temp_metric)
 
         # Append 90th percentile to each attribute performance metric.
         perf_metrics['cpu'].append(cpu_metric)
         perf_metrics['mem'].append(mem_metric)
-        perf_metrics['ec'].append(ec_metric)
+        perf_metrics['temp'].append(temp_metric)
 
     def _get_median_metrics(self, metrics):
         """Returns median of each attribute performance metric.
@@ -158,10 +151,10 @@ class longevity_Tracker(test.test):
         """
         cpu_metric = sorted(metrics['cpu'])[len(metrics['cpu']) // 2]
         mem_metric = sorted(metrics['mem'])[len(metrics['mem']) // 2]
-        ec_metric = sorted(metrics['ec'])[len(metrics['ec']) // 2]
-        logging.info('== Median: cpu: %s, mem: %s, ec: %s',
-                     cpu_metric, mem_metric, ec_metric)
-        return {'cpu': cpu_metric, 'mem': mem_metric, 'ec': ec_metric}
+        temp_metric = sorted(metrics['temp'])[len(metrics['temp']) // 2]
+        logging.info('== Median: cpu: %s, mem: %s, temp: %s',
+                     cpu_metric, mem_metric, temp_metric)
+        return {'cpu': cpu_metric, 'mem': mem_metric, 'temp': temp_metric}
 
     def _send_perf_metrics(self, perf_metrics):
         """Send attribute performace metrics to Performance Dashboard.
@@ -171,13 +164,13 @@ class longevity_Tracker(test.test):
         """
         cpu_metric = perf_metrics['cpu']
         mem_metric = perf_metrics['mem']
-        ec_metric = perf_metrics['ec']
+        ec_metric = perf_metrics['temp']
         self.output_perf_value(description='cpu_usage', value=cpu_metric,
                                units='%', higher_is_better=False)
         self.output_perf_value(description='mem_usage', value=mem_metric,
                                units='%', higher_is_better=False)
-        self.output_perf_value(description='ec_temperature', value=ec_metric,
-                               units='Fahrenheit', higher_is_better=False)
+        self.output_perf_value(description='max_temp', value=ec_metric,
+                               units='Celsius', higher_is_better=False)
 
     def _copy_perf_file_to_results_directory(self, perf_file):
         """Copy performance file to results directory.
@@ -202,14 +195,14 @@ class longevity_Tracker(test.test):
         perf_keyval = {}
         board_name = utils.get_current_board()
         build_id = utils.get_chromeos_release_version()
-        perf_values = {'cpu': [], 'mem': [], 'ec': []}
-        perf_metrics = {'cpu': [], 'mem': [], 'ec': []}
+        perf_values = {'cpu': [], 'mem': [], 'temp': []}
+        perf_metrics = {'cpu': [], 'mem': [], 'temp': []}
         perf_file_name = (PERF_FILE_NAME_PREFIX +
                           time.strftime('_%Y-%m-%d_%H-%M') + '.csv')
         perf_file_path = os.path.join(TMP_DIRECTORY, perf_file_name)
         perf_file = open(perf_file_path, 'w')
         writer = csv.writer(perf_file)
-        writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (F)'])
+        writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (C)'])
         logging.info('Board Name: %s, Build ID: %s', board_name, build_id)
 
         # Align time of loop start with the sample interval.
@@ -234,7 +227,7 @@ class longevity_Tracker(test.test):
             report_timer = report_elapsed_prev_time + offset
             if report_timer >= REPORT_INTERVAL:
                 self._record_90th_metrics(perf_values, perf_metrics)
-                perf_values = {'cpu': [], 'mem': [], 'ec': []}
+                perf_values = {'cpu': [], 'mem': [], 'temp': []}
 
                 # Set report previous time to current time.
                 report_prev_time = time.time()
@@ -259,7 +252,7 @@ class longevity_Tracker(test.test):
         median_metrics = self._get_median_metrics(perf_metrics)
         perf_keyval['cpu_usage'] = median_metrics['cpu']
         perf_keyval['memory_usage'] = median_metrics['mem']
-        perf_keyval['temperature'] = median_metrics['ec']
+        perf_keyval['temperature'] = median_metrics['temp']
         self.write_perf_keyval(perf_keyval)
 
         # Send median performance metrics to the performance dashboard.
