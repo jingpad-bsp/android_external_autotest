@@ -39,6 +39,12 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
 
     def run_once(self, video_name, histogram_name, histogram_bucket_val):
+        boards_to_skip = ['peach_pit']
+        dut_board = utils.get_current_board()
+        if dut_board in boards_to_skip:
+            logging.info("Skipping test run on this board.")
+            return
+
         # Download test video.
         url = DOWNLOAD_BASE + video_name
         local_path = os.path.join(self.bindir, video_name)
