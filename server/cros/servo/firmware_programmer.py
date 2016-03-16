@@ -192,6 +192,7 @@ class FlashromProgrammer(_BaseProgrammer):
                     'flashrom', '-V', '-p', programmer,
                     '-w', self._fw_main]), timeout=FIRMWARE_PROGRAM_TIMEOUT_SEC)
         finally:
+            self._servo.get_power_state_controller().reset()
             self._restore_servo_state()
 
 
