@@ -170,7 +170,19 @@ class base_test(object):
         # value is logged the results become a list of scalar.
         # TODO Figure out if there would be any difference of always using list
         # of scalar even if there is just one item in the list.
-        if first_level in charts and second_level in charts[first_level]:
+        if isinstance(value, list):
+            result_type = 'list_of_scalar_values'
+            value_key = 'values'
+            if first_level in charts and second_level in charts[first_level]:
+                if 'values' in charts[first_level][second_level]:
+                    result_value = charts[first_level][second_level]['values']
+                    result_value.extend(value)
+                elif 'value' in charts[first_level][second_level]:
+                    result_value = [charts[first_level][second_level]['value']]
+                    result_value.extend(value)
+            else:
+                result_value = value
+        elif first_level in charts and second_level in charts[first_level]:
             result_type = 'list_of_scalar_values'
             value_key = 'values'
             if 'values' in charts[first_level][second_level]:
