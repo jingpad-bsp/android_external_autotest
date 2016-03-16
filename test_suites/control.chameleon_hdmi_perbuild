@@ -5,7 +5,6 @@
 AUTHOR = "chromeos-chameleon"
 NAME = "chameleon_hdmi_perbuild"
 PURPOSE = "A Chameleon test suite."
-CRITERIA = "All tests with SUITE=chameleon_hdmi_perbuild must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"

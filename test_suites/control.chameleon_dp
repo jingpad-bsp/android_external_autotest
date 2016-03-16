@@ -5,7 +5,6 @@
 AUTHOR = "chromeos-chameleon"
 NAME = "chameleon_dp"
 PURPOSE = "A Chameleon test suite."
-CRITERIA = "All tests with SUITE=chameleon_dp must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"

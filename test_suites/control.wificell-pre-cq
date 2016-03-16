@@ -5,7 +5,6 @@
 AUTHOR = "tienchang, krisr, bmahadev, wiley"
 NAME = "wificell-pre-cq"
 PURPOSE = "This suite is a baseline set of tests that act as a wifi pre-cq."
-CRITERIA = "All tests with SUITE=wificell-pre-cq must pass."
 TIME = "SHORT"
 TEST_CLASS = "suite"
 TEST_TYPE = "Server"

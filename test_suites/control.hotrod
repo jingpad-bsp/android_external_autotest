@@ -5,7 +5,6 @@
 AUTHOR = "Harpreet Grewal <harpreet@chromium.org>"
 NAME = "hotrod"
 PURPOSE = "Automated testing of hotrod."
-CRITERIA = "All tests with SUITE=hotrod must pass."
 
 TIME = "LONG"
 TEST_CATEGORY = "Functional"

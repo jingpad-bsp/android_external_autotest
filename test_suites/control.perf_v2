@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "perf_v2"
 PURPOSE = "Test basic, required functionality."
-CRITERIA = "All tests with SUITE=perf_v2 must pass."
 
 TIME = "LONG"
 TEST_CATEGORY = "General"

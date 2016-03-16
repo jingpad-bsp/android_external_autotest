@@ -5,7 +5,6 @@
 AUTHOR = "chromeos-chameleon"
 NAME = "chameleon_dp_hdmi_stress"
 PURPOSE = "A Chameleon stress test suite."
-CRITERIA = "All tests with SUITE=chameleon_dp_hdmi_stress must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"

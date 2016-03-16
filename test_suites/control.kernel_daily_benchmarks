@@ -5,7 +5,6 @@
 AUTHOR = "Mike Truty <truty@google.com>/Chrome OS Kernel"
 NAME = "kernel_daily_benchmarks"
 PURPOSE = "Gather benchmark/performance data for kernel evaluation."
-CRITERIA = "All tests with SUITE=kernel_daily_benchmarks must pass."
 
 TIME = "MEDIUM"
 TEST_CATEGORY = "General"

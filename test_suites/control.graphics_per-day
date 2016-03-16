@@ -5,7 +5,6 @@
 AUTHOR = "chromeos-gfx"
 NAME = "graphics_per-day"
 PURPOSE = "Test graphics functionality once per day."
-CRITERIA = "All tests with SUITE=graphics_per-day should complete."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Graphics"
 TEST_CLASS = "suite"

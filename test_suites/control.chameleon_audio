@@ -5,7 +5,6 @@
 AUTHOR = "chromeos-chameleon"
 NAME = "chameleon_audio"
 PURPOSE = "A Chameleon audio test suite."
-CRITERIA = "All tests with SUITE=chameleon_audio must pass."
 
 TIME = "LENGTHY"
 TEST_CATEGORY = "General"

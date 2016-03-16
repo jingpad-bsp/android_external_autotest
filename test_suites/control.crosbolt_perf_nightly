@@ -5,7 +5,6 @@
 AUTHOR = "rohitbm@chromium.org, chromeos-performance@google.com"
 NAME = "crosbolt_perf_nightly"
 PURPOSE = "Performance tests"
-CRITERIA = "All tests with SUITE=crosbolt_perf_nightly must pass."
 
 TIME = "LONG"
 TEST_CATEGORY = "General"

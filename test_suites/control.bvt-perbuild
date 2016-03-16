@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "bvt-perbuild"
 PURPOSE = "Test basic, required functionality."
-CRITERIA = "All tests with SUITE=bvt-perbuild must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"

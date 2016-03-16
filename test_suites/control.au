@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "au"
 PURPOSE = "Automated testing of autoupdate done by continuous builders."
-CRITERIA = "All tests with SUITE=au must pass."
 
 TIME = "MEDIUM"
 TEST_CATEGORY = "General"

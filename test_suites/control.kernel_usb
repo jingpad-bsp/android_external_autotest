@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "kernel_usb"
 PURPOSE = "USB peripherals detection."
-CRITERIA = "All tests with SUITE=kernel_usb must pass."
 
 TIME = "LONG"
 TEST_CATEGORY = "Functional"

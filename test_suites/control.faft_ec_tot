@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "faft_ec_tot"
 PURPOSE = "Test hard-to-automate firmware and ec scenarios on Tot."
-CRITERIA = "All tests with SUITE=faft_ec_tot must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"

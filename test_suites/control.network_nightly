@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS "
 NAME = "network_nightly"
 PURPOSE = "A simple example suite."
-CRITERIA = "All tests with SUITE=network_nightly must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

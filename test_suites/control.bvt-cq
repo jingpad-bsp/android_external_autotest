@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "bvt-cq"
 PURPOSE = "Test functionality required by the Commit Queue."
-CRITERIA = "All tests with SUITE=bvt-cq must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "General"

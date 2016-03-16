@@ -5,7 +5,6 @@
 AUTHOR = "Chrome OS Team"
 NAME = "network3g_pseudomodem"
 PURPOSE = "Cellular tests that use a pseudomodem and are able to run in VMs"
-CRITERIA = "All tests with SUITE=network3g_pseudomodem must pass."
 
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"

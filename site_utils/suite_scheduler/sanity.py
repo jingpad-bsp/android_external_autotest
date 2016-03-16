@@ -9,7 +9,12 @@ import os
 import common
 
 
-_WHITELISTED_SUITES = ['arc-cts', 'arc-nightly','crosbolt_arc_perf']
+_WHITELISTED_SUITES = (
+    'arc-cts',
+    'arc-nightly',
+    'crosbolt_arc_perf',
+    'crosbolt_arc_perf_nightly',
+)
 
 def CheckControlFileExistance(tasks):
     """
