@@ -158,6 +158,14 @@ class base_test(object):
 
         direction = 'up' if higher_is_better else 'down'
 
+        # All input should be a number - but at times there are strings
+        # representing numbers logged, attempt to convert them to numbers.
+        # If a non number string is logged an exception will be thrown.
+        if isinstance(value, list):
+          value = map(float, value)
+        else:
+          value = float(value)
+
         result_type = 'scalar'
         value_key = 'value'
         result_value = value
