@@ -903,17 +903,20 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             local_tarball = os.path.join(tmpd.name, os.path.basename(fwurl))
             server_utils.system('wget -O %s %s' % (local_tarball, fwurl),
                                 timeout=60)
-            server_utils.system('tar xf %s -C %s %s %s' %
-                                (local_tarball, tmpd.name, ap_image, ec_image),
-                                timeout=60)
-            server_utils.system('tar xf %s  --wildcards -C %s "dts/*"' %
-                                (local_tarball, tmpd.name),
-                                timeout=60, ignore_status=True)
 
             self._clear_fw_version_labels(rw_only)
-            logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
-            self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
+            if self.get_ec():
+                logging.info('Will re-program EC %snow', 'RW ' if rw_only else '')
+                server_utils.system('tar xf %s -C %s %s' %
+                                    (local_tarball, tmpd.name, ec_image),
+                                    timeout=60)
+                self.servo.program_ec(os.path.join(tmpd.name, ec_image), rw_only)
+            else:
+                logging.info('Not a Chrome EC, ignore re-programing it')
             logging.info('Will re-program BIOS %snow', 'RW ' if rw_only else '')
+            server_utils.system('tar xf %s -C %s %s' %
+                                (local_tarball, tmpd.name, ap_image),
+                                timeout=60)
             self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
