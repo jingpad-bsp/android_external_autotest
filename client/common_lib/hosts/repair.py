@@ -24,7 +24,7 @@ import common
 from autotest_lib.client.common_lib import error
 
 
-class AutotestHostVerifyError(error.AutotestError):
+class AutoservVerifyError(error.AutoservError):
     """
     Generic Exception for failures from `Verifier` objects.
 
@@ -34,7 +34,7 @@ class AutotestHostVerifyError(error.AutotestError):
     pass
 
 
-class AutotestVerifyDependencyError(error.AutotestError):
+class AutoservVerifyDependencyError(error.AutoservError):
     """
     Exception raised for failures in dependencies.
 
@@ -107,7 +107,7 @@ class Verifier(object):
 
         This invokes `_verify_host()` on every verifier in the given
         list.  If any verifier in the transitive closure of dependencies
-        in the list fails, an `AutotestVerifyDependencyError` is raised
+        in the list fails, an `AutoservVerifyDependencyError` is raised
         containing the description of each failed verifier.  Only
         original failures are reported; verifiers that don't run due
         to a failed dependency are omitted.
@@ -120,19 +120,19 @@ class Verifier(object):
         @param host       The host to be tested against the verifiers.
         @param verifiers  List of verifiers to be checked.
 
-        @raises AutotestVerifyDependencyError   Raised when at least
+        @raises AutoservVerifyDependencyError   Raised when at least
                         one verifier in the list has failed.
         """
         failures = set()
         for v in verifiers:
             try:
                 v._verify_host(host)
-            except AutotestVerifyDependencyError as e:
+            except AutoservVerifyDependencyError as e:
                 failures.update(e.args)
             except Exception as e:
                 failures.add(v.description)
         if failures:
-            raise AutotestVerifyDependencyError(*list(failures))
+            raise AutoservVerifyDependencyError(*list(failures))
 
 
     def _reverify(self):
@@ -170,7 +170,7 @@ class Verifier(object):
         self._result = False
         try:
             self._verify_list(host, self._dependency_list)
-        except AutotestVerifyDependencyError as e:
+        except AutoservVerifyDependencyError as e:
             logging.info('Dependencies failed; skipping this '
                          'operation:  %s', self.description)
             for description in e.args:

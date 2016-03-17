@@ -34,7 +34,7 @@ class SshVerifier(hosts.Verifier):
         else:
             if utils.ping(host.hostname, tries=1, deadline=1) != 0:
                 msg = 'No answer to ping from %s'
-        raise hosts.AutotestHostVerifyError(msg % host.hostname)
+        raise hosts.AutoservVerifyError(msg % host.hostname)
 
 
     @property

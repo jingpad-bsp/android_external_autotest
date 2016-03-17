@@ -105,7 +105,7 @@ class _StubVerifier(hosts.Verifier):
     def verify(self, host):
         self.verify_count += 1
         if self._fail_count:
-            raise hosts.AutotestHostVerifyError(self.message)
+            raise hosts.AutoservVerifyError(self.message)
 
 
     def try_repair(self):
@@ -289,7 +289,7 @@ class VerifyTests(_VerifierTestCases):
         """
         verifier = self._make_verifier(1, 'fail', [])
         for i in self._generate_reverify(verifier):
-            with self.assertRaises(hosts.AutotestHostVerifyError) as e:
+            with self.assertRaises(hosts.AutoservVerifyError) as e:
                 verifier._verify_host(self._fake_host)
             self.assertEqual(verifier.verify_count, i+1)
             self.assertEqual(verifier.message, str(e.exception))
@@ -327,7 +327,7 @@ class VerifyTests(_VerifierTestCases):
         Construct and call a two-node verification with one node
         dependent on the other, where the dependency will fail.  Assert
         the following:
-          * The verification exception is `AutotestVerifyDependencyError`,
+          * The verification exception is `AutoservVerifyDependencyError`,
             and the exception argument is the description of the failed
             node.
           * The `verify()` method for the failing node is called once,
@@ -341,7 +341,7 @@ class VerifyTests(_VerifierTestCases):
         child = self._make_verifier(1, 'fail', [])
         parent = self._make_verifier(0, 'parent', [child])
         for i in self._generate_reverify(parent):
-            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 parent._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (child.description,))
             self.assertEqual(child.verify_count, i+1)
@@ -383,7 +383,7 @@ class VerifyTests(_VerifierTestCases):
         Construct and call a three-node verification with one node
         dependent on the other two, where both dependencies will fail.
         Assert the following:
-          * The verification exception is `AutotestVerifyDependencyError`,
+          * The verification exception is `AutoservVerifyDependencyError`,
             and the exception argument has the descriptions of both the
             failed nodes.
           * The `verify()` method for each failing node is called once,
@@ -398,7 +398,7 @@ class VerifyTests(_VerifierTestCases):
         right = self._make_verifier(1, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
         for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(sorted(e.exception.args),
                              sorted((left.description,
@@ -417,7 +417,7 @@ class VerifyTests(_VerifierTestCases):
         Construct and call a three-node verification with one node
         dependent on the other two, where one dependency will pass,
         and one will fail.  Assert the following:
-          * The verification exception is `AutotestVerifyDependencyError`,
+          * The verification exception is `AutoservVerifyDependencyError`,
             and the exception argument has the descriptions of the
             single failed node.
           * The `verify()` method for each dependency is called once,
@@ -432,7 +432,7 @@ class VerifyTests(_VerifierTestCases):
         right = self._make_verifier(0, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
         for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (left.description,))
             self.assertEqual(top.verify_count, 0)
@@ -493,7 +493,7 @@ class VerifyTests(_VerifierTestCases):
                BOTTOM
 
         Assert the following:
-          * The verification exception is `AutotestVerifyDependencyError`,
+          * The verification exception is `AutoservVerifyDependencyError`,
             and the exception argument has the description of the
             "bottom" node.
           * The `verify()` method for the "bottom" node is called once,
@@ -509,7 +509,7 @@ class VerifyTests(_VerifierTestCases):
         right = self._make_verifier(0, 'right', [bottom])
         top = self._make_verifier(0, 'top', [left, right])
         for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutotestVerifyDependencyError) as e:
+            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
             self.assertEqual(e.exception.args, (bottom.description,))
             self.assertEqual(top.verify_count, 0)

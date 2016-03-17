@@ -16,14 +16,14 @@ class ACPowerVerifier(hosts.Verifier):
         info = host.get_power_supply_info()
         try:
             if info['Line Power']['online'] != 'yes':
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         'AC power is not online')
         except KeyError:
             logging.info('Cannot determine AC power status - '
                          'skipping check.')
         try:
             if float(info['Battery']['percentage']) < 50.0:
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         'Battery is less than 50%')
         except KeyError:
             logging.info('Cannot determine battery status - '
