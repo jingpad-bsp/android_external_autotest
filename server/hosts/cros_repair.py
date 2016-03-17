@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+import json
 
 import common
 from autotest_lib.client.common_lib import hosts
@@ -35,6 +36,66 @@ class ACPowerVerifier(hosts.Verifier):
         return 'host is plugged in to AC power'
 
 
+class TPMStatusVerifier(hosts.Verifier):
+    """Verify that the host's TPM is in a good state."""
+
+    def verify(self, host):
+        # This cryptohome command emits status information in JSON format. It
+        # looks something like this:
+        # {
+        #    "installattrs": {
+        #       ...
+        #    },
+        #    "mounts": [ {
+        #       ...
+        #    } ],
+        #    "tpm": {
+        #       "being_owned": false,
+        #       "can_connect": true,
+        #       "can_decrypt": false,
+        #       "can_encrypt": false,
+        #       "can_load_srk": true,
+        #       "can_load_srk_pubkey": true,
+        #       "enabled": true,
+        #       "has_context": true,
+        #       "has_cryptohome_key": false,
+        #       "has_key_handle": false,
+        #       "last_error": 0,
+        #       "owned": true
+        #    }
+        # }
+        output = host.run('cryptohome --action=status').stdout.strip()
+        try:
+            status = json.loads(output)
+        except ValueError:
+            logging.info('Cannot determine the Crytohome valid status - '
+                         'skipping check.')
+            return
+        try:
+            tpm = status['tpm']
+            if not tpm['enabled']:
+                raise hosts.AutotestHostVerifyError(
+                        'TPM is not enabled -- Hardware is not working.')
+            if not tpm['can_connect']:
+                raise hosts.AutotestHostVerifyError(
+                        ('TPM connect failed -- '
+                         'last_error=%d.' % tpm['last_error']))
+            if (tpm['owned'] and not tpm['can_load_srk']):
+                raise hosts.AutotestHostVerifyError(
+                        'Cannot load the TPM SRK')
+            if (tpm['can_load_srk'] and not tpm['can_load_srk_pubkey']):
+                raise hosts.AutotestHostVerifyError(
+                        'Cannot load the TPM SRC public key')
+        except KeyError:
+            logging.info('Cannot determine the Crytohome valid status - '
+                         'skipping check.')
+
+
+    @property
+    def description(self):
+        return 'The host\'s TPM is available and working'
+
+
 class CrosHostVerifier(hosts.Verifier):
     """
     Ask a CrOS host to perform its own verification.
@@ -59,4 +120,5 @@ def create_repair_strategy():
     return hosts.RepairStrategy((
             (ssh_verify.SshVerifier, 'ssh', []),
             (ACPowerVerifier, 'power', ['ssh']),
+            (TPMStatusVerifier, 'tpm', ['ssh']),
             (CrosHostVerifier, 'cros', ['ssh'])))
