@@ -41,11 +41,13 @@ class SiteAutotest(installable_object.InstallableObject):
         @returns value of the 'job_repo_url' host attribute, if present.
         """
         try:
-            from autotest_lib.server import frontend
+            from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
             if self.host:
-                afe = frontend.AFE(debug=False)
+                afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
                 hosts = afe.get_hosts(hostname=self.host.hostname)
                 if hosts and JOB_REPO_URL in hosts[0].attributes:
+                    logging.info('Get job repo url from host attributes: %s',
+                                 hosts[0].attributes[JOB_REPO_URL])
                     return hosts[0].attributes[JOB_REPO_URL]
                 logging.warning("No %s for %s", JOB_REPO_URL, self.host)
         except (ImportError, urllib2.URLError):
