@@ -48,6 +48,16 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         chameleon_board = host.chameleon
         factory = self.create_remote_facade_factory(host)
 
+        # For DUTs with permanently connected audio jack cable
+        # connecting HDMI won't switch automatically the node. Adding
+        # audio_jack_plugged flag to select HDMI node after binding.
+        audio_facade = factory.create_audio_facade()
+        output_nodes, _ = audio_facade.get_selected_node_types()
+        audio_jack_plugged = False
+        if output_nodes == ['HEADPHONE']:
+            audio_jack_plugged = True
+            logging.debug('Found audio jack plugged!')
+
         self._system_facade = factory.create_system_facade()
         self.set_high_performance_mode()
 
@@ -63,16 +73,15 @@ class audio_AudioBasicHDMI(audio_test.AudioTest):
         binder = widget_factory.create_binder(source, recorder)
 
         with chameleon_audio_helper.bind_widgets(binder):
-            audio_facade = factory.create_audio_facade()
-
             audio_test_utils.dump_cros_audio_logs(
                     host, audio_facade, self.resultsdir, 'after_binding')
 
-            output_nodes, _ = audio_facade.get_selected_node_types()
-            if output_nodes != ['HDMI']:
-                raise error.TestFail(
-                        '%s rather than HDMI is selected on Cros device' %
-                                output_nodes)
+            # HDMI node needs to be selected, when audio jack is plugged
+            if audio_jack_plugged:
+                audio_facade.set_chrome_active_node_type('HDMI', None)
+
+            audio_test_utils.check_audio_nodes(audio_facade,
+                                               (['HDMI'], None))
 
             # Transfer the data to Cros device first because it takes
             # several seconds.
