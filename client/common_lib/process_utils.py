@@ -34,4 +34,7 @@ def pkill_process(process_name, is_full_name=True,
         result = run(kill_cmd, ignore_status=True)
 
     if result.exit_status == 0 and not ignore_status:
-        raise error.TestError('Failed to kill proccess "%s"' % process_name)
+        r = run('cat /proc/`pgrep %s`/status' % process_name,
+                ignore_status=True)
+        raise error.TestError('Failed to kill proccess "%s":\n%s' %
+                (process_name, r.stdout))
