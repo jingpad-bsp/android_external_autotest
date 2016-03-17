@@ -37,6 +37,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
     _NUM = 2
     _PRIORITY = priorities.Priority.POSTBUILD
     _TIMEOUT = 24
+    _TIMEOUT_MINS = 1440
 
 
     def setUp(self):
@@ -83,6 +84,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      priority=self._PRIORITY,
                      test_source_build=None,
                      timeout=self._TIMEOUT,
+                     max_runtime_mins=self._TIMEOUT_MINS,
+                     timeout_mins=self._TIMEOUT_MINS,
                      file_bugs=False,
                      wait_for_results=False,
                      job_retry=False,
@@ -146,6 +149,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      priority=self._PRIORITY,
                      test_source_build=None,
                      timeout=self._TIMEOUT,
+                     max_runtime_mins=self._TIMEOUT_MINS,
+                     timeout_mins=self._TIMEOUT_MINS,
                      file_bugs=False,
                      wait_for_results=False,
                      job_retry=False,
@@ -205,6 +210,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      priority=self._PRIORITY,
                      test_source_build=None,
                      timeout=self._TIMEOUT,
+                     max_runtime_mins=self._TIMEOUT_MINS,
+                     timeout_mins=self._TIMEOUT_MINS,
                      file_bugs=False,
                      wait_for_results=False,
                      run_prod_code=False,
@@ -241,6 +248,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      priority=self._PRIORITY,
                      test_source_build=None,
                      timeout=self._TIMEOUT,
+                     max_runtime_mins=self._TIMEOUT_MINS,
+                     timeout_mins=self._TIMEOUT_MINS,
                      file_bugs=False,
                      wait_for_results=False,
                      run_prod_code=False,
@@ -291,6 +300,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      priority=self._PRIORITY,
                      test_source_build=None,
                      timeout=self._TIMEOUT,
+                     max_runtime_mins=self._TIMEOUT_MINS,
+                     timeout_mins=self._TIMEOUT_MINS,
                      file_bugs=False,
                      wait_for_results=False,
                      job_retry=False,

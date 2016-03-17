@@ -8,10 +8,16 @@ import threading
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
 
+
+CONFIG = global_config.global_config
+
+JOB_MAX_RUNTIME_MINS_DEFAULT = CONFIG.get_config_value(
+        'AUTOTEST_WEB', 'job_max_runtime_mins_default', type=int, default=72*60)
 
 # Minimum RPC timeout setting for calls expected to take long time, e.g.,
 # create_suite_job. If default socket time (socket.getdefaulttimeout()) is
@@ -196,11 +202,21 @@ class DedupingScheduler(object):
                             limit, suite, builds, board, pool)
                     self.delay_minutes_interval = -self.delay_minutes_interval
 
+            # Update timeout settings for the suite job with delay_minutes.
+            # `timeout` is in hours.
+            if not timeout:
+                timeout = JOB_MAX_RUNTIME_MINS_DEFAULT / 60.0
+            timeout += delay_minutes / 60.0
+            max_runtime_mins = JOB_MAX_RUNTIME_MINS_DEFAULT + delay_minutes
+            timeout_mins = JOB_MAX_RUNTIME_MINS_DEFAULT + delay_minutes
+
             logging.info('Scheduling %s on %s against %s (pool: %s)',
                          suite, builds, board, pool)
             if self._afe.run('create_suite_job', name=suite, board=board,
                              builds=builds, check_hosts=False, num=num,
                              pool=pool, priority=priority, timeout=timeout,
+                             max_runtime_mins=max_runtime_mins,
+                             timeout_mins=timeout_mins,
                              file_bugs=file_bugs,
                              wait_for_results=file_bugs,
                              test_source_build=test_source_build,
