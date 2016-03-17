@@ -438,22 +438,24 @@ class graphics_dEQP(test.test):
             if not self._filter:
                 raise error.TestError('No dEQP test filter specified')
 
-        # Create a place to put detailed test output logs.
-        if self._filter:
-            self._log_path = os.path.join(tempfile.gettempdir(),
-                                          '%s-logs' % self._filter)
-        else:
-            self._log_path = os.path.join(
-                tempfile.gettempdir(),
-                '%s-logs' % os.path.basename(self._test_names_file))
-        shutil.rmtree(self._log_path, ignore_errors=True)
-        os.mkdir(self._log_path)
-
         # Some information to help postprocess logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
         logging.info('ChromeOS CPU family = %s', self._cpu_type)
         logging.info('ChromeOS GPU family = %s', self._gpu_type)
-        logging.info('dEQP test filter = %s', self._filter)
+
+        # Create a place to put detailed test output logs.
+        if self._filter:
+            logging.info('dEQP test filter = %s', self._filter)
+            self._log_path = os.path.join(tempfile.gettempdir(),
+                                          '%s-logs' % self._filter)
+        else:
+            base = os.path.basename(self._test_names_file)
+            # TODO(ihf): Clean this up.
+            logging.info('dEQP test filter = %s', os.path.splitext(base)[0])
+            self._log_path = os.path.join(tempfile.gettempdir(),
+                                          '%s-logs' % base)
+        shutil.rmtree(self._log_path, ignore_errors=True)
+        os.mkdir(self._log_path)
 
         if self._gpu_type.startswith('tegra'):
             raise error.TestNAError('dEQP not implemented on tegra. '
