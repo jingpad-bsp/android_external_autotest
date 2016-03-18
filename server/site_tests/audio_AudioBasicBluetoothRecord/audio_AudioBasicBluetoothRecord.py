@@ -129,16 +129,26 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
 
             audio_test_utils.dump_cros_audio_logs(
                     host, self.audio_facade, self.resultsdir, 'after_binding')
-
-            if audio_test_utils.has_internal_microphone(host):
+            # For DUTs with permanently connected audio jack cable
+            # Bluetooth output node should be selected explicitly.
+            output_nodes, _ = self.audio_facade.get_plugged_node_types()
+            audio_jack_plugged = False
+            if 'HEADPHONE' in output_nodes:
+                audio_jack_plugged = True
+                audio_test_utils.check_audio_nodes(self.audio_facade,
+                                                    (None, ['MIC']))
+            elif audio_test_utils.has_internal_microphone(host):
                 # Checks the input node selected by Cras is internal microphone.
                 # Checks crbug.com/495537 for the reason to lower bluetooth
                 # microphone priority.
                 audio_test_utils.check_audio_nodes(self.audio_facade,
                                                    (None, ['INTERNAL_MIC']))
 
-                # Selects bluetooth mic to be the active input node.
-                self.audio_facade.set_chrome_active_node_type(None, 'BLUETOOTH')
+            # Selects bluetooth mic to be the active input node.
+            if (audio_test_utils.has_internal_microphone(host) or
+                audio_jack_plugged):
+                self.audio_facade.set_chrome_active_node_type(
+                        None, 'BLUETOOTH')
 
             # Checks the node selected by Cras is correct again.
             audio_test_utils.check_audio_nodes(self.audio_facade,
