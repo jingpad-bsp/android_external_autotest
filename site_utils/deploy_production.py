@@ -6,6 +6,7 @@ import argparse
 import multiprocessing.pool
 import subprocess
 import sys
+import time
 
 import common
 from autotest_lib.server import frontend
@@ -160,6 +161,7 @@ def update_server(inputs):
                      including any errors.
 
     """
+    start = time.time()
     server = inputs['server']
     status = inputs['status']
     options = inputs['options']
@@ -179,6 +181,8 @@ def update_server(inputs):
         except subprocess.CalledProcessError as e:
             success = False
             output = e.output
+
+    print('Time used to update server %s: %s' % (server, time.time()-start))
     return server, success, output
 
 
