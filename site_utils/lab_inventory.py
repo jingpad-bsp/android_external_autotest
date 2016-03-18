@@ -88,6 +88,12 @@ _CRITICAL_POOLS = ['bvt', 'cq', 'continuous']
 _SPARE_POOL = 'suites'
 _MANAGED_POOLS = _CRITICAL_POOLS + [_SPARE_POOL]
 
+# _EXCLUDED_LABELS - A set of labels that disqualify a DUT from
+#     monitoring by this script.  Currently, we're excluding any
+#     'adb' host, because we're not ready to monitor Android or
+#     Brillo hosts.
+_EXCLUDED_LABELS = set(['adb'])
+
 # _DEFAULT_DURATION:
 #     Default value used for the --duration command line option.
 #     Specifies how far back in time to search in order to determine
@@ -364,6 +370,18 @@ class _LabInventory(dict):
 
     """
 
+    @staticmethod
+    def _eligible_host(afehost):
+        """Return whether this host is eligible for monitoring.
+
+        Hosts with any label that's in `_EXCLUDED_LABELS` aren't
+        eligible.
+
+        @param afehost  The host to be tested for eligibility.
+        """
+        return not len(_EXCLUDED_LABELS.intersection(afehost.labels))
+
+
     @classmethod
     def create_inventory(cls, afe, start_time, end_time, boardlist=[]):
         """Return a Lab inventory with specified parameters.
@@ -388,6 +406,9 @@ class _LabInventory(dict):
                           for l in _MANAGED_POOLS]
         afehosts = afe.get_hosts(labels__name__in=label_list)
         if boardlist:
+            # We're deliberately not checking host eligibility in this
+            # code path.  This is a debug path, not used in production;
+            # it may be useful to include ineligible hosts here.
             boardhosts = []
             for board in boardlist:
                 board_label = constants.Labels.BOARD_PREFIX + board
@@ -395,6 +416,8 @@ class _LabInventory(dict):
                                   if board_label in h.labels]
                 boardhosts.extend(host_list)
             afehosts = boardhosts
+        else:
+            afehosts = [h for h in afehosts if cls._eligible_host(h)]
         create = lambda host: (
                 status_history.HostJobHistory(afe, host,
                                               start_time, end_time))
