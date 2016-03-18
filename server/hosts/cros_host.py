@@ -27,7 +27,6 @@ from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
 from autotest_lib.server import constants
-from autotest_lib.server import crashcollect
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
@@ -163,21 +162,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _FW_IMAGE_URL_PATTERN = CONFIG.get_config_value(
             'CROS', 'firmware_url_pattern', type=str)
 
-    # File that has a list of directories to be collected
-    _LOGS_TO_COLLECT_FILE = os.path.join(
-            common.client_dir, 'common_lib', 'logs_to_collect')
-
-    # Prefix of logging message w.r.t. crash collection
-    _CRASHLOGS_PREFIX = 'collect_crashlogs'
-
     # Time duration waiting for host up/down check
     _CHECK_HOST_UP_TIMEOUT_SECS = 15
-
-    # A command that interacts with kernel and hardware (e.g., rm, mkdir, etc)
-    # might not be completely done deep through the hardware when the machine
-    # is powered down right after the command returns.
-    # We should wait for a few seconds to make them done. Finger crossed.
-    _SAFE_WAIT_SECS = 10
 
 
     @staticmethod
@@ -1347,8 +1333,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 logging.error('Could not create a healthy servo: %s', e)
             self.servo = self._servo_host.get_servo()
 
-        self.try_collect_crashlogs()
-
         # TODO(scottz): This should use something similar to label_decorator,
         # but needs to be populated in order so DUTs are repaired with the
         # least amount of effort.
@@ -1373,7 +1357,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         for repair_func in repair_funcs:
             try:
                 repair_func()
-                self.try_collect_crashlogs()
                 self.check_device()
                 autotest_stats.Counter(
                         '%s.SUCCEEDED' % repair_func.__name__).increment()
@@ -1414,142 +1397,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         raise error.AutoservRepairTotalFailure(
                 'All attempts at repairing the device failed:\n%s' %
                 '\n'.join(errors))
-
-
-    def try_collect_crashlogs(self, check_host_up=True):
-        """
-        Check if a host is up and logs need to be collected from the host,
-        if yes, collect them.
-
-        @param check_host_up: Flag for checking host is up. Default is True.
-        """
-        try:
-            crash_job = self._need_crash_logs()
-            if crash_job:
-                logging.debug('%s: Job %s was crashed', self._CRASHLOGS_PREFIX,
-                              crash_job)
-                if not check_host_up or self.is_up(
-                        self._CHECK_HOST_UP_TIMEOUT_SECS):
-                    self._collect_crashlogs(crash_job)
-                    logging.debug('%s: Completed collecting logs for the '
-                                  'crashed job %s', self._CRASHLOGS_PREFIX,
-                                  crash_job)
-        except Exception as e:
-            # Exception should not result in repair failure.
-            # Therefore, suppress all exceptions here.
-            logging.error('%s: Failed while trying to collect crash-logs: %s',
-                          self._CRASHLOGS_PREFIX, e)
-
-
-    def _need_crash_logs(self):
-        """Get the value of need_crash_logs attribute of this host.
-
-        @return: Value string of need_crash_logs attribute
-                 None if there is no need_crash_logs attribute
-        """
-        attrs = self._AFE.get_host_attribute(constants.CRASHLOGS_HOST_ATTRIBUTE,
-                                             hostname=self.hostname)
-        assert len(attrs) < 2
-        return attrs[0].value if attrs else None
-
-
-    def _collect_crashlogs(self, job_id):
-        """Grab logs from the host where a job was crashed.
-
-        First, check if PRIOR_LOGS_DIR exists in the host.
-        If yes, collect them.
-        Otherwise, check if a lab-machine marker (_LAB_MACHINE_FILE) exists
-        in the host.
-        If yes, the host was repaired automatically, and we collect normal
-        system logs.
-
-        @param job_id: Id of the job that was crashed.
-        """
-        crashlogs_dir = crashcollect.get_crashinfo_dir(self,
-                constants.CRASHLOGS_DEST_DIR_PREFIX)
-        flag_prior_logs = False
-
-        if self.path_exists(client_constants.PRIOR_LOGS_DIR):
-            flag_prior_logs = True
-            self._collect_prior_logs(crashlogs_dir)
-        elif self.path_exists(self._LAB_MACHINE_FILE):
-            self._collect_system_logs(crashlogs_dir)
-        else:
-            logging.warning('%s: Host was manually re-installed without '
-                            '--lab_preserve_log option. Skip collecting '
-                            'crash-logs.', self._CRASHLOGS_PREFIX)
-
-        # We make crash collection be one-time effort.
-        # _collect_prior_logs() and _collect_system_logs() will not throw
-        # any exception, and following codes will be executed even when
-        # those methods fail.
-        # _collect_crashlogs() is called only when the host is up (refer
-        # to try_collect_crashlogs()). We assume _collect_prior_logs() and
-        # _collect_system_logs() fail rarely when the host is up.
-        # In addition, it is not clear how many times we should try crash
-        # collection again while not triggering next repair unnecessarily.
-        # Threfore, we try crash collection one time.
-
-        # Create a marker file as soon as log collection is done.
-        # Leave the job id to this marker for gs_offloader to consume.
-        marker_file = os.path.join(crashlogs_dir, constants.CRASHLOGS_MARKER)
-        with open(marker_file, 'a') as f:
-            f.write('%s\n' % job_id)
-
-        # Remove need_crash_logs attribute
-        logging.debug('%s: Remove attribute need_crash_logs from host %s',
-                      self._CRASHLOGS_PREFIX, self.hostname)
-        self._AFE.set_host_attribute(constants.CRASHLOGS_HOST_ATTRIBUTE,
-                                     None, hostname=self.hostname)
-
-        if flag_prior_logs:
-            logging.debug('%s: Remove %s from host %s', self._CRASHLOGS_PREFIX,
-                          client_constants.PRIOR_LOGS_DIR, self.hostname)
-            self.run('rm -rf %s; sync' % client_constants.PRIOR_LOGS_DIR)
-            # Wait for a few seconds to make sure the prior command is
-            # done deep through storage.
-            time.sleep(self._SAFE_WAIT_SECS)
-
-
-    def _collect_prior_logs(self, crashlogs_dir):
-        """Grab prior logs that were stashed before re-installing a host.
-
-        @param crashlogs_dir: Directory path where crash-logs are stored.
-        """
-        logging.debug('%s: Found %s, collecting them...',
-                      self._CRASHLOGS_PREFIX, client_constants.PRIOR_LOGS_DIR)
-        try:
-            self.collect_logs(client_constants.PRIOR_LOGS_DIR,
-                              crashlogs_dir, False)
-            logging.debug('%s: %s is collected',
-                          self._CRASHLOGS_PREFIX, client_constants.PRIOR_LOGS_DIR)
-        except Exception as e:
-            logging.error('%s: Failed to collect %s: %s',
-                          self._CRASHLOGS_PREFIX, client_constants.PRIOR_LOGS_DIR,
-                          e)
-
-
-    def _collect_system_logs(self, crashlogs_dir):
-        """Grab normal system logs from a host.
-
-        @param crashlogs_dir: Directory path where crash-logs are stored.
-        """
-        logging.debug('%s: Found %s, collecting system logs...',
-                      self._CRASHLOGS_PREFIX, self._LAB_MACHINE_FILE)
-        sources = server_utils.parse_simple_config(self._LOGS_TO_COLLECT_FILE)
-        for src in sources:
-            try:
-                if self.path_exists(src):
-                    logging.debug('%s: Collecting %s...',
-                                  self._CRASHLOGS_PREFIX, src)
-                    dest = server_utils.concat_path_except_last(
-                            crashlogs_dir, src)
-                    self.collect_logs(src, dest, False)
-                    logging.debug('%s: %s is collected',
-                                  self._CRASHLOGS_PREFIX, src)
-            except Exception as e:
-                logging.error('%s: Failed to collect %s: %s',
-                              self._CRASHLOGS_PREFIX, src, e)
 
 
     def close(self):
@@ -1868,12 +1715,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
          4. update_engine answers a simple status request over DBus.
 
         """
-        # Check if a job was crashed on this host.
-        # If yes, avoid verification until crash-logs are collected.
-        if self._need_crash_logs():
-            raise error.AutoservCrashLogCollectRequired(
-                    'Need to collect crash-logs before verification')
-
         super(CrosHost, self).verify_software()
         default_kilo_inodes_required = CONFIG.get_config_value(
                 'SERVER', 'kilo_inodes_required', type=int, default=100)

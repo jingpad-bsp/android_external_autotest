@@ -492,11 +492,6 @@ class AutoservPidAlreadyDeadError(AutoservError):
     pass
 
 
-class AutoservCrashLogCollectRequired(AutoservError):
-    """Need to collect crash-logs first"""
-    pass
-
-
 # packaging system errors
 
 class PackagingError(AutotestError):
