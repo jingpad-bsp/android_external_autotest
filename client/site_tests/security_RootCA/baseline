@@ -11,8 +11,6 @@
             "NetLock Arany (Class Gold) Főtanúsítvány",
           "07:E0:32:E0:20:B7:2C:3F:19:2F:06:28:A2:59:3A:19:A7:0F:06:9E":
             "Certum Trusted Network CA",
-          "10:1D:FA:3F:D5:0B:CB:BB:9B:B5:60:0C:19:55:A4:1A:F4:73:3A:04":
-            "Staat der Nederlanden Root CA",
           "13:2D:0D:45:53:4B:69:97:CD:B2:D5:C3:39:E2:55:76:60:9B:5C:C6":
             "Verisign Class 3 Public Primary Certification Authority - G3",
           "1B:4B:39:61:26:27:6B:64:91:A2:68:6D:D7:02:43:21:2D:1F:1D:96":
@@ -31,8 +29,6 @@
             "AffirmTrust Networking",
           "2A:B6:28:48:5E:78:FB:F3:AD:9E:79:10:DD:6B:DF:99:72:2C:96:E5":
             "AddTrust Public Services Root",
-          "2A:C8:D5:8B:57:CE:BF:2F:49:AF:F2:FC:76:8F:51:14:62:90:7A:41":
-            "CA Disig",
           "2E:14:DA:EC:28:F0:FA:1E:8E:38:9A:4E:AB:EB:26:C0:0A:D3:83:C3":
             "Certinomis - Autorité Racine",
           "2F:78:3D:25:52:18:A7:4A:65:39:71:B5:2C:A2:9C:45:15:6F:E9:19":
@@ -143,8 +139,6 @@
             "GeoTrust Global CA 2",
           "AA:DB:BC:22:23:8F:C4:01:A1:27:BB:38:DD:F4:1D:DB:08:9E:F0:12":
             "thawte Primary Root CA - G2",
-          "AC:ED:5F:65:53:FD:25:CE:01:5F:1F:7A:48:3B:6A:74:9F:61:78:C6":
-            "NetLock Notary (Class A) Root",
           "AD:7E:1C:28:B0:64:EF:8F:60:03:40:20:14:C3:D0:E3:37:0E:B5:8A":
             "Starfield Class 2 CA",
           "AE:C5:FB:3F:C8:E1:BF:C4:E5:4F:03:07:5A:9A:E8:00:B7:F7:B6:FA":
@@ -302,7 +296,11 @@
           "FB:ED:DC:90:65:B7:27:20:37:BC:55:0C:9C:56:DE:BB:F2:78:94:E1":
             "Certification Authority of WoSign G2",
           "D2:7A:D2:BE:ED:94:C0:A1:3C:C7:25:21:EA:5D:71:BE:81:19:F3:2B":
-            "CA WoSign ECC Root"
+            "CA WoSign ECC Root",
+          "E2:52:FA:95:3F:ED:DB:24:60:BD:6E:28:F3:9C:CC:CF:5E:B3:3F:DE":
+            "SZAFIR ROOT CA2",
+          "D3:DD:48:3E:2B:BF:4C:05:E8:AF:10:F5:FA:76:26:CF:D3:DC:30:92":
+            "Certum Trusted Network CA 2"
         },
  "openssl": {
           "39:4F:F6:85:0B:06:BE:52:E5:18:56:CC:10:E1:80:E8:82:B3:85:CC":
@@ -378,6 +376,12 @@
           "B4:35:D4:E1:11:9D:1C:66:90:A7:49:EB:B3:94:BD:63:7B:A7:82:B7":
             "TURKTRUST Certificate Services Provider Root 2",
           "D3:C0:63:F2:19:ED:07:3E:34:AD:5D:75:0B:32:76:29:FF:D5:9A:F2":
-            "A-Trust-nQual-03"
+            "A-Trust-nQual-03",
+          "10:1D:FA:3F:D5:0B:CB:BB:9B:B5:60:0C:19:55:A4:1A:F4:73:3A:04":
+            "Staat der Nederlanden Root CA",
+          "2A:C8:D5:8B:57:CE:BF:2F:49:AF:F2:FC:76:8F:51:14:62:90:7A:41":
+            "CA Disig",
+          "AC:ED:5F:65:53:FD:25:CE:01:5F:1F:7A:48:3B:6A:74:9F:61:78:C6":
+            "NetLock Notary (Class A) Root"
         }
 }
