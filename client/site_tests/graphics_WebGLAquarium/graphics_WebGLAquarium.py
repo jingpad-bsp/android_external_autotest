@@ -1,7 +1,16 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""This is a client side WebGL aquarium test."""
+
+"""This is a client side WebGL aquarium test.
+
+Description of some of the test result output:
+    - interframe time: The time elapsed between two frames. It is the elapsed
+            time between two consecutive calls to the render() function.
+    - render time: The time it takes in Javascript to construct a frame and
+            submit all the GL commands. It is the time it takes for a render()
+            function call to complete.
+"""
 
 import logging
 import math
@@ -65,7 +74,7 @@ class graphics_WebGLAquarium(test.test):
             self.kernel_sampler = sampler.ExynosSampler(period=5, duration=3)
             self.kernel_sampler.sampler_callback = self.exynos_sampler_callback
             self.kernel_sampler.output_flip_stats = (
-                self.exynos_output_flip_stats)
+                    self.exynos_output_flip_stats)
 
     def cleanup(self):
         if self._backlight:
@@ -102,16 +111,16 @@ class graphics_WebGLAquarium(test.test):
         # Set the number of fishes when document finishes loading.  Also reset
         # our own FPS counter and start recording FPS and rendering time.
         utils.wait_for_value(
-            lambda: tab.EvaluateJavaScript(
-                'if (document.readyState === "complete") {'
-                '  setSetting(document.getElementById("%s"), %d);'
-                '  g_crosFpsCounter.reset();'
-                '  true;'
-                '} else {'
-                '  false;'
-                '}' % self.test_settings[num_fishes]),
-            expected_value=True,
-            timeout_sec=30)
+                lambda: tab.EvaluateJavaScript(
+                        'if (document.readyState === "complete") {'
+                        '  setSetting(document.getElementById("%s"), %d);'
+                        '  g_crosFpsCounter.reset();'
+                        '  true;'
+                        '} else {'
+                        '  false;'
+                        '}' % self.test_settings[num_fishes]),
+                expected_value=True,
+                timeout_sec=30)
 
         if self.kernel_sampler:
             self.kernel_sampler.start_sampling_thread()
@@ -126,16 +135,28 @@ class graphics_WebGLAquarium(test.test):
             avg_fps = tab.EvaluateJavaScript('g_crosFpsCounter.getAvgFps();')
             if math.isnan(float(avg_fps)):
                 raise error.TestFail('Could not get FPS count.')
+            avg_interframe_time = tab.EvaluateJavaScript(
+                    'g_crosFpsCounter.getAvgInterFrameTime();')
             avg_render_time = tab.EvaluateJavaScript(
-                'g_crosFpsCounter.getAvgRenderTime();')
+                    'g_crosFpsCounter.getAvgRenderTime();')
+            std_interframe_time = tab.EvaluateJavaScript(
+                    'g_crosFpsCounter.getStdInterFrameTime();')
+            std_render_time = tab.EvaluateJavaScript(
+                    'g_crosFpsCounter.getStdRenderTime();')
             self.perf_keyval['avg_fps_%04d_fishes' % num_fishes] = avg_fps
+            self.perf_keyval['avg_interframe_time_%04d_fishes' % num_fishes] = (
+                    avg_interframe_time)
             self.perf_keyval['avg_render_time_%04d_fishes' % num_fishes] = (
-                avg_render_time)
+                    avg_render_time)
+            self.perf_keyval['std_interframe_time_%04d_fishes' % num_fishes] = (
+                    std_interframe_time)
+            self.perf_keyval['std_render_time_%04d_fishes' % num_fishes] = (
+                    std_render_time)
             self.output_perf_value(
-                description='avg_fps_%04d_fishes' % num_fishes,
-                value=avg_fps,
-                units='fps',
-                higher_is_better=True)
+                    description='avg_fps_%04d_fishes' % num_fishes,
+                    value=avg_fps,
+                    units='fps',
+                    higher_is_better=True)
             logging.info('%d fish(es): Average FPS = %f, '
                          'average render time = %f', num_fishes, avg_fps,
                          avg_render_time)
@@ -151,7 +172,7 @@ class graphics_WebGLAquarium(test.test):
         self._backlight.set_default()
 
         self._service_stopper = service_stopper.ServiceStopper(
-            service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
+                service_stopper.ServiceStopper.POWER_DRAW_SERVICES)
         self._service_stopper.stop_services()
 
         self._power_status = power_status.get_status()
@@ -205,9 +226,9 @@ class graphics_WebGLAquarium(test.test):
                                 (value.fb, results[value.fb]['wait_kds'][0],
                                  results[value.fb]['flipped'][0]))
             results['avg_fps'] = self.active_tab.EvaluateJavaScript(
-                'g_crosFpsCounter.getAvgFps();')
+                    'g_crosFpsCounter.getAvgFps();')
             results['avg_render_time'] = self.active_tab.EvaluateJavaScript(
-                'g_crosFpsCounter.getAvgRenderTime();')
+                    'g_crosFpsCounter.getAvgRenderTime();')
             self.active_tab.ExecuteJavaScript('g_crosFpsCounter.reset();')
             info_str.append('avg_fps: %s, avg_render_time: %s' %
                             (results['avg_fps'], results['avg_render_time']))
@@ -225,7 +246,7 @@ class graphics_WebGLAquarium(test.test):
         with open(file_name, 'w') as f:
             for t in sorted(self.flip_stats.keys()):
                 if ('avg_fps' in self.flip_stats[t] and
-                        'avg_render_time' in self.flip_stats[t]):
+                    'avg_render_time' in self.flip_stats[t]):
                     f.write('%s %s %s\n' %
                             (t, self.flip_stats[t]['avg_fps'],
                              self.flip_stats[t]['avg_render_time']))
@@ -259,7 +280,7 @@ class graphics_WebGLAquarium(test.test):
             try:
                 cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
                 test_url = cr.browser.platform.http_server.UrlOf(os.path.join(
-                    self.srcdir, 'aquarium.html'))
+                        self.srcdir, 'aquarium.html'))
 
                 if not utils.wait_for_idle_cpu(60.0, 0.1):
                     if not utils.wait_for_idle_cpu(20.0, 0.2):
