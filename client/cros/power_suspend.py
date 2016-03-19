@@ -151,7 +151,7 @@ class Suspender(object):
 
     def _get_board(self):
         """Remove _freon from get_board if found."""
-	return (utils.get_board().replace("_freon", ""))
+        return (utils.get_board().replace("_freon", ""))
 
 
     def _reset_logs(self):
@@ -253,13 +253,18 @@ class Suspender(object):
         if utils.get_arch() not in ['i686', 'x86_64']:
             # TODO: support this on ARM somehow
             return 0
-        regex = re.compile(r'TSC at resume: (\d+)$')
+        regex_freeze = re.compile(r'PM: resume from suspend-to-idle')
+        regex_tsc = re.compile(r'TSC at resume: (\d+)$')
         freq = 1000 * int(utils.read_one_line(
                 '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq'))
         for line in reversed(self._logs):
-            match = regex.search(line)
-            if match:
-                return float(match.group(1)) / freq
+            match_freeze = regex_freeze.search(line)
+            if match_freeze:
+                logging.info('fw resume time zero due to suspend-to-idle\n')
+                return 0
+            match_tsc = regex_tsc.search(line)
+            if match_tsc:
+                return float(match_tsc.group(1)) / freq
 
         raise error.TestError('Failed to find TSC resume value in syslog.')
 
