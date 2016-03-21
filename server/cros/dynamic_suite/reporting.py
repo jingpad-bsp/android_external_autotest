@@ -46,7 +46,7 @@ class Bug(object):
     """Holds the minimum information needed to make a dedupable bug report."""
 
     def __init__(self, title, summary, search_marker=None, labels=None,
-                 owner='', cc=None):
+                 owner='', cc=None, components=None):
         """
         Initializes Bug object.
 
@@ -59,6 +59,7 @@ class Bug(object):
         @param labels: The labels that the filed bug will have.
         @param owner: The owner/asignee of this bug. Typically left blank.
         @param cc: Who to cc'd for this bug.
+        @param components: The components that the filed bug will have.
         """
         self._title = title
         self._summary = summary
@@ -66,6 +67,7 @@ class Bug(object):
         self.owner = owner
 
         self.labels = labels if labels is not None else []
+        self.components = components if components is not None else []
         self.cc = cc if cc is not None else []
 
 
@@ -120,6 +122,7 @@ class TestBug(Bug):
         # The owner is who the bug is assigned to.
         self.owner = ''
         self.cc = []
+        self.components = []
 
         if result.is_warn():
             self.labels = ['Test-Warning']
@@ -240,6 +243,7 @@ class MachineKillerBug(Bug):
         self.owner=''
         self.cc=[self._CC_ADDRESS]
         self.labels=[self._MACHINE_KILLER_LABEL]
+        self.components = []
 
 
     def title(self):
@@ -299,6 +303,7 @@ class PoolHealthBug(Bug):
         self.owner = ''
         self.cc = self._CC_ADDRESS
         self.labels = self._POOL_HEALTH_LABELS
+        self.components = []
 
 
     def title(self):
@@ -344,6 +349,7 @@ class SuiteSchedulerBug(Bug):
         self.owner = lab_deputies[0] if lab_deputies else ''
         self.labels = self._SUITE_SCHEDULER_LABELS
         self.cc = lab_deputies[1:] if lab_deputies else []
+        self.components = []
 
 
     def title(self):
@@ -536,7 +542,7 @@ class Reporter(object):
         issue = self._format_issue_options(bug_template, title=bug.title(),
             description=anchored_summary, labels=bug.labels,
             status='Untriaged', owner=bug.owner, cc=bug.cc,
-            sheriffs=sheriffs)
+            sheriffs=sheriffs, components=bug.components)
 
         try:
             filed_bug = self._phapi_client.create_issue(issue)

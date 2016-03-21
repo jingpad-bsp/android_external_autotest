@@ -356,7 +356,8 @@ class ProjectHostingApiClient():
                                 'description': 'bug description',
                                 'labels': ['Type-Bug'],
                                 'owner': {'name': 'owner@'},
-                                'cc': [{'name': 'cc1'}, {'name': 'cc2'}]
+                                'cc': [{'name': 'cc1'}, {'name': 'cc2'}],
+                                'components': ["Internals->Components"]
                              }
                              Note the title and descriptions fields of a
                              new bug are not optional, all other fields are.

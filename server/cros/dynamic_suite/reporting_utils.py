@@ -84,7 +84,7 @@ class BugTemplate(object):
 
     # Names of expected attributes.
     EXPECTED_BUG_TEMPLATE_ATTRIBUTES = ['owner', 'labels', 'status', 'title',
-                                        'cc', 'summary']
+                                        'cc', 'summary', 'components']
     LIST_ATTRIBUTES = ['cc', 'labels']
     EMAIL_ATTRIBUTES = ['owner', 'cc']
 
