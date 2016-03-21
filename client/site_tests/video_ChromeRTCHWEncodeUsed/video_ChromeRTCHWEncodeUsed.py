@@ -90,7 +90,7 @@ class video_ChromeRTCHWEncodeUsed(test.test):
 
 
     def run_once(self):
-        boards_to_skip = ['peach_pit']
+        boards_to_skip = ['peach_pit', 'veyron_minnie-cheets', 'veyron_speedy']
         dut_board = utils.get_current_board()
         if dut_board in boards_to_skip:
             logging.info("Skipping test run on this board.")
