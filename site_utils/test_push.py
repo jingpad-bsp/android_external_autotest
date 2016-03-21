@@ -440,6 +440,8 @@ def close_bug():
                                    comment='Issue closed by test_push script.',
                                    label_update='',
                                    status='WontFix')
+        # Wait for the monorail server to close the bugs.
+        time.sleep(10)
 
 
 def check_bug_filed_and_deduped(old_issue_ids):
@@ -468,7 +470,7 @@ def check_bug_filed_and_deduped(old_issue_ids):
                                label_update='',
                                status='WontFix')
     # Wait for the monorail server to close the first bug.
-    time.sleep(5)
+    time.sleep(10)
     second_issue = reporter.find_issue_by_marker(BUG_ANCHOR)
     if second_issue:
         ids = '%d, %d' % (issue.id, second_issue.id)
