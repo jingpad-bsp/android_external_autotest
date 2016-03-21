@@ -41,11 +41,9 @@ public class OperationStatus extends JsonRpcEntity {
     JSONValue value = object.get(OperationStatus.JSON_FIELD_STATUS_OK);
     ok = value != null && value.isBoolean() != null && value.isBoolean().booleanValue();
     details = null;
-    if (!ok) {
-      value = object.get(OperationStatus.JSON_FIELD_STATUS_DETAILS);
-      if (value != null) {
-        details = value.isString().stringValue();
-      }
+    value = object.get(OperationStatus.JSON_FIELD_STATUS_DETAILS);
+    if (value != null && value.isString() != null) {
+      details = value.isString().stringValue();
     }
   }
 

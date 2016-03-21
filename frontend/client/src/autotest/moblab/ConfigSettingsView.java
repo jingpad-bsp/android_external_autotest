@@ -1,9 +1,10 @@
 package autotest.moblab;
 
 import autotest.common.JsonRpcCallback;
-import autotest.common.JsonRpcProxy;
 import autotest.common.SimpleCallback;
+import autotest.common.Utils;
 import autotest.common.ui.TabView;
+import autotest.moblab.rpc.MoblabRpcHelper;
 import autotest.common.ui.NotifyManager;
 
 import com.google.gwt.event.dom.client.ClickHandler;
@@ -48,6 +49,7 @@ public class ConfigSettingsView extends TabView {
         super.refresh();
         configValueTable.removeAllRows();
         fetchConfigData(new SimpleCallback() {
+            @Override
             public void doCallback(Object source) {
                 loadData((JSONValue) source);
             }
@@ -75,6 +77,7 @@ public class ConfigSettingsView extends TabView {
         configValueTable = new FlexTable();
 
         resetConfirmButton = new Button("Confirm Reset", new ClickHandler() {
+            @Override
             public void onClick(ClickEvent event) {
                 rpcCallReset();
                 resetConfirmPanel.hide();
@@ -86,6 +89,7 @@ public class ConfigSettingsView extends TabView {
                 resetConfirmButton);
 
         submitConfirmButton = new Button("Confirm Save", new ClickHandler() {
+            @Override
             public void onClick(ClickEvent event) {
                 JSONObject params = new JSONObject();
                 JSONObject configValues = new JSONObject();
@@ -110,12 +114,14 @@ public class ConfigSettingsView extends TabView {
                 submitConfirmButton);
 
         submitButton = new Button("Submit", new ClickHandler() {
+            @Override
             public void onClick(ClickEvent event) {
                 submitConfirmPanel.center();
             }
         });
 
         resetButton = new Button("Restore Defaults", new ClickHandler() {
+            @Override
             public void onClick(ClickEvent event) {
                 resetConfirmPanel.center();
             }
@@ -127,14 +133,7 @@ public class ConfigSettingsView extends TabView {
     }
 
     private void fetchConfigData(final SimpleCallback callBack) {
-        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-        rpcProxy.rpcCall("get_config_values", null, new JsonRpcCallback() {
-            @Override
-            public void onSuccess(JSONValue result) {
-                if (callBack != null)
-                    callBack.doCallback(result);
-            }
-        });
+        MoblabRpcHelper.fetchConfigData(callBack);
     }
 
     private void loadData(JSONValue result) {
@@ -161,7 +160,10 @@ public class ConfigSettingsView extends TabView {
                 configValueTable.setWidget(row, 1, configInput);
                 configInput.setText(configValue);
                 if (GOOGLE_STORAGE_CONFIG_KEY.contains(configKey)) {
-                  addGoogleStorageLink(row, configValue);
+                  Anchor a = Utils.createGoogleStorageHttpUrlLink("link", configValue);
+                  if (a != null) {
+                    configValueTable.setWidget(row, 2, a);
+                  }
                 }
                 sectionKeyValues.put(configKey, configInput);
             }
@@ -177,28 +179,8 @@ public class ConfigSettingsView extends TabView {
         }
     }
 
-    private void addGoogleStorageLink(int row, String bucketPath) {
-      if (bucketPath != null) {
-        String bucketName = bucketPath;
-        if (bucketPath.startsWith("gs://")) {
-          if (bucketPath.length() >= 5) {
-            bucketName = bucketPath.substring(5);
-          } else {
-            // invalid value.
-            return;
-          }
-        }
-
-        Anchor a =
-            new Anchor("link", "https://pantheon.corp.google.com/storage/browser/" + bucketName);
-        a.setTarget("_blank");
-        configValueTable.setWidget(row, 2, a);
-      }
-    }
-
     public void rpcCallSubmit(JSONObject params) {
-        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-        rpcProxy.rpcCall("update_config_handler", params, new JsonRpcCallback() {
+        MoblabRpcHelper.submitConfigData(params, new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
                 NotifyManager.getInstance().showMessage("Setup completed.");
@@ -207,8 +189,7 @@ public class ConfigSettingsView extends TabView {
     }
 
     public void rpcCallReset() {
-        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-        rpcProxy.rpcCall("reset_config_settings", null, new JsonRpcCallback() {
+        MoblabRpcHelper.resetConfigData(new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
                 NotifyManager.getInstance().showMessage("Reset completed.");

@@ -20,12 +20,12 @@ public class MoblabRpcHelper {
   /**
    * Fetches config data.
    */
-  public static void fetchConfigData(final SimpleCallback callBack) {
+  public static void fetchConfigData(final SimpleCallback callback) {
     fetchConfigData(new JsonRpcCallback() {
       @Override
       public void onSuccess(JSONValue result) {
-        if (callBack != null)
-          callBack.doCallback(result);
+        if (callback != null)
+          callback.doCallback(result);
       }
     });
   }
@@ -33,9 +33,9 @@ public class MoblabRpcHelper {
   /**
    * Fetch config data.
    */
-  public static void fetchConfigData(final JsonRpcCallback callBack) {
+  public static void fetchConfigData(final JsonRpcCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-    rpcProxy.rpcCall("get_config_values", null, callBack);
+    rpcProxy.rpcCall("get_config_values", null, callback);
   }
 
   /**

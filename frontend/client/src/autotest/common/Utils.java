@@ -322,12 +322,9 @@ public class Utils {
 
     public static String getGoogleStorageHttpUrl(String bucketPath) {
       if (bucketPath != null) {
-        String bucketName = bucketPath;
         if (bucketPath.startsWith("gs://")) {
-          if (bucketPath.length() >= 5) {
-            bucketName = bucketPath.substring(5);
-            return "https://pantheon.corp.google.com/storage/browser/" + bucketName;
-          }
+          String bucketName = bucketPath.substring(5);
+          return "https://console.cloud.google.com/storage/browser/" + bucketName;
         }
       }
       return null;
@@ -337,8 +334,7 @@ public class Utils {
       String url = getGoogleStorageHttpUrl(bucketPath);
       if (url != null) {
         if (url != null) {
-          Anchor a =
-              new Anchor(label, url);
+          Anchor a = new Anchor(label, url);
           a.setTarget("_blank");
           return a;
         }

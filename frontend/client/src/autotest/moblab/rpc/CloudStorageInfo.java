@@ -14,13 +14,19 @@ public class CloudStorageInfo extends JsonRpcEntity {
   public static final String JSON_FIELD_IMAGE_STORAGE_URL = "image_storage_server";
   public static final String JSON_FIELD_RESULT_STORAGE_URL = "results_storage_server";
 
-  // The boto key id.
+  /**
+   * The boto key id.
+   */
   private String botoKey;
 
-  // The boto secrete.
+  /**
+   * The boto secret.
+   */
   private String botoSecret;
 
-  // Uses existing boto file on the Moblab
+  /**
+   * Uses existing boto file on the Moblab
+   */
   private boolean useExistingBotoFile;
 
   private String imageStorageServer;

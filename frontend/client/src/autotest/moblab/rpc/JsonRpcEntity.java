@@ -14,7 +14,7 @@ public abstract class JsonRpcEntity {
   protected static String getStringFieldOrDefault(JSONObject object, String field,
       String defaultValue) {
     JSONValue value = object.get(field);
-    if (value != null) {
+    if (value != null && value.isString() != null) {
       return value.isString().stringValue();
     }
     return defaultValue;
