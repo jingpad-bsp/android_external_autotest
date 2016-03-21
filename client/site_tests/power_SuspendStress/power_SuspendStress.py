@@ -13,7 +13,7 @@ class power_SuspendStress(test.test):
     version = 1
 
     def initialize(self, duration, idle=False, init_delay=0, min_suspend=0,
-                   min_resume=0, interface=None):
+                   min_resume=0, check_connection=False):
         """
         Entry point.
 
@@ -25,15 +25,14 @@ class power_SuspendStress(test.test):
         @param min_suspend: suspend durations will be chosen randomly out of
                 the interval between min_suspend and min_suspend + 3 seconds.
         @param min_resume: minimal time in seconds between suspends.
-        @param interface: network interface used to connect to the server. If
-                specified, will reboot the DUT if the interface is not coming
-                back after suspend.
+        @param check_connection: If true, we check that the network interface
+                used for testing is up after resume. Otherwsie we reboot.
         """
         self._duration = duration
         self._init_delay = init_delay
         self._min_suspend = min_suspend
         self._min_resume = min_resume
-        self._interface = interface
+        self._check_connection = check_connection
         self._method = sys_power.idle_suspend if idle else sys_power.do_suspend
 
 
@@ -42,13 +41,22 @@ class power_SuspendStress(test.test):
         self._suspender = power_suspend.Suspender(
                 self.resultsdir, method=self._method)
         timeout = time.time() + self._duration
+        # Find the interface which is used for most communication.
+        if self._check_connection:
+            with open('/proc/net/route') as fh:
+                for line in fh:
+                    fields = line.strip().split()
+                    if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+                        continue
+                    interface = fields[0]
+
         while time.time() < timeout:
             time.sleep(self._min_resume + random.randint(0, 3))
             # Check the network interface to the caller is still available
-            if self._interface:
+            if self._check_connection:
                 link_status = None
                 try:
-                    with open('/sys/class/net/' + self._interface +
+                    with open('/sys/class/net/' + interface +
                               '/operstate') as link_file:
                         link_status = link_file.readline().strip()
                 except:

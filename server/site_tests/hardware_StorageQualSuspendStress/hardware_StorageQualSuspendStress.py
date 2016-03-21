@@ -7,7 +7,6 @@ from autotest_lib.server import hosts
 from autotest_lib.server import test
 
 
-#TODO(chromium:500040) Do not assume eth0 as network interface to monitor.
 class hardware_StorageQualSuspendStress(test.test):
     """ Run Fio while suspending aggressively."""
 
@@ -19,7 +18,7 @@ class hardware_StorageQualSuspendStress(test.test):
         control = """job.parallel(
             [lambda: job.run_test('power_SuspendStress', tag='disk',
                 duration=%d, init_delay=10, min_suspend=7, min_resume=30,
-                interface='eth0')],
+                check_connection=True)],
             [lambda: job.run_test('hardware_StorageFio', test_length=%d+30,
                 disable_sysinfo=True, requirements=[('write_stress', [])],
                 tag='qual_suspend')])""" % (duration, duration-30)
