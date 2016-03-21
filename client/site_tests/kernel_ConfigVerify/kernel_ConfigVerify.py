@@ -90,7 +90,6 @@ class kernel_ConfigVerify(test.test):
                 'DEBUG_FS',
                 'ECRYPT_FS',
                 'EXT4_FS',
-                'EXT4_USE_FOR_EXT23',
                 'PROC_FS',
                 'SCSI_PROC_FS',
             ],
@@ -163,6 +162,11 @@ class kernel_ConfigVerify(test.test):
             for entry in self.IS_EXCLUSIVE:
                 if entry['regex'] == '.*_FS$':
                     entry['builtin'].append('SND_PROC_FS')
+
+        if utils.compare_versions(kernel_ver, "4.4") < 0:
+            for entry in self.IS_EXCLUSIVE:
+                if entry['regex'] == '.*_FS$':
+                    entry['builtin'].append('EXT4_USE_FOR_EXT23')
 
         # Run the static checks.
         map(config.has_builtin, self.IS_BUILTIN)
