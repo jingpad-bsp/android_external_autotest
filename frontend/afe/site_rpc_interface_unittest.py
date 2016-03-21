@@ -8,7 +8,16 @@
 
 
 import __builtin__
+# The boto module is only available/used in Moblab for validation of cloud
+# storage access. The module is not available in the test lab environment, 
+# and the import error is handled.
+try:
+    import boto
+except ImportError:
+    boto = None
+import ConfigParser
 import datetime
+import logging
 import mox
 import StringIO
 import unittest
@@ -356,6 +365,275 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                            ('item4', 'value4')]})
         self.mox.ReplayAll()
         site_rpc_interface.get_config_values()
+
+
+    def testGetNetworkInfo(self):
+        """Ensure the network info is properly converted to a dict."""
+        self.setIsMoblab(True)
+
+        self.mox.StubOutWithMock(site_rpc_interface, '_get_network_info')
+        site_rpc_interface._get_network_info().AndReturn(('10.0.0.1', True))
+        self.mox.StubOutWithMock(rpc_utils, 'prepare_for_serialization')
+
+        rpc_utils.prepare_for_serialization(
+               {'is_connected': True, 'server_ips': ['10.0.0.1']})
+        self.mox.ReplayAll()
+        site_rpc_interface.get_network_info()
+        self.mox.VerifyAll()
+
+
+    def testGetNetworkInfoWithNoIp(self):
+        """Queries network info with no public IP address."""
+        self.setIsMoblab(True)
+
+        self.mox.StubOutWithMock(site_rpc_interface, '_get_network_info')
+        site_rpc_interface._get_network_info().AndReturn((None, False))
+        self.mox.StubOutWithMock(rpc_utils, 'prepare_for_serialization')
+
+        rpc_utils.prepare_for_serialization(
+               {'is_connected': False})
+        self.mox.ReplayAll()
+        site_rpc_interface.get_network_info()
+        self.mox.VerifyAll()
+
+
+    def testGetNetworkInfoWithNoConnectivity(self):
+        """Queries network info with public IP address but no connectivity."""
+        self.setIsMoblab(True)
+
+        self.mox.StubOutWithMock(site_rpc_interface, '_get_network_info')
+        site_rpc_interface._get_network_info().AndReturn(('10.0.0.1', False))
+        self.mox.StubOutWithMock(rpc_utils, 'prepare_for_serialization')
+
+        rpc_utils.prepare_for_serialization(
+               {'is_connected': False, 'server_ips': ['10.0.0.1']})
+        self.mox.ReplayAll()
+        site_rpc_interface.get_network_info()
+        self.mox.VerifyAll()
+
+
+    def testGetCloudStorageInfo(self):
+        """Ensure the cloud storage info is properly converted to a dict."""
+        self.setIsMoblab(True)
+        config_mock = self.mox.CreateMockAnything()
+        site_rpc_interface._CONFIG = config_mock
+        config_mock.get_config_value(
+            'CROS', 'image_storage_server').AndReturn('gs://bucket1')
+        config_mock.get_config_value(
+            'CROS', 'results_storage_server').AndReturn('gs://bucket2')
+        self.mox.StubOutWithMock(site_rpc_interface, '_get_boto_config')
+        site_rpc_interface._get_boto_config().AndReturn(config_mock)
+        config_mock.sections().AndReturn(['Credentials', 'b'])
+        config_mock.options('Credentials').AndReturn(
+            ['gs_access_key_id', 'gs_secret_access_key'])
+        config_mock.get(
+            'Credentials', 'gs_access_key_id').AndReturn('key')
+        config_mock.get(
+            'Credentials', 'gs_secret_access_key').AndReturn('secret')
+        rpc_utils.prepare_for_serialization(
+                {
+                    'gs_access_key_id': 'key',
+                    'gs_secret_access_key' : 'secret',
+                    'use_existing_boto_file': True,
+                    'image_storage_server' : 'gs://bucket1',
+                    'results_storage_server' : 'gs://bucket2'
+                })
+        self.mox.ReplayAll()
+        site_rpc_interface.get_cloud_storage_info()
+        self.mox.VerifyAll()
+
+
+    def testValidateCloudStorageInfo(self):
+        """ Ensure the cloud storage info validation flow."""
+        self.setIsMoblab(True)
+        cloud_storage_info = {
+            'use_existing_boto_file': False,
+            'gs_access_key_id': 'key',
+            'gs_secret_access_key': 'secret',
+            'image_storage_server': 'gs://bucket1',
+            'results_storage_server': 'gs://bucket2'}
+        self.mox.StubOutWithMock(site_rpc_interface, '_is_valid_boto_key')
+        self.mox.StubOutWithMock(site_rpc_interface, '_is_valid_bucket')
+        site_rpc_interface._is_valid_boto_key(
+                'key', 'secret').AndReturn((True, None))
+        site_rpc_interface._is_valid_bucket(
+                'key', 'secret', 'bucket1').AndReturn((True, None))
+        site_rpc_interface._is_valid_bucket(
+                'key', 'secret', 'bucket2').AndReturn((True, None))
+        rpc_utils.prepare_for_serialization(
+                {'status_ok': True })
+        self.mox.ReplayAll()
+        site_rpc_interface.validate_cloud_storage_info(cloud_storage_info)
+        self.mox.VerifyAll()
+
+
+    def testGetBucketNameFromUrl(self):
+        """Gets bucket name from bucket URL."""
+        self.assertEquals(
+            'bucket_name-123',
+            site_rpc_interface._get_bucket_name_from_url(
+                    'gs://bucket_name-123'))
+        self.assertEquals(
+            'bucket_name-123',
+            site_rpc_interface._get_bucket_name_from_url(
+                    'gs://bucket_name-123/'))
+        self.assertEquals(
+            'bucket_name-123',
+            site_rpc_interface._get_bucket_name_from_url(
+                    'gs://bucket_name-123/a/b/c'))
+        self.assertIsNone(site_rpc_interface._get_bucket_name_from_url(
+            'bucket_name-123/a/b/c'))
+
+
+    def testIsValidBotoKeyValid(self):
+        """Tests the boto key validation flow."""
+        if boto is None:
+            logging.info('skip test since boto module not installed')
+            return
+        conn = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(boto, 'connect_gs')
+        boto.connect_gs('key', 'secret').AndReturn(conn)
+        conn.get_all_buckets().AndReturn(['a', 'b'])
+        conn.close()
+        self.mox.ReplayAll()
+        valid, details = site_rpc_interface._is_valid_boto_key('key', 'secret')
+        self.assertTrue(valid)
+        self.mox.VerifyAll()
+
+
+    def testIsValidBotoKeyInvalid(self):
+        """Tests the boto key validation with invalid key."""
+        if boto is None:
+            logging.info('skip test since boto module not installed')
+            return
+        conn = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(boto, 'connect_gs')
+        boto.connect_gs('key', 'secret').AndReturn(conn)
+        conn.get_all_buckets().AndRaise(
+                boto.exception.GSResponseError('bad', 'reason'))
+        conn.close()
+        self.mox.ReplayAll()
+        valid, details = site_rpc_interface._is_valid_boto_key('key', 'secret')
+        self.assertFalse(valid)
+        self.assertEquals('The boto access key is not valid', details)
+        self.mox.VerifyAll()
+
+
+    def testIsValidBucketValid(self):
+        """Tests the bucket vaildation flow."""
+        if boto is None:
+            logging.info('skip test since boto module not installed')
+            return
+        conn = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(boto, 'connect_gs')
+        boto.connect_gs('key', 'secret').AndReturn(conn)
+        conn.lookup('bucket').AndReturn('bucket')
+        conn.close()
+        self.mox.ReplayAll()
+        valid, details = site_rpc_interface._is_valid_bucket(
+                'key', 'secret', 'bucket')
+        self.assertTrue(valid)
+        self.mox.VerifyAll()
+
+
+    def testIsValidBucketInvalid(self):
+        """Tests the bucket validation flow with invalid key."""
+        if boto is None:
+            logging.info('skip test since boto module not installed')
+            return
+        conn = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(boto, 'connect_gs')
+        boto.connect_gs('key', 'secret').AndReturn(conn)
+        conn.lookup('bucket').AndReturn(None)
+        conn.close()
+        self.mox.ReplayAll()
+        valid, details = site_rpc_interface._is_valid_bucket(
+                'key', 'secret', 'bucket')
+        self.assertFalse(valid)
+        self.assertEquals("Bucket bucket does not exist.", details)
+        self.mox.VerifyAll()
+
+
+    def testGetShadowConfigFromPartialUpdate(self):
+        """Tests getting shadow configuration based on partial upate."""
+        partial_config = {
+                'section1': [
+                    ('opt1', 'value1'),
+                    ('opt2', 'value2'),
+                    ('opt3', 'value3'),
+                    ('opt4', 'value4'),
+                    ]
+                }
+        shadow_config_str = "[section1]\nopt2 = value2_1\nopt4 = value4_1"
+        shadow_config = ConfigParser.ConfigParser()
+        shadow_config.readfp(StringIO.StringIO(shadow_config_str))
+        original_config = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(site_rpc_interface, '_read_original_config')
+        self.mox.StubOutWithMock(site_rpc_interface, '_read_raw_config')
+        site_rpc_interface._read_original_config().AndReturn(original_config)
+        site_rpc_interface._read_raw_config(
+                site_rpc_interface._CONFIG.shadow_file).AndReturn(shadow_config)
+        original_config.get_config_value(
+                'section1', 'opt1',
+                allow_blank=True, default='').AndReturn('value1')
+        original_config.get_config_value(
+                'section1', 'opt2',
+                allow_blank=True, default='').AndReturn('value2')
+        original_config.get_config_value(
+                'section1', 'opt3',
+                allow_blank=True, default='').AndReturn('blah')
+        original_config.get_config_value(
+                'section1', 'opt4',
+                allow_blank=True, default='').AndReturn('blah')
+        self.mox.ReplayAll()
+        shadow_config = site_rpc_interface._get_shadow_config_from_partial_update(
+                partial_config)
+        # opt1 same as the original.
+        self.assertFalse(shadow_config.has_option('section1', 'opt1'))
+        # opt2 reverts back to original
+        self.assertFalse(shadow_config.has_option('section1', 'opt2'))
+        # opt3 is updated from original.
+        self.assertEquals('value3', shadow_config.get('section1', 'opt3'))
+        # opt3 in shadow but updated again.
+        self.assertEquals('value4', shadow_config.get('section1', 'opt4'))
+        self.mox.VerifyAll()
+
+
+    def testGetShadowConfigFromPartialUpdateWithNewSection(self):
+        """
+        Test getting shadown configuration based on partial update with new section.
+        """
+        partial_config = {
+                'section2': [
+                    ('opt5', 'value5'),
+                    ('opt6', 'value6'),
+                    ],
+                }
+        shadow_config_str = "[section1]\nopt2 = value2_1\n"
+        shadow_config = ConfigParser.ConfigParser()
+        shadow_config.readfp(StringIO.StringIO(shadow_config_str))
+        original_config = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(site_rpc_interface, '_read_original_config')
+        self.mox.StubOutWithMock(site_rpc_interface, '_read_raw_config')
+        site_rpc_interface._read_original_config().AndReturn(original_config)
+        site_rpc_interface._read_raw_config(
+            site_rpc_interface._CONFIG.shadow_file).AndReturn(shadow_config)
+        original_config.get_config_value(
+                'section2', 'opt5',
+                allow_blank=True, default='').AndReturn('value5')
+        original_config.get_config_value(
+                'section2', 'opt6',
+                allow_blank=True, default='').AndReturn('blah')
+        self.mox.ReplayAll()
+        shadow_config = site_rpc_interface._get_shadow_config_from_partial_update(
+                partial_config)
+        # opt2 is still in shadow
+        self.assertEquals('value2_1', shadow_config.get('section1', 'opt2'))
+        # opt5 is not changed.
+        self.assertFalse(shadow_config.has_option('section2', 'opt5'))
+        # opt6 is updated.
+        self.assertEquals('value6', shadow_config.get('section2', 'opt6'))
+        self.mox.VerifyAll()
 
 
     def _mockReadFile(self, path, lines=[]):
