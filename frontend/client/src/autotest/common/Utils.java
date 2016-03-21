@@ -10,6 +10,7 @@ import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.HTMLPanel;
 
 import java.util.ArrayList;
@@ -317,5 +318,31 @@ public class Utils {
 
     public static String getBaseUrl() {
         return Window.Location.getProtocol() + "//" + Window.Location.getHost();
+    }
+
+    public static String getGoogleStorageHttpUrl(String bucketPath) {
+      if (bucketPath != null) {
+        String bucketName = bucketPath;
+        if (bucketPath.startsWith("gs://")) {
+          if (bucketPath.length() >= 5) {
+            bucketName = bucketPath.substring(5);
+            return "https://pantheon.corp.google.com/storage/browser/" + bucketName;
+          }
+        }
+      }
+      return null;
+    }
+
+    public static Anchor createGoogleStorageHttpUrlLink(String label, String bucketPath) {
+      String url = getGoogleStorageHttpUrl(bucketPath);
+      if (url != null) {
+        if (url != null) {
+          Anchor a =
+              new Anchor(label, url);
+          a.setTarget("_blank");
+          return a;
+        }
+      }
+      return null;
     }
 }
