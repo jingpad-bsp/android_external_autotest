@@ -990,7 +990,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self.is_up():
             return
-        self.fastboot_run('reboot')
+        # Ignore timeout error to allow `fastboot reboot` to fail quietly and
+        # check if the device is in adb mode.
+        self.fastboot_run('reboot', timeout=timeout, ignore_timeout=True)
         if not self.wait_up(timeout=timeout):
             raise error.AutoservError(
                     'The device failed to reboot into adb mode.')
