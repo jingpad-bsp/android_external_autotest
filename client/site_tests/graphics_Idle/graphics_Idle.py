@@ -252,8 +252,8 @@ class graphics_Idle(test.test):
         if utils.has_no_monitor():
             return ''
 
-        if (self._gpu_type == 'haswell' or self._gpu_type == 'ivybridge' or
-                self._gpu_type == 'sandybridge'):
+        if (self._gpu_type == 'broadwell' or self._gpu_type == 'haswell' or
+                self._gpu_type == 'ivybridge' or self._gpu_type == 'sandybridge'):
             tries = 0
             found = False
             param_path = self.get_valid_path(FBC_PATHS)
