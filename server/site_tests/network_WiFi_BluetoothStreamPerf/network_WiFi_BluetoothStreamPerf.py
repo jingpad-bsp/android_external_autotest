@@ -77,7 +77,7 @@ class network_WiFi_BluetoothStreamPerf(wifi_cell_test_base.WiFiCellTestBase):
                           config.tag)
             return
         values = [result.throughput for result in results]
-        self.output_perf_value(config.tag + ' ' + bt_tag, values, units='Mbps',
+        self.output_perf_value(config.tag + '_' + bt_tag, values, units='Mbps',
                                higher_is_better=True,
                                graph=ap_config_tag)
         result = netperf_runner.NetperfResult.from_samples(results)
@@ -92,8 +92,8 @@ class network_WiFi_BluetoothStreamPerf(wifi_cell_test_base.WiFiCellTestBase):
         elif self.base_through > 0:
             drop = int( (self.base_through - result.throughput) * 100 /
                         self.base_through)
-            self.output_perf_value(config.tag + ' ' + bt_tag + ' drop',
-                                   drop, units='% drop',
+            self.output_perf_value(config.tag + '_' + bt_tag + '_drop',
+                                   drop, units='percent_drop',
                                    higher_is_better=False,
                                    graph=ap_config_tag + '_drop')
             self.write_perf_keyval({'_'.join([config.tag, test_str, 'drop']):
