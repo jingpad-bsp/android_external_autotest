@@ -19,7 +19,7 @@ LIST_TEST_BINARIES_TEMPLATE = (
         'find %(path)s -type f -mindepth 2 -maxdepth 2 '
         '\( -perm -100 -o -perm -010 -o -perm -001 \)')
 
-GtestSuite = namedtuple('GtestSuite', ['path', 'run_as_root'])
+GtestSuite = namedtuple('GtestSuite', ['path', 'run_as_root', 'args'])
 
 class brillo_Gtests(test.test):
     """Run one or more native gTest Suites."""
@@ -29,9 +29,11 @@ class brillo_Gtests(test.test):
     def _get_whitelisted_tests(self, whitelist_path):
         """Return the list of whitelisted tests.
 
-        The whitelist is expected to be a two column CSV file containing the
-        test name and "yes" or "no" whether the test should be run as root or
-        not.
+        The whitelist is expected to be a three column CSV file containing:
+        * the test name
+        * "yes" or "no" whether the test should be run as root or not.
+        * optional command line arguments to be passed to the test.
+
         Anything after a # on a line is considered to be a comment and  ignored.
 
         @param whitelist_path: Path to the whitelist.
@@ -47,14 +49,16 @@ class brillo_Gtests(test.test):
                 continue
 
             parts = line.split(',')
-            if len(parts) != 2:
+            if len(parts) < 2:
                 logging.error('badly formatted line in %s: %s', whitelist_path,
                               line)
                 continue
 
             name = parts[0].strip()
+            extra_args = parts[2].strip() if len(parts) > 2 else ''
             path = os.path.join(NATIVE_TESTS_PATH, name, name)
-            suites.append(GtestSuite(path, parts[1].strip() == 'yes'))
+            suites.append(GtestSuite(path, parts[1].strip() == 'yes',
+                                     extra_args))
         return suites
 
 
@@ -67,7 +71,8 @@ class brillo_Gtests(test.test):
         """
         list_cmd = LIST_TEST_BINARIES_TEMPLATE % {'path': NATIVE_TESTS_PATH}
         gtest_suites_path = self.host.run_output(list_cmd).splitlines()
-        gtest_suites = [GtestSuite(path, True) for path in gtest_suites_path]
+        gtest_suites = [GtestSuite(path, True, '')
+                        for path in gtest_suites_path]
 
         if use_whitelist:
             try:
@@ -112,7 +117,7 @@ class brillo_Gtests(test.test):
             self.host.run('chmod +x %s' % gtestSuite.path)
 
         logging.debug('Running: %s', gtestSuite)
-        command = gtestSuite.path
+        command = '%s %s' % (gtestSuite.path, gtestSuite.args)
         if not gtestSuite.run_as_root:
           command = 'su shell %s' % command
 
@@ -159,7 +164,7 @@ class brillo_Gtests(test.test):
         """
         self.host = host
         if not gtest_suites and native_tests:
-            gtest_suites = [GtestSuite(t, True) for t in native_tests]
+            gtest_suites = [GtestSuite(t, True, '') for t in native_tests]
         if not gtest_suites:
             gtest_suites = self._find_all_gtestsuites(
                     use_whitelist=use_whitelist, filter_tests=filter_tests)
