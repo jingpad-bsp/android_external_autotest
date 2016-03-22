@@ -15,11 +15,41 @@ TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
 TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
 TELEMETRY_TIMEOUT_MINS = 120
 
+DUT_CHROME_ROOT = '/usr/local/telemetry/src'
+
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'
 WARNING_STATUS = 'WARNING'
 FAILED_STATUS = 'FAILED'
 
+# A list of benchmarks with that the telemetry test harness can run on dut.
+ON_DUT_WHITE_LIST = ['dromaeo.domcoreattr',
+                     'dromaeo.domcoremodify',
+                     'dromaeo.domcorequery',
+                     'dromaeo.domcoretraverse',
+                     'image_decoding.image_decoding_measurement',
+                     'jetstream',
+                     'kraken',
+                     'memory.top_7_stress',
+                     'octane',
+                     'page_cycler.typical_25',
+                     'robohornet_pro',
+                     'smoothness.top_25_smooth',
+                     'smoothness.tough_animation_cases',
+                     'smoothness.tough_canvas_cases',
+                     'smoothness.tough_filters_cases',
+                     'smoothness.tough_pinch_zoom_cases',
+                     'smoothness.tough_scrolling_cases',
+                     'smoothness.tough_webgl_cases',
+                     'speedometer',
+                     'startup.cold.blank_page',
+                     'sunspider',
+                     'tab_switching.top_10',
+                     'webrtc.webrtc_cases']
+
+# BLACK LIST
+#  'session_restore.cold.typical_25', # profile generator not implemented on
+                                      # CrOS.
 
 class TelemetryResult(object):
     """Class to represent the results of a telemetry run.
@@ -54,18 +84,40 @@ class TelemetryRunner(object):
     output to the caller.
     """
 
-    def __init__(self, host, local=False):
+    def __init__(self, host, local=False, telemetry_on_dut=True):
         """Initializes this telemetry runner instance.
 
         If telemetry is not installed for this build, it will be.
 
+        Basically, the following commands on the local pc on which test_that
+        will be executed, depending on the 4 possible combinations of
+        local x telemetry_on_dut:
+
+        local=True, telemetry_on_dut=False:
+        run_benchmark --browser=cros-chrome --remote=[dut] [test]
+
+        local=True, telemetry_on_dut=True:
+        ssh [dut] run_benchmark --browser=system [test]
+
+        local=False, telemetry_on_dut=False:
+        ssh [devserver] run_benchmark --browser=cros-chrome --remote=[dut] [test]
+
+        local=False, telemetry_on_dut=True:
+        ssh [devserver] ssh [dut] run_benchmark --browser=system [test]
+
         @param host: Host where the test will be run.
         @param local: If set, no devserver will be used, test will be run
                       locally.
+                      If not set, "ssh [devserver] " will be appended to test
+                      commands.
+        @param telemetry_on_dut: If set, telemetry itself (the test harness)
+                                 will run on dut.
+                                 It decides browser=[system|cros-chrome]
         """
         self._host = host
         self._devserver = None
         self._telemetry_path = None
+        self._telemetry_on_dut = telemetry_on_dut
         # TODO (llozano crbug.com/324964). Remove conditional code.
         # Use a class hierarchy instead.
         if local:
@@ -144,14 +196,25 @@ class TelemetryRunner(object):
                     self._devserver.url())
             telemetry_cmd.extend(['ssh', devserver_hostname])
 
-        telemetry_cmd.extend(
-                ['python',
-                 script,
-                 '--verbose',
-                 '--browser=cros-chrome',
-                 '--output-format=chartjson',
-                 '--output-dir=%s' % self._telemetry_path,
-                 '--remote=%s' % self._host.hostname])
+        if self._telemetry_on_dut:
+            telemetry_cmd.extend(
+                    ['ssh',
+                     self._host.hostname,
+                     'python',
+                     script,
+                     '--verbose',
+                     '--output-format=chartjson',
+                     '--output-dir=%s' % DUT_CHROME_ROOT,
+                     '--browser=system'])
+        else:
+            telemetry_cmd.extend(
+                    ['python',
+                     script,
+                     '--verbose',
+                     '--browser=cros-chrome',
+                     '--output-format=chartjson',
+                     '--output-dir=%s' % self._telemetry_path,
+                     '--remote=%s' % self._host.hostname])
         telemetry_cmd.extend(args)
         telemetry_cmd.append(test_or_benchmark)
 
@@ -171,10 +234,15 @@ class TelemetryRunner(object):
             if self._devserver:
                 devserver_hostname = dev_server.DevServer.get_server_name(
                         self._devserver.url()) + ':'
-            scp_cmd.extend(['scp',
-                            '%s%s/results-chart.json' % (
+            if self._telemetry_on_dut:
+                scp_cmd.extend(
+                    ['scp', '%s:%s/results-chart.json' % (
+                          self._host.hostname, DUT_CHROME_ROOT),
+                     perf_results_dir])
+            else:
+                scp_cmd.extend(['scp', '%s%s/results-chart.json' % (
                                     devserver_hostname, self._telemetry_path),
-                            perf_results_dir])
+                                perf_results_dir])
 
         return ' '.join(scp_cmd)
 
@@ -295,8 +363,18 @@ class TelemetryRunner(object):
                  execution.
         """
         logging.debug('Running telemetry benchmark: %s', benchmark)
-        telemetry_script = os.path.join(self._telemetry_path,
-                                        TELEMETRY_RUN_BENCHMARKS_SCRIPT)
+
+        if benchmark not in ON_DUT_WHITE_LIST:
+            self._telemetry_on_dut = False
+
+        if self._telemetry_on_dut:
+            telemetry_script = os.path.join(DUT_CHROME_ROOT,
+                                            TELEMETRY_RUN_BENCHMARKS_SCRIPT)
+            self._ensure_deps(self._host, benchmark)
+        else:
+            telemetry_script = os.path.join(self._telemetry_path,
+                                            TELEMETRY_RUN_BENCHMARKS_SCRIPT)
+
         result = self._run_telemetry(telemetry_script, benchmark, *args)
 
         if result.status is WARNING_STATUS:
@@ -308,3 +386,50 @@ class TelemetryRunner(object):
         if perf_value_writer:
             self._run_scp(perf_value_writer.resultsdir)
         return result
+
+    def _ensure_deps(self, dut, test_name):
+        """
+        Ensure the dependencies are locally available on DUT.
+
+        @param dut: The autotest host object representing DUT.
+        @param test_name: Name of the telemetry test.
+        """
+        # Get DEPs using host's telemetry.
+        format_string = ('python %s/tools/perf/fetch_benchmark_deps.py %s')
+        command = format_string % (self._telemetry_path, test_name)
+        stdout = StringIO.StringIO()
+        stderr = StringIO.StringIO()
+
+        if self._devserver:
+            devserver_hostname = self._devserver.url().split(
+                    'http://')[1].split(':')[0]
+            command = 'ssh %s %s' % (devserver_hostname, command)
+
+        logging.info('Getting DEPs: %s', command)
+        try:
+            result = utils.run(command, stdout_tee=stdout,
+                               stderr_tee=stderr)
+        except error.CmdError as e:
+            logging.debug('Error occurred getting DEPs: %s\n %s\n',
+                          stdout.getvalue(), stderr.getvalue())
+            raise error.TestFail('Error occurred while getting DEPs.')
+
+        # Download DEPs to DUT.
+        # send_file() relies on rsync over ssh. Couldn't be better.
+        stdout_str = stdout.getvalue()
+        stdout.close()
+        stderr.close()
+        for dep in stdout_str.split():
+            src = os.path.join(self._telemetry_path, dep)
+            dst = os.path.join(DUT_CHROME_ROOT, dep)
+            try:
+                if self._devserver:
+                    logging.info('Copying: %s -> %s', src, dst)
+                    utils.run('ssh %s rsync %s %s:%s' % (devserver_hostname, src, self._host.hostname, dst))
+                else:
+                    if not os.path.isfile(src):
+                        raise error.TestFail('Error occurred while saving DEPs.')
+                    logging.info('Copying: %s -> %s', src, dst)
+                    dut.send_file(src, dst)
+            except:
+                raise error.TestFail('Error occurred while sending DEPs to dut.\n')

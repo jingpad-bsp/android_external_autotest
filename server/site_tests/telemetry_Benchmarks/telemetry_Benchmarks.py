@@ -18,5 +18,7 @@ class telemetry_Benchmarks(test.test):
         @param benchmark: telemetry benchmark test to run.
         """
         local = args.get("local") == "True"
-        telemetry = telemetry_runner.TelemetryRunner(host, local)
+        telemetry_on_dut = args.get("telemetry_on_dut") != "False"
+        telemetry = telemetry_runner.TelemetryRunner(host, local,
+                                                     telemetry_on_dut)
         telemetry.run_telemetry_benchmark(benchmark, perf_value_writer=self)
