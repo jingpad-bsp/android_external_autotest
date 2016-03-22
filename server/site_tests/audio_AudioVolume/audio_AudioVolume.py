@@ -49,6 +49,10 @@ class audio_AudioVolume(audio_test.AudioTest):
                            to trigger Cros switching from A2DP to HSP.
 
         """
+        if (source_id == chameleon_audio_ids.CrosIds.SPEAKER and
+            not audio_test_utils.has_internal_speaker(host)):
+            return
+
         chameleon_board = host.chameleon
         factory = self.create_remote_facade_factory(host)
 
