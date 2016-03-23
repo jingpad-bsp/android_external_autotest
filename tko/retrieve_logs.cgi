@@ -18,9 +18,7 @@ Content-Type: text/plain
 Location: %s\r\n\r
 """
 
-# TODO(b/27653354): This is a temporary fix. Once the bug is fixed, the value
-# should be reverted to 'storage.cloud.google.com/'
-GOOGLE_STORAGE_PATTERN = 'pantheon.corp.google.com/storage/browser/'
+GOOGLE_STORAGE_PATTERN = 'console.developers.google.com/storage/browser/'
 
 # Define function for retrieving logs
 def _retrieve_logs_dummy(job_path):
