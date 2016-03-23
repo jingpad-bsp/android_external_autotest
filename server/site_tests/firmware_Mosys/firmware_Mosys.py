@@ -260,6 +260,17 @@ class firmware_Mosys(FirmwareTest):
         else:
           logging.info('Skip "%s", command not available.', command)
 
+        # g. mosys -k memory spd print all (check no error output)
+        command = 'mosys -k memory spd print all'
+        output = self.run_cmd(command)
+        p = re.compile('^dimm=".*$')
+        # Each line should start with "dimm=".
+        for i in output:
+            if not p.match(i):
+                logging.error('output does not start with dimm=%s', i)
+                self._tag_failure(command)
+                break
+
         # Add any other mosys commands or tests before this section.
         # empty failed_command indicate all passed.
         if self.failed_command:
