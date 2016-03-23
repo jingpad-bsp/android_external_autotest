@@ -189,7 +189,7 @@ class ControlData(object):
 
     def _set_set(self, attr, val):
         val = str(val)
-        items = [x.strip() for x in val.split(',')]
+        items = [x.strip() for x in val.split(',') if x.strip()]
         setattr(self, attr, set(items))
 
 
