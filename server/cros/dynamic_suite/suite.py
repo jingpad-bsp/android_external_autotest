@@ -828,7 +828,8 @@ class Suite(object):
         except error.NoEligibleHostException:
             logging.debug('%s not applicable for this board/pool. '
                           'Emitting TEST_NA.', test.name)
-            Status('TEST_NA', test.name, 'Unsatisfiable DEPENDENCIES',
+            Status('TEST_NA', test.name,
+                   'Test skipped, no DUTs with expected labels found',
                    begin_time_str=begin_time_str).record_all(record)
         except proxy.ValidationError as e:
             # The goal here is to treat a dependency on a
