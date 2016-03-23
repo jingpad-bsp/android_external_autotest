@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import shutil
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -70,6 +71,43 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
     with open(minidump_path + '.txt', 'w') as trace_file:
         trace_file.write(trace_text)
 
+def generate_stacktrace_for_file(minidump, host_resultdir):
+    """
+    Tries to generate a stack trace for the file located at |minidump|.
+    @param minidump: path to minidump file to generate the stacktrace for.
+    @param host_resultdir: server job's result directory.
+    """
+    # First, try to symbolicate locally.
+    try:
+        logging.info('Trying to generate stack trace locally for %s', minidump)
+        generate_minidump_stacktrace(minidump)
+        logging.info('Generated stack trace for dump %s', minidump)
+        return
+    except client_utils.error.CmdError as err:
+        logging.info('Failed to generate stack trace locally for '
+                     'dump %s (rc=%d):\n%r',
+                     minidump, err.result_obj.exit_status, err)
+
+    # If that did not succeed, try to symbolicate using the dev server.
+    try:
+        logging.info('Generating stack trace using devserver for %s', minidump)
+        is_timeout, _ = retry.timeout(symbolicate_minidump_with_devserver,
+                                      args=(minidump, host_resultdir),
+                                      timeout_sec=600)
+        if is_timeout:
+            logging.info('Generating stack trace timed out for dump %s',
+                         minidump)
+            autotest_stats.Counter(SYMBOLICATE_TIMEDOUT).increment()
+        else:
+            logging.info('Generated stack trace for dump %s', minidump)
+            return
+    except dev_server.DevServerException as e:
+        logging.info('Failed to generate stack trace on devserver for dump '
+                     '%s:\n%r', minidump, e)
+
+    # Symbolicating failed.
+    logging.warning('Failed to generate stack trace for %s (see info logs)',
+                    minidump)
 
 def find_and_generate_minidump_stacktraces(host_resultdir):
     """
@@ -82,7 +120,8 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
 
     @param host_resultdir: Directory to walk looking for dmp files.
 
-    @returns The list of generated minidumps.
+    @returns The list of all found minidump files. Each dump may or may not have
+             been symbolized.
     """
     minidumps = []
     for dir, subdirs, files in os.walk(host_resultdir):
@@ -90,36 +129,9 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
             if not file.endswith('.dmp'):
                 continue
             minidump = os.path.join(dir, file)
+            generate_stacktrace_for_file(minidump, host_resultdir)
+            minidumps.append(minidump)
 
-            # First, try to symbolicate locally.
-            try:
-                generate_minidump_stacktrace(minidump)
-                logging.info('Generated stack trace for dump %s', minidump)
-                minidumps.append(minidump)
-                continue
-            except client_utils.error.CmdError as err:
-                logging.warning('Failed to generate stack trace locally for '
-                             'dump %s (rc=%d):\n%r',
-                             minidump, err.result_obj.exit_status, err)
-
-            # If that did not succeed, try to symbolicate using the dev server.
-            try:
-                logging.info('Generating stack trace for %s', minidump)
-                minidumps.append(minidump)
-                is_timeout, _ = retry.timeout(
-                        symbolicate_minidump_with_devserver,
-                        args=(minidump, host_resultdir),
-                        timeout_sec=600)
-                if is_timeout:
-                    logging.warn('Generating stack trace is timed out for dump '
-                                 '%s', minidump)
-                    autotest_stats.Counter(SYMBOLICATE_TIMEDOUT).increment()
-                else:
-                    logging.info('Generated stack trace for dump %s', minidump)
-                continue
-            except dev_server.DevServerException as e:
-                logging.warning('Failed to generate stack trace on devserver for '
-                             'dump %s:\n%r', minidump, e)
     return minidumps
 
 
@@ -139,6 +151,24 @@ def fetch_orphaned_crashdumps(host, host_resultdir):
     return minidumps
 
 
+def _copy_to_debug_dir(host_resultdir, filename):
+    """
+    Copies a file to the debug dir under host_resultdir.
+
+    @param host_resultdir The result directory for this host for this test run.
+    @param filename The full path of the file to copy to the debug folder.
+    """
+    debugdir = os.path.join(host_resultdir, 'debug')
+    src = filename
+    dst = os.path.join(debugdir, os.path.basename(filename))
+
+    try:
+        shutil.copyfile(src, dst)
+        logging.info('Copied %s to %s', src, dst)
+    except IOError:
+        logging.warning('Failed to copy %s to %s', src, dst)
+
+
 def get_site_crashdumps(host, test_start_time):
     """
     Copy all of the crashdumps from a host to the results directory.
@@ -155,6 +185,12 @@ def get_site_crashdumps(host, test_start_time):
     # TODO(milleral): handle orphans differently. crosbug.com/38202
     try:
         orphans = fetch_orphaned_crashdumps(host, infodir)
+
+        # Delete infodir if we have no orphans
+        if not orphans:
+            logging.info('There are no orphaned crashes; deleting %s', infodir)
+            os.rmdir(infodir)
+
     except Exception as e:
         orphans = []
         logging.warning('Collection of orphaned crash dumps failed %s', e)
@@ -178,6 +214,14 @@ def get_site_crashdumps(host, test_start_time):
 
     for minidump in orphans:
         report_bug_from_crash(host, minidump)
+
+    # We copy Chrome crash information to the debug dir to assist debugging.
+    # Since orphans occurred on a previous run, they are most likely not
+    # relevant to the current failure, so we don't copy them.
+    for minidump in minidumps:
+        minidump_no_ext = os.path.splitext(minidump)[0]
+        _copy_to_debug_dir(host_resultdir, minidump_no_ext + '.dmp.txt')
+        _copy_to_debug_dir(host_resultdir, minidump_no_ext + '.log')
 
     return orphans
 
