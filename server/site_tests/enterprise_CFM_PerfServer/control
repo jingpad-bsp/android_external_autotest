@@ -9,7 +9,6 @@ TEST_CATEGORY = "Performance"
 TEST_CLASS = "enterprise"
 ATTRIBUTES = "suite:hotrod"
 TEST_TYPE = "server"
-DEPENDENCIES = ""
 
 DOC = """
 This test enrolls ChromeOS device in to hotrod mode and captures device usage
