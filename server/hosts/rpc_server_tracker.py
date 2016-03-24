@@ -12,6 +12,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 try:
     import jsonrpclib
@@ -192,6 +193,7 @@ class RpcServerTracker(object):
                 successful = True
             finally:
                 if not successful:
+                    autotest_stats.Counter('ssh_tunnel_failure').increment()
                     logging.error('Failed to start XMLRPC server.')
                     self.disconnect(port)
         logging.info('XMLRPC server started successfully.')
