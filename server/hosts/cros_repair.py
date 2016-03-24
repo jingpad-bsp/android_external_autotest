@@ -104,17 +104,17 @@ class TPMStatusVerifier(hosts.Verifier):
         try:
             tpm = status['tpm']
             if not tpm['enabled']:
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         'TPM is not enabled -- Hardware is not working.')
             if not tpm['can_connect']:
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         ('TPM connect failed -- '
                          'last_error=%d.' % tpm['last_error']))
             if (tpm['owned'] and not tpm['can_load_srk']):
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         'Cannot load the TPM SRK')
             if (tpm['can_load_srk'] and not tpm['can_load_srk_pubkey']):
-                raise hosts.AutotestHostVerifyError(
+                raise hosts.AutoservVerifyError(
                         'Cannot load the TPM SRC public key')
         except KeyError:
             logging.info('Cannot determine the Crytohome valid status - '
@@ -306,9 +306,9 @@ def create_cros_repair_strategy():
         # the 'cros' verifier is properly split into its component
         # parts, some of the 'cros' checks will be dependencies, others
         # will be triggers.
-        (AutoUpdateRepair, 'au', ['ssh', 'good_au'], ['cros']),
-        (PowerWashRepair, 'powerwash', ['ssh'], ['good_au', 'cros']),
-        (ServoInstallRepair, 'usb', [], ['ssh', 'good_au', 'cros']),
+        (AutoUpdateRepair, 'au', ['ssh', 'tpm', 'good_au'], ['cros']),
+        (PowerWashRepair, 'powerwash', ['ssh'], ['tpm', 'good_au', 'cros']),
+        (ServoInstallRepair, 'usb', [], ['ssh', 'tpm', 'good_au', 'cros']),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
 
