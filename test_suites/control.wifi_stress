@@ -34,5 +34,4 @@ dynamic_suite.reimage_and_run(
     file_bugs=file_bugs, priority=priority, timeout_mins=1440,
     max_runtime_mins=1440, devserver_url=devserver_url,
     version_prefix=provision.CROS_VERSION_PREFIX, job_retry=job_retry,
-    max_retries=max_retries, suite_dependencies=suite_dependencies,
-    wait_for_results=wait_for_results)
+    max_retries=max_retries, wait_for_results=wait_for_results)
