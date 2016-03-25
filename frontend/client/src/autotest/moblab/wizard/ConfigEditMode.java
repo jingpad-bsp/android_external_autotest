@@ -229,6 +229,9 @@ public class ConfigEditMode
             if (status.isOk()) {
               reset();
               wizard.onFinishEdit();
+              NotifyManager.getInstance().showMessage(
+                  "Configuration is submitted. Device is rebooted "
+                  + "for new change to take effect.");
             } else {
               String details = status.getDetails();
               if (details == null) {

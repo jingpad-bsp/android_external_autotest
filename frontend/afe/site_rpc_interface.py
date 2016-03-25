@@ -438,6 +438,11 @@ def reset_config_settings():
 
 
 @moblab_only
+def reboot_moblab():
+    """Simply reboot the device."""
+    os.system('sudo reboot')
+
+@moblab_only
 def set_boto_key(boto_key):
     """Update the boto_key file.
 
@@ -700,6 +705,9 @@ def submit_wizard_config_info(cloud_storage_info):
         _write_config_file(MOBLAB_BOTO_LOCATION, boto_config, True)
 
     _CONFIG.parse_config_file()
+
+    # TODO(ntang): replace reboot with less intrusive reloading.
+    os.system('sudo reboot')
 
     return _create_operation_status_response(True, None)
 
