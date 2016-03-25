@@ -315,7 +315,7 @@ class CrashTest(test.test):
 
     def _initialize_crash_reporter(self):
         """Start up the crash reporter."""
-        utils.system('%s --init --nounclean_check' % self._CRASH_REPORTER_PATH)
+        utils.system('%s --init' % self._CRASH_REPORTER_PATH)
         # Completely disable crash_reporter from generating crash dumps
         # while any tests are running, otherwise a crashy system can make
         # these tests flaky.
