@@ -14,6 +14,7 @@ import xml.etree.ElementTree as et
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging, service_stopper
+from autotest_lib.client.cros.graphics import graphics_utils
 
 
 class graphics_dEQP(test.test):
@@ -28,6 +29,7 @@ class graphics_dEQP(test.test):
     _board = None
     _cpu_type = None
     _gpu_type = None
+    _can_run_executables = []
     _filter = None
     _width = 256  # Use smallest width for which all tests run/pass.
     _height = 256  # Use smallest height for which all tests run/pass.
@@ -48,9 +50,21 @@ class graphics_dEQP(test.test):
     }
 
     def initialize(self):
-        self._gpu_type = utils.get_gpu_family()
-        self._cpu_type = utils.get_cpu_soc_family()
         self._board = utils.get_board()
+        self._cpu_type = utils.get_cpu_soc_family()
+        self._gpu_type = utils.get_gpu_family()
+        # Determine which executable should be run. Right now never egl.
+        major, minor = graphics_utils.get_gles_version()
+        if major is None or minor is None:
+            raise error.TestError(
+                'Could not get gles version information (%d, %d).' %
+                (major, minor))
+        if major >= 2:
+            self._can_run_executables.append('gles2')
+        if major >= 3:
+            self._can_run_executables.append('gles3')
+            if major > 3 or minor >= 1:
+                self._can_run_executables.append('gles31')
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
 
     def cleanup(self):
@@ -141,6 +155,12 @@ class graphics_dEQP(test.test):
         os.chdir(os.path.dirname(executable))
         return executable
 
+    def _can_run(self, executable):
+        for bin in self._can_run_executables:
+            if bin in executable:
+                return True
+        return False
+
     def _bootstrap_new_test_cases(self, test_filter):
         """Ask dEQP for all test cases and removes non-Pass'ing ones.
 
@@ -154,8 +174,7 @@ class graphics_dEQP(test.test):
         """
         test_cases = []
         executable = self._get_executable(test_filter)
-        # On pinetrail we only can run gles2 tests. The rest crash.
-        if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+        if not self._can_run(executable):
             return test_cases
 
         not_passing_cases = self._load_not_passing_cases(test_filter)
@@ -279,7 +298,7 @@ class graphics_dEQP(test.test):
                        '--deqp-surface-height=%d '
                        '--deqp-log-filename=%s' %
                        (executable, test_case, width, height, log_file))
-            if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+            if not self._can_run(executable):
                 result = 'Skipped'
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
             else:
@@ -387,7 +406,7 @@ class graphics_dEQP(test.test):
 
             command += '--deqp-log-filename=' + log_file
 
-            if self._gpu_type == 'pinetrail' and not 'gles2' in executable:
+            if not self._can_run(executable):
                 logging.info('Skipping tests on %s: %s', self._gpu_type,
                              batch_cases)
             else:

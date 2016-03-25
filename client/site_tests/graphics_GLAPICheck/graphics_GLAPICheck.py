@@ -134,36 +134,21 @@ class graphics_GLAPICheck(test.test):
     def __check_wflinfo(self):
         # TODO(ihf): Extend this function once gl(es)_APICheck code has
         # been upstreamed to waffle.
-        cmd = utils.wflinfo_cmd()
-        logging.info('Running %s', cmd)
-        wflinfo = utils.system_output(cmd, retain_output=True,
-                                      ignore_status=False)
-        # OpenGL version string: OpenGL ES 3.0 Mesa 10.5.0-devel
-        version = re.findall(r'OpenGL version string: '
-                             r'OpenGL ES ([0-9]+).([0-9]+)', wflinfo)
-        if version:
-            # GLES version has to be 2.0 or above.
-            version_major = int(version[0][0])
-            version_minor = int(version[0][1])
+        version_major, version_minor = graphics_utils.get_gles_version()
+        if version_major:
             version_info = ('GLES_VERSION = %d.%d' %
                             (version_major, version_minor))
             logging.info(version_info)
+            # GLES version has to be 2.0 or above.
             if version_major < 2:
                 self.error_message = ' %s' % version_info
                 return False
-            cmd = 'eglinfo'
-            eglinfo = utils.system_output(cmd, retain_output=True,
-                                          ignore_status=False)
-            # EGL version string: 1.4 (DRI2)
-            version = re.findall(r'EGL version string: ([0-9]+).([0-9]+)',
-                                 eglinfo)
-            # EGL version has to be 1.3 or above.
-            if version:
-                version_major = int(version[0][0])
-                version_minor = int(version[0][1])
+            version_major, version_minor = graphics_utils.get_egl_version()
+            if version_major:
                 version_info = ('EGL_VERSION = %d.%d' %
                                 (version_major, version_minor))
                 logging.info(version_info)
+                # EGL version has to be 1.3 or above.
                 if (version_major == 1 and version_minor >= 3 or
                     version_major > 1):
                     logging.warning('Please add missing extension check. '

@@ -860,6 +860,31 @@ def is_sw_rasterizer():
     return 'llvmpipe' in result.lower() or 'soft' in result.lower()
 
 
+def get_gles_version():
+    cmd = utils.wflinfo_cmd()
+    wflinfo = utils.system_output(cmd, retain_output=False, ignore_status=False)
+    # OpenGL version string: OpenGL ES 3.0 Mesa 10.5.0-devel
+    version = re.findall(r'OpenGL version string: '
+                         r'OpenGL ES ([0-9]+).([0-9]+)', wflinfo)
+    if version:
+        version_major = int(version[0][0])
+        version_minor = int(version[0][1])
+        return (version_major, version_minor)
+    return (None, None)
+
+
+def get_egl_version():
+    cmd = 'eglinfo'
+    eglinfo = utils.system_output(cmd, retain_output=False, ignore_status=False)
+    # EGL version string: 1.4 (DRI2)
+    version = re.findall(r'EGL version string: ([0-9]+).([0-9]+)', eglinfo)
+    if version:
+        version_major = int(version[0][0])
+        version_minor = int(version[0][1])
+        return (version_major, version_minor)
+    return (None, None)
+
+
 class GraphicsKernelMemory(object):
     """
     Reads from sysfs to determine kernel gem objects and memory info.

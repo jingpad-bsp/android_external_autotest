@@ -995,7 +995,6 @@ def get_gpu_family():
     cpuarch = base_utils.get_cpu_soc_family()
     if cpuarch == 'exynos5' or cpuarch == 'rockchip':
         cmd = wflinfo_cmd()
-        logging.info('Running %s', cmd)
         wflinfo = utils.system_output(cmd,
                                       retain_output=True,
                                       ignore_status=False)
