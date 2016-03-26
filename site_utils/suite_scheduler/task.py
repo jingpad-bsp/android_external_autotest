@@ -16,8 +16,12 @@ from constants import Labels
 from constants import Builds
 
 import common
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
+
+
+CONFIG = global_config.global_config
 
 OS_TYPE_CROS = 'cros'
 OS_TYPE_BRILLO = 'brillo'
@@ -730,7 +734,13 @@ class Task(object):
     def _GetFirmwareBuild(self, spec, mv, board):
         """Get the firmware build name to test with ChromeOS build.
 
-        @param spec: build spec for RO or RW firmware, e.g., firmware, cros
+        @param spec: build spec for RO or RW firmware, e.g., firmware, cros.
+                For RO firmware, the value can also be in the format of
+                released_ro_X, where X is the index of the list or RO builds
+                defined in global config RELEASED_RO_BUILDS_[board].
+                For example, for spec `released_ro_2`, and global config
+                CROS/RELEASED_RO_BUILDS_veyron_jerry: build1,build2
+                the return firmare RO build should be build2.
         @param mv: an instance of manifest_versions.ManifestVersions.
         @param board: the board against which to run self._suite.
 
@@ -742,6 +752,17 @@ class Task(object):
                                       'supported yet.')
         if not spec:
             return None
+
+        if spec.startswith('released_ro_'):
+            index = int(spec[12:])
+            released_ro_builds = CONFIG.get_config_value(
+                    'CROS', 'RELEASED_RO_BUILDS_%s' % board, type=str,
+                    default='').split(',')
+            if not released_ro_builds or len(released_ro_builds) < index:
+                return None
+            else:
+                return released_ro_builds[index-1]
+
         # build_type is the build type of the firmware build, e.g., factory,
         # firmware or release. If spec is set to cros, build type should be
         # mapped to release.
@@ -877,11 +898,20 @@ class Task(object):
                             self.firmware_rw_build_spec, mv, board)
                 firmware_ro_build = self._GetFirmwareBuild(
                             self.firmware_ro_build_spec, mv, board)
+                # If RO firmware is specified, force to create suite, because
+                # dedupe based on test source build does not reflect the change
+                # of RO firmware.
+                if firmware_ro_build:
+                    force = True
         except manifest_versions.QueryException as e:
             logging.error(e)
             logging.error('Running %s on %s is failed. Failed to find build '
                           'required to run the suite.', self._name, board)
             return False
+
+        # Return if there is no firmware RO build found for given spec.
+        if not firmware_ro_build and self.firmware_ro_build_spec:
+            return True
 
         builds = []
         for branch, build in branch_builds.iteritems():
