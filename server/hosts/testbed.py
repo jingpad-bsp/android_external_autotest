@@ -243,7 +243,7 @@ class TestBed(object):
             if not match:
                 raise error.InstallError('Build %s is invalid. Failed to parse '
                                          'the board name.' % build)
-            board = match.group('BOARD')
+            board = match.group('BUILD_TARGET')
             builds_by_board.setdefault(board, []).append(build)
 
         # Pair build with dut with matching board.
