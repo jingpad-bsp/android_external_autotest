@@ -14,12 +14,12 @@ from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 class platform_Flashrom(FirmwareTest):
     """
     Test flashrom works correctly by calling
-    chromeos-firmwareupdate --mode=factory.
+    chromeos-firmwareupdate --mode=recovery.
     """
     version = 1
 
 
-    def initialize(self, host, cmdline_args, dev_mode=True):
+    def initialize(self, host, cmdline_args):
         # This test assume the system already have the latest RW from
         # shellball.  You should run chromeos-firmware --mode=factory.
         # Device should have WP disable.
@@ -27,7 +27,7 @@ class platform_Flashrom(FirmwareTest):
         # Parse arguments from command line
         dict_args = utils.args_to_dict(cmdline_args)
         super(platform_Flashrom, self).initialize(host, cmdline_args)
-        self.switcher.setup_mode('dev' if dev_mode else 'normal')
+        self.switcher.setup_mode('dev')
 
     def run_cmd(self, command, checkfor=''):
         """
@@ -58,20 +58,20 @@ class platform_Flashrom(FirmwareTest):
         # 1) Check SW WP is disabled.
         self._check_wp_disable()
 
-        # Output location.
-        tmpdir = os.getenv('TMPDIR')
+        # Output location on DUT.
+        # Set if you want to preserve output content for debug.
+        tmpdir = os.getenv('DUT_TMPDIR')
         if not tmpdir: tmpdir = '/tmp'
 
-        # 2) Save the DUT bios RW section B for restore later if needed.
-        rw_b = os.path.join(tmpdir, 'rw_b.bin')
-        self.run_cmd('flashrom -r -i RW_SECTION_B:%s' % rw_b, 'SUCCESS')
-
-        # 3) Erase RW section B.  Needed CL 329549 starting with R51-7989.0.0.
+        # 2) Erase RW section B.  Needed CL 329549 starting with R51-7989.0.0.
         self.run_cmd('flashrom -E -i RW_SECTION_B', 'SUCCESS')
 
-        # 4) Reinstall RW B (Test flashrom)
-        self.run_cmd('chromeos-firmwareupdate --mode=factory',
-                     '(factory_install) completed.')
+        # 3) Reinstall RW B (Test flashrom)
+        self.run_cmd('chromeos-firmwareupdate --mode=recovery',
+                     '(recovery) completed.')
+
+        # 4) Check that device can be rebooted.
+        self.switcher.mode_aware_reboot()
 
         # 5) Compare flash section B vs shellball section B
         # 5.1) Extract shellball RW section B.
@@ -93,12 +93,6 @@ class platform_Flashrom(FirmwareTest):
         result_output = self.run_cmd('cmp %s %s' % (shball_rw_b, rw_b2))
         logging.info('cmp %s %s == %s', shball_rw_b, rw_b2, result_output)
 
-        # 6) Restore RW section B if different then 2.
-        out = self.run_cmd('cmp %s %s' % (rw_b, rw_b2))
-        logging.info('cmp %s %s == %s', rw_b, rw_b2, out)
-        if ''.join(out) != '':
-          self.run_cmd('flashrom -w -i RW_SECTION_B:%s' % rw_b, 'SUCCESS')
-
-        # 7) Report result.
+        # 6) Report result.
         if ''.join(result_output) != '':
             raise error.TestFail('Mismatch between %s and %s' % (rw_b, rw_b2))
