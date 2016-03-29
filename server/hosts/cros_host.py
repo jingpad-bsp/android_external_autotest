@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import functools
 import logging
 import os
 import re
@@ -21,9 +20,6 @@ from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
-from autotest_lib.client.cros.audio import cras_utils
-from autotest_lib.client.cros.input_playback import input_playback
-from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import autotest
@@ -35,6 +31,8 @@ from autotest_lib.server.cros.dynamic_suite import tools, frontend_wrappers
 from autotest_lib.server.cros.faft.config.config import Config as FAFTConfig
 from autotest_lib.server.cros.servo import plankton
 from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import base_label
+from autotest_lib.server.hosts import cros_label
 from autotest_lib.server.hosts import chameleon_host
 from autotest_lib.server.hosts import cros_repair
 from autotest_lib.server.hosts import plankton_host
@@ -43,8 +41,6 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
 CONFIG = global_config.global_config
-
-LUCID_SLEEP_BOARDS = ['samus', 'lulu']
 
 
 class FactoryImageCheckerException(error.AutoservError):
@@ -116,17 +112,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     _LAB_MACHINE_FILE = '/mnt/stateful_partition/.labmachine'
     _RPM_HOSTNAME_REGEX = ('chromeos(\d+)(-row(\d+))?-rack(\d+[a-z]*)'
                            '-host(\d+)')
-    _LIGHTSENSOR_FILES = [ "in_illuminance0_input",
-                           "in_illuminance_input",
-                           "in_illuminance0_raw",
-                           "in_illuminance_raw",
-                           "illuminance0_input"]
-    _LIGHTSENSOR_SEARCH_DIR = '/sys/bus/iio/devices'
-    _LABEL_FUNCTIONS = []
-    _DETECTABLE_LABELS = []
-    label_decorator = functools.partial(server_utils.add_label_detector,
-                                        _LABEL_FUNCTIONS,
-                                        _DETECTABLE_LABELS)
 
     # Constants used in ping_wait_up() and ping_wait_down().
     #
@@ -294,6 +279,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         super(CrosHost, self)._initialize(hostname=hostname,
                                           *args, **dargs)
         self._repair_strategy = cros_repair.create_cros_repair_strategy()
+        self.labels = base_label.LabelRetriever(cros_label.CROS_LABELS)
         # self.env is a dictionary of environment variable settings
         # to be exported for commands run on the host.
         # LIBC_FATAL_STDERR_ can be useful for diagnosing certain
@@ -1864,7 +1850,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return utils.parse_chrome_version(version_string)
 
 
-    @label_decorator()
+    # TODO(kevcheng): change this to just return the board without the
+    # 'board:' prefix and fix up all the callers.  Also look into removing the
+    # need for this method.
     def get_board(self):
         """Determine the correct board label for this host.
 
@@ -1874,362 +1862,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                               run_method=self.run)
         return (ds_constants.BOARD_PREFIX +
                 release_info['CHROMEOS_RELEASE_BOARD'])
-
-
-    @label_decorator('lightsensor')
-    def has_lightsensor(self):
-        """Determine the correct board label for this host.
-
-        @returns the string 'lightsensor' if this host has a lightsensor or
-                 None if it does not.
-        """
-        search_cmd = "find -L %s -maxdepth 4 | egrep '%s'" % (
-            self._LIGHTSENSOR_SEARCH_DIR, '|'.join(self._LIGHTSENSOR_FILES))
-        try:
-            # Run the search cmd following the symlinks. Stderr_tee is set to
-            # None as there can be a symlink loop, but the command will still
-            # execute correctly with a few messages printed to stderr.
-            self.run(search_cmd, stdout_tee=None, stderr_tee=None)
-            return 'lightsensor'
-        except error.AutoservRunError:
-            # egrep exited with a return code of 1 meaning none of the possible
-            # lightsensor files existed.
-            return None
-
-
-    @label_decorator('bluetooth')
-    def has_bluetooth(self):
-        """Determine the correct board label for this host.
-
-        @returns the string 'bluetooth' if this host has bluetooth or
-                 None if it does not.
-        """
-        try:
-            self.run('test -d /sys/class/bluetooth/hci0')
-            # test exited with a return code of 0.
-            return 'bluetooth'
-        except error.AutoservRunError:
-            # test exited with a return code 1 meaning the directory did not
-            # exist.
-            return None
-
-
-    @label_decorator('ec')
-    def get_ec(self):
-        """
-        Determine the type of EC on this host.
-
-        @returns a string representing this host's embedded controller type.
-        At present, it only returns "ec:cros", for Chrome OS ECs. Other types
-        of EC (or none) don't return any strings, since no tests depend on
-        those.
-        """
-        cmd = 'mosys ec info'
-        # The output should look like these, so that the last field should
-        # match our EC version scheme:
-        #
-        #   stm | stm32f100 | snow_v1.3.139-375eb9f
-        #   ti | Unknown-10de | peppy_v1.5.114-5d52788
-        #
-        # Non-Chrome OS ECs will look like these:
-        #
-        #   ENE | KB932 | 00BE107A00
-        #   ite | it8518 | 3.08
-        #
-        # And some systems don't have ECs at all (Lumpy, for example).
-        regexp = r'^.*\|\s*(\S+_v\d+\.\d+\.\d+-[0-9a-f]+)\s*$'
-
-        ecinfo = self.run(command=cmd, ignore_status=True)
-        if ecinfo.exit_status == 0:
-            res = re.search(regexp, ecinfo.stdout)
-            if res:
-                logging.info("EC version is %s", res.groups()[0])
-                return 'ec:cros'
-            logging.info("%s got: %s", cmd, ecinfo.stdout)
-            # Has an EC, but it's not a Chrome OS EC
-            return None
-        logging.info("%s exited with status %d", cmd, ecinfo.exit_status)
-        # No EC present
-        return None
-
-
-    @label_decorator('accels')
-    def get_accels(self):
-        """
-        Determine the type of accelerometers on this host.
-
-        @returns a string representing this host's accelerometer type.
-        At present, it only returns "accel:cros-ec", for accelerometers
-        attached to a Chrome OS EC, or none, if no accelerometers.
-        """
-        # Check to make sure we have ectool
-        rv = self.run('which ectool', ignore_status=True)
-        if rv.exit_status:
-            logging.info("No ectool cmd found, assuming no EC accelerometers")
-            return None
-
-        # Check that the EC supports the motionsense command
-        rv = self.run('ectool motionsense', ignore_status=True)
-        if rv.exit_status:
-            logging.info("EC does not support motionsense command "
-                         "assuming no EC accelerometers")
-            return None
-
-        # Check that EC motion sensors are active
-        active = self.run('ectool motionsense active').stdout.split('\n')
-        if active[0] == "0":
-            logging.info("Motion sense inactive, assuming no EC accelerometers")
-            return None
-
-        logging.info("EC accelerometers found")
-        return 'accel:cros-ec'
-
-
-    @label_decorator('chameleon')
-    def has_chameleon(self):
-        """Determine if a Chameleon connected to this host.
-
-        @returns a list containing two strings ('chameleon' and
-                 'chameleon:' + label, e.g. 'chameleon:hdmi') if this host
-                 has a Chameleon or None if it has not.
-        """
-        if self._chameleon_host:
-            return ['chameleon', 'chameleon:' + self.chameleon.get_label()]
-        else:
-            return None
-
-
-    @label_decorator('audio_loopback_dongle')
-    def has_loopback_dongle(self):
-        """Determine if an audio loopback dongle is plugged to this host.
-
-        @returns 'audio_loopback_dongle' when there is an audio loopback dongle
-                                         plugged to this host.
-                 None                    when there is no audio loopback dongle
-                                         plugged to this host.
-        """
-        nodes_info = self.run(command=cras_utils.get_cras_nodes_cmd(),
-                              ignore_status=True).stdout
-        if (cras_utils.node_type_is_plugged('HEADPHONE', nodes_info) and
-            cras_utils.node_type_is_plugged('MIC', nodes_info)):
-                return 'audio_loopback_dongle'
-        else:
-                return None
-
-
-    @label_decorator('power_supply')
-    def get_power_supply(self):
-        """
-        Determine what type of power supply the host has
-
-        @returns a string representing this host's power supply.
-                 'power:battery' when the device has a battery intended for
-                        extended use
-                 'power:AC_primary' when the device has a battery not intended
-                        for extended use (for moving the machine, etc)
-                 'power:AC_only' when the device has no battery at all.
-        """
-        psu = self.run(command='mosys psu type', ignore_status=True)
-        if psu.exit_status:
-            # The psu command for mosys is not included for all platforms. The
-            # assumption is that the device will have a battery if the command
-            # is not found.
-            return 'power:battery'
-
-        psu_str = psu.stdout.strip()
-        if psu_str == 'unknown':
-            return None
-
-        return 'power:%s' % psu_str
-
-
-    @label_decorator('storage')
-    def get_storage(self):
-        """
-        Determine the type of boot device for this host.
-
-        Determine if the internal device is SCSI or dw_mmc device.
-        Then check that it is SSD or HDD or eMMC or something else.
-
-        @returns a string representing this host's internal device type.
-                 'storage:ssd' when internal device is solid state drive
-                 'storage:hdd' when internal device is hard disk drive
-                 'storage:mmc' when internal device is mmc drive
-                 None          When internal device is something else or
-                               when we are unable to determine the type
-        """
-        # The output should be /dev/mmcblk* for SD/eMMC or /dev/sd* for scsi
-        rootdev_cmd = ' '.join(['. /usr/sbin/write_gpt.sh;',
-                                '. /usr/share/misc/chromeos-common.sh;',
-                                'load_base_vars;',
-                                'get_fixed_dst_drive'])
-        rootdev = self.run(command=rootdev_cmd, ignore_status=True)
-        if rootdev.exit_status:
-            logging.info("Fail to run %s", rootdev_cmd)
-            return None
-        rootdev_str = rootdev.stdout.strip()
-
-        if not rootdev_str:
-            return None
-
-        rootdev_base = os.path.basename(rootdev_str)
-
-        mmc_pattern = '/dev/mmcblk[0-9]'
-        if re.match(mmc_pattern, rootdev_str):
-            # Use type to determine if the internal device is eMMC or somthing
-            # else. We can assume that MMC is always an internal device.
-            type_cmd = 'cat /sys/block/%s/device/type' % rootdev_base
-            type = self.run(command=type_cmd, ignore_status=True)
-            if type.exit_status:
-                logging.info("Fail to run %s", type_cmd)
-                return None
-            type_str = type.stdout.strip()
-
-            if type_str == 'MMC':
-                return 'storage:mmc'
-
-        scsi_pattern = '/dev/sd[a-z]+'
-        if re.match(scsi_pattern, rootdev.stdout):
-            # Read symlink for /sys/block/sd* to determine if the internal
-            # device is connected via ata or usb.
-            link_cmd = 'readlink /sys/block/%s' % rootdev_base
-            link = self.run(command=link_cmd, ignore_status=True)
-            if link.exit_status:
-                logging.info("Fail to run %s", link_cmd)
-                return None
-            link_str = link.stdout.strip()
-            if 'usb' in link_str:
-                return None
-
-            # Read rotation to determine if the internal device is ssd or hdd.
-            rotate_cmd = str('cat /sys/block/%s/queue/rotational'
-                              % rootdev_base)
-            rotate = self.run(command=rotate_cmd, ignore_status=True)
-            if rotate.exit_status:
-                logging.info("Fail to run %s", rotate_cmd)
-                return None
-            rotate_str = rotate.stdout.strip()
-
-            rotate_dict = {'0':'storage:ssd', '1':'storage:hdd'}
-            return rotate_dict.get(rotate_str)
-
-        # All other internal device / error case will always fall here
-        return None
-
-
-    @label_decorator('servo')
-    def get_servo(self):
-        """Determine if the host has a servo attached.
-
-        If the host has a working servo attached, it should have a servo label.
-
-        @return: string 'servo' if the host has servo attached. Otherwise,
-                 returns None.
-        """
-        return 'servo' if self._servo_host else None
-
-
-    @label_decorator('video_labels')
-    def get_video_labels(self):
-        """Run /usr/local/bin/avtest_label_detect to get a list of video labels.
-
-        Sample output of avtest_label_detect:
-        Detected label: hw_video_acc_vp8
-        Detected label: webcam
-
-        @return: A list of labels detected by tool avtest_label_detect.
-        """
-        try:
-            result = self.run('/usr/local/bin/avtest_label_detect').stdout
-            return re.findall('^Detected label: (\w+)$', result, re.M)
-        except error.AutoservRunError:
-            # The tool is not installed.
-            return []
-
-
-    @label_decorator('video_glitch_detection')
-    def is_video_glitch_detection_supported(self):
-        """ Determine if a board under test is supported for video glitch
-        detection tests.
-
-        @return: 'video_glitch_detection' if board is supported, None otherwise.
-        """
-        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
-
-        if board in video_test_constants.SUPPORTED_BOARDS:
-            return 'video_glitch_detection'
-
-        return None
-
-
-    @label_decorator('touch_labels')
-    def get_touch(self):
-        """
-        Determine whether board under test has a touchpad or touchscreen.
-
-        @return: A list of some combination of 'touchscreen' and 'touchpad',
-            depending on what is present on the device.
-
-        """
-        labels = []
-        looking_for = ['touchpad', 'touchscreen']
-        player = input_playback.InputPlayback()
-        input_events = self.run('ls /dev/input/event*').stdout.strip().split()
-        filename = '/tmp/touch_labels'
-        for event in input_events:
-            self.run('evtest %s > %s' % (event, filename), timeout=1,
-                     ignore_timeout=True)
-            properties = self.run('cat %s' % filename).stdout
-            input_type = player._determine_input_type(properties)
-            if input_type in looking_for:
-                labels.append(input_type)
-                looking_for.remove(input_type)
-            if len(looking_for) == 0:
-                break
-        self.run('rm %s' % filename)
-
-        return labels
-
-
-    @label_decorator('internal_display')
-    def has_internal_display(self):
-        """Determine if the device under test is equipped with an internal
-        display.
-
-        @return: 'internal_display' if one is present; None otherwise.
-        """
-        from autotest_lib.client.cros.graphics import graphics_utils
-        from autotest_lib.client.common_lib import utils as common_utils
-
-        def __system_output(cmd):
-            return self.run(cmd).stdout
-
-        def __read_file(remote_path):
-            return self.run('cat %s' % remote_path).stdout
-
-        # Hijack the necessary client functions so that we can take advantage
-        # of the client lib here.
-        # FIXME: find a less hacky way than this
-        original_system_output = utils.system_output
-        original_read_file = common_utils.read_file
-        utils.system_output = __system_output
-        common_utils.read_file = __read_file
-        try:
-            return ('internal_display' if graphics_utils.has_internal_display()
-                                   else None)
-        finally:
-            utils.system_output = original_system_output
-            common_utils.read_file = original_read_file
-
-
-    @label_decorator('lucidsleep')
-    def has_lucid_sleep_support(self):
-        """Determine if the device under test has support for lucid sleep.
-
-        @return 'lucidsleep' if this board supports lucid sleep; None otherwise
-        """
-        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
-        return 'lucidsleep' if board in LUCID_SLEEP_BOARDS else None
 
 
     def is_boot_from_usb(self):
@@ -2277,3 +1909,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     def enable_adb_testing(self):
         """Mark this host as an adb tester."""
         self.run('touch %s' % constants.ANDROID_TESTER_FILEFLAG)
+
+
+    def get_labels(self):
+        return self.labels.get_labels(self)
