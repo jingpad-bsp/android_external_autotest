@@ -16,6 +16,19 @@ TELEMETRY_RUN_TESTS_SCRIPT = 'tools/telemetry/run_tests'
 TELEMETRY_TIMEOUT_MINS = 120
 
 DUT_CHROME_ROOT = '/usr/local/telemetry/src'
+DUT_COMMON_SSH_OPTIONS = ['-o StrictHostKeyChecking=no',
+                          '-o UserKnownHostsFile=/dev/null',
+                          '-o BatchMode=yes',
+                          '-o ConnectTimeout=30',
+                          '-o ServerAliveInterval=900',
+                          '-o ServerAliveCountMax=3',
+                          '-o ConnectionAttempts=4',
+                          '-o Protocol=2']
+DUT_SSH_OPTIONS = ' '.join(DUT_COMMON_SSH_OPTIONS + ['-x', '-a', '-l root'])
+DUT_SCP_OPTIONS = ' '.join(DUT_COMMON_SSH_OPTIONS)
+DUT_RSYNC_OPTIONS =  ' '.join(['--rsh="/usr/bin/ssh %s"' % DUT_SSH_OPTIONS,
+                               '-L', '--timeout=1800', '-az',
+                               '--no-o', '--no-g'])
 
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'
@@ -199,6 +212,7 @@ class TelemetryRunner(object):
         if self._telemetry_on_dut:
             telemetry_cmd.extend(
                     ['ssh',
+                     DUT_SSH_OPTIONS,
                      self._host.hostname,
                      'python',
                      script,
@@ -235,14 +249,13 @@ class TelemetryRunner(object):
                 devserver_hostname = dev_server.DevServer.get_server_name(
                         self._devserver.url()) + ':'
             if self._telemetry_on_dut:
-                scp_cmd.extend(
-                    ['scp', '%s:%s/results-chart.json' % (
-                          self._host.hostname, DUT_CHROME_ROOT),
-                     perf_results_dir])
+                src = ('root@%s:%s/results-chart.json' %
+                       (self._host.hostname, DUT_CHROME_ROOT))
+                scp_cmd.extend(['scp', DUT_SCP_OPTIONS, src, perf_results_dir])
             else:
-                scp_cmd.extend(['scp', '%s%s/results-chart.json' % (
-                                    devserver_hostname, self._telemetry_path),
-                                perf_results_dir])
+                src = ('%s%s/results-chart.json' %
+                       (devserver_hostname, self._telemetry_path))
+                scp_cmd.extend(['scp', src, perf_results_dir])
 
         return ' '.join(scp_cmd)
 
@@ -422,14 +435,13 @@ class TelemetryRunner(object):
         for dep in stdout_str.split():
             src = os.path.join(self._telemetry_path, dep)
             dst = os.path.join(DUT_CHROME_ROOT, dep)
-            try:
-                if self._devserver:
-                    logging.info('Copying: %s -> %s', src, dst)
-                    utils.run('ssh %s rsync %s %s:%s' % (devserver_hostname, src, self._host.hostname, dst))
-                else:
-                    if not os.path.isfile(src):
-                        raise error.TestFail('Error occurred while saving DEPs.')
-                    logging.info('Copying: %s -> %s', src, dst)
-                    dut.send_file(src, dst)
-            except:
-                raise error.TestFail('Error occurred while sending DEPs to dut.\n')
+            if self._devserver:
+                logging.info('Copying: %s -> %s', src, dst)
+                utils.run('ssh %s rsync %s %s %s:%s' %
+                          (devserver_hostname, DUT_RSYNC_OPTIONS, src,
+                           self._host.hostname, dst))
+            else:
+                if not os.path.isfile(src):
+                    raise error.TestFail('Error occurred while saving DEPs.')
+                logging.info('Copying: %s -> %s', src, dst)
+                dut.send_file(src, dst)
