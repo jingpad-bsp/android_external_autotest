@@ -856,6 +856,18 @@ class ContainerBucket(object):
                                        result_path)
         result_path = os.path.abspath(result_path)
 
+        # Save control file to result_path temporarily. The reason is that the
+        # control file in drone_tmp folder can be deleted during scheduler
+        # restart. For test not using SSP, the window between test starts and
+        # control file being picked up by the test is very small (< 2 seconds).
+        # However, for tests using SSP, it takes around 1 minute before the
+        # container is setup. If scheduler is restarted during that period, the
+        # control file will be deleted, and the test will fail.
+        if control:
+            control_file_name = os.path.basename(control)
+            safe_control = os.path.join(result_path, control_file_name)
+            utils.run('cp %s %s' % (control, safe_control))
+
         # Create test container from the base container.
         container = self.create_from_base(name)
 
@@ -876,8 +888,9 @@ class ContainerBucket(object):
             container_drone_temp = os.path.join(autotest_path, 'drone_tmp')
             utils.run('sudo mkdir -p %s'% container_drone_temp)
             container_control_file = os.path.join(
-                    container_drone_temp, os.path.basename(control))
-            utils.run('sudo cp %s %s' % (control, container_control_file))
+                    container_drone_temp, control_file_name)
+            # Move the control file stored in the result folder to container.
+            utils.run('sudo mv %s %s' % (safe_control, container_control_file))
 
         if IS_MOBLAB:
             site_packages_path = MOBLAB_SITE_PACKAGES
