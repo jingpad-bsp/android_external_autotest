@@ -379,10 +379,13 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testCmdErrorTriggerDownload(self):
-        """Should call the dev server's download method using ssh, get
-        exception."""
+        """Should call the dev server's download method using ssh, retry
+        trigger_download when getting error.CmdError, raise exception for
+        urllib2.HTTPError."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.trigger_download,
@@ -418,10 +421,13 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testCmdErrorFinishDownload(self):
-        """Should call the dev server's finish download method using ssh, fail
-        gracefully."""
+        """Should call the dev server's finish download method using ssh,
+        retry finish_download when getting error.CmdError, raise exception
+        for urllib2.HTTPError."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.finish_download,
@@ -467,10 +473,13 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testCmdErrorListControlFiles(self):
-        """Should call the dev server's list-files method using ssh, get
-        exception."""
+        """Should call the dev server's list-files method using ssh, retry
+        list_control_files when getting error.CmdError, raise exception for
+        urllib2.HTTPError."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg(), readline=True).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg(), readline=True).AndRaise(E500)
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.list_control_files,
@@ -513,10 +522,13 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testCmdErrorGetControlFile(self):
-        """Should try to get the contents of a control file using ssh, get
-        exception."""
+        """Should try to get the contents of a control file using ssh, retry
+        get_control_file when getting error.CmdError, raise exception for
+        urllib2.HTTPError."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.get_control_file,
@@ -827,6 +839,19 @@ class DevServerTest(mox.MoxTestBase):
         file_location = 'http://nothing/static/fake_build/file_path'
         self.assertEqual(self.android_dev_server.locate_file(
                 file_name, artifacts, build, None), file_location)
+
+    def testCmdErrorLocateFile(self):
+        """Test locating files for AndriodBuildServer for retry
+        error.CmdError, and raise urllib2.URLError."""
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.trigger_download,
+                          '')
+
 
 
 if __name__ == "__main__":

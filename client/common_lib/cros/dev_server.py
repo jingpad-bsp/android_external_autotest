@@ -11,7 +11,6 @@ import logging
 import multiprocessing
 import os
 import re
-import sys
 import time
 import urllib2
 import urlparse
@@ -67,6 +66,9 @@ SUCCESS = 'Success'
 # The timeout minutes for a given devserver ssh call.
 DEVSERVER_SSH_TIMEOUT_MINS = 1
 
+# The timeout minutes for waiting a devserver staging.
+DEVSERVER_IS_STAGING_RETRY_MIN = 100
+
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
 
@@ -77,6 +79,7 @@ ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
 ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'enable_ssh_connection_for_devserver', type=bool,
         default=False)
+
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -139,14 +142,15 @@ def _get_crash_server_list():
 def remote_devserver_call(timeout_min=30):
     """A decorator to use with remote devserver calls.
 
-    This decorator converts urllib2.HTTPErrors and CmdError into
-    DevServerExceptions with any embedded error info converted into plain text.
-    The method retries on urllib2.URLError to avoid devserver flakiness.
+    This decorator converts urllib2.HTTPErrors into DevServerExceptions
+    with any embedded error info converted into plain text. The method
+    retries on urllib2.URLError or error.CmdError to avoid devserver flakiness.
     """
     #pylint: disable=C0111
     def inner_decorator(method):
 
-        @retry.retry(urllib2.URLError, timeout_min=timeout_min)
+        @retry.retry((urllib2.URLError, error.CmdError),
+                     timeout_min=timeout_min)
         def wrapper(*args, **kwargs):
             """This wrapper actually catches the HTTPError."""
             try:
@@ -159,10 +163,6 @@ def remote_devserver_call(timeout_min=30):
                 except UnicodeDecodeError:
                     strip.feed(error_markup)
                 raise DevServerException(strip.get_data())
-            except error.CmdError as e:
-                error_msg = ('Error occurred with exit_code %d when executing '
-                             'ssh call' % e.result_obj.exit_status)
-                raise DevServerException(error_msg)
 
         return wrapper
 
@@ -723,9 +723,12 @@ class ImageServerBase(DevServer):
         try:
             result = utils.run(ssh_call, timeout=timeout_seconds)
         except error.CmdError as e:
-            logging.debug('Error occurred with exit_code %d when executing the'
-                          'ssh call:\n%s.', e.result_obj.exit_status,
+            logging.debug('Error occurred with exit_code %d when executing the '
+                          'ssh call: %s.', e.result_obj.exit_status,
                           e.result_obj.stderr)
+            stats_str = 'dev_server.%s.%s' % (hostname.replace('.', '_'),
+                                              'ssh_dev_server_failure')
+            autotest_stats.Counter(stats_str).increment()
             raise
         response = result.stdout
         if readline:
@@ -796,15 +799,14 @@ class ImageServerBase(DevServer):
                 # For example: <urlopen error [Errno 111] Connection refused>
                 return False
             except error.CmdError:
-                # Do not retry if obtaining CmdError when using ssh
-                error_msg = ('Error occurred with exit_code %d when executing '
-                             'ssh call.' % e.result_obj.exit_status)
-                raise DevServerException(error_msg)
+                # Retry if SSH failed to connect to the devserver.
+                logging.warning('Retrying SSH connection due to CmdError.')
+                return False
 
         site_utils.poll_for_condition(
                 all_staged,
                 exception=site_utils.TimeoutError(),
-                timeout=sys.maxint,
+                timeout=DEVSERVER_IS_STAGING_RETRY_MIN * 60,
                 sleep_interval=_ARTIFACT_STAGE_POLLING_INTERVAL)
 
         return True
@@ -835,9 +837,6 @@ class ImageServerBase(DevServer):
             raise DevServerException('Received Bad Status line, Devserver %s '
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
-        except error.CmdError as e:
-            raise DevServerException('Received error in executing call by ssh: '
-                                     '%s' % (call))
 
         if expected_response and not response == expected_response:
                 raise DevServerException(error_message)
@@ -1028,6 +1027,7 @@ class ImageServerBase(DevServer):
                     'finish_download timed out for %s.' % build)
 
 
+    @remote_devserver_call()
     def locate_file(self, file_name, artifacts, build, build_info):
         """Locate a file with the given file_name on devserver.
 
@@ -1073,10 +1073,6 @@ class ImageServerBase(DevServer):
             raise DevServerException('Received Bad Status line, Devserver %s '
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
-        except error.CmdError as e:
-            error_msg = ('Error occurred with exit_code %d when executing '
-                         'ssh call' % e.result_obj.exit_status)
-            raise DevServerException(error_msg)
         except error.TimeoutException:
             error_message = ('Call `locate_file` timed out when looking for %s '
                              'in artifacts %s in build %s' %
@@ -1623,6 +1619,7 @@ class AndroidBuildServer(ImageServerBase):
         return '/'.join([self._get_image_url(build), filename])
 
 
+    @remote_devserver_call()
     def translate(self, build_name):
         """Translate the build name if it's in LATEST format.
 
