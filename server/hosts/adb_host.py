@@ -88,6 +88,7 @@ BRILLO_VENDOR_PARTITIONS_FILE_FMT = (
         '%(build_target)s-vendor_partitions-%(build_id)s.zip')
 AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
         '%(build_target)s-autotest_server_package-%(build_id)s.tar.bz2')
+ADB_DEVICE_PREFIXES = ['product:', 'model:', 'device:']
 
 # Image files not inside the image zip file. These files should be downloaded
 # directly from devserver.
@@ -167,14 +168,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     # not use it.
     def _initialize(self, hostname='localhost', serials=None,
                     adb_serial=None, fastboot_serial=None,
-                    device_hostname=None, teststation=None, *args, **dargs):
+                    teststation=None, *args, **dargs):
         """Initialize an ADB Host.
 
         This will create an ADB Host. Hostname should always refer to the
         test station connected to an Android DUT. This will be the DUT
         to test with.  If there are multiple, serial must be specified or an
-        exception will be raised.  If device_hostname is supplied then all
-        ADB commands will run over TCP/IP.
+        exception will be raised.
 
         @param hostname: Hostname of the machine running ADB.
         @param serials: DEPRECATED (to be removed)
@@ -183,24 +183,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param fastboot_serial: A fastboot device serial. If None, defaults to
                                 the ADB serial (or assumes a single device if
                                 the latter is None).
-        @param device_hostname: Hostname or IP of the android device we want to
-                                interact with. If supplied all ADB interactions
-                                run over TCP/IP.
         @param teststation: The teststation object ADBHost should use.
         """
         # Sets up the is_client_install_supported field.
         super(ADBHost, self)._initialize(hostname=hostname,
                                          is_client_install_supported=False,
                                          *args, **dargs)
-        if device_hostname and (adb_serial or fastboot_serial):
-            raise error.AutoservError(
-                    'TCP/IP and USB modes are mutually exclusive')
-
 
         self.tmp_dirs = []
         self.labels = base_label.LabelRetriever(adb_label.ADB_LABELS)
-        self._device_hostname = device_hostname
-        self._use_tcpip = False
         # TODO (sbasi/kevcheng): Once the teststation host is committed,
         # refactor the serial retrieval.
         adb_serial = adb_serial or self.host_attributes.get('serials', None)
@@ -210,14 +201,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 else teststation_host.create_teststationhost(hostname=hostname))
 
         msg ='Initializing ADB device on host: %s' % hostname
-        if self._device_hostname:
-            msg += ', device hostname: %s' % self._device_hostname
         if self.adb_serial:
             msg += ', ADB serial: %s' % self.adb_serial
         if self.fastboot_serial:
             msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
+        adb_prefix = any(adb_serial.startswith(p) for p in ADB_DEVICE_PREFIXES)
+        self._use_tcpip = ':' in adb_serial and not adb_prefix
         # Try resetting the ADB daemon on the device, however if we are
         # creating the host to do a repair job, the device maybe inaccesible
         # via ADB.
@@ -231,26 +222,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def _connect_over_tcpip_as_needed(self):
         """Connect to the ADB device over TCP/IP if so configured."""
-        if not self._device_hostname:
+        if not self._use_tcpip:
             return
         logging.debug('Connecting to device over TCP/IP')
-        if self._device_hostname == self.adb_serial:
-            # We previously had a connection to this device, restart the ADB
-            # server.
-            self.adb_run('kill-server')
-        # Ensure that connection commands don't run over TCP/IP.
-        self._use_tcpip = False
-        self.adb_run('tcpip 5555', timeout=10, ignore_timeout=True)
-        time.sleep(2)
-        try:
-            self.adb_run('connect %s' % self._device_hostname)
-        except (error.AutoservRunError, error.CmdError) as e:
-            raise error.AutoservError('Failed to connect via TCP/IP: %s' % e)
-        # Allow ADB a bit of time after connecting before interacting with the
-        # device.
-        time.sleep(5)
-        # Switch back to using TCP/IP.
-        self._use_tcpip = True
+        self.adb_run('connect %s' % self.adb_serial)
 
 
     def _restart_adbd_with_root_permissions(self):
@@ -261,10 +236,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.adb_run('wait-for-device')
 
 
+    def _set_tcp_port(self):
+        """Ensure the device remains in tcp/ip mode after a reboot."""
+        if not self._use_tcpip:
+            return
+        port = self.adb_serial.split(':')[-1]
+        self.run('setprop persist.adb.tcp.port %s' % port)
+
+
     def _reset_adbd_connection(self):
         """Resets adbd connection to the device after a reboot/initialization"""
-        self._restart_adbd_with_root_permissions()
         self._connect_over_tcpip_as_needed()
+        self._restart_adbd_with_root_permissions()
+        self._set_tcp_port()
 
 
     # pylint: disable=missing-docstring
@@ -338,8 +322,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         if serial:
             cmd += '-s %s ' % serial
-        elif self._use_tcpip:
-            cmd += '-s %s:5555 ' % self._device_hostname
 
         if shell:
             cmd += '%s ' % SHELL_CMD
@@ -624,9 +606,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Called as the test ends. Will return the device to USB mode and kill
         the ADB server.
         """
-        if self._use_tcpip:
-            # Return the device to usb mode.
-            self.adb_run('usb')
         # TODO(sbasi) Originally, we would kill the server after each test to
         # reduce the opportunity for bad server state to hang around.
         # Unfortunately, there is a period of time after each kill during which
