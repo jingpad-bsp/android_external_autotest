@@ -124,14 +124,6 @@ class ServoHost(ssh_host.SSHHost):
             self._is_in_lab = is_in_lab
         self._is_localhost = (self.hostname == 'localhost')
 
-        if ENABLE_SSH_TUNNEL_FOR_SERVO:
-            self._servod_server = self.rpc_server_tracker.xmlrpc_connect(
-                    None, servo_port, ready_test_name=self.SERVO_READY_METHOD,
-                    timeout_seconds=60)
-        else:
-            remote = 'http://%s:%s' % (self.hostname, servo_port)
-            self._servod_server = xmlrpclib.ServerProxy(remote)
-
         # Commands on the servo host must be run by the superuser. Our account
         # on Beaglebone is root, but locally we might be running as a
         # different user. If so - `sudo ' will have to be added to the
@@ -145,6 +137,13 @@ class ServoHost(ssh_host.SSHHost):
         self._servo = None
         self.required_by_test = required_by_test
         try:
+            if ENABLE_SSH_TUNNEL_FOR_SERVO:
+                self._servod_server = self.rpc_server_tracker.xmlrpc_connect(
+                        None, servo_port, ready_test_name=self.SERVO_READY_METHOD,
+                        timeout_seconds=60)
+            else:
+                remote = 'http://%s:%s' % (self.hostname, servo_port)
+                self._servod_server = xmlrpclib.ServerProxy(remote)
             self.verify()
         except Exception:
             if required_by_test:
