@@ -150,7 +150,7 @@ class base_test(object):
                      charts = json.loads(contents)
 
         if graph:
-            first_level =  graph
+            first_level = graph
             second_level = description
         else:
             first_level = description
@@ -199,16 +199,20 @@ class base_test(object):
             else:
                 result_value = [charts[first_level][second_level]['value'], value]
 
-        charts.update({
-            first_level: {
-                second_level: {
-                    'type': result_type,
-                    'units': units,
-                    value_key: result_value,
-                    'improvement_direction': direction
-                }
-            }
-        })
+        test_data = {
+            second_level: {
+                 'type': result_type,
+                 'units': units,
+                 value_key: result_value,
+                 'improvement_direction': direction
+           }
+        }
+
+        if first_level in charts:
+            charts[first_level].update(test_data)
+        else:
+            charts.update({first_level: test_data})
+
         with open(output_file, 'w') as fp:
             fp.write(json.dumps(charts, indent=2))
 
