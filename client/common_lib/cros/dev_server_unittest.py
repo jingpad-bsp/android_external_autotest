@@ -14,6 +14,7 @@ import time
 import unittest
 import urllib2
 
+from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
@@ -21,11 +22,12 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
 
-def retry_mock(ExceptionToCheck, timeout_min):
+def retry_mock(ExceptionToCheck, timeout_min, exception_to_raise=None):
     """A mock retry decorator to use in place of the actual one for testing.
 
     @param ExceptionToCheck: the exception to check.
     @param timeout_mins: Amount of time in mins to wait before timing out.
+    @param exception_to_raise: the exception to raise in retry.retry
 
     """
     def inner_retry(func):
@@ -726,7 +728,7 @@ class DevServerTest(mox.MoxTestBase):
                 artifacts=mox.IgnoreArg(),
                 files=mox.IgnoreArg(),
                 archive_url=mox.IgnoreArg(),
-                error_message=mox.IgnoreArg()).AndRaise(error.TimeoutException)
+                error_message=mox.IgnoreArg()).AndRaise(site_utils.TimeoutError())
 
 
     def test_StageArtifactsTimeout(self):

@@ -147,7 +147,8 @@ def remote_devserver_call(timeout_min=30):
     def inner_decorator(method):
 
         @retry.retry((urllib2.URLError, error.CmdError),
-                     timeout_min=timeout_min)
+                     timeout_min=timeout_min,
+                     exception_to_raise=DevServerException)
         def wrapper(*args, **kwargs):
             """This wrapper actually catches the HTTPError."""
             try:
@@ -834,7 +835,7 @@ class ImageServerBase(DevServer):
                 return False
             except error.CmdError:
                 # Retry if SSH failed to connect to the devserver.
-                logging.warning('Retrying SSH connection due to CmdError.')
+                logging.warning('CmdError: Retrying SSH connection to check is_stage.')
                 return False
 
         site_utils.poll_for_condition(
@@ -941,7 +942,7 @@ class ImageServerBase(DevServer):
             if artifacts:
                 timer.stop()
             logging.info('Finished staging artifacts: %s', staging_info)
-        except error.TimeoutException:
+        except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('stage_artifacts timed out: %s', staging_info)
             if artifacts:
                 timeout_key = self.create_stats_str(
@@ -1009,7 +1010,7 @@ class ImageServerBase(DevServer):
         try:
             response = self.call_and_wait(call_name='stage', **kwargs)
             logging.info('trigger_download finishes for %s', build)
-        except error.TimeoutException:
+        except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('trigger_download timed out for %s.', build)
             timeout_key = self.create_stats_str(
                     'trigger_download_timeout', server_name, artifacts_list)
@@ -1049,7 +1050,7 @@ class ImageServerBase(DevServer):
             kwargs.update(kwargs_build_info)
         try:
             self.call_and_wait(call_name='stage', **kwargs)
-        except error.TimeoutException:
+        except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('finish_download timed out for %s', build)
             server_name = self.get_server_name(self.url())
             artifacts_list = artifacts.split(',')
@@ -1107,12 +1108,6 @@ class ImageServerBase(DevServer):
             raise DevServerException('Received Bad Status line, Devserver %s '
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
-        except error.TimeoutException:
-            error_message = ('Call `locate_file` timed out when looking for %s '
-                             'in artifacts %s in build %s' %
-                             (file_name, artifacts, build_info))
-            logging.error(error_message)
-            raise DevServerException(error_message)
 
 
     @remote_devserver_call()
