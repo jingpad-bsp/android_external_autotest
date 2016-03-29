@@ -115,7 +115,7 @@ class TPMStatusVerifier(hosts.Verifier):
                         'Cannot load the TPM SRK')
             if (tpm['can_load_srk'] and not tpm['can_load_srk_pubkey']):
                 raise hosts.AutoservVerifyError(
-                        'Cannot load the TPM SRC public key')
+                        'Cannot load the TPM SRK public key')
         except KeyError:
             logging.info('Cannot determine the Crytohome valid status - '
                          'skipping check.')
