@@ -18,7 +18,7 @@ STABILIZATION_DURATION = 60  # Time for test stabilization in seconds.
 TMP_DIRECTORY = '/tmp/'
 PERF_FILE_NAME_PREFIX = 'perf'
 EXIT_FLAG_FILE = TMP_DIRECTORY + 'longevity_terminate'
-OLD_FILE_AGE = 10080  # Age of old files to be deleted in minutes.
+OLD_FILE_AGE = 14400  # Age of old files to be deleted in minutes = 10 days
 CMD_REMOVE_OLD_FILES = ('find %s -name %s* -type f -mmin +%s -delete' %
                         (TMP_DIRECTORY, PERF_FILE_NAME_PREFIX, OLD_FILE_AGE))
 MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
