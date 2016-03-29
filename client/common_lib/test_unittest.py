@@ -398,7 +398,111 @@ class Test_base_test_execute(TestTestCase):
                            "improvement_direction": "up"}}}
         self.assertDictEqual(expected_result, json.loads(f.read()))
 
+    def test_chart_supplied(self):
+        self.test.resultsdir = tempfile.mkdtemp()
 
+        test_data = [("tcp_tx", "ch006_mode11B_none", "BT_connected_but_not_streaming", 0),
+                     ("tcp_tx", "ch006_mode11B_none", "BT_streaming_audiofile", 5),
+                     ("tcp_tx", "ch006_mode11B_none", "BT_disconnected_again", 0),
+                     ("tcp_rx", "ch006_mode11B_none", "BT_connected_but_not_streaming", 0),
+                     ("tcp_rx", "ch006_mode11B_none", "BT_streaming_audiofile", 8),
+                     ("tcp_rx", "ch006_mode11B_none", "BT_disconnected_again", 0),
+                     ("udp_tx", "ch006_mode11B_none", "BT_connected_but_not_streaming", 0),
+                     ("udp_tx", "ch006_mode11B_none", "BT_streaming_audiofile", 6),
+                     ("udp_tx", "ch006_mode11B_none", "BT_disconnected_again", 0),
+                     ("udp_rx", "ch006_mode11B_none", "BT_connected_but_not_streaming", 0),
+                     ("udp_rx", "ch006_mode11B_none", "BT_streaming_audiofile", 8),
+                     ("udp_rx", "ch006_mode11B_none", "BT_streaming_audiofile", 9),
+                     ("udp_rx", "ch006_mode11B_none", "BT_disconnected_again", 0)]
+
+
+        for (config_tag, ap_config_tag, bt_tag, drop) in test_data:
+          self.test.output_perf_value(config_tag + '_' + bt_tag + '_drop',
+                                      drop, units='percent_drop',
+                                      higher_is_better=False,
+                                      graph=ap_config_tag + '_drop')
+        f = open(self.test.resultsdir + "/results-chart.json")
+        expected_result = {
+          "ch006_mode11B_none_drop": {
+            "udp_tx_BT_streaming_audiofile_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 6.0,
+              "improvement_direction": "down"
+            },
+            "udp_rx_BT_disconnected_again_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "tcp_tx_BT_disconnected_again_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "tcp_rx_BT_streaming_audiofile_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 8.0,
+              "improvement_direction": "down"
+            },
+            "udp_tx_BT_connected_but_not_streaming_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "tcp_tx_BT_connected_but_not_streaming_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "udp_tx_BT_disconnected_again_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "tcp_tx_BT_streaming_audiofile_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 5.0,
+              "improvement_direction": "down"
+            },
+            "tcp_rx_BT_connected_but_not_streaming_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "udp_rx_BT_connected_but_not_streaming_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            },
+            "udp_rx_BT_streaming_audiofile_drop": {
+              "units": "percent_drop",
+              "type": "list_of_scalar_values",
+              "values": [
+                8.0,
+                9.0
+              ],
+              "improvement_direction": "down"
+            },
+            "tcp_rx_BT_disconnected_again_drop": {
+              "units": "percent_drop",
+              "type": "scalar",
+              "value": 0.0,
+              "improvement_direction": "down"
+            }
+          }
+        }
+        self.maxDiff = None
+        self.assertDictEqual(expected_result, json.loads(f.read()))
 
 if __name__ == '__main__':
     unittest.main()
