@@ -394,7 +394,7 @@ def crtcScreenshot(crtc_id=None):
         paths = ["/dev/dri/" + n for n in os.listdir("/dev/dri")]
         for p in paths:
             d = drmFromPath(p)
-            if d.resources():
+            if d.resources() and d.resources().count_crtcs > 0:
                 _drm = d
                 break
 
