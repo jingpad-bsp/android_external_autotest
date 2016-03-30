@@ -157,6 +157,10 @@ class graphics_GLBench(test.test):
                               stderr_tee = utils.TEE_TO_LOGS).stdout
           if not pc.verify_is_valid():
             raise error.TestError(pc.get_error_reason())
+    except error.CmdError:
+        raise error.TestFail('Failed running %s' % cmd)
+    except error.CmdTimeoutError:
+        raise error.TestFail('Timeout running %s' % cmd)
     finally:
       if not utils.is_freon():
         # Just sending SIGTERM to X is not enough; we must wait for it to
