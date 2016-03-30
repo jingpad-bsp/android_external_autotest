@@ -154,6 +154,8 @@ table .custom-tab-top {
   margin: 0;
   padding: 4px 12px;
   display: block;
+  display: table-cell;
+  float: none;
 }
 
 .data-row-header {
