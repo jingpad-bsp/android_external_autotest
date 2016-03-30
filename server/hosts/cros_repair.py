@@ -15,7 +15,19 @@ class ACPowerVerifier(hosts.Verifier):
     """Check for AC power and a reasonable battery charge."""
 
     def verify(self, host):
-        info = host.get_power_supply_info()
+        # Temporarily work around a problem caused by some old FSI
+        # builds that don't have the power_supply_info command by
+        # ignoring failures.  The repair triggers believe that this
+        # verifier can't be fixed by re-installing, which means if a DUT
+        # gets stuck with one of those old builds, it can't be repaired.
+        #
+        # TODO(jrbarnette): This is for crbug.com/599158; we need a
+        # better solution.
+        try:
+            info = host.get_power_supply_info()
+        except:
+            logging.exception('get_power_supply_info() failed')
+            return
         try:
             if info['Line Power']['online'] != 'yes':
                 raise hosts.AutoservVerifyError(
