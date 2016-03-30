@@ -5,8 +5,7 @@
 NAME = 'graphics_GLMark2.bvt-cq'
 AUTHOR = 'chromeos-gfx'
 PURPOSE = 'Benchmark the graphics library performance.'
-#TODO(ihf): Move this test back to bvt-cq once it works on freon.
-#ATTRIBUTES = 'suite:bvt-cq'
+ATTRIBUTES = 'suite:bvt-cq'
 TIME='MEDIUM'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = "gl"
