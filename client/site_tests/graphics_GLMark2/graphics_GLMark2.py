@@ -94,11 +94,17 @@ class graphics_GLMark2(test.test):
             if not utils.wait_for_cool_machine():
                 raise error.TestFail('Could not get cold machine.')
 
+        # In this test we are manually handling stderr, so expected=True.
+        # Strangely autotest takes CmdError/CmdTimeoutError as warning only.
         try:
             result = utils.run(cmd,
-                               stderr_is_expected=False,
+                               stderr_is_expected=True,
                                stdout_tee=utils.TEE_TO_LOGS,
                                stderr_tee=utils.TEE_TO_LOGS)
+        except error.CmdError:
+            raise error.TestFail('Failed running %s' % cmd)
+        except error.CmdTimeoutError:
+            raise error.TestFail('Timeout running %s' % cmd)
         finally:
             # Just sending SIGTERM to X is not enough; we must wait for it to
             # really die before we start a new X server (ie start ui).
