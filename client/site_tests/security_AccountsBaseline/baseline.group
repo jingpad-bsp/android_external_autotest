@@ -74,6 +74,8 @@ dlm:!:262:
 buffet:!:264:chronos,buffet,power
 webservd:!:266:buffet,webservd
 dnsmasq:!:268:dnsmasq
+lpadmin:!:269:chronos,cups
+cups:!:277:
 arc-camera:!:603:
 ntfs-3g:!:300:
 avfs:!:301:
