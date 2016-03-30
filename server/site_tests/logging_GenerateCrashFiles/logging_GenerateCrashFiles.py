@@ -47,7 +47,8 @@ class logging_GenerateCrashFiles(test.test):
         time.sleep(self.SHORT_WAIT)
 
         # Execute crash command
-        self.host.run(crash_cmd, ignore_status=True)
+        self.host.run(crash_cmd, ignore_status=True,
+                      timeout=30, ignore_timeout=True)
         logging.debug('Crash invoked!')
 
         # In case of kernel crash the reboot will take some time
