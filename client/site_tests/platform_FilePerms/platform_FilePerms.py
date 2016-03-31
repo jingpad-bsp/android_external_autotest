@@ -80,6 +80,9 @@ class platform_FilePerms(test.test):
         '/sys/kernel/debug': {
             'type': 'debugfs',
             'options': standard_rw_options},
+        '/sys/kernel/debug/tracing': {
+            'type': 'tracefs',
+            'options': standard_rw_options},
         '/tmp': {'type': 'tmpfs', 'options': standard_rw_options},
         '/var': {'type': 'ext4', 'options': standard_rw_options},
         '/usr/share/oem': {
