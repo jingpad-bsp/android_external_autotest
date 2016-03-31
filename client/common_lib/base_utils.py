@@ -850,6 +850,8 @@ def run(command, timeout=None, ignore_status=False,
     @param verbose: if True, log the command being run.
     @param stdin: stdin to pass to the executed process (can be a file
             descriptor, a file object of a real file or a string).
+    @param stderr_is_expected: if True, stderr will be logged at the same level
+            as stdout
     @param args: sequence of strings of arguments to be given to the command
             inside " quotes after they have been escaped for that; each
             element in the sequence will be given as a separate command
