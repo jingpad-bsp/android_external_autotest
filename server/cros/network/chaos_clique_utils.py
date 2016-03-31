@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import re
+import shutil
 
 import common
 from autotest_lib.client.common_lib.cros.network import ap_constants
@@ -353,3 +354,24 @@ def get_firmware_ver(host):
             if result:
                 return result.group(0)
     return None
+
+
+def collect_pcap_info(tracedir, pcap_filename, try_count):
+        """Gather .trc and .trc.log files into android debug directory.
+
+        @param tracedir: string name of the directory that has the trace files.
+        @param pcap_filename: string name of the pcap file.
+        @param try_count: int Connection attempt number.
+
+        """
+        pcap_file = os.path.join(tracedir, pcap_filename)
+        pcap_log_file = os.path.join(tracedir, '%s.log' % pcap_filename)
+        debug_dir = 'android_debug_try_%d' % try_count
+        debug_dir_path = os.path.join(tracedir, 'debug/%s' % debug_dir)
+        if os.path.exists(debug_dir_path):
+            pcap_dir_path = os.path.join(debug_dir_path, 'pcap')
+            if not os.path.exists(pcap_dir_path):
+                os.makedirs(pcap_dir_path)
+                shutil.copy(pcap_file, pcap_dir_path)
+                shutil.copy(pcap_log_file, pcap_dir_path)
+        logging.debug('Copied failed packet capture data to directory')
