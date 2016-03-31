@@ -333,6 +333,9 @@ def create_moblab_repair_strategy():
     Moblab is a subset of the CrOS verify and repair.  Several pieces
     are removed, for various reasons:
 
+    'tpm':  Moblab DUTs don't run the tests that matter to this
+        verifier.  TODO(jrbarnette)  This assertion is unproven.
+
     'good_au':  This verifier can't pass, because the Moblab AU
         procedure doesn't properly delete CrosHost.PROVISION_FAILED.
         TODO(jrbarnette) We should refactor _machine_install() so that it
@@ -347,7 +350,6 @@ def create_moblab_repair_strategy():
     verify_dag = [
         (ssh_verify.SshVerifier,  'ssh',     []),
         (ACPowerVerifier,         'power',   ['ssh']),
-        (TPMStatusVerifier,       'tpm',     ['ssh']),
         (CrosHostVerifier,        'cros',    ['ssh']),
     ]
     repair_actions = [
