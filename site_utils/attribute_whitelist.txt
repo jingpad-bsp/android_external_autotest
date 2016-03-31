@@ -143,3 +143,4 @@ suite:wimax
 suite:youtube_mse_eme
 suite:youtube_page
 subsystem:default
+subsystem:wifi
