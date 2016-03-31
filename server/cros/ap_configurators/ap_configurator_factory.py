@@ -6,17 +6,13 @@
 
 import logging
 
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.network import ap_constants
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros import ap_config
 from autotest_lib.server.cros.ap_configurators import ap_cartridge
 from autotest_lib.server.cros.ap_configurators import ap_spec
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
-CONFIG = global_config.global_config
-
-_DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value('SERVER', 'hostname',
-                                                     type=str)
 
 class APConfiguratorFactory(object):
     """Class that instantiates all available APConfigurators.
@@ -372,9 +368,8 @@ class APConfiguratorFactory(object):
         @return a list of APConfigurators
         """
         aps = []
-        afe = frontend_wrappers.RetryingAFE(server=_DEFAULT_AUTOTEST_INSTANCE,
-                                            timeout_min=10,
-                                            delay_sec=5)
+        afe = frontend_wrappers.RetryingAFE(
+                timeout_min=10, delay_sec=5, server=site_utils.get_global_afe_hostname())
         if self.test_type == ap_constants.AP_TEST_TYPE_CHAOS:
             ap_label = 'chaos_ap'
             lab_label = 'chaos_chamber'
