@@ -119,7 +119,7 @@ class AccelsLabel(base_label.BaseLabel):
             return False
 
         # Check that the EC supports the motionsense command
-        rv = self.run('ectool motionsense', ignore_status=True)
+        rv = host.run('ectool motionsense', ignore_status=True)
         if rv.exit_status:
             logging.info("EC does not support motionsense command; "
                          "assuming no EC accelerometers")
