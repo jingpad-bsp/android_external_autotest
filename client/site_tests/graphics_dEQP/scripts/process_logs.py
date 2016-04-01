@@ -15,7 +15,9 @@ import re
 import subprocess
 
 _EXPECTATIONS_DIR = 'expectations'
-_AUTOTEST_RESULT_TEMPLATE = 'gs://chromeos-autotest-results/%s-chromeos-test/chromeos*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
+_AUTOTEST_RESULT_ID_TEMPLATE = 'gs://chromeos-autotest-results/%s-chromeos-test/chromeos*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
+#_AUTOTEST_RESULT_TAG_TEMPLATE = 'gs://chromeos-autotest-results/%s/graphics_dEQP/debug/graphics_dEQP.DEBUG'
+_AUTOTEST_RESULT_TAG_TEMPLATE = 'gs://chromeos-autotest-results/%s/debug/client.0.DEBUG'
 # Use this template for tryjob results:
 #_AUTOTEST_RESULT_TEMPLATE = 'gs://chromeos-autotest-results/%s-ihf/*/graphics_dEQP/debug/graphics_dEQP.DEBUG'
 _BOARD_REGEX = re.compile(r'ChromeOS BOARD = (.+)')
@@ -30,7 +32,8 @@ _TEST_RESULT_REGEX = re.compile(r'TestCase: (.+?)$\n.+? Result: (.+?)$',
                                 re.MULTILINE)
 _HASTY_TEST_RESULT_REGEX = re.compile(
     r'\[stdout\] Test case \'(.+?)\'..$\n'
-    r'.+?\[stdout\]   (Pass|Fail|QualityWarning) \((.+)\)', re.MULTILINE)
+    r'.+?\[stdout\]   (Pass|NotSupported|QualityWarning|CompatibilityWarning|'
+    r'Fail|ResourceError|Crash|Timeout|InternalError|Skipped) \((.+)\)', re.MULTILINE)
 Logfile = namedtuple('Logfile', 'job_id name gs_path')
 
 
@@ -52,7 +55,7 @@ def get_metadata(s):
   return board, gpu, filter, hasty
 
 
-def get_logs_from_gs(autotest_result_path):
+def copy_logs_from_gs_path(autotest_result_path):
   logs = []
   gs_paths = execute(['gsutil', 'ls', autotest_result_path]).splitlines()
   for gs_path in gs_paths:
@@ -88,7 +91,8 @@ def get_all_tests(text):
 def get_not_passing_tests(text):
   not_passing = []
   for test, result in re.findall(_TEST_RESULT_REGEX, text):
-    if not (result == 'Pass' or result == 'NotSupported'):
+    if not (result == 'Pass' or result == 'NotSupported' or result == 'Skipped' or
+            result == 'QualityWarning' or result == 'CompatibilityWarning'):
       not_passing.append((test, result))
   for test, result, details in re.findall(_HASTY_TEST_RESULT_REGEX, text):
     if result != 'Pass':
@@ -99,7 +103,7 @@ def get_not_passing_tests(text):
 def load_expectation_dict(json_file):
   data = {}
   if os.path.isfile(json_file):
-    print('Loading file ' + json_file)
+    print 'Loading file ' + json_file
     with open(json_file, 'r') as f:
       text = f.read()
       data = json.loads(text)
@@ -168,7 +172,7 @@ def process_flaky(status_dict):
     if key != 'Flaky':
       not_flaky = list(status_dict[key] - flaky)
       not_flaky.sort()
-      print('Number of "%s" is %d.' % (key, len(not_flaky)))
+      print 'Number of "%s" is %d.' % (key, len(not_flaky))
       clean_dict[key] = not_flaky
 
   # And finally process flaky list/set.
@@ -209,23 +213,36 @@ def load_log(name):
         'TestCase: ' in line or 'Result: ' in line or
         'Test Options: ' in line or 'Running in hasty mode.' in line or
         # For hasty logs we have:
-        ' Pass (' in line or ' Fail (' in line or 'QualityWarning (' in line or
+        'Pass (' in line or 'NotSupported (' in line or 'Skipped (' in line or
+        'QualityWarning (' in line or 'CompatibilityWarning (' in line or
+        'Fail (' in line or 'ResourceError (' in line or 'Crash (' in line or
+        'Timeout (' in line or 'InternalError (' in line or
         ' Test case \'' in line):
       text += line + '\n'
   # TODO(ihf): Warn about or reject log files missing the end marker.
   return text
 
 
+def all_passing(tests):
+  for _, result in tests:
+    if not (result == 'Pass'):
+      return False
+  return True
+
+
 def process_logs(logs):
   for log in logs:
     text = load_log(log.name)
     if text:
-      print('================================================================')
-      print('Loading %s...' % log.name)
+      print '================================================================'
+      print 'Loading %s...' % log.name
       _, gpu, filter, hasty = get_metadata(text)
       tests = get_all_tests(text)
-      print('Found %d test results.' % len(tests))
-      if tests:
+      print 'Found %d test results.' % len(tests)
+      if all_passing(tests):
+        # Delete logs that don't contain failures.
+        os.remove(log.name)
+      else:
         # GPU family goes first in path to simplify adding/deleting families.
         output_path = os.path.join(_EXPECTATIONS_DIR, gpu)
         if not os.access(output_path, os.R_OK):
@@ -236,22 +253,77 @@ def process_logs(logs):
         merge_expectation_list(expectation_path, tests)
 
 
+JOB_TAGS_ALL = (
+'select distinct job_tag from chromeos_autotest_db.tko_test_view_2 '
+'where not job_tag like "%%hostless" and '
+'test_name="graphics_dEQP" and '
+'build_version>="%s" and '
+'build_version<="%s" and '
+'((status = "FAIL" and not job_name like "%%.NotPass") or '
+'job_name like "%%.functional" or '
+'job_name like "%%-master")' )
+
+JOB_TAGS_MASTER = (
+'select distinct job_tag from chromeos_autotest_db.tko_test_view_2 '
+'where not job_tag like "%%hostless" and '
+'test_name="graphics_dEQP" and '
+'build_version>="%s" and '
+'build_version<="%s" and '
+'job_name like "%%-master"' )
+
+def get_result_paths_from_autotest_db(host, user, password, build_from,
+                                      build_to):
+  paths = []
+  # TODO(ihf): Introduce flag to toggle between JOB_TAGS_ALL and _MASTER.
+  sql = JOB_TAGS_ALL % (build_from, build_to)
+  cmd = ['mysql', '-u%s' % user, '-p%s' % password, '--host', host, '-e', sql]
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+  for line in p.communicate()[0].splitlines():
+    # Skip over unrelated sql spew (really first line only):
+    if line and 'chromeos-test' in line:
+      paths.append(_AUTOTEST_RESULT_TAG_TEMPLATE % line.rstrip())
+  print 'Found %d potential results in the database.' % len(paths)
+  return paths
+
+
+def copy_logs_from_gs_paths(paths):
+  i = 1
+  for gs_path in paths:
+    print '[%d/%d] %s' % (i, len(paths), gs_path)
+    copy_logs_from_gs_path(gs_path)
+    i = i+1
+
+
 argparser = argparse.ArgumentParser(
     description='Download from GS and process dEQP logs into expectations.')
 argparser.add_argument(
-    'result_ids',
-    metavar='result_id',
-    nargs='*',  # Zero or more result_ids specified.
-    help='List of result log IDs (wildcards for gsutil like 5678* are ok).')
+    '--host',
+    dest='host',
+    default='chromeos-server38.cbf',
+    help='Host containing autotest result DB.')
+argparser.add_argument('--user', dest='user', help='Database user account.')
+argparser.add_argument(
+    '--password',
+    dest='password',
+    help='Password for user account.')
+argparser.add_argument(
+    '--from',
+    dest='build_from',
+    help='Lowest build revision to include. Example: R51-8100.0.0')
+argparser.add_argument(
+    '--to',
+    dest='build_to',
+    help='Highest build revision to include. Example: R51-8101.0.0')
+
 args = argparser.parse_args()
 
 print pprint.pformat(args)
 # This is somewhat optional. Remove existing expectations to start clean, but
 # feel free to process them incrementally.
 execute(['rm', '-rf', _EXPECTATIONS_DIR])
-for id in args.result_ids:
-  gs_path = _AUTOTEST_RESULT_TEMPLATE % id
-  logs = get_logs_from_gs(gs_path)
+
+copy_logs_from_gs_paths(get_result_paths_from_autotest_db(
+    args.host, args.user, args.password, args.build_from, args.build_to))
 
 # This will include the just downloaded logs from GS as well.
 logs = get_local_logs()
