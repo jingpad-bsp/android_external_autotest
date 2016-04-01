@@ -1005,13 +1005,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     @retry.retry(error.AutoservRunError, timeout_min=10)
-    def download_file(self, build_url, file, dest_dir):
+    def download_file(self, build_url, file, dest_dir, unzip=False,
+                      unzip_dest=None):
         """Download the given file from the build url.
 
         @param build_url: The url to use for downloading Android artifacts.
                 pattern: http://$devserver:###/static/branch/target/build_id
         @param file: Name of the file to be downloaded, e.g., boot.img.
         @param dest_dir: Destination folder for the file to be downloaded to.
+        @param unzip: If True, unzip the downloaded file.
+        @param unzip_dest: Location to unzip the downloaded file to. If not
+                           provided, dest_dir is used.
         """
         # Append the file name to the url if build_url is linked to the folder
         # containing the file.
@@ -1022,6 +1026,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         dest_file = os.path.join(dest_dir, file)
         try:
             self.teststation.run('wget -q -O "%s" "%s"' % (dest_file, src_url))
+            if unzip:
+                unzip_dest = unzip_dest or dest_dir
+                self.teststation.run('unzip "%s/%s" -x -d "%s"' %
+                                     (dest_dir, file, unzip_dest))
         except:
             # Delete the destination file if download failed.
             self.teststation.run('rm -f "%s"' % dest_file)
@@ -1041,14 +1049,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
         image_dir = self.teststation.get_tmp_dir()
-        image_files = [zipped_image_file] + ANDROID_STANDALONE_IMAGES
 
         try:
-            for image_file in image_files:
+            self.download_file(build_url, zipped_image_file, image_dir,
+                               unzip=True)
+            for image_file in ANDROID_STANDALONE_IMAGES:
                 self.download_file(build_url, image_file, image_dir)
-
-            self.teststation.run('unzip "%s/%s" -x -d "%s"' %
-                                 (image_dir, zipped_image_file, image_dir))
 
             return image_dir
         except:
@@ -1070,17 +1076,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         zipped_image_file = ANDROID_IMAGE_FILE_FMT % build_info
         vendor_partitions_file = BRILLO_VENDOR_PARTITIONS_FILE_FMT % build_info
         image_dir = self.teststation.get_tmp_dir()
-        image_files = [zipped_image_file, vendor_partitions_file]
 
         try:
-            for image_file in image_files:
-                self.download_file(build_url, image_file, image_dir)
-
-            self.teststation.run('unzip "%s/%s" -x -d "%s"' %
-                                 (image_dir, zipped_image_file, image_dir))
-            self.teststation.run('unzip "%s/%s" -x -d "%s"' %
-                                 (image_dir, vendor_partitions_file,
-                                  os.path.join(image_dir, 'vendor')))
+            self.download_file(build_url, zipped_image_file, image_dir,
+                               unzip=True)
+            self.download_file(build_url, vendor_partitions_file, image_dir,
+                               unzip=True,
+                               unzip_dest=os.path.join(image_dir, 'vendor'))
             return image_dir
         except:
             self.teststation.run('rm -rf %s' % image_dir)
