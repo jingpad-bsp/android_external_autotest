@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 
@@ -149,7 +150,12 @@ def get_build_from_afe(hostname, afe):
              were multiple build labels assigned to this host.
 
     """
-    return get_label_from_afe(hostname, constants.VERSION_PREFIX, afe)
+    for prefix in [provision.CROS_VERSION_PREFIX,
+                   provision.ANDROID_BUILD_VERSION_PREFIX]:
+        build = get_label_from_afe(hostname, prefix + ':', afe)
+        if build:
+            return build
+    return None
 
 
 def get_sheriffs(lab_only=False):

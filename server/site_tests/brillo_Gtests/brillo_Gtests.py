@@ -9,12 +9,15 @@ import os
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import afe_utils
 from autotest_lib.server import site_gtest_runner
 from autotest_lib.server import test
 
 
 NATIVE_TESTS_PATH = '/data/nativetest'
 WHITELIST_FILE = '/data/nativetest/tests.txt'
+NATIVE_TESTS_FILE_FMT = '%(build_target)s-brillo-tests-%(build_id)s.zip'
 LIST_TEST_BINARIES_TEMPLATE = (
         'find %(path)s -type f -mindepth 2 -maxdepth 2 '
         '\( -perm -100 -o -perm -010 -o -perm -001 \)')
@@ -24,6 +27,36 @@ GtestSuite = namedtuple('GtestSuite', ['path', 'run_as_root', 'args'])
 class brillo_Gtests(test.test):
     """Run one or more native gTest Suites."""
     version = 1
+
+
+    def initialize(self, host=None, gtest_suites=None, use_whitelist=False,
+                   filter_tests=None, native_tests=None):
+        if not afe_utils.host_in_lab(host):
+            return
+        self._install_nativetests(host)
+
+
+    def _install_nativetests(self, host):
+        """Install the nativetests zip onto the DUT.
+
+        Device images built by the Android Build System do not have the
+        native gTests installed. This method requests the devserver to
+        download the nativetests package into the lab, the test station
+        will download/unzip the package, and finally install it onto the DUT.
+
+        @param host: host object to install the nativetests onto.
+        """
+        build = afe_utils.get_build(host)
+        ds = dev_server.AndroidBuildServer.resolve(build)
+        ds.stage_artifacts(image=build, artifacts=['nativetests'])
+        build_url = os.path.join(ds.url(), 'static', build)
+        nativetests_file = (NATIVE_TESTS_FILE_FMT %
+                            host.get_build_info_from_build_url(build_url))
+        tmp_dir = host.teststation.get_tmp_dir()
+        host.download_file(build_url, nativetests_file, tmp_dir, unzip=True)
+        host.adb_run('push %s %s' % (os.path.join(tmp_dir, 'DATA',
+                                                  'nativetest'),
+                                     NATIVE_TESTS_PATH))
 
 
     def _get_whitelisted_tests(self, whitelist_path):
