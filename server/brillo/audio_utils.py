@@ -30,11 +30,16 @@ _FREQUENCY_THRESHOLD = 0.01
 # of the power of the main frequency.
 _FFT_NOISE_THRESHOLD = 0.05
 
+# Command used to encode audio. If you want to test with something different,
+# this should be changed.
+_ENCODING_CMD = 'sox'
+
 
 def extract_wav_frames(wave_file):
     """Extract all frames from a WAV file.
 
-    @param wave_file: A Wave_read object representing a WAV file opened for reading.
+    @param wave_file: A Wave_read object representing a WAV file opened for
+                      reading.
 
     @return: A list containing the frames in the WAV file.
     """
@@ -99,7 +104,8 @@ def check_wav_file(filename, num_channels=None, sample_rate=None,
 
 
 def generate_sine_file(host, num_channels, sample_rate, sample_width,
-                       duration_secs, sine_frequency, temp_dir):
+                       duration_secs, sine_frequency, temp_dir,
+                       file_format='wav'):
     """Generate a sine file and push it to the DUT.
 
     @param host: An object representing the DUT.
@@ -109,28 +115,40 @@ def generate_sine_file(host, num_channels, sample_rate, sample_width,
     @param duration_secs: Duration in seconds to generate sine wave for.
     @param sine_frequency: Frequency to generate sine wave at.
     @param temp_dir: A temporary directory on the host.
+    @param file_format: A string representing the encoding for the audio file.
 
     @return A tuple of the filename on the server and the DUT.
     """;
     _, local_filename = tempfile.mkstemp(
-        prefix='sine-', suffix='.wav', dir=temp_dir)
+        prefix='sine-', suffix='.' + file_format, dir=temp_dir)
     if sample_width == 1:
-        sine_format = '-e unsigned'
+        byte_format = '-e unsigned'
     else:
-        sine_format = '-e signed'
+        byte_format = '-e signed'
     gen_file_cmd = ('sox -n -t wav -c %d %s -b %d -r %d %s synth %d sine %d '
-                    'vol 0.9' % (num_channels, sine_format,
+                    'vol 0.9' % (num_channels, byte_format,
                                  sample_width * _BITS_PER_BYTE, sample_rate,
                                  local_filename, duration_secs, sine_frequency))
     logging.info('Command to generate sine wave: %s', gen_file_cmd)
     subprocess.call(gen_file_cmd, shell=True)
+    if file_format != 'wav':
+        # Convert the file to the appropriate format.
+        logging.info('Converting file to %s', file_format)
+        _, local_encoded_filename = tempfile.mkstemp(
+                prefix='sine-', suffix='.' + file_format, dir=temp_dir)
+        cvt_file_cmd = '%s %s %s' % (_ENCODING_CMD, local_filename,
+                                     local_encoded_filename)
+        logging.info('Command to convert file: %s', cvt_file_cmd)
+        subprocess.call(cvt_file_cmd, shell=True)
+    else:
+        local_encoded_filename = local_filename
+    dut_tmp_dir = '/data'
+    remote_filename = os.path.join(dut_tmp_dir, 'sine.' + file_format)
     logging.info('Send file to DUT.')
     # TODO(ralphnathan): Find a better place to put this file once the SELinux
     # issues are resolved.
-    dut_tmp_dir = '/data'
-    remote_filename = os.path.join(dut_tmp_dir, 'sine.wav')
     logging.info('remote_filename %s', remote_filename)
-    host.send_file(local_filename, remote_filename)
+    host.send_file(local_encoded_filename, remote_filename)
     return local_filename, remote_filename
 
 
