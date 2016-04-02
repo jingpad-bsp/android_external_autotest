@@ -11,6 +11,7 @@ import time
 
 import common
 
+from autotest_lib.client.bin import utils as client_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
@@ -97,6 +98,14 @@ ANDROID_STANDALONE_IMAGES = [ANDROID_BOOTLOADER, ANDROID_RADIO]
 ANDROID_ZIPPED_IMAGES = [ANDROID_BOOT, ANDROID_SYSTEM, ANDROID_VENDOR]
 # All image files to be flashed to an Android device.
 ANDROID_IMAGES = ANDROID_STANDALONE_IMAGES + ANDROID_ZIPPED_IMAGES
+
+# Map of product names to build target name.
+PRODUCT_TARGET_MAP = {'dragon' : 'ryu',
+                      'flo' : 'razor',
+                      'flo_lte' : 'razorg',
+                      'gm4g_sprout' : 'seed_l8150',
+                      'flounder' : 'volantis',
+                      'flounder_lte' : 'volantisg'}
 
 # Command to provision a Brillo device.
 # os_image_dir: The full path of the directory that contains all the Android image
@@ -340,7 +349,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def get_board_name(self):
         """Get the name of the board, e.g., shamu, dragonboard etc.
         """
-        return self.run_output('getprop %s' % BOARD_FILE)
+        product = self.run_output('getprop %s' % BOARD_FILE)
+        return PRODUCT_TARGET_MAP.get(product, product)
 
 
     @label_decorator()
@@ -1309,6 +1319,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns a CMDResult object.
         """
+        client_utils.poll_for_condition(
+                lambda: self.run('pm list packages',
+                                 ignore_status=True).exit_status == 0,
+                timeout=120)
         return self.adb_run('install %s -d %s' %
                             ('-r' if force_reinstall else '', apk))
 
