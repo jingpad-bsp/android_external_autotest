@@ -174,9 +174,11 @@ class BaseUpdater(object):
             self.host.run(**run_args)
         except (error.AutoservSshPermissionDeniedError,
                 error.AutoservSSHTimeout) as e:
+            logging.exception(e)
             err_msg += 'SSH reports an error: %s' % type(e).__name__
             to_raise = RootFSUpdateError(err_msg)
         except error.AutoservRunError as e:
+            logging.exception(e)
             # Check if exit code is 255, if so it's probably a generic SSH error
             result = e.args[1]
             if result.exit_status == 255:
@@ -191,7 +193,6 @@ class BaseUpdater(object):
                 err_msg += ('Update failed. Returned update_engine error code: '
                             '%s. Reported error: %s' %
                             (self.get_last_update_error(), type(e).__name__))
-                logging.error(e)
                 to_raise = RootFSUpdateError(err_msg)
         except Exception as e:
             to_raise = e
