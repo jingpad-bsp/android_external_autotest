@@ -333,7 +333,7 @@ class test_format_for_upload(unittest.TestCase):
              '"hardware_identifier": "WINKY E2A-F2K-Q35",'
              '"jobname": "52926644-username/hostname",'
              '"hardware_hostname": "test_machine",'
-             '"default_rev": "chrome_version",'
+             '"default_rev": "r_cros_version",'
              '"variant_name": "i7"}'
            '}')
         self._verify_result_string(result['data'], expected_result_string)

@@ -142,7 +142,7 @@ def _format_for_upload(platform_name, cros_version, chrome_version,
             'chrome_version': chrome_version,
         },
         'supplemental': {
-            'default_rev': 'chrome_version',
+            'default_rev': 'r_cros_version',
             'hardware_identifier': hardware_id,
             'hardware_hostname': hardware_hostname,
             'variant_name': variant_name,
