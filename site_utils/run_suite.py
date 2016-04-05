@@ -351,6 +351,9 @@ class LogLink(object):
     _URL_PATTERN = CONFIG.get_config_value('CROS',
                                            'log_url_pattern', type=str)
 
+    # A list of tests that don't get retried so skip the dashboard.
+    _SKIP_RETRY_DASHBOARD = ['provision']
+
 
     @classmethod
     def get_bug_link(cls, bug_id):
@@ -437,6 +440,9 @@ class LogLink(object):
         @return A link formatted for the buildbot log annotator.
         """
         if not self.testname:
+            return None
+
+        if self.testname in self._SKIP_RETRY_DASHBOARD:
             return None
 
         return GetBuildbotStepLink(
