@@ -200,7 +200,8 @@ class host_list(action_common.atest_list, host):
             self.print_list(results, key='hostname')
         else:
             keys = ['hostname', 'status',
-                    'shard', 'locked', 'lock_reason', 'platform', 'labels']
+                    'shard', 'locked', 'lock_reason', 'locked_by', 'platform',
+                    'labels']
             super(host_list, self).output(results, keys=keys)
 
 
