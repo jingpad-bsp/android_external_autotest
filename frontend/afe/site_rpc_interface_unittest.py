@@ -1026,6 +1026,11 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
             jobs=[job2],
             hqes=job2.hostqueueentry_set.all())
 
+        models.Test.objects.create(name='platform_BootPerfServer:shard',
+                                   test_type=1)
+        self.mox.StubOutWithMock(utils, 'read_file')
+        utils.read_file(mox.IgnoreArg()).AndReturn('')
+        self.mox.ReplayAll()
         site_rpc_interface.delete_shard(hostname=shard1.hostname)
 
         self.assertRaises(
@@ -1034,12 +1039,15 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         job1 = models.Job.objects.get(pk=job1.id)
         lumpy_label = models.Label.objects.get(pk=lumpy_label.id)
         host1 = models.Host.objects.get(pk=host1.id)
+        super_job = models.Job.objects.get(priority=priorities.Priority.SUPER)
+        super_job_host = models.HostQueueEntry.objects.get(
+                job_id=super_job.id)
 
         self.assertIsNone(job1.shard)
         self.assertEqual(len(lumpy_label.shard_set.all()), 0)
         self.assertIsNone(host1.shard)
-        self.assertEqual([s.task for s in host1.specialtask_set.all()],
-                         ['Repair'])
+        self.assertIsNotNone(super_job)
+        self.assertEqual(super_job_host.host_id, host1.id)
 
 
     def testCreateListShard(self):
