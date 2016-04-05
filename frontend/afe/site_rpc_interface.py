@@ -859,10 +859,16 @@ def delete_shard(hostname):
     """Delete a shard and reclaim all resources from it.
 
     This claims back all assigned hosts from the shard. To ensure all DUTs are
-    in a sane state, a Repair task is scheduled for them. This reboots the DUTs
-    and therefore clears all running processes that might be left.
+    in a sane state, a Reboot task with highest priority is scheduled for them.
+    This reboots the DUTs and then all left tasks continue to run in drone of
+    the master.
 
-    The shard_id of jobs of that shard will be set to None.
+    The procedure for deleting a shard:
+        * Lock all unlocked hosts on that shard.
+        * Remove shard information .
+        * Assign a reboot task with highest priority to these hosts.
+        * Unlock these hosts, then, the reboot tasks run in front of all other
+        tasks.
 
     The status of jobs that haven't been reported to be finished yet, will be
     lost. The master scheduler will pick up the jobs and execute them.
@@ -870,30 +876,37 @@ def delete_shard(hostname):
     @param hostname: Hostname of the shard to delete.
     """
     shard = rpc_utils.retrieve_shard(shard_hostname=hostname)
+    hostnames_to_lock = [h.hostname for h in
+                         models.Host.objects.filter(shard=shard, locked=False)]
 
     # TODO(beeps): Power off shard
+    # For ChromeOS hosts, a reboot test with the highest priority is added to
+    # the DUT. After a reboot it should be ganranteed that no processes from
+    # prior tests that were run by a shard are still running on.
 
-    # For ChromeOS hosts, repair reboots the DUT.
-    # Repair will excalate through multiple repair steps and will verify the
-    # success after each of them. Anyway, it will always run at least the first
-    # one, which includes a reboot.
-    # After a reboot we can be sure no processes from prior tests that were run
-    # by a shard are still running on the DUT.
-    # Important: Don't just set the status to Repair Failed, as that would run
-    # Verify first, before doing any repair measures. Verify would probably
-    # succeed, so this wouldn't change anything on the DUT.
-    for host in models.Host.objects.filter(shard=shard):
-            models.SpecialTask.objects.create(
-                    task=models.SpecialTask.Task.REPAIR,
-                    host=host,
-                    requested_by=models.User.current_user())
+    # Lock all unlocked hosts.
+    dicts = {'locked': True, 'lock_time': datetime.datetime.now()}
+    models.Host.objects.filter(hostname__in=hostnames_to_lock).update(**dicts)
+
+    # Remove shard information.
     models.Host.objects.filter(shard=shard).update(shard=None)
-
     models.Job.objects.filter(shard=shard).update(shard=None)
-
     shard.labels.clear()
-
     shard.delete()
+
+    # Assign a reboot task with highest priority: Super.
+    t = models.Test.objects.get(name='platform_BootPerfServer:shard')
+    c = utils.read_file(os.path.join(common.autotest_dir, t.path))
+    if hostnames_to_lock:
+        rpc_utils.create_job_common(
+                'reboot_dut_for_shard_deletion',
+                priority=priorities.Priority.SUPER,
+                control_type='Server',
+                control_file=c, hosts=hostnames_to_lock)
+
+    # Unlock these shard-related hosts.
+    dicts = {'locked': False, 'lock_time': None}
+    models.Host.objects.filter(hostname__in=hostnames_to_lock).update(**dicts)
 
 
 def get_servers(hostname=None, role=None, status=None):
