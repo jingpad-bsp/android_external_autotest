@@ -15,7 +15,7 @@ DOC = """
 Tests whether a Brillo device wifi interface is properly configured.
 """
 
-TEST_ARG_NAMES = ('wifi_iface', 'wifi_ssid')
+TEST_ARG_NAMES = ('ssid', 'passphrase', 'wifi_iface', 'wifi_ssid')
 args_dict = utils.args_to_dict(args)
 
 def run(machine):

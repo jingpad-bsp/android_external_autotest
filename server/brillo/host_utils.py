@@ -4,6 +4,14 @@
 
 """Utilities used with Brillo hosts."""
 
+import contextlib
+import logging
+import time
+
+import common
+from autotest_lib.client.bin import site_utils as client_site_utils
+
+
 _RUN_BACKGROUND_TEMPLATE = '( %(cmd)s ) </dev/null >/dev/null 2>&1 & echo -n $!'
 
 _WAIT_CMD_TEMPLATE = """\
@@ -40,3 +48,43 @@ def wait_for_process(host, pid, timeout=-1):
     """
     wait_cmd = _WAIT_CMD_TEMPLATE % {'pid': pid, 'timeout': timeout}
     return host.run(wait_cmd, ignore_status=True).exit_status == 0
+
+
+@contextlib.contextmanager
+def connect_to_ssid(host, ssid, passphrase):
+    """Connects to a given ssid.
+
+    @param host: A host object representing the DUT.
+    @param ssid: A string representing the ssid to connect to.
+    @param passphrase: A string representing the passphrase to the ssid.
+                       Defaults to None.
+    """
+    try:
+        # Update the weaved init.rc to stop privet. This sets up shill in client
+        # mode allowing it to connect to wifi.
+        host.remount()
+        host.run('sed \'s/service weaved \/system\/bin\/weaved/'
+                 'service weaved \/system\/bin\/weaved --disable_privet/\' -i '
+                 '/system/etc/init/weaved.rc')
+        host.reboot()
+        client_site_utils.poll_for_condition(
+                lambda: 'running' in host.run('getprop init.svc.shill').stdout,
+                sleep_interval=1, timeout=300,
+                desc='shill was not started by init')
+        logging.info('Connecting to wifi')
+        wifi_cmd = 'su root shill_setup_wifi --ssid=%s' % ssid
+        if passphrase:
+            wifi_cmd += ' --passphrase=%s' % passphrase
+        host.run(wifi_cmd)
+        # TODO(ralphnathan): Once shill_setup_wifi can monitor the service as it
+        # connects to wifi, remove this timeout.
+        # Wait for wifi connection to occur.
+        time.sleep(10)
+        yield
+    finally:
+        host.remount()
+        host.run('sed \'s/service weaved \/system\/bin\/weaved '
+                 '--disable_privet/service weaved \/system\/bin\/weaved/\' -i '
+                 '/system/etc/init/weaved.rc')
+        host.run('su root stop weaved')
+        host.run('su root start weaved')
