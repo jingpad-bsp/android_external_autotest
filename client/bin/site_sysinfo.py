@@ -215,9 +215,9 @@ class diffable_logdir(logdir):
         if collect_init_status:
             self._get_init_status_of_src_dir(self.dir)
         elif os.path.exists(self.dir):
-            if not collect_all:
-                self._log_diff(self.dir, log_dir)
-            else:
+            # Always create a copy of the new logs to help debugging.
+            self._log_diff(self.dir, log_dir)
+            if collect_all:
                 logdir_temp = logdir(self.dir)
                 logdir_temp.run(log_dir)
 
