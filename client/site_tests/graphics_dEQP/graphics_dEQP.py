@@ -55,16 +55,17 @@ class graphics_dEQP(test.test):
         self._gpu_type = utils.get_gpu_family()
         # Determine which executable should be run. Right now never egl.
         major, minor = graphics_utils.get_gles_version()
+        logging.info('Found gles%d.%d.' % (major, minor))
         if major is None or minor is None:
             raise error.TestError(
                 'Could not get gles version information (%d, %d).' %
                 (major, minor))
         if major >= 2:
-            self._can_run_executables.append('gles2')
+            self._can_run_executables.append('gles2/deqp-gles2')
         if major >= 3:
-            self._can_run_executables.append('gles3')
+            self._can_run_executables.append('gles3/deqp-gles3')
             if major > 3 or minor >= 1:
-                self._can_run_executables.append('gles31')
+                self._can_run_executables.append('gles31/deqp-gles31')
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
 
     def cleanup(self):
