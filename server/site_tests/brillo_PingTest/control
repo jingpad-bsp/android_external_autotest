@@ -15,7 +15,8 @@ DOC = """
 Tests whether a Brillo device can ping the Internet.
 """
 
-TEST_ARG_NAMES = ('ping_host', 'ping_count', 'ping_timeout')
+TEST_ARG_NAMES = ('ssid', 'passphrase', 'ping_host', 'ping_count',
+                  'ping_timeout')
 args_dict = utils.args_to_dict(args)
 
 def run(machine):
