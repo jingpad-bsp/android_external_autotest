@@ -7,6 +7,7 @@ import logging
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import site_utils
+from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.server.brillo import host_utils
 
@@ -36,9 +37,8 @@ class brillo_PingTest(test.test):
 
         @raise TestFail: The test failed.
         """
-        if ssid is None:
+        if afe_utils.host_in_lab(host):
             ssid = site_utils.get_wireless_ssid(host.hostname)
-        logging.info('Connecting to ssid %s', ssid)
         with host_utils.connect_to_ssid(host, ssid, passphrase):
             cmd = 'ping -q -c %s -W %s %s' % (ping_count, ping_timeout,
                                               ping_host)
