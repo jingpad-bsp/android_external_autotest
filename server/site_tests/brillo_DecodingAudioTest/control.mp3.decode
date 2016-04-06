@@ -5,13 +5,13 @@
 from autotest_lib.client.common_lib import utils
 from autotest_lib.server.brillo.feedback import client_factory
 
-
 AUTHOR = 'ralphnathan'
 NAME = 'brillo_DecodingAudioTest.MP3'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-audio'
+DEPENDENCIES = 'loopback-dongle'
 
 DOC = """
 Tests audio decoding of an MP3 file using OpenSL ES on a Brillo device.
