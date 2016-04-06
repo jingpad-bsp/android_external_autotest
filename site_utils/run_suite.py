@@ -331,7 +331,8 @@ def GetBuildbotStepLink(anchor_text, url):
     @param anchor_text    The link text.
     @param url            The url to link to.
     """
-    return '@@@STEP_LINK@%s@%s@@@' % (anchor_text, url)
+    new_anchor_text = anchor_text.replace('@', '-AT-')
+    return '@@@STEP_LINK@%s@%s@@@' % (new_anchor_text, url)
 
 
 class LogLink(object):
