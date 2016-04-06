@@ -50,13 +50,13 @@ class brillo_PlaybackAudioTest(test.test):
         """
         if dut_play_file:
             if method == 'libmedia':
-                return ('su root brillo_audio_test --playback --libmedia '
+                return ('brillo_audio_test --playback --libmedia '
                         '--filename=%s' % dut_play_file)
             elif method == 'stagefright':
-                return ('su root brillo_audio_test --playback --stagefright '
+                return ('brillo_audio_test --playback --stagefright '
                         '--filename=%s' % dut_play_file)
             elif method == 'opensles':
-                return 'su root slesTest_playFdPath %s 0' % dut_play_file
+                return 'slesTest_playFdPath %s 0' % dut_play_file
         else:
             if method == 'libmedia':
                 return 'brillo_audio_test --playback --libmedia --sine'

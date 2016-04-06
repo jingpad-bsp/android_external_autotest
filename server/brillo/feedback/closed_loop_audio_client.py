@@ -166,8 +166,7 @@ class _PlaybackAudioQuery(client.OutputQuery):
         self.local_tmp_dir = tempfile.mkdtemp(dir=self.client.tmp_dir)
 
         # Trigger recording in the background.
-        # TODO(garnold) Remove 'su root' once b/25663983 is resolved.
-        cmd = ('su root slesTest_recBuffQueue -c%d -d%d -r%d -%d %s' %
+        cmd = ('slesTest_recBuffQueue -c%d -d%d -r%d -%d %s' %
                (num_channels, duration_secs, sample_rate, sample_width,
                 self.dut_rec_filename))
         logging.info("Recording cmd: %s", cmd)
@@ -305,7 +304,7 @@ class RecordingAudioQuery(client.InputQuery):
                             self.sample_rate, self.sample_width,
                             self.duration_secs, self.frequency,
                             self.client.tmp_dir)
-            playback_cmd = 'su root slesTest_playFdPath %s 0' % dut_play_file
+            playback_cmd = 'slesTest_playFdPath %s 0' % dut_play_file
             self.client.host.run(playback_cmd)
         else:
             self.client.host.run('slesTest_sawtoothBufferQueue')

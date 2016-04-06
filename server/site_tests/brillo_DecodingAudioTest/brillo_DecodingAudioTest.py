@@ -61,7 +61,7 @@ class brillo_DecodingAudioTest(test.test):
                              duration_secs=duration_secs,
                              num_channels=_DEFAULT_NUM_CHANNELS)
 
-            playback_cmd = 'su root slesTest_playFdPath %s 0' % dut_play_file
+            playback_cmd = 'slesTest_playFdPath %s 0' % dut_play_file
             logging.info('Testing decode playback')
             host.run(playback_cmd)
             fb_query.validate(audio_file=local_filename)
