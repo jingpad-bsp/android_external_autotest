@@ -133,6 +133,7 @@ suite:video
 suite:video_image_comparison_chameleon
 suite:wifi_atten_perf
 suite:wifi_correctness_cros_core
+suite:wifi_endtoend
 suite:wifi_flaky
 suite:wifi_interop
 suite:wifi_lucidsleep
