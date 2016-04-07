@@ -56,14 +56,7 @@ class DynamicSuiteTest(mox.MoxTestBase):
     def testVetReimageAndRunBuildArgFail(self):
         """Should fail verification if both |builds| and |build| are not set.
         """
-        self._DARGS['build'] = None
         self._DARGS['builds'] = None
-        self.assertRaises(error.SuiteArgumentException,
-                          dynamic_suite.SuiteSpec,
-                          **self._DARGS)
-        self._DARGS['build'] = 'build1'
-        self._DARGS['builds'] = {'cros-version': 'build2',
-                                 'firmware-version': 'build3'}
         self.assertRaises(error.SuiteArgumentException,
                           dynamic_suite.SuiteSpec,
                           **self._DARGS)
