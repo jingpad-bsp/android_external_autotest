@@ -91,9 +91,10 @@ class PDDevice(object):
         raise NotImplementedError(
                 'vbus_request should be implemented in derived class')
 
-    def soft_reset(self):
+    def soft_reset(self, states_list=None):
         """Initates a PD soft reset sequence
 
+        @param states_list: list of expected PD state transitions
         """
         raise NotImplementedError(
                 'drp_set should be implemented in derived class')
@@ -276,6 +277,59 @@ class PDConsoleDevice(PDDevice):
             val = 'off'
         return bool(val == m[0][1])
 
+    def soft_reset(self, states_list=None):
+        """Initates a PD soft reset sequence
+
+        To verify that a soft reset sequence was initiated, the
+        reply message is checked to verify that the reset command
+        was acknowledged by its port pair. The connect state should
+        be same as it was prior to issuing the reset command.
+
+        @param states_list: list of expected PD state transitions
+
+        @returns True if the port pair acknowledges the the reset message
+        and if following the command, the device returns to the same
+        connected state. False otherwise.
+        """
+        RESET_DELAY = 0.5
+        cmd = 'pd %d soft' % self.port
+        state_before = self.utils.get_pd_state(self.port)
+        reply = self.utils.send_pd_command_get_reply_msg(cmd)
+        if reply != self.utils.PD_CONTROL_MSG_DICT['Accept']:
+            return False
+        time.sleep(RESET_DELAY)
+        state_after = self.utils.get_pd_state(self.port)
+        return state_before == state_after
+
+    def pr_swap(self):
+        """Attempts a power role swap
+
+        In order to attempt a power role swap the device must be
+        connected and support dualrole mode. Once these two criteria
+        are checked a power role command is issued. Following a delay
+        to allow for a reconnection the new power role is checked
+        against the power role prior to issuing the command.
+
+        @returns True if the device has swapped power roles, False otherwise.
+        """
+        # Get starting state
+        if not self.is_drp() and not self.drp_set('on'):
+            logging.warn('Dualrole Mode not enabled!')
+            return False
+        if self.is_connected() == False:
+            logging.warn('PD contract not established!')
+            return False
+        current_pr = self.utils.get_pd_state(self.port)
+        swap_cmd = 'pd %d swap power' % self.port
+        self.utils.send_pd_command(swap_cmd)
+        time.sleep(self.utils.CONNECT_TIME)
+        new_pr = self.utils.get_pd_state(self.port)
+        logging.info('Power swap: %s -> %s', current_pr, new_pr)
+        if self.is_connected() == False:
+            logging.warn('Device not connected following PR swap attempt.')
+            return False
+        return current_pr != new_pr
+
 
 class PDPlanktonDevice(PDConsoleDevice):
     """Class for PD Plankton devices
@@ -325,6 +379,22 @@ class PDPlanktonDevice(PDConsoleDevice):
         logging.error('Plankton DRP mode set failure')
         return False
 
+    def _verify_state_sequence(self, states_list, console_log):
+        """Compare PD state transitions to expected values
+
+        @param states_list: list of expected PD state transitions
+        @param console_log: console output which contains state names
+        @returns True if the sequence matches, False otherwise
+        """
+        # For each state in the expected state transiton table, build
+        # the regexp and search for it in the state transition log.
+        for state in states_list:
+            state_regx = r'C{0}\s+[\w]+:\s({1})'.format(self.port,
+                                                        state)
+            if re.search(state_regx, console_log) is None:
+                return False
+        return True
+
     def cc_disconnect_connect(self, disc_time_sec):
         """Disconnect/reconnect using Plankton
 
@@ -364,6 +434,23 @@ class PDPlanktonDevice(PDConsoleDevice):
                 return self._toggle_plankton_drp()
             # With drp_enable flag off, can set to desired setting
             return self.utils.set_pd_dualrole(mode)
+
+    def soft_reset(self, states_list):
+        """Initates a PD soft reset sequence
+
+        Plankton device has state names available on the console. When
+        a soft reset is issued the console log is extracted and then
+        compared against the expected state transisitons.
+
+        @param states_list: list of expected PD state transitions
+
+        @returns True if state transitions match, False otherwise
+        """
+        cmd = 'pd %d soft' % self.port
+        # Want to grab all output until either SRC_READY or SNK_READY
+        reply_exp = ['(.*)(C\d)\s+[\w]+:\s([\w]+_READY)']
+        m = self.utils.send_pd_command_get_output(cmd, reply_exp)
+        return self._verify_state_sequence(states_list, m[0][0])
 
 
 class PDPortPartner(object):
