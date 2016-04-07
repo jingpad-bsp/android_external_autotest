@@ -145,7 +145,7 @@ def _stage_build_artifacts(build):
 
 
 @rpc_utils.route_rpc_to_master
-def create_suite_job(name='', board='', build='', pool='', control_file='',
+def create_suite_job(name='', board='', pool='', control_file='',
                      check_hosts=True, num=None, file_bugs=False, timeout=24,
                      timeout_mins=None, priority=priorities.Priority.DEFAULT,
                      suite_args=None, wait_for_results=True, job_retry=False,
@@ -162,10 +162,9 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     @param name: The test name if control_file is supplied, otherwise the name
                  of the test suite to run, e.g. 'bvt'.
     @param board: the kind of device to run the tests on.
-    @param build: unique name by which to refer to the image from now on.
     @param builds: the builds to install e.g.
                    {'cros-version:': 'x86-alex-release/R18-1655.0.0',
-                    'fw-version:':  'x86-alex-firmware/R36-5771.50.0',
+                    'fwrw-version:':  'x86-alex-firmware/R36-5771.50.0',
                     'fwro-version:':  'x86-alex-firmware/R36-5771.49.0'}
                    If builds is given a value, it overrides argument build.
     @param test_source_build: Build that contains the server-side test code.
@@ -219,11 +218,6 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
 
-    # TODO(dshi): crbug.com/496782 Remove argument build and its reference after
-    # R45 falls out of stable channel.
-    if build and not builds:
-        builds = {provision.CROS_VERSION_PREFIX: build}
-
     # Default test source build to CrOS build if it's not specified and
     # run_prod_code is set to False.
     if not run_prod_code:
@@ -232,7 +226,7 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
 
     suite_name = canonicalize_suite_name(name)
     if run_prod_code:
-        ds = dev_server.resolve(build)
+        ds = dev_server.resolve(test_source_build)
         keyvals = {}
         getter = control_file_getter.FileSystemGetter(
                 [_CONFIG.get_config_value('SCHEDULER',
@@ -262,11 +256,8 @@ def create_suite_job(name='', board='', build='', pool='', control_file='',
     if not board:
         board = utils.ParseBuildName(builds[provision.CROS_VERSION_PREFIX])[0]
 
-    # TODO(dshi): crbug.com/496782 Remove argument build and its reference after
-    # R45 falls out of stable channel.
-    # Prepend build and board to the control file.
+    # Prepend builds and board to the control file.
     inject_dict = {'board': board,
-                   'build': builds.get(provision.CROS_VERSION_PREFIX),
                    'builds': builds,
                    'check_hosts': check_hosts,
                    'pool': pool,
