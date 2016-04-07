@@ -24,30 +24,27 @@ class brillo_ADBFileTransfer(test.test):
     def setup(self):
         self.temp_file = tempfile.NamedTemporaryFile()
         self.temp_file.write(_DATA_STR)
+        self.temp_file.flush()
+        os.fsync(self.temp_file.file.fileno())
 
 
     def run_once(self, host=None):
         """Body of the test."""
         device_temp_file = os.path.join(host.get_tmp_dir(), 'adb_test_file')
 
-        host.run('rm -rf %s' % device_temp_file)
-
         with tempfile.NamedTemporaryFile() as return_temp_file:
-            host.adb_run('push %s %s' %
-                    (self.temp_file.name, device_temp_file))
-            host.adb_run('pull %s %s' %
-                    (device_temp_file, return_temp_file.name))
-            if not filecmp.cmp(self.temp_file.name, return_temp_file.name,
-                               shallow=False):
+            host.send_file(self.temp_file.name, device_temp_file,
+                           delete_dest=True)
+            host.get_file(device_temp_file, return_temp_file.name,
+                          delete_dest=True)
+
+            if not filecmp.cmp(self.temp_file.name,
+                               return_temp_file.name, shallow=False):
                 raise error.TestFail('Got back different file than we sent')
 
-            with tempfile.NamedTemporaryFile() as cat_data:
-                host.run('cat %s' % device_temp_file,
-                             stdout=cat_data)
-                if not filecmp.cmp(self.temp_file.name, cat_data.name,
-                                   shallow=False):
-                    raise error.TestFail(
-                            'Cat did not return same contents we sent')
+        r = host.run('cat %s' % device_temp_file)
+        if r.stdout != _DATA_STR:
+            raise error.TestFail('Cat did not return same contents we sent')
 
 
     def cleanup(self):
