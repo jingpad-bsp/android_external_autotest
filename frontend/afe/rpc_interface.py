@@ -35,7 +35,6 @@ import sys
 import datetime
 import logging
 
-from django.db import connections
 from django.db.models import Count
 import common
 from autotest_lib.client.common_lib import priorities
@@ -1162,17 +1161,9 @@ def get_jobs(not_yet_run=False, running=False, finished=False,
 
 def get_num_jobs(not_yet_run=False, running=False, finished=False,
                  suite=False, sub=False, standalone=False,
-                 max_search_count=9999,
                  **filter_data):
-    """See get_jobs() for documentation of extra filter parameters.
-
-    This method returns the number of jobs that match the filter, or 9999
-    whichever is less.
-
-    @params: max_search_count: Default 9999. If None, return accurate job count.
-         Limit the maximum number of jobs we inspect, since this query examines the
-         afe_host_queue_entries table as well and can be quite expensive if there
-         are a lot of jobs. See crbug.com/599267
+    """\
+    See get_jobs() for documentation of extra filter parameters.
     """
     extra_args = rpc_utils.extra_job_status_filters(not_yet_run,
                                                     running,
@@ -1181,19 +1172,8 @@ def get_num_jobs(not_yet_run=False, running=False, finished=False,
                                                                  suite,
                                                                  sub,
                                                                  standalone)
-    if max_search_count is None:
-       return models.Job.query_count(filter_data)
+    return models.Job.query_count(filter_data)
 
-    # We need to quote the string as django may not quote it properly.
-    for key, val in filter_data.iteritems():
-      if isinstance(val, str):
-        filter_data[key] = repr(val)
-    inner_query = str(models.Job.query_objects(filter_data)[:max_search_count].query)
-    full_query = 'SELECT COUNT(*) FROM (%s) t' % inner_query
-    cursor = connections['default'].cursor()
-    cursor.execute(full_query)
-    row = cursor.fetchone()
-    return row[0]
 
 def get_jobs_summary(**filter_data):
     """\
