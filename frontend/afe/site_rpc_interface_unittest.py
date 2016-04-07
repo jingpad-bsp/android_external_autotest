@@ -34,6 +34,7 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import rpc_interface, site_rpc_interface
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import moblab_host
@@ -55,6 +56,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
     _NAME = 'name'
     _BOARD = 'link'
     _BUILD = 'link-release/R36-5812.0.0'
+    _BUILDS = {provision.CROS_VERSION_PREFIX: _BUILD}
     _PRIORITY = priorities.Priority.DEFAULT
     _TIMEOUT = 24
 
@@ -130,7 +132,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None)
 
 
@@ -152,7 +154,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None)
 
 
@@ -174,7 +176,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None)
 
 
@@ -184,21 +186,21 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None,
                           num='goo')
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None,
                           num=[])
         self.assertRaises(error.SuiteArgumentException,
                           site_rpc_interface.create_suite_job,
                           name=self._NAME,
                           board=self._BOARD,
-                          build=self._BUILD,
+                          builds=self._BUILDS,
                           pool=None,
                           num='5')
 
@@ -224,7 +226,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(
             site_rpc_interface.create_suite_job(name=self._NAME,
                                                 board=self._BOARD,
-                                                build=self._BUILD, pool=None),
+                                                builds=self._BUILDS, pool=None),
             -1)
 
 
@@ -249,7 +251,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(
             site_rpc_interface.create_suite_job(name=self._NAME,
                                                 board=self._BOARD,
-                                                build=self._BUILD,
+                                                builds=self._BUILDS,
                                                 pool=None),
             job_id)
 
@@ -275,7 +277,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(
           site_rpc_interface.create_suite_job(name=self._NAME,
                                               board=self._BOARD,
-                                              build=self._BUILD,
+                                              builds=self._BUILDS,
                                               pool=None, check_hosts=False),
           job_id)
 
@@ -300,7 +302,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.assertEquals(
             site_rpc_interface.create_suite_job(name=self._NAME,
                                                 board=self._BOARD,
-                                                build=self._BUILD,
+                                                builds=self._BUILDS,
                                                 pool=None,
                                                 check_hosts=False,
                                                 num=17),
@@ -323,7 +325,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
             site_rpc_interface.create_suite_job(name='%s/%s' % (self._NAME,
                                                                 self._BUILD),
                                                 board=None,
-                                                build=self._BUILD,
+                                                builds=self._BUILDS,
                                                 pool=None,
                                                 control_file='CONTROL FILE'),
             job_id)
