@@ -16,6 +16,7 @@ import ConfigParser
 import argparse
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -23,10 +24,18 @@ import time
 import common
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 # How long after restarting a service do we watch it to see if it's stable.
 SERVICE_STABILITY_TIMER = 120
 
+# A list of commands that only applies to primary server. For example,
+# test_importer should only be run in primary master scheduler. If two servers
+# are both running test_importer, there is a chance to fail as both try to
+# update the same table.
+PRIMARY_ONLY_COMMANDS = ['test_importer']
+
+AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
 
 class DirtyTreeException(Exception):
     """Raised when the tree has been modified in an unexpected way."""
@@ -61,7 +70,7 @@ def verify_repo_clean():
 
     CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
     if out != CLEAN_STATUS_OUTPUT:
-      raise DirtyTreeException(out)
+        raise DirtyTreeException(out)
 
 
 def repo_versions():
@@ -271,6 +280,11 @@ def run_deploy_actions(dryrun=False, skip_service_status=False):
     if cmds:
         print('Running update commands:', ', '.join(cmds))
         for cmd in cmds:
+            if (cmd in PRIMARY_ONLY_COMMANDS and
+                not AFE.run('get_servers', hostname=socket.getfqdn(),
+                            status='primary')):
+                print('Command %s is only applicable to primary servers.' % cmd)
+                continue
             update_command(cmd, dryrun=dryrun)
 
     services = discover_restart_services()
