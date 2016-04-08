@@ -3,17 +3,19 @@
 # found in the LICENSE file.
 
 AUTHOR = 'sadmac'
-NAME = 'brillo_ADBFileTransfer'
-TIME = 'LONG'
+NAME = 'brillo_ADBFileTransfer.10iters'
+TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt, suite:brillo-pts'
+ATTRIBUTES = 'suite:brillo-bvt'
 
 DOC = """
 Tests whether ADB can handle large/long file transfers.
 """
 
 def run(machine):
-    job.run_test('brillo_ADBFileTransfer', host=hosts.create_host(machine))
+    job.run_test('brillo_ADBFileTransfer',
+                 tag=NAME.split('.', 1)[1],
+                 host=hosts.create_host(machine))
 
 parallel_simple(run, machines)
