@@ -16,6 +16,7 @@ DEPLOY_PRODUCTION_LOCAL = ('/usr/local/autotest/site_utils/'
                            'deploy_production_local.py')
 POOL_SIZE = 124
 PUSH_ORDER = {'database': 0,
+              'database_slave': 0,
               'drone': 1,
               'shard': 1,
               'golo_proxy': 1,
@@ -226,39 +227,6 @@ def update_in_parallel(servers, options):
         sys.exit(1)
 
 
-def update_group(servers, options):
-    """Update a group of servers in parallel.
-
-    Exit the process with error if any server failed to be updated and
-    options.cont is not set.
-
-    @param servers: A list of tuple of (server_name, server_status, roles).
-    @param options: Options for the push.
-
-    """
-    # If it's allowed to continue updating even after some update fails, update
-    # all servers together.
-    if options.cont:
-        update_in_parallel(servers, options)
-        return
-
-    # Pick on server per role in the group to update first. Abort if any update
-    # failed.
-    server_per_role = {}
-    # Each server can be used to qualify only one role.
-    server_picked = set()
-    for server, status, roles in servers:
-        for role in roles:
-            if not role in server_per_role and not server in server_picked:
-                server_per_role[role] = (server, status, roles)
-                server_picked.add(server)
-                break
-    update_in_parallel(server_per_role.values(), options)
-
-    rest_servers = [s for s in servers if not s[0] in server_picked]
-    update_in_parallel(rest_servers, options)
-
-
 def main(args):
     """Main routine that drives all the real work.
 
@@ -282,7 +250,7 @@ def main(args):
     print()
 
     for servers in sorted_servers:
-        update_group(servers, options)
+        update_in_parallel(servers, options)
 
 
 if __name__ == '__main__':
