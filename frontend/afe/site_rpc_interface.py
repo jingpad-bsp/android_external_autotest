@@ -258,6 +258,9 @@ def create_suite_job(name='', board='', pool='', control_file='',
 
     # Prepend builds and board to the control file.
     inject_dict = {'board': board,
+                   # `build` is needed for suites like AU to stage image inside
+                   # suite control file.
+                   'build': test_source_build,
                    'builds': builds,
                    'check_hosts': check_hosts,
                    'pool': pool,
