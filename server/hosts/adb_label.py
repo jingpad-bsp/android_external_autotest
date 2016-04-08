@@ -6,6 +6,7 @@
 
 import common
 
+from autotest_lib.client.common_lib.brillo import hal_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import common_label
@@ -28,6 +29,15 @@ class BoardLabel(base_label.StringPrefixLabel):
         return ['-'.join([board_os, board])]
 
 
+class CameraHalLabel(base_label.BaseLabel):
+    """Determine whether a host has a camera HAL in the image."""
+
+    _NAME = 'camera-hal'
+
+    def exists(self, host):
+        return hal_utils.has_hal('camera', host=host)
+
+
 class LoopbackDongleLabel(base_label.BaseLabel):
     """Determines if an audio loopback dongle is connected to the device."""
 
@@ -39,6 +49,7 @@ class LoopbackDongleLabel(base_label.BaseLabel):
 
 ADB_LABELS = [
     BoardLabel(),
+    CameraHalLabel(),
+    LoopbackDongleLabel(),
     common_label.OSLabel(),
-    LoopbackDongleLabel()
 ]
