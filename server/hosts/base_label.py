@@ -242,4 +242,10 @@ class LabelRetriever(object):
         # Add in new labels that aren't already there.
         labels_to_add = list(new_labels - old_labels)
         if labels_to_add:
+            # Let's check if the labels exist and if we need to add them to the
+            # db first (mostly for hwid labels not in the db yet).
+            for label in labels_to_add:
+                if not afe.get_labels(name__startswith=label):
+                    afe.create_label(label)
+
             afe_host.add_labels(labels_to_add)
