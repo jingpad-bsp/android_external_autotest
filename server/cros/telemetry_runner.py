@@ -99,7 +99,7 @@ class TelemetryRunner(object):
     output to the caller.
     """
 
-    def __init__(self, host, local=False, telemetry_on_dut=False):
+    def __init__(self, host, local=False, telemetry_on_dut=True):
         """Initializes this telemetry runner instance.
 
         If telemetry is not installed for this build, it will be.
