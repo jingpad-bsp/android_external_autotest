@@ -1,5 +1,7 @@
 import os, shutil, re, glob, subprocess, logging
 
+from distutils import dir_util
+
 from autotest_lib.client.common_lib import log
 from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils, package
@@ -26,10 +28,8 @@ _DEFAULT_FILES_TO_LOG_PER_BOOT = [
     '/proc/modules',
     '/proc/interrupts',
     '/proc/partitions',
-    '/var/log/messages',
     constants.LOG_CONSOLE_RAMOOPS,
-    '/var/log/bios_info.txt',
-    '/var/log/storage_info.txt',
+    '/var/log/',
 ]
 _DEFAULT_FILES_TO_LOG_BEFORE_ITERATION = [
     '/proc/schedstat', '/proc/meminfo', '/proc/slabinfo', '/proc/interrupts'
@@ -95,12 +95,17 @@ class logfile(loggable):
 
 
     def run(self, logdir):
-        """Copies the log file to the specified directory.
+        """Copies the log file or directory to the specified directory.
 
         @param logdir: The log directory.
         """
         if os.path.exists(self.path):
-            shutil.copyfile(self.path, os.path.join(logdir, self.logf))
+            if os.path.isdir(self.path):
+                dst = os.path.join(logdir, self.logf, self.path.lstrip('/'))
+                dir_util.copy_tree(self.path, dst)
+            else:
+                dst = os.path.join(logdir, self.logf)
+                shutil.copyfile(self.path, dst)
 
 
 class command(loggable):
