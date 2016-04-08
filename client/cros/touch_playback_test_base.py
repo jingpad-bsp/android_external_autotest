@@ -391,6 +391,11 @@ class TestPage(object):
                 timeout=30)
 
 
+    def get_page_width(self):
+        """Return window.innerWidth for this page."""
+        return int(self._tab.EvaluateJavaScript('window.innerWidth'))
+
+
 class EventsPage(TestPage):
     """Functions to monitor input events on the DUT, as seen by a webpage.
 
