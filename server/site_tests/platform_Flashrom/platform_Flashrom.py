@@ -14,14 +14,14 @@ from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 class platform_Flashrom(FirmwareTest):
     """
     Test flashrom works correctly by calling
-    chromeos-firmwareupdate --mode=recovery.
+    chromeos-firmwareupdate --mode=factory.
     """
     version = 1
 
 
     def initialize(self, host, cmdline_args):
         # This test assume the system already have the latest RW from
-        # shellball.  You should run chromeos-firmware --mode=factory.
+        # shellball.  If you not sure, run chromeos-firmware --mode=factory.
         # Device should have WP disable.
 
         # Parse arguments from command line
@@ -37,12 +37,13 @@ class platform_Flashrom(FirmwareTest):
         @param checkfor: If not emmpty, fail test if checkfor not in output.
         @returns the output of command.
         """
+        command = command + ' 2>&1'
         logging.info('Execute %s', command)
         output = self.faft_client.system.run_shell_command_get_output(command)
-        logging.info('Output %s', output)
-        if checkfor and checkfor not in ' '.join(output):
+        logging.info('Output >>> %s <<<', output)
+        if checkfor and checkfor not in '\n'.join(output):
             raise error.TestFail('Expect %s in output of %s' %
-                                 (checkfor, ' '.join(output)))
+                                 (checkfor, '\n'.join(output)))
         return output
 
     def _check_wp_disable(self):
@@ -54,6 +55,18 @@ class platform_Flashrom(FirmwareTest):
             self.run_cmd('flashrom -p ec:dev=1 --wp-status',
                          checkfor='is disabled')
 
+    def _get_eeprom(self, fmap):
+        """Get fmap start and size.
+
+        @return tuple for start and size for fmap.
+        """
+        # $ mosys eeprom map | grep RW_SECTION_B
+        # host_firmware | RW_SECTION_B | 0x005f0000 | 0x003f0000 | static
+        output = self.run_cmd('mosys eeprom map | grep %s' % fmap)
+        fmap_data = output[0].split(' | ')
+        logging.info('fmap %s', fmap_data)
+        return (int(fmap_data[2], 16), int(fmap_data[3], 16))
+
     def run_once(self, dev_mode=True):
         # 1) Check SW WP is disabled.
         self._check_wp_disable()
@@ -64,11 +77,12 @@ class platform_Flashrom(FirmwareTest):
         if not tmpdir: tmpdir = '/tmp'
 
         # 2) Erase RW section B.  Needed CL 329549 starting with R51-7989.0.0.
+        # before this change -E erase everything.
         self.run_cmd('flashrom -E -i RW_SECTION_B', 'SUCCESS')
 
         # 3) Reinstall RW B (Test flashrom)
-        self.run_cmd('chromeos-firmwareupdate --mode=recovery',
-                     '(recovery) completed.')
+        self.run_cmd('chromeos-firmwareupdate --mode=factory',
+                     '(factory_install) completed.')
 
         # 4) Check that device can be rebooted.
         self.switcher.mode_aware_reboot()
@@ -81,11 +95,13 @@ class platform_Flashrom(FirmwareTest):
         shball_rw_b = os.path.join(shball_path, 'shball_rw_b.bin')
 
         # Extract RW B, offset detail
-        # /src/platform/vboot_reference/tests/futility/data_fmap_expect_p.txt
-        self.run_cmd('dd bs=1 skip=3080192 count=983040 if=%s of=%s 2>&1'
-                     % (shball_bios, shball_rw_b), '983040 bytes')
+        # Figure out section B start byte and size.
+        (Bstart, Blen) = self._get_eeprom('RW_SECTION_B')
+        self.run_cmd('dd bs=1 skip=%d count=%d if=%s of=%s 2>&1'
+                     % (Bstart, Blen, shball_bios, shball_rw_b), '%d bytes' % Blen)
 
         # 5.2) Extract flash RW section B.
+        # skylake cannot read only section B, see http://crosbug.com/p/52061
         rw_b2 = os.path.join(tmpdir, 'rw_b2.bin')
         self.run_cmd('flashrom -r -i RW_SECTION_B:%s' % rw_b2, 'SUCCESS')
 
@@ -95,4 +111,4 @@ class platform_Flashrom(FirmwareTest):
 
         # 6) Report result.
         if ''.join(result_output) != '':
-            raise error.TestFail('Mismatch between %s and %s' % (rw_b, rw_b2))
+            raise error.TestFail('Mismatch between %s and %s' % (shball_rw_b, rw_b2))
