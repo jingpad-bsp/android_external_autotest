@@ -28,7 +28,17 @@ class BoardLabel(base_label.StringPrefixLabel):
         return ['-'.join([board_os, board])]
 
 
+class LoopbackDongleLabel(base_label.BaseLabel):
+    """Determines if an audio loopback dongle is connected to the device."""
+
+    _NAME = 'loopback-dongle'
+
+    def exists(self, host):
+        return '0' not in host.run('cat /sys/class/switch/h2w/state').stdout
+
+
 ADB_LABELS = [
     BoardLabel(),
     common_label.OSLabel(),
+    LoopbackDongleLabel()
 ]
