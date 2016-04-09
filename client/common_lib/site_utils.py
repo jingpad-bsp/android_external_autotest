@@ -687,6 +687,10 @@ def get_wireless_ssid(hostname):
     # Get all wireless ssid in the global config.
     ssids = CONFIG.get_config_value_regex('CLIENT', WIRELESS_SSID_PATTERN)
 
+    # There could be multiple subnet matches, pick the one with most strict
+    # match, i.e., the one with highest maskbit.
+    matched_ssid = default_ssid
+    matched_maskbit = -1
     for key, value in ssids.items():
         # The config key filtered by regex WIRELESS_SSID_PATTERN has a format of
         # wireless_ssid_[subnet_ip]/[maskbit], for example:
@@ -694,9 +698,12 @@ def get_wireless_ssid(hostname):
         # Following line extract the subnet ip and mask bit from the key name.
         match = re.match(WIRELESS_SSID_PATTERN, key)
         subnet_ip, maskbit = match.groups()
-        if is_in_same_subnet(subnet_ip, host_ip, int(maskbit)):
-            return value
-    return default_ssid
+        maskbit = int(maskbit)
+        if (is_in_same_subnet(subnet_ip, host_ip, maskbit) and
+            maskbit > matched_maskbit):
+            matched_ssid = value
+            matched_maskbit = maskbit
+    return matched_ssid
 
 
 def parse_launch_control_build(build_name):
