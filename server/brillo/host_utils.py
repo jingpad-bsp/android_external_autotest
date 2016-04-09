@@ -82,7 +82,7 @@ def connect_to_ssid(host, ssid, passphrase):
                     sleep_interval=1, timeout=300,
                     desc='shill was not started by init')
             logging.info('Connecting to wifi')
-            wifi_cmd = 'su root shill_setup_wifi --ssid=%s' % ssid
+            wifi_cmd = 'shill_setup_wifi --ssid=%s' % ssid
             if passphrase:
                 wifi_cmd += ' --passphrase=%s' % passphrase
             host.run(wifi_cmd)
@@ -98,5 +98,5 @@ def connect_to_ssid(host, ssid, passphrase):
             host.run('sed \'s/service weaved \/system\/bin\/weaved '
                      '--disable_privet/service weaved \/system\/bin\/weaved/\' '
                      '-i /system/etc/init/weaved.rc')
-            host.run('su root stop weaved')
-            host.run('su root start weaved')
+            host.run('stop weaved')
+            host.run('start weaved')
