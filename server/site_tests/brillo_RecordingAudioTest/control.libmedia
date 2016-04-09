@@ -11,6 +11,7 @@ TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:brillo-audio'
+DEPENDENCIES = 'loopback-dongle'
 
 DOC = """
 Tests audio recording using libmedia on a Brillo device.
