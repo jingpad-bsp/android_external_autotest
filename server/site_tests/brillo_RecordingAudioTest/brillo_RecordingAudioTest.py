@@ -54,20 +54,19 @@ class brillo_RecordingAudioTest(test.test):
 
         @raises TestError: Invalid recording method.
         """
-        # TODO(ralphnathan): Remove 'su root' once b/25663983 is resolved.
         if recording_method == 'libmedia':
-            return ('su root brillo_audio_test --record --libmedia '
+            return ('brillo_audio_test --record --libmedia '
                     '--duration_secs=%d --num_channels=%d --sample_rate=%d '
                     '--sample_size=%d --filename=%s' %
                     (duration_secs, num_channels, sample_rate, sample_width,
                      rec_file) )
         elif recording_method == 'stagefright':
-            return ('su root brillo_audio_test --record --stagefright '
+            return ('brillo_audio_test --record --stagefright '
                     '--duration_secs=%d --num_channels=%d --sample_rate=%d '
                     '--filename=%s' %
                     (duration_secs, num_channels, sample_rate, rec_file))
         elif recording_method == 'opensles':
-            return ('su root slesTest_recBuffQueue -c%d -d%d -r%d -%d %s' %
+            return ('slesTest_recBuffQueue -c%d -d%d -r%d -%d %s' %
                     (num_channels, duration_secs, sample_rate, sample_width,
                      rec_file))
         else:
