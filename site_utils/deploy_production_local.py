@@ -24,7 +24,9 @@ import time
 import common
 
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+
 
 # How long after restarting a service do we watch it to see if it's stable.
 SERVICE_STABILITY_TIMER = 120
@@ -35,7 +37,9 @@ SERVICE_STABILITY_TIMER = 120
 # update the same table.
 PRIMARY_ONLY_COMMANDS = ['test_importer']
 
-AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+AFE = frontend_wrappers.RetryingAFE(
+        server=server_utils.get_global_afe_hostname(), timeout_min=5,
+        delay_sec=10)
 
 class DirtyTreeException(Exception):
     """Raised when the tree has been modified in an unexpected way."""
