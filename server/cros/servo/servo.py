@@ -612,19 +612,17 @@ class Servo(object):
 
     def install_recovery_image(self, image_path=None,
                                make_image_noninteractive=False):
-        """Install the recovery image specied by the path onto the DUT.
+        """Install the recovery image specified by the path onto the DUT.
 
         This method uses google recovery mode to install a recovery image
         onto a DUT through the use of a USB stick that is mounted on a servo
         board specified by the usb_dev.  If no image path is specified
         we use the recovery image already on the usb image.
 
-        @param image_path Path on the host to the recovery image.
-        @param make_image_noninteractive Make the recovery image
-                                         noninteractive, therefore
-                                         the DUT will reboot
-                                         automatically after
-                                         installation.
+        @param image_path: Path on the host to the recovery image.
+        @param make_image_noninteractive: Make the recovery image
+                noninteractive, therefore the DUT will reboot automatically
+                after installation.
         """
         self.image_to_servo_usb(image_path, make_image_noninteractive)
         self._power_state.power_on(rec_mode=self._power_state.REC_ON)
