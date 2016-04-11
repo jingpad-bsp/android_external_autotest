@@ -1323,8 +1323,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 for c in ('A', 'B'):
                     rv = self.run(cmd % (c, c), ignore_status=True)
                     if rv.exit_status:
-                       raise error.AutoservError(
-                               'Firmware %c is in a bad state.' % c)
+                        raise error.AutoservError(
+                                'Firmware %c is in a bad state.' % c)
             finally:
                 # Remove the tempoary files.
                 self.run('rm -rf /tmp/verify_firmware')
