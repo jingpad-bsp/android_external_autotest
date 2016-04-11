@@ -43,9 +43,10 @@ DEVICE_NO_SERIAL_TAG = '<NO_SERIAL>'
 # 0146B5580B01801B    device
 # 018e0ecb20c97a62    device
 # 172.22.75.141:5555  device
-DEVICE_FINDER_REGEX = (r'^(?P<SERIAL>([\w-]+)|(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3})|' +
+DEVICE_FINDER_REGEX = (r'^(?P<SERIAL>([\w-]+)|((tcp:)?' +
+                       '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}([:]5555)?)|' +
                        re.escape(DEVICE_NO_SERIAL_MSG) +
-                       r')([:]5555)?[ \t]+(?:device|fastboot)')
+                       r')[ \t]+(?:device|fastboot)')
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
 CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
@@ -205,7 +206,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # refactor the serial retrieval.
         adb_serial = adb_serial or self.host_attributes.get('serials', None)
         self.adb_serial = adb_serial
-        self.fastboot_serial = fastboot_serial or adb_serial
+        adb_prefix = any(adb_serial.startswith(p) for p in ADB_DEVICE_PREFIXES)
+        self.fastboot_serial = (fastboot_serial or
+                ('tcp:%s' % adb_serial.split(':')[0] if
+                ':' in adb_serial and not adb_prefix else adb_serial))
         self.teststation = (teststation if teststation
                 else teststation_host.create_teststationhost(hostname=hostname))
 
@@ -216,7 +220,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
-        adb_prefix = any(adb_serial.startswith(p) for p in ADB_DEVICE_PREFIXES)
         self._use_tcpip = ':' in adb_serial and not adb_prefix
         # Try resetting the ADB daemon on the device, however if we are
         # creating the host to do a repair job, the device maybe inaccesible
@@ -242,6 +245,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.adb_run('root')
         # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
         time.sleep(1)
+        self._connect_over_tcpip_as_needed()
         self.adb_run('wait-for-device')
 
 
@@ -551,10 +555,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a list of devices attached to the test station.
         """
         if use_adb:
-            result = self.adb_run('devices')
+            result = self.adb_run('devices').stdout
+            if self.adb_serial and self.adb_serial not in result:
+                self._connect_over_tcpip_as_needed()
         else:
-            result = self.fastboot_run('devices')
-        return self.parse_device_serials(result.stdout)
+            result = self.fastboot_run('devices').stdout
+            if (self.fastboot_serial and
+                self.fastboot_serial not in result):
+                # fastboot devices won't list the devices using TCP
+                try:
+                    if 'product' in self.fastboot_run('getvar product',
+                                                      timeout=2).stderr:
+                        result += '\n%s\tfastboot' % self.fastboot_serial
+                except error.AutotestHostRunError:
+                    pass
+        return self.parse_device_serials(result)
 
 
     def adb_devices(self):
