@@ -408,7 +408,16 @@ class BaseDroneUtility(object):
                     os.path.join(source_path, filename),
                     os.path.join(destination_path, filename))
         elif os.path.isdir(source_path):
-            shutil.copytree(source_path, destination_path, symlinks=True)
+            try:
+                shutil.copytree(source_path, destination_path, symlinks=True)
+            except shutil.Error:
+                # Ignore copy directory error due to missing files. The cause
+                # of this behavior is that, gs_offloader zips up folders with
+                # too many files. There is a race condition that repair job
+                # tries to copy provision job results to the test job result
+                # folder, meanwhile gs_offloader is uploading the provision job
+                # result and zipping up folders which contains too many files.
+                pass
         elif os.path.islink(source_path):
             # copied from shutil.copytree()
             link_to = os.readlink(source_path)
