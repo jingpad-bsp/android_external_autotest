@@ -29,6 +29,8 @@ DUT_SCP_OPTIONS = ' '.join(DUT_COMMON_SSH_OPTIONS)
 DUT_RSYNC_OPTIONS =  ' '.join(['--rsh="/usr/bin/ssh %s"' % DUT_SSH_OPTIONS,
                                '-L', '--timeout=1800', '-az',
                                '--no-o', '--no-g'])
+# Prevent double quotes from being unfolded.
+DUT_RSYNC_OPTIONS = utils.sh_escape(DUT_RSYNC_OPTIONS)
 
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'
