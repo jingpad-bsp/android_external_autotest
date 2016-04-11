@@ -7,7 +7,6 @@ NAME = 'brillo_NVRAM'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
 
 DOC = """
 Tests basic Access-Controlled NVRAM HAL module functionality.

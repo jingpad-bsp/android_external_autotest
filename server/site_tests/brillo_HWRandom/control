@@ -8,7 +8,6 @@ NAME = 'brillo_HWRandom'
 TIME = 'LONG'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
 
 DOC = """
 Tests that /dev/hw_random is present and passes basic statistical tests. This
