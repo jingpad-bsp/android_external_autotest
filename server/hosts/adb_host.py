@@ -1353,6 +1353,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 lambda: self.run('pm list packages',
                                  ignore_status=True).exit_status == 0,
                 timeout=120)
+        client_utils.poll_for_condition(
+                lambda: self.run('service list | grep mount',
+                                 ignore_status=True).exit_status == 0,
+                timeout=120)
         return self.adb_run('install %s -d %s' %
                             ('-r' if force_reinstall else '', apk))
 
