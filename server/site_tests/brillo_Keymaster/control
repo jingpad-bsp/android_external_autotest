@@ -7,7 +7,6 @@ NAME = 'brillo_Keymaster'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
 
 DOC = """
 Tests basic Keymaster HAL module functionality.
