@@ -517,6 +517,21 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self._reset_adbd_connection()
 
 
+    def fastboot_reboot(self):
+        """Do a fastboot reboot to go back to adb.
+
+        @raises AutoservRebootError if reboot failed.
+        """
+        self.fastboot_run('reboot')
+        if not self.wait_down(command=FASTBOOT_CMD):
+            raise error.AutoservRebootError(
+                    'Device is still in fastboot mode after reboot')
+        if not self.wait_up():
+            raise error.AutoservRebootError(
+                    'Device failed to boot to adb after fastboot reboot.')
+        self._reset_adbd_connection()
+
+
     def remount(self):
         """Remounts paritions on the device read-write.
 
