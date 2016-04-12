@@ -97,7 +97,7 @@ class telemetry_AFDOGenerate(test.test):
             self._run_tests_minimal_telemetry()
         else:
             self._telemetry_runner = telemetry_runner.TelemetryRunner(
-                    self._host, self._local)
+                    self._host, self._local, telemetry_on_dut=False)
 
             for benchmark_info in TELEMETRY_AFDO_BENCHMARKS:
                 benchmark = benchmark_info[0]
