@@ -37,7 +37,7 @@ class brillo_BootLoader(test.test):
         self.suffix_b = self.dut.run_output('bootctl get-suffix 1')
         logging.info('Slot 0 suffix: "%s"', self.suffix_a)
         logging.info('Slot 1 suffix: "%s"', self.suffix_b)
-        _assert_equal(self.num_slots, 2)
+        _assert_equal(2, self.num_slots)
         # We're going to need the size of the boot partitions later.
         self.boot_a_size = int(self.dut.run_output(
             'blockdev --getsize64 /dev/block/by-name/boot%s' % self.suffix_a))
@@ -82,8 +82,8 @@ class brillo_BootLoader(test.test):
             raise error.TestFail('Variable slot-suffixes has unexpected '
                                  'value "%s"' % suffixes)
         # Back to ADB mode.
-        self.dut.fastboot_run('reboot')
-        self.dut.adb_run('wait-for-device')
+        self.dut.fastboot_reboot()
+
 
     def get_current_slot(self):
         """Gets the current slot the DUT is running from.
@@ -100,7 +100,7 @@ class brillo_BootLoader(test.test):
 
         @param slot_number: Zero-based index of slot to be running from.
         """
-        _assert_equal(self.get_current_slot(), slot_number)
+        _assert_equal(slot_number, self.get_current_slot())
 
 
     def set_active_slot(self, slot_number):
@@ -165,12 +165,12 @@ class brillo_BootLoader(test.test):
         logging.info('Check set_active command in fastboot-compliant bootloader.')
         self.dut.ensure_bootloader_mode()
         self.dut.fastboot_run('set_active %s' % self.suffix_a)
-        self.dut.fastboot_run('reboot')
+        self.dut.fastboot_reboot()
         self.dut.adb_run('wait-for-device')
         self.assert_current_slot(0)
         self.dut.ensure_bootloader_mode()
         self.dut.fastboot_run('set_active %s' % self.suffix_b)
-        self.dut.fastboot_run('reboot')
+        self.dut.fastboot_reboot()
         self.dut.adb_run('wait-for-device')
         self.assert_current_slot(1)
 
