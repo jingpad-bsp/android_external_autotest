@@ -178,7 +178,8 @@ class Provision(_SpecialTaskAction):
                 'provision_FirmwareUpdate'),
         FW_RW_VERSION_PREFIX: actionables.TestActionable(
                 'provision_FirmwareUpdate',
-                extra_kwargs={'rw_only': True}),
+                extra_kwargs={'rw_only': True,
+                              'tag': 'rw_only'}),
         ANDROID_BUILD_VERSION_PREFIX : actionables.TestActionable(
                 'provision_AndroidUpdate'),
     }
