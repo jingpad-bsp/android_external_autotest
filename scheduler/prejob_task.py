@@ -325,7 +325,7 @@ class ProvisionTask(PreJobTask):
         # yet.  Therefore, we're stuck pulling labels off of the afe model
         # so that we can pass the --provision args into the __init__ call.
         labels = {x.name for x in task.queue_entry.job.labels}
-        _, provisionable = provision.filter_labels(labels)
+        _, provisionable = provision.Provision.partition(labels)
         extra_command_args = ['--provision',
                               '--job-labels', ','.join(provisionable)]
         super(ProvisionTask, self).__init__(task, extra_command_args)

@@ -20,8 +20,6 @@ def provision_machine(machine):
     """
     host = hosts.create_host(machine, try_lab_servo=True)
 
-    fixed, provisionable = provision.filter_labels(labels_list)
-
     job.record('START', None, 'provision')
     try:
         job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
