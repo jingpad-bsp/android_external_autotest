@@ -6,7 +6,6 @@
 
 import contextlib
 import logging
-import time
 
 import common
 from autotest_lib.client.bin import site_utils as client_site_utils
@@ -82,14 +81,11 @@ def connect_to_ssid(host, ssid, passphrase):
                     sleep_interval=1, timeout=300,
                     desc='shill was not started by init')
             logging.info('Connecting to wifi')
-            wifi_cmd = 'shill_setup_wifi --ssid=%s' % ssid
+            wifi_cmd = ('shill_setup_wifi --ssid=%s '
+                        '--wait-for-online-seconds=%i' % (ssid, 300))
             if passphrase:
                 wifi_cmd += ' --passphrase=%s' % passphrase
             host.run(wifi_cmd)
-            # TODO(ralphnathan): Once shill_setup_wifi can monitor the service as it
-            # connects to wifi, remove this timeout.
-            # Wait for wifi connection to occur.
-            time.sleep(10)
             yield
     finally:
         if ssid:
