@@ -534,8 +534,8 @@ class graphics_dEQP(test.test):
 
         if self._filter and test_count == 0 and options[
                 'subset_to_run'] != 'NotPass':
-            raise error.TestWarn('No test cases found for filter: %s!' %
-                                 self._filter)
+            raise error.TestNAError('No test cases found for filter: %s!' %
+                                    self._filter)
 
         if options['subset_to_run'] == 'NotPass':
             if test_passes:
