@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 
-import abc
+import sys
 
 import common
 from autotest_lib.server.cros import provision_actionables as actionables
@@ -62,23 +62,19 @@ class _SpecialTaskAction(object):
     Base class to give a template for mapping labels to tests.
     """
 
-    __metaclass__ = abc.ABCMeta
+    # A dictionary mapping labels to test names.
+    _actions = {}
 
+    # The name of this special task to be used in output.
+    name = None;
 
-    # One cannot do
-    #     @abc.abstractproperty
-    #     _actions = {}
-    # so this is the next best thing
-    @abc.abstractproperty
-    def _actions(self):
-        """A dictionary mapping labels to test names."""
-        pass
-
-
-    @abc.abstractproperty
-    def name(self):
-        """The name of this special task to be used in output."""
-        pass
+    # Some special tasks require to run before others, e.g., ChromeOS image
+    # needs to be updated before firmware provision. List `_priorities` defines
+    # the order of each label prefix. An element with a smaller index has higher
+    # priority. Not listed ones have the lowest priority.
+    # This property should be overriden in subclass to define its own priorities
+    # across available label prefixes.
+    _priorities = []
 
 
     @classmethod
@@ -134,6 +130,31 @@ class _SpecialTaskAction(object):
         return capabilities, configurations
 
 
+    @classmethod
+    def sort_configurations(cls, configurations):
+        """
+        Sort configurations based on the priority defined in cls._priorities.
+
+        @param configurations: A list of actionable labels.
+
+        @return: A sorted list of tuple of (label_prefix, value), the tuples are
+                sorted based on the label_prefix's index in cls._priorities.
+        """
+        # Split a list of labels into a dict mapping name to value.  All labels
+        # must be provisionable labels, or else a ValueError
+        # For example, label 'cros-version:lumpy-release/R28-3993.0.0' is split
+        # to  {'cros-version': 'lumpy-release/R28-3993.0.0'}
+        split_configurations = dict()
+        for label in configurations:
+            name, _, value = label.partition(':')
+            split_configurations[name] = value
+
+        sort_key = (lambda config:
+                (cls._priorities.index(config[0])
+                 if (config[0] in cls._priorities) else sys.maxint))
+        return sorted(split_configurations.items(), key=sort_key)
+
+
 class Verify(_SpecialTaskAction):
     """
     Tests to verify that the DUT is in a sane, known good state that we can run
@@ -162,6 +183,14 @@ class Provision(_SpecialTaskAction):
     Provisioning runs to change the configuration of the DUT from one state to
     another.  It will only be run on verified DUTs.
     """
+
+    # ChromeOS update must happen before firmware install, so the dut has the
+    # correct ChromeOS version label when firmware install occurs. The ChromeOS
+    # version label is used for firmware update to stage desired ChromeOS image
+    # on to the servo USB stick.
+    _priorities = [CROS_VERSION_PREFIX,
+                   FW_RO_VERSION_PREFIX,
+                   FW_RW_VERSION_PREFIX]
 
     # TODO(milleral): http://crbug.com/249555
     # Create some way to discover and register provisioning tests so that we
@@ -235,54 +264,6 @@ def is_for_special_action(label):
             label == SKIP_PROVISION)
 
 
-def filter_labels(labels):
-    """
-    Filter a list of labels into two sets: those labels that we know how to
-    change and those that we don't.  For the ones we know how to change, split
-    them apart into the name of configuration type and its value.
-
-    @param labels: A list of strings of labels.
-    @returns: A tuple where the first element is a set of unprovisionable
-              labels, and the second element is a set of the provisionable
-              labels.
-
-    >>> filter_labels(['bluetooth', 'cros-version:lumpy-release/R28-3993.0.0'])
-    (set(['bluetooth']), set(['cros-version:lumpy-release/R28-3993.0.0']))
-
-    """
-    return Provision.partition(labels)
-
-
-def split_labels(labels):
-    """
-    Split a list of labels into a dict mapping name to value.  All labels must
-    be provisionable labels, or else a ValueError
-
-    @param labels: list of strings of label names
-    @returns: A dict of where the key is the configuration name, and the value
-              is the configuration value.
-    @raises: ValueError if a label is not a provisionable label.
-
-    >>> split_labels(['cros-version:lumpy-release/R28-3993.0.0'])
-    {'cros-version': 'lumpy-release/R28-3993.0.0'}
-    >>> split_labels(['bluetooth'])
-    Traceback (most recent call last):
-    ...
-    ValueError: Unprovisionable label bluetooth
-
-    """
-    configurations = dict()
-
-    for label in labels:
-        if Provision.acts_on(label):
-            name, value = label.split(':', 1)
-            configurations[name] = value
-        else:
-            raise ValueError('Unprovisionable label %s' % label)
-
-    return configurations
-
-
 def join(provision_type, provision_value):
     """
     Combine the provision type and value into the label name.
@@ -322,24 +303,16 @@ def run_special_task_actions(job, host, labels, task):
     @raises: SpecialTaskActionException if a test fails.
 
     """
-    capabilities, configuration = filter_labels(labels)
+    capabilities, configurations = task.partition(labels)
 
     for label in capabilities:
-        if task.acts_on(label):
-            action_item = task.test_for(label)
-            success = action_item.execute(job=job, host=host)
-            if not success:
-                raise SpecialTaskActionException()
-        else:
-            job.record('INFO', None, task.name,
-                       "Can't %s label '%s'." % (task.name, label))
+        job.record('INFO', None, task.name,
+                   "Can't %s label '%s'." % (task.name, label))
 
-    for name, value in split_labels(configuration).items():
-        if task.acts_on(name):
-            action_item = task.test_for(name)
-            success = action_item.execute(job=job, host=host, value=value)
-            if not success:
-                raise SpecialTaskActionException()
-        else:
-            job.record('INFO', None, task.name,
-                       "Can't %s label '%s:%s'." % (task.name, name, value))
+    # Sort the configuration labels based on `task._priorities`.
+    sorted_configurations = task.sort_configurations(configurations)
+    for name, value in sorted_configurations:
+        action_item = task.test_for(name)
+        success = action_item.execute(job=job, host=host, value=value)
+        if not success:
+            raise SpecialTaskActionException()
