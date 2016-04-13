@@ -27,11 +27,28 @@ class SuspendTimeout(SuspendFailure):
 
 
 class KernelError(SuspendFailure):
-    """Kernel problem encountered during suspend/resume."""
+    """Kernel problem encountered during suspend/resume.
+
+    Whitelist is an array of a 2-entry tuples consisting of (source regexp, text
+    regexp).  For example, kernel output might look like,
+
+      [  597.079950] WARNING: CPU: 0 PID: 21415 at \
+      <path>/v3.18/drivers/gpu/drm/i915/intel_pm.c:3687 \
+      skl_update_other_pipe_wm+0x136/0x18a()
+      [  597.079962] WARN_ON(!wm_changed)
+
+    source regexp should match first line above while text regexp can match
+    up to 2 lines below the source.  Note timestamps are stripped prior to
+    comparing regexp.
+    """
     WHITELIST = [
             # crosbug.com/37594: debug tracing clock desync we don't care about
             (r'kernel/trace/ring_buffer.c:\d+ rb_reserve_next_event',
              r'Delta way too big!'),
+            # TODO(crosbug.com/p/52008): Remove from whitelist once watermark
+            # implementation has landed.
+            (r'v3.18/\S+/intel_pm.c:\d+ skl_update_other_pipe_wm',
+            r'WARN_ON\(\!wm_changed\)')
         ]
 
 
