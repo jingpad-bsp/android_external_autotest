@@ -75,13 +75,17 @@ class Chrome(object):
             finder_options.browser_options.AppendExtraBrowserArgs(
                     extra_browser_args)
 
+        # TODO(achuith): Remove this after PFQ revs. crbug.com/603169.
         if logged_in:
-            extensions_to_load = finder_options.extensions_to_load
-            for path in extension_paths:
-                extension = extension_to_load.ExtensionToLoad(
-                        path, self.browser_type, is_component=is_component)
-                extensions_to_load.append(extension)
-            self._extensions_to_load = extensions_to_load
+            try:
+                extensions_to_load = finder_options.extensions_to_load
+                for path in extension_paths:
+                    extension = extension_to_load.ExtensionToLoad(
+                            path, self.browser_type, is_component=is_component)
+                    extensions_to_load.append(extension)
+                self._extensions_to_load = extensions_to_load
+            except AttributeError:
+              pass
 
         # finder options must be set before parse_args(), browser options must
         # be set before Create().
@@ -110,6 +114,17 @@ class Chrome(object):
             b_options.gaia_id = self.gaia_id
         except AttributeError:
             pass
+
+        if logged_in:
+            try:
+                extensions_to_load = b_options.extensions_to_load
+                for path in extension_paths:
+                    extension = extension_to_load.ExtensionToLoad(
+                            path, self.browser_type, is_component=is_component)
+                    extensions_to_load.append(extension)
+                self._extensions_to_load = extensions_to_load
+            except AttributeError:
+              pass
 
         # Turn on collection of Chrome coredumps via creation of a magic file.
         # (Without this, Chrome coredumps are trashed.)
