@@ -11,7 +11,8 @@ ATTRIBUTES = "suite:bvt-perbuild"
 TEST_TYPE = "server"
 DEPENDENCIES = "rpm, power:battery"
 BUG_TEMPLATE = {
-    "labels": ["OS-Chrome", "Cr-OS-Kernel-Graphics"],
+    "labels": ["OS-Chrome"],
+    "components": ["OS>Kernel>Graphics"],
 }
 
 DOC = """

@@ -14,7 +14,7 @@ TEST_CATEGORY = 'Functional'
 TEST_CLASS = "gl"
 TEST_TYPE = 'client'
 BUG_TEMPLATE = {
-    'labels': ['Cr-OS-Kernel-Graphics'],
+    'components': ['OS>Kernel>Graphics'],
 }
 
 DOC = """
