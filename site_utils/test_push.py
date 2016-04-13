@@ -37,6 +37,7 @@ except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -425,7 +426,7 @@ def test_suite_wrapper(queue, suite_name, expected_results, arguments,
 def close_bug():
     """Close all existing bugs filed for dummy_Fail.
 
-    @return: A list of issue ids to be used in check_bug_filed_and_deduped.
+    @return: A list of issue ids to be used in check_bug_filed.
     """
     old_issue_ids = []
     reporter = reporting.Reporter()
@@ -444,13 +445,13 @@ def close_bug():
         time.sleep(10)
 
 
-def check_bug_filed_and_deduped(old_issue_ids):
-    """Confirm bug related to dummy_Fail was filed and deduped.
+@retry.retry(TestPushException, timeout_min=0.5)
+def check_bug_filed(old_issue_ids):
+    """Confirm bug related to dummy_Fail was filed.
 
     @param old_issue_ids: A list of issue ids that was closed earlier. id of the
         new issue must be not in this list.
-    @raise TestPushException: If auto bug file failed to create a new issue or
-        dedupe multiple failures.
+    @raise TestPushException: If auto bug file failed.
     """
     reporter = reporting.Reporter()
     issue = reporter.find_issue_by_marker(BUG_ANCHOR)
@@ -464,7 +465,20 @@ def check_bug_filed_and_deduped(old_issue_ids):
         raise TestPushException(('Auto bug file failed to dedupe for issue %d '
                                  'with labels of %s.') %
                                 (issue.id, issue.labels))
+    print 'Issue %d was filed successfully.' % issue.id
+    return issue
+
+
+@retry.retry(TestPushException, timeout_min=0.4)
+def check_bug_deduped(issue):
+    """Confirm bug related to dummy_Fail was deduped.
+
+    @param issue: The issue auto-filed by test_push
+    @raise TestPushException: If auto bug file failed to create a new issue or
+            dedupe multiple failures.
+    """
     # Close the bug, and do the search again, which should return None.
+    reporter = reporting.Reporter()
     reporter.modify_bug_report(issue.id,
                                comment='Issue closed by test_push script.',
                                label_update='',
@@ -476,7 +490,7 @@ def check_bug_filed_and_deduped(old_issue_ids):
         ids = '%d, %d' % (issue.id, second_issue.id)
         raise TestPushException(('Auto bug file failed. Multiple issues (%s) '
                                  'filed with marker %s') % (ids, BUG_ANCHOR))
-    print 'Issue %d was filed and deduped successfully.' % issue.id
+    print 'Issue %d was deduped successfully.' % issue.id
 
 
 def check_queue(queue):
@@ -536,7 +550,8 @@ def main():
             check_queue(queue)
             # Check bug filing results to fail early if bug filing failed.
             if not bug_filing_checked and not push_to_prod_suite.is_alive():
-                check_bug_filed_and_deduped(old_issue_ids)
+                issue = check_bug_filed(old_issue_ids)
+                check_bug_deduped(issue)
                 bug_filing_checked = True
             time.sleep(5)
 
