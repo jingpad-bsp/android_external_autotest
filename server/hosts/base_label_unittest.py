@@ -136,9 +136,11 @@ class LabelRetrieverUnittests(unittest.TestCase):
     """Unittest for testing base_label.LabelRetriever."""
 
     def setUp(self):
-        self.retriever = base_label.LabelRetriever([TestStringPrefixLabel(),
-                                                    TestBaseLabel()])
+        label_list = [TestStringPrefixLabel(), TestBaseLabel()]
+        self.retriever = base_label.LabelRetriever(label_list)
+        self.retriever._populate_known_labels(label_list)
         self.retriever_label_list = base_label.LabelRetriever([TestLabelList()])
+        self.retriever_label_list._populate_known_labels([TestLabelList()])
 
 
     def test_populate_known_labels(self):
