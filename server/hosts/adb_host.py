@@ -582,7 +582,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     if 'product' in self.fastboot_run('getvar product',
                                                       timeout=2).stderr:
                         result += '\n%s\tfastboot' % self.fastboot_serial
-                except error.AutotestHostRunError:
+                # The main reason we do a general Exception catch here instead
+                # of setting ignore_timeout/status to True is because even when
+                # the fastboot process has been nuked, it still stays around and
+                # so bgjob wants to warn us of this and tries to read the
+                # /proc/<pid>/stack file which then promptly returns an
+                # 'Operation not permitted' error since we're running as moblab
+                # and we don't have permission to read those files.
+                except Exception:
                     pass
         return self.parse_device_serials(result)
 
