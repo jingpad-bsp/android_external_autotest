@@ -11,12 +11,14 @@ import re
 import common
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.cros.audio import cras_utils
 from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import common_label
+from autotest_lib.site_utils import hwid_lib
 
 # pylint: disable=missing-docstring
 
@@ -404,6 +406,54 @@ class LucidSleepLabel(base_label.BaseLabel):
         return board in self.LUCID_SLEEP_BOARDS
 
 
+class HWIDLabel(base_label.StringLabel):
+    """Return all the labels generated from the hwid."""
+
+    # We leave out _NAME because hwid_lib will generate everything for us.
+
+    def __init__(self):
+        # Grab the key file needed to access the hwid service.
+        self.key_file = global_config.global_config.get_config_value(
+                'CROS', 'HWID_KEY', type=str)
+
+
+    def generate_labels(self, host):
+        hwid_labels = []
+        hwid = host.run_output('crossystem hwid').strip()
+        hwid_info_list = hwid_lib.get_hwid_info(hwid, hwid_lib.HWID_INFO_LABEL,
+                                                self.key_file).get('labels', [])
+
+        for hwid_info in hwid_info_list:
+            # If it's a prefix, we'll have:
+            # {'name': prefix_label, 'value': postfix_label} and create
+            # 'prefix_label:postfix_label'; otherwise it'll just be
+            # {'name': label} which should just be 'label'.
+            value = hwid_info.get('value', '')
+            name = hwid_info.get('name', '')
+            # There should always be a name but just in case there is not.
+            if name:
+                hwid_labels.append(name if not value else
+                                   '%s:%s' % (name, value))
+        return hwid_labels
+
+
+    def get_all_labels(self):
+        """We need to try all labels as a prefix and as standalone.
+
+        We don't know for sure which labels are prefix labels and which are
+        standalone so we try all of them as both.
+        """
+        all_hwid_labels = []
+        try:
+            all_hwid_labels = hwid_lib.get_all_possible_dut_labels(
+                    self.key_file)
+        except IOError:
+            logging.error('Can not open key file: %s', self.key_file)
+        except hwid_lib.HwIdException as e:
+            logging.error('hwid service: %s', e)
+        return all_hwid_labels, all_hwid_labels
+
+
 CROS_LABELS = [
     AccelsLabel(),
     AudioLoopbackDongleLabel(),
@@ -413,6 +463,7 @@ CROS_LABELS = [
     ChameleonLabel(),
     common_label.OSLabel(),
     ECLabel(),
+    HWIDLabel(),
     InternalDisplayLabel(),
     LightSensorLabel(),
     LucidSleepLabel(),
