@@ -13,7 +13,6 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.cros.audio import cras_utils
-from autotest_lib.client.cros.input_playback import input_playback
 from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.hosts import base_label
@@ -334,34 +333,6 @@ class VideoGlitchLabel(base_label.BaseLabel):
         return board in video_test_constants.SUPPORTED_BOARDS
 
 
-# TODO(kevcheng): delete this class since it seems obsolete (crbug.com/482183).
-class TouchLabel(base_label.StringLabel):
-    """Label that determines if the board has a touchpad/touchscreen."""
-
-    _NAME = ['touchpad',
-             'touchscreen']
-
-    def generate_labels(self, host):
-        labels = []
-        looking_for = self._NAME
-        player = input_playback.InputPlayback()
-        input_events = host.run('ls /dev/input/event*').stdout.strip().split()
-        filename = '/tmp/touch_labels'
-        for event in input_events:
-            host.run('evtest %s > %s' % (event, filename), timeout=1,
-                     ignore_timeout=True)
-            properties = host.run('cat %s' % filename).stdout
-            input_type = player._determine_input_type(properties)
-            if input_type in looking_for:
-                labels.append(input_type)
-                looking_for.remove(input_type)
-            if len(looking_for) == 0:
-                break
-        host.run('rm %s' % filename)
-
-        return labels
-
-
 class InternalDisplayLabel(base_label.StringLabel):
     """Label that determines if the device has an internal display."""
 
@@ -470,7 +441,6 @@ CROS_LABELS = [
     PowerSupplyLabel(),
     ServoLabel(),
     StorageLabel(),
-    TouchLabel(),
     VideoGlitchLabel(),
     VideoLabel(),
 ]
