@@ -8,6 +8,7 @@ import logging
 import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
+from autotest_lib.server.hosts import label_verify
 from autotest_lib.server.hosts import ssh_verify
 
 
@@ -289,11 +290,12 @@ class ServoInstallRepair(hosts.RepairAction):
 def create_cros_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
     verify_dag = [
-        (ssh_verify.SshVerifier,  'ssh',     []),
-        (ACPowerVerifier,         'power',   ['ssh']),
-        (TPMStatusVerifier,       'tpm',     ['ssh']),
-        (UpdateSuccessVerifier,   'good_au', ['ssh']),
-        (CrosHostVerifier,        'cros',    ['ssh']),
+        (ssh_verify.SshVerifier,      'ssh',     []),
+        (ACPowerVerifier,             'power',   ['ssh']),
+        (TPMStatusVerifier,           'tpm',     ['ssh']),
+        (UpdateSuccessVerifier,       'good_au', ['ssh']),
+        (CrosHostVerifier,            'cros',    ['ssh']),
+        (label_verify.LabelVerifier,  'label',   ['ssh']),
     ]
     repair_actions = [
         # RPM cycling must precede Servo reset:  if the DUT has a dead
