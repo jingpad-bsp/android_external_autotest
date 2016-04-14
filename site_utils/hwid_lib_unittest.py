@@ -131,5 +131,34 @@ class HwIdUnittests(unittest.TestCase):
             mock_urlopen.assert_called_with(expected_url)
 
 
+    # pylint: disable=missing-docstring
+    @mock.patch('urllib2.urlopen')
+    def test_url_properly_constructed_again(self, mock_urlopen, *args, **dargs):
+        """Test that the url is properly constructed with special hwid.
+
+        Let's make sure that a hwid with a space is properly transformed.
+        """
+        info_type = hwid_lib.HWID_INFO_BOM
+        hwid = 'mock hwid with space'
+        hwid_quoted = 'mock%20hwid%20with%20space'
+        expected_url = ('%s/%s/%s/%s/?key=%s' % (hwid_lib.HWID_BASE_URL,
+                                                 hwid_lib.HWID_VERSION,
+                                                 info_type, hwid_quoted,
+                                                 self.dummy_key))
+
+        mock_page_contents = mock.Mock(wraps=cStringIO.StringIO('{}'))
+        mock_urlopen.return_value = mock_page_contents
+        hwid_lib.get_hwid_info(hwid, info_type, self.dummy_key_file)
+        mock_urlopen.assert_called_with(expected_url)
+
+
+    def test_dummy_key_file(self):
+        """Test that we get an empty dict with a dummy key file."""
+        info_type = hwid_lib.HWID_INFO_BOM
+        hwid = 'mock hwid with space'
+        key_file = hwid_lib.KEY_FILENAME_NO_HWID
+        self.assertEqual(hwid_lib.get_hwid_info(hwid, info_type, key_file), {})
+
+
 if __name__ == '__main__':
     unittest.main()
