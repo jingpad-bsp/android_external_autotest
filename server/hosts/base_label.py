@@ -183,7 +183,6 @@ class LabelRetriever(object):
         # during the update_labels call.
         self.label_full_names = set()
         self.label_prefix_names = set()
-        self._populate_known_labels(self._labels)
 
 
     def get_labels(self, host):
@@ -227,6 +226,10 @@ class LabelRetriever(object):
 
         @param host: The host to update the labels for.
         """
+        # If we haven't yet grabbed our list of known labels, do so now.
+        if not self.label_full_names and not self.label_prefix_names:
+            self._populate_known_labels(self._labels)
+
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         afe_host = afe.get_hosts(hostname=host.hostname)[0]
         old_labels = set(afe_host.labels)
