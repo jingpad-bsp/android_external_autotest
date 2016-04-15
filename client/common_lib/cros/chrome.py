@@ -13,11 +13,29 @@ from telemetry.internal.browser import extension_to_load
 Error = exceptions.Error
 
 
+def is_arc_available():
+    """Returns true if ARC is available on current device."""
+    with open('/etc/lsb-release') as f:
+        for line in f:
+            if line.startswith('CHROMEOS_ARC_VERSION='):
+                return True
+    return False
+
+
 class Chrome(object):
     """Wrapper for creating a telemetry browser instance with extensions."""
 
 
-    CHEETS = '-cheets'
+    # Chrome will start ARC instance and the script will block until ARC's boot
+    # completed event.
+    ARC_MODE_ENABLED = "enabled"
+    # Similar to "enabled", except that it will not block.
+    ARC_MODE_ENABLED_ASYNC = "enabled_async"
+    # Chrome will not start ARC instance.
+    ARC_MODE_DISABLED = "disabled"
+    # All available ARC options.
+    ARC_MODES = [ARC_MODE_ENABLED, ARC_MODE_ENABLED_ASYNC, ARC_MODE_DISABLED]
+
     BROWSER_TYPE_LOGIN = 'system'
     BROWSER_TYPE_GUEST = 'system-guest'
 
@@ -27,7 +45,8 @@ class Chrome(object):
                  clear_enterprise_policy=True, dont_override_profile=False,
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
-                 username=None, password=None, gaia_id=None):
+                 username=None, password=None, gaia_id=None,
+                 arc_mode=ARC_MODE_DISABLED):
         """
         Constructor of telemetry wrapper.
 
@@ -54,6 +73,7 @@ class Chrome(object):
         @param username: Log in using this username instead of the default.
         @param password: Log in using this password instead of the default.
         @param gaia_id: Log in using this gaia_id instead of the default.
+        @param arc_mode: How ARC instance should be started.
         """
         self._autotest_ext_path = None
         if autotest_ext:
@@ -62,13 +82,15 @@ class Chrome(object):
             extension_paths.append(self._autotest_ext_path)
 
         finder_options = browser_options.BrowserFinderOptions()
-        # Append cheets specific browser args
-        self._is_cheets_platform = (
-                utils.get_current_board().endswith(self.CHEETS))
-        if self._is_cheets_platform:
-            from autotest_lib.client.common_lib.cros import cheets
-            extra_browser_args = cheets.append_extra_args(extra_browser_args)
-            logged_in = True
+        assert arc_mode in self.ARC_MODES
+        if is_arc_available():
+            if arc_mode in [self.ARC_MODE_ENABLED, self.ARC_MODE_ENABLED_ASYNC]:
+                logging.debug('ARC is enabled in mode ' + arc_mode)
+                from autotest_lib.client.common_lib.cros import arc_util
+                extra_browser_args = arc_util.append_extra_args(extra_browser_args)
+                logged_in = True
+        else:
+            assert arc_mode == self.ARC_MODE_DISABLED
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
         finder_options.browser_type = self.browser_type
@@ -135,8 +157,9 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
-                if self._is_cheets_platform:
-                    cheets.post_processing_after_browser()
+                if (is_arc_available() and arc_mode == self.ARC_MODE_ENABLED):
+                    from autotest_lib.client.common_lib.cros import arc_util
+                    arc_util.post_processing_after_browser()
                 break
             except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
@@ -264,8 +287,8 @@ class Chrome(object):
     def close(self):
         """Closes the browser."""
         try:
-            if self._is_cheets_platform:
-                from autotest_lib.client.common_lib.cros import cheets
-                cheets.pre_processing_before_close()
+            if is_arc_available():
+                from autotest_lib.client.common_lib.cros import arc_util
+                arc_util.pre_processing_before_close()
         finally:
             self._browser.Close()
