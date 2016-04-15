@@ -685,17 +685,19 @@ def _generate_repair_recommendation(inventory, num_recommend):
         if recommendation is None or lab_score > best_score:
             recommendation = lab_slice
             best_score = lab_score
+    # N.B. The trailing space here is manadatory:  Without it, Gmail
+    # will parse the URL wrong.  Don't ask.  If you simply _must_
+    # know more, go try it yourself...
+    line_fmt = '%-30s %-16s %-6s\n    %s '
     message = ['Repair recommendations:\n',
-               '%-30s %-16s %s' % (
-                       'Hostname', 'Board', 'Servo instructions')]
+               line_fmt % ( 'Hostname', 'Board', 'Servo?', 'Logs URL')]
     for h in recommendation:
         servo_name = servo_host.make_servo_hostname(h.host.hostname)
-        if utils.host_is_in_lab_zone(servo_name):
-            servo_message = 'Repair servo first'
-        else:
-            servo_message = 'No servo present'
-        line = '%-30s %-16s %s' % (
-                h.host.hostname, h.host_board, servo_message)
+        servo_present = utils.host_is_in_lab_zone(servo_name)
+        _, event = h.last_diagnosis()
+        line = line_fmt % (
+                h.host.hostname, h.host_board,
+                'Yes' if servo_present else 'No', event.job_url)
         message.append(line)
     return '\n'.join(message)
 
