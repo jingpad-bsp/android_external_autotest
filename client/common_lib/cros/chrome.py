@@ -63,8 +63,9 @@ class Chrome(object):
 
         finder_options = browser_options.BrowserFinderOptions()
         # Append cheets specific browser args
-        is_cheets_platform = utils.get_current_board().endswith(self.CHEETS)
-        if is_cheets_platform:
+        self._is_cheets_platform = (
+                utils.get_current_board().endswith(self.CHEETS))
+        if self._is_cheets_platform:
             from autotest_lib.client.common_lib.cros import cheets
             extra_browser_args = cheets.append_extra_args(extra_browser_args)
             logged_in = True
@@ -134,7 +135,7 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
-                if is_cheets_platform:
+                if self._is_cheets_platform:
                     cheets.post_processing_after_browser()
                 break
             except (exceptions.LoginException) as e:
@@ -241,4 +242,9 @@ class Chrome(object):
 
     def close(self):
         """Closes the browser."""
-        self._browser.Close()
+        try:
+            if self._is_cheets_platform:
+                from autotest_lib.client.common_lib.cros import cheets
+                cheets.pre_processing_before_close()
+        finally:
+            self._browser.Close()
