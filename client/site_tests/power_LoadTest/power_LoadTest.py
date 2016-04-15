@@ -16,6 +16,7 @@ from autotest_lib.client.cros import power_rapl, power_status, power_utils
 from autotest_lib.client.cros import service_stopper
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.networking import wifi_proxy
+from telemetry.core import exceptions
 
 params_dict = {
     'test_time_ms': '_mseconds',
@@ -44,7 +45,7 @@ class power_LoadTest(test.test):
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
                  wifi_pw='', wifi_timeout=60, tasks='',
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
-                 ac_ok=False, log_mem_bandwidth=False):
+                 ac_ok=False, log_mem_bandwidth=False, gaia_login=True):
         """
         percent_initial_charge_min: min battery charge at start of test
         check_network: check that Ethernet interface is not running
@@ -68,6 +69,7 @@ class power_LoadTest(test.test):
             sys_low_batt_p to guarantee test completes prior to powerd shutdown
         ac_ok: boolean to allow running on AC
         log_mem_bandwidth: boolean to log memory bandwidth during the test
+        gaia_login: boolean of whether real GAIA login should be attempted.
         """
         self._backlight = None
         self._services = None
@@ -98,6 +100,7 @@ class power_LoadTest(test.test):
         self._log_mem_bandwidth = log_mem_bandwidth
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
+        self._gaia_login = gaia_login
 
         if not power_utils.has_battery():
             rsp = "Device designed without battery. Skipping test."
@@ -231,10 +234,24 @@ class power_LoadTest(test.test):
             self._mlog.start()
 
         ext_path = os.path.join(os.path.dirname(__file__), 'extension')
-        self._browser = chrome.Chrome(extension_paths=[ext_path],
-                                gaia_login=True,
-                                username=self._username,
-                                password=self._password)
+        self._tmp_keyvals['username'] = self._username
+        try:
+            self._browser = chrome.Chrome(extension_paths=[ext_path],
+                                          gaia_login=self._gaia_login,
+                                          username=self._username,
+                                          password=self._password)
+        except exceptions.LoginException:
+            # already failed guest login
+            if not self._gaia_login:
+                raise
+            self._gaia_login = False
+            logging.warn("Unable to use GAIA acct %s.  Using GUEST instead.\n",
+                         self._username)
+            self._browser = chrome.Chrome(extension_paths=[ext_path],
+                                          gaia_login=self._gaia_login)
+        if not self._gaia_login:
+            self._tmp_keyvals['username'] = 'GUEST'
+
         extension = self._browser.get_extension(ext_path)
         for k in params_dict:
             if getattr(self, params_dict[k]) is not '':
@@ -375,10 +392,13 @@ class power_LoadTest(test.test):
                                         keyvals['minutes_battery_life_tested']
             keyvals['w_energy_rate'] = keyvals['wh_energy_used'] * 60 / \
                                        keyvals['minutes_battery_life_tested']
-            self.output_perf_value(description='minutes_battery_life',
-                                   value=keyvals['minutes_battery_life'],
-                                   units='minutes')
-
+            if self._gaia_login:
+                self.output_perf_value(description='minutes_battery_life',
+                                       value=keyvals['minutes_battery_life'],
+                                       units='minutes')
+        if not self._gaia_login:
+            keyvals = dict(map(lambda (key, value):
+                               ('INVALID_' + str(key), value), keyvals.items()))
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
         self._tlog.save_results(self.resultsdir)
