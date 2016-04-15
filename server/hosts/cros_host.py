@@ -1099,15 +1099,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         self._repair_strategy.repair(self)
 
-        # TODO(jrbarnette) When deleting a shard, the shard's DUTs may
-        # be left still running jobs.  The master can't know what's going
-        # on with the DUT, so the first thing it does is to schedule
-        # a repair job.  If we get here (meaning, if the DUT is now
-        # working), reboot the DUT to handle that situation.
-        #
-        # This is a gross hack.  crbug.com/499865.
-        self.reboot()
-
 
     def close(self):
         super(CrosHost, self).close()
