@@ -189,6 +189,27 @@ class Chrome(object):
         return ext.EvaluateJavaScript('window.__login_status')
 
 
+    def get_visible_notifications(self):
+        """Returns an array of visible notifications of Chrome.
+
+        For specific type of each notification, please refer to Chromium's
+        chrome/common/extensions/api/autotest_private.idl.
+        """
+        ext = self.autotest_ext
+        if not ext:
+            return None
+
+        ext.ExecuteJavaScript('''
+            window.__items = null;
+            chrome.autotestPrivate.getVisibleNotifications(function(items) {
+              window.__items  = items;
+            });
+        ''')
+        if ext.EvaluateJavaScript('window.__items') is None:
+            return None
+        return ext.EvaluateJavaScript('window.__items')
+
+
     @property
     def browser_type(self):
         """Returns the browser_type."""
