@@ -80,6 +80,7 @@ ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'enable_ssh_connection_for_devserver', type=bool,
         default=False)
 
+DEFAULT_SUBNET_MASKBIT = 19
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -445,11 +446,14 @@ class DevServer(object):
 
 
     @classmethod
-    def get_devservers_in_same_subnet(cls, ip, mask_bits=19):
+    def get_devservers_in_same_subnet(cls, ip, mask_bits=DEFAULT_SUBNET_MASKBIT,
+                                      unrestricted_only=False):
         """Get the devservers in the same subnet of the given ip.
 
         @param ip: The IP address of a dut to look for devserver.
         @param mask_bits: Number of mask bits. Default is 19.
+        @param unrestricted_only: Set to True to select from devserver in
+                unrestricted subnet only. Default is False.
 
         @return: A list of devservers in the same subnet of the given ip.
 
@@ -459,7 +463,9 @@ class DevServer(object):
         # filtered in get_servers_in_same_subnet.
         server_names = {}
         all_devservers = []
-        for server in cls.servers():
+        devservers = (cls.get_unrestricted_devservers() if unrestricted_only
+                      else cls.servers())
+        for server in devservers:
             server_name = ImageServer.get_server_name(server)
             server_names[server_name] = server
             all_devservers.append(server_name)
@@ -546,10 +552,16 @@ class DevServer(object):
         if (not restricted_subnet and utils.RESTRICTED_SUBNETS and
             ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET):
             devservers = cls.get_unrestricted_devservers()
-            if PREFER_LOCAL_DEVSERVER and host_ip:
-                can_retry = True
-                devservers = cls.get_devserver_in_same_subnet(
-                        host_ip, cls.get_unrestricted_devservers() )
+
+        # If prefer_local_sevserver is set to True and the host is not in
+        # restricted subnet, pick a devserver in the same subnet if possible.
+        # Set can_retry to True so it can pick a different devserver if all
+        # devservers in the same subnet are down.
+        if not restricted_subnet and PREFER_LOCAL_DEVSERVER and host_ip:
+            can_retry = True
+            devservers = cls.get_devservers_in_same_subnet(
+                    host_ip, DEFAULT_SUBNET_MASKBIT, True)
+
         devserver = cls.get_healthy_devserver(build, devservers)
 
         if not devserver and can_retry:
