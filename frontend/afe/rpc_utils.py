@@ -1321,3 +1321,25 @@ def route_rpc_to_master(func):
             return afe.run(func.func_name, **kwargs)
         return func(**kwargs)
     return replacement
+
+
+def get_sample_dut(board, pool):
+    """Get a dut with the given board and pool.
+
+    This method is used to help to locate a dut with the given board and pool.
+    The dut then can be used to identify a devserver in the same subnet.
+
+    @param board: Name of the board.
+    @param pool: Name of the pool.
+
+    @return: Name of a dut with the given board and pool.
+    """
+    if not board or not pool:
+        return None
+
+    hosts = get_host_query(
+            ('pool:%s' % pool, 'board:%s' % board), False, False, True, {})
+    if not hosts:
+        return None
+
+    return list(hosts)[0].get_object_dict()['hostname']

@@ -114,11 +114,13 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
     return control_file_in
 
 
-def _stage_build_artifacts(build):
+def _stage_build_artifacts(build, hostname=None):
     """
     Ensure components of |build| necessary for installing images are staged.
 
     @param build image we want to stage.
+    @param hostname hostname of a dut may run test on. This is to help to locate
+        a devserver closer to duts if needed. Default is None.
 
     @raises StageControlFileFailure: if the dev server throws 500 while staging
         suite control files.
@@ -130,7 +132,7 @@ def _stage_build_artifacts(build):
     # Ensure components of |build| necessary for installing images are staged
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
-    ds = dev_server.resolve(build)
+    ds = dev_server.resolve(build, hostname=hostname)
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     timer = autotest_stats.Timer('control_files.stage.%s' % (
             ds.get_server_name(ds.url()).replace('.', '_')))
@@ -224,16 +226,26 @@ def create_suite_job(name='', board='', pool='', control_file='',
         test_source_build = Suite.get_test_source_build(
                 builds, test_source_build=test_source_build)
 
+    # If 'prefer_local_devserver' is True in global setting, and both board
+    # and pool are specified, pick a dut in the given board and pool, and
+    # use that to help to pick a devserver in the same subnet of the duts
+    # to be used to run tests.
+    if dev_server.PREFER_LOCAL_DEVSERVER and pool and board:
+        sample_dut = rpc_utils.get_sample_dut(board, pool)
+    else:
+        sample_dut = None
+
     suite_name = canonicalize_suite_name(name)
     if run_prod_code:
-        ds = dev_server.resolve(test_source_build)
+        ds = dev_server.resolve(test_source_build, hostname=sample_dut)
         keyvals = {}
         getter = control_file_getter.FileSystemGetter(
                 [_CONFIG.get_config_value('SCHEDULER',
                                           'drone_installation_directory')])
         control_file = getter.get_control_file_contents_by_name(suite_name)
     else:
-        (ds, keyvals) = _stage_build_artifacts(test_source_build)
+        (ds, keyvals) = _stage_build_artifacts(
+                test_source_build, hostname=sample_dut)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
     if not control_file:
