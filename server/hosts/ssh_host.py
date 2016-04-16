@@ -10,7 +10,9 @@ You should import the "hosts" package instead of importing each type of host.
         SSHHost: a remote machine with a ssh access
 """
 
-import re, logging
+import inspect
+import logging
+import re
 from autotest_lib.client.common_lib import error, pxssh
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils
@@ -57,7 +59,6 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @param connect_timeout: connection timeout (in seconds)
         @param options: SSH options
         @param alive_interval: SSH Alive interval.
-
         """
         options = "%s %s" % (options, self.master_ssh_option)
         base_cmd = self.make_ssh_command(user=self.user, port=self.port,
@@ -66,6 +67,32 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
                                          connect_timeout=connect_timeout,
                                          alive_interval=alive_interval)
         return "%s %s" % (base_cmd, self.hostname)
+
+
+    def _verbose_logger_command(self, command):
+        """
+        Prepend the command for the client with information about the ssh command
+        to be executed and the server stack state.
+
+        @param command: the ssh command to be executed.
+        """
+        stack_frames = inspect.stack()
+        stack = ''
+        # The last 2 frames on the stack are boring. Print 5-2=3 stack frames.
+        count = min(5, len(stack_frames))
+        if count >= 3:
+            stack = inspect.getframeinfo(stack_frames[2][0]).function
+            for frame in stack_frames[3:count]:
+                function_name = inspect.getframeinfo(frame[0]).function
+                stack = '%s|%s' % (function_name, stack)
+        del stack_frames
+        # If "logger" executable exists on the DUT use it to respew |command|.
+        # Then regardless of "logger" run |command| as usual.
+        command = ('if type "logger" > /dev/null 2>&1; then'
+                   ' logger -tag "autotest" "server[stack::%s] -> ssh_run(%s)";'
+                   'fi; '
+                   '%s' % (stack, command, command))
+        return command
 
 
     def _run(self, command, timeout, ignore_status,
@@ -150,6 +177,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
         if verbose:
+            command = self._verbose_logger_command(command)
             logging.debug("Running (ssh) '%s'", command)
 
         # Start a master SSH connection if necessary.
