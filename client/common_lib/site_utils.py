@@ -44,7 +44,7 @@ RESTRICTED_SUBNETS = []
 restricted_subnets_list = CONFIG.get_config_value(
         'CROS', 'restricted_subnets', type=list, default=[])
 for subnet in restricted_subnets_list:
-    ip, mask_bits = subnet.split(':')
+    ip, mask_bits = subnet.split('/')
     RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
 
 # regex pattern for CLIENT/wireless_ssid_ config. For example, global config
@@ -642,8 +642,11 @@ def get_servers_in_same_subnet(host_ip, mask_bits, servers=None,
         raise ValueError('Either `servers` or `server_ip_map` must be given.')
     if not servers:
         servers = server_ip_map.keys()
+    # Make sure server_ip_map is an empty dict if it's not set.
+    if not server_ip_map:
+        server_ip_map = {}
     for server in servers:
-        server_ip = server_ip_map.get(server) or get_ip_address(server)
+        server_ip = server_ip_map.get(server, get_ip_address(server))
         if server_ip and is_in_same_subnet(server_ip, host_ip, mask_bits):
             matched_servers.append(server)
     return matched_servers
