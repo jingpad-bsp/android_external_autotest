@@ -5,7 +5,6 @@
 import csv
 import logging
 import os
-import re
 import shutil
 import time
 
@@ -18,16 +17,15 @@ STABILIZATION_DURATION = 60  # Time for test stabilization in seconds.
 TMP_DIRECTORY = '/tmp/'
 PERF_FILE_NAME_PREFIX = 'perf'
 EXIT_FLAG_FILE = TMP_DIRECTORY + 'longevity_terminate'
-OLD_FILE_AGE = 14400  # Age of old files to be deleted in minutes = 10 days
-CMD_REMOVE_OLD_FILES = ('find %s -name %s* -type f -mmin +%s -delete' %
-                        (TMP_DIRECTORY, PERF_FILE_NAME_PREFIX, OLD_FILE_AGE))
-MOSYS_OUTPUT_RE = re.compile('(\w+)="(.*?)"')
-
+OLD_FILE_AGE = 14400  # Age of old files to be deleted in minutes = 10 days.
 
 class longevity_Tracker(test.test):
     """Monitors device and App stability over long periods of time."""
 
     version = 1
+
+    def initialize(self):
+        self.temp_dir = os.path.split(self.tmpdir)[0]
 
     def _get_cpu_usage(self):
         """Computes percent CPU in active use for the sample interval.
@@ -146,12 +144,19 @@ class longevity_Tracker(test.test):
     def _get_median_metrics(self, metrics):
         """Returns median of each attribute performance metric.
 
+        If no metric values were recorded, return 0 for each metric.
+
         @param metrics: dict of attribute metric lists.
 
         """
-        cpu_metric = sorted(metrics['cpu'])[len(metrics['cpu']) // 2]
-        mem_metric = sorted(metrics['mem'])[len(metrics['mem']) // 2]
-        temp_metric = sorted(metrics['temp'])[len(metrics['temp']) // 2]
+        if len(metrics['cpu']):
+            cpu_metric = sorted(metrics['cpu'])[len(metrics['cpu']) // 2]
+            mem_metric = sorted(metrics['mem'])[len(metrics['mem']) // 2]
+            temp_metric = sorted(metrics['temp'])[len(metrics['temp']) // 2]
+        else:
+            cpu_metric = 0
+            mem_metric = 0
+            temp_metric = 0
         logging.info('== Median: cpu: %s, mem: %s, temp: %s',
                      cpu_metric, mem_metric, temp_metric)
         return {'cpu': cpu_metric, 'mem': mem_metric, 'temp': temp_metric}
@@ -174,6 +179,9 @@ class longevity_Tracker(test.test):
 
     def _copy_perf_file_to_results_directory(self, perf_file):
         """Copy performance file to results directory.
+
+        Note: The results directory is typically found at /usr/local/
+        autotest/results/default/longevity_Tracker/results
 
         @param perf_file: Performance results file path.
 
@@ -199,7 +207,7 @@ class longevity_Tracker(test.test):
         perf_metrics = {'cpu': [], 'mem': [], 'temp': []}
         perf_file_name = (PERF_FILE_NAME_PREFIX +
                           time.strftime('_%Y-%m-%d_%H-%M') + '.csv')
-        perf_file_path = os.path.join(TMP_DIRECTORY, perf_file_name)
+        perf_file_path = os.path.join(self.temp_dir, perf_file_name)
         perf_file = open(perf_file_path, 'w')
         writer = csv.writer(perf_file)
         writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (C)'])
@@ -260,6 +268,8 @@ class longevity_Tracker(test.test):
 
     def cleanup(self):
         """Delete aged perf data files and the exit flag file."""
-        os.system(CMD_REMOVE_OLD_FILES)
+        cmd = ('find %s -name %s* -type f -mmin +%s -delete' %
+               (self.temp_dir, PERF_FILE_NAME_PREFIX, OLD_FILE_AGE))
+        os.system(cmd)
         if os.path.isfile(EXIT_FLAG_FILE):
             os.remove(EXIT_FLAG_FILE)
