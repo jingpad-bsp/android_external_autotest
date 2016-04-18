@@ -981,10 +981,11 @@ def delete_stable_version(board):
     stable_version_utils.delete(board=board)
 
 
-def get_tests_by_build(build):
+def get_tests_by_build(build, ignore_invalid_tests=False):
     """Get the tests that are available for the specified build.
 
     @param build: unique name by which to refer to the image.
+    @param ignore_invalid_tests: flag on if unparsable tests are ignored.
 
     @return: A sorted list of all tests that are in the build specified.
     """
@@ -1011,7 +1012,12 @@ def get_tests_by_build(build):
         # Read and parse the control file
         control_file = cfile_getter.get_control_file_contents(
                 control_file_path)
-        control_obj = control_data.parse_control_string(control_file)
+        try:
+            control_obj = control_data.parse_control_string(control_file)
+        except:
+            logging.info('Failed to parse congtrol file: %s', control_file_path)
+            if not ignore_invalid_tests:
+                raise
 
         # Extract the values needed for the AFE from the control_obj.
         # The keys list represents attributes in the control_obj that
