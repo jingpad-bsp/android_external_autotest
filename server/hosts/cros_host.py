@@ -461,7 +461,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             if not image_name:
                 raise error.AutoservError(
                         'Failed to parse build name from %s' % image)
-            ds = dev_server.ImageServer.resolve(image_name)
+            ds = dev_server.ImageServer.resolve(image_name, self.hostname)
         else:
             job_repo_url = afe_utils.get_host_attribute(
                     self, ds_constants.JOB_REPO_URL)
@@ -478,7 +478,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
                 image_name = labels[0].name[len(ds_constants.VERSION_PREFIX):]
-                ds = dev_server.ImageServer.resolve(image_name)
+                ds = dev_server.ImageServer.resolve(image_name, self.hostname)
 
         # Get the OS version of the build, for any build older than
         # MIN_VERSION_SUPPORT_SSP, server side packaging is not supported.
