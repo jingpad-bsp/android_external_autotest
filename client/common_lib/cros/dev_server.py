@@ -72,10 +72,6 @@ DEVSERVER_IS_STAGING_RETRY_MIN = 100
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
 
-ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
-        'CROS', 'enable_devserver_in_restricted_subnet', type=bool,
-        default=False)
-
 ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'enable_ssh_connection_for_devserver', type=bool,
         default=False)
@@ -466,7 +462,7 @@ class DevServer(object):
         devservers = (cls.get_unrestricted_devservers() if unrestricted_only
                       else cls.servers())
         for server in devservers:
-            server_name = ImageServer.get_server_name(server)
+            server_name = cls.get_server_name(server)
             server_names[server_name] = server
             all_devservers.append(server_name)
         devservers = utils.get_servers_in_same_subnet(ip, mask_bits,
@@ -476,19 +472,22 @@ class DevServer(object):
 
     @classmethod
     def get_unrestricted_devservers(
-                cls, restricted_subnet=utils.RESTRICTED_SUBNETS):
+                cls, restricted_subnets=utils.RESTRICTED_SUBNETS):
         """Get the devservers not in any restricted subnet specified in
-        restricted_subnet.
+        restricted_subnets.
 
-        @param restricted_subnet: A list of restriected subnets.
+        @param restricted_subnets: A list of restriected subnets.
 
         @return: A list of devservers not in any restricted subnet.
 
         """
+        if not restricted_subnets:
+            return cls.servers()
+
         devservers = []
         for server in cls.servers():
-            server_name = ImageServer.get_server_name(server)
-            if not utils.get_restricted_subnet(server_name, restricted_subnet):
+            server_name = cls.get_server_name(server)
+            if not utils.get_restricted_subnet(server_name, restricted_subnets):
                 devservers.append(server)
         return devservers
 
@@ -511,6 +510,56 @@ class DevServer(object):
 
 
     @classmethod
+    def get_available_devservers(cls, hostname=None,
+                                 prefer_local_devserver=PREFER_LOCAL_DEVSERVER,
+                                 restricted_subnets=utils.RESTRICTED_SUBNETS):
+        """Get devservers in the same subnet of the given hostname.
+
+        @param hostname: Hostname of a DUT to choose devserver for.
+
+        @return: A tuple of (devservers, can_retry), devservers is a list of
+                 devservers that's available for the given hostname. can_retry
+                 is a flag that indicate if caller can retry the selection of
+                 devserver if no devserver in the returned devservers can be
+                 used. For example, if hostname is in a restricted subnet,
+                 can_retry will be False.
+        """
+        host_ip = None
+        if hostname:
+            host_ip = site_utils.get_ip_address(hostname)
+            if not host_ip:
+                logging.error('Failed to get IP address of %s. Will pick a '
+                              'devserver without subnet constraint.', hostname)
+
+        if not host_ip:
+            return cls.get_unrestricted_devservers(restricted_subnets), False
+
+        # Go through all restricted subnet settings and check if the DUT is
+        # inside a restricted subnet. If so, only return the devservers in the
+        # restricted subnet and doesn't allow retry.
+        if host_ip and restricted_subnets:
+            for subnet_ip, mask_bits in restricted_subnets:
+                if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
+                    logging.debug('The host %s (%s) is in a restricted subnet. '
+                                  'Try to locate a devserver inside subnet '
+                                  '%s:%d.', hostname, host_ip, subnet_ip,
+                                  mask_bits)
+                    devservers = cls.get_devservers_in_same_subnet(
+                            subnet_ip, mask_bits)
+                    return devservers, False
+
+        # If prefer_local_devserver is set to True and the host is not in
+        # restricted subnet, pick a devserver in the same subnet if possible.
+        # Set can_retry to True so it can pick a different devserver if all
+        # devservers in the same subnet are down.
+        if prefer_local_devserver:
+            return (cls.get_devservers_in_same_subnet(
+                    host_ip, DEFAULT_SUBNET_MASKBIT, True), True)
+
+        return cls.get_unrestricted_devservers(restricted_subnets), False
+
+
+    @classmethod
     def resolve(cls, build, hostname=None):
         """"Resolves a build to a devserver instance.
 
@@ -521,61 +570,17 @@ class DevServer(object):
 
         @raise DevServerException: If no devserver is available.
         """
-        host_ip = None
-        if hostname:
-            host_ip = site_utils.get_ip_address(hostname)
-            if not host_ip:
-                logging.error('Failed to get IP address of %s. Will pick a '
-                              'devserver without subnet constraint.', hostname)
-
-        devservers = cls.servers()
-
-        # Go through all restricted subnet settings and check if the DUT is
-        # inside a restricted subnet. If so, get the subnet setting.
-        restricted_subnet = None
-        if host_ip and ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET:
-            for subnet_ip, mask_bits in utils.RESTRICTED_SUBNETS:
-                if utils.is_in_same_subnet(host_ip, subnet_ip, mask_bits):
-                    restricted_subnet = subnet_ip
-                    logging.debug('The host %s (%s) is in a restricted subnet. '
-                                  'Try to locate a devserver inside subnet '
-                                  '%s:%d.', hostname, host_ip, subnet_ip,
-                                  mask_bits)
-                    devservers = cls.get_devservers_in_same_subnet(
-                            subnet_ip, mask_bits)
-                    break
-        # If devserver election is not restricted and
-        # enable_devserver_in_restricted_subnet in global config is set to True,
-        # select a devserver from unrestricted servers. Otherwise, drone will
-        # not be able to access devserver in restricted subnet.
-        can_retry = False
-        if (not restricted_subnet and utils.RESTRICTED_SUBNETS and
-            ENABLE_DEVSERVER_IN_RESTRICTED_SUBNET):
-            devservers = cls.get_unrestricted_devservers()
-
-        # If prefer_local_sevserver is set to True and the host is not in
-        # restricted subnet, pick a devserver in the same subnet if possible.
-        # Set can_retry to True so it can pick a different devserver if all
-        # devservers in the same subnet are down.
-        if not restricted_subnet and PREFER_LOCAL_DEVSERVER and host_ip:
-            can_retry = True
-            devservers = cls.get_devservers_in_same_subnet(
-                    host_ip, DEFAULT_SUBNET_MASKBIT, True)
+        devservers, can_retry = cls.get_available_devservers(hostname)
 
         devserver = cls.get_healthy_devserver(build, devservers)
 
         if not devserver and can_retry:
             devserver = cls.get_healthy_devserver(
-                    build, cls.get_unrestricted_devservers())
+                    build, cls.get_available_devservers())
         if devserver:
             return devserver
         else:
-            if restricted_subnet:
-                subnet_error = ('in the same subnet as the host %s (%s)' %
-                                (hostname, host_ip))
-            else:
-                subnet_error = ''
-            error_msg = 'All devservers %s are currently down!!!' % subnet_error
+            error_msg = 'All devservers are currently down: %s' % devservers
             logging.error(error_msg)
             raise DevServerException(error_msg)
 
@@ -598,6 +603,7 @@ class DevServer(object):
 
 class CrashServer(DevServer):
     """Class of DevServer that symbolicates crash dumps."""
+
     @staticmethod
     def servers():
         return _get_crash_server_list()
@@ -640,6 +646,21 @@ class CrashServer(DevServer):
         raise urllib2.HTTPError(
                 call, request.status_code, request.text, request.headers,
                 error_fd)
+
+
+    @classmethod
+    def get_available_devservers(cls, hostname):
+        """Get all available crash servers.
+
+        Crash server election doesn't need to count the location of hostname.
+
+        @param hostname: Hostname of a DUT to choose devserver for.
+
+        @return: A tuple of (all crash servers, False). can_retry is set to
+                 False, as all crash servers are returned. There is no point to
+                 retry.
+        """
+        return cls.servers(), False
 
 
 class ImageServerBase(DevServer):
@@ -1694,7 +1715,7 @@ def _compare_load(devserver1, devserver2):
     return int(devserver1[DevServer.DISK_IO] - devserver2[DevServer.DISK_IO])
 
 
-def get_least_loaded_devserver(devserver_type=ImageServer):
+def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
     """Get the devserver with the least load.
 
     Iterate through all devservers and get the one with least load.
@@ -1707,15 +1728,30 @@ def get_least_loaded_devserver(devserver_type=ImageServer):
 
     @param devserver_type: Type of devserver to select from. Default is set to
                            ImageServer.
+    @param hostname: Hostname of the dut that the devserver is used for. The
+            picked devserver needs to respect the location of the host if
+            `prefer_local_devserver` is set to True or `restricted_subnets` is
+            set.
 
     @return: Name of the devserver with the least load.
 
     """
+    devservers, can_retry = devserver_type.get_available_devservers(
+            hostname)
+    # If no healthy devservers available and can_retry is False, return None.
+    # Otherwise, relax the constrain on hostname, allow all devservers to be
+    # available.
+    if not devserver_type.get_healthy_devserver('', devservers):
+        if not can_retry:
+            return None
+        else:
+            devservers = devserver_type.get_available_devservers()
+
     # get_devserver_load call needs to be made in a new process to allow force
     # timeout using signal.
     output = multiprocessing.Queue()
     processes = []
-    for devserver in devserver_type.servers():
+    for devserver in devservers:
         processes.append(multiprocessing.Process(
                 target=devserver_type.get_devserver_load_wrapper,
                 args=(devserver, TIMEOUT_GET_DEVSERVER_LOAD, output)))
