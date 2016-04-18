@@ -94,6 +94,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public HasClickHandlers getCreateTemplateJobButton();
         public HasClickHandlers getResetButton();
         public HasClickHandlers getFetchImageTestsButton();
+        public ICheckBox getIgnoreInvalidTestsCheckBox();
         public ITextBox getFirmwareRWBuild();
         public ITextBox getFirmwareROBuild();
         public ExtendedListBox getTestSourceBuildList();
@@ -1006,7 +1007,8 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
         JSONObject params = new JSONObject();
         params.put("build", new JSONString(imageUrl));
-
+        params.put("ignore_invalid_tests", JSONBoolean.getInstance(
+              display.getIgnoreInvalidTestsCheckBox().getValue()));
         rpcProxy.rpcCall("get_tests_by_build", params, new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
