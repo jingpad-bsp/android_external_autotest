@@ -561,6 +561,7 @@ class OmahaDevserver(object):
                 '--max_updates=1',
                 '--host_log',
                 '--static_dir=%s' % self._devserver_static_dir,
+                '--critical_update',
         ]
         remote_cmd = '( %s ) </dev/null >%s 2>&1 &' % (
                 ' '.join(cmdlist), self._devserver_stdoutfile)
