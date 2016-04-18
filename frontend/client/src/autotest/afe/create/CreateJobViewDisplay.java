@@ -66,6 +66,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         "If no image is specified, regular tests will use current image on the Host. " +
         "Please note that an image is required to run a test suite.");
     private Button fetchImageTestsButton = new Button("Fetch Tests from Build");
+    private CheckBoxImpl ignoreInvalidTestsCheckBox = new CheckBoxImpl("Ignore Invalid Tests");
     private TextBox timeout = new TextBox();
     private ToolTip timeoutToolTip = new ToolTip(
         "?",
@@ -355,6 +356,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(testSourceBuildList, "create_test_source_build");
         panel.add(testSourceBuildListToolTip, "create_test_source_build");
         panel.add(fetchImageTestsButton, "fetch_image_tests");
+        panel.add(ignoreInvalidTestsCheckBox, "ignore_invalid_tests");
         panel.add(testSelector, "create_tests");
         panel.add(controlFilePanel, "create_edit_control");
         panel.add(hostSelector, "create_host_selector");
@@ -505,6 +507,10 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public HasClickHandlers getFetchImageTestsButton() {
         return fetchImageTestsButton;
+    }
+
+    public ICheckBox getIgnoreInvalidTestsCheckBox() {
+      return ignoreInvalidTestsCheckBox;
     }
 
     public ITextBox getFirmwareRWBuild() {
