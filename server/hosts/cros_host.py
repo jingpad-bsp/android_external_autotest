@@ -1446,10 +1446,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # goofy controls dbus on these DUTs.
         if not self._is_factory_image():
             self.run('update_engine_client --status')
-        # Makes sure python is present, loads and can use built in functions.
-        # We have seen cases where importing cPickle fails with undefined
-        # symbols in cPickle.so.
-        self.run('python -c "import cPickle"')
 
         self.verify_cros_version_label()
 

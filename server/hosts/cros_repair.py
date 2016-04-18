@@ -76,8 +76,6 @@ class UpdateSuccessVerifier(hosts.Verifier):
         return 'The most recent AU attempt on this DUT succeeded'
 
 
-
-
 class TPMStatusVerifier(hosts.Verifier):
     """Verify that the host's TPM is in a good state."""
 
@@ -136,6 +134,27 @@ class TPMStatusVerifier(hosts.Verifier):
     @property
     def description(self):
         return 'The host\'s TPM is available and working'
+
+
+class PythonVerifier(hosts.Verifier):
+    """Confirm the presence of a working Python interpreter."""
+
+    def verify(self, host):
+        result = host.run('python -c "import cPickle"',
+                          ignore_status=True)
+        if result.exit_status != 0:
+            message = 'The python interpreter is broken'
+            if result.exit_status == 127:
+                search = host.run('which python', ignore_status=True)
+                if search.exit_status != 0 or not search.stdout:
+                    message = ('Python is missing; may be caused by '
+                               'powerwash')
+            raise hosts.AutoservVerifyError(message)
+
+
+    @property
+    def description(self):
+        return 'Python on the host is installed and working'
 
 
 class CrosHostVerifier(hosts.Verifier):
@@ -293,8 +312,24 @@ def create_cros_repair_strategy():
         (ACPowerVerifier,         'power',   ['ssh']),
         (TPMStatusVerifier,       'tpm',     ['ssh']),
         (UpdateSuccessVerifier,   'good_au', ['ssh']),
+        (PythonVerifier,          'python',  ['ssh']),
         (CrosHostVerifier,        'cros',    ['ssh']),
     ]
+
+    # The dependencies and triggers for the 'au', 'powerwash', and 'usb'
+    # repair actions stack up:  Each one is able to repair progressively
+    # more verifiers than the one before.  The 'triggers' lists below
+    # show the progression.
+    #
+    # TODO(jrbarnette):  AU repair can't fix all problems reported by
+    # the 'cros' verifier; it's listed as an AU trigger as a
+    # simplification.  The ultimate fix is to split the 'cros' verifier
+    # into smaller individual verifiers.
+
+    usb_triggers       = ['ssh']
+    powerwash_triggers = ['tpm', 'good_au']
+    au_triggers        = ['python', 'cros']
+
     repair_actions = [
         # RPM cycling must precede Servo reset:  if the DUT has a dead
         # battery, we need to reattach AC power before we reset via servo.
@@ -313,14 +348,12 @@ def create_cros_repair_strategy():
         # firmware.
         (FirmwareRepair, 'firmware', [], ['ssh', 'cros', 'good_au']),
 
-        # TODO(jrbarnette):  AU repair can't fix all problems reported
-        # by the 'cros' verifier; some problems require powerwash.  Once
-        # the 'cros' verifier is properly split into its component
-        # parts, some of the 'cros' checks will be dependencies, others
-        # will be triggers.
-        (AutoUpdateRepair, 'au', ['ssh', 'tpm', 'good_au'], ['cros']),
-        (PowerWashRepair, 'powerwash', ['ssh'], ['tpm', 'good_au', 'cros']),
-        (ServoInstallRepair, 'usb', [], ['ssh', 'tpm', 'good_au', 'cros']),
+        (AutoUpdateRepair, 'au',
+                usb_triggers + powerwash_triggers, au_triggers),
+        (PowerWashRepair, 'powerwash',
+                usb_triggers, powerwash_triggers + au_triggers),
+        (ServoInstallRepair, 'usb',
+                [], usb_triggers + powerwash_triggers + au_triggers),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
 
@@ -350,12 +383,13 @@ def create_moblab_repair_strategy():
     verify_dag = [
         (ssh_verify.SshVerifier,  'ssh',     []),
         (ACPowerVerifier,         'power',   ['ssh']),
+        (PythonVerifier,          'python',  ['ssh']),
         (CrosHostVerifier,        'cros',    ['ssh']),
     ]
     repair_actions = [
         (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
         (ServoResetRepair, 'reset', [], ['ssh']),
-        (AutoUpdateRepair, 'au', ['ssh'], ['cros']),
-        (ServoInstallRepair, 'usb', [], ['ssh', 'cros']),
+        (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros']),
+        (ServoInstallRepair, 'usb', [], ['ssh', 'python', 'cros']),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
