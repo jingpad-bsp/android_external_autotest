@@ -91,7 +91,7 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         command = ('if type "logger" > /dev/null 2>&1; then'
                    ' logger -tag "autotest" "server[stack::%s] -> ssh_run(%s)";'
                    'fi; '
-                   '%s' % (stack, command, command))
+                   '%s' % (stack, utils.sh_escape(command), command))
         return command
 
 
