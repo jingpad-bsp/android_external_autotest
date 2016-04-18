@@ -47,7 +47,8 @@ _FILE_BUG_SUITES = ['au', 'bvt', 'bvt-cq', 'bvt-inline', 'paygen_au_beta',
                     'sanity', 'push_to_prod']
 _AUTOTEST_DIR = global_config.global_config.get_config_value(
         'SCHEDULER', 'drone_installation_directory')
-
+ENABLE_CONTROLS_IN_BATCH = global_config.global_config.get_config_value(
+        'CROS', 'enable_getting_controls_in_batch', type=bool, default=False)
 
 class RetryHandler(object):
     """Maintain retry information.
@@ -1103,15 +1104,22 @@ class Suite(object):
         """
         Function to scan through all tests and find all tests.
 
-        Looks at control files returned by _cf_getter.get_control_file_list()
-        for tests that pass self._predicate(). When this method is called
-        with a file system ControlFileGetter, it performs a full parse of the
-        root directory associated with the getter. This is the case when it's
-        invoked from suite_preprocessor. When it's invoked with a devserver
-        getter it looks up the suite_name in a suite to control file map
-        generated at build time, and parses the relevant control files alone.
-        This lookup happens on the devserver, so as far as this method is
-        concerned, both cases are equivalent.
+        When this method is called with a file system ControlFileGetter, or
+        enable_controls_in_batch is set as false, this function will looks at
+        control files returned by cf_getter.get_control_file_list() for tests
+        that pass self._predicate().
+
+        If cf_getter is a File system ControlFileGetter, it performs a full
+        parse of the root directory associated with the getter. This is the
+        case when it's invoked from suite_preprocessor.
+
+        If cf_getter is a devserver getter it looks up the suite_name in a
+        suite to control file map generated at build time, and parses the
+        relevant control files alone. This lookup happens on the devserver,
+        so as far as this method is concerned, both cases are equivalent. If
+        enable_controls_in_batch is switched on, this function will call
+        cf_getter.get_suite_info() to get a dict of control files and contents
+        in batch.
 
         @param cf_getter: a control_file_getter.ControlFileGetter used to list
                and fetch the content of control files
@@ -1136,12 +1144,22 @@ class Suite(object):
         """
         logging.debug('Getting control file list for suite: %s', suite_name)
         tests = {}
-        files = cf_getter.get_control_file_list(suite_name=suite_name)
+        use_batch = (ENABLE_CONTROLS_IN_BATCH and hasattr(
+                cf_getter, '_dev_server'))
+        if use_batch:
+            suite_info = cf_getter.get_suite_info(suite_name=suite_name)
+            files = suite_info.keys()
+        else:
+            files = cf_getter.get_control_file_list(suite_name=suite_name)
+
 
         logging.debug('Parsing control files ...')
         matcher = re.compile(r'[^/]+/(deps|profilers)/.+')
         for file in filter(lambda f: not matcher.match(f), files):
-            text = cf_getter.get_control_file_contents(file)
+            if use_batch:
+                text = suite_info[file]
+            else:
+                text = cf_getter.get_control_file_contents(file)
             try:
                 found_test = control_data.parse_control_string(
                         text, raise_warnings=True, path=file)
