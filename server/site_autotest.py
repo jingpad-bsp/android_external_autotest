@@ -83,7 +83,13 @@ class SiteAutotest(installable_object.InstallableObject):
                 # the host will no longer have the context of the image option
                 # and will revert back to utilizing test code/artifacts that are
                 # currently present in the users source checkout.
-                devserver_url = dev_server.ImageServer.resolve(image_opt).url()
+                # devserver selected must be in the same subnet of self.host, if
+                # the host is in restricted subnet. Otherwise, host may not be
+                # able to reach the devserver and download packages from the
+                # repo_url.
+                hostname = self.host.hostname if self.host else None
+                devserver_url = dev_server.ImageServer.resolve(
+                        image_opt, hostname).url()
                 repo_url = tools.get_package_url(devserver_url, image_opt)
                 repos.append(repo_url)
         elif not server_utils.is_inside_chroot():

@@ -177,7 +177,8 @@ class autoupdate_CatchBadSignatures(test.test):
 
         # We don't have a build so just fake the string.
         build = 'x86-fake-release/R42-4242.0.0-a1-bFAKE'
-        image_server = dev_server.ImageServer.resolve(build)
+        image_server = dev_server.ImageServer.resolve(build,
+                                                      self._host.hostname)
         archive_url = os.path.dirname(image_url)
         filename = os.path.basename(image_url)
         # ImageServer expects an image parameter, but we don't have one.
