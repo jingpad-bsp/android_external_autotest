@@ -103,7 +103,7 @@ def _join_with_nickname(base_string, nickname):
 class BgJob(object):
     def __init__(self, command, stdout_tee=None, stderr_tee=None, verbose=True,
                  stdin=None, stderr_level=DEFAULT_STDERR_LEVEL, nickname=None,
-                 no_pipes=False):
+                 no_pipes=False, env=None):
         """Create and start a new BgJob.
 
         This constructor creates a new BgJob, and uses Popen to start a new
@@ -145,6 +145,7 @@ class BgJob(object):
                          with other BgJobs, or long runing background jobs that
                          will never be joined with join_bg_jobs, such as the
                          master-ssh connection BgJob.
+        @param env: Dict containing environment variables used in subprocess.
         """
         self.command = command
         self._no_pipes = no_pipes
@@ -180,13 +181,15 @@ class BgJob(object):
                                        stdout=stdout_param,
                                        stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe,
-                                       stdin=stdin)
+                                       stdin=stdin,
+                                       env=env)
         else:
             self.sp = subprocess.Popen(command, stdout=stdout_param,
                                        stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe, shell=True,
                                        executable="/bin/bash",
-                                       stdin=stdin)
+                                       stdin=stdin,
+                                       env=env)
 
         self._output_prepare_called = False
         self._process_output_warned = False
@@ -831,7 +834,8 @@ def get_stderr_level(stderr_is_expected):
 
 def run(command, timeout=None, ignore_status=False,
         stdout_tee=None, stderr_tee=None, verbose=True, stdin=None,
-        stderr_is_expected=None, args=(), nickname=None, ignore_timeout=False):
+        stderr_is_expected=None, args=(), nickname=None, ignore_timeout=False,
+        env=None):
     """
     Run a command on the host.
 
@@ -841,8 +845,6 @@ def run(command, timeout=None, ignore_status=False,
             longer than 'timeout' to complete if it has to kill the process.
     @param ignore_status: do not raise an exception, no matter what the exit
             code of the command is.
-    @param ignore_timeout: If True, timeouts are ignored otherwise if a
-            timeout occurs it will raise CmdTimeoutError.
     @param stdout_tee: optional file-like object to which stdout data
             will be written as it is generated (data will still be stored
             in result.stdout).
@@ -858,6 +860,9 @@ def run(command, timeout=None, ignore_status=False,
             argument
     @param nickname: Short string that will appear in logging messages
                      associated with this command.
+    @param ignore_timeout: If True, timeouts are ignored otherwise if a
+            timeout occurs it will raise CmdTimeoutError.
+    @param env: Dict containing environment variables used in a subprocess.
 
     @return a CmdResult object or None if the command timed out and
             ignore_timeout is True
@@ -884,7 +889,7 @@ def run(command, timeout=None, ignore_status=False,
         bg_job = join_bg_jobs(
             (BgJob(command, stdout_tee, stderr_tee, verbose, stdin=stdin,
                    stderr_level=get_stderr_level(stderr_is_expected),
-                   nickname=nickname),), timeout)[0]
+                   nickname=nickname, env=env),), timeout)[0]
     except error.CmdTimeoutError:
         if not ignore_timeout:
             raise
@@ -2150,4 +2155,3 @@ def restart_job(name):
         system_output('restart %s' % name)
     else:
         system_output('start %s' % name)
-
