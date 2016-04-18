@@ -1778,7 +1778,12 @@ class autoupdate_EndToEndTest(test.test):
         # fall back to the old behavior by picking a devserver based on the
         # payload URI, with which ImageServer.resolve will return a random
         # devserver based on the hash of the URI.
-        least_loaded_devserver = dev_server.get_least_loaded_devserver()
+        # The picked devserver needs to respect the location of the host if
+        # `prefer_local_devserver` is set to True or `restricted_subnets` is
+        # set.
+        hostname = self._host.hostname if self._host else None
+        least_loaded_devserver = dev_server.get_least_loaded_devserver(
+                hostname=hostname)
         if least_loaded_devserver:
             logging.debug('Choose the least loaded devserver: %s',
                           least_loaded_devserver)
