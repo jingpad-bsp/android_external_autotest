@@ -49,6 +49,30 @@ class ACPowerVerifier(hosts.Verifier):
         return 'The DUT is plugged in to AC power'
 
 
+class WritableVerifier(hosts.Verifier):
+    """
+    Confirm the stateful file system is writable.
+
+    The standard linux response to certain unexpected file system errors
+    (including hardware errors in block devices) is to change the file
+    system status to read-only.  This checks that that hasn't happened.
+    """
+
+    def verify(self, host):
+        filename = "/mnt/stateful_partition/writable_test"
+        command = 'touch %s && rm %s' % (filename, filename)
+        rv = host.run(command=command, ignore_status=True)
+
+        if rv.exit_status != 0:
+            raise hosts.AutoservVerifyError(
+                    'DUT stateful filesystem is read-only.')
+
+
+    @property
+    def description(self):
+        return 'The stateful filesystem is writable'
+
+
 class UpdateSuccessVerifier(hosts.Verifier):
     """
     Checks that the DUT has not failed its last provision job.
@@ -222,6 +246,18 @@ class ServoResetRepair(hosts.RepairAction):
         return 'Reset the DUT via servo'
 
 
+class RebootRepair(hosts.RepairAction):
+    """Repair a Chrome device by rebooting it."""
+
+    def repair(self, host):
+        host.reboot()
+
+
+    @property
+    def description(self):
+        return 'Reboot the DUT'
+
+
 class FirmwareRepair(hosts.RepairAction):
     """
     Reinstall the firmware image using servo.
@@ -308,12 +344,13 @@ class ServoInstallRepair(hosts.RepairAction):
 def create_cros_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
     verify_dag = [
-        (ssh_verify.SshVerifier,  'ssh',     []),
-        (ACPowerVerifier,         'power',   ['ssh']),
-        (TPMStatusVerifier,       'tpm',     ['ssh']),
-        (UpdateSuccessVerifier,   'good_au', ['ssh']),
-        (PythonVerifier,          'python',  ['ssh']),
-        (CrosHostVerifier,        'cros',    ['ssh']),
+        (ssh_verify.SshVerifier,  'ssh',      []),
+        (ACPowerVerifier,         'power',    ['ssh']),
+        (WritableVerifier,        'writable', ['ssh']),
+        (TPMStatusVerifier,       'tpm',      ['ssh']),
+        (UpdateSuccessVerifier,   'good_au',  ['ssh']),
+        (PythonVerifier,          'python',   ['ssh']),
+        (CrosHostVerifier,        'cros',     ['ssh']),
     ]
 
     # The dependencies and triggers for the 'au', 'powerwash', and 'usb'
@@ -326,7 +363,7 @@ def create_cros_repair_strategy():
     # simplification.  The ultimate fix is to split the 'cros' verifier
     # into smaller individual verifiers.
 
-    usb_triggers       = ['ssh']
+    usb_triggers       = ['ssh', 'writable']
     powerwash_triggers = ['tpm', 'good_au']
     au_triggers        = ['python', 'cros']
 
@@ -347,6 +384,8 @@ def create_cros_repair_strategy():
         # and we want the repair steps below to be able to trust the
         # firmware.
         (FirmwareRepair, 'firmware', [], ['ssh', 'cros', 'good_au']),
+
+        (RebootRepair,   'reboot', ['ssh'], ['writable']),
 
         (AutoUpdateRepair, 'au',
                 usb_triggers + powerwash_triggers, au_triggers),
