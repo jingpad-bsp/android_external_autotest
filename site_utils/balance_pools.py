@@ -49,12 +49,6 @@ in the pool to keep the pool at the target COUNT.
 When reducing pool size, working DUTs will be returned after broken
 DUTs, if it's necessary to achieve the target COUNT.
 
-If the selected target POOL is for a Freon board, *and* the selected
-spare pool has no DUTs (in any state), *and* the corresponding
-non-Freon spare pool is populated, then the non-Freon pool will
-be used for the Freon board.  A similar rule applies to balancing
-non-Freon boards when there is an available Freon spare pool.
-
 """
 
 
@@ -72,9 +66,6 @@ from chromite.lib import parallel
 
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
-_BOARD_PREFIX = constants.Labels.BOARD_PREFIX
-
-_FREON_BOARD_TAG = 'freon'
 
 
 def _log_message(message, *args):
@@ -172,92 +163,21 @@ class _DUTPool(object):
 
     """
 
-
-    @staticmethod
-    def _get_platform_label(board):
-        """Return the platform label associated with `board`.
-
-        When swapping between freon and non-freon boards, the
-        platform label must also change (because wmatrix reports
-        build results against platform labels, not boards).  So, we
-        must be able to get the platform label from the board name.
-
-        For non-freon boards, the platform label is based on a name
-        assigned by the firmware, which in some cases is different
-        from the board name.  For freon boards, the platform label
-        is always the board name.
-
-        @param board The board name to convert to a platform label.
-        @return The platform label for the given board name.
-
-        """
-        if board.endswith(_FREON_BOARD_TAG):
-            return board
-        if board.startswith('x86-'):
-            return board[len('x86-') :]
-        platform_map = {
-          'daisy': 'snow',
-          'daisy_spring': 'spring',
-          'daisy_skate': 'skate',
-          'parrot_ivb': 'parrot_2',
-          'falco_li': 'falco'
-        }
-        return platform_map.get(board, board)
-
-
-    @staticmethod
-    def _freon_board_toggle(board):
-        """Toggle a board name between freon and non-freon.
-
-        For boards naming a freon build, return the name of the
-        associated non-freon board.  For boards naming non-freon
-        builds, return the name of the associated freon board.
-
-        @param board The board name to be toggled.
-        @return A new board name, toggled for freon.
-
-        """
-        if board.endswith(_FREON_BOARD_TAG):
-            # The actual board name ends with either "-freon" or
-            # "_freon", so we have to strip off one extra character.
-            return board[: -len(_FREON_BOARD_TAG) - 1]
-        else:
-            # The actual board name will end with either "-freon" or
-            # "_freon"; we have to figure out which one to use.
-            joiner = '_'
-            if joiner in board:
-                joiner = '-'
-            return joiner.join([board, _FREON_BOARD_TAG])
-
-
-    def __init__(self, afe, board, pool, start_time, end_time,
-                 use_freon=False):
+    def __init__(self, afe, board, pool, start_time, end_time):
         self.board = board
         self.pool = pool
         self.working_hosts = []
         self.broken_hosts = []
         self.ineligible_hosts = []
-        self.total_hosts = self._get_hosts(
-                afe, start_time, end_time, use_freon)
-        self.labels = set([_BOARD_PREFIX + self.board,
-                           self._get_platform_label(self.board),
-                           _POOL_PREFIX + self.pool])
+        self.total_hosts = self._get_hosts(afe, start_time, end_time)
+        self._labels = [_POOL_PREFIX + self.pool]
 
 
-    def _get_hosts(self, afe, start_time, end_time, use_freon):
+    def _get_hosts(self, afe, start_time, end_time):
         all_histories = (
             status_history.HostJobHistory.get_multiple_histories(
                     afe, start_time, end_time,
                     board=self.board, pool=self.pool))
-        if not all_histories and use_freon:
-            alternate_board = self._freon_board_toggle(self.board)
-            alternate_histories = (
-                status_history.HostJobHistory.get_multiple_histories(
-                        afe, start_time, end_time,
-                        board=alternate_board, pool=self.pool))
-            if alternate_histories:
-                self.board = alternate_board
-                all_histories = alternate_histories
         for h in all_histories:
             host = h.host
             host_pools = [l for l in host.labels
@@ -285,7 +205,7 @@ class _DUTPool(object):
                 or AFE.remove_labels().
 
         """
-        return self.labels
+        return self._labels
 
     def calculate_spares_needed(self, target_total):
         """Calculate and log the spares needed to achieve a target.
@@ -371,14 +291,11 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
               len(hosts), spare_pool.pool, target_pool.pool)
     additions = target_pool.pool_labels
     removals = spare_pool.pool_labels
-    intersection = additions & removals
-    additions -= intersection
-    removals -= intersection
     for host in hosts:
         if not dry_run:
             _log_message('Updating host: %s.', host.hostname)
-            host.remove_labels(list(removals))
-            host.add_labels(list(additions))
+            host.remove_labels(removals)
+            host.add_labels(additions)
         else:
             _log_message('atest label remove -m %s %s',
                          host.hostname, ' '.join(removals))
@@ -401,7 +318,7 @@ def _balance_board(arguments, afe, board, start_time, end_time):
 
     """
     spare_pool = _DUTPool(afe, board, arguments.spare,
-                          start_time, end_time, use_freon=True)
+                          start_time, end_time)
     main_pool = _DUTPool(afe, board, arguments.pool,
                          start_time, end_time)
 
