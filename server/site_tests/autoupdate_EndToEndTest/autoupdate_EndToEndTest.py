@@ -1787,7 +1787,7 @@ class autoupdate_EndToEndTest(test.test):
             logging.warning('No devserver meets the maximum load requirement. '
                             'Pick a random devserver to use.')
             autotest_devserver = dev_server.ImageServer.resolve(
-                    test_conf['target_payload_uri'])
+                    test_conf['target_payload_uri'], host.hostname)
         devserver_hostname = urlparse.urlparse(
                 autotest_devserver.url()).hostname
         counter_key = dev_server.ImageServer.create_stats_str(

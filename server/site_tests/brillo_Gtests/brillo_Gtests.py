@@ -47,7 +47,7 @@ class brillo_Gtests(test.test):
         @param host: host object to install the nativetests onto.
         """
         build = afe_utils.get_build(host)
-        ds = dev_server.AndroidBuildServer.resolve(build)
+        ds = dev_server.AndroidBuildServer.resolve(build, host.hostname)
         ds.stage_artifacts(image=build, artifacts=['nativetests'])
         build_url = os.path.join(ds.url(), 'static', build)
         nativetests_file = (NATIVE_TESTS_FILE_FMT %
