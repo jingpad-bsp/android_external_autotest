@@ -200,6 +200,9 @@ def parse_options():
                              'number of minutes. This argument can be used to '
                              'force provision jobs being delayed, which helps '
                              'to distribute loads across devservers.'))
+    parser.add_option('--skip_duts_check', dest='skip_duts_check', action='store_true',
+                      default=False,
+                      help='If True, skip minimum available DUTs check')
     options, args = parser.parse_args()
     return parser, options, args
 
