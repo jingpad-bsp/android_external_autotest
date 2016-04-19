@@ -584,6 +584,11 @@ class NoControlFileList(CrosDynamicSuiteException):
     pass
 
 
+class SuiteControlFileException(CrosDynamicSuiteException):
+    """Raised when failing to list the contents of all control file."""
+    pass
+
+
 class HostLockManagerReuse(CrosDynamicSuiteException):
     """Raised when a caller tries to re-use a HostLockManager instance."""
     pass
