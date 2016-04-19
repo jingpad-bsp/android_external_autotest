@@ -36,6 +36,7 @@ from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import tools
+from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.hosts import moblab_host
 from autotest_lib.site_utils import host_history
@@ -59,8 +60,6 @@ _GS_ACCESS_KEY_ID = 'gs_access_key_id'
 _GS_SECRETE_ACCESS_KEY = 'gs_secret_access_key'
 _IMAGE_STORAGE_SERVER = 'image_storage_server'
 _RESULT_STORAGE_SERVER = 'results_storage_server'
-
-
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 
@@ -1004,14 +1003,21 @@ def get_tests_by_build(build, ignore_invalid_tests=False):
 
     # Collect the control files specified in this build
     cfile_getter = control_file_getter.DevServerGetter.create(build, ds)
-    control_file_list = cfile_getter.get_control_file_list()
+    if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+        control_file_info_list = cfile_getter.get_suite_info()
+        control_file_list = control_file_info_list.keys()
+    else:
+        control_file_list = cfile_getter.get_control_file_list()
 
     test_objects = []
     _id = 0
     for control_file_path in control_file_list:
         # Read and parse the control file
-        control_file = cfile_getter.get_control_file_contents(
-                control_file_path)
+        if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+            control_file = control_file_info_list[control_file_path]
+        else:
+            control_file = cfile_getter.get_control_file_contents(
+                    control_file_path)
         try:
             control_obj = control_data.parse_control_string(control_file)
         except:
