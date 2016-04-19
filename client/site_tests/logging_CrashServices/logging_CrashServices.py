@@ -12,7 +12,6 @@ class logging_CrashServices(test.test):
     version = 3
 
     process_list = {
-        '/sbin/agetty' : ['.core', '.dmp', '.meta'],
         '/usr/sbin/cryptohomed' : ['.core', '.dmp', '.meta'],
         '/usr/bin/metrics_daemon' : ['.core', '.dmp', '.meta'],
         '/usr/bin/powerd' : ['.core', '.dmp', '.meta', '.log'],
