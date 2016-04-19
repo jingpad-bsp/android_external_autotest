@@ -3,14 +3,15 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chromium OS Team"
-NAME = "CrashServices"
+NAME = "logging_CrashServices"
 PURPOSE = "Verify that all processes create *.dmp files."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "client"
 JOB_RETRIES = 0
-ATTRIBUTES = "suite:jailed_build, suite:partners"
+ATTRIBUTES = "suite:bvt-perbuild, suite:jailed_build, suite:partners"
+DEPENDENCIES='cleanup-reboot'
 
 DOC = """
 Crash all valid Chrome OS processes from a whitelist, and confirm
