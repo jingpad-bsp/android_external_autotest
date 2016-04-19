@@ -7,6 +7,7 @@
 """Unit tests for client/common_lib/cros/dev_server.py."""
 
 import httplib
+import json
 import mox
 import StringIO
 import time
@@ -483,6 +484,58 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.list_control_files,
+                          '')
+
+    def testListSuiteControls(self):
+        """Should successfully list all contents of control files from the dev
+        server."""
+        name = 'fake/build'
+        control_contents = ['control file one', 'control file two']
+        argument = mox.And(mox.StrContains(self._HOST),
+                           mox.StrContains(name))
+        dev_server.ImageServerBase.run_call(
+                argument).AndReturn(json.dumps(control_contents))
+
+        self.mox.ReplayAll()
+        file_contents = self.dev_server.list_suite_controls(name)
+        self.assertEquals(len(file_contents), 2)
+        for f in control_contents:
+            self.assertTrue(f in file_contents)
+
+
+    def testFailedListSuiteControls(self):
+        """Should call the dev server's list_suite_controls method using http,
+        get exception."""
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.list_suite_controls,
+                          '')
+
+
+    def testExplodingListSuiteControls(self):
+        """Should call the dev server's list_suite_controls method using http,
+        get exception."""
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E403)
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.list_suite_controls,
+                          '')
+
+
+    def testCmdErrorListSuiteControls(self):
+        """Should call the dev server's list_suite_controls method using ssh,
+        retry list_suite_controls when getting error.CmdError, raise exception
+        for urllib2.HTTPError."""
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(CMD_ERROR)
+        dev_server.ImageServerBase.run_call(
+                mox.IgnoreArg()).AndRaise(E500)
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.list_suite_controls,
                           '')
 
 
