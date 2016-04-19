@@ -1150,6 +1150,25 @@ class ImageServerBase(DevServer):
         return self.run_call(call)
 
 
+    @remote_devserver_call()
+    def list_suite_controls(self, build, suite_name=''):
+        """Ask the devserver to list contents of all control files for |build|.
+
+        @param build: The build (e.g. x86-mario-release/R18-1586.0.0-a1-b1514)
+                      whose control files' contents the caller wants returned.
+        @param suite_name: The name of the suite for which we require control
+                           files.
+        @return None on failure, or a dict of contents of all control files
+            (e.g. {'path1': "#Copyright controls ***", ...,
+                pathX': "#Copyright controls ***"}
+        @raise DevServerException upon any return code that's not HTTP OK.
+        """
+        build = self.translate(build)
+        call = self.build_call('list_suite_controls', build=build,
+                               suite_name=suite_name)
+        return json.load(cStringIO.StringIO(self.run_call(call)))
+
+
 class ImageServer(ImageServerBase):
     """Class for DevServer that handles RPCs related to CrOS images.
 

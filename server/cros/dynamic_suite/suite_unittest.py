@@ -26,6 +26,7 @@ from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite.comparators import StatusContains
+from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.server.cros.dynamic_suite.suite import RetryHandler
 from autotest_lib.server.cros.dynamic_suite.fakes import FakeControlData
@@ -53,6 +54,8 @@ class SuiteTest(mox.MoxTestBase):
     def setUp(self):
         super(SuiteTest, self).setUp()
         self.maxDiff = None
+        self.use_batch = SuiteBase.ENABLE_CONTROLS_IN_BATCH
+        SuiteBase.ENABLE_CONTROLS_IN_BATCH = False
         self.afe = self.mox.CreateMock(frontend.AFE)
         self.tko = self.mox.CreateMock(frontend.TKO)
 
@@ -86,6 +89,7 @@ class SuiteTest(mox.MoxTestBase):
 
 
     def tearDown(self):
+        SuiteBase.ENABLE_CONTROLS_IN_BATCH = self.use_batch
         super(SuiteTest, self).tearDown()
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
@@ -114,14 +118,59 @@ class SuiteTest(mox.MoxTestBase):
             self.mox.StubOutWithMock(control_data, 'parse_control_string')
 
         self.getter.get_control_file_list(
-            suite_name=suite_name).AndReturn(file_list)
+                suite_name=suite_name).AndReturn(file_list)
         for file, data in files_to_parse.iteritems():
             self.getter.get_control_file_contents(
-                file).InAnyOrder().AndReturn(data.string)
+                    file).InAnyOrder().AndReturn(data.string)
             control_data.parse_control_string(
                     data.string,
                     raise_warnings=True,
                     path=file).InAnyOrder().AndReturn(data)
+
+
+    def expect_control_file_parsing_in_batch(self, suite_name=_TAG):
+        """Expect an attempt to parse the contents of all control files in
+        |self.files| and |self.files_to_filter|, form them to a dict.
+
+        @param suite_name: The suite name to parse control files for.
+        """
+        self.mox.StubOutWithMock(control_data, 'parse_control_string')
+        suite_info = {}
+        for k, v in self.files.iteritems():
+            suite_info[k] = v.string
+            control_data.parse_control_string(
+                    v.string,
+                    raise_warnings=True,
+                    path=k).InAnyOrder().AndReturn(v)
+        for k, v in self.files_to_filter.iteritems():
+            suite_info[k] = v.string
+        self.getter._dev_server = self._DEVSERVER_HOST
+        self.getter.get_suite_info(
+                suite_name=suite_name).AndReturn(suite_info)
+
+
+    def testFindAllTestInBatch(self):
+        """Test switch on enable_getting_controls_in_batch for function
+        find_all_test."""
+        self.use_batch = SuiteBase.ENABLE_CONTROLS_IN_BATCH
+        self.expect_control_file_parsing_in_batch()
+        SuiteBase.ENABLE_CONTROLS_IN_BATCH = True
+
+        self.mox.ReplayAll()
+
+        predicate = lambda d: d.suite == self._TAG
+        tests = Suite.find_and_parse_tests(self.getter,
+                                           predicate,
+                                           self._TAG,
+                                           add_experimental=True)
+        self.assertEquals(len(tests), 6)
+        self.assertTrue(self.files['one'] in tests)
+        self.assertTrue(self.files['two'] in tests)
+        self.assertTrue(self.files['three'] in tests)
+        self.assertTrue(self.files['five'] in tests)
+        self.assertTrue(self.files['six'] in tests)
+        self.assertTrue(self.files['seven'] in tests)
+        SuiteBase.ENABLE_CONTROLS_IN_BATCH = self.use_batch
 
 
     def testFindAndParseStableTests(self):
