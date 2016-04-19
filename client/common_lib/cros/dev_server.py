@@ -575,8 +575,9 @@ class DevServer(object):
         devserver = cls.get_healthy_devserver(build, devservers)
 
         if not devserver and can_retry:
-            devserver = cls.get_healthy_devserver(
-                    build, cls.get_available_devservers())
+            # Find available devservers without dut location constrain.
+            devservers, _ = cls.get_available_devservers()
+            devserver = cls.get_healthy_devserver(build, devservers)
         if devserver:
             return devserver
         else:
@@ -1745,7 +1746,7 @@ def get_least_loaded_devserver(devserver_type=ImageServer, hostname=None):
         if not can_retry:
             return None
         else:
-            devservers = devserver_type.get_available_devservers()
+            devservers, _ = devserver_type.get_available_devservers()
 
     # get_devserver_load call needs to be made in a new process to allow force
     # timeout using signal.
