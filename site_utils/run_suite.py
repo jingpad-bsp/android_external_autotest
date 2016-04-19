@@ -358,6 +358,9 @@ class LogLink(object):
     # A list of tests that don't get retried so skip the dashboard.
     _SKIP_RETRY_DASHBOARD = ['provision']
 
+    _BUG_LINK_PREFIX = 'Auto-Bug'
+    _LOG_LINK_PREFIX = 'Test-Logs'
+
 
     @classmethod
     def get_bug_link(cls, bug_id):
@@ -393,42 +396,70 @@ class LogLink(object):
             self.bug_count = None
 
 
-    def GenerateBuildbotLink(self):
+    def GenerateBuildbotLinks(self):
         """Generate a link formatted to meet buildbot expectations.
 
-        If there is a bug associated with this link, report that;
+        If there is a bug associated with this link, report a link to the bug
+        and a link to the job logs;
         otherwise report a link to the job logs.
 
-        @return A link formatted for the buildbot log annotator.
+        @return A list of links formatted for the buildbot log annotator.
         """
+        buildbot_links = []
+        bug_info_strings = []
         info_strings = []
+
         if self.retry_count > 0:
             info_strings.append('retry_count: %d' % self.retry_count)
+            bug_info_strings.append('retry_count: %d' % self.retry_count)
 
+        # Add the bug link to buildbot_links
         if self.bug_id:
-            url = self.get_bug_link(self.bug_id)
+            bug_url = self.get_bug_link(self.bug_id)
             if self.bug_count is None:
                 bug_info = 'unknown number of reports'
             elif self.bug_count == 1:
                 bug_info = 'new report'
             else:
                 bug_info = '%s reports' % self.bug_count
-            info_strings.append(bug_info)
-        else:
-            url = self.url
+            bug_info_strings.append(bug_info)
 
+            if self.reason:
+                bug_info_strings.append(self.reason.strip())
+
+            bug_anchor_text = self.get_anchor_text(self._BUG_LINK_PREFIX,
+                                                   bug_info_strings)
+
+            buildbot_links.append(GetBuildbotStepLink(bug_anchor_text,
+                                                      bug_url))
+
+        # Add the log link to buildbot_links
         if self.reason:
             info_strings.append(self.reason.strip())
 
+        anchor_text = self.get_anchor_text(self._LOG_LINK_PREFIX,
+                                           info_strings)
+        buildbot_links.append(GetBuildbotStepLink(anchor_text, self.url))
+
+        return buildbot_links
+
+
+    def get_anchor_text(self, prefix, info_strings):
+        """Generate the anchor_text given the prefix and info.
+
+        @param prefix        The prefix of the anchor text.
+        @param info_strings  The infos presented in the anchor text.
+        @return A anchor_text with the right prefix and info strings.
+        """
         if info_strings:
             info = ', '.join(info_strings)
-            anchor_text = '%(anchor)s: %(info)s' % {
-                    'anchor': self.anchor.strip(), 'info': info}
+            anchor_text = '[%(prefix)s]: %(anchor)s: %(info)s' % {
+                    'prefix': prefix, 'anchor': self.anchor.strip(),
+                    'info': info}
         else:
-            anchor_text = self.anchor.strip()
-
-        return GetBuildbotStepLink(anchor_text, url)
-
+            anchor_text = '[%(prefix)s]: %(anchor)s' % {
+                    'prefix': prefix, 'anchor': self.anchor.strip()}
+        return anchor_text
 
     def GenerateTextLink(self):
         """Generate a link to the job's logs, for consumption by a human.
@@ -1354,7 +1385,8 @@ class ResultCollector(object):
     def output_buildbot_links(self):
         """Output buildbot links."""
         for link in self._buildbot_links:
-            logging.info(link.GenerateBuildbotLink())
+            for generate_link in link.GenerateBuildbotLinks():
+                logging.info(generate_link)
             wmatrix_link = link.GenerateWmatrixRetryLink()
             if wmatrix_link:
                 logging.info(wmatrix_link)
@@ -1647,7 +1679,8 @@ def main_without_exception_handling(options):
         logging.info('Created suite job: %r', job_id)
         link = LogLink(options.name, instance_server,
                        '%s-%s' % (job_id, getpass.getuser()))
-        logging.info(link.GenerateBuildbotLink())
+        for generate_link in link.GenerateBuildbotLinks():
+            logging.info(generate_link)
         output_dict['return_message'] = '--no_wait specified; Exiting.'
         logging.info('--no_wait specified; Exiting.')
     return (code, output_dict)

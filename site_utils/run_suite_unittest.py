@@ -533,6 +533,29 @@ class ResultCollectorUnittest(unittest.TestCase):
                 collector.return_code, run_suite.RETURN_CODES.SUITE_TIMEOUT)
 
 
+class LogLinkUnittests(unittest.TestCase):
+    """Test the LogLink"""
+
+    def testGenerateBuildbotLinks(self):
+        """Test LogLink GenerateBuildbotLinks"""
+        log_link_a = run_suite.LogLink('mock_anchor', 'mock_server',
+                                      'mock_job_string',
+                                      bug_info=('mock_bug_id', 1),
+                                      reason='mock_reason',
+                                      retry_count=1,
+                                      testname='mock_testname')
+        # Generate a bug link and a log link when bug_info is present
+        self.assertTrue(len(log_link_a.GenerateBuildbotLinks()) == 2)
+
+        log_link_b = run_suite.LogLink('mock_anchor', 'mock_server',
+                                      'mock_job_string_b',
+                                      reason='mock_reason',
+                                      retry_count=1,
+                                      testname='mock_testname')
+        # Generate a log link when there is no bug_info
+        self.assertTrue(len(log_link_b.GenerateBuildbotLinks()) == 1)
+
+
 class SimpleTimerUnittests(unittest.TestCase):
     """Test the simple timer."""
 
