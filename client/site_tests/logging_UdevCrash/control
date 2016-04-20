@@ -18,7 +18,8 @@ confirm the *.log file has the correct conetent.
 """
 
 BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'Cr-Internals-Logging', 'Cr-OS-Systems'],
+    'labels': ['OS-Chrome'],
+    'components': ['Internals>Logging', 'OS>Systems'],
     'owner': 'vapier@chromium.org',
     'cc': ['vapier@chromium.org', 'benchan@chromium.org'],
 }
