@@ -16,7 +16,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.site_utils import phapi_lib
 # Mock the retry.retry used in the test_push before import it.
-def mock_retry(ExceptionToCheck, timeout_min):
+def mock_retry(ExceptionToCheck, timeout_min, exception_to_raise=None):
     """A mock retry decorator to use in place of the actual one for testing.
 
     @param ExceptionToCheck: the exception to check.
