@@ -192,6 +192,7 @@ def _check_servo(host):
 
     Perform these steps:
       * Confirm that the servo host is reachable via SSH.
+      * Make sure that the servo host software is up-to-date.
       * Stop `servod` on the servo host if it's running, and restart
         it with the host's designated board.  We deliberately ignore
         any prior configuration.
@@ -207,26 +208,29 @@ def _check_servo(host):
 
     @param host  CrosHost object with the servo to be initialized.
     """
-    if not host._servo_host:
+    servo_host = host._servo_host
+    if not servo_host:
         raise Exception('No answer to ping from Servo host')
-    if not host._servo_host.is_up():
+    if not servo_host.is_up():
         raise Exception('No answer to ssh from Servo host')
-    # Stop servod, ignoring failures, then restart with the proper
-    # board.
-    #
-    # There's a lag between when `start servod` completes and when
-    # servod is actually up and serving.  The call to time.sleep()
-    # below gives time to make sure that the verify() call won't
-    # fail.
+    # Force an update now.  The update needs to be first up, in case the
+    # latest image is required to support our chosen board.
+    servo_host.update_image(wait_for_update=True)
     servo_board = (
         servo_afe_board_map.map_afe_board_to_servo_board(
             host._get_board_from_afe()))
-    host._servo_host.run('stop servod || :')
-    host._servo_host.run('start servod BOARD=%s' % servo_board)
+    # Stop servod, then restart with the proper board.  It's OK if
+    # servod wasn't running (e.g. no board configured), so ignore
+    # failures.
+    servo_host.run('stop servod || :')
+    servo_host.run('start servod BOARD=%s' % servo_board)
+    # There's a lag between when `start servod` completes above and when
+    # servod is actually up and serving.  The call to time.sleep() below
+    # gives time to make sure that the verify() call won't fail.
     time.sleep(10)
     logging.debug('Starting servo host verification')
-    host._servo_host.verify()
-    host.servo = host._servo_host.get_servo()
+    servo_host.verify()
+    host.servo = servo_host.get_servo()
     host.servo.initialize_dut()
     if not host.servo.probe_host_usb_dev():
         raise Exception('No USB stick detected on Servo host')
