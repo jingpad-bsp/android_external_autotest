@@ -111,7 +111,8 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
 
 
 
-def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
+def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
+          exception_to_raise=None):
     """Retry calling the decorated function using a delay with jitter.
 
     Will raise RPC ValidationError exceptions from the decorated
@@ -132,6 +133,8 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
                       delays will be centered around this value, ranging up to
                       50% off this midpoint.
     @param blacklist: a list of exceptions that will be raised without retrying
+    @param exception_to_raise: the exception to raise. Callers can specify the
+    the exception they want to raise.
     """
     def deco_retry(func):
         random.seed()
@@ -184,8 +187,13 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None):
 
             # The call must have timed out or raised ExceptionToCheck.
             if not exc_info:
-                raise error.TimeoutException('Call is timed out.')
+                if exception_to_raise:
+                    raise exception_to_raise('Call is timed out.')
+                else:
+                    raise error.TimeoutException('Call is timed out.')
             # Raise the cached exception with original backtrace.
+            if exception_to_raise:
+                raise exception_to_raise('%s: %s' % (exc_info[0], exc_info[1]))
             raise exc_info[0], exc_info[1], exc_info[2]
 
 
