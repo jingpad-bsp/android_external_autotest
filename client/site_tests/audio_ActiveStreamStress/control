@@ -16,7 +16,8 @@ TEST_TYPE = "client"
 
 BUG_TEMPLATE = {
     'owner': 'rohitbm@chromium.org',
-    'labels': ['Cr-OS-Kernel-Audio', 'OS-Chrome']
+    'labels': ['OS-Chrome'],
+    'components': ['OS>Kernel>Video'],
 }
 
 DOC = """
