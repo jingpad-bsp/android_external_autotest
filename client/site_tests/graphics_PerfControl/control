@@ -17,7 +17,7 @@ TEST_CLASS = "Performance"
 TEST_TYPE = 'client'
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
-    'labels': ['Cr-OS-Kernel-Graphics'],
+    'components': ['OS>Kernel>Graphics'],
 }
 
 DOC = """

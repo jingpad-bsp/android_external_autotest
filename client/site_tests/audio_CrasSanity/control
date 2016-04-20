@@ -17,7 +17,8 @@ TEST_TYPE = 'client'
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'owner': 'rohitbm@chromium.org',
-    'labels': ['Cr-OS-Kernel-Audio', 'OS-Chrome']
+    'labels': ['OS-Chrome'],
+    'components': ['OS>Kernel>Audio'],
 }
 
 DOC = '''
