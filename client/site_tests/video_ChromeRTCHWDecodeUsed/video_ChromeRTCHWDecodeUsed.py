@@ -38,7 +38,8 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         tab.WaitForDocumentReadyStateToBeComplete()
 
 
-    def run_once(self, video_name, histogram_name, histogram_bucket_val):
+    def run_once(self, video_name, histogram_name, histogram_bucket_val,
+                 arc_mode=None):
         boards_to_skip = ['peach_pit']
         dut_board = utils.get_current_board()
         if dut_board in boards_to_skip:
@@ -52,7 +53,8 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
         # Start chrome with test flags.
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
-        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+        with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
+                           arc_mode=arc_mode) as cr:
             # Open WebRTC loopback page.
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.start_loopback(cr)
