@@ -1044,6 +1044,8 @@ def _configure_logging(arguments):
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter())
     else:
+        if not os.path.exists(arguments.logdir):
+            os.mkdir(arguments.logdir)
         root_logger.setLevel(logging.DEBUG)
         logfile = os.path.join(arguments.logdir, _LOGFILE)
         handler = logging.handlers.TimedRotatingFileHandler(
