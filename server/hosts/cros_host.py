@@ -797,7 +797,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         devserver_url = dev_server.ImageServer.resolve(image_name,
                                                        self.hostname).url()
         repo_url = tools.get_package_url(devserver_url, image_name)
-        self.verify_software()
         return image_name, {ds_constants.JOB_REPO_URL: repo_url}
 
 

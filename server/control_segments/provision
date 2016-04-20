@@ -25,6 +25,7 @@ def provision_machine(machine):
         job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Provision)
+        host.verify()
     except Exception as e:
         logging.exception(e)
         job.record('END FAIL', None, 'provision')
