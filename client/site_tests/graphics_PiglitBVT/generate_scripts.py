@@ -70,7 +70,7 @@ TEST_TYPE = 'client'\n\
 JOB_RETRIES = 2\n\
 \n\
 BUG_TEMPLATE = {\n\
-    'labels': ['Cr-OS-Kernel-Graphics'],\n\
+    'components': ['OS>Kernel>Graphics'],\n\
 }\n\
 \n\
 DOC = \"\"\"\n\
