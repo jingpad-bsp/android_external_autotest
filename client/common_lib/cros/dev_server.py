@@ -16,6 +16,7 @@ import urllib2
 import urlparse
 
 from autotest_lib.client.bin import utils as site_utils
+from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
@@ -44,10 +45,6 @@ _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = 'full_payload,test_suites,stateful'
 _ARTIFACTS_TO_BE_STAGED_FOR_IMAGE_WITH_AUTOTEST = ('full_payload,test_suites,'
                                                    'control_files,stateful,'
                                                    'autotest_packages')
-# Artifacts that should be staged when client calls devserver RPC to stage an
-# Android build.
-_ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('bootloader_image,radio_image,'
-                                             'zip_images,test_zip')
 # Artifacts that should be staged when client calls devserver RPC to stage an
 # Android build.
 _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = ('zip_images,vendor_partitions')
@@ -1617,8 +1614,13 @@ class AndroidBuildServer(ImageServerBase):
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
         if not artifacts:
-            artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo
-                         else _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
+            if is_brillo:
+                artifacts = _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+            else:
+                board = target.split('-')[0]
+                artifacts = (
+                    android_utils.AndroidArtifacts.get_artifacts_for_reimage(
+                            board))
         self._trigger_download(build, artifacts, files='',
                                synchronous=synchronous, **android_build_info)
 
@@ -1643,8 +1645,13 @@ class AndroidBuildServer(ImageServerBase):
                               'build_id': build_id,
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
-        artifacts = (_BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE if is_brillo else
-                     _ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE)
+        if is_brillo:
+            artifacts = _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+        else:
+            board = target.split('-')[0]
+            artifacts = (
+                    android_utils.AndroidArtifacts.get_artifacts_for_reimage(
+                            board))
         self._finish_download(build, artifacts, files='', **android_build_info)
 
 
