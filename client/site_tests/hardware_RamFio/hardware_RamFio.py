@@ -39,7 +39,7 @@ class hardware_RamFio(test.test):
             return
 
         utils.run('mkdir -p /tmp/ramdisk')
-        utils.run('mount -t ramfs ramfs /tmp/ramdisk')
+        utils.run('mount -t ramfs -o context=u:object_r:tmpfs:s0 ramfs /tmp/ramdisk')
 
         self.job.run_test('hardware_StorageFio',
                           dev='/tmp/ramdisk/test_file',
