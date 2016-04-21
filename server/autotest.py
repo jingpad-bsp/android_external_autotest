@@ -456,6 +456,23 @@ class BaseAutotest(installable_object.InstallableObject):
                 client_disconnect_timeout=client_disconnect_timeout)
 
 
+    @classmethod
+    def _check_client_test_result(cls, host, test_name):
+        """
+        Check result of client test.
+        Autotest will store results in the file name status.
+        We check that second to last line in that file begins with 'END GOOD'
+
+        @raises TestFail: If client test does not pass.
+        """
+        client_result_dir = '%s/results/default' % host.autodir
+        command = 'tail -2 %s/status | head -1' % client_result_dir
+        status = host.run(command).stdout.strip()
+        logging.info(status)
+        if status[:8] != 'END GOOD':
+            raise error.TestFail('%s client test did not pass.' % test_name)
+
+
     def run_timed_test(self, test_name, results_dir='.', host=None,
                        timeout=None, parallel_flag=False, background=False,
                        client_disconnect_timeout=None, *args, **dargs):
@@ -473,6 +490,11 @@ class BaseAutotest(installable_object.InstallableObject):
         self.run(control, results_dir, host, timeout=timeout,
                  parallel_flag=parallel_flag, background=background,
                  client_disconnect_timeout=client_disconnect_timeout)
+
+        dargs_dict = dict(dargs)
+        if 'check_client_result' in dargs_dict:
+            if dargs_dict['check_client_result']:
+                self._check_client_test_result(host, test_name)
 
 
     def run_test(self, test_name, results_dir='.', host=None,
