@@ -19,11 +19,13 @@ class enterprise_CFM_PerfServer(test.test):
         self.client = host
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
-        autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition')
+        autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition',
+                                                check_client_result=True)
 
         # TODO: Start a hangout session after device enrollment succeeds.
 
-        autotest.Autotest(self.client).run_test('enterprise_CFM_Perf')
+        autotest.Autotest(self.client).run_test('enterprise_CFM_Perf',
+                                                check_client_result=True)
 
         # TODO: End the hangout session after performance data collection is
         # done.
