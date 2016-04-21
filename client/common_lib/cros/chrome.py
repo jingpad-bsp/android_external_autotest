@@ -82,15 +82,12 @@ class Chrome(object):
             extension_paths.append(self._autotest_ext_path)
 
         finder_options = browser_options.BrowserFinderOptions()
-        assert arc_mode in self.ARC_MODES
         if is_arc_available():
             if arc_mode in [self.ARC_MODE_ENABLED, self.ARC_MODE_ENABLED_ASYNC]:
                 logging.debug('ARC is enabled in mode ' + arc_mode)
                 from autotest_lib.client.common_lib.cros import arc_util
                 extra_browser_args = arc_util.append_extra_args(extra_browser_args)
                 logged_in = True
-        else:
-            assert arc_mode == self.ARC_MODE_DISABLED
         self._browser_type = (self.BROWSER_TYPE_LOGIN
                 if logged_in else self.BROWSER_TYPE_GUEST)
         finder_options.browser_type = self.browser_type
