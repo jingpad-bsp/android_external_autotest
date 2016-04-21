@@ -35,9 +35,9 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
 
         pretest_reset_count = self.context.client.get_num_card_resets()
         logging.debug('pretest_reset_count=%d', pretest_reset_count)
-        self.context.router.start_capture(
-            configuration.frequency,
-            ht_type=configuration.ht_packet_capture_mode)
+        self.context.capture_host.start_capture(
+                configuration.frequency,
+                ht_type=configuration.ht_packet_capture_mode)
         assoc_params = xmlrpc_datatypes.AssociationParameters()
         assoc_params.ssid = self.context.router.get_ssid()
         assoc_result = self.context.assert_connect_wifi(assoc_params)
@@ -83,4 +83,4 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
             raise error.TestFail('Client reset card')
         self.context.client.shill.disconnect(assoc_params.ssid)
         self.context.router.deconfig()
-        self.context.router.stop_capture()
+        self.context.capture_host.stop_capture()
