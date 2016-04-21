@@ -22,7 +22,7 @@ class video_VideoSanity(test.test):
     version = 2
 
 
-    def run_once(self, video_file):
+    def run_once(self, video_file, arc_mode=None):
         """
         Tests whether the requested video is playable
 
@@ -34,7 +34,7 @@ class video_VideoSanity(test.test):
         if dut_board in boards_to_skip:
             logging.info("Skipping test run on this board.")
             return
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(arc_mode=arc_mode) as cr:
              shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
              video_path = os.path.join(constants.CROS_VIDEO_DIR,
                                        'files', video_file)
