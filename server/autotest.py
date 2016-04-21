@@ -491,10 +491,8 @@ class BaseAutotest(installable_object.InstallableObject):
                  parallel_flag=parallel_flag, background=background,
                  client_disconnect_timeout=client_disconnect_timeout)
 
-        dargs_dict = dict(dargs)
-        if 'check_client_result' in dargs_dict:
-            if dargs_dict['check_client_result']:
-                self._check_client_test_result(host, test_name)
+        if dargs.get('check_client_result', False):
+            self._check_client_test_result(host, test_name)
 
 
     def run_test(self, test_name, results_dir='.', host=None,
