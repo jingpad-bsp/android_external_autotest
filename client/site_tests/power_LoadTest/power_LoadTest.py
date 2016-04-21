@@ -86,8 +86,7 @@ class power_LoadTest(test.test):
         self._scroll_interval_ms = scroll_interval_ms
         self._scroll_by_pixels = scroll_by_pixels
         self._tmp_keyvals = {}
-        self._power_status = power_status.get_status()
-        self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
+        self._power_status = None
         self._force_wifi = force_wifi
         self._testServer = None
         self._tasks = tasks.replace(' ','')
@@ -100,6 +99,12 @@ class power_LoadTest(test.test):
         self._log_mem_bandwidth = log_mem_bandwidth
         self._wait_time = 60
         self._stats = collections.defaultdict(list)
+
+        if not power_utils.has_battery():
+            rsp = "Device designed without battery. Skipping test."
+            raise error.TestNAError(rsp)
+        self._power_status = power_status.get_status()
+        self._tmp_keyvals['b_on_ac'] = self._power_status.on_ac()
 
         with tempfile.NamedTemporaryFile() as pltp:
             file_utils.download_file(self._pltp_url, pltp.name)
