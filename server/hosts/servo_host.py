@@ -401,8 +401,63 @@ class ServoHost(ssh_host.SSHHost):
                     lsb_release_content=lsb_release_content)
 
 
+    def _check_for_reboot(self, updater):
+        """
+        Reboot this servo host if an upgrade is waiting.
+
+        If the host has successfully downloaded and finalized a new
+        build, reboot.
+
+        @param updater: a ChromiumOSUpdater instance for checking
+            whether reboot is needed.
+        @return Return a (status, build) tuple reflecting the
+            update_engine status and current build of the host
+            at the end of the call.
+        """
+        current_build_number = self.get_release_version()
+        status = updater.check_update_status()
+        if status == autoupdater.UPDATER_NEED_REBOOT:
+            logging.info('Rebooting beaglebone host %s from build %s',
+                         self.hostname, current_build_number)
+            # Tell the reboot() call not to wait for completion.
+            # Otherwise, the call will log reboot failure if servo does
+            # not come back.  The logged reboot failure will lead to
+            # test job failure.  If the test does not require servo, we
+            # don't want servo failure to fail the test with error:
+            # `Host did not return from reboot` in status.log.
+            reboot_cmd = 'sleep 1 ; reboot & sleep 10; reboot -f',
+            self.reboot(reboot_cmd=reboot_cmd, fastsync=True,
+                        label=None, wait=False)
+
+            # We told the reboot() call not to wait, but we need to wait
+            # for the reboot before we continue.  Alas.  The code from
+            # here below is basically a copy of Host.wait_for_restart(),
+            # with the logging bits ripped out, so that they can't cause
+            # the failure logging problem described above.
+            #
+            # The black stain that this has left on my soul can never be
+            # erased.
+            old_boot_id = self.get_boot_id()
+            if not self.wait_down(timeout=self.WAIT_DOWN_REBOOT_TIMEOUT,
+                                  warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
+                                  old_boot_id=old_boot_id):
+                raise error.AutoservHostError(
+                            'servo host %s failed to shut down.' %
+                           self.hostname)
+            if self.wait_up(timeout=120):
+                current_build_number = self.get_release_version()
+                status = updater.check_update_status()
+                logging.info('servo host %s back from reboot, with build %s',
+                             self.hostname, current_build_number)
+            else:
+                raise error.AutoservHostError(
+                            'servo host %s failed to come back from reboot.' %
+                           self.hostname)
+        return status, current_build_number
+
+
     @_timer.decorate
-    def _update_image(self):
+    def update_image(self, wait_for_update=False):
         """Update the image on the servo host, if needed.
 
         This method recognizes the following cases:
@@ -415,6 +470,9 @@ class ServoHost(ssh_host.SSHHost):
             from the default for servo Hosts, trigger an update, but
             don't wait for it to complete.
 
+        @param wait_for_update If an update needs to be applied and
+            this is true, then don't return until the update is
+            downloaded and finalized, and the host rebooted.
         @raises dev_server.DevServerException: If all the devservers are down.
         @raises site_utils.ParseBuildNameException: If the devserver returns
             an invalid build name.
@@ -436,8 +494,7 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
 
-        board = _CONFIG.get_config_value(
-                'CROS', 'servo_board')
+        board = _CONFIG.get_config_value('CROS', 'servo_board')
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         target_version = afe.run('get_stable_version', board=board)
         build_pattern = _CONFIG.get_config_value(
@@ -449,35 +506,8 @@ class ServoHost(ssh_host.SSHHost):
         url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
-        current_build_number = self.get_release_version()
-        status = updater.check_update_status()
-
-        if status == autoupdater.UPDATER_NEED_REBOOT:
-            logging.info('Rebooting beaglebone host %s with build %s',
-                         self.hostname, current_build_number)
-            kwargs = {
-                'reboot_cmd': 'sleep 1 ; reboot & sleep 10; reboot -f',
-                'fastsync': True,
-                'label': None,
-                'wait': False,
-            }
-            # Do not wait for reboot to complete. Otherwise, self.reboot call
-            # will log reboot failure if servo does not come back. The logged
-            # reboot failure will lead to test job failure. If the test does not
-            # require servo, we don't want servo failure to fail the test with
-            # error: `Host did not return from reboot` in status.log
-            # If servo does not come back after reboot, exception needs to be
-            # raised, so test requires servo should fail.
-            self.reboot(**kwargs)
-            if self.wait_up(timeout=120):
-                current_build_number = self.get_release_version()
-                logging.info('servo host %s back from reboot, with build %s',
-                             self.hostname, current_build_number)
-            else:
-                raise error.AutoservHostError(
-                            'servo host %s failed to come back from reboot.' %
-                             self.hostname)
-
+        status, current_build_number = self._check_for_reboot(updater)
+        update_pending = True
         if status in autoupdater.UPDATER_PROCESSING_UPDATE:
             logging.info('servo host %s already processing an update, update '
                          'engine client status=%s', self.hostname, status)
@@ -507,6 +537,20 @@ class ServoHost(ssh_host.SSHHost):
         else:
             logging.info('servo host %s does not require an update.',
                          self.hostname)
+            update_pending = False
+
+        if update_pending and wait_for_update:
+            logging.info('Waiting for servo update to complete.')
+            self.run('update_engine_client --follow', ignore_status=True)
+            status, current_build_number = self._check_for_reboot(updater)
+            if (status != autoupdater.UPDATER_IDLE or
+                    current_build_number != target_build_number):
+                logging.error('Update failed; status: %s, '
+                              'actual build: %s',
+                              status, current_build_number)
+                message = ('Servo host failed to update from %s to %s' %
+                           (current_build_number, target_build_number))
+                raise error.AutoservHostError(message)
 
 
     def verify_software(self):
@@ -521,7 +565,7 @@ class ServoHost(ssh_host.SSHHost):
 
         """
         logging.info('Applying an update to the servo host, if necessary.')
-        self._update_image()
+        self.update_image(wait_for_update=False)
         self._check_servo_config()
         self._check_servod_status()
 
