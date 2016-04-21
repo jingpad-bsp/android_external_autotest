@@ -43,8 +43,10 @@ MOBLAB_ETH = 'eth0'
 RESTRICTED_SUBNETS = []
 restricted_subnets_list = CONFIG.get_config_value(
         'CROS', 'restricted_subnets', type=list, default=[])
+# TODO(dshi): Remove the code to split subnet with `:` after R51 is off stable
+# channel, and update shadow config to use `/` as delimiter for consistency.
 for subnet in restricted_subnets_list:
-    ip, mask_bits = subnet.split('/')
+    ip, mask_bits = subnet.split('/') if '/' in subnet else subnet.split(':')
     RESTRICTED_SUBNETS.append((ip, int(mask_bits)))
 
 # regex pattern for CLIENT/wireless_ssid_ config. For example, global config
