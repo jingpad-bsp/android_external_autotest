@@ -18,7 +18,7 @@ class video_ChromeHWDecodeUsed(test.test):
     version = 1
 
 
-    def run_once(self, is_mse, video_file):
+    def run_once(self, is_mse, video_file, arc_mode=None):
         """
         Tests whether VDA works by verifying histogram for the loaded video.
 
@@ -26,7 +26,7 @@ class video_ChromeHWDecodeUsed(test.test):
         @param video_file: Sample video file to be loaded in Chrome.
 
         """
-        with chrome.Chrome() as cr:
+        with chrome.Chrome(arc_mode=arc_mode) as cr:
             # This will execute for MSE video by accesing shaka player
             if is_mse:
                  tab1 = cr.browser.tabs[0]
