@@ -28,12 +28,13 @@ class graphics_Idle(test.test):
     _cpu_type = None
     _board = None
 
-    def run_once(self):
+    def run_once(self, arc_mode=None):
         # Try to protect against runaway previous tests.
         if not utils.wait_for_idle_cpu(20.0, 0.1):
             logging.warning('Could not get idle CPU before running tests.')
         # We use kiosk mode to make sure Chrome is idle.
-        with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk']):
+        with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk'],
+                           arc_mode=arc_mode):
             self._gpu_type = utils.get_gpu_family()
             self._cpu_type = utils.get_cpu_soc_family()
             self._board = utils.get_board()
