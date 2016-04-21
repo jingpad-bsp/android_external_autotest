@@ -140,7 +140,8 @@ class platform_ExternalUsbPeripherals(test.test):
         result = True
         if str(self.host.run('ls %s' % crash_path,
                               ignore_status=True)).find('crash') != -1:
-            crash_out = self.host.run('ls %s/crash/' % crash_path).stdout
+            crash_out = self.host.run('ls %s/crash/' % crash_path,
+                                      ignore_status=True).stdout
             crash_files = crash_out.strip().split('\n')
             for crash_file in crash_files:
                 if crash_file.find('.meta') != -1 and \
