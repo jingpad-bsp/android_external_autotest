@@ -15,6 +15,7 @@ import unittest
 import urllib2
 
 from autotest_lib.client.bin import utils as site_utils
+from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
@@ -794,6 +795,8 @@ class DevServerTest(mox.MoxTestBase):
         target = 'test_target'
         branch = 'test_branch'
         build_id = '123456'
+        artifacts = android_utils.AndroidArtifacts.get_artifacts_for_reimage(
+                None)
         self.mox.StubOutWithMock(dev_server.AndroidBuildServer,
                                  '_finish_download')
         argument1 = mox.And(mox.StrContains(self._HOST),
@@ -815,9 +818,8 @@ class DevServerTest(mox.MoxTestBase):
                                   'branch': branch}
             build = dev_server.ANDROID_BUILD_NAME_PATTERN % android_build_info
             self.android_dev_server._finish_download(
-                    build,
-                    dev_server._ANDROID_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE, '',
-                    target=target, build_id=build_id, branch=branch)
+                    build, artifacts, '', target=target, build_id=build_id,
+                    branch=branch)
 
         # Synchronous case requires a call to finish download.
         self.mox.ReplayAll()

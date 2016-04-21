@@ -12,6 +12,7 @@ import time
 import common
 
 from autotest_lib.client.bin import utils as client_utils
+from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
@@ -81,24 +82,12 @@ BUILD_REGEX = ('(?P<BRANCH>([^/]+))/(?P<BUILD_TARGET>([^/]+))-'
 DEVSERVER_URL_REGEX = '.*/%s/*' % BUILD_REGEX
 
 ANDROID_IMAGE_FILE_FMT = '%(build_target)s-img-%(build_id)s.zip'
-ANDROID_BOOTLOADER = 'bootloader.img'
-ANDROID_RADIO = 'radio.img'
-ANDROID_BOOT = 'boot.img'
-ANDROID_SYSTEM = 'system.img'
-ANDROID_VENDOR = 'vendor.img'
+
 BRILLO_VENDOR_PARTITIONS_FILE_FMT = (
         '%(build_target)s-vendor_partitions-%(build_id)s.zip')
 AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
         '%(build_target)s-autotest_server_package-%(build_id)s.tar.bz2')
 ADB_DEVICE_PREFIXES = ['product:', 'model:', 'device:']
-
-# Image files not inside the image zip file. These files should be downloaded
-# directly from devserver.
-ANDROID_STANDALONE_IMAGES = [ANDROID_BOOTLOADER, ANDROID_RADIO]
-# Image files that are packaged in a zip file, e.g., shamu-img-123456.zip
-ANDROID_ZIPPED_IMAGES = [ANDROID_BOOT, ANDROID_SYSTEM, ANDROID_VENDOR]
-# All image files to be flashed to an Android device.
-ANDROID_IMAGES = ANDROID_STANDALONE_IMAGES + ANDROID_ZIPPED_IMAGES
 
 # Map of product names to build target name.
 PRODUCT_TARGET_MAP = {'dragon' : 'ryu',
@@ -225,6 +214,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # creating the host to do a repair job, the device maybe inaccesible
         # via ADB.
         try:
+            self.ensure_adb_mode()
             self._reset_adbd_connection()
         except (error.AutotestHostRunError, error.AutoservRunError) as e:
             logging.error('Unable to reset the device adb daemon connection: '
@@ -1100,7 +1090,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         try:
             self.download_file(build_url, zipped_image_file, image_dir,
                                unzip=True)
-            for image_file in ANDROID_STANDALONE_IMAGES:
+            images = android_utils.AndroidImageFiles.get_standalone_images(
+                    build_info['build_target'])
+            for image_file in images:
                 self.download_file(build_url, image_file, image_dir)
 
             return image_dir
@@ -1200,13 +1192,24 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             image_files = self.teststation.run(
                     list_file_cmd).stdout.strip().split()
             images = dict([(os.path.basename(f), f) for f in image_files])
-            for image, image_file in images.items():
-                if image not in ANDROID_IMAGES:
+            build_info = self.get_build_info_from_build_url(build_url)
+            board = build_info['build_target']
+            all_images = (
+                    android_utils.AndroidImageFiles.get_standalone_images(board)
+                    + android_utils.AndroidImageFiles.get_zipped_images(board))
+
+            # Sort images to be flashed, bootloader needs to be the first one.
+            bootloader = android_utils.AndroidImageFiles.BOOTLOADER
+            sorted_images = sorted(
+                    images.items(),
+                    key=lambda pair: 0 if pair[0] == bootloader else 1)
+            for image, image_file in sorted_images:
+                if image not in all_images:
                     continue
                 logging.info('Flashing %s...', image_file)
                 self.fastboot_run('-S 256M flash %s %s' %
                                   (image[:-4], image_file))
-                if image == ANDROID_BOOTLOADER:
+                if image == android_utils.AndroidImageFiles.BOOTLOADER:
                     self.fastboot_run('reboot-bootloader')
                     self.wait_up(command=FASTBOOT_CMD)
         except Exception as e:
