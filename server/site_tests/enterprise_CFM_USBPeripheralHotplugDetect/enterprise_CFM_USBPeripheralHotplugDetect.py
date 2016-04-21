@@ -183,7 +183,8 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         self.host = host
 
         tpm_utils.ClearTPMOwnerRequest(self.host)
-        autotest.Autotest(self.host).run_test('enterprise_RemoraRequisition')
+        autotest.Autotest(self.host).run_test('enterprise_RemoraRequisition',
+                                              check_client_result=True)
 
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
