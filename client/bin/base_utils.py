@@ -98,45 +98,6 @@ def extract_tarball(tarball):
         raise NameError('extracting tarball produced no dir')
 
 
-def hash_file(filename, size=None, method="md5"):
-    """
-    Calculate the hash of filename.
-    If size is not None, limit to first size bytes.
-    Throw exception if something is wrong with filename.
-    Can be also implemented with bash one-liner (assuming size%1024==0):
-    dd if=filename bs=1024 count=size/1024 | sha1sum -
-
-    @param filename: Path of the file that will have its hash calculated.
-    @param method: Method used to calculate the hash. Supported methods:
-            * md5
-            * sha1
-    @returns: Hash of the file, if something goes wrong, return None.
-    """
-    chunksize = 4096
-    fsize = os.path.getsize(filename)
-
-    if not size or size > fsize:
-        size = fsize
-    f = open(filename, 'rb')
-
-    try:
-        hash = utils.hash(method)
-    except ValueError:
-        logging.error("Unknown hash type %s, returning None", method)
-
-    while size > 0:
-        if chunksize > size:
-            chunksize = size
-        data = f.read(chunksize)
-        if len(data) == 0:
-            logging.debug("Nothing left to read but size=%d", size)
-            break
-        hash.update(data)
-        size -= len(data)
-    f.close()
-    return hash.hexdigest()
-
-
 def unmap_url_cache(cachedir, url, expected_hash, method="md5"):
     """
     Downloads a file from a URL to a cache directory. If the file is already
