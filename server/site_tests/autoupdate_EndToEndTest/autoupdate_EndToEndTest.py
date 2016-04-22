@@ -893,6 +893,8 @@ class ChromiumOSTestPlatform(TestPlatform):
     def _payload_to_stateful_uri(self, payload_uri):
         """Given a payload GS URI, returns the corresponding stateful URI."""
         build_uri = payload_uri.rpartition('/')[0]
+        if build_uri.endswith('payloads'):
+            build_uri = build_uri.rpartition('/')[0]
         return self._get_stateful_uri(build_uri)
 
 
@@ -1029,11 +1031,9 @@ class ChromiumOSTestPlatform(TestPlatform):
         else:
             # Attempt to get the job_repo_url to find the stateful payload for
             # the target image.
-            try:
-                job_repo_url = afe_utils.lookup_job_repo_url(self._host)
-            except KeyError:
-                # If this failed, assume the stateful update is next to the
-                # update payload.
+            job_repo_url = afe_utils.get_host_attribute(
+                    self._host, self._host.job_repo_url_attribute)
+            if not job_repo_url:
                 target_stateful_uri = self._payload_to_stateful_uri(
                     target_payload_uri)
             else:
