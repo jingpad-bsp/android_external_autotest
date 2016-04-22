@@ -211,10 +211,13 @@ class Suspender(object):
         for retry in xrange(retries + 1):
             early_wakeup = False
             if os.path.exists(self.HWCLOCK_FILE):
-                match = re.search(r'([0-9]+) seconds since .+ (-?[0-9.]+) sec',
+                match = re.search(r'(.+) (-?[0-9.]+) seconds',
                                   utils.read_file(self.HWCLOCK_FILE), re.DOTALL)
                 if match:
-                    seconds = int(match.group(1)) + float(match.group(2))
+                    timeval = time.strptime(match.group(1),
+                            "%a %b %d %H:%M:%S %Y")
+                    seconds = time.mktime(timeval)
+                    seconds += float(match.group(2))
                     logging.debug('RTC resume timestamp read: %f', seconds)
                     if seconds >= not_before:
                         return seconds
