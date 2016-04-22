@@ -177,8 +177,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: ssh connection has timed out
         """
         if verbose:
-            command = self._verbose_logger_command(command)
             logging.debug("Running (ssh) '%s'", command)
+            command = self._verbose_logger_command(command)
 
         # Start a master SSH connection if necessary.
         self.start_master_ssh()
