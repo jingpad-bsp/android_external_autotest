@@ -44,8 +44,10 @@ DEVICE_NO_SERIAL_TAG = '<NO_SERIAL>'
 # 0146B5580B01801B    device
 # 018e0ecb20c97a62    device
 # 172.22.75.141:5555  device
+# localhost:22        device
 DEVICE_FINDER_REGEX = (r'^(?P<SERIAL>([\w-]+)|((tcp:)?' +
                        '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}([:]5555)?)|' +
+                       '((tcp:)?localhost([:]22)?)|' +
                        re.escape(DEVICE_NO_SERIAL_MSG) +
                        r')[ \t]+(?:device|fastboot)')
 CMD_OUTPUT_PREFIX = 'ADB_CMD_OUTPUT'
