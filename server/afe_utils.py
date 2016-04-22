@@ -130,8 +130,6 @@ def get_host_attribute(host, attribute):
     @param attribute: Name of the host attribute.
 
     @returns value for the given attribute or None if not found.
-
-    @raises KeyError if the host does not have the given attribute.
     """
     local_value = host.host_attributes.get(attribute)
     if not host_in_lab(host):
