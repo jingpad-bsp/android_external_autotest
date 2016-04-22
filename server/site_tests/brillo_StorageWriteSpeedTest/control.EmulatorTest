@@ -24,7 +24,7 @@ Arg:
 TEST_ARG_NAMES = ('block_size', 'num_blocks', 'min_speed')
 args_dict = utils.args_to_dict(args)
 
-EMULATOR_MIN_SPEED = 10 * 1024 * 1024
+EMULATOR_MIN_SPEED = 1 * 1024 * 1024
 
 def run(machine):
     test_args = {'min_speed': EMULATOR_MIN_SPEED}
