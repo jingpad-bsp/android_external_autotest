@@ -119,6 +119,21 @@ Currently Autotest in AOSP is read-only, so you cannot use repo upload to
 upload code changes. If you do edit or add a new test, make a commit and upload
 it to https://chromium-review.googlesource.com.
 
+Due to the way Android does its automerging, the AOSP mirror of Autotest cannot
+be uploaded directly back to the Chromium upstream because the upstream does not
+contain the merge commits.  It will also reject the automerge committer ID.
+To work around this, if you need to upload a commit to Autotest, you first have
+to fetch and check out the upstream branch before making your changes:
+
+```
+ $ git remote add -t master cros \
+     https://chromium.googlesource.com/chromiumos/third_party/autotest
+ $ git fetch cros
+ $ git checkout cros/master
+ $ git checkout -b <local branch name>
+ $ git branch --set-upstream-to=cros/master
+```
+
 Be sure to run pylint on every file you touch:
 
 ```
@@ -135,8 +150,7 @@ Run autotest unittests (which usually requires external packages):
 Then upload your commit for review:
 
 ```
- $ git push https://chromium.googlesource.com/chromiumos/third_party/autotest \
-     <local branch name>:refs/for/master
+ $ git push cros <local branch name>:refs/for/master
 ```
 
 ## Limitations
