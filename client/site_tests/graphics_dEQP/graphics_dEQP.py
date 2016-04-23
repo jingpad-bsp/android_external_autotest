@@ -197,7 +197,7 @@ class graphics_dEQP(test.test):
         command = ('%s '
                    '--deqp-runmode=txt-caselist '
                    '--deqp-surface-type=fbo '
-                   '--deqp-gl-config-name=rgba8888d24s8 ' % executable)
+                   '--deqp-gl-config-name=rgba8888d24s8ms0 ' % executable)
         logging.info('Running command %s', command)
         utils.run(command,
                   timeout=60,
@@ -292,7 +292,7 @@ class graphics_dEQP(test.test):
             command = ('%s '
                        '--deqp-case=%s '
                        '--deqp-surface-type=fbo '
-                       '--deqp-gl-config-name=rgba8888d24s8 '
+                       '--deqp-gl-config-name=rgba8888d24s8ms0 '
                        '--deqp-log-images=disable '
                        '--deqp-watchdog=enable '
                        '--deqp-surface-width=%d '
@@ -394,7 +394,7 @@ class graphics_dEQP(test.test):
             command = ('%s '
                        '--deqp-stdin-caselist '
                        '--deqp-surface-type=fbo '
-                       '--deqp-gl-config-name=rgba8888d24s8 '
+                       '--deqp-gl-config-name=rgba8888d24s8ms0 '
                        '--deqp-log-images=disable '
                        '--deqp-visibility=hidden '
                        '--deqp-watchdog=enable '
