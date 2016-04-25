@@ -29,6 +29,7 @@ class graphics_dEQP(test.test):
     _board = None
     _cpu_type = None
     _gpu_type = None
+    _surface = None
     _can_run_executables = []
     _filter = None
     _width = 256  # Use smallest width for which all tests run/pass.
@@ -67,6 +68,12 @@ class graphics_dEQP(test.test):
             if major > 3 or minor >= 1:
                 self._can_run_executables.append('gles31/deqp-gles31')
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
+        # pBuffer support is not yet enabled on Rogue.
+        # See partner bug 52663.
+        if self._gpu_type == 'rogue':
+            self._surface = 'fbo'
+        else:
+            self._surface = 'pbuffer'
 
     def cleanup(self):
         if self._services:
@@ -196,8 +203,9 @@ class graphics_dEQP(test.test):
         # e.g. 'dEQP-GLES2-cases.txt'.
         command = ('%s '
                    '--deqp-runmode=txt-caselist '
-                   '--deqp-surface-type=fbo '
-                   '--deqp-gl-config-name=rgba8888d24s8ms0 ' % executable)
+                   '--deqp-surface-type=%s '
+                   '--deqp-gl-config-name=rgba8888d24s8ms0 ' % (executable,
+                                                                self._surface))
         logging.info('Running command %s', command)
         utils.run(command,
                   timeout=60,
@@ -291,14 +299,15 @@ class graphics_dEQP(test.test):
             executable = self._get_executable(test_case)
             command = ('%s '
                        '--deqp-case=%s '
-                       '--deqp-surface-type=fbo '
+                       '--deqp-surface-type=%s '
                        '--deqp-gl-config-name=rgba8888d24s8ms0 '
                        '--deqp-log-images=disable '
                        '--deqp-watchdog=enable '
                        '--deqp-surface-width=%d '
                        '--deqp-surface-height=%d '
                        '--deqp-log-filename=%s' %
-                       (executable, test_case, width, height, log_file))
+                       (executable, test_case, self._surface, width, height,
+                        log_file))
             if not self._can_run(executable):
                 result = 'Skipped'
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
@@ -393,14 +402,14 @@ class graphics_dEQP(test.test):
             executable = self._get_executable(test_cases[batch])
             command = ('%s '
                        '--deqp-stdin-caselist '
-                       '--deqp-surface-type=fbo '
+                       '--deqp-surface-type=%s '
                        '--deqp-gl-config-name=rgba8888d24s8ms0 '
                        '--deqp-log-images=disable '
                        '--deqp-visibility=hidden '
                        '--deqp-watchdog=enable '
                        '--deqp-surface-width=%d '
-                       '--deqp-surface-height=%d ' % (executable, width,
-                                                      height))
+                       '--deqp-surface-height=%d ' % (executable, self._surface,
+                                                      width, height))
 
             log_file = os.path.join(self._log_path,
                                     '%s_hasty_%d.log' % (self._filter, batch))
