@@ -144,6 +144,53 @@ def add_label_to_hosts(id, hosts):
     label.host_set.add(*host_objs)
 
 
+def _create_label_everywhere(id, hosts):
+    """
+    Yet another method to create labels.
+
+    ALERT! This method should be run only on master not shards!
+    DO NOT RUN THIS ON A SHARD!!!  Deputies will hate you if you do!!!
+
+    This method exists primarily to serve label_add_hosts() and
+    host_add_labels().  Basically it pulls out the label check/add logic
+    from label_add_hosts() into this nice method that not only creates
+    the label but also tells the shards that service the hosts to also
+    create the label.
+
+    @param id: id or name of a label. More often a label name.
+    @param hosts: A list of hostnames or ids. More often hostnames.
+    """
+    try:
+        label = models.Label.smart_get(id)
+    except models.Label.DoesNotExist:
+        # This matches the type checks in smart_get, which is a hack
+        # in and off itself. The aim here is to create any non-existent
+        # label, which we cannot do if the 'id' specified isn't a label name.
+        if isinstance(id, basestring):
+            label = models.Label.smart_get(add_label(id))
+        else:
+            raise ValueError('Label id (%s) does not exist. Please specify '
+                             'the argument, id, as a string (label name).'
+                             % id)
+
+    # Make sure the label exists on the shard with the same id
+    # as it is on the master.
+    # It is possible that the label is already in a shard because
+    # we are adding a new label only to shards of hosts that the label
+    # is going to be attached.
+    # For example, we add a label L1 to a host in shard S1.
+    # Master and S1 will have L1 but other shards won't.
+    # Later, when we add the same label L1 to hosts in shards S1 and S2,
+    # S1 already has the label but S2 doesn't.
+    # S2 should have the new label without any problem.
+    # We ignore exception in such a case.
+    host_objs = models.Host.smart_get_bulk(hosts)
+    rpc_utils.fanout_rpc(
+            host_objs, 'add_label', include_hostnames=False,
+            name=label.name, ignore_exception_if_exists=True,
+            id=label.id, platform=label.platform)
+
+
 @rpc_utils.route_rpc_to_master
 def label_add_hosts(id, hosts):
     """Adds a label with the given id to the given hosts.
@@ -158,36 +205,14 @@ def label_add_hosts(id, hosts):
     @raises ValueError: If the id specified is an int/long (label id)
                         while the label does not exist.
     """
-    try:
-        label = models.Label.smart_get(id)
-    except models.Label.DoesNotExist:
-        # This matches the type checks in smart_get, which is a hack
-        # in and off itself. The aim here is to create any non-existent
-        # label, which we cannot do if the 'id' specified isn't a label name.
-        if isinstance(id, basestring):
-            label = models.Label.smart_get(add_label(id))
-        else:
-            raise ValueError('Label id (%s) does not exist. Please specify '
-                             'the argument, id, as a string (label name).'
-                             % id)
+    # Create the label.
+    _create_label_everywhere(id, hosts)
+
+    # Add it to the master.
     add_label_to_hosts(id, hosts)
 
+    # Add it to the shards.
     host_objs = models.Host.smart_get_bulk(hosts)
-    # Make sure the label exists on the shard with the same id
-    # as it is on the master.
-    # It is possible that the label is already in a shard because
-    # we are adding a new label only to shards of hosts that the label
-    # is going to be attached.
-    # For example, we add a label L1 to a host in shard S1.
-    # Master and S1 will have L1 but other shards won't.
-    # Later, when we add the same label L1 to hosts in shards S1 and S2,
-    # S1 already has the label but S2 doesn't.
-    # S2 should have the new label without any problem.
-    # We ignore exception in such a case.
-    rpc_utils.fanout_rpc(
-            host_objs, 'add_label', include_hostnames=False,
-            name=label.name, ignore_exception_if_exists=True,
-            id=label.id, platform=label.platform)
     rpc_utils.fanout_rpc(host_objs, 'add_label_to_hosts', id=id)
 
 
@@ -405,6 +430,10 @@ def host_add_labels(id, labels):
 
     @raises ValidationError: If adding more than one platform label.
     """
+    # Create the labels on the master/shards.
+    for label in labels:
+        _create_label_everywhere(label, [id])
+
     label_objs = models.Label.smart_get_bulk(labels)
     platforms = [label.name for label in label_objs if label.platform]
     if len(platforms) > 1:
