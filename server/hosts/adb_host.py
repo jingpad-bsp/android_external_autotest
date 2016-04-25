@@ -71,6 +71,9 @@ DEFAULT_WAIT_UP_TIME_SECONDS = 300
 # Maximum number of seconds to wait for a device to be up after it's wiped.
 WAIT_UP_AFTER_WIPE_TIME_SECONDS = 1200
 
+# Default timeout for retrying adb/fastboot command.
+DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS = 10
+
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
 
@@ -214,7 +217,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # creating the host to do a repair job, the device maybe inaccesible
         # via ADB.
         try:
-            self.ensure_adb_mode()
             self._reset_adbd_connection()
         except (error.AutotestHostRunError, error.AutoservRunError) as e:
             logging.error('Unable to reset the device adb daemon connection: '
@@ -679,9 +681,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def is_device_ready(self):
         """Return the if the device is ready for ADB commands."""
-        dev_state = self.adb_run('get-state').stdout.strip()
-        logging.debug('Current device state: %s', dev_state)
-        return dev_state == 'device'
+        try:
+            # Retry to avoid possible flakes.
+            is_ready = client_utils.poll_for_condition(
+                lambda: self.adb_run('get-state').stdout.strip() == 'device',
+                timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS, sleep_interval=1,
+                desc='Waiting for device state to be `device`')
+        except client_utils.TimeoutError:
+            is_ready = False
+
+        logging.debug('Device state is %sready', '' if is_ready else 'NOT ')
+        return is_ready
 
 
     def verify_connectivity(self):
