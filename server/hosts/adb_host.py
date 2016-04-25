@@ -232,7 +232,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def _restart_adbd_with_root_permissions(self):
         """Restarts the adb daemon with root permissions."""
-        self.adb_run('root')
+        @retry.retry(error.AutoservRunError, timeout_min=20/60.0, delay_sec=1)
+        def run_adb_root():
+            """Run command `adb root`."""
+            self.adb_run('root')
+
+        # adb command may flake with error "device not found". Retry the root
+        # command to reduce the chance of flake.
+        run_adb_root()
         # TODO(ralphnathan): Remove this sleep once b/19749057 is resolved.
         time.sleep(1)
         self._connect_over_tcpip_as_needed()
