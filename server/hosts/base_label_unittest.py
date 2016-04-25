@@ -183,6 +183,7 @@ class LabelRetrieverUnittests(unittest.TestCase):
         mock_afe = mock.MagicMock()
         mock_afe.get_hosts.return_value = [mock_afe_host]
         mock_retry_afe.return_value = mock_afe
+        mockhost = MockHost()
         expected_remove_labels = [label_to_remove]
         expected_add_labels = ['%s:%s' % (TestStringPrefixLabel._NAME,
                                           label_to_add)]
@@ -191,10 +192,14 @@ class LabelRetrieverUnittests(unittest.TestCase):
                 [TestStringPrefixLabel(label=label_to_add),
                  TestBaseLabel()])
 
-        retriever.update_labels(MockHost())
+        retriever.update_labels(mockhost)
 
         # Check that we removed the right labels
-        mock_afe_host.remove_labels.assert_called_with(expected_remove_labels)
+        mock_afe.run.has_calls('host_remove_labels',
+                               id=mockhost.hostname,
+                               labels=expected_remove_labels)
 
         # Check that we added the right labels
-        mock_afe_host.add_labels.assert_called_with(expected_add_labels)
+        mock_afe.run.has_calls('host_add_labels',
+                               id=mockhost.hostname,
+                               labels=expected_add_labels)
