@@ -473,9 +473,9 @@ static int test_export()
 }
 
 /*
- * Tests prime import.
+ * Tests prime import using VGEM sharing buffer.
  */
-static int test_import()
+static int test_import_vgem()
 {
 	struct gbm_import_fd_data fd_data;
 	int vgem_fd = drm_open_vgem();
@@ -502,8 +502,41 @@ static int test_import()
 	bo = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
 	CHECK(check_bo(bo));
 	gbm_bo_destroy(bo);
+	close(prime_handle.fd);
 
 	close(vgem_fd);
+
+	return 1;
+}
+
+/*
+ * Tests prime import using dma-buf API.
+ */
+static int test_import_dmabuf()
+{
+	struct gbm_import_fd_data fd_data;
+	struct gbm_bo *bo1, *bo2;
+	const int width = 123;
+	const int height = 456;
+	int prime_fd;
+
+	bo1 = gbm_bo_create(gbm, width, height, GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
+	CHECK(check_bo(bo1));
+
+	prime_fd = gbm_bo_get_fd(bo1);
+	CHECK(prime_fd >= 0);
+	gbm_bo_destroy(bo1);
+
+	fd_data.fd = prime_fd;
+	fd_data.width = width;
+	fd_data.height = height;
+	fd_data.stride = gbm_bo_get_stride(bo1);
+	fd_data.format = GBM_FORMAT_XRGB8888;
+
+	bo2 = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
+	CHECK(check_bo(bo2));
+	gbm_bo_destroy(bo2);
+	close(prime_fd);
 
 	return 1;
 }
@@ -528,7 +561,8 @@ int main(int argc, char *argv[])
 	result &= test_alloc_free_usage();
 	result &= test_user_data();
 	result &= test_export();
-	result &= test_import();
+	result &= test_import_vgem();
+	result &= test_import_dmabuf();
 	result &= test_destroy();
 
 	if (!result) {
