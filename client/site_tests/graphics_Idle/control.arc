@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'chromeos-gfx'
-NAME = "graphics_Idle"
+NAME = "graphics_Idle.arc"
 ATTRIBUTES = "suite:arc-bvt-cq"
 PURPOSE = "Verify that graphics behaves as expected on idle."
 CRITERIA = """
