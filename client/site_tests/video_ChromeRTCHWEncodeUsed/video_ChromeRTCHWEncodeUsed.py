@@ -38,7 +38,7 @@ class video_ChromeRTCHWEncodeUsed(test.test):
 
         @param cr: Autotest Chrome instance.
         """
-        tab = cr.browser.tabs[0]
+        tab = cr.browser.tabs.New()
         tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         tab.WaitForDocumentReadyStateToBeComplete()

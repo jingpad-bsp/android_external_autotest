@@ -29,7 +29,7 @@ class video_ChromeHWDecodeUsed(test.test):
         with chrome.Chrome(arc_mode=arc_mode) as cr:
             # This will execute for MSE video by accesing shaka player
             if is_mse:
-                 tab1 = cr.browser.tabs[0]
+                 tab1 = cr.browser.tabs.New()
                  tab1.Navigate(video_file)
                  tab1.WaitForDocumentReadyStateToBeComplete()
                  # Running the test longer to check errors and longer playback
@@ -43,7 +43,7 @@ class video_ChromeHWDecodeUsed(test.test):
                  shutil.copy2(video_path, self.bindir)
 
                  cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-                 tab = cr.browser.tabs[0]
+                 tab = cr.browser.tabs.New()
                  html_fullpath = os.path.join(self.bindir, 'video.html')
                  url = cr.browser.platform.http_server.UrlOf(html_fullpath)
 
