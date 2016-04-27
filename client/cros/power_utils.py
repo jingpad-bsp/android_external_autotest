@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 import glob, logging, os, re, shutil
 from autotest_lib.client.bin import site_utils, utils
+from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 
 
@@ -207,8 +208,8 @@ class Backlight(object):
             except error.CmdError:
                 self.default_brightness_percent = 40.0
                 logging.warning("Unable to determine default backlight "
-                             "brightness percent.  Setting to %f",
-                             self.default_brightness_percent)
+                                "brightness percent.  Setting to %f",
+                                self.default_brightness_percent)
 
 
     def _try_bl_cmd(self, arg_str):
@@ -317,62 +318,72 @@ class KbdBacklight(object):
     Example code:
         kblight = power_utils.KbdBacklight()
         kblight.set(10)
-        print "kblight % is %.f" % kblight.get()
+        print "kblight % is %.f" % kblight.get_percent()
 
     Public methods:
-        set: Sets the keyboard backlight to a percent.
-        get: Get current keyboard backlight percentage.
-
-    Private functions:
-        _get_max: Retrieve maximum integer setting of keyboard backlight
+        set_percent: Sets the keyboard backlight to a percent.
+        get_percent: Get current keyboard backlight percentage.
+        set_level: Sets the keyboard backlight to a level.
+        get_default_level: Get default keyboard backlight brightness level
 
     Private attributes:
-        _path: filepath to keyboard backlight controls in sysfs
-        _max: cached value of 'max_brightness' integer
+        _default_backlight_level: keboard backlight level set by default
 
-    TODO(tbroch): deprecate direct sysfs access if/when these controls are
-    integrated into a userland tool such as backlight_tool in power manager.
     """
-    DEFAULT_PATH = "/sys/class/leds/chromeos::kbd_backlight"
 
-    def __init__(self, path=DEFAULT_PATH):
-        if not os.path.exists(path):
-            raise KbdBacklightException('Unable to find path "%s"' % path)
-        self._path = path
-        self._max = None
-
-
-    def _get_max(self):
-        """Get maximum absolute value of keyboard brightness.
-
-        Returns:
-            integer, maximum value of keyboard brightness
-        """
-        if self._max is None:
-            self._max = int(utils.read_one_line(os.path.join(self._path,
-                                                             'max_brightness')))
-        return self._max
+    def __init__(self):
+        cmd = 'check_powerd_config --keyboard_backlight'
+        result = base_utils.run(cmd, ignore_status=True)
+        if result.exit_status:
+            raise KbdBacklightException('Keyboard backlight support' +
+                                        'is not enabled')
+        cmd = 'get_powerd_initial_backlight_level --keyboard 2>/dev/null'
+        self._default_backlight_level = int(
+            utils.system_output(cmd).rstrip())
+        logging.info("Default keyboard backlight brightness level = %d",
+                     self._default_backlight_level)
 
 
-    def get(self):
-        """Get current keyboard brightness setting.
+
+    def get_percent(self):
+        """Get current keyboard brightness setting percentage.
 
         Returns:
-            float, percentage of keyboard brightness.
+            float, percentage of keyboard brightness in the range [0.0, 100.0].
         """
-        current = int(utils.read_one_line(os.path.join(self._path,
-                                                       'brightness')))
-        return (current * 100 ) / self._get_max()
+        cmd = 'backlight_tool --keyboard --get_brightness_percent'
+        return float(utils.system_output(cmd).strip())
 
 
-    def set(self, percent):
+    def get_default_level(self):
+        """
+        Returns the default backlight level.
+
+        Returns:
+            The default keyboard backlight level.
+        """
+        return self._default_backlight_level
+
+
+    def set_percent(self, percent):
         """Set keyboard backlight percent.
 
         Args:
-        @param percent: percent to set keyboard backlight to.
+        @param percent: float value in the range [0.0, 100.0]
+                        to set keyboard backlight to.
         """
-        value = int((percent * self._get_max()) / 100)
-        cmd = "echo %d > %s" % (value, os.path.join(self._path, 'brightness'))
+        cmd = ('backlight_tool --keyboard --set_brightness_percent=' +
+              str(percent))
+        utils.system(cmd)
+
+
+    def set_level(self, level):
+        """
+        Set keyboard backlight to given level.
+        Args:
+        @param level: level to set keyboard backlight to.
+        """
+        cmd = 'backlight_tool --keyboard --set_brightness=' + str(level)
         utils.system(cmd)
 
 
