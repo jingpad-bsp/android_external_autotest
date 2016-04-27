@@ -40,7 +40,7 @@ class video_VideoSanity(test.test):
                                        'files', video_file)
              shutil.copy2(video_path, self.bindir)
              cr.browser.platform.SetHTTPServerDirectories(self.bindir)
-             tab = cr.browser.tabs[0]
+             tab = cr.browser.tabs.New()
              html_fullpath = os.path.join(self.bindir, 'video.html')
              url = cr.browser.platform.http_server.UrlOf(html_fullpath)
 
