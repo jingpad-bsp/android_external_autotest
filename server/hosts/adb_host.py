@@ -200,10 +200,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # refactor the serial retrieval.
         adb_serial = adb_serial or self.host_attributes.get('serials', None)
         self.adb_serial = adb_serial
-        adb_prefix = any(adb_serial.startswith(p) for p in ADB_DEVICE_PREFIXES)
-        self.fastboot_serial = (fastboot_serial or
-                ('tcp:%s' % adb_serial.split(':')[0] if
-                ':' in adb_serial and not adb_prefix else adb_serial))
+        if adb_serial:
+            adb_prefix = any(adb_serial.startswith(p)
+                             for p in ADB_DEVICE_PREFIXES)
+            self.fastboot_serial = (fastboot_serial or
+                    ('tcp:%s' % adb_serial.split(':')[0] if
+                    ':' in adb_serial and not adb_prefix else adb_serial))
+            self._use_tcpip = ':' in adb_serial and not adb_prefix
+        else:
+            self.fastboot_serial = fastboot_serial or adb_serial
+            self._use_tcpip = False
         self.teststation = (teststation if teststation
                 else teststation_host.create_teststationhost(hostname=hostname))
 
@@ -214,7 +220,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
-        self._use_tcpip = ':' in adb_serial and not adb_prefix
         # Try resetting the ADB daemon on the device, however if we are
         # creating the host to do a repair job, the device maybe inaccesible
         # via ADB.
