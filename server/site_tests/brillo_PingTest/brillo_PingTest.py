@@ -39,6 +39,8 @@ class brillo_PingTest(test.test):
         """
         if afe_utils.host_in_lab(host):
             ssid = site_utils.get_wireless_ssid(host.hostname)
+            passphrase = global_config.global_config.get_config_value(
+                    'CLIENT', 'wireless_password', default=None)
         with host_utils.connect_to_ssid(host, ssid, passphrase):
             cmd = 'ping -q -c %s -W %s %s' % (ping_count, ping_timeout,
                                               ping_host)
