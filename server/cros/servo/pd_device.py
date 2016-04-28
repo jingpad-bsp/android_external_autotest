@@ -97,14 +97,14 @@ class PDDevice(object):
         @param states_list: list of expected PD state transitions
         """
         raise NotImplementedError(
-                'drp_set should be implemented in derived class')
+                'soft_reset should be implemented in derived class')
 
     def hard_reset(self):
         """Initates a PD hard reset sequence
 
         """
         raise NotImplementedError(
-                'drp_set should be implemented in derived class')
+                'hard_reset should be implemented in derived class')
 
     def drp_set(self, mode):
         """Sets dualrole mode
@@ -301,6 +301,33 @@ class PDConsoleDevice(PDDevice):
         state_after = self.utils.get_pd_state(self.port)
         return state_before == state_after
 
+    def hard_reset(self):
+        """Initates a PD hard reset sequence
+
+        To verify that a hard reset sequence was initiated, the
+        console ouput is scanned for HARD RST TX. In addition, the connect
+        state should be same as it was prior to issuing the reset command.
+
+        @returns True if the port pair acknowledges that hard reset was
+        initiated and if following the command, the device returns to the same
+        connected state. False otherwise.
+        """
+        RESET_DELAY = 1.0
+        cmd = 'pd %d hard' % self.port
+        state_before = self.utils.get_pd_state(self.port)
+        self.utils.enable_pd_console_debug()
+        try:
+            self.utils.send_pd_command_get_output(cmd, ['.*(HARD\sRST\sTX)'])
+        except error.TestFail:
+            logging.warn('HARD RST TX not found')
+            return False
+        finally:
+            self.utils.disable_pd_console_debug()
+
+        time.sleep(RESET_DELAY)
+        state_after = self.utils.get_pd_state(self.port)
+        return state_before == state_after
+
     def pr_swap(self):
         """Attempts a power role swap
 
@@ -384,6 +411,7 @@ class PDPlanktonDevice(PDConsoleDevice):
 
         @param states_list: list of expected PD state transitions
         @param console_log: console output which contains state names
+
         @returns True if the sequence matches, False otherwise
         """
         # For each state in the expected state transiton table, build
@@ -435,22 +463,69 @@ class PDPlanktonDevice(PDConsoleDevice):
             # With drp_enable flag off, can set to desired setting
             return self.utils.set_pd_dualrole(mode)
 
-    def soft_reset(self, states_list):
-        """Initates a PD soft reset sequence
+    def _reset(self, cmd, states_list):
+        """Initates a PD reset sequence
 
         Plankton device has state names available on the console. When
         a soft reset is issued the console log is extracted and then
         compared against the expected state transisitons.
+
+        @param cmd: reset type (soft or hard)
+        @param states_list: list of expected PD state transitions
+
+        @returns True if state transitions match, False otherwise
+        """
+        # Want to grab all output until either SRC_READY or SNK_READY
+        reply_exp = ['(.*)(C\d)\s+[\w]+:\s([\w]+_READY)']
+        m = self.utils.send_pd_command_get_output(cmd, reply_exp)
+        return self._verify_state_sequence(states_list, m[0][0])
+
+    def soft_reset(self, states_list):
+        """Initates a PD soft reset sequence
 
         @param states_list: list of expected PD state transitions
 
         @returns True if state transitions match, False otherwise
         """
         cmd = 'pd %d soft' % self.port
-        # Want to grab all output until either SRC_READY or SNK_READY
-        reply_exp = ['(.*)(C\d)\s+[\w]+:\s([\w]+_READY)']
-        m = self.utils.send_pd_command_get_output(cmd, reply_exp)
-        return self._verify_state_sequence(states_list, m[0][0])
+        return self._reset(cmd, states_list)
+
+    def hard_reset(self):
+        """Initates a PD hard reset sequence
+
+        @returns True if state transitions match, False otherwise
+        """
+        snk_reset_states = [
+            'HARD_RESET_SEND',
+            'HARD_RESET_EXECUTE',
+            'SNK_HARD_RESET_RECOVER',
+            'SNK_DISCOVERY',
+            'SNK_REQUESTED',
+            'SNK_TRANSITION',
+            'SNK_READY'
+        ]
+
+        src_reset_states = [
+            'HARD_RESET_SEND',
+            'HARD_RESET_EXECUTE',
+            'SRC_HARD_RESET_RECOVER',
+            'SRC_DISCOVERY',
+            'SRC_NEGOCIATE',
+            'SRC_ACCEPTED',
+            'SRC_POWERED',
+            'SRC_TRANSITION',
+            'SRC_READY'
+        ]
+
+        if self.is_src():
+            states_list = src_reset_states
+        elif self.is_snk():
+            states_list = snk_reset_states
+        else:
+            raise error.TestFail('Port Pair not in a connected state')
+
+        cmd = 'pd %d hard' % self.port
+        return self._reset(cmd, states_list)
 
 
 class PDPortPartner(object):
