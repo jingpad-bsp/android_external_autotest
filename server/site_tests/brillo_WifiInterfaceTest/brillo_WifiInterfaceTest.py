@@ -58,6 +58,8 @@ class brillo_WifiInterfaceTest(test.test):
         self.host = host
         if afe_utils.host_in_lab(host):
             ssid = site_utils.get_wireless_ssid(host.hostname)
+            passphrase = global_config.global_config.get_config_value(
+                    'CLIENT', 'wireless_password', default=None)
         with host_utils.connect_to_ssid(host, ssid, passphrase):
             err_iface = ('No interface is' if wifi_iface is None
                           else 'Interface %s is not' % wifi_iface)
