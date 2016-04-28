@@ -91,10 +91,9 @@ class PDDevice(object):
         raise NotImplementedError(
                 'vbus_request should be implemented in derived class')
 
-    def soft_reset(self, states_list=None):
+    def soft_reset(self):
         """Initates a PD soft reset sequence
 
-        @param states_list: list of expected PD state transitions
         """
         raise NotImplementedError(
                 'soft_reset should be implemented in derived class')
@@ -277,15 +276,13 @@ class PDConsoleDevice(PDDevice):
             val = 'off'
         return bool(val == m[0][1])
 
-    def soft_reset(self, states_list=None):
+    def soft_reset(self):
         """Initates a PD soft reset sequence
 
         To verify that a soft reset sequence was initiated, the
         reply message is checked to verify that the reset command
         was acknowledged by its port pair. The connect state should
         be same as it was prior to issuing the reset command.
-
-        @param states_list: list of expected PD state transitions
 
         @returns True if the port pair acknowledges the the reset message
         and if following the command, the device returns to the same
@@ -480,13 +477,36 @@ class PDPlanktonDevice(PDConsoleDevice):
         m = self.utils.send_pd_command_get_output(cmd, reply_exp)
         return self._verify_state_sequence(states_list, m[0][0])
 
-    def soft_reset(self, states_list):
+    def soft_reset(self):
         """Initates a PD soft reset sequence
-
-        @param states_list: list of expected PD state transitions
 
         @returns True if state transitions match, False otherwise
         """
+        snk_reset_states = [
+            'SOFT_RESET',
+            'SNK_DISCOVERY',
+            'SNK_REQUESTED',
+            'SNK_TRANSITION',
+            'SNK_READY'
+        ]
+
+        src_reset_states = [
+            'SOFT_RESET',
+            'SRC_DISCOVERY',
+            'SRC_NEGOCIATE',
+            'SRC_ACCEPTED',
+            'SRC_POWERED',
+            'SRC_TRANSITION',
+            'SRC_READY'
+        ]
+
+        if self.is_src():
+            states_list = src_reset_states
+        elif self.is_snk():
+            states_list = snk_reset_states
+        else:
+            raise error.TestFail('Port Pair not in a connected state')
+
         cmd = 'pd %d soft' % self.port
         return self._reset(cmd, states_list)
 
