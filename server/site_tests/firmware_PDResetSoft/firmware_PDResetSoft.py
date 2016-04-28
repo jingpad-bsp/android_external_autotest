@@ -20,26 +20,8 @@ class firmware_PDResetSoft(FirmwareTest):
 
     """
     version = 1
-
     RESET_ITERATIONS = 5
 
-    snk_reset_states = [
-        'SOFT_RESET',
-        'SNK_DISCOVERY',
-        'SNK_REQUESTED',
-        'SNK_TRANSITION',
-        'SNK_READY'
-    ]
-
-    src_reset_states = [
-        'SOFT_RESET',
-        'SRC_DISCOVERY',
-        'SRC_NEGOCIATE',
-        'SRC_ACCEPTED',
-        'SRC_POWERED',
-        'SRC_TRANSITION',
-        'SRC_READY'
-    ]
 
     def _test_soft_reset(self, port_pair):
         """Tests soft reset initated by both Plankton and the DUT
@@ -48,15 +30,12 @@ class firmware_PDResetSoft(FirmwareTest):
         """
         for dev in port_pair:
             for _ in xrange(self.RESET_ITERATIONS):
-                # Select the appropriate state transition table
-                if dev.is_src():
-                    states_list = self.src_reset_states
-                elif dev.is_snk():
-                    states_list = self.snk_reset_states
-                else:
-                    raise error.TestFail('Port Pair not in a connected state')
-                if dev.soft_reset(states_list) == False:
-                    raise error.TestFail('Soft Reset Failed')
+                try:
+                    if dev.soft_reset() == False:
+                        raise error.TestFail('Soft Reset Failed')
+                except NotImplementedError:
+                    logging.warn('Device cant soft reset ... skipping')
+                    break
 
     def initialize(self, host, cmdline_args):
         super(firmware_PDResetSoft, self).initialize(host, cmdline_args)
@@ -92,9 +71,12 @@ class firmware_PDResetSoft(FirmwareTest):
         # Test soft resets initiated by both ends
         self._test_soft_reset(port_pair)
         # Attempt to swap power roles
-        if port_pair[0].pr_swap() == False:
-            logging.warn('Power role not swapped, ending test')
+        try:
+            if port_pair[0].pr_swap() == False:
+                logging.warn('Power role not swapped, ending test')
+                return
+        except NotImplementedError:
+            logging.warn('device cant send power role swap command, end test')
             return
         # Power role has been swapped, retest.
         self._test_soft_reset(port_pair)
-
