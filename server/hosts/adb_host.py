@@ -1371,7 +1371,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.stdout.splitlines()
 
 
-    def install_apk(self, apk, force_reinstall=False):
+    def install_apk(self, apk, force_reinstall=True):
         """Install the specified apk.
 
         This will install the apk and override it if it's already installed and
@@ -1379,7 +1379,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @param apk: The path to apk file.
         @param force_reinstall: True to reinstall the apk even if it's already
-                installed. Default is set to False.
+                installed. Default is set to True.
 
         @returns a CMDResult object.
         """
