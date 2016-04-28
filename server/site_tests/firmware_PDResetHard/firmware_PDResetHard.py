@@ -9,57 +9,35 @@ from autotest_lib.server.cros.faft.firmware_test import FirmwareTest
 from autotest_lib.server.cros.servo import pd_device
 
 
-class firmware_PDResetSoft(FirmwareTest):
+class firmware_PDResetHard(FirmwareTest):
     """
-    Servo based USB PD soft reset test.
+    USB PD hard reset test.
 
-    Soft resets are issued by both ends of the connection. If the DUT
+    Hard resets are issued by both ends of the connection. If the DUT
     is dualrole capable, then a power role swap is executed, and the
     test is repeated with the DUT in the opposite power role. Pass
-    criteria is that all attempted soft resets are successful.
+    criteria is that all attempted hard resets are successful.
 
     """
     version = 1
-
     RESET_ITERATIONS = 5
 
-    snk_reset_states = [
-        'SOFT_RESET',
-        'SNK_DISCOVERY',
-        'SNK_REQUESTED',
-        'SNK_TRANSITION',
-        'SNK_READY'
-    ]
-
-    src_reset_states = [
-        'SOFT_RESET',
-        'SRC_DISCOVERY',
-        'SRC_NEGOCIATE',
-        'SRC_ACCEPTED',
-        'SRC_POWERED',
-        'SRC_TRANSITION',
-        'SRC_READY'
-    ]
-
-    def _test_soft_reset(self, port_pair):
-        """Tests soft reset initated by both Plankton and the DUT
+    def _test_hard_reset(self, port_pair):
+        """Tests hard reset initated by both ends of PD connection
 
         @param port_pair: list of 2 connected PD devices
         """
         for dev in port_pair:
             for _ in xrange(self.RESET_ITERATIONS):
-                # Select the appropriate state transition table
-                if dev.is_src():
-                    states_list = self.src_reset_states
-                elif dev.is_snk():
-                    states_list = self.snk_reset_states
-                else:
-                    raise error.TestFail('Port Pair not in a connected state')
-                if dev.soft_reset(states_list) == False:
-                    raise error.TestFail('Soft Reset Failed')
+                try:
+                    if dev.hard_reset() == False:
+                        raise error.TestFail('Hard Reset Failed')
+                except NotImplementedError:
+                    logging.warn('Device cant hard reset ... skipping')
+                    break
 
     def initialize(self, host, cmdline_args):
-        super(firmware_PDResetSoft, self).initialize(host, cmdline_args)
+        super(firmware_PDResetHard, self).initialize(host, cmdline_args)
         # Only run in normal mode
         self.switcher.setup_mode('normal')
         # Turn off console prints, except for USBPD.
@@ -67,7 +45,7 @@ class firmware_PDResetSoft(FirmwareTest):
 
     def cleanup(self):
         self.usbpd.send_command('chan 0xffffffff')
-        super(firmware_PDResetSoft, self).cleanup()
+        super(firmware_PDResetHard, self).cleanup()
 
     def run_once(self):
         """Execute Power Role swap test.
@@ -75,7 +53,7 @@ class firmware_PDResetSoft(FirmwareTest):
         1. Verify that pd console is accessible
         2. Verify that DUT has a valid PD contract
         3. Make sure dualrole mode is enabled on both ends
-        4. Test Soft Reset initiated by both ends of connection
+        4. Test Hard Reset initiated by both ends of connection
         5. Attempt to change power roles
            If power role changed, then retest soft resets
            Else end test.
@@ -89,12 +67,16 @@ class firmware_PDResetSoft(FirmwareTest):
         if not port_pair:
             raise error.TestFail('No PD connection found!')
 
-        # Test soft resets initiated by both ends
-        self._test_soft_reset(port_pair)
+        # Test hard resets initiated by both ends
+        self._test_hard_reset(port_pair)
         # Attempt to swap power roles
-        if port_pair[0].pr_swap() == False:
-            logging.warn('Power role not swapped, ending test')
+        try:
+            if port_pair[0].pr_swap() == False:
+                logging.warn('Power role not swapped, ending test')
+                return
+        except NotImplementedError:
+            logging.warn('device cant send power role swap command, end test')
             return
         # Power role has been swapped, retest.
-        self._test_soft_reset(port_pair)
+        self._test_hard_reset(port_pair)
 
