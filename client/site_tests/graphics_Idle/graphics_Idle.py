@@ -33,7 +33,8 @@ class graphics_Idle(test.test):
         if not utils.wait_for_idle_cpu(20.0, 0.1):
             logging.warning('Could not get idle CPU before running tests.')
         # We use kiosk mode to make sure Chrome is idle.
-        with chrome.Chrome(logged_in=False, extra_browser_args=['--kiosk'],
+        with chrome.Chrome(logged_in=False,
+                           extra_browser_args=['--kiosk'],
                            arc_mode=arc_mode):
             self._gpu_type = utils.get_gpu_family()
             self._cpu_type = utils.get_cpu_soc_family()
@@ -57,6 +58,16 @@ class graphics_Idle(test.test):
         logging.error('Error: %s not found.', ' '.join(paths))
         return None
 
+    def handle_error(self, message, path=None):
+        logging.error('Error: %s', message)
+        # For debugging show the content of the file.
+        if path is not None:
+            with open(path, 'r') as text_file:
+                logging.info('Content of %s\n%s', path, text_file.read())
+        # Dump the output of 'top'.
+        utils.log_process_activity()
+        return message
+
     def verify_lvds_downclock(self):
         """On systems which support LVDS downclock, checks the kernel log for
         a message that an LVDS downclock mode has been added."""
@@ -64,14 +75,11 @@ class graphics_Idle(test.test):
         board = utils.get_board()
         if not (board == 'alex' or board == 'lumpy' or board == 'stout'):
             return ''
-
         # Get the downclock message from the logs.
         reader = cros_logging.LogReader()
         reader.set_start_by_reboot(-1)
         if not reader.can_find('Adding LVDS downclock mode'):
-            logging.error('Error: LVDS downclock quirk not applied.')
-            return 'LVDS downclock quirk not applied. '
-
+            return self.handle_error('LVDS downclock quirk not applied. ')
         return ''
 
     def verify_short_blanking(self):
@@ -85,7 +93,8 @@ class graphics_Idle(test.test):
         param_path = '/sys/class/drm/card0-eDP-1/edid'
         if not os.path.exists(param_path):
             logging.error('Error: %s not found.', param_path)
-            return 'Short blanking not added (no EDID found). '
+            return self.handle_error(
+                'Short blanking not added (no EDID found). ')
 
         with open(param_path, 'r') as edp_edid_file:
             edp_edid_file.seek(8)
@@ -93,18 +102,14 @@ class graphics_Idle(test.test):
             manufacturer = int(struct.unpack('<H', data)[0])
             data = edp_edid_file.read(2)
             product_code = int(struct.unpack('<H', data)[0])
-
         # This is not the panel we are looking for (AUO B116XTN02.2)
         if manufacturer != 0xaf06 or product_code != 0x225c:
             return ''
-
         # Get the downclock message from the logs.
         reader = cros_logging.LogReader()
         reader.set_start_by_reboot(-1)
         if not reader.can_find('Modified preferred into a short blanking mode'):
-            logging.error('Error: short blanking not added.')
-            return 'Short blanking not added. '
-
+            return self.handle_error('Short blanking not added. ')
         return ''
 
     def verify_graphics_rc6(self):
@@ -130,14 +135,10 @@ class graphics_Idle(test.test):
                         if match and match.group(1) == 'RC6':
                             found = True
                             break
-
                 tries += 1
-
             if not found:
-                utils.log_process_activity()
-                logging.error('Error: did not see the GPU in RC6.')
-                return 'Did not see the GPU in RC6. '
-
+                return self.handle_error('Error: did not see the GPU in RC6.',
+                                         param_path)
         return ''
 
     def verify_graphics_i915_min_clock(self):
@@ -173,9 +174,8 @@ class graphics_Idle(test.test):
                 tries += 1
 
             if not found:
-                utils.log_process_activity()
-                logging.error('Error: did not see the min i915 clock')
-                return 'Did not see the min i915 clock. '
+                return self.handle_error('Did not see the min i915 clock. ',
+                                         param_path)
 
         return ''
 
@@ -205,8 +205,7 @@ class graphics_Idle(test.test):
             enable = utils.read_one_line(enable_path)
             logging.info('DVFS enable = %s', enable)
             if not enable == enable_value:
-                logging.error('Error: DVFS is not enabled')
-                return 'DVFS is not enabled. '
+                return self.handle_errror('DVFS is not enabled. ')
 
             # available_frequencies are always sorted in ascending order
             lowest_freq = int(utils.read_one_line(freqs_path))
@@ -217,7 +216,6 @@ class graphics_Idle(test.test):
                 lowest_freq = 266000000
 
             logging.info('Expecting idle DVFS clock = %u', lowest_freq)
-
             tries = 0
             found = False
             while not found and tries < 80:
@@ -229,13 +227,11 @@ class graphics_Idle(test.test):
                     break
 
                 tries += 1
-
             if not found:
-                utils.log_process_activity()
                 logging.error('Error: DVFS clock (%u) > min (%u)', clock,
                               lowest_freq)
-                return 'Did not see the min DVFS clock. '
-
+                return self.handle_error('Did not see the min DVFS clock. ',
+                                         clock_path)
         return ''
 
     def verify_graphics_fbc(self):
@@ -269,11 +265,9 @@ class graphics_Idle(test.test):
                             break
 
                 tries += 1
-
             if not found:
-                logging.error('Error: did not see FBC enabled.')
-                return 'Did not see FBC enabled. '
-
+                return self.handle_error('Did not see FBC enabled. ',
+                                         param_path)
         return ''
 
     def verify_graphics_psr(self):
@@ -299,11 +293,8 @@ class graphics_Idle(test.test):
                         break
 
             tries += 1
-
         if not found:
-            logging.error('Error: did not see PSR enabled.')
-            return 'Did not see PSR enabled. '
-
+            return self.handle_error('Did not see PSR enabled. ', param_path)
         return ''
 
     def verify_graphics_gem_idle(self):
@@ -327,10 +318,7 @@ class graphics_Idle(test.test):
                             break
 
                 tries += 1
-
             if not found:
-                utils.log_process_activity()
-                logging.error('Error: did not reach 0 gem actives.')
-                return 'Did not reach 0 gem actives. '
-
+                return self.handle_error('Did not reach 0 gem actives. ',
+                                         gem_path)
         return ''
