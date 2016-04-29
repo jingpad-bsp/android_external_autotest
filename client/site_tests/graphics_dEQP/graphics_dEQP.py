@@ -304,6 +304,7 @@ class graphics_dEQP(test.test):
                        '--deqp-log-filename=%s' %
                        (executable, test_case, self._surface, width, height,
                         log_file))
+
             if not self._can_run(executable):
                 result = 'Skipped'
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
@@ -331,23 +332,23 @@ class graphics_dEQP(test.test):
                 except Exception:
                     result = 'UnexpectedError'
 
-            if self._debug:
-                # Collect debug info and save to json file.
-                output_msgs = {'stdout': [], 'stderr': [], 'dmesg': []}
-                logs = self._log_reader.get_logs()
-                self._log_reader.set_start_by_current()
-                output_msgs['dmesg'] = [msg
-                                        for msg in logs.splitlines()
-                                        if self._log_filter.match(msg)]
-                if run_result:
-                    output_msgs['stdout'] = run_result.stdout.splitlines()
-                    output_msgs['stderr'] = run_result.stderr.splitlines()
-                with open(debug_file, 'w') as fd:
-                    json.dump(output_msgs,
-                              fd,
-                              indent=4,
-                              separators=(',', ' : '),
-                              sort_keys=True)
+                if self._debug:
+                    # Collect debug info and save to json file.
+                    output_msgs = {'stdout': [], 'stderr': [], 'dmesg': []}
+                    logs = self._log_reader.get_logs()
+                    self._log_reader.set_start_by_current()
+                    output_msgs['dmesg'] = [msg
+                                            for msg in logs.splitlines()
+                                            if self._log_filter.match(msg)]
+                    if run_result:
+                        output_msgs['stdout'] = run_result.stdout.splitlines()
+                        output_msgs['stderr'] = run_result.stderr.splitlines()
+                    with open(debug_file, 'w') as fd:
+                        json.dump(output_msgs,
+                                  fd,
+                                  indent=4,
+                                  separators=(',', ' : '),
+                                  sort_keys=True)
 
             logging.info('Result: %s', result)
             test_results[result] = test_results.get(result, 0) + 1
