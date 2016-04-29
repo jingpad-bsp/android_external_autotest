@@ -14,6 +14,7 @@ cost in lines of code.
 from ctypes import *
 import mmap
 import os
+import subprocess
 
 from PIL import Image
 
@@ -38,14 +39,12 @@ class DrmVersion(Structure):
     _l = None
 
     def __repr__(self):
-        return "%s %d.%d.%d (%s) (%s)" % (
-            self.name,
-            self.version_major,
-            self.version_minor,
-            self.version_patchlevel,
-            self.desc,
-            self.date,
-        )
+        return "%s %d.%d.%d (%s) (%s)" % (self.name,
+                                          self.version_major,
+                                          self.version_minor,
+                                          self.version_patchlevel,
+                                          self.desc,
+                                          self.date,)
 
     def __del__(self):
         if self._l:
@@ -82,6 +81,17 @@ class DrmModeResources(Structure):
         if self._l:
             self._l.drmModeFreeResources(self)
 
+    def _wakeup_screen(self):
+        """
+        Send a synchronous dbus message to power on screen.
+        """
+        # Get and process reply to make this synchronous.
+        subprocess.check_output([
+            "dbus-send", "--type=method_call", "--system", "--print-reply",
+            "--dest=org.chromium.PowerManager", "/org/chromium/PowerManager",
+            "org.chromium.PowerManager.HandleUserActivity", "int32:0"
+        ])
+
     def getValidCrtc(self):
         for i in xrange(0, self.count_crtcs):
             crtc_id = self.crtcs[i]
@@ -90,19 +100,24 @@ class DrmModeResources(Structure):
                 return crtc
         return None
 
-    def getCrtc(self, crtc_id=None):
+    def getCrtc(self, crtc_id):
         """
         Obtain the CRTC at a given index.
 
         @param crtc_id: The CRTC to get.
         """
-        crtc = None
         if crtc_id:
-            crtc = self._l.drmModeGetCrtc(self._fd, crtc_id).contents
-        else:
-            crtc = self.getValidCrtc()
-        crtc._fd = self._fd
-        crtc._l = self._l
+            return self._l.drmModeGetCrtc(self._fd, crtc_id).contents
+        return self.getValidCrtc()
+
+    def getCrtcRobust(self, crtc_id=None):
+        crtc = self.getCrtc(crtc_id)
+        if crtc is None:
+            self._wakeup_screen()
+            crtc = self.getCrtc(crtc_id)
+        if crtc is not None:
+            crtc._fd = self._fd
+            crtc._l = self._l
         return crtc
 
 
@@ -194,13 +209,11 @@ class DrmModeFB(Structure):
 
     def __repr__(self):
         s = "<Framebuffer (%dx%d (pitch %d bytes), %d bits/pixel, depth %d)"
-        vitals = s % (
-            self.width,
-            self.height,
-            self.pitch,
-            self.bpp,
-            self.depth,
-        )
+        vitals = s % (self.width,
+                      self.height,
+                      self.pitch,
+                      self.bpp,
+                      self.depth,)
         if self._map:
             tail = " (mapped)>"
         else:
@@ -232,8 +245,11 @@ class DrmModeFB(Structure):
         # mmap.mmap() has a totally different order of arguments in Python
         # compared to C; check the documentation before altering this
         # incantation.
-        self._map = mmap.mmap(self._fd, size, flags=mmap.MAP_SHARED,
-                              prot=mmap.PROT_READ, offset=mapDumb.offset)
+        self._map = mmap.mmap(self._fd,
+                              size,
+                              flags=mmap.MAP_SHARED,
+                              prot=mmap.PROT_READ,
+                              offset=mapDumb.offset)
 
     def unmap(self):
         """
@@ -382,6 +398,7 @@ def _screenshot(image, fb):
 
 _drm = None
 
+
 def crtcScreenshot(crtc_id=None):
     """
     Take a screenshot, returning an image object.
@@ -399,9 +416,12 @@ def crtcScreenshot(crtc_id=None):
                 break
 
     if _drm:
-        fb = _drm.resources().getCrtc(crtc_id).fb()
-        image = Image.new("RGB", (fb.width, fb.height))
-        pixels = _screenshot(image, fb)
-        return image
+        crtc = _drm.resources().getCrtcRobust(crtc_id)
+        if crtc is not None:
+            framebuffer = crtc.fb()
+            image = Image.new("RGB", (framebuffer.width, framebuffer.height))
+            pixels = _screenshot(image, framebuffer)
+            return image
 
-    raise RuntimeError("Couldn't screenshot with DRM devices")
+    raise RuntimeError(
+        "Unable to take screenshot. There may not be anything on the screen.")
