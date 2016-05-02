@@ -69,6 +69,8 @@ _build_prefix = global_config.global_config.get_config_value(
 
 WMATRIX_RETRY_URL = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'wmatrix_retry_url')
+WMATRIX_TEST_HISTORY_URL = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'wmatrix_test_history_url')
 
 
 class InvalidBugTemplateException(Exception):
@@ -334,3 +336,14 @@ def link_retry_url(test_name):
     @return: A link to the wmatrix retry stats dashboard for this test.
     """
     return WMATRIX_RETRY_URL % test_name
+
+
+def link_test_history(test_name):
+  """Link to the wmatrix test history page for this test.
+
+  @param test_name: Test we want to search the test history for.
+
+  @return: A link to the wmatrix test history page for this test.
+  """
+  return WMATRIX_TEST_HISTORY_URL % test_name
+
