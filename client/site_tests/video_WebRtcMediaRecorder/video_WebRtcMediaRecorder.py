@@ -84,4 +84,19 @@ class video_WebRtcMediaRecorder(test.test):
         self.launch_recorder_test('testResumeAndRecorderState')
         self.launch_recorder_test('testIllegalResumeThrowsDOMError')
         self.launch_recorder_test('testResumeAndDataAvailable')
+        self.launch_recorder_test('testPauseAndRecorderState')
+        self.launch_recorder_test('testPauseStopAndRecorderState')
+        self.launch_recorder_test(
+                'testPausePreventsDataavailableFromBeingFired')
+        self.launch_recorder_test('testIllegalPauseThrowsDOMError')
+        self.launch_recorder_test('testIllegalStopThrowsDOMError')
+        self.launch_recorder_test(
+                'testIllegalStartInRecordingStateThrowsDOMError')
+        self.launch_recorder_test(
+                'testIllegalStartInPausedStateThrowsDOMError')
+        self.launch_recorder_test('testTwoChannelAudio')
+        self.launch_recorder_test('testIllegalRequestDataThrowsDOMError')
+        self.launch_recorder_test('testAddingTrackToMediaStreamFiresErrorEvent')
+        self.launch_recorder_test(
+                'testRemovingTrackFromMediaStreamFiresErrorEvent')
 
