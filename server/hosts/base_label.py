@@ -240,10 +240,12 @@ class LabelRetriever(object):
         # Remove old labels.
         labels_to_remove = list(old_labels & (known_labels - new_labels))
         if labels_to_remove:
+            logging.info('removing labels: %s', labels_to_remove)
             afe.run('host_remove_labels', id=host.hostname,
                     labels=labels_to_remove)
 
         # Add in new labels that aren't already there.
         labels_to_add = list(new_labels - old_labels)
         if labels_to_add:
+            logging.info('adding labels: %s', labels_to_add)
             afe.run('host_add_labels', id=host.hostname, labels=labels_to_add)
