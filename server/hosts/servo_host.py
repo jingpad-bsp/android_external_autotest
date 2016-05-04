@@ -80,6 +80,26 @@ def make_servo_hostname(dut_hostname):
     return '.'.join(host_parts)
 
 
+def servo_host_is_up(servo_hostname):
+    """
+    Given a servo host name, return if it's up or not.
+
+    @param servo_hostname: hostname of the servo host.
+
+    @return True if it's up, False otherwise
+    """
+    # Technically, this duplicates the SSH ping done early in the servo
+    # proxy initialization code.  However, this ping ends in a couple
+    # seconds when if fails, rather than the 60 seconds it takes to decide
+    # that an SSH ping has timed out.  Specifically, that timeout happens
+    # when our servo DNS name resolves, but there is no host at that IP.
+    logging.info('Pinging servo host at %s', servo_hostname)
+    ping_config = ping_runner.PingConfig(
+            servo_hostname, count=3,
+            ignore_result=True, ignore_status=True)
+    return ping_runner.PingRunner().ping(ping_config).received > 0
+
+
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
 
@@ -763,22 +783,9 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
         if not required_by_test:
             return None
         return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
-    elif servo_args is not None or try_lab_servo:
-        # Technically, this duplicates the SSH ping done early in the servo
-        # proxy initialization code.  However, this ping ends in a couple
-        # seconds when if fails, rather than the 60 seconds it takes to decide
-        # that an SSH ping has timed out.  Specifically, that timeout happens
-        # when our servo DNS name resolves, but there is no host at that IP.
-        # TODO(dshi): crbug.com/380773 Remove this ping check once the bug is
-        #             fixed. Autotest should not try to verify servo if servo is
-        #             not required for the test.
-        ping_config = ping_runner.PingConfig(
-                lab_servo_hostname, count=3,
-                ignore_result=True, ignore_status=True)
-        logging.info('Pinging servo at %s', lab_servo_hostname)
-        host_is_up = ping_runner.PingRunner().ping(ping_config).received > 0
-        if host_is_up:
-            return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
-                             required_by_test=required_by_test)
+    elif ((servo_args is not None or try_lab_servo)
+          and servo_host_is_up(lab_servo_hostname)):
+        return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
+                         required_by_test=required_by_test)
     else:
         return None

@@ -17,6 +17,7 @@ from autotest_lib.client.cros.video import constants as video_test_constants
 from autotest_lib.server.cros.dynamic_suite import constants as ds_constants
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import common_label
+from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils import hwid_lib
 
 # pylint: disable=missing-docstring
@@ -297,7 +298,8 @@ class ServoLabel(base_label.BaseLabel):
     _NAME = 'servo'
 
     def exists(self, host):
-        return host._servo_host is not None
+        return servo_host.servo_host_is_up(
+                servo_host.make_servo_hostname(host.hostname))
 
 
 class VideoLabel(base_label.StringLabel):
