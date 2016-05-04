@@ -100,7 +100,7 @@ class graphics_WebGLPerformance(test.test):
 
         tab.Close()
 
-    def run_once(self, test_duration_secs=1800, fullscreen=True):
+    def run_once(self, test_duration_secs=2700, fullscreen=True):
         """Finds a brower with telemetry, and run the test.
 
         @param test_duration_secs: The test duration in seconds.
