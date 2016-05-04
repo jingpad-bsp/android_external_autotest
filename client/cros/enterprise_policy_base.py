@@ -457,6 +457,30 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         logging.info('Running test case: %s', test_case)
         run_test(test_case)
 
+    def _get_policy_data_for_case(self, case):
+        """Get policy value and policies dict data for specified test |case|.
+
+        @param case: Name of the test case to run.
+        @returns: policy_value string and policies_dict data.
+
+        """
+        if self.is_value_given:
+            # If |value| was given by user, then set expected |policy_value|
+            # to the user-given value, and set |policies_dict| to None.
+            policy_value = self.value
+            policies_dict = None
+        else:
+            # Otherwise, set expected |policy_value| string and |policies_dict|
+            # data to the values defined for the specified test |case|.
+            if not self.TEST_CASES[case]:
+                policy_value = None
+            else:
+                policy_value = ','.join(self.TEST_CASES[case])
+            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+            policies_dict = self.SUPPORTING_POLICIES.copy()
+            policies_dict.update(policy_dict)
+        return policy_value, policies_dict
+
     def _get_test_case_by_value(self, policy_value):
         """Get test case for given |policy_value|.
 
