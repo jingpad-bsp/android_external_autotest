@@ -257,7 +257,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
                                 username=self.username,
                                 password=self.password,
-                                gaia_login=True,
+                                gaia_login=False,
                                 disable_gaia_services=False,
                                 autotest_ext=True)
 
