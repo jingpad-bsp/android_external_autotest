@@ -61,7 +61,6 @@ REQUIRES_GWT = set((
         ))
 
 REQUIRES_SIMPLEJSON = set((
-        'resources_test.py',
         'serviceHandler_unittest.py',
         ))
 
