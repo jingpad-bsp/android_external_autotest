@@ -1552,7 +1552,8 @@ def main_without_exception_handling(options):
     else:
         try:
             rpc_helper.check_dut_availability(options.board, options.pool,
-                                              options.minimum_duts)
+                                              options.minimum_duts,
+                                              options.skip_duts_check)
             job_id = create_suite(afe, options)
             job_created_on = time.time()
         except diagnosis_utils.NotEnoughDutsError:
