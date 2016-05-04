@@ -198,7 +198,7 @@ class RPCHelper(object):
                           job_info)
 
 
-    def check_dut_availability(self, board, pool, minimum_duts=0):
+    def check_dut_availability(self, board, pool, minimum_duts=0, skip_duts_check=False):
         """Check if DUT availability for a given board and pool is less than
         minimum.
 
@@ -208,6 +208,7 @@ class RPCHelper(object):
                              run the suite. Default is set to 0, which means do
                              not force the check of available machines before
                              running the suite.
+        @param skip_duts_check: If True, skip minimum available DUTs check.
         @raise: NotEnoughDutsError if DUT availability is lower than minimum.
         @raise: BoardNotAvailableError if no host found for requested
                 board/pool.
@@ -224,13 +225,21 @@ class RPCHelper(object):
                     'currently does not cover test for this board and pool.'%
                     (board, pool))
 
+        if skip_duts_check:
+            # Bypass minimum avilable DUTs check
+            logging.debug('skip_duts_check is on, do not enforce minimum DUTs check.')
+            return
+
         if len(hosts) < minimum_duts:
             logging.debug('The total number of DUTs for %s in pool:%s is %d, '
                           'which is no more than the required minimum number of'
-                          ' available DUTS of %d. Minimum available DUT rule is'
-                          ' not enforced.', board, pool, len(hosts),
+                          ' available DUTS of %d.', board, pool, len(hosts),
                           minimum_duts)
-            return
+
+            # skip_duts_check is off, enfore checking dut availability
+            raise NotEnoughDutsError('skip_duts_check option is on and total number DUTs '
+                                     'in the pool is less than the required '
+                                     'minimum avaialble DUTs.')
 
         # TODO(dshi): Replace the hard coded string with enum value,
         # models.Host.Status.REPAIRING and REPAIR_FAILED
