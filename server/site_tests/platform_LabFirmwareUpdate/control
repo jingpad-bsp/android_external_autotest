@@ -10,6 +10,8 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
 TEST_TYPE = "server"
+ATTRIBUTES = "suite:faft_flashrom"
+DEPENDENCIES = "lab_fw_update"
 
 DOC = """
 This test compares the installed BIOS and EC versions to those in the
