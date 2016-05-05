@@ -13,6 +13,10 @@ class power_AudioDetector(test.test):
     """Verifies that audio playback prevents powerd from suspending."""
     version = 1
 
+    def initialize(self):
+        self._pref_change = None
+
+
     def run_once(self, run_time_sec=60):
         if run_time_sec < 10:
             raise error.TestFail('Must run for at least 10 seconds')
@@ -72,7 +76,8 @@ class power_AudioDetector(test.test):
 
 
     def cleanup(self):
-        utils.restart_job('powerd')
+        # Restore powerd prefs.
+        del self._pref_change
 
 
     def _play_audio(self, loop_time):
