@@ -128,7 +128,7 @@ class AccelsLabel(base_label.BaseLabel):
             return False
 
         # Check that EC motion sensors are active
-        active = self.run('ectool motionsense active').stdout.split('\n')
+        active = host.run('ectool motionsense active').stdout.split('\n')
         if active[0] == "0":
             logging.info("Motion sense inactive; assuming no EC accelerometers")
             return False
