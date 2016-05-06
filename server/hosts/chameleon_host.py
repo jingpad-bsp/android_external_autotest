@@ -34,6 +34,8 @@ class ChameleonHost(ssh_host.SSHHost):
 
     # Chameleond process name.
     CHAMELEOND_PROCESS = 'chameleond'
+    # Ready test function
+    CHAMELEON_READY_METHOD = 'GetSupportedPorts'
 
 
     # TODO(waihong): Add verify and repair logic which are required while
@@ -63,11 +65,20 @@ class ChameleonHost(ssh_host.SSHHost):
         self._local_port = None
         self._tunneling_process = None
 
-        if self._is_in_lab and not ENABLE_SSH_TUNNEL_FOR_CHAMELEON:
-            self._chameleon_connection = chameleon.ChameleonConnection(
-                    self.hostname, chameleon_port)
-        else:
-            self._create_connection_through_tunnel()
+        try:
+            if self._is_in_lab and not ENABLE_SSH_TUNNEL_FOR_CHAMELEON:
+                self._chameleon_connection = chameleon.ChameleonConnection(
+                        self.hostname, chameleon_port)
+            else:
+                chameleon_proxy = self.rpc_server_tracker.xmlrpc_connect(
+                        None, chameleon_port,
+                        ready_test_name=self.CHAMELEON_READY_METHOD,
+                        timeout_seconds=60)
+                self._chameleon_connection = chameleon.ChameleonConnection(
+                        None, proxy=chameleon_proxy)
+        except Exception as e:
+            raise ChameleonHostError('Can not connect to Chameleon: %s(%s)',
+                                     e.__class__, e)
 
 
     def _check_if_is_in_lab(self):
@@ -78,54 +89,6 @@ class ChameleonHost(ssh_host.SSHHost):
         """
         self._is_in_lab = (False if dnsname_mangler.is_ip_address(self.hostname)
                            else utils.host_is_in_lab_zone(self.hostname))
-
-
-    def _create_connection_through_tunnel(self):
-        """Creates Chameleon connection through SSH tunnel.
-
-        For developers to run server side test on corp device against
-        testing device on Google Test Network, it is required to use
-        SSH tunneling to access ports other than SSH port.
-
-        """
-        try:
-            self._local_port = utils.get_unused_port()
-            self._tunneling_process = self.create_ssh_tunnel(
-                    self._chameleon_port, self._local_port)
-
-            self._wait_for_connection_established()
-
-        # Always close tunnel when fail to create connection.
-        except:
-            logging.exception('Error in creating connection through tunnel.')
-            self._disconnect_tunneling()
-            raise
-
-
-    def _wait_for_connection_established(self):
-        """Wait for ChameleonConnection through tunnel being established."""
-
-        def _create_connection():
-            """Create ChameleonConnection.
-
-            @returns: True if success. False otherwise.
-
-            """
-            try:
-                self._chameleon_connection = chameleon.ChameleonConnection(
-                        'localhost', self._local_port)
-            except chameleon.ChameleonConnectionError:
-                logging.debug('Connection is not ready yet ...')
-                return False
-
-            logging.debug('Connection is up')
-            return True
-
-        success = utils.wait_for_value(
-            _create_connection, expected_value=True, timeout_sec=30)
-
-        if not success:
-            raise ChameleonHostError('Can not connect to Chameleon')
 
 
     def is_in_lab(self):
@@ -155,29 +118,6 @@ class ChameleonHost(ssh_host.SSHHost):
         # TODO(waihong): Add verify and repair logic which are required while
         # deploying to Cros Lab.
         return chameleon.ChameleonBoard(self._chameleon_connection, self)
-
-
-    def _disconnect_tunneling(self):
-        """Disconnect the SSH tunnel."""
-        if not self._tunneling_process:
-            return
-
-        if self._tunneling_process.poll() is None:
-            self._tunneling_process.terminate()
-            logging.debug(
-                    'chameleon_host terminated tunnel, pid %d',
-                    self._tunneling_process.pid)
-        else:
-            logging.debug(
-                    'chameleon_host tunnel pid %d terminated early, status %d',
-                    self._tunneling_process.pid,
-                    self._tunneling_process.returncode)
-
-
-    def close(self):
-        """Cleanup function when ChameleonHost is to be destroyed."""
-        self._disconnect_tunneling()
-        super(ChameleonHost, self).close()
 
 
 def create_chameleon_host(dut, chameleon_args):
