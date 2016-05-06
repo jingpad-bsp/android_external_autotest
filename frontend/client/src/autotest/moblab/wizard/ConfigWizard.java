@@ -88,7 +88,7 @@ public class ConfigWizard extends Composite {
       @Override
       public void onClick(ClickEvent event) {
         if (Window.confirm("Are you sure you want to reboot the Moblab device?")) {
-          MoblabRpcHelper.resetConfigData(new JsonRpcCallback() {
+          MoblabRpcHelper.rebootMoblab(new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
               NotifyManager.getInstance().showMessage("Reboot command has been issued.");
@@ -130,7 +130,6 @@ public class ConfigWizard extends Composite {
   }
 
   public void onFinishEdit() {
-    // TODO(ntang): submit the result
     setMode(Mode.View);
   }
 

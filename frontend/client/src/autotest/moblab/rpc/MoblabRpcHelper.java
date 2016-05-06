@@ -57,6 +57,14 @@ public class MoblabRpcHelper {
   }
 
   /**
+   * Reboot Moblab device.
+   */
+  public static void rebootMoblab(final JsonRpcCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("reboot_moblab", null, callback);
+  }
+
+  /**
    * Fetches the server network information.
    */
   public static void fetchNetworkInfo(
