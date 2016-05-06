@@ -106,8 +106,13 @@ class graphics_WebGLPerformance(test.test):
         @param test_duration_secs: The test duration in seconds.
         @param fullscreen: Whether to run the test in fullscreen.
         """
-        self._test_duration_secs = test_duration_secs
+        # To avoid 0ms on fast machines like samus the workload was increased.
+        # Unfortunately that makes running on slow machines impractical without
+        # deviating from upstream too much.
+        if utils.get_gpu_family() == 'pinetrail':
+            raise error.TestNAError('Test is too slow to run regularly.')
 
+        self._test_duration_secs = test_duration_secs
         ext_paths = []
         if fullscreen:
             ext_paths.append(os.path.join(self.autodir, 'deps', 'graphics',
