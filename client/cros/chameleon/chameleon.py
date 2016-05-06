@@ -39,15 +39,20 @@ class ChameleonConnection(object):
 
     """
 
-    def __init__(self, hostname, port=CHAMELEON_PORT):
+    def __init__(self, hostname, port=CHAMELEON_PORT, proxy=None):
         """Constructs a ChameleonConnection.
 
         @param hostname: Hostname the chameleond process is running.
         @param port: Port number the chameleond process is listening on.
+        @param proxy: if the proxy is passed, we use it as chameleond_proxy,
+        or we create a server proxy using hostname and port.
 
         @raise ChameleonConnectionError if connection failed.
         """
-        self.chameleond_proxy = ChameleonConnection._create_server_proxy(
+        if proxy is not None:
+            self.chameleond_proxy = proxy
+        else:
+            self.chameleond_proxy = ChameleonConnection._create_server_proxy(
                 hostname, port)
 
 
