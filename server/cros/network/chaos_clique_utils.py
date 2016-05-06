@@ -1,4 +1,4 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -47,14 +47,14 @@ def allocate_webdriver_instance(lock_manager):
 
     @param lock_manager HostLockManager object.
 
-    @return string hostname of locked webdriver instance
+    @return An SSHHost object representing a locked webdriver instance.
     """
     afe = frontend.AFE(debug=True,
                        server=site_utils.get_global_afe_hostname())
-    webdriver_hostname = site_utils.lock_host_with_labels(afe, lock_manager,
-                                    labels=['webdriver'])
-    if webdriver_hostname is not None:
-        return webdriver_hostname
+    webdriver_host = hosts.SSHHost(site_utils.lock_host_with_labels(
+                        afe, lock_manager, labels=['webdriver']))
+    if webdriver_host is not None:
+        return webdriver_host
     logging.error("Unable to allocate VM instance")
     return None
 
@@ -66,8 +66,8 @@ def power_on_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    logging.debug('Powering on %s VM', instance)
-    power_on_cmd = 'VBoxManage startvm %s' % instance
+    logging.debug('Powering on %s VM', instance.hostname)
+    power_on_cmd = 'VBoxManage startvm %s' % instance.hostname
     master.run(power_on_cmd)
 
 
@@ -78,8 +78,8 @@ def power_off_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    logging.debug('Powering off %s VM', instance)
-    power_off_cmd = 'VBoxManage controlvm %s poweroff' % instance
+    logging.debug('Powering off %s VM', instance.hostname)
+    power_off_cmd = 'VBoxManage controlvm %s poweroff' % instance.hostname
     master.run(power_off_cmd)
 
 
