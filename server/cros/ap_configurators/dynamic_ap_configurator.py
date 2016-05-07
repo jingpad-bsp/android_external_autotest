@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Copyright 2016 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -238,11 +238,14 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         @param webdriver_hostname: locked webdriver instance
         @param webdriver_port: port of the webdriver server
 
-        @returns a string: the address of webdriver running on port.
+        @returns a string: the webdriver instance running on port.
 
         @raises TestError: Webdriver is not running.
         """
-        address = webdriver_hostname + '.cros'
+        if webdriver_hostname is 'localhost':
+            address = 'localhost'
+        else:
+            address = webdriver_hostname + '.cros'
         url = 'http://%s:%d/session' % (address, webdriver_port)
         req = urllib2.Request(url, '{"desiredCapabilities":{}}')
         try:
@@ -257,7 +260,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                 response = urllib2.urlopen(req)
                 logging.info('Webdriver connection established to server %s',
                             address)
-                return webdriver_hostname
+                return address
         except:
             err = 'Could not establish connection: %s', webdriver_hostname
             raise error.TestError(err)
@@ -655,10 +658,9 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         # Load the Auth extension
 
         webdriver_hostname = self.ap_spec.webdriver_hostname
-        webdriver_ready = self.check_webdriver_ready(webdriver_hostname,
+        webdriver_address = self.check_webdriver_ready(webdriver_hostname,
                                                      self._webdriver_port)
-        webdriver_server = webdriver_ready + '.cros'
-        if webdriver_server is None:
+        if webdriver_address is None:
             raise RuntimeError('Unable to connect to webdriver locally or '
                                'via the lab service.')
         extension_path = os.path.join(os.path.dirname(__file__),
@@ -668,7 +670,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         base64_ext = (binascii.b2a_base64(f.read()).strip())
         base64_extensions.append(base64_ext)
         f.close()
-        webdriver_url = ('http://%s:%d' % (webdriver_server,
+        webdriver_url = ('http://%s:%d' % (webdriver_address,
                                            self._webdriver_port))
         capabilities = {'chromeOptions' : {'extensions' : base64_extensions}}
         self.driver = webdriver.Remote(webdriver_url, capabilities)
