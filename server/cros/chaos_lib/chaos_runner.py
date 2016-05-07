@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import pprint
 import time
 
 import common
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import error, site_utils
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
@@ -22,6 +22,7 @@ from autotest_lib.server.hosts import adb_host
 
 # Webdriver master hostname
 MASTERNAME = 'chromeos3-chaosvmmaster.cros.corp.google.com'
+WEBDRIVER_PORT = 9515
 
 
 class ChaosRunner(object):
@@ -92,7 +93,7 @@ class ChaosRunner(object):
                     break
                 elif len(networks) >= ap_constants.MAX_SSID_COUNT:
                     raise error.TestError(
-                        'Probably someone is already running a'
+                        'Probably someone is already running a '
                         'chaos test?!')
 
             if conn_worker is not None:
@@ -101,7 +102,14 @@ class ChaosRunner(object):
                 conn_worker.prepare_work_client(work_client_machine)
 
             webdriver_instance = utils.allocate_webdriver_instance(lock_manager)
-            self._ap_spec._webdriver_hostname = webdriver_instance
+            if not site_utils.host_is_in_lab_zone(webdriver_instance.hostname):
+                self._ap_spec._webdriver_hostname = webdriver_instance
+            else:
+                # If in the lab then port forwarding must be done so webdriver
+                # connection will be over localhost.
+                self._ap_spec._webdriver_hostname = 'localhost'
+                webdriver_tunnel = webdriver_instance.create_ssh_tunnel(
+                                                WEBDRIVER_PORT, WEBDRIVER_PORT)
 
             # If a test is cancelled or aborted the VM may be left on.  Always
             # turn of the VM to return it to a clean state.
