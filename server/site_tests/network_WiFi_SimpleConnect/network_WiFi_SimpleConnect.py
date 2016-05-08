@@ -8,7 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros.network import wifi_cell_test_base
 
-
 class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
     """Test that we can connect to router configured in various ways."""
     version = 1
@@ -34,8 +33,7 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                         router_caps:
                     raise error.TestNAError('Router does not have AC support')
             self.context.configure(router_conf)
-            self.context.router.start_capture(
-                    router_conf.frequency,
+            self.context.capture_host.start_capture(router_conf.frequency,
                     ht_type=router_conf.ht_packet_capture_mode)
             client_conf.ssid = self.context.router.get_ssid()
             assoc_result = self.context.assert_connect_wifi(client_conf)
@@ -60,7 +58,6 @@ class network_WiFi_SimpleConnect(wifi_cell_test_base.WiFiCellTestBase):
                         units='seconds',
                         higher_is_better=False,
                         graph=router_conf.perf_loggable_description)
-
             self.context.client.shill.delete_entries_for_ssid(client_conf.ssid)
             self.context.router.deconfig()
-            self.context.router.stop_capture()
+            self.context.capture_host.stop_capture()
