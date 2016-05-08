@@ -22,11 +22,7 @@ class BoardLabel(base_label.StringPrefixLabel):
 
     # pylint: disable=missing-docstring
     def generate_labels(self, host):
-        board = host.get_board_name()
-        board_os = host.get_os_type()
-        # Android boards could have a brillo OS so to differentiate between
-        # the two, we're going to include the os with the board.
-        return ['-'.join([board_os, board])]
+        return [host.get_board_name()]
 
 
 class CameraHalLabel(base_label.BaseLabel):
