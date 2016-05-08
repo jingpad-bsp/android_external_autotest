@@ -67,14 +67,14 @@ class network_WiFi_SetOptionalDhcpProperties(
         with client.set_dhcp_property(self.HOSTNAME_PROPERTY, self.HOSTNAME_VALUE):
             with client.set_dhcp_property(self.VENDORCLASS_PROPERTY,
                                           self.VENDORCLASS_VALUE):
-                self.context.router.start_capture(
-                    configuration.frequency,
-                    ht_type=configuration.ht_packet_capture_mode)
+                self.context.capture_host.start_capture(
+                        configuration.frequency,
+                        ht_type=configuration.ht_packet_capture_mode)
                 assoc_params = xmlrpc_datatypes.AssociationParameters()
                 assoc_params.ssid = self.context.router.get_ssid(instance=0)
                 self.context.assert_connect_wifi(assoc_params)
                 self.context.assert_ping_from_dut()
-                results = self.context.router.stop_capture()
+                results = self.context.capture_host.stop_capture()
         if len(results) != 1:
           raise error.TestError('Expected to generate one packet '
                                 'capture but got %d captures instead.' %
