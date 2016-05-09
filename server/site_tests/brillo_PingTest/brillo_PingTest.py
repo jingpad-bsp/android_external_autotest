@@ -6,6 +6,7 @@ import logging
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
