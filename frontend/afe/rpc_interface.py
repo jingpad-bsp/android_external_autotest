@@ -1,4 +1,4 @@
-# pylint: disable=C0111
+# pylint: disable-msg=C0111
 
 """\
 Functions to expose over the RPC interface.
@@ -800,6 +800,91 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
         client_control_file=client_control_file, profile_only=profile_only,
         upload_kernel_config=upload_kernel_config)
     return cf_info
+
+
+def create_parameterized_job(name, priority, test, parameters, kernel=None,
+                             label=None, profilers=(), profiler_parameters=None,
+                             use_container=False, profile_only=None,
+                             upload_kernel_config=False, hosts=(),
+                             meta_hosts=(), one_time_hosts=(),
+                             atomic_group_name=None, synch_count=None,
+                             is_template=False, timeout=None,
+                             timeout_mins=None, max_runtime_mins=None,
+                             run_verify=False, email_list='', dependencies=(),
+                             reboot_before=None, reboot_after=None,
+                             parse_failed_repair=None, hostless=False,
+                             keyvals=None, drone_set=None, run_reset=True,
+                             require_ssp=None):
+    """
+    Creates and enqueues a parameterized job.
+
+    Most parameters a combination of the parameters for generate_control_file()
+    and create_job(), with the exception of:
+
+    @param test name or ID of the test to run
+    @param parameters a map of parameter name ->
+                          tuple of (param value, param type)
+    @param profiler_parameters a dictionary of parameters for the profilers:
+                                   key: profiler name
+                                   value: dict of param name -> tuple of
+                                                                (param value,
+                                                                 param type)
+    """
+    # Save the values of the passed arguments here. What we're going to do with
+    # them is pass them all to rpc_utils.get_create_job_common_args(), which
+    # will extract the subset of these arguments that apply for
+    # rpc_utils.create_job_common(), which we then pass in to that function.
+    args = locals()
+
+    # Set up the parameterized job configs
+    test_obj = models.Test.smart_get(test)
+    control_type = test_obj.test_type
+
+    try:
+        label = models.Label.smart_get(label)
+    except models.Label.DoesNotExist:
+        label = None
+
+    kernel_objs = models.Kernel.create_kernels(kernel)
+    profiler_objs = [models.Profiler.smart_get(profiler)
+                     for profiler in profilers]
+
+    parameterized_job = models.ParameterizedJob.objects.create(
+            test=test_obj, label=label, use_container=use_container,
+            profile_only=profile_only,
+            upload_kernel_config=upload_kernel_config)
+    parameterized_job.kernels.add(*kernel_objs)
+
+    for profiler in profiler_objs:
+        parameterized_profiler = models.ParameterizedJobProfiler.objects.create(
+                parameterized_job=parameterized_job,
+                profiler=profiler)
+        profiler_params = profiler_parameters.get(profiler.name, {})
+        for name, (value, param_type) in profiler_params.iteritems():
+            models.ParameterizedJobProfilerParameter.objects.create(
+                    parameterized_job_profiler=parameterized_profiler,
+                    parameter_name=name,
+                    parameter_value=value,
+                    parameter_type=param_type)
+
+    try:
+        for parameter in test_obj.testparameter_set.all():
+            if parameter.name in parameters:
+                param_value, param_type = parameters.pop(parameter.name)
+                parameterized_job.parameterizedjobparameter_set.create(
+                        test_parameter=parameter, parameter_value=param_value,
+                        parameter_type=param_type)
+
+        if parameters:
+            raise Exception('Extra parameters remain: %r' % parameters)
+
+        return rpc_utils.create_job_common(
+                parameterized_job=parameterized_job.id,
+                control_type=control_type,
+                **rpc_utils.get_create_job_common_args(args))
+    except:
+        parameterized_job.delete()
+        raise
 
 
 def create_job_page_handler(name, priority, control_file, control_type,

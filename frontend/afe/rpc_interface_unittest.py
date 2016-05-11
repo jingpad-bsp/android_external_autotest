@@ -7,10 +7,11 @@ import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
-from autotest_lib.frontend.afe import model_logic
+from autotest_lib.frontend.afe import model_logic, model_attributes
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.server import frontend
@@ -383,6 +384,56 @@ class RpcInterfaceTest(unittest.TestCase,
         task = tasks[0]
         self.assertEquals(task['task'], models.SpecialTask.Task.REPAIR)
         self.assertEquals(task['requested_by'], 'autotest_system')
+
+
+    def test_parameterized_job(self):
+        global_config.global_config.override_config_value(
+                'AUTOTEST_WEB', 'parameterized_jobs', 'True')
+
+        string_type = model_attributes.ParameterTypes.STRING
+
+        test = models.Test.objects.create(
+                name='test', test_type=control_data.CONTROL_TYPE.SERVER)
+        test_parameter = test.testparameter_set.create(name='key')
+        profiler = models.Profiler.objects.create(name='profiler')
+
+        kernels = ({'version': 'version', 'cmdline': 'cmdline'},)
+        profilers = ('profiler',)
+        profiler_parameters = {'profiler': {'key': ('value', string_type)}}
+        job_parameters = {'key': ('value', string_type)}
+
+        job_id = rpc_interface.create_parameterized_job(
+                name='job', priority=priorities.Priority.DEFAULT, test='test',
+                parameters=job_parameters, kernel=kernels, label='label1',
+                profilers=profilers, profiler_parameters=profiler_parameters,
+                profile_only=False, hosts=('host1',))
+        parameterized_job = models.Job.smart_get(job_id).parameterized_job
+
+        self.assertEqual(parameterized_job.test, test)
+        self.assertEqual(parameterized_job.label, self.labels[0])
+        self.assertEqual(parameterized_job.kernels.count(), 1)
+        self.assertEqual(parameterized_job.profilers.count(), 1)
+
+        kernel = models.Kernel.objects.get(**kernels[0])
+        self.assertEqual(parameterized_job.kernels.all()[0], kernel)
+        self.assertEqual(parameterized_job.profilers.all()[0], profiler)
+
+        parameterized_profiler = models.ParameterizedJobProfiler.objects.get(
+                parameterized_job=parameterized_job, profiler=profiler)
+        profiler_parameters_obj = (
+                models.ParameterizedJobProfilerParameter.objects.get(
+                parameterized_job_profiler=parameterized_profiler))
+        self.assertEqual(profiler_parameters_obj.parameter_name, 'key')
+        self.assertEqual(profiler_parameters_obj.parameter_value, 'value')
+        self.assertEqual(profiler_parameters_obj.parameter_type, string_type)
+
+        self.assertEqual(
+                parameterized_job.parameterizedjobparameter_set.count(), 1)
+        parameters_obj = (
+                parameterized_job.parameterizedjobparameter_set.all()[0])
+        self.assertEqual(parameters_obj.test_parameter, test_parameter)
+        self.assertEqual(parameters_obj.parameter_value, 'value')
+        self.assertEqual(parameters_obj.parameter_type, string_type)
 
 
     def _modify_host_helper(self, on_shard=False, host_on_shard=False):

@@ -1,11 +1,11 @@
 #!/usr/bin/python
-# pylint: disable=C0111
 
+import datetime
 import unittest
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.frontend.afe import models
+from autotest_lib.frontend.afe import models, model_attributes, model_logic
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import control_data
 
@@ -214,6 +214,39 @@ class ModelWithInvalidTest(unittest.TestCase,
 
         models.Job.objects.all().delete()
         self.assertEqual(0, models.Job.objects.all().count())
+
+
+class KernelTest(unittest.TestCase, frontend_test_utils.FrontendTestMixin):
+    def setUp(self):
+        self._frontend_common_setup()
+
+
+    def tearDown(self):
+        self._frontend_common_teardown()
+
+
+    def test_create_kernels_none(self):
+        self.assertEqual(None, models.Kernel.create_kernels(None))
+
+
+    def test_create_kernels(self):
+        self.god.stub_function(models.Kernel, '_create')
+
+        num_kernels = 3
+        kernel_list = [object() for _ in range(num_kernels)]
+        result = [object() for _ in range(num_kernels)]
+
+        for kernel, response in zip(kernel_list, result):
+            models.Kernel._create.expect_call(kernel).and_return(response)
+        self.assertEqual(result, models.Kernel.create_kernels(kernel_list))
+        self.god.check_playback()
+
+
+    def test_create(self):
+        kernel = models.Kernel._create({'version': 'version'})
+        self.assertEqual(kernel.version, 'version')
+        self.assertEqual(kernel.cmdline, '')
+        self.assertEqual(kernel, models.Kernel._create({'version': 'version'}))
 
 
 class ParameterizedJobTest(unittest.TestCase,
