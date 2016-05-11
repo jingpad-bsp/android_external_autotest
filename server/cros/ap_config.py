@@ -79,6 +79,7 @@ class AP(object):
     CONF_CHANNEL = 'channel'
     CONF_CLASS = 'class_name'
     CONF_ADMIN = 'admin_url'
+    CONF_ADMIN_IP = 'admin_ip'
 
 
     def __init__(self, bss, config):
@@ -182,6 +183,11 @@ class AP(object):
     def get_admin(self):
         """@return string admin for AP from config file"""
         return self.ap_config.get(self.bss, self.CONF_ADMIN)
+
+
+    def get_admin_ip(self):
+        """@return admin IP for AP from config file"""
+        return self.ap_config.get(self.bss, self.CONF_ADMIN_IP)
 
 
     def power_off(self):

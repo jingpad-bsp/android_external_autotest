@@ -51,7 +51,9 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
                 rpm_frontend_server, verbose=False)
 
         # Load the data for the config file
-        self.admin_interface_url = ap_config.get_admin()
+        # The url is the actual IP.
+        # TODO: Revert this after setting up local dns in chaos.
+        self.admin_interface_url = ap_config.get_admin_ip()
         self.class_name = ap_config.get_class()
         self._short_name = ap_config.get_model()
         self.mac_address = ap_config.get_wan_mac()
