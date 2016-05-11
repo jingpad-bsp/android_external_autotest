@@ -94,7 +94,7 @@ class TestStationHost(base_classes.Host):
         return self._is_host_moblab
 
 
-    def get_tmp_dir(self, parent='/tmp'):
+    def get_tmp_dir(self, parent='/var/tmp'):
         """Return pathname of a temporary directory on the test station.
 
         If parent folder is supplied and the teststation is a moblab.  Then
