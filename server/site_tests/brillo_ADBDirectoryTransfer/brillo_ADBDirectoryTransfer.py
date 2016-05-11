@@ -44,11 +44,6 @@ class brillo_ADBDirectoryTransfer(test.test):
         host.send_file(self.temp_dir, device_temp_dir, delete_dest=True)
         host.get_file(device_temp_dir, return_temp_dir, delete_dest=True)
 
-        # TODO: Remove when b/28071719 is fixed
-        os.chmod(return_temp_dir, 0o700)
-        os.chmod(return_file_a, 0o600)
-        os.chmod(return_file_b, 0o600)
-
         if not filecmp.cmp(self.file_a, return_file_a, shallow=False) or \
            not filecmp.cmp(self.file_b, return_file_b, shallow=False):
             raise error.TestFail('One of the files changed in transit')

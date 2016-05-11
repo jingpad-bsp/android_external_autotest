@@ -811,7 +811,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @returns a dict of the file permissions and symlink.
         """
         # Grab file info.
-        file_info = self.run_output('ls -l %s' % dest)
+        file_info = self.run_output('ls -ld %s' % dest)
         symlink = None
         perms = 0
         match = re.match(FILE_INFO_REGEX, file_info)
@@ -864,6 +864,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         # If we want to preserve symlinks, just create it here, otherwise pull
         # the file off the device.
+        #
+        # TODO(sadmac): Directories containing symlinks won't behave as
+        # expected.
         if preserve_symlinks and source_info['symlink']:
             os.symlink(source_info['symlink'], dest)
         else:
@@ -876,8 +879,31 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
                 logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
+        for root, dirs, files in os.walk(dest):
+            rel_root = os.path.relpath(root, dest)
+
+            def process(item, default_perm):
+                info = self._get_file_info(os.path.join(source, rel_root, item))
+
+                if info['perms'] != 0:
+                    target = os.path.join(root, item)
+                    if preserve_perm:
+                        os.chmod(target, info['perms'])
+                    else:
+                        os.chmod(target, default_perm)
+
+            for f in files:
+                process(f, 0o600)
+
+            for d in dirs:
+                process(f, 0o700)
+
         if preserve_perm:
             os.chmod(dest, source_info['perms'])
+        elif os.path.isdir(dest):
+            os.chmod(dest, 0o700)
+        else:
+            os.chmod(dest, 0o600)
 
 
     def get_release_version(self):
