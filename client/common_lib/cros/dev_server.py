@@ -96,6 +96,21 @@ class MarkupStripper(HTMLParser.HTMLParser):
         return ''.join(self.fed)
 
 
+def _strip_http_message(message):
+    """Strip the HTTP marker from the an HTTP message.
+
+    @param message: A string returned by an HTTP call.
+
+    @return: A string with HTTP marker being stripped.
+    """
+    strip = MarkupStripper()
+    try:
+        strip.feed(message.decode('utf_32'))
+    except UnicodeDecodeError:
+        strip.feed(message)
+    return strip.get_data()
+
+
 def _get_image_storage_server():
     return CONFIG.get_config_value('CROS', 'image_storage_server', type=str)
 
@@ -152,12 +167,7 @@ def remote_devserver_call(timeout_min=30):
                 return method(*args, **kwargs)
             except urllib2.HTTPError as e:
                 error_markup = e.read()
-                strip = MarkupStripper()
-                try:
-                    strip.feed(error_markup.decode('utf_32'))
-                except UnicodeDecodeError:
-                    strip.feed(error_markup)
-                raise DevServerException(strip.get_data())
+                raise DevServerException(_strip_http_message(error_markup))
 
         return wrapper
 
@@ -763,10 +773,17 @@ class ImageServerBase(DevServer):
             autotest_stats.Counter(stats_str).increment()
             raise
         response = result.stdout
+
+        # If the curl command's returned HTTP response contains certain
+        # exception string, raise the DevServerException of the response.
+        if 'DownloaderException' in response:
+            raise DevServerException(_strip_http_message(response))
+
         if readline:
             # Remove line terminators and trailing whitespace
             response = response.splitlines()
             return [line.rstrip() for line in response]
+
         return response
 
 
@@ -820,12 +837,7 @@ class ImageServerBase(DevServer):
                 return self.run_call(call) == 'True'
             except urllib2.HTTPError as e:
                 error_markup = e.read()
-                strip = MarkupStripper()
-                try:
-                    strip.feed(error_markup.decode('utf_32'))
-                except UnicodeDecodeError:
-                    strip.feed(error_markup)
-                raise DevServerException(strip.get_data())
+                raise DevServerException(_strip_http_message(error_markup))
             except urllib2.URLError:
                 # Could be connection issue, retry it.
                 # For example: <urlopen error [Errno 111] Connection refused>
