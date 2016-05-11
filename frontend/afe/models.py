@@ -1,4 +1,4 @@
-# pylint: disable=C0111
+# pylint: disable-msg=C0111
 
 import logging
 from datetime import datetime
@@ -1036,6 +1036,51 @@ class AclGroup(dbmodels.Model, model_logic.ModelExtensions):
         return unicode(self.name)
 
 
+class Kernel(dbmodels.Model):
+    """
+    A kernel configuration for a parameterized job
+    """
+    version = dbmodels.CharField(max_length=255)
+    cmdline = dbmodels.CharField(max_length=255, blank=True)
+
+    @classmethod
+    def create_kernels(cls, kernel_list):
+        """Creates all kernels in the kernel list.
+
+        @param cls: Implicit class object.
+        @param kernel_list: A list of dictionaries that describe the kernels,
+            in the same format as the 'kernel' argument to
+            rpc_interface.generate_control_file.
+        @return A list of the created kernels.
+        """
+        if not kernel_list:
+            return None
+        return [cls._create(kernel) for kernel in kernel_list]
+
+
+    @classmethod
+    def _create(cls, kernel_dict):
+        version = kernel_dict.pop('version')
+        cmdline = kernel_dict.pop('cmdline', '')
+
+        if kernel_dict:
+            raise Exception('Extraneous kernel arguments remain: %r'
+                            % kernel_dict)
+
+        kernel, _ = cls.objects.get_or_create(version=version,
+                                              cmdline=cmdline)
+        return kernel
+
+
+    class Meta:
+        """Metadata for class Kernel."""
+        db_table = 'afe_kernels'
+        unique_together = ('version', 'cmdline')
+
+    def __unicode__(self):
+        return u'%s %s' % (self.version, self.cmdline)
+
+
 class ParameterizedJob(dbmodels.Model):
     """
     Auxiliary configuration for a parameterized job.
@@ -1046,6 +1091,8 @@ class ParameterizedJob(dbmodels.Model):
     profile_only = dbmodels.BooleanField(default=False)
     upload_kernel_config = dbmodels.BooleanField(default=False)
 
+    kernels = dbmodels.ManyToManyField(
+            Kernel, db_table='afe_parameterized_job_kernels')
     profilers = dbmodels.ManyToManyField(
             Profiler, through='ParameterizedJobProfiler')
 
@@ -1088,6 +1135,46 @@ class ParameterizedJobProfiler(dbmodels.Model):
         """Metedata for class ParameterizedJobProfiler."""
         db_table = 'afe_parameterized_jobs_profilers'
         unique_together = ('parameterized_job', 'profiler')
+
+
+class ParameterizedJobProfilerParameter(dbmodels.Model):
+    """
+    A parameter for a profiler in a parameterized job
+    """
+    parameterized_job_profiler = dbmodels.ForeignKey(ParameterizedJobProfiler)
+    parameter_name = dbmodels.CharField(max_length=255)
+    parameter_value = dbmodels.TextField()
+    parameter_type = dbmodels.CharField(
+            max_length=8, choices=model_attributes.ParameterTypes.choices())
+
+    class Meta:
+        """Metadata for class ParameterizedJobProfilerParameter."""
+        db_table = 'afe_parameterized_job_profiler_parameters'
+        unique_together = ('parameterized_job_profiler', 'parameter_name')
+
+    def __unicode__(self):
+        return u'%s - %s' % (self.parameterized_job_profiler.profiler.name,
+                             self.parameter_name)
+
+
+class ParameterizedJobParameter(dbmodels.Model):
+    """
+    Parameters for a parameterized job
+    """
+    parameterized_job = dbmodels.ForeignKey(ParameterizedJob)
+    test_parameter = dbmodels.ForeignKey(TestParameter)
+    parameter_value = dbmodels.TextField()
+    parameter_type = dbmodels.CharField(
+            max_length=8, choices=model_attributes.ParameterTypes.choices())
+
+    class Meta:
+        """Metadata for class ParameterizedJobParameter."""
+        db_table = 'afe_parameterized_job_parameters'
+        unique_together = ('parameterized_job', 'test_parameter')
+
+    def __unicode__(self):
+        return u'%s - %s' % (self.parameterized_job.job().name,
+                             self.test_parameter.name)
 
 
 class JobManager(model_logic.ExtendedManager):
