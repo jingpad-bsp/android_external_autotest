@@ -3,8 +3,7 @@
 # found in the LICENSE file.
 
 import common
-from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import utils
+from autotest_lib.server import test
 
 class infra_FirmwareAutoupdate(test.test):
     """
@@ -29,7 +28,6 @@ class infra_FirmwareAutoupdate(test.test):
     """
     version = 1
 
-    def run_once(self, host=None):
-        utils.run('chromeos-firmwareupdate --mode=autoupdate',
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+    def run_once(self, host):
+        host.run('chromeos-firmwareupdate --mode=autoupdate')
+        host.reboot()
