@@ -8,7 +8,6 @@ PURPOSE = "Verify that YouTube Flash video works"
 CRITERIA = """
 This test will fail if YouTube Flash video fails to play.
 """
-ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
