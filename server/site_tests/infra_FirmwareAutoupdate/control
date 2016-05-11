@@ -5,7 +5,7 @@
 AUTHOR = "Chrome OS Team"
 NAME = "infra_FirmwareAutoupdate"
 TIME = "SHORT"
-TEST_TYPE = "client"
+TEST_TYPE = "server"
 
 DOC = """
 This is an administrative procedure used to update the RW firmware
@@ -14,4 +14,8 @@ on a test device in the lab by running the following command:
     chromeos-firmwareupdate --mode=autoupdate
 """
 
-job.run_test('infra_FirmwareAutoupdate')
+def run(machine):
+    job.run_test('infra_FirmwareAutoupdate',
+                 host=hosts.create_host(machine))
+
+parallel_simple(run, machines)
