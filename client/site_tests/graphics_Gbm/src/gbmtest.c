@@ -37,8 +37,6 @@ static int fd;
 static struct gbm_device *gbm;
 
 static const uint32_t format_list[] = {
-	GBM_BO_FORMAT_XRGB8888,
-	GBM_BO_FORMAT_ARGB8888,
 	GBM_FORMAT_C8,
 	GBM_FORMAT_RGB332,
 	GBM_FORMAT_BGR233,
