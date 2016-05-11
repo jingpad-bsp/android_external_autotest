@@ -143,6 +143,7 @@ suite:wifi_perf
 suite:wifi_perf_bcm4371
 suite:wifi_release
 suite:wifi_stress
+suite:wifi_tdls_cast
 suite:wifi_update_router
 suite:wificell-pre-cq
 suite:wifichaos
