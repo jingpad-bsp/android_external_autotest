@@ -97,9 +97,9 @@ class SystemdProcess(Process):
 
     def exists(self):
         """Checks if the service is present in systemd configuration."""
-        cmd = 'systemctl show -p LoadState %s.service' % self._service_name
+        cmd = 'systemctl show -p ActiveState %s.service' % self._service_name
         output = utils.system_output(cmd, ignore_status=True).strip()
-        return output == 'LoadState=loaded'
+        return output == 'ActiveState=active'
 
     def restart(self):
         """Restarts the process via systemctl."""
@@ -147,7 +147,8 @@ class security_ASLR(test.test):
     _PROCESS_LIST = [UpstartProcess('chrome', 'ui', parent='session_manager'),
                      UpstartProcess('debugd', 'debugd'),
                      UpstartProcess('update_engine', 'update-engine'),
-                     SystemdProcess('update_engine', 'update-engine')]
+                     SystemdProcess('update_engine', 'update-engine'),
+                     SystemdProcess('systemd-journald', 'systemd-journald'),]
 
 
     def get_processes_to_test(self):
