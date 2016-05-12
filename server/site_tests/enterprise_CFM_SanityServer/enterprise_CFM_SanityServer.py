@@ -16,6 +16,11 @@ class enterprise_CFM_SanityServer(test.test):
         self.client = host
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
+
+        if self.client.servo:
+            self.client.servo.switch_usbkey('dut')
+            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+
         autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition',
                                                 check_client_result=True)
         autotest.Autotest(self.client).run_test('enterprise_CFM_Sanity',
