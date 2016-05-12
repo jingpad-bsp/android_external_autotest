@@ -26,12 +26,14 @@ gpu_list = [
 ]
 
 _PROBLEM_STATUS = ['Fail', 'Flaky']
+_UNKNOWN_STATUS = ['NotSupported', 'Skipped', 'Unknown', None]
 
 status_dict = {
     'Fail': 'FAIL ',
     'Flaky': 'flaky',
     'Pass': '  +  ',
     'NotSupported': ' --- ',
+    'Skipped': ' === ',
     'QualityWarning': 'qw   ',
     'CompatibilityWarning': 'cw   ',
     'Unknown': ' ??? ',
@@ -57,8 +59,18 @@ def load_expectations(json_file):
 
 
 def get_problem_count(dict, gpu):
-  count = 0
   if gpu in dict:
+    if not dict[gpu]:
+      return None
+    count = 0
+    for status in dict[gpu]:
+      if status not in _UNKNOWN_STATUS:
+        count = count + len((dict[gpu])[status])
+    # If every result has an unknown status then don't return a count.
+    if count < 1:
+      return None
+    count = 0
+    # Return counts of truly problematic statuses.
     for status in _PROBLEM_STATUS:
       if status in dict[gpu]:
         count = count + len((dict[gpu])[status])
@@ -112,7 +124,11 @@ print offset
 text_count = ''
 text_del = ''
 for gpu in gpu_list:
-  text_count = '%s%5d    ' % (text_count, get_problem_count(dict, gpu))
+  problem_count = get_problem_count(dict, gpu)
+  if problem_count is None:
+    text_count = '%s  %s  ' % (text_count, status_dict[problem_count])
+  else:
+    text_count = '%s%5d    ' % (text_count, problem_count)
   text_del = '%s=========' % text_del
 text_count = '%s  Total failure count (Fail + Flaky)' % text_count
 print text_del
