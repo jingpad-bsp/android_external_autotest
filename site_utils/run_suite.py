@@ -480,9 +480,8 @@ class LogLink(object):
         if self.testname in self._SKIP_RETRY_DASHBOARD:
             return None
 
-        return GetBuildbotStepLink(
-                'Flaky test dashboard view for test %s' %
-                self.testname, WMATRIX_RETRY_URL % self.testname)
+        return GetBuildbotStepLink('[Flake-Dashboard]: %s' % self.testname,
+                                   WMATRIX_RETRY_URL % self.testname)
 
 
 class Timings(object):
