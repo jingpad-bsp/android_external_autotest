@@ -112,6 +112,9 @@ BRILLO_PROVISION_CMD = (
         'ANDROID_PROVISION_VENDOR_PARTITIONS=%(vendor_partition_dir)s '
         '%(vendor_partition_dir)s/provision-device')
 
+# Default timeout in minutes for fastboot commands.
+DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN = 10
+
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
 
@@ -290,6 +293,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Refer to _device_run method for docstring for parameters.
         """
         return self._device_run(FASTBOOT_CMD, command, **kwargs)
+
+
+    # pylint: disable=missing-docstring
+    @retry.retry(error.AutoservRunError,
+                 timeout_min=DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN)
+    def _fastboot_run_with_retry(self, command, **kwargs):
+        """Runs an fastboot command with retry.
+
+        This command will launch on the test station.
+
+        Refer to _device_run method for docstring for parameters.
+        """
+        return self.fastboot_run(command, **kwargs)
 
 
     def _device_run(self, function, command, shell=False,
@@ -1235,7 +1251,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self.ensure_bootloader_mode()
 
             if wipe:
-                self.fastboot_run('-w')
+                self._fastboot_run_with_retry('-w')
 
             # Get all *.img file in the build_local_path.
             list_file_cmd = 'ls -d %s' % os.path.join(build_local_path, '*.img')
@@ -1257,8 +1273,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 if image not in all_images:
                     continue
                 logging.info('Flashing %s...', image_file)
-                self.fastboot_run('-S 256M flash %s %s' %
-                                  (image[:-4], image_file))
+                self._fastboot_run_with_retry('-S 256M flash %s %s' %
+                                              (image[:-4], image_file))
                 if image == android_utils.AndroidImageFiles.BOOTLOADER:
                     self.fastboot_run('reboot-bootloader')
                     self.wait_up(command=FASTBOOT_CMD)
