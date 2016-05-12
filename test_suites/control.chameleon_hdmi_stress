@@ -33,7 +33,8 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # filing bugs on tests that are a part of this suite. If left unspecified
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'Cr-OS-Kernel-Graphics', 'Chameleon'],
+    'labels': ['OS-Chrome', 'Chameleon'],
+    'components': ['OS>Kernel>Graphics'],
     'owner': 'kalin@chromium.org',
     'status': None,
     'summary': None,
