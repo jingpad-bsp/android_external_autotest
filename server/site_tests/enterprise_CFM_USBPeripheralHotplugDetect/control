@@ -19,9 +19,8 @@ a device as a hotrod device and hotplugs USB peripherals. After hotplug, it
 checks and verifies that both CrOS and Hotrod see the same set of Audio / Video
 peripherals. Clears the TPM again before test exits.
 
-Test relies on JMI logs to be made available on the device under test. Once the
-device is enrolled and OOBE is detected, webrtc should start creating JMI data
-and save a copy of this data log in the /tmp directory.
+Client side part of the test uses telemetry to query for peripherals detected by
+the hotrod app.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -29,7 +28,11 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
-    job.run_test('enterprise_CFM_USBPeripheralHotplugDetect', host=host)
+    peripheral_whitelist_dict = {'0b0e:0412': 'Jabra SPEAK 410',
+                                 '046d:082d': 'HD Pro Webcam C920 (046d:082d)'}
+    job.run_test('enterprise_CFM_USBPeripheralHotplugDetect',
+                 host=host,
+                 peripheral_whitelist_dict=peripheral_whitelist_dict)
 
 
 parallel_simple(run_test, machines)
