@@ -236,21 +236,24 @@ def process_logs(logs):
     if text:
       print '================================================================'
       print 'Loading %s...' % log.name
-      _, gpu, filter, hasty = get_metadata(text)
-      tests = get_all_tests(text)
-      print 'Found %d test results.' % len(tests)
-      if all_passing(tests):
-        # Delete logs that don't contain failures.
-        os.remove(log.name)
-      else:
-        # GPU family goes first in path to simplify adding/deleting families.
-        output_path = os.path.join(_EXPECTATIONS_DIR, gpu)
-        if not os.access(output_path, os.R_OK):
-          os.makedirs(output_path)
-        expectation_path = os.path.join(output_path, filter)
-        if hasty:
-          expectation_path = os.path.join(output_path, filter + '.hasty')
-        merge_expectation_list(expectation_path, tests)
+      try:
+        _, gpu, filter, hasty = get_metadata(text)
+        tests = get_all_tests(text)
+        print 'Found %d test results.' % len(tests)
+        if all_passing(tests):
+          # Delete logs that don't contain failures.
+          os.remove(log.name)
+        else:
+          # GPU family goes first in path to simplify adding/deleting families.
+          output_path = os.path.join(_EXPECTATIONS_DIR, gpu)
+          if not os.access(output_path, os.R_OK):
+            os.makedirs(output_path)
+          expectation_path = os.path.join(output_path, filter)
+          if hasty:
+            expectation_path = os.path.join(output_path, filter + '.hasty')
+          merge_expectation_list(expectation_path, tests)
+      except:
+        print 'Error processing %s' % log.name
 
 
 JOB_TAGS_ALL = (
