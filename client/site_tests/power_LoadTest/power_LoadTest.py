@@ -4,6 +4,7 @@
 
 import collections, logging, numpy, os, tempfile, time
 from autotest_lib.client.bin import utils, test
+from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import chrome
@@ -41,7 +42,7 @@ class power_LoadTest(test.test):
                  scroll_loop='false', scroll_interval_ms='10000',
                  scroll_by_pixels='600', test_low_batt_p=3,
                  verbose=True, force_wifi=False, wifi_ap='', wifi_sec='none',
-                 wifi_pw='', wifi_timeout=60, tasks='', kblight_percent=10,
+                 wifi_pw='', wifi_timeout=60, tasks='',
                  volume_level=10, mic_gain=10, low_batt_margin_p=2,
                  ac_ok=False, log_mem_bandwidth=False):
         """
@@ -61,7 +62,6 @@ class power_LoadTest(test.test):
         wifi_sec: the type of security for the wifi ap
         wifi_pw: password for the wifi ap
         wifi_timeout: The timeout for wifi configuration
-        kblight_percent: percent brightness of keyboard backlight
         volume_level: percent audio volume level
         mic_gain: percent audio microphone gain level
         low_batt_margin_p: percent low battery margin to be added to
@@ -92,7 +92,6 @@ class power_LoadTest(test.test):
         self._tasks = tasks.replace(' ','')
         self._backchannel = None
         self._shill_proxy = None
-        self._kblight_percent = kblight_percent
         self._volume_level = volume_level
         self._mic_gain = mic_gain
         self._ac_ok = ac_ok
@@ -212,12 +211,11 @@ class power_LoadTest(test.test):
         psr_t0 = self._get_psr_counter()
 
         try:
-            kblight = power_utils.KbdBacklight()
-            kblight.set(self._kblight_percent)
-            self._tmp_keyvals['percent_kbd_backlight'] = kblight.get()
+            self._keyboard_backlight = power_utils.KbdBacklight()
+            self._set_keyboard_backlight_level()
         except power_utils.KbdBacklightException as e:
             logging.info("Assuming no keyboard backlight due to :: %s", str(e))
-            kblight = None
+            self._keyboard_backlight = None
 
         measurements = \
             [power_status.SystemPower(self._power_status.battery_path)]
@@ -257,8 +255,8 @@ class power_LoadTest(test.test):
             # based on ambient light
             self._set_backlight_level()
             self._set_lightbar_level()
-            if kblight:
-                kblight.set(self._kblight_percent)
+            if self._keyboard_backlight:
+                self._set_keyboard_backlight_level()
             audio_helper.set_volume_levels(self._volume_level,
                                            self._mic_gain)
 
@@ -527,6 +525,24 @@ class power_LoadTest(test.test):
         return int(count) if count else None
 
 
+    def _has_light_sensor(self):
+        """
+        Determine if there is a light sensor on the board.
+
+        @returns True if this host has a light sensor or
+                 False if it does not.
+        """
+        # If the command exits with a failure status,
+        # we do not have a light sensor
+        cmd = 'check_powerd_config --ambient_light_sensor'
+        result = base_utils.run(cmd, ignore_status=True)
+        if result.exit_status:
+            logging.debug('Ambient light sensor not present')
+            return False
+        logging.debug('Ambient light sensor present')
+        return True
+
+
     def _is_network_iface_running(self, name):
         """
         Checks to see if the interface is running.
@@ -570,3 +586,61 @@ class power_LoadTest(test.test):
             energy_wh += keyval[duration_key] * keyval[avg_power_key] / 3600
             loop += 1
         return energy_wh
+
+
+    def _has_hover_detection(self):
+        """
+        Checks if hover is detected by the device.
+
+        Returns:
+            Returns True if the hover detection support is enabled.
+            Else returns false.
+        """
+
+        cmd = 'check_powerd_config --hover_detection'
+        result = base_utils.run(cmd, ignore_status=True)
+        if result.exit_status:
+            logging.debug('Hover not present')
+            return False
+        logging.debug('Hover present')
+        return True
+
+
+    def _set_keyboard_backlight_level(self):
+        """
+        Sets keyboard backlight based on light sensor and hover.
+        These values are based on UMA as mentioned in
+        https://bugs.chromium.org/p/chromium/issues/detail?id=603233#c10
+
+        ALS  | hover | keyboard backlight level
+        ---------------------------------------
+        No   | No    | default
+        ---------------------------------------
+        Yes  | No    | 40% of default
+        --------------------------------------
+        No   | Yes   | System with this configuration does not exist
+        --------------------------------------
+        Yes  | Yes   | 30% of default
+        --------------------------------------
+
+        Here default is no Ambient Light Sensor, no hover,
+        default always-on brightness level.
+        """
+
+        default_level = self._keyboard_backlight.get_default_level()
+        level_to_set = default_level
+        has_light_sensor = self._has_light_sensor()
+        has_hover = self._has_hover_detection()
+        # TODO(ravisadineni):if (crbug: 603233) becomes default
+        # change this to reflect it.
+        if has_light_sensor and has_hover:
+            level_to_set = (30 * default_level) / 100
+        elif has_light_sensor:
+            level_to_set = (40 * default_level) / 100
+        elif has_hover:
+            logging.warn('Device has hover but no light sensor')
+
+        logging.info('Setting keyboard backlight to %d', level_to_set)
+        self._keyboard_backlight.set_level(level_to_set)
+        self._tmp_keyvals['percent_kbd_backlight'] = \
+            self._keyboard_backlight.get_percent()
