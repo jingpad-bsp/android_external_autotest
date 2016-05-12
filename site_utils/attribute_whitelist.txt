@@ -128,6 +128,7 @@ suite:stress5
 suite:stress_experimental
 suite:telemetry_unit
 suite:tendo_experimental
+suite:toolchain-tests
 suite:touch
 suite:video
 suite:video_image_comparison_chameleon
