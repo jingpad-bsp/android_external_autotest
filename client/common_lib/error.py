@@ -237,11 +237,6 @@ class AutoservSshPermissionDeniedError(AutoservRunError):
     pass
 
 
-class AutoservVirtError(AutoservError):
-    """Vitualization related error"""
-    pass
-
-
 class AutoservUnsupportedError(AutoservError):
     """Error raised when you try to use an unsupported optional feature"""
     pass
