@@ -5,6 +5,7 @@ suite:arc-bvt-cq
 suite:arc-bvt-perbuild
 suite:arc-cts
 suite:arc-nightly
+suite:arc-weekly
 suite:au
 suite:audio
 suite:bluetooth
