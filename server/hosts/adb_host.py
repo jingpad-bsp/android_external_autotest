@@ -115,6 +115,10 @@ BRILLO_PROVISION_CMD = (
 # Default timeout in minutes for fastboot commands.
 DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN = 10
 
+# Default permissions for files/dirs copied from the device.
+_DEFAULT_FILE_PERMS = 0o600
+_DEFAULT_DIR_PERMS = 0o700
+
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
 
@@ -867,12 +871,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param preserve_symlinks: Try to preserve symlinks instead of
                                   transforming them into files/dirs on copy.
         """
-        # Stage the files on the test station.
-        tmp_dir = self.teststation.get_tmp_dir()
-        dest_path = os.path.join(tmp_dir, os.path.basename(source))
+        # Stage the files on the test station under teststation_temp_dir.
+        teststation_temp_dir = self.teststation.get_tmp_dir()
+        teststation_dest = os.path.join(teststation_temp_dir,
+                                        os.path.basename(source))
 
-        if delete_dest:
-            self.teststation.run('rm -rf %s' % dest)
+        # If dest is a directory, source will be put under it.
+        if os.path.isdir(dest):
+            receive_path = os.path.join(dest, os.path.basename(source))
+        else:
+            receive_path = dest
 
         source_info = {}
         if preserve_symlinks or preserve_perm:
@@ -886,40 +894,38 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if preserve_symlinks and source_info['symlink']:
             os.symlink(source_info['symlink'], dest)
         else:
-            self.adb_run('pull %s %s' % (source, dest_path))
+            self.adb_run('pull %s %s' % (source, teststation_temp_dir))
 
             # Copy over the file from the test station and clean up.
-            self.teststation.get_file(dest_path, dest)
+            self.teststation.get_file(teststation_dest, dest,
+                                      delete_dest=delete_dest)
             try:
-                self.teststation.run('rm -rf %s' % tmp_dir)
+                self.teststation.run('rm -rf %s' % teststation_temp_dir)
             except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-                logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+                logging.warn('failed to remove dir %s: %s',
+                             teststation_temp_dir, e)
 
-        for root, dirs, files in os.walk(dest):
-            rel_root = os.path.relpath(root, dest)
+        # Set the permissions of the received file/dirs.
+        if os.path.isdir(receive_path):
+            for root, _dirs, files in os.walk(receive_path):
+                def process(rel_path, default_perm):
+                    info = self._get_file_info(os.path.join(source, rel_path))
 
-            def process(item, default_perm):
-                info = self._get_file_info(os.path.join(source, rel_root, item))
+                    if info['perms'] != 0:
+                        target = os.path.join(receive_path, rel_path)
+                        if preserve_perm:
+                            os.chmod(target, info['perms'])
+                        else:
+                            os.chmod(target, default_perm)
 
-                if info['perms'] != 0:
-                    target = os.path.join(root, item)
-                    if preserve_perm:
-                        os.chmod(target, info['perms'])
-                    else:
-                        os.chmod(target, default_perm)
-
-            for f in files:
-                process(f, 0o600)
-
-            for d in dirs:
-                process(f, 0o700)
-
-        if preserve_perm:
-            os.chmod(dest, source_info['perms'])
-        elif os.path.isdir(dest):
-            os.chmod(dest, 0o700)
+                rel_root = os.path.relpath(root, receive_path)
+                process(rel_root, _DEFAULT_DIR_PERMS)
+                for f in files:
+                    process(os.path.join(rel_root, f), _DEFAULT_FILE_PERMS)
+        elif preserve_perm:
+            os.chmod(receive_path, source_info['perms'])
         else:
-            os.chmod(dest, 0o600)
+            os.chmod(receive_path, _DEFAULT_FILE_PERMS)
 
 
     def get_release_version(self):

@@ -100,6 +100,10 @@ class LocalHost(hosts.Host):
                    preserve_symlinks=False):
         """Copy files from source to dest, will be the base for {get,send}_file.
 
+        If source is a directory and ends with a trailing slash, only the
+        contents of the source directory will be copied to dest, otherwise
+        source itself will be copied under dest.
+
         @param source: The file/directory on localhost to copy.
         @param dest: The destination path on localhost to copy to.
         @param delete_dest: A flag set to choose whether or not to delete
@@ -109,10 +113,16 @@ class LocalHost(hosts.Host):
         @param preserve_symlinks: Try to preserve symlinks instead of
                                   transforming them into files/dirs on copy.
         """
+        # If dest is a directory and source doesn't end with /, copy source
+        # underneath dest; otherwise, replace dest.
+        if os.path.isdir(dest) and not source.endswith(os.sep):
+            dest = os.path.join(dest, os.path.basename(source))
+
         if delete_dest and os.path.exists(dest):
             # Check if it's a file or a dir and use proper remove method.
             if os.path.isdir(dest):
                 shutil.rmtree(dest)
+                os.mkdir(dest)
             else:
                 os.remove(dest)
 
@@ -136,6 +146,11 @@ class LocalHost(hosts.Host):
                  preserve_symlinks=False):
         """Copy files from source to dest.
 
+        If source is a directory and ends with a trailing slash, only the
+        contents of the source directory will be copied to dest, otherwise
+        source itself will be copied under dest. This is to match the
+        behavior of AbstractSSHHost.get_file().
+
         @param source: The file/directory on localhost to copy.
         @param dest: The destination path on localhost to copy to.
         @param delete_dest: A flag set to choose whether or not to delete
@@ -153,6 +168,11 @@ class LocalHost(hosts.Host):
     def send_file(self, source, dest, delete_dest=False,
                   preserve_symlinks=False):
         """Copy files from source to dest.
+
+        If source is a directory and ends with a trailing slash, only the
+        contents of the source directory will be copied to dest, otherwise
+        source itself will be copied under dest. This is to match the
+        behavior of AbstractSSHHost.send_file().
 
         @param source: The file/directory on the drone to send to the device.
         @param dest: The destination path on the device to copy to.
