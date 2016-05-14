@@ -91,7 +91,6 @@ public class ConfigSettingsView extends TabView {
         submitConfirmButton = new Button("Confirm Save", new ClickHandler() {
             @Override
             public void onClick(ClickEvent event) {
-                JSONObject params = new JSONObject();
                 JSONObject configValues = new JSONObject();
                 for (Entry<String, HashMap<String, TextBox> > sections : configValueTextBoxes.entrySet()) {
                     JSONArray sectionValue = new JSONArray();
@@ -103,8 +102,7 @@ public class ConfigSettingsView extends TabView {
                     }
                     configValues.put(sections.getKey(), sectionValue);
                 }
-                params.put("config_values", configValues);
-                rpcCallSubmit(params);
+                rpcCallSubmit(configValues);
                 submitConfirmPanel.hide();
             }
         });
@@ -179,8 +177,8 @@ public class ConfigSettingsView extends TabView {
         }
     }
 
-    public void rpcCallSubmit(JSONObject params) {
-        MoblabRpcHelper.submitConfigData(params, new JsonRpcCallback() {
+    public void rpcCallSubmit(JSONObject configValues) {
+        MoblabRpcHelper.submitConfigData(configValues, new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
                 NotifyManager.getInstance().showMessage("Setup completed.");
