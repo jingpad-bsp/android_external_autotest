@@ -1,5 +1,6 @@
 suite:AFDO_page_replay
 suite:AFDO_record
+suite:android_wifi_interop
 suite:another_suite
 suite:arc-bvt-cq
 suite:arc-bvt-perbuild
