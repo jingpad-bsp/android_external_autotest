@@ -15,7 +15,8 @@ class logging_CrashServices(test.test):
         '/usr/sbin/cryptohomed' : ['.core', '.dmp', '.meta'],
         '/usr/bin/metrics_daemon' : ['.core', '.dmp', '.meta'],
         '/usr/bin/powerd' : ['.core', '.dmp', '.meta', '.log'],
-        '/usr/sbin/rsyslogd': ['.core', '.dmp', '.meta'],
+        # Removing rsyslogd until crbug.com/611786 is fixed.
+        # '/usr/sbin/rsyslogd': ['.core', '.dmp', '.meta'],
         # Removing tcsd crash with reference to crbug.com/380359
         # '/usr/sbin/tcsd' : ['.core', '.dmp', '.meta'],
         '/usr/bin/tlsdated' : ['.core', '.dmp', '.meta'],
