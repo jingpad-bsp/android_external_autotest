@@ -22,17 +22,22 @@ class SiteUtilsUnittests(unittest.TestCase):
         trybot_release_build = 'trybot-lumpy-release/R27-3837.0.0-b456'
         release_build = 'lumpy-release/R27-3837.0.0'
         paladin_build = 'lumpy-paladin/R27-3878.0.0-rc7'
+        brillo_build = 'git_mnc-brillo-dev/lumpy-eng/1234'
 
         builds = [trybot_paladin_build, trybot_release_build, release_build,
-                  paladin_build]
+                  paladin_build, brillo_build]
         test_name = 'login_LoginSuccess'
         board = 'lumpy'
         suite = 'bvt'
         for build in builds:
             expected_info = {'board': board,
                              'suite': suite,
-                             'build': build,
-                             'build_version': build.split('/')[1]}
+                             'build': build}
+            build_parts = build.split('/')
+            if len(build_parts) == 2:
+                expected_info['build_version'] = build_parts[1]
+            else:
+                expected_info['build_version'] = build_parts[2]
             suite_job_name = ('%s-%s' %
                     (build, site_rpc_interface.canonicalize_suite_name(suite)))
             info = site_utils.parse_job_name(suite_job_name)

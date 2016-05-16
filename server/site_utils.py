@@ -14,7 +14,7 @@ import time
 import urllib2
 
 import common
-from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
@@ -176,7 +176,7 @@ def get_sheriffs(lab_only=False):
 
     for sheriff_js in sheriff_js_list:
         try:
-            url_content = base_utils.urlopen('%s%s'% (
+            url_content = utils.urlopen('%s%s'% (
                 _CHROMIUM_BUILD_URL, sheriff_js)).read()
         except (ValueError, IOError) as e:
             logging.warning('could not parse sheriff from url %s%s: %s',
@@ -205,7 +205,7 @@ def remote_wget(source_url, dest_path, ssh_cmd):
     """
     wget_cmd = ("wget -O - %s | %s 'cat >%s'" %
                 (source_url, ssh_cmd, dest_path))
-    base_utils.run(wget_cmd)
+    utils.run(wget_cmd)
 
 
 _MAX_LAB_STATUS_ATTEMPTS = 5
@@ -589,6 +589,8 @@ def parse_job_name(name):
 
     Note that pgo and chrome-perf builds will fail the method. Since lab does
     not run test for these builds, they can be ignored.
+    Also, tests for Launch Control builds have different naming convention.
+    The build ID will be used as build_version.
 
     @param name: Name of the job.
 
@@ -600,8 +602,8 @@ def parse_job_name(name):
 
     """
     info = {}
-    suite_job_regex = '([^/]*/[^/]*)-test_suites/control\.(.*)'
-    test_job_regex = '([^/]*/[^/]*)/([^/]+)/.*'
+    suite_job_regex = '([^/]*/[^/]*(?:/\d+)?)-test_suites/control\.(.*)'
+    test_job_regex = '([^/]*/[^/]*(?:/\d+)?)/([^/]+)/.*'
     match = re.match(suite_job_regex, name)
     if not match:
         match = re.match(test_job_regex, name)
@@ -612,7 +614,18 @@ def parse_job_name(name):
         try:
             info['board'], _, _, _ = ParseBuildName(info['build'])
         except ParseBuildNameException:
-            pass
+            # Try to parse it as Launch Control build
+            # Launch Control builds have name format:
+            # branch/build_target-build_type/build_id.
+            try:
+                _, target, build_id = utils.parse_launch_control_build(
+                        info['build'])
+                build_target, _ = utils.parse_launch_control_target(target)
+                if build_target:
+                    info['board'] = build_target
+                    info['build_version'] = build_id
+            except ValueError:
+                pass
     return info
 
 
