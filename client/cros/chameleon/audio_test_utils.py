@@ -286,6 +286,11 @@ def check_recorded_frequency(
     if not ignore_frequencies:
         ignore_frequencies = []
 
+    # Also ignore harmonics of ignore frequencies.
+    ignore_frequencies_harmonics = []
+    for ignore_freq in ignore_frequencies:
+        ignore_frequencies_harmonics += [ignore_freq * n for n in xrange(1, 4)]
+
     data_format = recorder.data_format
     recorded_data = audio_data.AudioRawData(
             binary=recorder.get_binary(),
@@ -355,7 +360,7 @@ def check_recorded_frequency(
             @returns: True if the frequency should be ignored. False otherwise.
 
             """
-            for ignore_frequency in ignore_frequencies + harmonics:
+            for ignore_frequency in ignore_frequencies_harmonics + harmonics:
                 if (abs(frequency - ignore_frequency) <
                     frequency_diff_threshold):
                     logging.debug('Ignore frequency: %s', frequency)
