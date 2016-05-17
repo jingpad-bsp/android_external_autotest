@@ -5,6 +5,10 @@ suite:another_suite
 suite:arc-bvt-cq
 suite:arc-bvt-perbuild
 suite:arc-cts
+suite:arc-cts-06h
+suite:arc-cts-12h
+suite:arc-cts-18h
+suite:arc-cts-24h
 suite:arc-nightly
 suite:arc-weekly
 suite:au

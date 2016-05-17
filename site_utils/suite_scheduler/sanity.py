@@ -11,6 +11,10 @@ import common
 
 _WHITELISTED_SUITES = (
     'arc-cts',
+    'arc-cts-06h',
+    'arc-cts-12h',
+    'arc-cts-18h',
+    'arc-cts-24h',
     'arc-nightly',
     'arc-weekly',
     'crosbolt_arc_perf',
