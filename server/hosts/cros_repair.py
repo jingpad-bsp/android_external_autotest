@@ -32,7 +32,7 @@ class ACPowerVerifier(hosts.Verifier):
         try:
             if info['Line Power']['online'] != 'yes':
                 raise hosts.AutoservVerifyError(
-                        'AC power is not online')
+                        'AC power is not plugged in')
         except KeyError:
             logging.info('Cannot determine AC power status - '
                          'skipping check.')
