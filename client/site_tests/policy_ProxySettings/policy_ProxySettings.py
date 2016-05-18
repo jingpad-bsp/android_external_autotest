@@ -139,15 +139,15 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         self._proxy_server.stop()
         super(policy_ProxySettings, self).cleanup()
 
-    def _test_proxy_configuration(self, policy_value, policies_json):
+    def _test_proxy_configuration(self, policy_value, policies_dict):
         """Verify CrOS enforces the specified ProxySettings configuration.
 
         @param policy_value: policy value expected on chrome://policy page.
-        @param policies_json: policy JSON data to send to the fake DM server.
+        @param policies_dict: policy dict data to send to the fake DM server.
         """
         logging.info('Running _test_proxy_configuration(%s, %s)',
-                     policy_value, policies_json)
-        self.setup_case(POLICY_NAME, policy_value, policies_json)
+                     policy_value, policies_dict)
+        self.setup_case(POLICY_NAME, policy_value, policies_dict)
 
         self._proxy_server.reset_requests_received()
         self.navigate_to_url(TEST_URL)
@@ -176,22 +176,22 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_json| data based on the
+        Set the expected |policy_value| and |policies_dict| data based on the
         test |case|. If the user gave an expected |value| on the command line,
-        then set |policy_value| to |value|, and |policies_json| to None.
+        then set |policy_value| to |value|, and |policies_dict| to None.
 
         @param case: Name of the test case to run.
 
         """
         if self.is_value_given:
             # If |value| was given in the command line args, then set expected
-            # |policy_value| to the given value, and |policies_json| to None.
+            # |policy_value| to the given value, and |policies_dict| to None.
             policy_value = self.value
-            policies_json = None
+            policies_dict = None
         else:
-            # Otherwise, set expected |policy_value| and setup |policies_json|
+            # Otherwise, set expected |policy_value| and setup |policies_dict|
             # data to the values required by the specified test |case|.
             policy_value = self.TEST_CASES[case]
-            policies_json = {POLICY_NAME: self.TEST_CASES[case]}
+            policies_dict = {POLICY_NAME: self.TEST_CASES[case]}
 
-        self._test_proxy_configuration(policy_value, policies_json)
+        self._test_proxy_configuration(policy_value, policies_dict)

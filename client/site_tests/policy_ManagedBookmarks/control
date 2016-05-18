@@ -4,7 +4,7 @@
 
 AUTHOR = "scunningham"
 NAME = "policy_ManagedBookmarks"
-ATTRIBUTES = "suite:regression"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
