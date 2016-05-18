@@ -1,4 +1,4 @@
-#pylint: disable-msg=C0111
+#pylint: disable=C0111
 
 """
 Prejob tasks.
@@ -67,12 +67,13 @@ class PreJobTask(agent_task.SpecialAgentTask):
     def epilog(self):
         super(PreJobTask, self).epilog()
 
-        if self.success:
-            return
-
         if self.host.protection == host_protections.Protection.DO_NOT_VERIFY:
             # effectively ignore failure for these hosts
             self.success = True
+
+        if self.success:
+            self.host.record_working_state(True,
+                                           self.task.time_finished)
             return
 
         if self.queue_entry:
@@ -396,3 +397,5 @@ class RepairTask(agent_task.SpecialAgentTask):
             self.host.set_status(models.Host.Status.REPAIR_FAILED)
             if self.queue_entry:
                 self._fail_queue_entry()
+        self.host.record_working_state(bool(self.success),
+                                       self.task.time_finished)
