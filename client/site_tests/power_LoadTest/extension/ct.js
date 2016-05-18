@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-request = {action: "should_scroll"}
+request = {action: 'should_scroll'}
+
+var PLAY_MUSIC_HOSTNAME = 'play.google.com';
 
 chrome.runtime.sendMessage(request, function(response) {
-  if (response.should_scroll) {
+  if (response && response.should_scroll) {
     window.focus();
     lastOffset = window.pageYOffset;
     var start_interval = Math.max(10000, response.scroll_interval);
@@ -30,4 +32,15 @@ chrome.runtime.sendMessage(request, function(response) {
     setTimeout(smoothScrollDown, start_interval);
   }
 });
+
+function clickPlayButton() {
+  var playButton = document.querySelector('[data-id="play"]');
+  if (playButton) {
+    playButton.click();
+  }
+}
+
+if (document.location.hostname === PLAY_MUSIC_HOSTNAME) {
+  window.addEventListener('load', clickPlayButton);
+}
 
