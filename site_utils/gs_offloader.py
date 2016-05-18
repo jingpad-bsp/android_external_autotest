@@ -108,6 +108,10 @@ FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs']
 LIMIT_FILE_COUNT = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_limit_file_count', type=bool, default=False)
 
+# Use multiprocessing for gsutil uploading.
+GS_OFFLOADER_MULTIPROCESSING = global_config.global_config.get_config_value(
+        'CROS', 'gs_offloader_multiprocessing', type=bool, default=False)
+
 
 class TimeoutException(Exception):
     """Exception raised by the timeout_handler."""
@@ -484,8 +488,15 @@ class Offloader(object):
         else:
             self.gs_uri = utils.get_offload_gsuri()
             logging.debug('Offloading to: %s', self.gs_uri)
+            multiprocessing = False
+            if options.multiprocessing:
+                multiprocessing = True
+            elif options.multiprocessing is None:
+                multiprocessing = GS_OFFLOADER_MULTIPROCESSING
+            logging.info(
+                    'Offloader multiprocessing is set to:%r', multiprocessing)
             self._offload_func = get_offload_dir_func(
-                    self.gs_uri, options.multiprocessing)
+                    self.gs_uri, multiprocessing)
         classlist = []
         if options.process_hosts_only or options.process_all:
             classlist.append(job_directories.SpecialJobDirectory)
@@ -621,8 +632,9 @@ def parse_options():
                       help='Limit the offloader logs to a specified '
                       'number of Mega Bytes.', type='int', default=0)
     parser.add_option('-m', dest='multiprocessing', action='store_true',
-                      help='Turn on -m option for gsutil.',
-                      default=False)
+                      help='Turn on -m option for gsutil. If not set, the '
+                      'global config setting gs_offloader_multiprocessing '
+                      'under CROS section is applied.')
     options = parser.parse_args()[0]
     if options.process_all and options.process_hosts_only:
         parser.print_help()
