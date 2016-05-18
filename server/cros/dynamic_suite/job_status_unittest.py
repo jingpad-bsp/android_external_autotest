@@ -503,27 +503,20 @@ class StatusTest(mox.MoxTestBase):
         # Expect one call to get a list of all child jobs.
         self.afe.get_jobs(parent_job_id=parent_job_id).AndReturn(jobs[:6])
 
-        # Have the first two jobs be finished by the first polling,
-        # and the remaining ones (not including #6) for the second polling.
-        self.afe.get_jobs(parent_job_id=parent_job_id,
-                          finished=True).AndReturn([jobs[1]])
-        self.expect_yield_job_entries(jobs[1])
-
-        self.afe.get_jobs(parent_job_id=parent_job_id,
-                          finished=True).AndReturn(jobs[:2])
-        self.expect_yield_job_entries(jobs[0])
-
-        self.afe.get_jobs(parent_job_id=parent_job_id,
-                          finished=True).AndReturn(jobs[:6])
-        for job in jobs[2:6]:
-            self.expect_yield_job_entries(job)
-        # Then, expect job[0] to be ready.
-
-        # Expect us to poll thrice
+        job_id_set = set([job.id for job in jobs])
+        yield_values = [
+                [jobs[1]],
+                [jobs[0], jobs[2]],
+                jobs[3:6]
+            ]
         self.mox.StubOutWithMock(time, 'sleep')
-        time.sleep(5)
-        time.sleep(5)
-        time.sleep(5)
+        for yield_this in yield_values:
+            self.afe.get_jobs(id__in=list(job_id_set),
+                              finished=True).AndReturn(yield_this)
+            for job in yield_this:
+                self.expect_yield_job_entries(job)
+                job_id_set.remove(job.id)
+            time.sleep(5)
         self.mox.ReplayAll()
 
         results = [result for result in job_status.wait_for_child_results(
