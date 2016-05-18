@@ -32,8 +32,8 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
     {
       "name": "Google",
       "url": "https://www.google.com/"
-    }
-    '''
+    }'''
+
     MULTI_BOOKMARK = '''
     {
       "name": "Google",
@@ -46,20 +46,20 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
     ,{
       "name": "IRS",
       "url": "http://www.irs.gov/"
-    }
-    '''
+    }'''
+
     SUPPORTING_POLICIES = {
         'BookmarkBarEnabled': True
     }
 
-    # Dictionary of named test cases and policy values.
+    # Dictionary of test case names and policy values.
     TEST_CASES = {
         'NotSet_NotShown': None,
         'SingleBookmark_Shown': SINGLE_BOOKMARK,
         'MultiBookmark_Shown': MULTI_BOOKMARK
     }
 
-    def _test_managed_bookmarks(self, policy_value, policies_json):
+    def _test_managed_bookmarks(self, policy_value, policies_dict):
         """Verify CrOS enforces ManagedBookmarks policy.
 
         When ManagedBookmarks is not set, the UI shall not show the managed
@@ -67,22 +67,24 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
         the UI shows the folder and its contents.
 
         @param policy_value: policy value expected on chrome://policy page.
-        @param policies_json: policy JSON data to send to the fake DM server.
+        @param policies_dict: policy dict data to send to the fake DM server.
 
         """
-        self.setup_case(self.POLICY_NAME, policy_value, policies_json)
         logging.info('Running _test_managed_bookmarks(policy_value=%s, '
-                     'policies_json=%s)', policy_value, policies_json)
+                     'policies_dict=%s)', policy_value, policies_dict)
+        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
+        managed_bookmarks_are_shown = self._are_bookmarks_shown(policy_value)
         if policy_value is None:
-            if self._managed_bookmarks_are_shown(policy_value):
+            if managed_bookmarks_are_shown:
                 raise error.TestFail('Managed Bookmarks should be hidden.')
         else:
-            if not self._managed_bookmarks_are_shown(policy_value):
+            if not managed_bookmarks_are_shown:
                 raise error.TestFail('Managed Bookmarks should be shown.')
 
-    def _managed_bookmarks_are_shown(self, policy_bookmarks):
+    def _are_bookmarks_shown(self, policy_bookmarks):
         """Check whether managed bookmarks are shown in the UI.
 
+        @param policy_bookmarks: bookmarks expected on chrome://policy page.
         @returns: True if the managed bookmarks are shown.
 
         """
@@ -147,36 +149,29 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
         time.sleep(1)  # Allow JS to run after function is defined.
         return tab
 
-    def _run_test_case(self, case):
+    def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| string and |policies_json| data based
+        Set the expected |policy_value| string and |policies_dict| data based
         on the test |case|. If the user specified an expected |value| in the
         command line args, then use it to set the |policy_value| and blank out
-        the |policies_json|.
+        the |policies_dict|.
 
         @param case: Name of the test case to run.
 
         """
         if self.is_value_given:
             # If |value| was given by user, then set expected |policy_value|
-            # to the given value, and setup |policies_json| to None.
+            # to the given value, and setup |policies_dict| to None.
             policy_value = self.value
-            policies_json = None
+            policies_dict = None
         else:
-            # Otherwise, set expected |policy_value| and setup |policies_json|
+            # Otherwise, set expected |policy_value| and setup |policies_dict|
             # data to the defaults required by the test |case|.
-            policies_json = self.SUPPORTING_POLICIES.copy()
-            if self.TEST_CASES[case] is None:
-                policy_value = None
-                policy_json = {self.POLICY_NAME: None}
-            else:
-                policy_value = self.TEST_CASES[case]
-                policy_json = {self.POLICY_NAME: ('[%s]' % policy_value)}
-            policies_json.update(policy_json)
+            policy_value = self.TEST_CASES[case]
+            policy_dict = {self.POLICY_NAME: ('[%s]' % policy_value)}
+            policies_dict = self.SUPPORTING_POLICIES.copy()
+            policies_dict.update(policy_dict)
 
         # Run test using values configured for the test case.
-        self._test_managed_bookmarks(policy_value, policies_json)
-
-    def run_once(self):
-        self.run_once_impl(self._run_test_case)
+        self._test_managed_bookmarks(policy_value, policies_dict)
