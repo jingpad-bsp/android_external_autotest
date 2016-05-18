@@ -382,10 +382,8 @@ def wait_for_child_results(afe, tko, parent_job_id):
     remaining_child_jobs = set(job.id for job in
                                afe.get_jobs(parent_job_id=parent_job_id))
     while remaining_child_jobs:
-        new_finished_jobs = [job for job in
-                             afe.get_jobs(parent_job_id=parent_job_id,
-                                          finished=True)
-                             if job.id in remaining_child_jobs]
+        new_finished_jobs = afe.get_jobs(id__in=list(remaining_child_jobs),
+                                         finished=True)
 
         for job in new_finished_jobs:
 
