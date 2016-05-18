@@ -1341,6 +1341,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             timeout = (WAIT_UP_AFTER_WIPE_TIME_SECONDS if wipe else
                        DEFAULT_WAIT_UP_TIME_SECONDS)
             self.ensure_adb_mode(timeout=timeout)
+            # Skip the setup wizard.
+            self.run('am start -n com.google.android.setupwizard/'
+                     '.SetupWizardExitActivity')
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)
 
