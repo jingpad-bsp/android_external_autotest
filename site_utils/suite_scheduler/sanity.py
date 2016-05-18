@@ -15,6 +15,7 @@ _WHITELISTED_SUITES = (
     'arc-cts-12h',
     'arc-cts-18h',
     'arc-cts-24h',
+    'arc-gts',
     'arc-nightly',
     'arc-weekly',
     'crosbolt_arc_perf',
