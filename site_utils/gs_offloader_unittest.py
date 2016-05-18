@@ -61,9 +61,10 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         super(OffloaderOptionsTests, self).setUp()
         self.mox.StubOutWithMock(utils, 'get_offload_gsuri')
         gs_offloader.GS_OFFLOADING_ENABLED = True
+        gs_offloader.GS_OFFLOADER_MULTIPROCESSING = False
 
 
-    def _mock_get_offload_func(self, is_moblab):
+    def _mock_get_offload_func(self, is_moblab, multiprocessing=False):
         """Mock the process of getting the offload_dir function."""
         if is_moblab:
             expected_gsuri = '%sresults/%s/%s/' % (
@@ -73,9 +74,10 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         else:
             expected_gsuri = utils.DEFAULT_OFFLOAD_GSURI
         utils.get_offload_gsuri().AndReturn(expected_gsuri)
-        offload_func = gs_offloader.get_offload_dir_func(expected_gsuri, False)
+        offload_func = gs_offloader.get_offload_dir_func(
+                expected_gsuri, multiprocessing)
         self.mox.StubOutWithMock(gs_offloader, 'get_offload_dir_func')
-        gs_offloader.get_offload_dir_func(expected_gsuri, False).AndReturn(
+        gs_offloader.get_offload_dir_func(expected_gsuri, multiprocessing).AndReturn(
                 offload_func)
         self.mox.ReplayAll()
         return offload_func
@@ -174,6 +176,32 @@ class OffloaderOptionsTests(mox.MoxTestBase):
                 _get_options([]))
         self.assertEqual(offloader._offload_func,
                          gs_offloader.delete_files)
+
+    def test_offloader_multiprocessing_flag_set(self):
+        """Test multiprocessing is set."""
+        offload_func = self._mock_get_offload_func(True, True)
+        offloader = gs_offloader.Offloader(_get_options(['-m']))
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.mox.VerifyAll()
+
+    def test_offloader_multiprocessing_flag_not_set_default_false(self):
+        """Test multiprocessing is set."""
+        gs_offloader.GS_OFFLOADER_MULTIPROCESSING = False
+        offload_func = self._mock_get_offload_func(True, False)
+        offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.mox.VerifyAll()
+
+    def test_offloader_multiprocessing_flag_not_set_default_true(self):
+        """Test multiprocessing is set."""
+        gs_offloader.GS_OFFLOADER_MULTIPROCESSING = True
+        offload_func = self._mock_get_offload_func(True, True)
+        offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.mox.VerifyAll()
 
 
 def _make_timestamp(age_limit, is_expired):
