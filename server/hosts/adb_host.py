@@ -738,6 +738,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.teststation.run('which fastboot')
         self.teststation.run('which unzip')
 
+        # Make sure ro.boot.hardware and ro.build.product match. This check is
+        # not applicable to Brillo.
+        if self.get_os_type() == OS_TYPE_ANDROID:
+            hardware = self.run_output('getprop ro.boot.hardware')
+            product = self.run_output('getprop ro.build.product')
+            if hardware != product:
+                raise error.AutoservHostError('ro.boot.hardware: %s does not '
+                                              'match to ro.build.product: %s' %
+                                              (hardware, product))
+
 
     def verify_job_repo_url(self, tag=''):
         """Make sure job_repo_url of this host is valid.
