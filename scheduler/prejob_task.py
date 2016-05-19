@@ -55,7 +55,6 @@ or Archiving postjob task, and an eventual Failed status for the HQE.
 """
 
 import logging
-import os
 
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.frontend.afe import models
@@ -65,21 +64,6 @@ from autotest_lib.server.cros import provision
 
 
 class PreJobTask(agent_task.SpecialAgentTask):
-    def _copy_to_results_repository(self):
-        if not self.queue_entry or self.queue_entry.meta_host:
-            return
-
-        self.queue_entry.set_execution_subdir()
-        log_name = os.path.basename(self.task.execution_path())
-        source = os.path.join(self.task.execution_path(), 'debug',
-                              'autoserv.DEBUG')
-        destination = os.path.join(
-                self.queue_entry.execution_path(), log_name)
-
-        self.monitor.try_copy_to_results_repository(
-                source, destination_path=destination)
-
-
     def epilog(self):
         super(PreJobTask, self).epilog()
 
