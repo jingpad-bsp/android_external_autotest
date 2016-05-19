@@ -220,7 +220,7 @@ class DevServer(object):
         @return the server name without http:// prefix and port.
 
         """
-        return re.sub(r':\d+.*', '', url.lstrip('http://'))
+        return urlparse.urlparse(url).hostname
 
 
     @staticmethod
@@ -231,9 +231,9 @@ class DevServer(object):
 
         @return A devserver url, e.g., http://127.0.0.10:8080
         """
-        match = re.match(r'(http://.*:\d+).*', url)
-        if match:
-            return match.group(1)
+        res = urlparse.urlparse(url)
+        if res.netloc:
+            return res.scheme + '://' + res.netloc
 
 
     @classmethod
