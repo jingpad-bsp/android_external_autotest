@@ -134,8 +134,21 @@ class test_local_host_class(unittest.TestCase):
                 host.symlink_closure([sname]))
 
 
-    def test_get_directory(self):
-        """Tests get_file() copying a directory."""
+    def test_get_file(self):
+        """Tests get_file() copying a regular file."""
+        host = local_host.LocalHost()
+
+        source_file = os.path.join(self.tmpdir.name, 'file')
+        open(os.path.join(source_file), 'w').close()
+
+        dest_file = os.path.join(self.tmpdir.name, 'dest')
+
+        host.get_file(source_file, dest_file)
+        self.assertTrue(os.path.isfile(dest_file))
+
+
+    def test_get_directory_into_new_directory(self):
+        """Tests get_file() copying a directory into a new dir."""
         host = local_host.LocalHost()
 
         source_dir = os.path.join(self.tmpdir.name, 'dir')
@@ -146,8 +159,7 @@ class test_local_host_class(unittest.TestCase):
 
         host.get_file(source_dir, dest_dir)
 
-        self.assertTrue(os.path.isdir(dest_dir))
-        self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'file')))
+        self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'dir', 'file')))
 
 
     def test_get_directory_into_existing_directory(self):
@@ -163,12 +175,11 @@ class test_local_host_class(unittest.TestCase):
 
         host.get_file(source_dir, dest_dir)
 
-        self.assertTrue(os.path.isdir(os.path.join(dest_dir, 'dir')))
         self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'dir', 'file')))
 
 
-    def test_get_directory_into_existing_directory_delete(self):
-        """Tests get_file() replacing an existing dir."""
+    def test_get_directory_delete_dest(self):
+        """Tests get_file() replacing a dir."""
         host = local_host.LocalHost()
 
         source_dir = os.path.join(self.tmpdir.name, 'dir')
@@ -182,17 +193,12 @@ class test_local_host_class(unittest.TestCase):
 
         host.get_file(source_dir, dest_dir, delete_dest=True)
 
-        self.assertTrue(os.path.isdir(os.path.join(dest_dir, 'dir')))
         self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'dir', 'file')))
         self.assertFalse(os.path.isfile(os.path.join(dest_dir, 'dir', 'file2')))
 
 
-    def test_get_directory_contents(self):
-        """Tests get_file() copying dir contents to a new location.
-
-        In this case it should behave the same as without a slash since
-        we are creating a nonexistent directory.
-        """
+    def test_get_directory_contents_into_new_directory(self):
+        """Tests get_file() copying dir contents to a new dir."""
         host = local_host.LocalHost()
 
         source_dir = os.path.join(self.tmpdir.name, 'dir')
@@ -204,7 +210,6 @@ class test_local_host_class(unittest.TestCase):
         # End the source with '/' to copy the contents only.
         host.get_file(os.path.join(source_dir, ''), dest_dir)
 
-        self.assertTrue(os.path.isdir(dest_dir))
         self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'file')))
 
 
@@ -222,12 +227,11 @@ class test_local_host_class(unittest.TestCase):
         # End the source with '/' to copy the contents only.
         host.get_file(os.path.join(source_dir, ''), dest_dir)
 
-        self.assertTrue(os.path.isdir(dest_dir))
         self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'file')))
 
 
-    def test_get_directory_contents_into_existing_directory_delete(self):
-        """Tests get_file() replacing contents of an existing dir."""
+    def test_get_directory_contents_delete_dest(self):
+        """Tests get_file() replacing contents of a dir."""
         host = local_host.LocalHost()
 
         source_dir = os.path.join(self.tmpdir.name, 'dir')
@@ -241,7 +245,6 @@ class test_local_host_class(unittest.TestCase):
         # End the source with '/' to copy the contents only.
         host.get_file(os.path.join(source_dir, ''), dest_dir, delete_dest=True)
 
-        self.assertTrue(os.path.isdir(dest_dir))
         self.assertTrue(os.path.isfile(os.path.join(dest_dir, 'file')))
         self.assertFalse(os.path.isfile(os.path.join(dest_dir, 'file2')))
 
