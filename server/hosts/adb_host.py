@@ -119,6 +119,9 @@ DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN = 10
 _DEFAULT_FILE_PERMS = 0o600
 _DEFAULT_DIR_PERMS = 0o700
 
+# Constants for getprop return value for a given property.
+PROPERTY_VALUE_TRUE = '1'
+
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
 
@@ -738,15 +741,23 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.teststation.run('which fastboot')
         self.teststation.run('which unzip')
 
-        # Make sure ro.boot.hardware and ro.build.product match. This check is
-        # not applicable to Brillo.
+        # Apply checks only for Android device.
         if self.get_os_type() == OS_TYPE_ANDROID:
+            # Make sure ro.boot.hardware and ro.build.product match.
             hardware = self.run_output('getprop ro.boot.hardware')
             product = self.run_output('getprop ro.build.product')
             if hardware != product:
                 raise error.AutoservHostError('ro.boot.hardware: %s does not '
                                               'match to ro.build.product: %s' %
                                               (hardware, product))
+
+            # Check the bootloader is not locked. sys.oem_unlock_allowed is not
+            # applicable to Brillo devices.
+            result = self.run_output('getprop sys.oem_unlock_allowed')
+            if result != PROPERTY_VALUE_TRUE:
+                raise error.AutoservHostError(
+                        'The bootloader is locked. sys.oem_unlock_allowed: %s.'
+                        % result)
 
 
     def verify_job_repo_url(self, tag=''):
