@@ -5,10 +5,12 @@
 
 """Tests for job."""
 
-import copy, getpass, unittest, sys, os
+# pylint: disable=missing-docstring
+
+import copy, getpass, unittest, sys
 
 import common
-from autotest_lib.cli import cli_mock, topic_common, job
+from autotest_lib.cli import cli_mock, job
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib import control_data
 
@@ -143,7 +145,7 @@ class job_list_unittest(job_unittest):
                                                  'running': None},
                             True,
                             [{u'status_counts': {u'Completed': 1},
-                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
+                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
@@ -164,7 +166,7 @@ class job_list_unittest(job_unittest):
                                                  'running': None},
                             True,
                             [{u'status_counts': {u'Completed': 1},
-                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
+                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
@@ -186,7 +188,7 @@ class job_list_unittest(job_unittest):
                                                  'running': None},
                             True,
                             [{u'status_counts': {u'Completed': 1},
-                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
+                              u'control_file': u'kernel = \'8210088647656509311.kernel-smp-2.6.18-220.5.x86_64.rpm\'\ndef step_init():\n    job.next_step([step_test])\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\',                             seconds = 1)',
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
@@ -729,7 +731,7 @@ class job_stat_unittest(job_unittest):
 class job_create_unittest(cli_mock.cli_unittest):
     ctrl_file = '\ndef step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n  TIME =\n    "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n\n    TEST_TYPE = "client"\n \n    DOC = """\n    This test simply sleeps for 1\n    second by default.  It\'s a good way to test\n    profilers and double check\n    that autotest is working.\n The seconds argument can also be modified to\n    make the machine sleep for as\n    long as needed.\n    """\n   \n\n    job.run_test(\'sleeptest\', seconds = 1)'
 
-    kernel_ctrl_file = 'kernel = \'kernel\'\ndef step_init():\n    job.next_step([step_test])\n    testkernel = job.kernel(\'kernel\')\n    \n    testkernel.install()\n    testkernel.boot(args=\'console_always_print=1\')\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\', seconds = 1)'
+    kernel_ctrl_file = 'kernel = \'kernel\'\ndef step_init():\n    job.next_step([step_test])\n\ndef step_test():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "Autotest Team"\n    NAME = "Sleeptest"\n    TIME = "SHORT"\n    TEST_CATEGORY = "Functional"\n    TEST_CLASS = "General"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    This test simply sleeps for 1 second by default.  It\'s a good way to test\n    profilers and double check that autotest is working.\n    The seconds argument can also be modified to make the machine sleep for as\n    long as needed.\n    """\n    \n    job.run_test(\'sleeptest\', seconds = 1)'
 
     trivial_ctrl_file = 'print "Hello"\n'
 
@@ -784,27 +786,6 @@ class job_create_unittest(cli_mock.cli_unittest):
                      rpcs=[('create_job', self.data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],
                      out_words_no=['Uploading', 'Done'])
-        file_temp.clean()
-
-
-    def test_execute_create_job_with_control_and_kernel(self):
-        data = self.data.copy()
-        data['control_file'] = '# Made up control "file" for unittest.'
-        file_temp = cli_mock.create_file(self.trivial_ctrl_file)
-        self.run_cmd(argv=['atest', 'job', 'create', '-f', file_temp.name,
-                           '-k', 'Kernel', 'test_job0', '-m', 'host0',
-                           '--ignore_site_file'],
-                     rpcs=[('generate_control_file',
-                            {'client_control_file': self.trivial_ctrl_file,
-                             'kernel': [{'version': 'Kernel'}]},
-                            True,
-                            {'control_file': data['control_file'],
-                             'synch_count': 1,
-                             'is_server': False,
-                             'dependencies': []}),
-                           ('create_job', data, True, 42)],
-                     out_words_ok=['test_job0', 'Created',
-                                   'Uploading', 'Done'])
         file_temp.clean()
 
 
@@ -896,76 +877,6 @@ class job_create_unittest(cli_mock.cli_unittest):
                      out_words_no=['Uploading', 'Done'])
 
 
-    def test_execute_create_job_with_kernel(self):
-        data = self.data.copy()
-        data['control_file'] = self.kernel_ctrl_file
-        self.run_cmd(argv=['atest', 'job', 'create', '-t', 'sleeptest',
-                           '-k', 'kernel', 'test_job0', '-m', 'host0',
-                           '--ignore_site_file'],
-                     rpcs=[('generate_control_file',
-                            {'tests': ['sleeptest'],
-                             'kernel': [{'version': 'kernel'}]
-                             },
-                            True,
-                            {'control_file' : self.kernel_ctrl_file,
-                             'synch_count' : 1,
-                             'is_server' : False,
-                             'dependencies' : []}),
-                           ('create_job', data, True, 180)],
-                     out_words_ok=['test_job0', 'Created',
-                                   'Uploading', 'Done'])
-
-
-    def test_execute_create_job_with_kernels_and_cmdline(self):
-        data = self.data.copy()
-        data['control_file'] = self.kernel_ctrl_file
-        self.run_cmd(argv=['atest', 'job', 'create', '-t', 'sleeptest',
-                           '-k', 'kernel1,kernel2', '--kernel-cmdline',
-                           'arg1 arg2', 'test_job0', '-m', 'host0',
-                           '--ignore_site_file'],
-                     rpcs=[('generate_control_file',
-                            {'tests': ['sleeptest'],
-                             'kernel': [{'version': 'kernel1',
-                                         'cmdline': 'arg1 arg2'},
-                                        {'version': 'kernel2',
-                                         'cmdline': 'arg1 arg2'}]
-                             },
-                            True,
-                            {'control_file' : self.kernel_ctrl_file,
-                             'synch_count' : 1,
-                             'is_server' : False,
-                             'dependencies' : []}),
-                           ('create_job', data, True, 180)],
-                     out_words_ok=['test_job0', 'Created',
-                                   'Uploading', 'Done'])
-
-
-    def test_execute_create_job_with_kernel_spaces(self):
-        data = self.data.copy()
-        data['control_file'] = self.kernel_ctrl_file
-        data['name'] = 'test job	with  spaces'
-        self.run_cmd(argv=['atest', 'job', 'create', '-t', 'sleeptest',
-                           '-k', 'kernel', 'test job	with  spaces',
-                           '-m', 'host0', '--ignore_site_file'],
-                     rpcs=[('generate_control_file',
-                            {'tests': ['sleeptest'],
-                             'kernel': [{'version': 'kernel'}]
-                             },
-                            True,
-                            {'control_file' : self.kernel_ctrl_file,
-                             'synch_count' : 1,
-                             'is_server' : False,
-                             'dependencies' : []}),
-                           ('create_job', data, True, 180)],
-                     # This is actually 7 spaces, the extra single quote that
-                     # gets displayed before "test" causes the tab completion
-                     # to move to the next 8 char boundary which is 7 characters
-                     # away. Hence the 7 spaces in out_words_ok.
-                     # The tab has been converted by print.
-                     out_words_ok=['test job       with  spaces', 'Created',
-                                   'id', '180'])
-
-
     def test_execute_create_job_no_args(self):
         testjob = job.job_create()
         sys.argv = ['atest', 'job', 'create', '--ignore_site_file']
@@ -996,18 +907,6 @@ class job_create_unittest(cli_mock.cli_unittest):
         sys.argv = ['atest', 'job', 'create', '-t', 'sleeptest', '-f',
                     'control_file', 'test_job0', '-m', 'host0',
                     '--ignore_site_file']
-        self.god.mock_io()
-        (sys.exit.expect_call(mock.anything_comparator())
-         .and_raises(cli_mock.ExitException))
-        self.assertRaises(cli_mock.ExitException, testjob.parse)
-        self.god.unmock_io()
-        self.god.check_playback()
-
-
-    def test_execute_create_job_cfile_and_kernel(self):
-        testjob = job.job_create()
-        sys.argv = ['atest', 'job', 'create', '-f', 'control_file', '-k',
-                    'kernel', 'test_job0', '-m', 'host0', '--ignore_site_file']
         self.god.mock_io()
         (sys.exit.expect_call(mock.anything_comparator())
          .and_raises(cli_mock.ExitException))

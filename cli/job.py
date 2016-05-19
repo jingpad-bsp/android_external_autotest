@@ -16,7 +16,9 @@ The common options are:
 See topic_common.py for a High Level Design and Algorithm.
 """
 
-import getpass, os, pwd, re, socket, sys
+# pylint: disable=missing-docstring
+
+import getpass, re
 from autotest_lib.cli import topic_common, action_common
 from autotest_lib.client.common_lib import control_data
 
@@ -356,7 +358,7 @@ class job_create_or_clone(action_common.atest_create, job):
 class job_create(job_create_or_clone):
     """atest job create [--priority <Low|Medium|High|Urgent>]
     [--synch_count] [--control-file </path/to/cfile>]
-    [--on-server] [--test <test1,test2>] [--kernel <http://kernel>]
+    [--on-server] [--test <test1,test2>]
     [--mlist </path/to/machinelist>] [--machine <host1 host2 host3>]
     [--labels <list of labels of machines to run on>]
     [--reboot_before <option>] [--reboot_after <option>]
@@ -385,13 +387,6 @@ class job_create(job_create_or_clone):
                                action='store_true', default=False)
         self.parser.add_option('-t', '--test',
                                help='List of tests to run')
-
-        self.parser.add_option('-k', '--kernel', help='A comma separated list'
-                               ' of kernel versions/URLs/filenames to run the'
-                               ' job on')
-        self.parser.add_option('--kernel-cmdline', help='A string that will be'
-                               ' given as cmdline to the booted kernel(s)'
-                               ' specified by the -k option')
 
         self.parser.add_option('-d', '--dependencies', help='Comma separated '
                                'list of labels this job is dependent on.',
@@ -435,21 +430,6 @@ class job_create(job_create_or_clone):
                                default=False, action='store_true')
 
 
-    @staticmethod
-    def _get_kernel_data(kernel_list, cmdline):
-        # the RPC supports cmdline per kernel version in a dictionary
-        kernels = []
-        for version in re.split(r'[, ]+', kernel_list):
-            if not version:
-                continue
-            kernel_info = {'version': version}
-            if cmdline:
-                kernel_info['cmdline'] = cmdline
-            kernels.append(kernel_info)
-
-        return kernels
-
-
     def parse(self):
         deps_info = topic_common.item_parse_info(attribute_name='dependencies',
                                                  inline_option='dependencies')
@@ -467,9 +447,6 @@ class job_create(job_create_or_clone):
         if options.control_file and options.test:
             self.invalid_syntax('Can only specify one of --control-file or '
                                 '--test, not both.')
-        if options.kernel:
-            self.ctrl_file_data['kernel'] = self._get_kernel_data(
-                    options.kernel, options.kernel_cmdline)
         if options.control_file:
             try:
                 control_file_f = open(options.control_file)
@@ -480,12 +457,7 @@ class job_create(job_create_or_clone):
             except IOError:
                 self.generic_error('Unable to read from specified '
                                    'control-file: %s' % options.control_file)
-            if options.kernel:
-                # execute() will pass this to the AFE server to wrap this
-                # control file up to include the kernel installation steps.
-                self.ctrl_file_data['client_control_file'] = control_file_data
-            else:
-                self.data['control_file'] = control_file_data
+            self.data['control_file'] = control_file_data
         if options.test:
             if options.server:
                 self.invalid_syntax('If you specify tests, then the '
@@ -530,22 +502,10 @@ class job_create(job_create_or_clone):
 
     def execute(self):
         if self.ctrl_file_data:
-            uploading_kernel = 'kernel' in self.ctrl_file_data
-            if uploading_kernel:
-                default_timeout = socket.getdefaulttimeout()
-                socket.setdefaulttimeout(topic_common.UPLOAD_SOCKET_TIMEOUT)
-                print 'Uploading Kernel: this may take a while...',
-                sys.stdout.flush()
-            try:
-                cf_info = self.execute_rpc(op='generate_control_file',
-                                           item=self.jobname,
-                                           **self.ctrl_file_data)
-            finally:
-                if uploading_kernel:
-                    socket.setdefaulttimeout(default_timeout)
+            cf_info = self.execute_rpc(op='generate_control_file',
+                                       item=self.jobname,
+                                       **self.ctrl_file_data)
 
-            if uploading_kernel:
-                print 'Done'
             self.data['control_file'] = cf_info['control_file']
             if 'synch_count' not in self.data:
                 self.data['synch_count'] = cf_info['synch_count']
