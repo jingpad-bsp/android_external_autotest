@@ -897,12 +897,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         teststation_dest = os.path.join(teststation_temp_dir,
                                         os.path.basename(source))
 
-        # If dest is a directory, source will be put under it.
-        if os.path.isdir(dest):
-            receive_path = os.path.join(dest, os.path.basename(source))
-        else:
-            receive_path = dest
-
         source_info = {}
         if preserve_symlinks or preserve_perm:
             source_info = self._get_file_info(source)
@@ -926,27 +920,38 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 logging.warn('failed to remove dir %s: %s',
                              teststation_temp_dir, e)
 
-        # Set the permissions of the received file/dirs.
-        if os.path.isdir(receive_path):
-            for root, _dirs, files in os.walk(receive_path):
-                def process(rel_path, default_perm):
-                    info = self._get_file_info(os.path.join(source, rel_path))
+            # Source will be copied under dest if either:
+            #  1. Source is a directory and doesn't end with /.
+            #  2. Source is a file and dest is a directory.
+            source_is_dir = self.run('[ -d "$${%s} ]',
+                                     ignore_status=True).exit_status == 0
+            if ((source_is_dir and not source.endswith(os.sep)) or
+                (not source_is_dir and os.path.isdir(dest))):
+                receive_path = os.path.join(dest, os.path.basename(source))
+            else:
+                receive_path = dest
 
-                    if info['perms'] != 0:
-                        target = os.path.join(receive_path, rel_path)
-                        if preserve_perm:
-                            os.chmod(target, info['perms'])
-                        else:
-                            os.chmod(target, default_perm)
+            # Set the permissions of the received file/dirs.
+            if os.path.isdir(receive_path):
+                for root, _dirs, files in os.walk(receive_path):
+                    def process(rel_path, default_perm):
+                        info = self._get_file_info(os.path.join(source,
+                                                                rel_path))
+                        if info['perms'] != 0:
+                            target = os.path.join(receive_path, rel_path)
+                            if preserve_perm:
+                                os.chmod(target, info['perms'])
+                            else:
+                                os.chmod(target, default_perm)
 
-                rel_root = os.path.relpath(root, receive_path)
-                process(rel_root, _DEFAULT_DIR_PERMS)
-                for f in files:
-                    process(os.path.join(rel_root, f), _DEFAULT_FILE_PERMS)
-        elif preserve_perm:
-            os.chmod(receive_path, source_info['perms'])
-        else:
-            os.chmod(receive_path, _DEFAULT_FILE_PERMS)
+                    rel_root = os.path.relpath(root, receive_path)
+                    process(rel_root, _DEFAULT_DIR_PERMS)
+                    for f in files:
+                        process(os.path.join(rel_root, f), _DEFAULT_FILE_PERMS)
+            elif preserve_perm:
+                os.chmod(receive_path, source_info['perms'])
+            else:
+                os.chmod(receive_path, _DEFAULT_FILE_PERMS)
 
 
     def get_release_version(self):
