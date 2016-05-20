@@ -48,15 +48,17 @@ class brillo_ADBDirectoryTransfer(test.test):
         """Body of the test."""
         device_temp_dir = host.get_tmp_dir()
         device_test_dir = os.path.join(device_temp_dir, 'test_dir')
-        return_dir = os.path.join(self.temp_dir, 'return_dir')
 
-        # Copy test_dir to the device then back as return_dir.
-        host.send_file(self.test_dir, device_test_dir, delete_dest=True)
+        return_dir = os.path.join(self.temp_dir, 'return_dir')
+        return_test_dir = os.path.join(return_dir, 'test_dir')
+
+        # Copy test_dir to the device then back into return_dir.
+        host.send_file(self.test_dir, device_temp_dir, delete_dest=True)
         host.get_file(device_test_dir, return_dir, delete_dest=True)
 
         for path in ('file_a', 'file_b', os.path.join('subdir', 'file_c')):
             original = os.path.join(self.test_dir, path)
-            returned = os.path.join(return_dir, path)
+            returned = os.path.join(return_test_dir, path)
             if not filecmp.cmp(original, returned, shallow=False):
                 raise error.TestFail(path + ' changed in transit')
 
