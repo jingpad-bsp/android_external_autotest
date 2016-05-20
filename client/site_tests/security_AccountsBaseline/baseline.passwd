@@ -60,6 +60,7 @@ dlm:!:262:262::/dev/null:/bin/false
 buffet:!:264:264:/dev/null:/bin/false
 webservd:!:266:266:/dev/null:/bin/false
 dnsmasq:!:268:268:/dev/null:/bin/false
+cups:!:277:277:/dev/null:/bin/false
 arc-camera:!:603:603::/dev/null:/bin/false
 ntfs-3g:!:300:300::/dev/null:/bin/false
 avfs:!:301:301::/dev/null:/bin/false
