@@ -175,6 +175,11 @@ class video_WebRtcPerf(test.test):
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
 
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
+            # On daisy, Chrome freezes about 30 seconds after login because of
+            # TPM error. See http://crbug.com/588579.
+            if utils.get_board() == 'daisy':
+              logging.warning('Delay 30s for issue 588579 on daisy')
+              time.sleep(30)
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
             result = gather_result(cr)
@@ -194,6 +199,9 @@ class video_WebRtcPerf(test.test):
         with chrome.Chrome(extra_browser_args=
                 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS +
                 EXTRA_BROWSER_ARGS) as cr:
+            if utils.get_board() == 'daisy':
+              logging.warning('Delay 30s for issue 588579 on daisy')
+              time.sleep(30)
             # Open the webrtc loopback page and start the loopback.
             self.start_loopback(cr)
             result = gather_result(cr)
