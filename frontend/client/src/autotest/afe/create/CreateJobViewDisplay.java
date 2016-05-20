@@ -51,14 +51,6 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
     private ToolTip priorityListToolTip = new ToolTip(
         "?",
         "Lowest to highest: Weekly, Daily, PostBuild, Default.");
-    private TextBoxImpl kernel = new TextBoxImpl();
-    private ToolTip kernelToolTip = new ToolTip(
-        "?",
-        "A URL pointing to a kernel source tarball or a .rpm or .deb package to " +
-        "install on the test machine before testing. Leave blank to skip this step. " +
-        "Example: \"2.6.18-rc3\" or \"http://example.com/kernel-2.6.30.rpm\". " +
-        "Separate multiple kernels with a comma and/or space.");
-    private TextBoxImpl kernel_cmdline = new TextBoxImpl();
     private TextBoxImpl image_url = new TextBoxImpl();
     private ToolTip image_urlToolTip = new ToolTip(
         "?",
@@ -211,15 +203,6 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         priorityPanel.add(priorityListToolTip);
         advancedOptionsLayout.setWidget(0, 0, new Label("Priority:"));
         advancedOptionsLayout.setWidget(0, 1, priorityPanel);
-
-        Panel kernelPanel = new HorizontalPanel();
-        kernelPanel.add(kernel);
-        kernelPanel.add(kernelToolTip);
-        advancedOptionsLayout.setWidget(1, 0, new Label("Kernel(s): (optional)"));
-        advancedOptionsLayout.setWidget(1, 1, kernelPanel);
-
-        advancedOptionsLayout.setWidget(2, 0, new Label("Kernel 'cmd': (optional)"));
-        advancedOptionsLayout.setWidget(2, 1, kernel_cmdline);
 
         Panel timeoutPanel = new HorizontalPanel();
         timeoutPanel.add(timeout);
@@ -427,14 +410,6 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
     public HasText getJobName() {
         return jobName;
-    }
-
-    public ITextBox getKernel() {
-        return kernel;
-    }
-
-    public ITextBox getKernelCmdline() {
-        return kernel_cmdline;
     }
 
     public ITextBox getImageUrl() {
