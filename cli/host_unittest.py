@@ -4,7 +4,9 @@
 
 """Test for host."""
 
-import unittest, os, sys
+# pylint: disable=missing-docstring
+
+import unittest, sys
 
 import common
 from autotest_lib.cli import cli_mock, host
@@ -1021,10 +1023,6 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                               u'job': {u'control_file':
                                        (u"def step_init():\n"
                                         "\tjob.next_step([step_test])\n"
-                                        "\ttestkernel = job.kernel("
-                                        "'kernel-smp-2.6.xyz.x86_64.rpm')\n"
-                                        "\ttestkernel.install()\n"
-                                        "\ttestkernel.boot()\n\n"
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
@@ -1111,10 +1109,6 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                               u'job': {u'control_file':
                                        (u"def step_init():\n"
                                         "\tjob.next_step([step_test])\n"
-                                        "\ttestkernel = job.kernel("
-                                        "'kernel-smp-2.6.xyz.x86_64.rpm')\n"
-                                        "\ttestkernel.install()\n"
-                                        "\ttestkernel.boot()\n\n"
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
@@ -1170,10 +1164,6 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                               u'job': {u'control_file':
                                        (u"def step_init():\n"
                                         "\tjob.next_step([step_test])\n"
-                                        "\ttestkernel = job.kernel("
-                                        "'kernel-smp-2.6.xyz.x86_64.rpm')\n"
-                                        "\ttestkernel.install()\n"
-                                        "\ttestkernel.boot()\n\n"
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
@@ -1238,10 +1228,6 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                               u'job': {u'control_file':
                                        (u"def step_init():\n"
                                         "\tjob.next_step([step_test])\n"
-                                        "\ttestkernel = job.kernel("
-                                        "'kernel-smp-2.6.xyz.x86_64.rpm')\n"
-                                        "\ttestkernel.install()\n"
-                                        "\ttestkernel.boot()\n\n"
                                         "def step_test():\n"
                                         "\tjob.run_test('kernbench')\n\n"),
                                        u'name': u'kernel-smp-2.6.xyz.x86_64',
