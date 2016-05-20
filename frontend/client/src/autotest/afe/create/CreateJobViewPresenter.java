@@ -84,8 +84,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public ITextArea getControlFile();
         public void setControlFilePanelOpen(boolean isOpen);
         public ICheckBox getRunNonProfiledIteration();
-        public ITextBox getKernel();
-        public ITextBox getKernelCmdline();
         public ITextBox getImageUrl();
         public HasText getViewLink();
         public HasCloseHandlers<DisclosurePanel> getControlFilePanelClose();
@@ -336,23 +334,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     }
 
 
-    private JSONArray getKernelParams(String kernel_list, String cmdline) {
-        JSONArray result = new JSONArray();
-
-        for(String version: kernel_list.split("[, ]+")) {
-            Map<String, String> item = new HashMap<String, String>();
-
-            item.put("version", version);
-            // if there is a cmdline part, put it for all versions in the map
-            if (cmdline.length() > 0) {
-                item.put("cmdline", cmdline);
-            }
-
-            result.set(result.size(), Utils.mapToJsonObject(item));
-        }
-
-        return result;
-    }
     /**
      * Get parameters to submit to the generate_control_file RPC.
      * @param readyForSubmit are we getting a control file that's ready to submit for a job, or just
@@ -360,12 +341,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
      */
     protected JSONObject getControlFileParams(boolean readyForSubmit) {
         JSONObject params = new JSONObject();
-
-        String kernelString = display.getKernel().getText();
-        if (!kernelString.equals("")) {
-            params.put(
-                    "kernel", getKernelParams(kernelString, display.getKernelCmdline().getText()));
-        }
 
         boolean testsFromBuild = testSelector.usingTestsFromBuild();
         params.put("db_tests", JSONBoolean.getInstance(!testsFromBuild));
@@ -521,16 +496,12 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         profilersPanel.setEnabled(true);
         handleSkipVerify();
         handleSkipReset();
-        display.getKernel().setEnabled(true);
-        display.getKernelCmdline().setEnabled(true);
         display.getImageUrl().setEnabled(true);
     }
 
     protected void disableInputs() {
         testSelector.setEnabled(false);
         profilersPanel.setEnabled(false);
-        display.getKernel().setEnabled(false);
-        display.getKernelCmdline().setEnabled(false);
         display.getImageUrl().setEnabled(false);
     }
 
@@ -556,9 +527,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             }
         };
 
-        display.getKernel().addBlurHandler(kernelBlurHandler);
-        display.getKernelCmdline().addBlurHandler(kernelBlurHandler);
-
         KeyPressHandler kernelKeyPressHandler = new KeyPressHandler() {
             public void onKeyPress(KeyPressEvent event) {
                 if (event.getCharCode() == (char) KeyCodes.KEY_ENTER) {
@@ -566,9 +534,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                 }
             }
         };
-
-        display.getKernel().addKeyPressHandler(kernelKeyPressHandler);
-        display.getKernelCmdline().addKeyPressHandler(kernelKeyPressHandler);
 
         populateProfilers();
         updateNonProfiledRunControl();
@@ -696,8 +661,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         display.getHostless().setValue(false);
         // Default require_ssp to False, since it's not applicable to client side test.
         display.getRequireSSP().setValue(false);
-        display.getKernel().setText("");
-        display.getKernelCmdline().setText("");
         display.getImageUrl().setText("");
         display.getTimeout().setText(Utils.jsonToString(repository.getData("job_timeout_mins_default")));
         display.getMaxRuntime().setText(
