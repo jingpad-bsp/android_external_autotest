@@ -113,9 +113,12 @@ class LocalHost(hosts.Host):
         @param preserve_symlinks: Try to preserve symlinks instead of
                                   transforming them into files/dirs on copy.
         """
-        # If dest is a directory and source doesn't end with /, copy source
-        # underneath dest; otherwise, replace dest.
-        if os.path.isdir(dest) and not source.endswith(os.sep):
+        # We copy dest under source if either:
+        #  1. Source is a directory and doesn't end with /.
+        #  2. Source is a file and dest is a directory.
+        source_is_dir = os.path.isdir(source)
+        if ((source_is_dir and not source.endswith(os.sep)) or
+            (not source_is_dir and os.path.isdir(dest))):
             dest = os.path.join(dest, os.path.basename(source))
 
         if delete_dest and os.path.exists(dest):
