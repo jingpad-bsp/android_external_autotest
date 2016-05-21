@@ -543,6 +543,10 @@ class ServoHost(ssh_host.SSHHost):
                 logging.error('Abandoning update for this cycle.')
             else:
                 try:
+                    # TODO(jrbarnette): This 'touch' is a gross hack
+                    # to get us past crbug.com/613603.  Once that
+                    # bug is resolved, we should remove this code.
+                    self.run('touch /home/chronos/.oobe_completed')
                     updater.trigger_update()
                 except autoupdater.RootFSUpdateError as e:
                     trigger_download_status = 'failed with %s' % str(e)
