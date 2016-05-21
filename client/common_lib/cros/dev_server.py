@@ -11,6 +11,7 @@ import logging
 import multiprocessing
 import os
 import re
+import socket
 import time
 import urllib2
 import urlparse
@@ -65,6 +66,19 @@ DEVSERVER_SSH_TIMEOUT_MINS = 1
 
 # The timeout minutes for waiting a devserver staging.
 DEVSERVER_IS_STAGING_RETRY_MIN = 100
+
+# The timeout minutes for waiting a DUT auto-update finished.
+DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN = 100
+
+# The total times of devserver triggering CrOS auto-update.
+AU_RETRY_LIMIT = 1
+
+# Number of seconds for caller to poll devserver's get_au_status call to
+# check if cros auto-update is finished.
+CROS_AU_POLLING_INTERVAL = 10
+
+# Number of seconds for intervals between retrying auto-update calls.
+CROS_AU_RETRY_INTERVAL = 20
 
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
@@ -1479,6 +1493,214 @@ class ImageServer(ImageServerBase):
             latest_builds.append(cls.run_call(call))
 
         return max(latest_builds, key=version.LooseVersion)
+
+
+    @remote_devserver_call()
+    def _collect_au_log(self, host_name, pid, log_dir):
+        """Collect logs from devserver after cros-update process is finished.
+
+        Collect the logs that recording the whole cros-update process, and
+        write it to sysinfo path of a job.
+
+        The example log file name that is stored is like:
+            '1220-repair/sysinfo/hostname_year_month_date_time.log'
+
+        @param log_file: The log file of cros-update process  on the remote
+                         devserver.
+        @param log_dir: The directory to save the cros-update process log
+                        retrieved from devserver.
+        """
+        kwargs = {'host_name': host_name, 'pid': pid}
+        call = self.build_call('collect_cros_au_log', **kwargs)
+        response = self.run_call(call)
+        write_file = os.path.join(log_dir, 'CrOS_update_%s.log' % host_name)
+        logging.debug('Saving auto-update logs into %s', write_file)
+        try:
+            with open(write_file, 'w') as out_log:
+                out_log.write(response)
+        except Exception:
+            logging.debug('Error occurred in writing logs to %s', write_file)
+            raise
+
+
+    @remote_devserver_call()
+    def _kill_au_process_for_host(self, **kwargs):
+        """Kill the triggerred auto_update process if error happens in cros_au.
+
+        @param pid: The auto_update process id.
+        """
+        call = self.build_call('kill_au_proc', **kwargs)
+        response = self.run_call(call)
+        if not response == 'True':
+            raise DevServerException(
+                    'Failed to kill the triggerred CrOS auto_update process '
+                    'on devserver %s, the response is %s' % (self.url(),
+                                                             response))
+
+
+    @remote_devserver_call()
+    def _clean_track_log(self, host_name, pid):
+        """Clean track log for the current auto-update process.
+
+        @param host_name: The host name to be updated.
+        @param pid: The auto-update process id._
+        """
+        kwargs = {'host_name': host_name, 'pid': pid}
+        call = self.build_call('handler_cleanup', **kwargs)
+        try:
+            self.run_call(call)
+        except Exception as e:
+            logging.debug('Failed to clean track_status_file on devserver '
+                          'for host %s and process id %s', host_name, pid)
+            raise
+
+
+    @remote_devserver_call()
+    def _start_auto_update(self, **kwargs):
+        """Start auto-update by calling devserver.cros_au.
+
+        @param kwargs:  Arguments to make cros_au devserver call.
+        """
+        host_name = kwargs['host_name']
+        call = self.build_call('cros_au', async=True, **kwargs)
+        try:
+            response = self.run_call(call)
+            logging.info(
+                'Received response from devserver for cros_au call: %r',
+                response)
+        except httplib.BadStatusLine as e:
+            logging.error(e)
+            raise DevServerException('Received Bad Status line, Devserver %s '
+                                     'might have gone down while handling '
+                                     'the call: %s' % (self.url(), call))
+
+        pid = 0
+        try:
+            response = json.loads(response)
+            if response[0]:
+                pid = response[1]
+                logging.debug('start process %r for auto_update in devserver',
+                              pid)
+                self._wait_for_auto_update_finished(pid, **kwargs)
+        except Exception as e:
+            logging.debug('Failed to trigger auto-update process on devserver')
+            raise
+        finally:
+            return pid
+
+
+    def _wait_for_auto_update_finished(self, pid, **kwargs):
+        """Polling devserver.get_au_status to get current auto-update status.
+
+        The current auto-update status is used to identify whether the update
+        process is finished.
+
+        @param pid:    The background process id for auto-update in devserver.
+        @param kwargs: keyword arguments to make get_au_status devserver call.
+
+        @return: True if auto-update is finished for a given dut.
+        """
+        logging.debug('Check the progress for auto-update process %r', pid)
+        kwargs['pid'] = pid
+        call = self.build_call('get_au_status', **kwargs)
+
+        def all_finished():
+            """Call devserver.get_au_status rpc to check if auto-update
+               is finished.
+
+            @return: True if auto-update is finished for a given dut. False
+                     otherwise.
+            @rasies  DevServerException, the exception is a wrapper of all
+                     exceptions that were raised when devserver tried to
+                     download the artifacts. devserver raises an HTTPError or
+                     a CmdError when an exception was raised in the code. Such
+                     exception should be re-raised here to stop the caller from
+                     waiting. If the call to devserver failed for connection
+                     issue, a URLError exception is raised, and caller should
+                     retry the call to avoid such network flakiness.
+
+            """
+            try:
+                response = json.loads(self.run_call(call))
+                if not response[0]:
+                    logging.debug('Current CrOS auto-update status: %s',
+                                  response[1])
+                    return False
+                else:
+                    logging.debug('CrOS auto-update is finished')
+                    return True
+            except urllib2.HTTPError as e:
+                error_markup = e.read()
+                raise DevServerException(_strip_http_message(error_markup))
+            except urllib2.URLError as e:
+                # Could be connection issue, retry it.
+                # For example: <urlopen error [Errno 111] Connection refused>
+                logging.warning('URLError (%r): Retrying connection to '
+                                'devserver to check auto-update status.', e)
+                return False
+            except error.CmdError:
+                # Retry if SSH failed to connect to the devserver.
+                logging.warning('CmdError: Retrying SSH connection to check '
+                                'auto-update status.')
+                return False
+            except socket.error as e:
+                # Could be some temporary devserver connection issues.
+                logging.warning('Socket Error (%r): Retrying connection to '
+                                'devserver to check auto-update status.', e)
+                return False
+
+        site_utils.poll_for_condition(
+                all_finished,
+                exception=site_utils.TimeoutError(),
+                timeout=DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN * 60,
+                sleep_interval=CROS_AU_POLLING_INTERVAL)
+
+        return True
+
+
+    def auto_update(self, host_name, build_name, log_dir=None, force_update=False,
+                    full_update=False):
+        """Auto-update a CrOS host.
+
+        @param host_name:    The hostname of the DUT to auto-update.
+        @param build_name:   The build name to be auto-updated on the DUT.
+        @param log_dir:      The log directory to store auto-update logs from
+                             devserver.
+        @param force_update: Force an update even if the version installed
+                             is the same. Default: False.
+        @param full_update:  If True, do not run stateful update, directly
+                             force a full reimage. If False, try stateful
+                             update first if the dut is already installed
+                             with the same version.
+        """
+        kwargs = {'host_name': host_name,
+                  'build_name': build_name,
+                  'force_update': force_update,
+                  'full_update': full_update}
+
+        for au_attempt in range(AU_RETRY_LIMIT):
+            logging.debug('Start CrOS auto-update for host %s at %d time(s).',
+                          host_name, au_attempt + 1)
+            try:
+                pid = self._start_auto_update(**kwargs)
+                if pid:
+                    self._clean_track_log(host_name, pid)
+
+                if pid and log_dir:
+                    self._collect_au_log(host_name, pid, log_dir)
+
+                break
+            except Exception as e:
+                logging.debug('Exception raised on auto_update attempt #%s: %s',
+                              au_attempt+1, str(e))
+                self._kill_au_process_for_host(**kwargs)
+                au_attempt += 1
+                # wait for several seconds for devserver/DUT to come back
+                if au_attempt >= AU_RETRY_LIMIT:
+                  raise DevServerException(
+                          'CrOS auto-update failed for host: %s', host_name)
+
+                time.sleep(CROS_AU_RETRY_INTERVAL)
 
 
 class AndroidBuildServer(ImageServerBase):
