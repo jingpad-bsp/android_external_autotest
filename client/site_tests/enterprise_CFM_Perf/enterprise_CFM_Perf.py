@@ -74,3 +74,5 @@ class enterprise_CFM_Perf(test.test):
             self.write_perf_keyval(perf_keyval)
             time.sleep(_MEASUREMENT_DURATION_SECONDS)
         perf_file.close()
+        utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
+                           {'perf_csv_folder': self.resultsdir})
