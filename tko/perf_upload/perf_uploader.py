@@ -165,8 +165,13 @@ def _get_version_numbers(test_attributes):
     """
     chrome_version = test_attributes.get('CHROME_VERSION', '')
     cros_version = test_attributes.get('CHROMEOS_RELEASE_VERSION', '')
-    # Prefix the ChromeOS version number with the Chrome milestone.
-    cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
+    cros_milestone = test_attributes.get('CHROMEOS_RELEASE_CHROME_MILESTONE')
+    # Use the release milestone as the milestone if present, othewise prefix the
+    # cros version with the with the Chrome browser milestone.
+    if cros_milestone:
+      cros_version = "%s.%s" % (cros_milestone, cros_version)
+    else:
+      cros_version = chrome_version[:chrome_version.find('.') + 1] + cros_version
     if not re.match(VERSION_REGEXP, cros_version):
         raise PerfUploadingError('CrOS version "%s" does not match expected '
                                  'format.' % cros_version)

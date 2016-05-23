@@ -238,6 +238,17 @@ class test_get_version_numbers(unittest.TestCase):
                   'CHROMEOS_RELEASE_VERSION': '5678.9.0r1',
               })
 
+    def test_with_valid_release_milestone(self):
+      """Checks the version numbers used when data is formatted as expected."""
+      self.assertEqual(
+              ('54.5678.9.0', '34.5.678.9'),
+              perf_uploader._get_version_numbers(
+                  {
+                      'CHROME_VERSION': '34.5.678.9',
+                      'CHROMEOS_RELEASE_VERSION': '5678.9.0',
+                      'CHROMEOS_RELEASE_CHROME_MILESTONE': '54',
+                  }))
+
 
 class test_format_for_upload(unittest.TestCase):
     """Tests for the format_for_upload function."""
