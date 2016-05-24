@@ -22,7 +22,7 @@ class policy_ForceYouTubeSafetyMode(
     inactive if the user has not set the mode.
 
     The test covers all valid policy values across three test cases:
-    NotSet_SafetyInactive, False_SafetyInactive, True_SafetyActivetyActive.
+    NotSet_SafetyInactive, False_SafetyInactive, True_SafetyActive.
 
     A test case passes when https://www.youtube.com page indicates that
     'Restricted Mode' is On (or Off) when the policy is set true (or set false
