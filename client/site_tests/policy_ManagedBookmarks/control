@@ -24,7 +24,7 @@ its value is set (or is not set). A test case shall fail if the above behavior
 is not enforced.
 
 Default usage example:
-$ test_that <IPAddress> ManagedBookmarks
+$ test_that <IPAddress> policy_ManagedBookmarks
 
 Runs both test cases using the local AutoTest fake DM server, and with
 the policy json and expected values as defined by each test case.
