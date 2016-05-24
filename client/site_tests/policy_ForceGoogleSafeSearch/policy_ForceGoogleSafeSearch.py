@@ -14,7 +14,7 @@ class policy_ForceGoogleSafeSearch(enterprise_policy_base.EnterprisePolicyTest):
     This test verifies that the ForceGoogleSafeSearch user policy controls
     whether Chrome OS enforces the use of Google Safe Search. The test covers
     all valid policy values across three test cases: NotSet_NotSafe,
-    False_NotSafe, and True_SafeSearch.
+    False_NotSafe, and True_Safe.
 
     A test case shall pass if the omnibox appends (or does not append) the
     safe parameter to the search URL when the policy is set true (or is set
