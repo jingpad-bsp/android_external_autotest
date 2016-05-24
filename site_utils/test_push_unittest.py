@@ -11,16 +11,15 @@ import urllib2
 import common
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
-from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
-from autotest_lib.site_utils import phapi_lib
 # Mock the retry.retry used in the test_push before import it.
 def mock_retry(ExceptionToCheck, timeout_min, exception_to_raise=None):
     """A mock retry decorator to use in place of the actual one for testing.
 
     @param ExceptionToCheck: the exception to check.
     @param timeout_mins: Amount of time in mins to wait before timing out.
+    @param exception_to_raise: Ignored
 
     """
     def inner_retry(func):
@@ -138,124 +137,6 @@ class TestPushUnittests(mox.MoxTestBase):
         self.mox.ReplayAll()
         test_push.test_suite(test_push.PUSH_TO_PROD_SUITE, test_views,
                              arguments=test_push.parse_arguments())
-        self.mox.VerifyAll()
-
-
-    def test_close_bug_fail(self):
-        """Test close_bug method that failed to close a bug."""
-        issue = self.mox.CreateMock(phapi_lib.Issue)
-        issue.id = 100
-        issue.labels = []
-        issue.state = constants.ISSUE_OPEN
-
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            issue)
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            issue)
-        self.mox.StubOutWithMock(reporting.Reporter, 'modify_bug_report')
-        reporting.Reporter.modify_bug_report(mox.IgnoreArg(),
-                                             comment=mox.IgnoreArg(),
-                                             label_update=mox.IgnoreArg(),
-                                             status=mox.IgnoreArg()).AndReturn(
-                                                                        None)
-        self.mox.ReplayAll()
-        self.assertRaises(test_push.TestPushException, test_push.close_bug)
-        self.mox.VerifyAll()
-
-
-    def test_check_bug_filed_fail_to_find_bug(self):
-        """Test check_bug_filed method that failed to find a bug.
-        """
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            None)
-        self.mox.ReplayAll()
-        self.assertRaises(test_push.TestPushException,
-                          test_push.check_bug_filed, None)
-        self.mox.VerifyAll()
-
-
-    def create_mock_issue(self, id, labels=[]):
-        """Create a mock issue with given id and lables.
-
-        @param id: id of the issue.
-        @param labels: labels of the issue.
-
-        """
-        issue = self.mox.CreateMock(phapi_lib.Issue)
-        issue.id = id
-        issue.labels = labels
-        issue.state = constants.ISSUE_OPEN
-        return issue
-
-
-    def test_check_bug_filed_fail_to_find_bug2(self):
-        """Test check_bug_filed method that failed to find a bug.
-        """
-        issue = self.create_mock_issue(100)
-
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            issue)
-        self.mox.ReplayAll()
-        self.assertRaises(test_push.TestPushException,
-                          test_push.check_bug_filed, [100])
-        self.mox.VerifyAll()
-
-
-    def test_check_bug_filed_fail_to_dedupe(self):
-        """Test check_bug_deduped method that failed with dedupe.
-        """
-        issue = self.create_mock_issue(100)
-
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            issue)
-        self.mox.ReplayAll()
-        self.assertRaises(test_push.TestPushException,
-                          test_push.check_bug_filed, [99])
-        self.mox.VerifyAll()
-
-
-    def test_check_bug_deduped_fail_more_than_1_bug(self):
-        """Test check_bug_filed method that failed with finding
-        more than one bug.
-        """
-        issue = self.create_mock_issue(100, [AUTOFILED_COUNT_2])
-        second_issue = self.create_mock_issue(100)
-
-        self.mox.StubOutWithMock(reporting.Reporter, 'modify_bug_report')
-        reporting.Reporter.modify_bug_report(mox.IgnoreArg(),
-                                             comment=mox.IgnoreArg(),
-                                             label_update=mox.IgnoreArg(),
-                                             status=mox.IgnoreArg()
-                                             ).AndReturn(None)
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            second_issue)
-        self.mox.ReplayAll()
-        self.assertRaises(test_push.TestPushException,
-                          test_push.check_bug_deduped, issue)
-        self.mox.VerifyAll()
-
-
-    def test_check_bug_deduped_succeed_to_dedupe(self):
-        """Test check_bug_filed_and_deduped method that succeeded with dedupe.
-        """
-        issue = self.create_mock_issue(100, [AUTOFILED_COUNT_2])
-
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
-            None)
-        self.mox.StubOutWithMock(reporting.Reporter, 'modify_bug_report')
-        reporting.Reporter.modify_bug_report(mox.IgnoreArg(),
-                                             comment=mox.IgnoreArg(),
-                                             label_update=mox.IgnoreArg(),
-                                             status=mox.IgnoreArg()
-                                             ).AndReturn(None)
-        self.mox.ReplayAll()
-        test_push.check_bug_deduped(issue)
         self.mox.VerifyAll()
 
 
