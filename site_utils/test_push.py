@@ -37,11 +37,9 @@ except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.hosts import factory
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
@@ -91,9 +89,6 @@ EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
          'autoupdate_EndToEndTest.paygen_au_canary_delta.*': 'GOOD',
          'autoupdate_EndToEndTest.paygen_au_canary_full.*':  'GOOD',
          }
-
-# Anchor for the auto-filed bug for dummy_Fail tests.
-BUG_ANCHOR = 'TestFailure{push_to_prod,dummy_Fail.Fail,always fail}'
 
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
@@ -423,76 +418,6 @@ def test_suite_wrapper(queue, suite_name, expected_results, arguments,
         queue.put((except_type, except_value, traceback.extract_tb(tb)))
 
 
-def close_bug():
-    """Close all existing bugs filed for dummy_Fail.
-
-    @return: A list of issue ids to be used in check_bug_filed.
-    """
-    old_issue_ids = []
-    reporter = reporting.Reporter()
-    while True:
-        issue = reporter.find_issue_by_marker(BUG_ANCHOR)
-        if not issue:
-            return old_issue_ids
-        if issue.id in old_issue_ids:
-            raise TestPushException('Failed to close issue %d' % issue.id)
-        old_issue_ids.append(issue.id)
-        reporter.modify_bug_report(issue.id,
-                                   comment='Issue closed by test_push script.',
-                                   label_update='',
-                                   status='WontFix')
-        # Wait for the monorail server to close the bugs.
-        time.sleep(10)
-
-
-@retry.retry(TestPushException, timeout_min=0.5)
-def check_bug_filed(old_issue_ids):
-    """Confirm bug related to dummy_Fail was filed.
-
-    @param old_issue_ids: A list of issue ids that was closed earlier. id of the
-        new issue must be not in this list.
-    @raise TestPushException: If auto bug file failed.
-    """
-    reporter = reporting.Reporter()
-    issue = reporter.find_issue_by_marker(BUG_ANCHOR)
-    if not issue:
-        raise TestPushException('Auto bug file failed. Unable to locate bug '
-                                'with marker %s' % BUG_ANCHOR)
-    if old_issue_ids and issue.id in old_issue_ids:
-        raise TestPushException('Auto bug file failed to create a new issue. '
-                                'id of the old issue found is %d.' % issue.id)
-    if not ('%s2' % reporter.AUTOFILED_COUNT) in issue.labels:
-        raise TestPushException(('Auto bug file failed to dedupe for issue %d '
-                                 'with labels of %s.') %
-                                (issue.id, issue.labels))
-    print 'Issue %d was filed successfully.' % issue.id
-    return issue
-
-
-@retry.retry(TestPushException, timeout_min=0.4)
-def check_bug_deduped(issue):
-    """Confirm bug related to dummy_Fail was deduped.
-
-    @param issue: The issue auto-filed by test_push
-    @raise TestPushException: If auto bug file failed to create a new issue or
-            dedupe multiple failures.
-    """
-    # Close the bug, and do the search again, which should return None.
-    reporter = reporting.Reporter()
-    reporter.modify_bug_report(issue.id,
-                               comment='Issue closed by test_push script.',
-                               label_update='',
-                               status='WontFix')
-    # Wait for the monorail server to close the first bug.
-    time.sleep(10)
-    second_issue = reporter.find_issue_by_marker(BUG_ANCHOR)
-    if second_issue:
-        ids = '%d, %d' % (issue.id, second_issue.id)
-        raise TestPushException(('Auto bug file failed. Multiple issues (%s) '
-                                 'filed with marker %s') % (ids, BUG_ANCHOR))
-    print 'Issue %d was deduped successfully.' % issue.id
-
-
 def check_queue(queue):
     """Check the queue for any exception being raised.
 
@@ -512,9 +437,6 @@ def main():
     arguments = parse_arguments()
 
     try:
-        # Close existing bugs. New bug should be filed in dummy_Fail test.
-        old_issue_ids = close_bug()
-
         queue = multiprocessing.Queue()
 
         push_to_prod_suite = multiprocessing.Process(
@@ -544,15 +466,9 @@ def main():
                       arguments, True, True))
         asynchronous_suite.start()
 
-        bug_filing_checked = False
         while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
                shard_suite.is_alive() or asynchronous_suite.is_alive()):
             check_queue(queue)
-            # Check bug filing results to fail early if bug filing failed.
-            if not bug_filing_checked and not push_to_prod_suite.is_alive():
-                issue = check_bug_filed(old_issue_ids)
-                check_bug_deduped(issue)
-                bug_filing_checked = True
             time.sleep(5)
 
         check_queue(queue)
