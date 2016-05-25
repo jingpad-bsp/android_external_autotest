@@ -18,6 +18,7 @@ suite:bluetooth
 suite:bluetooth_qualification
 suite:bluetooth_sanity
 suite:brillo-bvt
+suite:brillo-presubmit
 suite:brillo-pts
 suite:brillo-smoke
 suite:bvt-cq
