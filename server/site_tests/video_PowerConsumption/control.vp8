@@ -23,7 +23,7 @@ import logging
 from autotest_lib.client.common_lib import error
 
 
-VIDEO_NAME = "traffic-1920x1080-ad53f821ff3cf8ffa7e991c9d2e0b854.vp8.webm"
+VIDEO_NAME = "traffic/traffic-1920x1080-ad53f821ff3cf8ffa7e991c9d2e0b854.vp8.webm"
 VIDEO_DESCRIPTION = "vp8_1080p"
 
 def _run_client_test(machine):

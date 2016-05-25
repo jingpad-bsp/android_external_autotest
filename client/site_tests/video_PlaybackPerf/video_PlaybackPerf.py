@@ -18,7 +18,7 @@ from autotest_lib.client.cros.video import constants
 
 DISABLE_ACCELERATED_VIDEO_DECODE_BROWSER_ARGS = [
         '--disable-accelerated-video-decode']
-DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/traffic/'
+DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 
 PLAYBACK_WITH_HW_ACCELERATION = 'playback_with_hw_acceleration'
 PLAYBACK_WITHOUT_HW_ACCELERATION = 'playback_without_hw_acceleration'
@@ -90,7 +90,8 @@ class video_PlaybackPerf(test.test):
         """
         # Download test video.
         url = DOWNLOAD_BASE + video_name
-        local_path = os.path.join(self.bindir, video_name)
+        local_path = os.path.join(self.bindir, os.path.basename(video_name))
+        logging.info("Downloading %s to %s", url, local_path);
         file_utils.download_file(url, local_path)
 
         if not power_test:
