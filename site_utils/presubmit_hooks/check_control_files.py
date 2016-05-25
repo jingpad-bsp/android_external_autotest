@@ -134,7 +134,9 @@ def CheckValidAttr(ctrl_data, whitelist, test_name):
         attribute_diff = ctrl_data.attributes - whitelist
         raise ControlFileCheckerError(
             'Attribute(s): %s not in the whitelist in control file for test '
-            'named %s.' % (attribute_diff, test_name))
+            'named %s. If this is a new attribute, please add it into '
+            'AUTOTEST_DIR/site_utils/attribute_whitelist.txt file'
+            % (attribute_diff, test_name))
 
 
 def CheckSuiteLineRemoved(ctrl_file_path):
