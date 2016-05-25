@@ -588,6 +588,15 @@ class ServoHost(ssh_host.SSHHost):
         @raises ServoHostVerifyFailure if servo host does not pass the checks.
 
         """
+        # TODO(jrbarnette) Old versions of beaglebone_servo include
+        # the powerd package.  In some (not yet understood)
+        # circumstances, powerd on beaglebone will shut down after
+        # attempting to suspend.  Current versions of
+        # beaglebone_servo don't have powerd, but until we can purge
+        # the lab of the old images, we need to make sure powerd
+        # isn't running.
+        self.run('stop powerd', ignore_status=True)
+
         logging.info('Applying an update to the servo host, if necessary.')
         self.update_image(wait_for_update=False)
         self._check_servo_config()
