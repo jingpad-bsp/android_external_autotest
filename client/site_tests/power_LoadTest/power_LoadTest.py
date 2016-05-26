@@ -367,7 +367,7 @@ class power_LoadTest(test.test):
         keyvals['wh_energy_powerlogger'] = \
                              self._energy_use_from_powerlogger(keyvals)
 
-        if keyvals['ah_charge_used'] > 0:
+        if keyvals['ah_charge_used'] > 0 and not self._power_status.on_ac():
             # For full runs, we should use charge to scale for battery life,
             # since the voltage swing is accounted for.
             # For short runs, energy will be a better estimate.
@@ -434,6 +434,10 @@ class power_LoadTest(test.test):
             elapsed_time += self._wait_time
 
             self._power_status.refresh()
+
+            if not self._ac_ok and self._power_status.on_ac():
+                raise error.TestError('Running on AC power now.')
+
             charge_now = self._power_status.battery[0].charge_now
             energy_rate = self._power_status.battery[0].energy_rate
             voltage_now = self._power_status.battery[0].voltage_now
