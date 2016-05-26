@@ -10,6 +10,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import adb_utils
+from autotest_lib.server import constants
 from autotest_lib.server import test
 
 
@@ -18,9 +19,6 @@ CONFIG_FOLDER_LOCATION = global_config.global_config.get_config_value(
 
 TEST_CONFIG_FILE_FOLDER = 'autotest_config'
 TEST_CAMPAIGN_FILE_FOLDER = 'autotest_campaign'
-SL4A_APK = 'sl4a.apk'
-SL4A_BUILD_ARTIFACT = 'test_zip'
-SL4A_PACKAGE = 'com.googlecode.android_scripting'
 
 class android_ACTS(test.test):
     """Run an Android CTS test case.
@@ -78,8 +76,8 @@ class android_ACTS(test.test):
         testbed_name = testbed_name or testbed.hostname.split('.')[0]
         for serial, adb_host in testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
-                    adb_host, SL4A_APK, SL4A_PACKAGE,
-                    package_name=SL4A_PACKAGE)
+                    adb_host, constants.SL4A_APK, constants.SL4A_PACKAGE,
+                    package_name=constants.SL4A_PACKAGE)
         self.test_station = testbed.get_test_station()
         # Get a tempfolder on the device.
         self.ts_tempfolder = self.test_station.get_tmp_dir()
