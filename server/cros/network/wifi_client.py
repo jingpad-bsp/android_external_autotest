@@ -19,7 +19,9 @@ from autotest_lib.client.common_lib.cros.network import interface
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants
+from autotest_lib.server import adb_utils
 from autotest_lib.server import autotest
+from autotest_lib.server import constants as server_constants
 from autotest_lib.server import frontend
 from autotest_lib.server import site_linux_system
 from autotest_lib.server import site_utils
@@ -361,6 +363,13 @@ class WiFiClient(site_linux_system.LinuxSystem):
                     self.host, self._wifi_if)
             self._wpa_cli_proxy = self._shill_proxy
         else:
+            if self.host.get_os_type() == adb_host.OS_TYPE_ANDROID:
+                adb_utils.install_apk_from_build(
+                        self.host,
+                        server_constants.SL4A_APK,
+                        server_constants.SL4A_PACKAGE,
+                        package_name=server_constants.SL4A_PACKAGE)
+
             self._shill_proxy = get_xmlrpc_proxy(self.host)
             interfaces = self._shill_proxy.list_controlled_wifi_interfaces()
             if not interfaces:
