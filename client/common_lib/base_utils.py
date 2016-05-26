@@ -1,7 +1,7 @@
 #
 # Copyright 2008 Google Inc. Released under the GPL v2
 
-# pylint: disable-msg=C0111
+#pylint: disable=missing-docstring
 
 import StringIO
 import errno
@@ -15,7 +15,6 @@ import resource
 import select
 import shutil
 import signal
-import smtplib
 import socket
 import string
 import struct
@@ -332,30 +331,6 @@ def get_ip_local_port_range():
 def set_ip_local_port_range(lower, upper):
     write_one_line('/proc/sys/net/ipv4/ip_local_port_range',
                    '%d %d\n' % (lower, upper))
-
-
-def send_email(mail_from, mail_to, subject, body):
-    """
-    Sends an email via smtp
-
-    mail_from: string with email address of sender
-    mail_to: string or list with email address(es) of recipients
-    subject: string with subject of email
-    body: (multi-line) string with body of email
-    """
-    if isinstance(mail_to, str):
-        mail_to = [mail_to]
-    msg = "From: %s\nTo: %s\nSubject: %s\n\n%s" % (mail_from, ','.join(mail_to),
-                                                   subject, body)
-    try:
-        mailer = smtplib.SMTP('localhost')
-        try:
-            mailer.sendmail(mail_from, mail_to, msg)
-        finally:
-            mailer.quit()
-    except Exception, e:
-        # Emails are non-critical, not errors, but don't raise them
-        print "Sending email failed. Reason: %s" % repr(e)
 
 
 def read_one_line(filename):
