@@ -681,9 +681,9 @@ class AbstractSSHHost(remote.RemoteHost):
 
     def close(self):
         super(AbstractSSHHost, self).close()
+        self.rpc_server_tracker.disconnect_all()
         self._cleanup_master_ssh()
         os.remove(self.known_hosts_file)
-        self.rpc_server_tracker.disconnect_all()
 
 
     def _cleanup_master_ssh(self):
