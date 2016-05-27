@@ -26,9 +26,11 @@ from autotest_lib.server.hosts import teststation_host
 _POOL_SIZE = 4
 
 # Pattern for the image name when used to provision a dut connected to testbed.
-# It should follow the naming convention of branch/target/build_id[:serial],
-# where serial is optional.
-_IMAGE_NAME_PATTERN = '(.*/.*/[^:]*)(?::(.*))?'
+# It should follow the naming convention of
+# branch/target/build_id[:serial][#count],
+# where serial and count are optional. Count is the number of devices to
+# provision to.
+_IMAGE_NAME_PATTERN = '(.*/.*/[^:#]*)(?::(.*))?(?:#(\d+))?'
 
 class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
@@ -159,7 +161,12 @@ class TestBed(object):
         """Parse the image string to a dictionary.
 
         Sample value of image_string:
-        branch1/shamu-userdebug/LATEST:ZX1G2,branch2/shamu-userdebug/LATEST
+        Provision dut with serial ZX1G2 to build `branch1/shamu-userdebug/111`,
+        and provision another shamu with build `branch2/shamu-userdebug/222`
+        branch1/shamu-userdebug/111:ZX1G2,branch2/shamu-userdebug/222
+
+        Provision 10 shamu with build `branch1/shamu-userdebug/LATEST`
+        branch1/shamu-userdebug/LATEST#10
 
         @param image_string: A comma separated string of images. The image name
                 is in the format of branch/target/build_id[:serial]. Serial is
@@ -172,12 +179,16 @@ class TestBed(object):
         images = []
         for image in image_string.split(','):
             match = re.match(_IMAGE_NAME_PATTERN, image)
-            if not match:
+            # The image string cannot specify both serial and count.
+            if not match or (match.group(2) and match.group(3)):
                 raise error.InstallError(
                         'Image name of "%s" has invalid format. It should '
                         'follow naming convention of '
-                        'branch/target/build_id[:serial]', image)
-            images.append((match.group(1), match.group(2)))
+                        'branch/target/build_id[:serial][#count]', image)
+            if match.group(3):
+                images.extend([(match.group(1), None)]*int(match.group(3)))
+            else:
+                images.append((match.group(1), match.group(2)))
         return images
 
 
@@ -192,13 +203,15 @@ class TestBed(object):
         """
         host = inputs['host']
         build_url = inputs['build_url']
+        build_local_path = inputs['build_local_path']
 
         # Set the thread name with the serial so logging for installing
         # different devices can have different thread name.
         threading.current_thread().name = host.adb_serial
         logging.info('Starting installing device %s:%s from build url %s',
                      host.hostname, host.adb_serial, build_url)
-        host.machine_install(build_url=build_url)
+        host.machine_install(build_url=build_url,
+                             build_local_path=build_local_path)
         logging.info('Finished installing device %s:%s from build url %s',
                      host.hostname, host.adb_serial, build_url)
 
@@ -262,6 +275,53 @@ class TestBed(object):
         return serial_build_pairs
 
 
+    def _stage_shared_build(self, serial_build_map):
+        """Try to stage build on teststation to be shared by all provision jobs.
+
+        This logic only applies to the case that multiple devices are
+        provisioned to the same build. If the provision job does not fit this
+        requirement, this method will not stage any build.
+
+        @param serial_build_map: A map between dut's serial and the build to be
+                installed.
+
+        @return: A tuple of (build_url, build_local_path, teststation), where
+                build_url: url to the build on devserver
+                build_local_path: Path to a local directory in teststation that
+                                  contains the build.
+                teststation: A teststation object that is used to stage the
+                             build.
+                If there are more than one build need to be staged or only one
+                device is used for the test, return (None, None, None)
+        """
+        build_local_path = None
+        build_url = None
+        teststation = None
+        same_builds = set([build for build in serial_build_map.values()])
+        if len(same_builds) == 1 and len(serial_build_map.values()) > 1:
+            same_build = same_builds.pop()
+            logging.debug('All devices will be installed with build %s, stage '
+                          'the shared build to be used for all provision jobs.',
+                          same_build)
+            stage_host = self.get_adb_devices()[serial_build_map.keys()[0]]
+            teststation = stage_host.teststation
+            build_url, _ = stage_host.stage_build_for_install(same_build)
+            if stage_host.get_os_type() == adb_host.OS_TYPE_ANDROID:
+                build_local_path = stage_host.stage_android_image_files(
+                        build_url)
+            else:
+                build_local_path = stage_host.stage_brillo_image_files(
+                        build_url)
+        elif len(same_builds) > 1:
+            logging.debug('More than one build need to be staged, leave the '
+                          'staging build tasks to individual provision job.')
+        else:
+            logging.debug('Only one device needs to be provisioned, leave the '
+                          'staging build task to individual provision job.')
+
+        return build_url, build_local_path, teststation
+
+
     def machine_install(self):
         """Install the DUT.
 
@@ -291,20 +351,35 @@ class TestBed(object):
         # thread name.
         logging_config.add_threadname_in_log()
 
-        arguments = []
-        for serial, build in self.locate_devices(images).iteritems():
-            logging.info('Installing build %s on DUT with serial %s.', build,
-                         serial)
-            host = self.get_adb_devices()[serial]
-            build_url, _ = host.stage_build_for_install(build)
-            arguments.append({'host': host,
-                              'build_url': build_url})
-            attribute_name = '%s_%s' % (constants.JOB_REPO_URL, host.adb_serial)
-            host_attributes[attribute_name] = build_url
+        serial_build_map = self.locate_devices(images)
 
-        thread_pool = pool.ThreadPool(_POOL_SIZE)
-        thread_pool.map(self._install_device, arguments)
-        thread_pool.close()
+        build_url, build_local_path, teststation = self._stage_shared_build(
+                serial_build_map)
+
+        try:
+            arguments = []
+            for serial, build in serial_build_map.iteritems():
+                logging.info('Installing build %s on DUT with serial %s.',
+                             build, serial)
+                host = self.get_adb_devices()[serial]
+                if not build_url:
+                    build_url, _ = host.stage_build_for_install(build)
+                arguments.append({'host': host,
+                                  'build_url': build_url,
+                                  'build_local_path': build_local_path})
+                attribute_name = '%s_%s' % (constants.JOB_REPO_URL,
+                                            host.adb_serial)
+                host_attributes[attribute_name] = build_url
+
+            thread_pool = pool.ThreadPool(_POOL_SIZE)
+            thread_pool.map(self._install_device, arguments)
+            thread_pool.close()
+        finally:
+            if build_local_path:
+                logging.debug('Clean up build artifacts %s:%s',
+                              teststation.hostname, build_local_path)
+                teststation.run('rm -rf %s' % build_local_path)
+
         return self._parser.options.image, host_attributes
 
 
