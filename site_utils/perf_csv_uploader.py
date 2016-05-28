@@ -24,6 +24,8 @@ import argparse
 import datetime
 import logging
 import os
+import shutil
+import tempfile
 import time
 
 import common
@@ -85,10 +87,10 @@ class CsvFolder(object):
 
         The url can be formulated based on csv folder, test_name and hostname.
         For example:
-        gs://chromeos-autotest-results/123-chromeos-test/host1/debug
+        gs://chromeos-autotest-results/123-chromeos-test/host1/
         gsutil is used to download the csv files with this gs url.
         """
-        # TODO(dshi): Add the logic here to find the url to GS.
+        return os.path.join(self.gs_path, self.test_view.job_tag)
 
 
     def _download(self, dest_dir):
@@ -97,19 +99,46 @@ class CsvFolder(object):
         @param dest_dir: A directory to store the downloaded csv files.
 
         @return: A list of strings, each is a path to a csv file in the
-             downloaded folder.
+                 downloaded folder.
+        @raise CsvNonexistenceException: If no csv file found in the GS.
         """
-        # TODO(dshi): Implement the download logic.
+        gs_url = self._get_url()
+        # Find all csv files in given GS url recursively
+        files = utils.run('gsutil ls -r %s | grep -e .*\\\\.csv$' %
+                          gs_url).stdout.strip().split('\n')
+        if not files:
+            raise CsvNonexistenceException('No csv file found in %s', gs_url)
+
+        # Copy files from GS to temp_dir
+        for f in files:
+            utils.run('gsutil cp %s %s' % (f, dest_dir))
 
 
     @retry.retry(Exception, blacklist=[CsvNonexistenceException],
                  timeout_min=UPLOAD_TIMEOUT_MINS)
     def upload(self):
         """Upload the folder to cns.
-
-        @raise CsvNonexistenceException: If no csv file found in the folder.
         """
-        # TODO(dshi): Implement the upload logic.
+        temp_dir = tempfile.mkdtemp(suffix='perf_csv')
+        try:
+            self._download(temp_dir)
+            files = os.listdir(temp_dir)
+            # File in cns is stored under folder with format of:
+            # <test_name>/<host_name>/YYYY/mm/dd/hh/mm
+            path_in_cns = os.path.join(
+                    self.cns_path,
+                    self.test_view.test_name, self.test_view.hostname,
+                    str(self.test_view.job_finished_time.year),
+                    str(self.test_view.job_finished_time.month).zfill(2),
+                    str(self.test_view.job_finished_time.day).zfill(2),
+                    str(self.test_view.job_finished_time.hour).zfill(2),
+                    str(self.test_view.job_finished_time.minute).zfill(2))
+            utils.run('fileutil mkdir -p %s' % path_in_cns)
+            for f in files:
+                utils.run('fileutil copytodir %s %s' %
+                          (os.path.join(temp_dir, f), path_in_cns))
+        finally:
+            shutil.rmtree(temp_dir)
 
 
 class DBScanner(object):
@@ -211,14 +240,14 @@ def main():
     while True:
         folders = DBScanner.get_perf_csv_folders()
         if not folders:
-            logging.debug('No new folders found. Wait...')
+            logging.info('No new folders found. Wait...')
             time.sleep(DEFAULT_INTERVAL_SEC)
             continue
 
         failed_folders = []
         for folder in folders:
             try:
-                logging.debug('Uploading folder: %s', folder)
+                logging.info('Uploading folder: %s', folder)
                 folder.upload()
             except CsvNonexistenceException:
                 # Ignore the failure if CSV files are not found in GS.
