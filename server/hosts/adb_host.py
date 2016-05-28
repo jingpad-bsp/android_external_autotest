@@ -379,6 +379,26 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 connect_timeout=connect_timeout, args=args)
 
 
+    def _run_output_with_retry(self, cmd):
+        """Call run_output method for the given command with retry.
+
+        adb command can be flaky some time and return empty string. It may take
+        several retries until a value can be returned.
+
+        @param cmd: The command to run.
+
+        @return: Return value from the command after retry.
+        """
+        try:
+            return client_utils.poll_for_condition(
+                    lambda: self.run_output(cmd),
+                    timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                    sleep_interval=0.5,
+                    desc='Get return value for command `%s`' % cmd)
+        except client_utils.TimeoutError:
+            return ''
+
+
     def get_board_name(self):
         """Get the name of the board, e.g., shamu, dragonboard etc.
         """
@@ -744,8 +764,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # Apply checks only for Android device.
         if self.get_os_type() == OS_TYPE_ANDROID:
             # Make sure ro.boot.hardware and ro.build.product match.
-            hardware = self.run_output('getprop ro.boot.hardware')
-            product = self.run_output('getprop ro.build.product')
+            hardware = self._run_output_with_retry('getprop ro.boot.hardware')
+            product = self._run_output_with_retry('getprop ro.build.product')
             if hardware != product:
                 raise error.AutoservHostError('ro.boot.hardware: %s does not '
                                               'match to ro.build.product: %s' %
@@ -753,7 +773,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
             # Check the bootloader is not locked. sys.oem_unlock_allowed is not
             # applicable to Brillo devices.
-            result = self.run_output('getprop sys.oem_unlock_allowed')
+            result = self._run_output_with_retry(
+                    'getprop sys.oem_unlock_allowed')
             if result != PROPERTY_VALUE_TRUE:
                 raise error.AutoservHostError(
                         'The bootloader is locked. sys.oem_unlock_allowed: %s.'
