@@ -13,6 +13,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+import time
 
 import common
 from autotest_lib.client.bin import utils
@@ -64,6 +65,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
     UPSTART_ERROR_UNKNOWNINSTANCE = \
             'com.ubuntu.Upstart0_6.Error.UnknownInstance'
+    UPSTART_ERROR_ALREADYSTARTED = \
+            'com.ubuntu.Upstart0_6.Error.AlreadyStarted'
 
     BLUETOOTHD_JOB = 'bluetoothd'
 
@@ -129,6 +132,103 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._pin_agent = None
 
 
+    @xmlrpc_server.dbus_safe(False)
+    def start_bluetoothd(self):
+        """start bluetoothd.
+
+        This includes powering up the adapter.
+
+        @returns: True if bluetoothd is started correctly.
+                  False otherwise.
+
+        """
+        try:
+            self._bluetoothd.Start(dbus.Array(signature='s'), True,
+                                   dbus_interface=self.UPSTART_JOB_IFACE)
+        except dbus.exceptions.DBusException as e:
+            # if bluetoothd was already started, the exception looks like
+            #     dbus.exceptions.DBusException:
+            #     com.ubuntu.Upstart0_6.Error.AlreadyStarted: Job is already
+            #     running: bluetoothd
+            if e.get_dbus_name() != self.UPSTART_ERROR_ALREADYSTARTED:
+                logging.error('Error starting bluetoothd: %s', e)
+                return False
+
+        logging.debug('waiting for bluez start')
+        try:
+            utils.poll_for_condition(
+                    condition=self._update_bluez,
+                    desc='Bluetooth Daemon has started.',
+                    timeout=self.ADAPTER_TIMEOUT)
+        except Exception as e:
+            logging.error('timeout: error starting bluetoothd: %s', e)
+            return False
+
+        # Waiting for the self._adapter object.
+        # This does not mean that the adapter is powered on.
+        logging.debug('waiting for bluez to obtain adapter information')
+        try:
+            utils.poll_for_condition(
+                    condition=self._update_adapter,
+                    desc='Bluetooth Daemon has adapter information.',
+                    timeout=self.ADAPTER_TIMEOUT)
+        except Exception as e:
+            logging.error('timeout: error starting adapter: %s', e)
+            return False
+
+        return True
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def stop_bluetoothd(self):
+        """stop bluetoothd.
+
+        @returns: True if bluetoothd is stopped correctly.
+                  False otherwise.
+
+        """
+        def bluez_stopped():
+            """Checks the bluetooth daemon status.
+
+            @returns: True if bluez is stopped. False otherwise.
+
+            """
+            return not self._update_bluez()
+
+        try:
+            self._bluetoothd.Stop(dbus.Array(signature='s'), True,
+                                  dbus_interface=self.UPSTART_JOB_IFACE)
+        except dbus.exceptions.DBusException as e:
+            # If bluetoothd was stopped already, the exception looks like
+            #    dbus.exceptions.DBusException:
+            #    com.ubuntu.Upstart0_6.Error.UnknownInstance: Unknown instance:
+            if e.get_dbus_name() != self.UPSTART_ERROR_UNKNOWNINSTANCE:
+                logging.error('Error stopping bluetoothd!')
+                return False
+
+        logging.debug('waiting for bluez stop')
+        try:
+            utils.poll_for_condition(
+                    condition=bluez_stopped,
+                    desc='Bluetooth Daemon has stopped.',
+                    timeout=self.ADAPTER_TIMEOUT)
+            bluetoothd_stopped = True
+        except Exception as e:
+            logging.error('timeout: error stopping bluetoothd: %s', e)
+            bluetoothd_stopped = False
+
+        return bluetoothd_stopped
+
+
+    def is_bluetoothd_running(self):
+        """Is bluetoothd running?
+
+        @returns: True if bluetoothd is running
+
+        """
+        return bool(self._get_dbus_proxy_for_bluetoothd())
+
+
     def _update_bluez(self):
         """Store a D-Bus proxy for the Bluetooth daemon in self._bluez.
 
@@ -138,21 +238,32 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._bluez = None
+        self._bluez = self._get_dbus_proxy_for_bluetoothd()
+        return bool(self._bluez)
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def _get_dbus_proxy_for_bluetoothd(self):
+        """Get the D-Bus proxy for the Bluetooth daemon.
+
+        @return True on success, False otherwise.
+
+        """
+        bluez = None
         try:
-            self._bluez = self._system_bus.get_object(
-                    self.BLUEZ_SERVICE_NAME,
-                    self.BLUEZ_MANAGER_PATH)
+            bluez = self._system_bus.get_object(self.BLUEZ_SERVICE_NAME,
+                                                self.BLUEZ_MANAGER_PATH)
             logging.debug('bluetoothd is running')
-            return True
-        except dbus.exceptions.DBusException, e:
+        except dbus.exceptions.DBusException as e:
+            # When bluetoothd is not running, the exception looks like
+            #     dbus.exceptions.DBusException:
+            #     org.freedesktop.DBus.Error.ServiceUnknown: The name org.bluez
+            #     was not provided by any .service files
             if e.get_dbus_name() == self.DBUS_ERROR_SERVICEUNKNOWN:
                 logging.debug('bluetoothd is not running')
-                self._bluez = None
-                return False
             else:
-                logging.error('Error updating Bluez!')
-                raise
+                logging.error('Error getting dbus proxy for Bluez: %s', e)
+        return bluez
 
 
     def _update_adapter(self):
@@ -166,6 +277,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         in the case where we have obtained an empty adapter index list from the
         kernel.
 
+        Note that this method does not power on the adapter.
+
         @return True on success, including if there is no local adapter,
             False otherwise.
 
@@ -177,20 +290,30 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         if not self._has_adapter:
             logging.debug('Device has no adapter; returning')
             return True
+        self._adapter = self._get_adapter()
+        return bool(self._adapter)
 
+
+    @xmlrpc_server.dbus_safe(False)
+    def _get_adapter(self):
+        """Get the D-Bus proxy for the local adapter.
+
+        @return the adapter on success. None otherwise.
+
+        """
         objects = self._bluez.GetManagedObjects(
                 dbus_interface=self.BLUEZ_MANAGER_IFACE)
         for path, ifaces in objects.iteritems():
             logging.debug('%s -> %r', path, ifaces.keys())
             if self.BLUEZ_ADAPTER_IFACE in ifaces:
                 logging.debug('using adapter %s', path)
-                self._adapter = self._system_bus.get_object(
+                adapter = self._system_bus.get_object(
                         self.BLUEZ_SERVICE_NAME,
                         path)
-                return True
+                return adapter
         else:
             logging.warning('No adapter found in interface!')
-            return False
+            return None
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -200,11 +323,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._reset()
-        if not self._adapter:
-            return False
-        self._set_powered(True)
-        return True
+        return self._reset(set_power=True)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -214,8 +333,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @return True on success, False otherwise.
 
         """
-        self._reset()
-        return True
+        return self._reset(set_power=False)
 
 
     def has_adapter(self):
@@ -231,52 +349,43 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._has_adapter and self._adapter is not None
 
 
-    def _reset(self):
-        """Reset the Bluetooth adapter and settings."""
+    def _reset(self, set_power=False):
+        """Reset the Bluetooth adapter and settings.
+
+        @param set_power: adapter power state to set (True or False).
+
+        @return True on success, False otherwise.
+
+        """
         logging.debug('_reset')
-        if self._adapter:
+
+        # Power off the adapter before stopping the bluetoothd.
+        if self._adapter and not set_power:
             self._set_powered(False)
 
+        # Stop bluetoothd.
+        if not self.stop_bluetoothd():
+            return False
+
+        # Remove the settings and cached devices.
         try:
-            self._bluetoothd.Stop(dbus.Array(signature='s'), True,
-                                  dbus_interface=self.UPSTART_JOB_IFACE)
-        except dbus.exceptions.DBusException, e:
-            if e.get_dbus_name() != self.UPSTART_ERROR_UNKNOWNINSTANCE:
-                logging.error('Error resetting adapter!')
-                raise
+            for subdir in os.listdir(self.BLUETOOTH_LIBDIR):
+                shutil.rmtree(os.path.join(self.BLUETOOTH_LIBDIR, subdir))
+            remove_settings = True
+        except Exception as e:
+            logging.error('Error in removing subdirs in %s: %s.',
+                          self.BLUETOOTH_LIBDIR, e)
+            remove_settings = False
 
-        def bluez_stopped():
-            """Checks the bluetooth daemon status.
+        # Start bluetoothd.
+        if not self.start_bluetoothd():
+            return False
 
-            @returns: True if bluez is stopped. False otherwise.
+        # Power on the adapter after restarting the bluetoothd.
+        if self._adapter and set_power:
+            self._set_powered(True)
 
-            """
-            return not self._update_bluez()
-
-        logging.debug('waiting for bluez stop')
-        utils.poll_for_condition(
-                condition=bluez_stopped,
-                desc='Bluetooth Daemon has stopped.',
-                timeout=self.ADAPTER_TIMEOUT)
-
-        for subdir in os.listdir(self.BLUETOOTH_LIBDIR):
-            shutil.rmtree(os.path.join(self.BLUETOOTH_LIBDIR, subdir))
-
-        self._bluetoothd.Start(dbus.Array(signature='s'), True,
-                               dbus_interface=self.UPSTART_JOB_IFACE)
-
-        logging.debug('waiting for bluez start')
-        utils.poll_for_condition(
-                condition=self._update_bluez,
-                desc='Bluetooth Daemon has started.',
-                timeout=self.ADAPTER_TIMEOUT)
-
-        logging.debug('waiting for bluez to obtain adapter information')
-        utils.poll_for_condition(
-                condition=self._update_adapter,
-                desc='Bluetooth Daemon has adapter information.',
-                timeout=self.ADAPTER_TIMEOUT)
-
+        return remove_settings
 
     @xmlrpc_server.dbus_safe(False)
     def set_powered(self, powered):
@@ -299,6 +408,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
+    @xmlrpc_server.dbus_safe(False)
     def _set_powered(self, powered):
         """Set the adapter power state.
 
@@ -352,10 +462,14 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             the value False otherwise.
 
         """
-        objects = self._bluez.GetManagedObjects(
-                dbus_interface=self.BLUEZ_MANAGER_IFACE)
-        adapter = objects[self._adapter.object_path][self.BLUEZ_ADAPTER_IFACE]
-        return json.dumps(adapter)
+        if self._bluez:
+            objects = self._bluez.GetManagedObjects(
+                    dbus_interface=self.BLUEZ_MANAGER_IFACE)
+            props = objects[self._adapter.object_path][self.BLUEZ_ADAPTER_IFACE]
+        else:
+            props = {}
+        logging.debug('get_adapter_properties: %s', props)
+        return json.dumps(props)
 
 
     def read_version(self):
@@ -523,6 +637,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return self._find_device(address) != None
 
 
+    @xmlrpc_server.dbus_safe(False)
     def _find_device(self, address):
         """Finds the device with a given address.
 
@@ -550,6 +665,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return None
 
 
+    @xmlrpc_server.dbus_safe(False)
     def _setup_pin_agent(self, pin):
         """Initializes a _PinAgent and registers it to handle pin code request.
 
@@ -579,6 +695,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         logging.info('Agent registered')
 
 
+    @xmlrpc_server.dbus_safe(False)
     def _is_paired(self,  device):
         """Checks if a device is paired.
 
@@ -592,6 +709,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return bool(paired)
 
 
+    @xmlrpc_server.dbus_safe(False)
     def _is_connected(self,  device):
         """Checks if a device is connected.
 
