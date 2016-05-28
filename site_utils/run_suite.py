@@ -80,7 +80,7 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.SUITE_TIMEOUT: 2,
             RETURN_CODES.INFRA_FAILURE: 3,
             RETURN_CODES.ERROR: 4}
-ANDROID_BUILD_REGEX = r'.+/.+/([0-9]+|LATEST)'
+ANDROID_BUILD_REGEX = r'.+/.+/P?([0-9]+|LATEST)'
 
 
 def get_worse_code(code1, code2):
