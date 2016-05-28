@@ -53,7 +53,7 @@ class enterprise_CFM_Sanity(test.test):
             raise error.TestFail('CFM was not able to start hangout session.')
 
         time.sleep(LONG_TIMEOUT)
-        cfm_util.unmute_audio(webview_context)
+        cfm_util.unmute_mic(webview_context)
 
         if cfm_util.is_ready_to_start_hangout_session(webview_context):
             raise error.TestFail('Is already in hangout session and should not '
@@ -64,7 +64,7 @@ class enterprise_CFM_Sanity(test.test):
                                  'oobe screen.')
 
         time.sleep(SHORT_TIMEOUT)
-        cfm_util.mute_audio(webview_context)
+        cfm_util.mute_mic(webview_context)
         time.sleep(SHORT_TIMEOUT)
         cfm_util.end_hangout_session(webview_context)
 
