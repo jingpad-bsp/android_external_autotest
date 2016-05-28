@@ -729,7 +729,8 @@ class ServoHost(ssh_host.SSHHost):
         return self._servo
 
 
-def create_servo_host(dut, servo_args, try_lab_servo=False):
+def create_servo_host(dut, servo_args, try_lab_servo=False,
+                      skip_host_up_check=False):
     """Create a ServoHost object.
 
     The `servo_args` parameter is a dictionary specifying optional
@@ -760,6 +761,9 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
                        See comments above.
     @param try_lab_servo: Boolean. Whether to create ServoHost for a device
                           in test lab. See above.
+    @param skip_host_up_check: True to skip the check of if servo host is
+            pingable when creating the ServoHost object. This can be used when
+            creating a servo host object to be repaired by PoE. Default is False
 
     @returns: A ServoHost object or None. See comments above.
 
@@ -797,7 +801,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False):
             return None
         return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
     elif ((servo_args is not None or try_lab_servo)
-          and servo_host_is_up(lab_servo_hostname)):
+          and (skip_host_up_check or servo_host_is_up(lab_servo_hostname))):
         return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
                          required_by_test=required_by_test)
     else:
