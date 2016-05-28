@@ -1089,6 +1089,14 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if utils.is_moblab():
             self._setup_servo()
 
+        # If _servo_host is not initialized, it's possible that servo is off.
+        # Try to create a servo host object without checking if it's up, so it
+        # can be repaired by PoE.
+        if not self._servo_host:
+            self._servo_host =  servo_host.create_servo_host(
+                    dut=self.hostname, servo_args=None, try_lab_servo=True,
+                    skip_host_up_check=True)
+
         if self._servo_host and not self.servo:
             try:
                 self._servo_host.repair()
