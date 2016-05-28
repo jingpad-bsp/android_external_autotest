@@ -41,6 +41,42 @@ class BluetoothDevice(object):
                 timeout_seconds=self.XMLRPC_BRINGUP_TIMEOUT_SECONDS,
                 logfile=self.XMLRPC_LOG_PATH)
 
+        # Get some static information about the bluetooth adapter.
+        properties = self.get_adapter_properties()
+        self.bluez_version = properties.get('Name')
+        self.address = properties.get('Address')
+        self.bluetooth_class = properties.get('Class')
+        self.UUIDs = properties.get('UUIDs')
+
+
+    def start_bluetoothd(self):
+        """start bluetoothd.
+
+        @returns: True if bluetoothd is started correctly.
+                  False otherwise.
+
+        """
+        return self._proxy.start_bluetoothd()
+
+
+    def stop_bluetoothd(self):
+        """stop bluetoothd.
+
+        @returns: True if bluetoothd is stopped correctly.
+                  False otherwise.
+
+        """
+        return self._proxy.stop_bluetoothd()
+
+
+    def is_bluetoothd_running(self):
+        """Is bluetoothd running?
+
+        @returns: True if bluetoothd is running
+
+        """
+        return self._proxy.is_bluetoothd_running()
+
 
     def reset_on(self):
         """Reset the adapter and settings and power up the adapter.
@@ -76,6 +112,78 @@ class BluetoothDevice(object):
         return self._proxy.set_powered(powered)
 
 
+    def is_powered_on(self):
+        """Is the adapter powered on?
+
+        @returns: True if the adapter is powered on
+
+        """
+        properties = self.get_adapter_properties()
+        return bool(properties.get(u'Powered'))
+
+
+    def get_hci(self):
+        """Get hci of the adapter; normally, it is 'hci0'.
+
+        @returns: the hci name of the adapter.
+
+        """
+        dev_info = self.get_dev_info()
+        hci = (dev_info[1] if isinstance(dev_info, list) and
+               len(dev_info) > 1 else None)
+        return hci
+
+
+    def get_address(self):
+        """Get the bluetooth address of the adapter.
+
+        An example of the bluetooth address of the adapter: '6C:29:95:1A:D4:6F'
+
+        @returns: the bluetooth address of the adapter.
+
+        """
+        return self.address
+
+
+    def get_bluez_version(self):
+        """Get bluez version.
+
+        An exmaple of bluez version: 'BlueZ 5.39'
+
+        @returns: the bluez version
+
+        """
+        return self.bluez_version
+
+
+    def get_bluetooth_class(self):
+        """Get the bluetooth class of the adapter.
+
+        An example of the bluetooth class of a chromebook: 4718852
+
+        @returns: the bluetooth class.
+
+        """
+        return self.bluetooth_class
+
+
+    def get_UUIDs(self):
+        """Get the UUIDs.
+
+        An example of UUIDs:
+            [u'00001112-0000-1000-8000-00805f9b34fb',
+             u'00001801-0000-1000-8000-00805f9b34fb',
+             u'0000110a-0000-1000-8000-00805f9b34fb',
+             u'0000111f-0000-1000-8000-00805f9b34fb',
+             u'00001200-0000-1000-8000-00805f9b34fb',
+             u'00001800-0000-1000-8000-00805f9b34fb']
+
+        @returns: the list of the UUIDs.
+
+        """
+        return self.UUIDs
+
+
     def set_discoverable(self, discoverable):
         """Set the adapter discoverable state.
 
@@ -85,6 +193,16 @@ class BluetoothDevice(object):
 
         """
         return self._proxy.set_discoverable(discoverable)
+
+
+    def is_discoverable(self):
+        """Is the adapter in the discoverable state?
+
+        @return True if discoverable. False otherwise.
+
+        """
+        properties = self.get_adapter_properties()
+        return properties.get('Discoverable') == 1
 
 
     def set_pairable(self, pairable):
@@ -98,8 +216,37 @@ class BluetoothDevice(object):
         return self._proxy.set_pairable(pairable)
 
 
+    def is_pairable(self):
+        """Is the adapter in the pairable state?
+
+        @return True if pairable. False otherwise.
+
+        """
+        properties = self.get_adapter_properties()
+        return properties.get('Pairable') == 1
+
+
     def get_adapter_properties(self):
         """Read the adapter properties from the Bluetooth Daemon.
+
+        An example of the adapter properties looks like
+        {u'Name': u'BlueZ 5.35',
+         u'Alias': u'Chromebook',
+         u'Modalias': u'bluetooth:v00E0p2436d0400',
+         u'Powered': 1,
+         u'DiscoverableTimeout': 180,
+         u'PairableTimeout': 0,
+         u'Discoverable': 0,
+         u'Address': u'6C:29:95:1A:D4:6F',
+         u'Discovering': 0,
+         u'Pairable': 1,
+         u'Class': 4718852,
+         u'UUIDs': [u'00001112-0000-1000-8000-00805f9b34fb',
+                    u'00001801-0000-1000-8000-00805f9b34fb',
+                    u'0000110a-0000-1000-8000-00805f9b34fb',
+                    u'0000111f-0000-1000-8000-00805f9b34fb',
+                    u'00001200-0000-1000-8000-00805f9b34fb',
+                    u'00001800-0000-1000-8000-00805f9b34fb']}
 
         @return the properties as a dictionary on success,
             the value False otherwise.
@@ -140,6 +287,9 @@ class BluetoothDevice(object):
     def read_info(self):
         """Read the adapter information from the Kernel.
 
+        An example of the adapter information looks like
+        [u'6C:29:95:1A:D4:6F', 6, 2, 65535, 2769, 4718852, u'Chromebook', u'']
+
         @return the information as a tuple of:
           ( address, bluetooth_version, manufacturer_id,
             supported_settings, current_settings, class_of_device,
@@ -179,6 +329,20 @@ class BluetoothDevice(object):
     def get_devices(self):
         """Read information about remote devices known to the adapter.
 
+        An example of the device information of RN-42 looks like
+        [{u'Name': u'RNBT-A96F',
+          u'Alias': u'RNBT-A96F',
+          u'Adapter': u'/org/bluez/hci0',
+          u'LegacyPairing': 0,
+          u'Paired': 1,
+          u'Connected': 0,
+          u'UUIDs': [u'00001124-0000-1000-8000-00805f9b34fb'],
+          u'Address': u'00:06:66:75:A9:6F',
+          u'Icon': u'input-mouse',
+          u'Class': 1408,
+          u'Trusted': 1,
+          u'Blocked': 0}]
+
         @return the properties of each device as an array of
             dictionaries on success, the value False otherwise.
 
@@ -207,8 +371,21 @@ class BluetoothDevice(object):
         return self._proxy.stop_discovery()
 
 
+    def is_discovering(self):
+        """Is it discovering?
+
+        @return True if it is discovering. False otherwise.
+
+        """
+        return self.get_adapter_properties().get('Discovering') == 1
+
+
     def get_dev_info(self):
         """Read raw HCI device information.
+
+        An example of the device information looks like:
+        [0, u'hci0', u'6C:29:95:1A:D4:6F', 13, 0, 1, 581900950526, 52472, 7,
+         32768, 1021, 5, 96, 6, 0, 0, 151, 151, 0, 0, 0, 0, 1968, 12507]
 
         @return tuple of (index, name, address, flags, device_type, bus_type,
                        features, pkt_type, link_policy, link_mode,
