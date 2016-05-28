@@ -6,11 +6,13 @@
 
 import logging
 import re
+import threading
 from multiprocessing import pool
 
 import common
 
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import autoserv_parser
@@ -191,6 +193,9 @@ class TestBed(object):
         host = inputs['host']
         build_url = inputs['build_url']
 
+        # Set the thread name with the serial so logging for installing
+        # different devices can have different thread name.
+        threading.current_thread().name = host.adb_serial
         logging.info('Starting installing device %s:%s from build url %s',
                      host.hostname, host.adb_serial, build_url)
         host.machine_install(build_url=build_url)
@@ -280,6 +285,11 @@ class TestBed(object):
             raise error.InstallError('No image string is provided to test bed.')
         images = self._parse_image(self._parser.options.image)
         host_attributes = {}
+
+        # Change logging formatter to include thread name. This is to help logs
+        # from each provision runs have the dut's serial, which is set as the
+        # thread name.
+        logging_config.add_threadname_in_log()
 
         arguments = []
         for serial, build in self.locate_devices(images).iteritems():

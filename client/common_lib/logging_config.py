@@ -48,9 +48,12 @@ class LoggingConfig(object):
 
     FILE_FORMAT = ('%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
                    '%(lineno)4.4d| %(message)s')
+    FILE_FORMAT_WITH_THREADNAME = (
+            '%(asctime)s.%(msecs)03d %(levelname)-5.5s|%(module)18.18s:'
+            '%(lineno)4.4d| %(threadName)10.10s| %(message)s')
+    DATE_FORMAT = '%m/%d %H:%M:%S'
 
-    file_formatter = logging.Formatter(fmt=FILE_FORMAT,
-                                       datefmt='%m/%d %H:%M:%S')
+    file_formatter = logging.Formatter(fmt=FILE_FORMAT, datefmt=DATE_FORMAT)
 
     CONSOLE_FORMAT = '%(asctime)s %(levelname)-5.5s| %(message)s'
 
@@ -156,3 +159,19 @@ class TestingConfig(LoggingConfig):
 
     def configure_logging(self, **kwargs):
         pass
+
+
+def add_threadname_in_log():
+    """Change logging formatter to include thread name.
+
+    This is to help logs from each thread runs to include its thread name.
+    """
+    log = logging.getLogger()
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.FileHandler):
+            log.removeHandler(handler)
+            handler.setFormatter(logging.Formatter(
+                    LoggingConfig.FILE_FORMAT_WITH_THREADNAME,
+                    LoggingConfig.DATE_FORMAT))
+            log.addHandler(handler)
+    logging.debug('Logging handler\'s format updated with thread name.')
