@@ -74,6 +74,7 @@ def wait_for_telemetry_commands(webview_context):
     logging.info('Hotrod telemetry commands available for testing.')
 
 
+# UI commands/functions
 def wait_for_oobe_start_page(webview_context):
     """Wait for oobe start screen to launch.
 
@@ -98,6 +99,19 @@ def skip_oobe_screen(webview_context):
     logging.info('Skipped oobe screen.')
 
 
+def is_oobe_start_page(webview_context):
+    """Check if device is on CFM oobe start screen.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    if webview_context.EvaluateJavaScript("window.hrOobIsStartPageForTest()"):
+        logging.info('Is on oobe start page.')
+        return True
+    logging.info('Is not on oobe start page.')
+    return False
+
+
+# Hangouts commands/functions
 def start_new_hangout_session(webview_context, hangout_name):
     """Start a new hangout session.
 
@@ -133,36 +147,6 @@ def end_hangout_session(webview_context):
     logging.info('Ended hangout session.')
 
 
-def mute_audio(webview_context):
-    """Mute mic audio.
-
-    @param webview_context: Context for hangouts webview.
-    """
-    webview_context.ExecuteJavaScript("window.hrMuteAudioForTest()")
-    logging.info('Mute audio.')
-
-
-def unmute_audio(webview_context):
-    """Unmute mic audio.
-
-    @param webview_context: Context for hangouts webview.
-    """
-    webview_context.ExecuteJavaScript("window.hrUnmuteAudioForTest()")
-    logging.info('Unmute audio.')
-
-
-def is_oobe_start_page(webview_context):
-    """Check if device is on CFM oobe start screen.
-
-    @param webview_context: Context for hangouts webview.
-    """
-    if webview_context.EvaluateJavaScript("window.hrOobIsStartPageForTest()"):
-        logging.info('Is on oobe start page.')
-        return True
-    logging.info('Is not on oobe start page.')
-    return False
-
-
 def is_in_hangout_session(webview_context):
     """Check if device is in hangout session.
 
@@ -188,6 +172,7 @@ def is_ready_to_start_hangout_session(webview_context):
     return False
 
 
+# Diagnostics commands/functions
 def is_diagnostic_run_in_progress(webview_context):
     """Check if hotrod diagnostics is running.
 
@@ -236,6 +221,37 @@ def get_last_diagnostics_results(webview_context):
             "window.hrGetLastDiagnosticsResultForTest()")
 
 
+# Mic audio commands/functions
+def is_mic_muted(webview_context):
+    """Check if mic is muted.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    if webview_context.EvaluateJavaScript("window.hrGetAudioInMutedForTest()"):
+        logging.info('Mic is muted.')
+        return True
+    logging.info('Mic is not muted.')
+    return False
+
+
+def mute_mic(webview_context):
+    """Mute mic audio.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript("window.hrMuteAudioForTest()")
+    logging.info('Mute audio.')
+
+
+def unmute_mic(webview_context):
+    """Unmute mic audio.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript("window.hrUnmuteAudioForTest()")
+    logging.info('Unmute audio.')
+
+
 def get_mic_devices(webview_context):
     """Get all mic devices detected by hotrod.
 
@@ -243,24 +259,6 @@ def get_mic_devices(webview_context):
     """
     return webview_context.EvaluateJavaScript(
             "window.hrGetAudioInDevicesForTest()")
-
-
-def get_speaker_devices(webview_context):
-    """Get all speaker devices detected by hotrod.
-
-    @param webview_context: Context for hangouts webview.
-    """
-    return webview_context.EvaluateJavaScript(
-            "window.hrGetAudioOutDevicesForTest()")
-
-
-def get_camera_devices(webview_context):
-    """Get all camera devices detected by hotrod.
-
-    @param webview_context: Context for hangouts webview.
-    """
-    return webview_context.EvaluateJavaScript(
-            "window.hrGetVideoCaptureDevicesForTest()")
 
 
 def get_preferred_mic(webview_context):
@@ -272,6 +270,27 @@ def get_preferred_mic(webview_context):
             "window.hrGetAudioInPrefForTest()")
 
 
+def set_preferred_mic(webview_context, mic):
+    """Set preferred mic for hotrod.
+
+    @param webview_context: Context for hangouts webview.
+    @param mic: String with mic name.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetAudioInPrefForTest(" + mic + ")")
+    logging.info('Setting preferred mic to %s.', mic)
+
+
+# Speaker commands/functions
+def get_speaker_devices(webview_context):
+    """Get all speaker devices detected by hotrod.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    return webview_context.EvaluateJavaScript(
+            "window.hrGetAudioOutDevicesForTest()")
+
+
 def get_preferred_speaker(webview_context):
     """Get speaker preferred for hotrod.
 
@@ -281,6 +300,56 @@ def get_preferred_speaker(webview_context):
             "window.hrGetAudioOutPrefForTest()")
 
 
+def set_preferred_speaker(webview_context, speaker):
+    """Set preferred speaker for hotrod.
+
+    @param webview_context: Context for hangouts webview.
+    @param mic: String with speaker name.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetAudioOutPrefForTest(" + speaker + ")")
+    logging.info('Set preferred speaker to %s.', speaker)
+
+
+def set_speaker_volume(webview_context, volume_level):
+    """Set speaker volume.
+
+    @param webview_context: Context for hangouts webview.
+    @param volume_level: Integer value ranging from 0-100 to set volume to.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetAudioOutVolumeLevelForTest(" + volume_level + ")")
+    logging.info('Set speaker volume to %d', volume_level)
+
+
+def get_speaker_volume(webview_context):
+    """Get current speaker volume.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    return webview_context.EvaluateJavaScript(
+            "window.hrGetAudioOutVolumeLevelForTest()")
+
+
+def play_test_sound(webview_context):
+    """Play test sound.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript("window.hrPlayTestSoundForTest()")
+    logging.info('Playing test sound.')
+
+
+# Camera commands/functions
+def get_camera_devices(webview_context):
+    """Get all camera devices detected by hotrod.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    return webview_context.EvaluateJavaScript(
+            "window.hrGetVideoCaptureDevicesForTest()")
+
+
 def get_preferred_camera(webview_context):
     """Get camera preferred for hotrod.
 
@@ -288,3 +357,46 @@ def get_preferred_camera(webview_context):
     """
     return webview_context.EvaluateJavaScript(
             "window.hrGetVideoCapturePrefForTest()")
+
+
+def set_preferred_camera(webview_context, camera):
+    """Set preferred camera for hotrod.
+
+    @param webview_context: Context for hangouts webview.
+    @param mic: String with camera name.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetVideoCapturePrefForTest(" + camera + ")")
+    logging.info('Set preferred camera to %s.', camera)
+
+
+def is_camera_muted(webview_context):
+    """Check if camera is muted (turned off).
+
+    @param webview_context: Context for hangouts webview.
+    """
+    if webview_context.EvaluateJavaScript("window.hrGetVideoCaptureMutedForTest()"):
+        logging.info('Camera is muted.')
+        return True
+    logging.info('Camera is not muted.')
+    return False
+
+
+def mute_camera(webview_context):
+    """Turned camera off.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetVideoCaptureMutedForTest(true)")
+    logging.info('Camera muted.')
+
+
+def unmute_camera(webview_context):
+    """Turned camera on.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript(
+            "window.hrSetVideoCaptureMutedForTest(false)")
+    logging.info('Camera unmuted.')
