@@ -19,7 +19,6 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-import logging
 import os
 import socket
 import urllib2
@@ -112,20 +111,10 @@ class ServiceProxy(object):
         default_timeout = socket.getdefaulttimeout()
         if not default_timeout:
             # If default timeout is None, socket will never time out.
-            urlfile = urllib2.urlopen(request)
+            respdata = urllib2.urlopen(request).read()
         else:
             timeout = max(min_rpc_timeout, default_timeout)
-            urlfile = urllib2.urlopen(request, timeout=timeout)
-        # Keep calling read on the urlfile to ensure all bytes are received.
-        respdata = b''
-        chunk = urlfile.read()
-        while len(chunk) != 0:
-            respdata += chunk
-            chunk = urlfile.read()
-            # TODO (sbasi): crbug.com/606071 Remove logging once json decode
-            # errors stop occuring.
-            if len(chunk) != 0:
-                logging.debug('Proxy required multiple reads to receive data.')
+            respdata = urllib2.urlopen(request, timeout=timeout).read()
         try:
             resp = decoder.JSONDecoder().decode(respdata)
         except ValueError:
