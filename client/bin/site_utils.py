@@ -25,11 +25,6 @@ _INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
 pciid_to_intel_architecture = {}
 
 
-class TimeoutError(error.TestError):
-    """Error raised when we time out when waiting on a condition."""
-    pass
-
-
 class Crossystem(object):
     """A wrapper for the crossystem utility."""
 
@@ -202,48 +197,8 @@ def ensure_processes_are_dead_by_name(name, timeout_sec=10):
             pass
         return process_list
 
-    poll_for_condition(lambda: list_and_kill_processes(name) == [],
-                       timeout=timeout_sec)
-
-
-def poll_for_condition(condition,
-                       exception=None,
-                       timeout=10,
-                       sleep_interval=0.1,
-                       desc=None):
-    """Poll until a condition becomes true.
-
-    Arguments:
-      condition: function taking no args and returning bool
-      exception: exception to throw if condition doesn't become true
-      timeout: maximum number of seconds to wait
-      sleep_interval: time to sleep between polls
-      desc: description of default TimeoutError used if 'exception' is None
-
-    Returns:
-      The true value that caused the poll loop to terminate.
-
-    Raises:
-      'exception' arg if supplied; site_utils.TimeoutError otherwise
-    """
-    start_time = time.time()
-    while True:
-        value = condition()
-        if value:
-            return value
-        if time.time() + sleep_interval - start_time > timeout:
-            if exception:
-                logging.error(exception)
-                raise exception
-
-            if desc:
-                desc = 'Timed out waiting for condition: %s' % desc
-            else:
-                desc = 'Timed out waiting for unnamed condition'
-            logging.error(desc)
-            raise TimeoutError, desc
-
-        time.sleep(sleep_interval)
+    utils.poll_for_condition(lambda: list_and_kill_processes(name) == [],
+                             timeout=timeout_sec)
 
 
 def is_virtual_machine():
@@ -1148,4 +1103,3 @@ def is_vm():
         logging.warn('Package virt-what is not installed, default to assume '
                      'it is not a virtual machine.')
         return False
-
