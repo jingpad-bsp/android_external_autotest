@@ -816,3 +816,46 @@ def which(exec_file):
         path = os.path.join(prefix, exec_file)
         if os.access(path, os.X_OK):
             return path
+
+
+class TimeoutError(error.TestError):
+    """Error raised when we time out when waiting on a condition."""
+    pass
+
+
+def poll_for_condition(condition,
+                       exception=None,
+                       timeout=10,
+                       sleep_interval=0.1,
+                       desc=None):
+    """Polls until a condition becomes true.
+
+    @param condition: function taking no args and returning bool
+    @param exception: exception to throw if condition doesn't become true
+    @param timeout: maximum number of seconds to wait
+    @param sleep_interval: time to sleep between polls
+    @param desc: description of default TimeoutError used if 'exception' is
+                 None
+
+    @return The true value that caused the poll loop to terminate.
+
+    @raise 'exception' arg if supplied; TimeoutError otherwise
+    """
+    start_time = time.time()
+    while True:
+        value = condition()
+        if value:
+            return value
+        if time.time() + sleep_interval - start_time > timeout:
+            if exception:
+                logging.error(exception)
+                raise exception
+
+            if desc:
+                desc = 'Timed out waiting for condition: ' + desc
+            else:
+                desc = 'Timed out waiting for unnamed condition'
+            logging.error(desc)
+            raise TimeoutError(desc)
+
+        time.sleep(sleep_interval)
