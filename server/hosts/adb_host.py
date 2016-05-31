@@ -1,6 +1,8 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+import datetime
 import functools
 import logging
 import os
@@ -55,6 +57,8 @@ CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
                     CMD_OUTPUT_PREFIX)
 RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
+SDK_FILE = 'ro.build.version.sdk'
+LOGCAT_FILE = 'logcat.log'
 TMP_DIR = '/data/local/tmp'
 # Regex to pull out file type, perms and symlink. Example:
 # lrwxrwx--- 1 6 root system 2015-09-12 19:21 blah_link -> ./blah
@@ -420,11 +424,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def job_start(self):
-        """
-        Disable log collection on adb_hosts.
+        """Overload of parent which intentionally doesn't log certain files.
 
-        TODO(sbasi): crbug.com/305427
+        The parent implementation attempts to log certain Linux files, such as
+        /var/log, which do not exist on Android, thus there is no call to the
+        parent's job_start().  The sync call is made so that logcat logs can be
+        approximately matched to server logs.
         """
+        self._sync_time()
 
 
     def run(self, command, timeout=3600, ignore_status=False,
@@ -696,6 +703,26 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise NotImplementedError('Mode %s is not supported' % command)
 
         return bool(devices and (not serial or serial in devices))
+
+
+    def stop_loggers(self):
+        """Inherited stop_loggers function.
+
+        Calls parent function and captures logcat, since the end of the run
+        is logically the end/stop of the logcat log.
+        """
+        super(ADBHost, self).stop_loggers()
+        # Record logcat log to a temporary file on the teststation.
+        tmp_dir = self.teststation.get_tmp_dir()
+        teststation_filename = os.path.join(tmp_dir, LOGCAT_FILE)
+        self.adb_run('logcat -v time -d > "%s"' % (teststation_filename))
+        # Copy-back the log to the drone's results directory.
+        logcat_filename = os.path.join(self.job.resultdir, LOGCAT_FILE)
+        self.teststation.get_file(teststation_filename, logcat_filename)
+        try:
+            self.teststation.run('rm -rf %s' % tmp_dir)
+        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
 
     def close(self):
@@ -1597,3 +1624,22 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                          'build_id': build_id})
         return '%s/static/%s/%s' % (ds.url(), image,
                                     autotest_server_package_name)
+
+
+    def _sync_time(self):
+        """Approximate synchronization of time between host and ADB device.
+
+        This sets the ADB/Android device's clock to approximately the same
+        time as the Autotest host for the purposes of comparing Android system
+        logs such as logcat to logs from the Autotest host system.
+        """
+        command = 'date '
+        sdk_version = int(self.run('getprop %s' % SDK_FILE).stdout)
+        if sdk_version < 23:
+            # Android L and earlier use this format: date -s (format).
+            command += ('-s %s' %
+                        datetime.datetime.now().strftime('%Y%m%d.%H%M%S'))
+        else:
+            # Android M and later use this format: date (format).
+            command += datetime.datetime.now().strftime('%m%d%H%M%Y.%S')
+        self.run(command)
