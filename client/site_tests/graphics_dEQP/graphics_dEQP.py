@@ -68,12 +68,8 @@ class graphics_dEQP(test.test):
             if major > 3 or minor >= 1:
                 self._can_run_executables.append('gles31/deqp-gles31')
         self._services = service_stopper.ServiceStopper(['ui', 'powerd'])
-        # pBuffer support is not yet enabled on Rogue.
-        # See partner bug 52663.
-        if self._gpu_type == 'rogue':
-            self._surface = 'fbo'
-        else:
-            self._surface = 'pbuffer'
+        # Valid choices are fbo and pbuffer. The latter avoids dEQP assumptions.
+        self._surface = 'pbuffer'
 
     def cleanup(self):
         if self._services:
