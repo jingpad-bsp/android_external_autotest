@@ -193,13 +193,13 @@ class audio_AudioAfterReboot(audio_test.AudioTest):
         self.widget_link = None
         self.use_audio_bus = False
 
-        self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+        self.second_peak_ratio = audio_test_utils.get_second_peak_ratio(
+                source_id=source,
+                recorder_id=recorder)
+
         self.ignore_frequencies = None
         if source == chameleon_audio_ids.CrosIds.SPEAKER:
-            self.second_peak_ratio = 0.1
             self.ignore_frequencies = [50, 60]
-        elif recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC:
-            self.second_peak_ratio = 0.2
 
         # Two widgets are binded in the factory if necessary
         binder_widget = None

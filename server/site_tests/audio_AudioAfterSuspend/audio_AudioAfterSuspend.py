@@ -205,13 +205,13 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         self.audio_nodes = audio_nodes
         self.is_internal=is_internal
 
-        self.second_peak_ratio = audio_test_utils.DEFAULT_SECOND_PEAK_RATIO
+        self.second_peak_ratio = audio_test_utils.get_second_peak_ratio(
+                source_id=source,
+                recorder_id=recorder)
+
         self.ignore_frequencies = None
         if source == chameleon_audio_ids.CrosIds.SPEAKER:
-            self.second_peak_ratio = 0.1
             self.ignore_frequencies = [50, 60]
-        elif recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC:
-            self.second_peak_ratio = 0.2
 
         self.errors = []
         self.golden_file, self.low_pass_freq = golden_data
