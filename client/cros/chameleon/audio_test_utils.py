@@ -242,17 +242,44 @@ def monitor_no_nodes_changed(audio_facade, callback=None):
 
 # The second dominant frequency should have energy less than -26dB of the
 # first dominant frequency in the spectrum.
-DEFAULT_SECOND_PEAK_RATIO = 0.05
+_DEFAULT_SECOND_PEAK_RATIO = 0.05
 
-# Tolerate more for bluetooth audio using HSP.
-HSP_SECOND_PEAK_RATIO = 0.2
+# Tolerate more noise for bluetooth audio using HSP.
+_HSP_SECOND_PEAK_RATIO = 0.2
+
+# Tolerate more noise for speaker.
+_SPEAKER_SECOND_PEAK_RATIO = 0.1
+
+# Tolerate more noise for internal microphone.
+_INTERNAL_MIC_SECOND_PEAK_RATIO = 0.2
+
+
+def get_second_peak_ratio(source_id, recorder_id, is_hsp=False):
+    """Gets the second peak ratio suitable for use case.
+
+    @param source_id: ID defined in chameleon_audio_ids for source widget.
+    @param recorder_id: ID defined in chameleon_audio_ids for recorder widget.
+    @param is_hsp: For bluetooth HSP use case.
+
+    @returns: A float for proper second peak ratio to be used in
+              check_recorded_frequency.
+    """
+    if is_hsp:
+        return _HSP_SECOND_PEAK_RATIO
+    elif source_id == chameleon_audio_ids.CrosIds.SPEAKER:
+        return _SPEAKER_SECOND_PEAK_RATIO
+    elif recorder_id == chameleon_audio_ids.CrosIds.INTERNAL_MIC:
+        return _INTERNAL_MIC_SECOND_PEAK_RATIO
+    else:
+        return _DEFAULT_SECOND_PEAK_RATIO
+
 
 # The deviation of estimated dominant frequency from golden frequency.
 DEFAULT_FREQUENCY_DIFF_THRESHOLD = 5
 
 def check_recorded_frequency(
         golden_file, recorder,
-        second_peak_ratio=DEFAULT_SECOND_PEAK_RATIO,
+        second_peak_ratio=_DEFAULT_SECOND_PEAK_RATIO,
         frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD,
         ignore_frequencies=None, check_anomaly=False):
     """Checks if the recorded data contains sine tone of golden frequency.
