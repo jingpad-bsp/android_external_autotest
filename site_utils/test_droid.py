@@ -70,6 +70,9 @@ def _parse_arguments_internal(argv):
     parser.add_argument('-s', '--serials', metavar='SERIALS',
                         help='Comma separate list of device serials under '
                              'test.')
+    parser.add_argument('-f', '--fastboot_serial', metavar='FB_SERIALS',
+                        help='Comma separate list of fastboot serials under '
+                             'test.', default=None)
     parser.add_argument('-r', '--remote', metavar='REMOTE',
                         default='localhost',
                         help='hostname[:port] if the ADB device is connected '
@@ -111,6 +114,8 @@ def main(argv):
     site_utils_path = os.path.realpath(site_utils_path)
     host_attributes = {'serials' : serials,
                        'os_type' : 'android'}
+    if arguments.fastboot_serial:
+        host_attributes['fastboot_serial'] = arguments.fastboot_serial
 
     fb_service = None
     try:
