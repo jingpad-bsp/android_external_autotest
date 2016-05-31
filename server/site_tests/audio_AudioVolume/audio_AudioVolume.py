@@ -79,6 +79,11 @@ class audio_AudioVolume(audio_test.AudioTest):
         low_volume, high_volume, highest_ratio = volume_spec
         ignore_frequencies = [50, 60]
 
+        second_peak_ratio = audio_test_utils.get_second_peak_ratio(
+                source_id=source_id,
+                recorder_id=recorder_id,
+                is_hsp=switch_hsp)
+
         with chameleon_audio_helper.bind_widgets(binder):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
@@ -127,12 +132,14 @@ class audio_AudioVolume(audio_test.AudioTest):
             playback_record('low')
             low_dominant_spectrals = audio_test_utils.check_recorded_frequency(
                     golden_file, recorder,
+                    second_peak_ratio=second_peak_ratio,
                     ignore_frequencies=ignore_frequencies)
 
             audio_facade.set_chrome_active_volume(high_volume)
             playback_record('high')
             high_dominant_spectrals = audio_test_utils.check_recorded_frequency(
                     golden_file, recorder,
+                    second_peak_ratio=second_peak_ratio,
                     ignore_frequencies=ignore_frequencies)
 
             error_messages = []

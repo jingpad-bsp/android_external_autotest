@@ -125,6 +125,9 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         binder = widget_factory.create_binder(
                 source, bluetooth_widget, recorder)
 
+        second_peak_ratio = audio_test_utils.get_second_peak_ratio(
+            source_id=source.port_id, recorder_id=recorder.port_id, is_hsp=True)
+
         with chameleon_audio_helper.bind_widgets(binder):
 
             audio_test_utils.dump_cros_audio_logs(
@@ -234,4 +237,4 @@ class audio_AudioBasicBluetoothRecord(audio_test.AudioTest):
         # and HDMI.
         audio_test_utils.check_recorded_frequency(
                 golden_file, recorder, check_anomaly=check_quality,
-                second_peak_ratio=audio_test_utils.HSP_SECOND_PEAK_RATIO)
+                second_peak_ratio=second_peak_ratio)
