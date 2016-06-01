@@ -32,7 +32,7 @@ def run(machine):
                  source_id=chameleon_audio_ids.CrosIds.SPEAKER,
                  sink_id=None,
                  recorder_id=chameleon_audio_ids.ChameleonIds.MIC,
-                 volume_spec=(40, 80, 0.5)
+                 volume_spec=(70, 100, 0.6)
                 )
 
 parallel_simple(run, machines)
