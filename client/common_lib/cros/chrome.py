@@ -146,6 +146,8 @@ class Chrome(object):
         except AttributeError:
             pass
 
+        self.arc_mode = arc_mode
+
         if logged_in:
             try:
                 extensions_to_load = b_options.extensions_to_load
@@ -166,7 +168,7 @@ class Chrome(object):
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
                 if _is_arc_available():
-                    arc_util.post_processing_after_browser(arc_mode)
+                    arc_util.post_processing_after_browser(self)
                 break
             except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
@@ -295,6 +297,6 @@ class Chrome(object):
         """Closes the browser."""
         try:
             if _is_arc_available():
-                arc_util.pre_processing_before_close()
+                arc_util.pre_processing_before_close(self)
         finally:
             self._browser.Close()
