@@ -220,3 +220,17 @@ class ChromeEC(object):
         # See chromium:371631 for details.
         # FIXME: Stop importing time module if this hack becomes obsolete.
         time.sleep(1)
+
+    def enable_console_channel(self, channel):
+        """Find console channel mask and enable that channel only
+
+        @param channel: console channel name
+        """
+        # The 'chan' command returns a list of console channels,
+        # their channel masks and channel numbers
+        regexp = r'(\d+)\s+([\w]+)\s+\*?\s+{0}'.format(channel)
+        l = self.send_command_get_output('chan', [regexp])
+        # Use channel mask and append the 0x for proper hex input value
+        cmd = 'chan 0x' + l[0][2]
+        # Set console to only output the desired channel
+        self.send_command(cmd)
