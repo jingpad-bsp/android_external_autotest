@@ -126,6 +126,10 @@ _DEFAULT_DIR_PERMS = 0o700
 # Constants for getprop return value for a given property.
 PROPERTY_VALUE_TRUE = '1'
 
+# Timeout used for retrying installing apk. After reinstall apk failed, we try
+# to reboot the device and try again.
+APK_INSTALL_TIMEOUT_MIN = 5
+
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
 
@@ -1495,6 +1499,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.stdout.splitlines()
 
 
+    @retry.retry(error.AutoservRunError, timeout_min=APK_INSTALL_TIMEOUT_MIN)
     def install_apk(self, apk, force_reinstall=True):
         """Install the specified apk.
 
@@ -1507,16 +1512,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @returns a CMDResult object.
         """
-        client_utils.poll_for_condition(
-                lambda: self.run('pm list packages',
-                                 ignore_status=True).exit_status == 0,
-                timeout=120)
-        client_utils.poll_for_condition(
-                lambda: self.run('service list | grep mount',
-                                 ignore_status=True).exit_status == 0,
-                timeout=120)
-        return self.adb_run('install %s -d %s' %
-                            ('-r' if force_reinstall else '', apk))
+        try:
+            client_utils.poll_for_condition(
+                    lambda: self.run('pm list packages',
+                                     ignore_status=True).exit_status == 0,
+                    timeout=120)
+            client_utils.poll_for_condition(
+                    lambda: self.run('service list | grep mount',
+                                     ignore_status=True).exit_status == 0,
+                    timeout=120)
+            return self.adb_run('install %s -d %s' %
+                                ('-r' if force_reinstall else '', apk))
+        except error.AutoservRunError:
+            self.reboot()
+            raise
 
 
     @retry.retry(error.AutoservRunError, timeout_min=0.2)
