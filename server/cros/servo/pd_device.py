@@ -217,14 +217,33 @@ class PDConsoleDevice(PDDevice):
         # Force state will be the opposite of current connect state
         if self.is_src():
             drp_mode = 'snk'
+            swap_state = self.utils.SNK_CONNECT
         else:
             drp_mode = 'src'
+            swap_state = self.utils.SRC_CONNECT
         # Force disconnect
         self.drp_set(drp_mode)
         # Wait for disconnect time
         time.sleep(disc_time_sec)
         # Verify that the device is disconnected
         disconnect = self.is_disconnected()
+
+        # If the other device is dualrole, then forcing dualrole mode will
+        # only cause the disconnect to appear momentarily and reconnect
+        # in the power role forced by the drp_set() call. For this case,
+        # the role swap verifies that a disconnect/connect sequence occurred.
+        if disconnect == False:
+            time.sleep(self.utils.CONNECT_TIME)
+            # Connected, verify if power role swap has ocurred
+            if swap_state == self.utils.get_pd_state(self.port):
+                # Restore default dualrole mode
+                self.drp_set('on')
+                # Restore orignal power role
+                connect = self.pr_swap()
+                if connect == False:
+                    logging.warn('DRP on both devices, 2nd power swap failed')
+                return connect
+
         # Restore default dualrole mode
         self.drp_set('on')
         # Allow enough time for protocol state machine
@@ -432,6 +451,24 @@ class PDPlanktonDevice(PDConsoleDevice):
         disc_cmd = 'fake_disconnect %d  %d' % (DISC_DELAY,
                                                disc_time_sec * 1000)
         self.utils.send_pd_command(disc_cmd)
+
+    def drp_disconnect_connect(self, disc_time_sec):
+        """Disconnect/reconnect using Plankton
+
+        Utilize Plankton disconnect/connect utility and verify
+        that both disconnect and reconnect actions were successful.
+
+        @param disc_time_sec: Time in seconds for disconnect period.
+
+        @returns True if device disconnects, then returns to a connected
+        state. False if either step fails.
+        """
+        self.cc_disconnect_connect(disc_time_sec)
+        time.sleep(disc_time_sec / 2)
+        disconnect = self.is_disconnected()
+        time.sleep(disc_time_sec / 2 + self.utils.CONNECT_TIME)
+        connect = self.is_connected()
+        return disconnect and connect
 
     def drp_set(self, mode):
         """Sets dualrole mode
