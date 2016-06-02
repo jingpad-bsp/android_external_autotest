@@ -977,8 +977,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             # Source will be copied under dest if either:
             #  1. Source is a directory and doesn't end with /.
             #  2. Source is a file and dest is a directory.
-            source_is_dir = self.run('[ -d "$${%s} ]',
+            command = '[ -d %s ]' % source
+            source_is_dir = self.run(command,
                                      ignore_status=True).exit_status == 0
+
             if ((source_is_dir and not source.endswith(os.sep)) or
                 (not source_is_dir and os.path.isdir(dest))):
                 receive_path = os.path.join(dest, os.path.basename(source))
