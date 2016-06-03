@@ -2,11 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv
-import logging
-import os
-import shutil
-import time
+import csv, logging, os, shutil, time
 
 from autotest_lib.client.bin import site_utils, test, utils
 
@@ -18,6 +14,7 @@ TMP_DIRECTORY = '/tmp/'
 PERF_FILE_NAME_PREFIX = 'perf'
 EXIT_FLAG_FILE = TMP_DIRECTORY + 'longevity_terminate'
 OLD_FILE_AGE = 14400  # Age of old files to be deleted in minutes = 10 days.
+
 
 class longevity_Tracker(test.test):
     """Monitors device and App stability over long periods of time."""
@@ -100,18 +97,18 @@ class longevity_Tracker(test.test):
         """
         return interval - (timer % int(interval))
 
-    def _record_perf_values(self, perf_values, writer):
+    def _record_perf_values(self, perf_values, perf_writer):
         """Records performance values.
 
         @param perf_values: dict measures of performance values.
-        @param writer: file for writing performance values.
+        @param perf_writer: file for writing performance values.
 
         """
         cpu_usage = '%.3f' % self._get_cpu_usage()
         mem_usage = '%.3f' % self._get_mem_usage()
         max_temp = '%.3f' % self._get_max_temperature()
         time_stamp = time.strftime('%Y/%m/%d %H:%M:%S')
-        writer.writerow([time_stamp, cpu_usage, mem_usage, max_temp])
+        perf_writer.writerow([time_stamp, cpu_usage, mem_usage, max_temp])
         logging.info('Time: %s, CPU: %s, Mem: %s, Temp: %s',
                      time_stamp, cpu_usage, mem_usage, max_temp)
         perf_values['cpu'].append(cpu_usage)
@@ -146,7 +143,8 @@ class longevity_Tracker(test.test):
 
         If no metric values were recorded, return 0 for each metric.
 
-        @param metrics: dict of attribute metric lists.
+        @param metrics: dict of attribute performance metric lists.
+        @returns dict of attribute performance metric medians.
 
         """
         if len(metrics['cpu']):
@@ -161,10 +159,35 @@ class longevity_Tracker(test.test):
                      cpu_metric, mem_metric, temp_metric)
         return {'cpu': cpu_metric, 'mem': mem_metric, 'temp': temp_metric}
 
-    def _send_perf_metrics(self, perf_metrics):
-        """Send attribute performace metrics to Performance Dashboard.
+    def _copy_perf_file_to_results_directory(self, perf_file):
+        """Copy performance file to perf.csv file for AutoTest results.
 
-        @param metrics: dict of attribute performance metrics.
+        Note: The AutoTest results default directory is located at /usr/local/
+        autotest/results/default/longevity_Tracker/results
+
+        @param perf_file: Performance results file path.
+
+        """
+        results_file = os.path.join(self.resultsdir, 'perf.csv')
+        shutil.copy(perf_file, results_file)
+        logging.info('Copied %s to %s)', perf_file, results_file)
+
+    def _write_perf_keyvals(self, perf_metrics):
+        """Write perf metrics to keyval file for AutoTest results.
+
+        @param perf_metrics: dict of attribute performance metrics.
+
+        """
+        perf_keyval = {}
+        perf_keyval['cpu_usage'] = perf_metrics['cpu']
+        perf_keyval['memory_usage'] = perf_metrics['mem']
+        perf_keyval['temperature'] = perf_metrics['temp']
+        self.write_perf_keyval(perf_keyval)
+
+    def _write_perf_results(self, perf_metrics):
+        """Write perf metrics to results-chart file for Performance Dashboard.
+
+        @param perf_metrics: dict of attribute performance metrics.
 
         """
         cpu_metric = perf_metrics['cpu']
@@ -177,30 +200,16 @@ class longevity_Tracker(test.test):
         self.output_perf_value(description='max_temp', value=ec_metric,
                                units='Celsius', higher_is_better=False)
 
-    def _copy_perf_file_to_results_directory(self, perf_file):
-        """Copy performance file to results directory.
+    def _run_test_cycle(self):
+        """Run 23-hour test cycle and collect performance metrics.
 
-        Note: The results directory is typically found at /usr/local/
-        autotest/results/default/longevity_Tracker/results
-
-        @param perf_file: Performance results file path.
+        @returns list of median performance metrics.
 
         """
-        results_file = os.path.join(self.resultsdir, 'perf.csv')
-        shutil.copy(perf_file, results_file)
-        logging.info('Copied %s to %s)', perf_file, results_file)
-
-    def run_once(self):
-        # Test runs 23:00 hrs, or until the exit flag file is seen.
-        # Delete exit flag file at start of test.
-        if os.path.isfile(EXIT_FLAG_FILE):
-            os.remove(EXIT_FLAG_FILE)
-
         # Allow system to stabilize before start taking measurements.
         test_start_time = time.time()
         time.sleep(STABILIZATION_DURATION)
 
-        perf_keyval = {}
         board_name = utils.get_current_board()
         build_id = utils.get_chromeos_release_version()
         perf_values = {'cpu': [], 'mem': [], 'temp': []}
@@ -209,8 +218,8 @@ class longevity_Tracker(test.test):
                           time.strftime('_%Y-%m-%d_%H-%M') + '.csv')
         perf_file_path = os.path.join(self.temp_dir, perf_file_name)
         perf_file = open(perf_file_path, 'w')
-        writer = csv.writer(perf_file)
-        writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (C)'])
+        perf_writer = csv.writer(perf_file)
+        perf_writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (C)'])
         logging.info('Board Name: %s, Build ID: %s', board_name, build_id)
 
         # Align time of loop start with the sample interval.
@@ -228,7 +237,7 @@ class longevity_Tracker(test.test):
             if os.path.isfile(EXIT_FLAG_FILE):
                 logging.info('Exit flag file detected. Exiting test.')
                 break
-            self._record_perf_values(perf_values, writer)
+            self._record_perf_values(perf_values, perf_writer)
 
             # Periodically calculate and record 90th percentile metrics.
             report_elapsed_prev_time = self.elapsed_time(report_prev_time)
@@ -256,15 +265,23 @@ class longevity_Tracker(test.test):
         perf_file.close()
         self._copy_perf_file_to_results_directory(perf_file_path)
 
-        # Write median performance metrics to results directory.
-        median_metrics = self._get_median_metrics(perf_metrics)
-        perf_keyval['cpu_usage'] = median_metrics['cpu']
-        perf_keyval['memory_usage'] = median_metrics['mem']
-        perf_keyval['temperature'] = median_metrics['temp']
-        self.write_perf_keyval(perf_keyval)
+        # Return median of each attribute performance metric.
+        return self._get_median_metrics(perf_metrics)
 
-        # Send median performance metrics to the performance dashboard.
-        self._send_perf_metrics(median_metrics)
+    def run_once(self):
+        # Delete exit flag file at start of test run.
+        if os.path.isfile(EXIT_FLAG_FILE):
+            os.remove(EXIT_FLAG_FILE)
+
+        # Run a single 23-hour test cycle.
+        median_metrics = {'cpu': '0', 'mem': '0', 'temp': '0'}
+        median_metrics = self._run_test_cycle()
+
+        # Write metrics to keyval file for AutoTest results.
+        self._write_perf_keyvals(median_metrics)
+
+        # Write metrics to results-chart.json file for performance dashboard.
+        self._write_perf_results(median_metrics)
 
     def cleanup(self):
         """Delete aged perf data files and the exit flag file."""
