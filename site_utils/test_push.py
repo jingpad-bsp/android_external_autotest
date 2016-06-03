@@ -162,7 +162,7 @@ def parse_arguments():
     parser.add_argument('-i', '--build', dest='build', default=None,
                         help='Default is the latest canary build of given '
                              'board. Must be a canary build, otherwise AU test '
-                             'will fail.')
+                             'will fail. (ex: gandolf-release/R53-8397.0.0)')
     parser.add_argument('-si', '--shard_build', dest='shard_build', default=None,
                         help='Default is the latest canary build of given '
                              'board. Must be a canary build, otherwise AU test '
