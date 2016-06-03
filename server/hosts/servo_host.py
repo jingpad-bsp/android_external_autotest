@@ -446,8 +446,7 @@ class ServoHost(ssh_host.SSHHost):
             # don't want servo failure to fail the test with error:
             # `Host did not return from reboot` in status.log.
             reboot_cmd = 'sleep 1 ; reboot & sleep 10; reboot -f',
-            self.reboot(reboot_cmd=reboot_cmd, fastsync=True,
-                        label=None, wait=False)
+            self.reboot(reboot_cmd=reboot_cmd, fastsync=True, wait=False)
 
             # We told the reboot() call not to wait, but we need to wait
             # for the reboot before we continue.  Alas.  The code from
@@ -619,9 +618,8 @@ class ServoHost(ssh_host.SSHHost):
     def _repair_with_sysrq_reboot(self):
         """Reboot with magic SysRq key."""
         self.reboot(timeout=self.REBOOT_TIMEOUT_SECS,
-                    label=None,
                     down_timeout=self.HOST_DOWN_TIMEOUT_SECS,
-                    reboot_cmd='echo "b" > /proc/sysrq-trigger &',
+                    reboot_cmd='echo "b" > /proc/sysrq-trigger',
                     fastsync=True)
         time.sleep(self.REBOOT_DELAY_SECS)
 
