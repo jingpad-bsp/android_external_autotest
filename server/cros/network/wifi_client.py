@@ -11,7 +11,6 @@ import time
 from contextlib import contextmanager
 from collections import namedtuple
 
-from autotest_lib.client.bin import site_utils as client_site_utils
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
@@ -1197,7 +1196,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
         # Wait for shill to bring down the wifi interface.
         is_interface_down = lambda: not self._interface.is_up
-        client_site_utils.poll_for_condition(
+        utils.poll_for_condition(
                 is_interface_down,
                 timeout=INTERFACE_DOWN_WAIT_TIME_SECONDS,
                 sleep_interval=0.5,
