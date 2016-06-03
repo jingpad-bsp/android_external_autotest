@@ -166,19 +166,16 @@ class AndroidXmlRpcDelegate(object):
         """
         # Cleanup all existing logs for this device when starting.
         shutil.rmtree(log_dir, ignore_errors=True)
-        self.log = logger.get_test_logger(log_dir,
-                                          TAG="ANDROID_XMLRPC",
-                                          prefix="ANDROID_XMLRPC")
+        logger.setup_test_logger(log_path=log_dir, prefix="ANDROID_XMLRPC")
         if not serial_number:
-            ads = android_device.get_all_instances(logger=self.log)
+            ads = android_device.get_all_instances()
             if not ads:
                 msg = "No android device found, abort!"
                 logging.error(msg)
                 raise XmlRpcServerError(msg)
             self.ad = ads[0]
         elif serial_number in android_device.list_adb_devices():
-            self.ad = android_device.AndroidDevice(serial_number,
-                                                   logger=self.log)
+            self.ad = android_device.AndroidDevice(serial_number)
         else:
             msg = ("Specified Android device %s can't be found, abort!"
                    ) % serial_number
