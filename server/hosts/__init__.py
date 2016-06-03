@@ -20,9 +20,6 @@ from chameleon_host import ChameleonHost
 from servo_host import ServoHost
 from testbed import TestBed
 
-# bootloader classes
-from bootloader import Bootloader
-
 # factory function
 from factory import create_host
 from factory import create_testbed

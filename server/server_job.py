@@ -219,7 +219,6 @@ class base_server_job(base_job.base_job):
         self._ssh_verbosity_flag = ssh_verbosity_flag
         self._ssh_options = ssh_options
         self.tag = tag
-        self.last_boot_tag = None
         self.hosts = set()
         self.drop_caches = False
         self.drop_caches_between_iterations = False
@@ -260,10 +259,6 @@ class base_server_job(base_job.base_job):
 
         self._register_subcommand_hooks()
 
-        # these components aren't usable on the server
-        self.bootloader = None
-        self.harness = None
-
         # set up the status logger
         self._indenter = status_indenter()
         self._logger = base_job.status_logger(
@@ -286,6 +281,17 @@ class base_server_job(base_job.base_job):
             self.machine_dict_list.append(
                     {'hostname' : machine,
                      'host_attributes' : host_attributes})
+
+        # TODO(jrbarnette) The three attributes below are only relevant
+        # to client jobs, but they're required to be present, or we will
+        # fail server job unit tests.  Yes, really.
+        #
+        # TODO(jrbarnette) bootloader and last_boot_tag aren't even
+        # needed in the client job, but we're deleting them piecemeal,
+        # and the server job change comes first.
+        self.harness = None
+        self.bootloader = None
+        self.last_boot_tag = None
 
 
     @classmethod
@@ -1114,7 +1120,7 @@ class base_server_job(base_job.base_job):
                         # more concrete API with less surprises on '*' imports.
                         warnings.warn('%s (%r) being imported from %s for use '
                                       'in server control files is not the '
-                                      'first occurrance of that import.' %
+                                      'first occurrence of that import.' %
                                       (name, namespace[name], module_name))
 
                 namespace[name] = getattr(module, name)
@@ -1124,8 +1130,7 @@ class base_server_job(base_job.base_job):
         # the front of the control script.
         namespace.update(os=os, sys=sys, logging=logging)
         _import_names('autotest_lib.server',
-                ('hosts', 'autotest', 'git', 'standalone_profiler',
-                 'source_kernel', 'rpm_kernel', 'deb_kernel', 'git_kernel'))
+                ('hosts', 'autotest', 'standalone_profiler'))
         _import_names('autotest_lib.server.subcommand',
                       ('parallel', 'parallel_simple', 'subcommand'))
         _import_names('autotest_lib.server.utils',
