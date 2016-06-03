@@ -499,30 +499,23 @@ class ChromiumOSUpdater(BaseUpdater):
         self.reset_stateful_partition()
 
         try:
-            updaters = [
-                multiprocessing.process.Process(target=self.update_rootfs),
-                multiprocessing.process.Process(target=self.update_stateful)
-                ]
-            if not update_root:
-                logging.info('Root update is skipped.')
-                updaters = updaters[1:]
+            try:
+                if not update_root:
+                    logging.info('Root update is skipped.')
+                else:
+                    self.update_rootfs()
 
-            # Run the updaters in parallel.
-            for updater in updaters: updater.start()
-            for updater in updaters: updater.join()
-
-            # Re-raise the first error that occurred.
-            if not self._update_error_queue.empty():
-                update_error = self._update_error_queue.get()
+                self.update_stateful()
+            except:
                 self.revert_boot_partition()
                 self.reset_stateful_partition()
-                raise update_error
+                raise
 
             logging.info('Update complete.')
         except:
             # Collect update engine logs in the event of failure.
             if self.host.job:
-                logging.info('Collecting update engine logs...')
+                logging.info('Collecting update engine logs due to failure...')
                 self.host.get_file(
                         self.UPDATER_LOGS, self.host.job.sysinfo.sysinfodir,
                         preserve_perm=False)
