@@ -292,7 +292,7 @@ class power_LoadTest(test.test):
         t1 = time.time()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
         if psr_t0:
-            self._tmp_keyvals['psr_residency'] = \
+            self._tmp_keyvals['percent_psr_residency'] = \
                 (self._get_psr_counter() - psr_t0) / (10 * (t1 - t0))
 
 
