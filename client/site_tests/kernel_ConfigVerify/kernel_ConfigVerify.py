@@ -79,7 +79,7 @@ class kernel_ConfigVerify(test.test):
             ],
             'missing': [
                 # Sanity checks; one disabled, one does not exist.
-                'BINFMT_MISC',
+                'BINFMT_AOUT',
                 'BINFMT_IMPOSSIBLE',
             ],
         },
