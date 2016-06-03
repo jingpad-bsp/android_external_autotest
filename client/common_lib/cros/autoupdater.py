@@ -5,7 +5,6 @@
 import glob
 import httplib
 import logging
-import multiprocessing
 import os
 import re
 import urlparse
@@ -138,7 +137,6 @@ class BaseUpdater(object):
         self.updater_ctrl_bin = updater_ctrl_bin
         self.update_url = update_url
         self.host = host
-        self._update_error_queue = multiprocessing.Queue(2)
 
 
     def check_update_status(self):
@@ -240,14 +238,9 @@ class BaseUpdater(object):
         logging.info('Updating image via: %s', autoupdate_cmd)
         to_raise = self._base_update_handler(run_args, err_prefix)
         if to_raise:
-            self._update_error_queue.put(to_raise)
             raise to_raise
 
-        try:
-            self._verify_update_completed()
-        except RootFSUpdateError as e:
-            self._update_error_queue.put(e)
-            raise
+        self._verify_update_completed()
 
 
 class ChromiumOSUpdater(BaseUpdater):
@@ -463,13 +456,7 @@ class ChromiumOSUpdater(BaseUpdater):
             update_error = StatefulUpdateError(
                     'Failed to perform stateful update on %s' %
                     self.host.hostname)
-            self._update_error_queue.put(update_error)
             raise update_error
-        except Exception as e:
-            # Don't allow other exceptions to not be caught.
-            self._update_error_queue.put(e)
-            raise e
-
 
     @_timer.decorate
     def run_update(self, update_root=True):
