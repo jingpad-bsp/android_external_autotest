@@ -1,21 +1,21 @@
-#!/usr/bin/python3.4
+#!/usr/bin/python2.7
 
 # Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import argparse
-import contextlib
+import contextlib2
 import errno
 import logging
-import queue
+import Queue
 import select
 import shutil
 import signal
 import threading
 import time
 
-from xmlrpc.server import SimpleXMLRPCServer
+from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 from acts import logger
 from acts import utils
@@ -106,7 +106,7 @@ class XmlRpcServer(threading.Thread):
     def run(self):
         """Block and handle many XmlRpc requests."""
         logging.info('XmlRpcServer starting...')
-        with contextlib.ExitStack() as stack:
+        with contextlib2.ExitStack() as stack:
             for delegate in self._delegates:
                 stack.enter_context(delegate)
             while self._keep_running:
@@ -292,7 +292,7 @@ class AndroidXmlRpcDelegate(object):
             for result in scan_results:
                 if wutils.WifiEnums.SSID_KEY in result:
                     ssids.append(result[wutils.WifiEnums.SSID_KEY])
-        except queue.Empty:
+        except Queue.Empty:
             logging.error("Scan results available event timed out!")
         except Exception as e:
             logging.error("Scan results error: %s" % str(e))
@@ -338,7 +338,7 @@ class AndroidXmlRpcDelegate(object):
                 assert actual_ssid == ssid, ("Expected to connect to %s, but "
                         "connected to %s") % (ssid, actual_ssid)
             result = True
-        except queue.Empty:
+        except Queue.Empty:
             logging.error("No state change available yet!")
         except Exception as e:
             logging.error("State change error: %s" % str(e))
@@ -433,7 +433,7 @@ class AndroidXmlRpcDelegate(object):
             assert actual_ssid == params.ssid, ("Expected to connect to %s, "
                 "connected to %s") % (params.ssid, actual_ssid)
             result = True
-        except queue.Empty:
+        except Queue.Empty:
             msg = "Failed to connect to %s with %s" % (params.ssid,
                 params.security_config.security)
             logging.error(msg)

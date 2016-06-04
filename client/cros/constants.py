@@ -142,7 +142,8 @@ SHILL_XMLRPC_SERVER_COMMAND = (
         './shill_xmlrpc_server.py')
 SHILL_BRILLO_XMLRPC_SERVER_COMMAND = (
         '/system/bin/shill-test-rpc-proxy --port=%s' % SHILL_XMLRPC_SERVER_PORT)
-ANDROID_XMLRPC_SERVER_TARGET_DIR = '/root'
+# /usr/local/bin is write-accessible on both ChromeOS and test-station platforms
+ANDROID_XMLRPC_SERVER_TARGET_DIR = '/usr/local/bin'
 ANDROID_XMLRPC_SERVER_COMMAND = (
         'cd %s; '
         './android_xmlrpc_server.py' % ANDROID_XMLRPC_SERVER_TARGET_DIR)
