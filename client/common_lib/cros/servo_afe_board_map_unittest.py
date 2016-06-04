@@ -19,6 +19,7 @@ class ServoAfeBoardMapTest(unittest.TestCase):
         self.assertEqual(afe_map('kip'), 'kip')
         self.assertEqual(afe_map('gizmo'), 'panther')
         self.assertEqual(afe_map('link_freon'), 'link')
+        self.assertEqual(afe_map('nyan_blaze-freon'), 'nyan_blaze')
         self.assertEqual(afe_map('stumpy_moblab'), 'stumpy')
         self.assertEqual(afe_map('veyron_minnie-cheets'), 'veyron_minnie')
 
