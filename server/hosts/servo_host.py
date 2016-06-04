@@ -693,9 +693,8 @@ class ServoHost(ssh_host.SSHHost):
         logging.info('Attempting to repair servo host %s.', self.hostname)
         # Reset the cache to guarantee servo initialization being called later.
         self._servo = None
-        # TODO(dshi): add self._powercycle_to_repair back to repair_funcs
-        # after crbug.com/336606 is fixed.
-        repair_funcs = [self._repair_with_sysrq_reboot,]
+        repair_funcs = [self._repair_with_sysrq_reboot,
+                        self._powercycle_to_repair]
         errors = []
         for repair_func in repair_funcs:
             counter_prefix = 'servo_host_repair.%s.' % repair_func.__name__
