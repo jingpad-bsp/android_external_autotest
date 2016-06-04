@@ -170,9 +170,6 @@ def parse_arguments():
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
     parser.add_argument('-u', '--num', dest='num', type=int, default=3,
                         help='Run on at most NUM machines.')
-    parser.add_argument('-f', '--file_bugs', dest='file_bugs', default='True',
-                        help='File bugs on test failures. Must pass "True" or '
-                             '"False" if used.')
     parser.add_argument('-e', '--email', dest='email', default=None,
                         help='Email address for the notification to be sent to '
                              'after the script finished running.')
@@ -246,8 +243,7 @@ def do_run_suite(suite_name, arguments, use_shard=False,
            '-b', board,
            '-i', build,
            '-p', arguments.pool,
-           '-u', str(arguments.num),
-           '-f', arguments.file_bugs]
+           '-u', str(arguments.num)]
     if create_and_return:
         cmd += ['-c']
 
