@@ -316,8 +316,19 @@ class Suspender(object):
             return "unknown"
 
 
-    def _check_for_errors(self):
-        """Find and identify suspend errors. Return True iff we should retry."""
+    def _check_for_errors(self, ignore_kernel_warns):
+        """Find and identify suspend errors.
+
+        @param ignore_kernel_warns: Ignore kernel errors.
+
+        @returns: True iff we should retry.
+
+        @raises:
+          sys_power.KernelError: for non-whitelisted kernel failures.
+          sys_power.SuspendTimeout: took too long to enter suspend.
+          sys_power.SpuriousWakeupError: woke too soon from suspend.
+          sys_power.SuspendFailure: unidentified failure.
+        """
         warning_regex = re.compile(r' kernel: \[.*WARNING:')
         abort_regex = re.compile(r' kernel: \[.*Freezing of tasks abort'
                 r'| powerd_suspend\[.*Cancel suspend at kernel'
@@ -340,7 +351,10 @@ class Suspender(object):
                         logging.info('Whitelisted KernelError: %s', src)
                         break
                 else:
-                    raise sys_power.KernelError("%s\n%s" % (src, text))
+                    if ignore_kernel_warns:
+                        logging.warn('Non-whitelisted KernelError: %s', src)
+                    else:
+                        raise sys_power.KernelError("%s\n%s" % (src, text))
             if abort_regex.search(line):
                 wake_source = 'unknown'
                 match = re.search(r'last active wakeup source: (.*)$',
@@ -361,12 +375,13 @@ class Suspender(object):
                         'before S3: %s | %s' % (wake_source, driver))
             if fail_regex.search(line):
                 failed = True
+
         if failed:
             raise sys_power.SuspendFailure('Unidentified problem.')
         return False
 
 
-    def suspend(self, duration=10):
+    def suspend(self, duration=10, ignore_kernel_warns=False):
         """
         Do a single suspend for 'duration' seconds. Estimates the amount of time
         it takes to suspend for a board (see _SUSPEND_DELAY), so the actual RTC
@@ -376,6 +391,7 @@ class Suspender(object):
         _device_times is set.
 
         @param duration: time in seconds to do a suspend prior to waking.
+        @param ignore_kernel_warns: Ignore kernel errors.  Defaults to false.
         """
         try:
             iteration = len(self.failures) + len(self.successes) + 1
@@ -408,10 +424,11 @@ class Suspender(object):
                             raise sys_power.FirmwareError(msg.strip('\r\n '))
 
                 self._update_logs()
-                if not self._check_for_errors():
+                if not self._check_for_errors(ignore_kernel_warns):
                     hwclock_ts = self._hwclock_ts(alarm)
                     if hwclock_ts:
                         break
+
             else:
                 raise error.TestWarn('Ten tries failed due to whitelisted bug')
 
