@@ -77,21 +77,22 @@ from autotest_lib.site_utils.suite_scheduler import constants
 # managed by the Platforms team (i.e. at the time of this writing,
 # only in "Atlantis" or "Destiny").
 #
-# _CRITICAL_POOLS - Pools that must be kept fully supplied in order
+# CRITICAL_POOLS - Pools that must be kept fully supplied in order
 #     to guarantee timely completion of tests from builders.
-# _SPARE_POOL - A low priority pool that is allowed to provide
+# SPARE_POOL - A low priority pool that is allowed to provide
 #     spares to replace broken devices in the critical pools.
-# _MANAGED_POOLS - The set of all the general purpose pools
+# MANAGED_POOLS - The set of all the general purpose pools
 #     monitored by this script.
 
-_CRITICAL_POOLS = ['bvt', 'cq', 'continuous']
-_SPARE_POOL = 'suites'
-_MANAGED_POOLS = _CRITICAL_POOLS + [_SPARE_POOL]
+CRITICAL_POOLS = ['bvt', 'cq', 'continuous']
+SPARE_POOL = 'suites'
+MANAGED_POOLS = CRITICAL_POOLS + [SPARE_POOL]
 
 # _EXCLUDED_LABELS - A set of labels that disqualify a DUT from
 #     monitoring by this script.  Currently, we're excluding any
 #     'adb' host, because we're not ready to monitor Android or
 #     Brillo hosts.
+
 _EXCLUDED_LABELS = set(['adb'])
 
 # _DEFAULT_DURATION:
@@ -126,6 +127,10 @@ _LOG_FORMAT = '%(asctime)s | %(levelname)-10s | %(message)s'
 
 _HOSTNAME_PATTERN = re.compile(
         r'(chromeos\d+)-row(\d+)-rack(\d+)-host(\d+)')
+
+# Default entry for managed pools.
+
+_MANAGED_POOL_DEFAULT = 'all_pools'
 
 
 class _PoolCounts(object):
@@ -274,7 +279,7 @@ class _BoardCounts(object):
 
     def __init__(self):
         self._pools = {
-            pool: _PoolCounts() for pool in _MANAGED_POOLS
+            pool: _PoolCounts() for pool in MANAGED_POOLS
         }
 
     def record_host(self, host_history):
@@ -403,7 +408,7 @@ class _BoardCounts(object):
         @return The total number DUTs in the spares pool, less the total
                 number of broken DUTs in all pools.
         """
-        return self.get_total(_SPARE_POOL) - self.get_broken()
+        return self.get_total(SPARE_POOL) - self.get_broken()
 
 
     def get_total(self, pool=None):
@@ -445,7 +450,7 @@ class _LabInventory(dict):
         """Return a Lab inventory with specified parameters.
 
         By default, gathers inventory from `HostJobHistory` objects
-        for all DUTs in the `_MANAGED_POOLS` list.  If `boardlist`
+        for all DUTs in the `MANAGED_POOLS` list.  If `boardlist`
         is supplied, the inventory will be restricted to only the
         given boards.
 
@@ -461,7 +466,7 @@ class _LabInventory(dict):
 
         """
         label_list = [constants.Labels.POOL_PREFIX + l
-                          for l in _MANAGED_POOLS]
+                          for l in MANAGED_POOLS]
         afehosts = afe.get_hosts(labels__name__in=label_list)
         if boardlist:
             # We're deliberately not checking host eligibility in this
@@ -495,12 +500,12 @@ class _LabInventory(dict):
         initval = { board: _BoardCounts() for board in boards }
         super(_LabInventory, self).__init__(initval)
         self._dut_count = len(histories)
-        self._managed_boards = None
+        self._managed_boards = {}
         for h in histories:
             self[h.host_board].record_host(h)
 
 
-    def get_managed_boards(self):
+    def get_managed_boards(self, pool=_MANAGED_POOL_DEFAULT):
         """Return the set of "managed" boards.
 
         Operationally, saying a board is "managed" means that the
@@ -513,17 +518,25 @@ class _LabInventory(dict):
         has DUTs in both the spare and a non-spare (i.e. critical)
         pool.
 
+        @param pool: The specified pool for managed boards.
         @return A set of all the boards that have both spare and
-                non-spare pools.
+                non-spare pools, unless the pool is specified,
+                then the set of boards in that pool.
         """
-        if self._managed_boards is None:
-            self._managed_boards = set()
+        if self._managed_boards.get(pool, None) is None:
+            self._managed_boards[pool] = set()
             for board, counts in self.items():
-                spares = counts.get_total(_SPARE_POOL)
-                total = counts.get_total()
-                if spares != 0 and spares != total:
-                    self._managed_boards.add(board)
-        return self._managed_boards
+                # Get the counts for all pools, otherwise get it for the
+                # specified pool.
+                if pool == _MANAGED_POOL_DEFAULT:
+                    spares = counts.get_total(SPARE_POOL)
+                    total = counts.get_total()
+                    if spares != 0 and spares != total:
+                        self._managed_boards[pool].add(board)
+                else:
+                    if counts.get_total(pool) != 0:
+                        self._managed_boards[pool].add(board)
+        return self._managed_boards[pool]
 
 
     def get_num_duts(self):
@@ -740,7 +753,7 @@ def _generate_board_inventory_message(inventory):
                    counts.get_broken(),
                    counts.get_idle(),
                    counts.get_working(),
-                   counts.get_total(_SPARE_POOL),
+                   counts.get_total(SPARE_POOL),
                    counts.get_total())
         if element[2]:
             summaries.append(element)
@@ -802,7 +815,7 @@ def _generate_pool_inventory_message(inventory):
     logging.debug('Creating pool inventory')
     message = [_POOL_INVENTORY_HEADER]
     newline = ''
-    for pool in _CRITICAL_POOLS:
+    for pool in CRITICAL_POOLS:
         message.append(
             '%sStatus for pool:%s, by board:' % (newline, pool))
         message.append(
@@ -857,7 +870,7 @@ def _generate_idle_inventory_message(inventory):
     message.append('Idle Host List:')
     message.append('%-30s %-20s %s' % ('Hostname', 'Board', 'Pool'))
     data_list = []
-    for pool in _MANAGED_POOLS:
+    for pool in MANAGED_POOLS:
         for board, counts in inventory.items():
             logging.debug('Counting inventory for %s, %s', board, pool)
             data_list.extend([(dut.host.hostname, board, pool)
@@ -1159,12 +1172,14 @@ def main(argv):
         logging.exception('Unexpected exception: %s', e)
 
 
-def get_managed_boards(afe):
+def get_inventory(afe):
     end_time = int(time.time())
     start_time = end_time - 24 * 60 * 60
-    inventory = _LabInventory.create_inventory(
-            afe, start_time, end_time)
-    return inventory.get_managed_boards()
+    return _LabInventory.create_inventory(afe, start_time, end_time)
+
+
+def get_managed_boards(afe):
+    return get_inventory(afe).get_managed_boards()
 
 
 if __name__ == '__main__':

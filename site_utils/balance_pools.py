@@ -58,7 +58,7 @@ import time
 
 import common
 from autotest_lib.server import frontend
-from autotest_lib.site_utils import host_label_utils
+from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils import status_history
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -66,6 +66,13 @@ from chromite.lib import parallel
 
 
 _POOL_PREFIX = constants.Labels.POOL_PREFIX
+# This is the ratio of all boards we should calculate the default max number of
+# broken boards against.  It seemed like the best choice that was neither too
+# strict nor lax.
+_MAX_BROKEN_BOARDS_DEFAULT_RATIO = 3.0 / 8.0
+
+_ALL_CRITICAL_POOLS = 'all_critical_pools'
+_SPARE_DEFAULT = lab_inventory.SPARE_POOL
 
 
 def _log_message(message, *args):
@@ -303,7 +310,7 @@ def _exchange_labels(dry_run, hosts, target_pool, spare_pool):
                          host.hostname, ' '.join(additions))
 
 
-def _balance_board(arguments, afe, board, start_time, end_time):
+def _balance_board(arguments, afe, board, pool, start_time, end_time):
     """Balance one board as requested by command line arguments.
 
     @param arguments     Parsed command line arguments.
@@ -311,6 +318,7 @@ def _balance_board(arguments, afe, board, start_time, end_time):
                          for actual execution.
     @param afe           AFE object to be used for the changes.
     @param board         Board to be balanced.
+    @param pool          Pool of the board to be balanced.
     @param start_time    Start time for HostJobHistory objects in
                          the DUT pools.
     @param end_time      End time for HostJobHistory objects in the
@@ -319,7 +327,7 @@ def _balance_board(arguments, afe, board, start_time, end_time):
     """
     spare_pool = _DUTPool(afe, board, arguments.spare,
                           start_time, end_time)
-    main_pool = _DUTPool(afe, board, arguments.pool,
+    main_pool = _DUTPool(afe, board, pool,
                          start_time, end_time)
 
     target_total = main_pool.total_hosts
@@ -402,6 +410,52 @@ def _balance_board(arguments, afe, board, start_time, end_time):
                      main_pool, spare_pool)
 
 
+def _too_many_broken_boards(inventory, pool, arguments):
+    """
+    Get the inventory of boards and check if too many boards are broken.
+
+    @param inventory: inventory object to determine board status inventory.
+    @param pool: The pool to check on for the board.
+    @param arguments     Parsed command line arguments.
+
+    @return True if the number of boards with 1 or more broken duts exceed
+    max_broken_boards, False otherwise.
+    """
+    # Let's check if we even need to check for this max_broken_boards.
+    if arguments.force_rebalance or arguments.max_broken_boards == 0:
+        return False
+
+    # Let's get the number of broken duts for the specified pool and
+    # check that it's less than arguments.max_broken_boards.  Or if
+    # it's not specified, calculate the default number of max broken
+    # boards based on the total number of boards per pool.
+    # TODO(kevcheng): Revisit to see if there's a better way to
+    # calculate the default max_broken_boards.
+    max_broken_boards = arguments.max_broken_boards
+    if max_broken_boards is None:
+        total_num_boards = len(inventory.get_managed_boards(pool=pool))
+        max_broken_boards = int(_MAX_BROKEN_BOARDS_DEFAULT_RATIO *
+                                total_num_boards)
+        _log_info(arguments.dry_run,
+                  'Default max broken boards calculated to be %d for '
+                  '%s pool',
+                  max_broken_boards, pool)
+
+
+    broken_boards = [board for board, counts in inventory.items()
+                     if counts.get_broken(pool) != 0]
+    broken_boards.sort()
+    num_of_broken_boards = len(broken_boards)
+    # TODO(kevcheng): Track which boards have broken duts, we can limit the
+    # number of boards we go through in the main loop with this knowledge.
+    _log_message('There are %d boards in the %s pool with at least 1 '
+                 'broken DUT (max threshold %d)', num_of_broken_boards,
+                 pool, max_broken_boards)
+    for broken_board in broken_boards:
+        _log_message(broken_board)
+    return num_of_broken_boards > max_broken_boards
+
+
 def _parse_command(argv):
     """Parse the command line arguments.
 
@@ -434,10 +488,10 @@ def _parse_command(argv):
                              help='Remove the specified number of DUTs '
                                   'from the pool for every BOARD')
 
-    parser.add_argument('-s', '--spare', default='suites',
+    parser.add_argument('-s', '--spare', default=_SPARE_DEFAULT,
                         metavar='POOL',
                         help='Pool from which to draw replacement '
-                             'spares (default: pool:suites)')
+                             'spares (default: pool:%s)' % _SPARE_DEFAULT)
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='Report actions to take in the form of '
                              'shell commands')
@@ -457,11 +511,20 @@ def _parse_command(argv):
                              'lab.')
 
     parser.add_argument('--all-boards', action='store_true',
-                        help='Rebalance all boards.')
+                        help='Rebalance all managed boards.  This will do a '
+                             'very expensive check to see how many boards have '
+                             'at least one broken DUT.  To bypass that check, '
+                             'set --max-broken-boards to 0.')
+    parser.add_argument('--max-broken-boards',
+                        default=None, type=int,
+                        help='Only rebalance all boards if number of boards '
+                             'with broken DUTs in the specified pool '
+                             'is less than COUNT.')
 
     parser.add_argument('pool',
                         metavar='POOL',
-                        help='Name of the pool to balance.')
+                        help='Name of the pool to balance.  Use %s to balance '
+                             'all critical pools' % _ALL_CRITICAL_POOLS)
     parser.add_argument('boards', nargs='*',
                         metavar='BOARD',
                         help='Names of boards to balance.')
@@ -474,7 +537,10 @@ def _parse_command(argv):
                      '--all-boards')
     if arguments.boards and arguments.all_boards:
         parser.error('Cannot specify boards with --all-boards.')
-
+    if (arguments.pool == _ALL_CRITICAL_POOLS and
+            arguments.spare != _SPARE_DEFAULT):
+        parser.error('Cannot specify --spare pool to be %s when balancing all '
+                     'critical pools.' % _SPARE_DEFAULT)
     return arguments
 
 
@@ -484,27 +550,47 @@ def main(argv):
     @param argv  Command line arguments including `sys.argv[0]`.
 
     """
-    def balancer(i, board):
+    def balancer(i, board, pool):
       """Balance the specified board.
 
       @param i The index of the board.
       @param board The board name.
+      @param pool The pool to rebalance for the board.
       """
       if i > 0:
           _log_message('')
-      _balance_board(arguments, afe, board, start_time, end_time)
+      _balance_board(arguments, afe, board, pool, start_time, end_time)
 
     arguments = _parse_command(argv)
     end_time = time.time()
     start_time = end_time - 24 * 60 * 60
     afe = frontend.AFE(server=None)
     boards = arguments.boards
+    pools = (lab_inventory.CRITICAL_POOLS
+             if arguments.pool == _ALL_CRITICAL_POOLS
+             else [arguments.pool])
+    board_info = []
     if arguments.all_boards:
-        boards = host_label_utils.get_all_boards(
-            labels=[_POOL_PREFIX + arguments.pool])
-    board_args = list(enumerate(boards))
+        inventory = lab_inventory.get_inventory(afe)
+        for pool in pools:
+            if _too_many_broken_boards(inventory, pool, arguments):
+                _log_error('Refusing to balance all boards for %s pool, '
+                           'too many boards with at least 1 broken DUT '
+                           'detected.', pool)
+            else:
+                boards_in_pool = inventory.get_managed_boards(pool=pool)
+                current_len_board_info = len(board_info)
+                board_info.extend([(i + current_len_board_info, board, pool)
+                                   for i, board in enumerate(boards_in_pool)])
+    else:
+        # We have specified boards with a specified pool, setup the args to the
+        # balancer properly.
+        for pool in pools:
+            current_len_board_info = len(board_info)
+            board_info.extend([(i + current_len_board_info, board, pool)
+                               for i, board in enumerate(boards)])
     try:
-        parallel.RunTasksInProcessPool(balancer, board_args, processes=8)
+        parallel.RunTasksInProcessPool(balancer, board_info, processes=8)
     except KeyboardInterrupt:
         pass
 
