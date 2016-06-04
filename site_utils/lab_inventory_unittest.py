@@ -111,7 +111,7 @@ class PoolCountTests(unittest.TestCase):
 
     def _add_host(self, status):
         fake = _FakeHostHistory(
-                None, lab_inventory._SPARE_POOL, status)
+                None, lab_inventory.SPARE_POOL, status)
         self._pool_counts.record_host(fake)
 
 
@@ -213,7 +213,7 @@ class BoardCountTests(unittest.TestCase):
         count_working = 0
         count_broken = 0
         count_total = 0
-        for pool in lab_inventory._MANAGED_POOLS:
+        for pool in lab_inventory.MANAGED_POOLS:
             count_working += self._board_counts.get_working(pool)
             count_broken += self._board_counts.get_broken(pool)
             count_total += self._board_counts.get_total(pool)
@@ -245,7 +245,7 @@ class BoardCountTests(unittest.TestCase):
     def test_empty(self):
         """Test counts when there are no DUTs recorded."""
         self._check_all_counts(0, 0)
-        for pool in lab_inventory._MANAGED_POOLS:
+        for pool in lab_inventory.MANAGED_POOLS:
             self._check_pool_counts(pool, 0, 0)
 
 
@@ -258,7 +258,7 @@ class BoardCountTests(unittest.TestCase):
         """
         working = 0
         broken = 0
-        for pool in lab_inventory._MANAGED_POOLS:
+        for pool in lab_inventory.MANAGED_POOLS:
             self._add_host(pool, _WORKING)
             working += 1
             self._check_pool_counts(pool, 1, 0)
@@ -278,7 +278,7 @@ class BoardCountTests(unittest.TestCase):
         """
         working = 0
         broken = 0
-        for pool in lab_inventory._MANAGED_POOLS:
+        for pool in lab_inventory.MANAGED_POOLS:
             self._add_host(pool, _BROKEN)
             broken += 1
             self._check_pool_counts(pool, 0, 1)
@@ -371,7 +371,7 @@ class InventoryScoringTests(unittest.TestCase):
         @param repair_counts List of (board, count) tuples.
 
         """
-        pool = lab_inventory._SPARE_POOL
+        pool = lab_inventory.SPARE_POOL
         histories = []
         for board, count in repair_counts:
             for i in range(0, count):
@@ -478,8 +478,8 @@ class _InventoryTests(unittest.TestCase):
 
     """
 
-    _CRITICAL_POOL = lab_inventory._CRITICAL_POOLS[0]
-    _SPARE_POOL = lab_inventory._SPARE_POOL
+    _CRITICAL_POOL = lab_inventory.CRITICAL_POOLS[0]
+    _SPARE_POOL = lab_inventory.SPARE_POOL
 
     def setUp(self):
         super(_InventoryTests, self).setUp()
@@ -933,7 +933,7 @@ class PoolInventoryTests(_PoolInventoryTestBase):
 
         Tests the following assertions:
           * Each <description> contains a mention of exactly one
-            pool in the `_CRITICAL_POOLS` list.
+            pool in the `CRITICAL_POOLS` list.
           * Each pool is mentioned in exactly one <description>.
         Note that the grammar requires the header to appear once
         for each pool, so the parsing implicitly asserts that the
@@ -948,7 +948,7 @@ class PoolInventoryTests(_PoolInventoryTestBase):
         inventory = lab_inventory._LabInventory(histories)
         message = lab_inventory._generate_pool_inventory_message(
                 inventory).split('\n')
-        poolset = set(lab_inventory._CRITICAL_POOLS)
+        poolset = set(lab_inventory.CRITICAL_POOLS)
         seen_url = False
         seen_intro = False
         description = ''
@@ -990,11 +990,11 @@ class PoolInventoryTests(_PoolInventoryTestBase):
 
     def test_one_pool_shortage(self):
         """Test correct output when exactly one pool has a shortage."""
-        for pool in lab_inventory._CRITICAL_POOLS:
+        for pool in lab_inventory.CRITICAL_POOLS:
             histories = self._create_histories((pool,),
                                                self._board_data)
             board_text = self._parse_pool_summaries(histories)
-            for checkpool in lab_inventory._CRITICAL_POOLS:
+            for checkpool in lab_inventory.CRITICAL_POOLS:
                 text = board_text[checkpool]
                 if checkpool == pool:
                     self._check_report(text)
@@ -1005,18 +1005,18 @@ class PoolInventoryTests(_PoolInventoryTestBase):
     def test_all_pool_shortages(self):
         """Test correct output when all pools have a shortage."""
         histories = []
-        for pool in lab_inventory._CRITICAL_POOLS:
+        for pool in lab_inventory.CRITICAL_POOLS:
             histories.extend(
                 self._create_histories((pool,),
                                        self._board_data))
         board_text = self._parse_pool_summaries(histories)
-        for pool in lab_inventory._CRITICAL_POOLS:
+        for pool in lab_inventory.CRITICAL_POOLS:
             self._check_report(board_text[pool])
 
 
     def test_full_board_ignored(self):
         """Test that boards at full strength are not reported."""
-        pool = lab_inventory._CRITICAL_POOLS[0]
+        pool = lab_inventory.CRITICAL_POOLS[0]
         full_board = [('echidna', (5, 0, 0))]
         histories = self._create_histories((pool,),
                                            full_board)
@@ -1030,12 +1030,12 @@ class PoolInventoryTests(_PoolInventoryTestBase):
 
     def test_spare_pool_ignored(self):
         """Test that reporting ignores the spare pool inventory."""
-        spare_pool = lab_inventory._SPARE_POOL
+        spare_pool = lab_inventory.SPARE_POOL
         spare_data = self._board_data + [('echidna', (0, 5, 0))]
         histories = self._create_histories((spare_pool,),
                                            spare_data)
         board_text = self._parse_pool_summaries(histories)
-        for pool in lab_inventory._CRITICAL_POOLS:
+        for pool in lab_inventory.CRITICAL_POOLS:
             self._check_report_no_info(board_text[pool])
 
 
@@ -1105,7 +1105,7 @@ class IdleInventoryTests(_PoolInventoryTestBase):
 
     def test_check_idle_inventory(self):
         """Test that reporting all the idle DUTs for every pool, sorted by
-        lab_inventory._MANAGED_POOLS.
+        lab_inventory.MANAGED_POOLS.
         """
         self._add_idles()
 
