@@ -8,7 +8,7 @@ import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import base_utils, error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import power_utils, upstart
 
 class power_VideoDetector(test.test):
     """
@@ -78,4 +78,4 @@ class power_VideoDetector(test.test):
         """
         Cleanup powerd after test.
         """
-        utils.restart_job('powerd')
+        upstart.restart_job('powerd')
