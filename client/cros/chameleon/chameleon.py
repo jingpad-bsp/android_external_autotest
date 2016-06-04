@@ -303,6 +303,7 @@ class ChameleonVideoInput(ChameleonPort):
     _DURATION_UNPLUG_FOR_EDID = 5
     _TIMEOUT_VIDEO_STABLE_PROBE = 10
     _EDID_ID_DISABLE = -1
+    _FRAME_RATE = 60
 
     def __init__(self, chameleon_port):
         """Construct a ChameleonVideoInput.
@@ -574,6 +575,41 @@ class ChameleonVideoInput(ChameleonPort):
         """
         return self.chameleond_proxy.GetCapturedChecksums(start_index,
                                                           stop_index)
+
+
+    def get_captured_fps_list(self, time_before_stop=None):
+        """
+        @param time_before_stop: time in second, only measure the last X
+                                 seconds before stop. If not given, measure
+                                 the whole period except the fractional part
+                                 of the beginning.
+        @return: a list of fps numbers.
+
+        """
+        checksums = self.get_captured_checksums()
+
+        if time_before_stop is None:
+            # Skip the fractional part of the beginning
+            time_before_stop = len(checksums) / self._FRAME_RATE
+
+        # Only look at the last X seconds
+        checksums = checksums[-(self._FRAME_RATE * time_before_stop):]
+
+        # Count the unique checksums per second, i.e. FPS
+        fps_list = []
+        for i in xrange(0, len(checksums), self._FRAME_RATE):
+            unique_count = 0
+            debug_str = ''
+            for j in xrange(i, i + self._FRAME_RATE):
+                if j == 0 or checksums[j] != checksums[j - 1]:
+                    unique_count += 1
+                    debug_str += '*'
+                else:
+                    debug_str += '.'
+            fps_list.append(unique_count)
+            logging.debug('%2dfps %s', unique_count, debug_str)
+
+        return fps_list
 
 
     def get_captured_resolution(self):
