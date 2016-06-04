@@ -15,7 +15,7 @@ def map_afe_board_to_servo_board(afe_board):
     @return board we expect servo to have.
 
     """
-    KNOWN_SUFFIXES = ['_freon', '_moblab', '-cheets']
+    KNOWN_SUFFIXES = ['-freon', '_freon', '_moblab', '-cheets']
     BOARD_MAP = {'gizmo': 'panther'}
     mapped_board = afe_board
     if afe_board in BOARD_MAP:
