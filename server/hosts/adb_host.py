@@ -719,7 +719,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # Record logcat log to a temporary file on the teststation.
         tmp_dir = self.teststation.get_tmp_dir()
         teststation_filename = os.path.join(tmp_dir, LOGCAT_FILE)
-        self.adb_run('logcat -v time -d > "%s"' % (teststation_filename))
+        try:
+            self.adb_run('logcat -v time -d > "%s"' % (teststation_filename),
+                         timeout=20)
+        except (error.AutoservRunError, error.AutoservSSHTimeout,
+                error.CmdTimeoutError):
+            return
         # Copy-back the log to the drone's results directory.
         logcat_filename = os.path.join(self.job.resultdir, LOGCAT_FILE)
         self.teststation.get_file(teststation_filename, logcat_filename)
@@ -1650,4 +1655,5 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         else:
             # Android M and later use this format: date (format).
             command += datetime.datetime.now().strftime('%m%d%H%M%Y.%S')
-        self.run(command)
+        self.run(command, timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                 ignore_timeout=True)
