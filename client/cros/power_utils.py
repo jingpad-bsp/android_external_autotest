@@ -1,7 +1,7 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import glob, logging, os, re, shutil
+import glob, logging, os, re, shutil, time
 from autotest_lib.client.bin import site_utils, utils
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
@@ -755,3 +755,65 @@ class USBPower(object):
             pid = utils.read_one_line(pid_path)
             whitelisted = self._is_whitelisted(vid, pid)
             self.devices.append(USBDevicePower(vid, pid, whitelisted, dirpath))
+
+
+class DisplayPanelSelfRefresh(object):
+    """Class for control and monitoring of display's PSR.
+
+    TODO(tbroch) support devices that don't use i915 drivers but have PSR
+    """
+    psr_status_file = '/sys/kernel/debug/dri/0/i915_edp_psr_status'
+
+    def __init__(self, init_time=time.time()):
+        """Initializer.
+
+        @Public attributes:
+            supported: Boolean of whether PSR is supported or not
+
+        @Private attributes:
+            _init_time: time when PSR class was instantiated.
+            _init_counter: integer of initial value of residency counter.
+            _keyvals: dictionary of keyvals
+        """
+        self._init_time = init_time
+        self._init_counter = self._get_counter()
+        self._keyvals = {}
+        self.supported = (self._init_counter != None)
+
+    def _get_counter(self):
+        """Get the current value of the system PSR counter.
+
+        This counts the number of milliseconds the system has resided in PSR.
+
+        @returns: amount of time PSR has been active since boot in ms, or None if
+        the performance counter can't be read.
+        """
+        try:
+            count = utils.get_field(utils.read_file(self.psr_status_file), 0,
+                                    linestart='Performance_Counter:')
+        except IOError:
+            logging.info("Can't find or read PSR status file")
+            return None
+
+        logging.debug("PSR performance counter: %s", count)
+        return int(count) if count else None
+
+    def _calc_residency(self):
+        """Calculate the PSR residency."""
+        if not self.supported:
+            return 0
+
+        tdelta = time.time() - self._init_time
+        cdelta = self._get_counter() - self._init_counter
+        return cdelta / (10 * tdelta)
+
+    def refresh(self):
+        """Refresh PSR related data."""
+        self._keyvals['percent_psr_residency'] = self._calc_residency()
+
+    def get_keyvals(self):
+        """Get keyvals associated with PSR data.
+
+        @returns dictionary of keyvals
+        """
+        return self._keyvals
