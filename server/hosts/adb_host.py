@@ -218,11 +218,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         self.tmp_dirs = []
         self.labels = base_label.LabelRetriever(adb_label.ADB_LABELS)
-        # TODO (sbasi/kevcheng): Once the teststation host is committed,
-        # refactor the serial retrieval.
-        adb_serial = adb_serial or self.host_attributes.get('serials', None)
-        fastboot_serial = fastboot_serial or self.host_attributes.get(
-                'fastboot_serial', None)
+        adb_serial = adb_serial or self._afe_host.attributes.get('serials')
+        fastboot_serial = (fastboot_serial or
+                self._afe_host.attributes.get('fastboot_serial'))
+
         self.adb_serial = adb_serial
         if adb_serial:
             adb_prefix = any(adb_serial.startswith(p)
