@@ -2,10 +2,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, logging, os, shutil, time
+import csv
+import glob
+import httplib
+import json
+import logging
+import os
+import re
+import shutil
+import time
+import urllib
+import urllib2
 
-from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.bin import site_utils, test, utils
+from autotest_lib.client.bin import site_utils
+from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.cros import constants
 
 TEST_DURATION = 72000  # Duration of test (20 hrs) in seconds.
 SAMPLE_INTERVAL = 60  # Length of measurement samples in seconds.
@@ -15,10 +27,22 @@ TMP_DIRECTORY = '/tmp/'
 PERF_FILE_NAME_PREFIX = 'perf'
 EXIT_FLAG_FILE = TMP_DIRECTORY + 'longevity_terminate'
 OLD_FILE_AGE = 14400  # Age of old files to be deleted in minutes = 10 days.
+# The manifest.json file for a Chrome extension contains the app name, id,
+# version, and other info for the app. It is accessible by the OS only when
+# the app is running and it's cryptohome directory mounted. Only one Kiosk app
+# can be running at a time.
+MANIFEST_PATTERN = '/home/.shadow/*/mount/user/Extensions/*/*/manifest.json'
+VERSION_PATTERN = r'^(\d+)\.(\d+)\.(\d+)\.(\d+)$'
+DASHBOARD_UPLOAD_URL = 'https://chromeperf.appspot.com/add_point'
+
+
+class PerfUploadingError(Exception):
+    """Exception raised in perf_uploader."""
+    pass
 
 
 class longevity_Tracker(test.test):
-    """Monitors device and App stability over long periods of time."""
+    """Monitor device and App stability over long periods of time."""
 
     version = 1
 
@@ -26,7 +50,7 @@ class longevity_Tracker(test.test):
         self.temp_dir = os.path.split(self.tmpdir)[0]
 
     def _get_cpu_usage(self):
-        """Computes percent CPU in active use for the sample interval.
+        """Compute percent CPU in active use for the sample interval.
 
         Note: This method introduces a sleep period into the test, equal to
         90% of the sample interval.
@@ -43,7 +67,7 @@ class longevity_Tracker(test.test):
                                                   cpu_usage_end) * 100
 
     def _get_mem_usage(self):
-        """Computes percent memory in active use.
+        """Compute percent memory in active use.
 
         @returns float of percent memory in use.
 
@@ -53,7 +77,7 @@ class longevity_Tracker(test.test):
         return ((total_memory - free_memory) / total_memory) * 100
 
     def _get_max_temperature(self):
-        """Gets temperature of hottest sensor in Celsius.
+        """Get temperature of hottest sensor in Celsius.
 
         @returns float of temperature of hottest sensor.
 
@@ -62,6 +86,18 @@ class longevity_Tracker(test.test):
         if not temperature:
             temperature = 0
         return temperature
+
+    def _get_hwid(self):
+        """Get hwid of test device, e.g., 'WOLF C4A-B2B-A47'.
+
+        @returns string of hwid (Hardware ID) of device under test.
+
+        """
+        with os.popen('crossystem hwid 2>/dev/null', 'r') as hwid_proc:
+            hwid = hwid_proc.read()
+        if not hwid:
+            hwid = 'undefined'
+        return hwid
 
     def elapsed_time(self, mark_time):
         """Get time elapsed since |mark_time|.
@@ -173,27 +209,27 @@ class longevity_Tracker(test.test):
         shutil.copy(perf_file, results_file)
         logging.info('Copied %s to %s)', perf_file, results_file)
 
-    def _write_perf_keyvals(self, perf_metrics):
-        """Write perf metrics to keyval file for AutoTest results.
+    def _write_perf_keyvals(self, perf_results):
+        """Write perf results to keyval file for AutoTest results.
 
         @param perf_metrics: dict of attribute performance metrics.
 
         """
         perf_keyval = {}
-        perf_keyval['cpu_usage'] = perf_metrics['cpu']
-        perf_keyval['memory_usage'] = perf_metrics['mem']
-        perf_keyval['temperature'] = perf_metrics['temp']
+        perf_keyval['cpu_usage'] = perf_results['cpu']
+        perf_keyval['memory_usage'] = perf_results['mem']
+        perf_keyval['temperature'] = perf_results['temp']
         self.write_perf_keyval(perf_keyval)
 
-    def _write_perf_results(self, perf_metrics):
-        """Write perf metrics to results-chart file for Performance Dashboard.
+    def _write_perf_results(self, perf_results):
+        """Write perf results to results-chart.json file for Perf Dashboard.
 
         @param perf_metrics: dict of attribute performance metrics.
 
         """
-        cpu_metric = perf_metrics['cpu']
-        mem_metric = perf_metrics['mem']
-        ec_metric = perf_metrics['temp']
+        cpu_metric = perf_results['cpu']
+        mem_metric = perf_results['mem']
+        ec_metric = perf_results['temp']
         self.output_perf_value(description='cpu_usage', value=cpu_metric,
                                units='%', higher_is_better=False)
         self.output_perf_value(description='mem_usage', value=mem_metric,
@@ -201,8 +237,148 @@ class longevity_Tracker(test.test):
         self.output_perf_value(description='max_temp', value=ec_metric,
                                units='Celsius', higher_is_better=False)
 
+    def _read_perf_results(self):
+        results_file = os.path.join(self.resultsdir, 'results-chart.json')
+        with open(results_file, 'r') as fp:
+            contents = fp.read()
+            chart_data = json.loads(contents)
+        return chart_data
+
+    def _get_id_from_version(self, chrome_version, cros_version):
+        """Compute the point ID from Chrome and ChromeOS version numbers.
+
+        @param chrome_ver: The Chrome version number as a string.
+        @param cros_version: The ChromeOS version number as a string.
+
+        @return unique integer ID associated with the given version numbers.
+
+        """
+        # Number of digits from each part of the Chrome and Chrome OS version
+        # strings to use when building the point ID.
+        chrome_version_col_widths = [0, 0, 5, 3]
+        cros_version_col_widths = [0, 5, 3, 2]
+
+        def get_digits_from_version(version_num, column_widths):
+            if re.match(VERSION_PATTERN, version_num):
+                computed_string = ''
+                version_parts = version_num.split('.')
+                for i, version_part in enumerate(version_parts):
+                    if column_widths[i]:
+                        computed_string += version_part.zfill(column_widths[i])
+                return computed_string
+            else:
+                return None
+        chrome_digits = get_digits_from_version(chrome_version,
+                                                chrome_version_col_widths)
+        cros_digits = get_digits_from_version(cros_version,
+                                              cros_version_col_widths)
+        if not chrome_digits or not cros_digits:
+            return None
+        result_digits = chrome_digits + cros_digits
+        max_digits = sum(chrome_version_col_widths + cros_version_col_widths)
+        if len(result_digits) > max_digits:
+            return None
+        return int(result_digits)
+
+    def _get_kiosk_app_info(self):
+        """Get kiosk app name and version from manifest.json file.
+
+        Get the kiosk name and version strings from the manifest of the
+        Extension in the currently running session. Return 'none' if no
+        manifest is found, 'unknown' if multiple manifests are found, or
+        'undefined' if single manifest is found, but does not specify the
+        name or version.
+
+        @returns dict of Kiosk name and version number strings.
+
+        """
+        kiosk_info = {}
+        file_paths = glob.glob(MANIFEST_PATTERN)
+        # If current session has no Extensions, set 'none'.
+        if len(file_paths) == 0:
+            return {'name': 'none', 'version': 'none'}
+        # If current session has multiple Extensions, then set 'unknown'.
+        if len(file_paths) > 1:
+            return {'name': 'unknown', 'version': 'unknown'}
+        kiosk_manifest = open(file_paths[0], 'r').read()
+        manifest_json = json.loads(kiosk_manifest)
+        # If manifest is missing name or version, then set 'undefined'.
+        kiosk_info['name'] = manifest_json.get('name', 'undefined')
+        kiosk_info['version'] = manifest_json.get('version', 'undefined')
+        return kiosk_info
+
+    def _format_data_for_upload(self, chart_data):
+        """Collect chart data into an uploadable data JSON object.
+
+        @param chart_data: performance results formatted as chart data.
+
+        """
+        perf_values = {
+            'format_version': '1.0',
+            'benchmark_name': self.test_suite_name,
+            'charts': chart_data,
+        }
+
+        dash_entry = {
+            'master': 'ChromeOS_Enterprise',
+            'bot': 'cros-%s' % self.board_name,
+            'point_id': self.point_id,
+            'versions': {
+                'cros_version': self.chromeos_version,
+                'chrome_version': self.chrome_version,
+            },
+            'supplemental': {
+                'default_rev': 'r_cros_version',
+                'hardware_identifier': 'a_' + self.hw_id,
+                'kiosk_app_name': 'a_' + self.kiosk_app_name,
+                'kiosk_app_version': 'r_' + self.kiosk_app_version
+            },
+            'chart_data': perf_values
+        }
+        return {'data': json.dumps(dash_entry)}
+
+    def _send_to_dashboard(self, data_obj):
+        """Send formatted perf data to the perf dashboard.
+
+        @param data_obj: data object as returned by _format_data_for_upload().
+
+        @raises PerfUploadingError if an exception was raised when uploading.
+
+        """
+        encoded = urllib.urlencode(data_obj)
+        req = urllib2.Request(DASHBOARD_UPLOAD_URL, encoded)
+        try:
+            urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            raise PerfUploadingError('HTTPError: %d %s for JSON %s\n' %
+                                     (e.code, e.msg, data_obj['data']))
+        except urllib2.URLError as e:
+            raise PerfUploadingError('URLError: %s for JSON %s\n' %
+                                     (str(e.reason), data_obj['data']))
+        except httplib.HTTPException:
+            raise PerfUploadingError('HTTPException for JSON %s\n' %
+                                     data_obj['data'])
+
+    def _get_chrome_version(self):
+        """Get the Chrome version number and milestone as strings.
+
+        Invoke "chrome --version" to get the version number and milestone.
+
+        @return A tuple (chrome_ver, milestone) where "chrome_ver" is the
+            current Chrome version number as a string (in the form "W.X.Y.Z")
+            and "milestone" is the first component of the version number
+            (the "W" from "W.X.Y.Z").  If the version number cannot be parsed
+            in the "W.X.Y.Z" format, the "chrome_ver" will be the full output
+            of "chrome --version" and the milestone will be the empty string.
+
+        """
+        chrome_version = utils.system_output(constants.CHROME_VERSION_COMMAND,
+                                             ignore_status=True)
+        chrome_version = utils.parse_chrome_version(chrome_version)
+        return chrome_version
+
     def _run_test_cycle(self):
-        """Run 23-hour test cycle and collect performance metrics.
+        """Run long-duration test cycle and collect performance metrics.
 
         @returns list of median performance metrics.
 
@@ -211,8 +387,6 @@ class longevity_Tracker(test.test):
         test_start_time = time.time()
         time.sleep(STABILIZATION_DURATION)
 
-        board_name = utils.get_current_board()
-        build_id = utils.get_chromeos_release_version()
         perf_values = {'cpu': [], 'mem': [], 'temp': []}
         perf_metrics = {'cpu': [], 'mem': [], 'temp': []}
         perf_file_name = (PERF_FILE_NAME_PREFIX +
@@ -221,7 +395,6 @@ class longevity_Tracker(test.test):
         perf_file = open(perf_file_path, 'w')
         perf_writer = csv.writer(perf_file)
         perf_writer.writerow(['Time', 'CPU', 'Memory', 'Temperature (C)'])
-        logging.info('Board Name: %s, Build ID: %s', board_name, build_id)
 
         # Align time of loop start with the sample interval.
         test_elapsed_time = self.elapsed_time(test_start_time)
@@ -269,25 +442,40 @@ class longevity_Tracker(test.test):
         # Return median of each attribute performance metric.
         return self._get_median_metrics(perf_metrics)
 
-    def run_once(self):
+    def run_once(self, subtest_name=None):
+        self.board_name = utils.get_board()
+        self.hw_id = self._get_hwid()
+        self.chrome_version = self._get_chrome_version()[0]
+        self.chromeos_version = '0.' + utils.get_chromeos_release_version()
+        self.point_id = self._get_id_from_version(self.chrome_version,
+                                                  self.chromeos_version)
+        kiosk_info = self._get_kiosk_app_info()
+        self.kiosk_app_name = kiosk_info['name']
+        self.kiosk_app_version = kiosk_info['version']
+        self.test_suite_name = self.tagged_testname
+        if subtest_name:
+            self.test_suite_name += '.' + subtest_name
+
         # Delete exit flag file at start of test run.
         if os.path.isfile(EXIT_FLAG_FILE):
             os.remove(EXIT_FLAG_FILE)
 
-        # Run a single 20-hour test cycle.
-        median_metrics = {'cpu': '0', 'mem': '0', 'temp': '0'}
-        with chrome.Chrome(clear_enterprise_policy=False,
-                           dont_override_profile=True,
-                           disable_gaia_services=False,
-                           disable_default_apps=False,
-                           auto_login=False) as cr:
-            median_metrics = self._run_test_cycle()
+        # Run a single test cycle.
+        self.perf_results = {'cpu': '0', 'mem': '0', 'temp': '0'}
+        self.perf_results = self._run_test_cycle()
 
-        # Write metrics to keyval file for AutoTest results.
-        self._write_perf_keyvals(median_metrics)
+        # Write results for AutoTest to pick up at end of test.
+        self._write_perf_keyvals(self.perf_results)
+        self._write_perf_results(self.perf_results)
 
-        # Write metrics to results-chart.json file for performance dashboard.
-        self._write_perf_results(median_metrics)
+        # Post perf results directly to performance dashboard iff the test is
+        # not being run from an AutoTest job (i.e., job.serverdir is None).
+        # View uploaded data at https://chromeperf.appspot.com/new_points,
+        # with test path pattern=ChromeOS_Enterprise/cros-*/longevity*/*
+        if not self.job.serverdir:
+            chart_data = self._read_perf_results()
+            data_obj = self._format_data_for_upload(chart_data)
+            self._send_to_dashboard(data_obj)
 
     def cleanup(self):
         """Delete aged perf data files and the exit flag file."""
