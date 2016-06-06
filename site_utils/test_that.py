@@ -273,7 +273,7 @@ def _main_for_local_run(argv, arguments):
     if not os.path.exists(autotest_path):
         print >> sys.stderr, ('%s does not exist. Have you run '
                               'build_packages? Or if you are using '
-                              '--autotest-dir, make sure it points to '
+                              '--autotest_dir, make sure it points to '
                               'a valid autotest directory.' % autotest_path)
         return 1
 
