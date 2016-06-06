@@ -82,9 +82,6 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true', required=False,
                         help=('create a debug console with a ServerProxy "s" '
                               'connecting to the XML RPC sever at localhost'))
-    parser.add_argument('--restart', action='store_true', required=False,
-                        help=('restart the XML RPC server without clearing '
-                              'the previous state'))
     args = parser.parse_args()
 
     if args.debug:
@@ -100,7 +97,7 @@ if __name__ == '__main__':
         # Restart Cras to clean up any audio activities.
         upstart.restart_job('cras')
 
-        with facade_resource.FacadeResource(restart=args.restart) as res:
+        with facade_resource.FacadeResource() as res:
             server = xmlrpc_server.XmlRpcServer(
                     'localhost', constants.MULTIMEDIA_XMLRPC_SERVER_PORT)
             server.register_delegate(MultimediaXmlRpcDelegate(res))

@@ -36,22 +36,26 @@ class FacadeResource(object):
         @param restart: Preserve the previous browser state.
 
         """
-        if chrome_object:
-            self._chrome = chrome_object
-        else:
-            # TODO: (crbug.com/618111) Add test driven switch for
-            # supporting arc_mode enabled or disabled. At this time
-            # if ARC build is tested, arc_mode is always enabled.
-            arc_mode = self.ARC_DISABLED
-            if utils.get_board_property(self.ARC_VERSION):
-                arc_mode = self.ARC_ENABLED
-            self._chrome = chrome.Chrome(
-                extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
-                extra_browser_args=self.EXTRA_BROWSER_ARGS,
-                clear_enterprise_policy=not restart,
-                arc_mode=arc_mode,
-                autotest_ext=True)
-        self._browser = self._chrome.browser
+        self._chrome = chrome_object
+
+    @property
+    def _browser(self):
+        """Gets the browser object from Chrome."""
+        return self._chrome.browser
+
+
+    def start_custom_chrome(self, kwargs):
+        """Start a custom Chrome with given arguments.
+
+        @param kwargs: A dict of keyword arguments passed to Chrome.
+        """
+        # Close the previous Chrome.
+        if self._chrome:
+            self._chrome.close()
+
+        # Start the new Chrome.
+        self._chrome = chrome.Chrome(**kwargs)
+
         # The opened tabs are stored by tab descriptors.
         # Key is the tab descriptor string.
         # We use string as the key because of RPC Call. Client can use the
@@ -68,9 +72,25 @@ class FacadeResource(object):
             time.sleep(30)
 
 
-    def close(self):
-        """Closes Chrome."""
-        self._chrome.close()
+    def start_default_chrome(self, restart=False):
+        """Start the default Chrome.
+
+        @param restart: True to start Chrome without clearing previous state.
+        """
+        # TODO: (crbug.com/618111) Add test driven switch for
+        # supporting arc_mode enabled or disabled. At this time
+        # if ARC build is tested, arc_mode is always enabled.
+        arc_mode = self.ARC_DISABLED
+        if utils.get_board_property(self.ARC_VERSION):
+            arc_mode = self.ARC_ENABLED
+        kwargs = {
+            'extension_paths': [constants.MULTIMEDIA_TEST_EXTENSION],
+            'extra_browser_args': self.EXTRA_BROWSER_ARGS,
+            'clear_enterprise_policy': not restart,
+            'arc_mode': arc_mode,
+            'autotest_ext': True
+        }
+        self.start_custom_chrome(kwargs)
 
 
     def __enter__(self):
@@ -78,7 +98,8 @@ class FacadeResource(object):
 
 
     def __exit__(self, *args):
-        self.close()
+        if self._chrome:
+            self._chrome.close()
 
 
     @staticmethod
