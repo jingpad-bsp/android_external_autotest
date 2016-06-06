@@ -24,6 +24,9 @@ retry_chrome_call = retry.retry(
 class FacadeResource(object):
     """This class provides access to telemetry chrome wrapper."""
 
+    ARC_DISABLED = 'disabled'
+    ARC_ENABLED = 'enabled'
+    ARC_VERSION = 'CHROMEOS_ARC_VERSION'
     EXTRA_BROWSER_ARGS = ['--enable-gpu-benchmarking']
 
     def __init__(self, chrome_object=None, restart=False):
@@ -36,10 +39,17 @@ class FacadeResource(object):
         if chrome_object:
             self._chrome = chrome_object
         else:
+            # TODO: (crbug.com/618111) Add test driven switch for
+            # supporting arc_mode enabled or disabled. At this time
+            # if ARC build is tested, arc_mode is always enabled.
+            arc_mode = self.ARC_DISABLED
+            if utils.get_board_property(self.ARC_VERSION):
+                arc_mode = self.ARC_ENABLED
             self._chrome = chrome.Chrome(
                 extension_paths=[constants.MULTIMEDIA_TEST_EXTENSION],
                 extra_browser_args=self.EXTRA_BROWSER_ARGS,
                 clear_enterprise_policy=not restart,
+                arc_mode=arc_mode,
                 autotest_ext=True)
         self._browser = self._chrome.browser
         # The opened tabs are stored by tab descriptors.
