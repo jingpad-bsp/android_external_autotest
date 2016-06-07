@@ -233,23 +233,40 @@ def is_mic_muted(webview_context):
     logging.info('Mic is not muted.')
     return False
 
-
 def mute_mic(webview_context):
-    """Mute mic audio.
+    """Local mic mute from toolbar.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript("window.hrSetAudioInMutedForTest(true)")
+    logging.info('Locally muted mic.')
+
+
+def unmute_mic(webview_context):
+    """Local mic unmute from toolbar.
+
+    @param webview_context: Context for hangouts webview.
+    """
+    webview_context.ExecuteJavaScript("window.hrSetAudioInMutedForTest(false)")
+    logging.info('Locally unmuted mic.')
+
+
+def remote_mute_mic(webview_context):
+    """Remote mic mute request from cPanel.
 
     @param webview_context: Context for hangouts webview.
     """
     webview_context.ExecuteJavaScript("window.hrMuteAudioForTest()")
-    logging.info('Mute audio.')
+    logging.info('Remotely muted mic.')
 
 
-def unmute_mic(webview_context):
-    """Unmute mic audio.
+def remote_unmute_mic(webview_context):
+    """Remote mic unmute request from cPanel.
 
     @param webview_context: Context for hangouts webview.
     """
     webview_context.ExecuteJavaScript("window.hrUnmuteAudioForTest()")
-    logging.info('Unmute audio.')
+    logging.info('Remotely unmuted mic.')
 
 
 def get_mic_devices(webview_context):
@@ -315,11 +332,11 @@ def set_speaker_volume(webview_context, volume_level):
     """Set speaker volume.
 
     @param webview_context: Context for hangouts webview.
-    @param volume_level: Integer value ranging from 0-100 to set volume to.
+    @param volume_level: String value ranging from 0-100 to set volume to.
     """
     webview_context.ExecuteJavaScript(
             "window.hrSetAudioOutVolumeLevelForTest(" + volume_level + ")")
-    logging.info('Set speaker volume to %d', volume_level)
+    logging.info('Set speaker volume to %s', volume_level)
 
 
 def get_speaker_volume(webview_context):
