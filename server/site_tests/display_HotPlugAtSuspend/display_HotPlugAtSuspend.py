@@ -45,6 +45,7 @@ class display_HotPlugAtSuspend(test.test):
                 chameleon_board, display_facade)
 
         errors = []
+        is_display_failure = False
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
                     chameleon_port, display_facade, self.outputdir)
@@ -75,6 +76,7 @@ class display_HotPlugAtSuspend(test.test):
                 if screen_test.check_external_display_connected(
                         expected_connector if plugged_before_suspend else False,
                         errors):
+                    is_display_failure = True
                     # Skip the following test if an unexpected display detected.
                     continue
 
@@ -125,9 +127,12 @@ class display_HotPlugAtSuspend(test.test):
                         logging.error(error_message)
                         logging.info('Set mirrored: %s', True)
                         display_facade.set_mirrored(True)
-                    else:
-                        screen_test.test_screen_with_image(
-                                resolution, test_mirrored, errors)
+                    elif screen_test.test_screen_with_image(
+                                resolution, test_mirrored, errors):
+                        is_display_failure = True
 
         if errors:
-            raise error.TestFail('; '.join(set(errors)))
+            if is_display_failure:
+                raise error.TestFail('; '.join(set(errors)))
+            else:
+                raise error.TestError('; '.join(set(errors)))

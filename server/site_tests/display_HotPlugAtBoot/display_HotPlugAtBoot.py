@@ -42,6 +42,7 @@ class display_HotPlugAtBoot(test.test):
                 chameleon_board, display_facade)
 
         errors = []
+        is_display_failure = False
         for chameleon_port in finder.iterate_all_ports():
             screen_test = chameleon_screen_test.ChameleonScreenTest(
                     chameleon_port, display_facade, self.outputdir)
@@ -78,6 +79,7 @@ class display_HotPlugAtBoot(test.test):
                 if screen_test.check_external_display_connected(
                         expected_connector if plugged_after_boot else False,
                         errors):
+                    is_display_failure = True
                     # Skip the following test if an unexpected display detected.
                     continue
 
@@ -87,13 +89,18 @@ class display_HotPlugAtBoot(test.test):
                         error_message = 'Error: not rebooted to mirrored mode'
                         errors.append(error_message)
                         logging.error(error_message)
+                        is_display_failure = True
                         # Sets mirrored status for next test
                         logging.info('Set mirrored: %s', True)
                         display_facade.set_mirrored(True)
                         continue
 
-                    screen_test.test_screen_with_image(
-                            resolution, test_mirrored, errors)
+                    if screen_test.test_screen_with_image(
+                            resolution, test_mirrored, errors):
+                        is_display_failure = True
 
         if errors:
-            raise error.TestFail('; '.join(set(errors)))
+            if is_display_failure:
+                raise error.TestFail('; '.join(set(errors)))
+            else:
+                raise error.TestError('; '.join(set(errors)))
