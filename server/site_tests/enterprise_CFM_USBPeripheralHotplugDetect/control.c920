@@ -5,13 +5,13 @@
 from autotest_lib.server import utils
 
 AUTHOR = "harpreet"
-NAME = "enterprise_CFM_USBPeripheralHotplugDetect"
+NAME = "enterprise_CFM_USBPeripheralHotplugDetect.c920"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
-DEPENDENCIES = "servo"
+DEPENDENCIES = "servo, c920"
 
 DOC = """
 This test clears the TPM if necessary, kicks off a client side test that enrolls
