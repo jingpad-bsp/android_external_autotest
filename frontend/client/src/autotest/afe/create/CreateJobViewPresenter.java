@@ -37,6 +37,8 @@ import com.google.gwt.event.logical.shared.HasCloseHandlers;
 import com.google.gwt.event.logical.shared.HasOpenHandlers;
 import com.google.gwt.event.logical.shared.OpenEvent;
 import com.google.gwt.event.logical.shared.OpenHandler;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.json.client.JSONBoolean;
 import com.google.gwt.json.client.JSONNull;
@@ -91,8 +93,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         public IButton getSubmitJobButton();
         public HasClickHandlers getCreateTemplateJobButton();
         public HasClickHandlers getResetButton();
-        public HasClickHandlers getFetchImageTestsButton();
-        public ICheckBox getIgnoreInvalidTestsCheckBox();
+        public ICheckBox getFetchTestsFromBuildCheckBox();
         public ITextBox getFirmwareRWBuild();
         public ITextBox getFirmwareROBuild();
         public ExtendedListBox getTestSourceBuildList();
@@ -354,6 +355,12 @@ public class CreateJobViewPresenter implements TestSelectorListener {
 
         boolean testsFromBuild = testSelector.usingTestsFromBuild();
         params.put("db_tests", JSONBoolean.getInstance(!testsFromBuild));
+        if (testsFromBuild) {
+          String  testSourceBuild = display.getTestSourceBuildList().getSelectedValue();
+          if (testSourceBuild != null) {
+            params.put("test_source_build", new JSONString(testSourceBuild));
+          }
+        }
 
         JSONArray tests = new JSONArray();
         for (JSONObject test : testSelector.getSelectedTests()) {
@@ -465,6 +472,10 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             @Override
             public void onChange(ChangeEvent event) {
                 String image = display.getImageUrl().getText();
+                ICheckBox fetchTestsFromBuildCheckBox = display.getFetchTestsFromBuildCheckBox();
+                Boolean fetchedFromBuild = fetchTestsFromBuildCheckBox.getValue();
+                String currentTestSourceBuild = display.getTestSourceBuildList().getSelectedValue();
+                boolean sourceBuildChanged = false;
                 if (image.isEmpty()) {
                     display.getFirmwareRWBuild().setText("");
                     display.getFirmwareROBuild().setText("");
@@ -472,6 +483,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     display.getFirmwareRWBuild().setEnabled(false);
                     display.getFirmwareROBuild().setEnabled(false);
                     display.getTestSourceBuildList().setEnabled(false);
+                    sourceBuildChanged = (currentTestSourceBuild != null);
                 }
                 else {
                     display.getFirmwareRWBuild().setEnabled(true);
@@ -483,7 +495,6 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                         builds.add(display.getFirmwareRWBuild().getText());
                     if (!display.getFirmwareROBuild().getText().isEmpty())
                         builds.add(display.getFirmwareROBuild().getText());
-                    String currentTestSourceBuild = display.getTestSourceBuildList().getSelectedValue();
                     int testSourceBuildIndex = builds.indexOf(currentTestSourceBuild);
                     display.getTestSourceBuildList().clear();
                     for (String build : builds) {
@@ -491,7 +502,19 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     }
                     if (testSourceBuildIndex >= 0) {
                         display.getTestSourceBuildList().setSelectedIndex(testSourceBuildIndex);
+                    } else {
+                      sourceBuildChanged = true;
                     }
+                }
+
+                // Updates the fetch test checkbox UI
+                fetchTestsFromBuildCheckBox.setEnabled(!image.isEmpty());
+                if (sourceBuildChanged) {
+                  fetchTestsFromBuildCheckBox.setValue(false);
+                  // Fetch the test again from default Moblab device if necessary
+                  if (fetchedFromBuild) {
+                    fetchImageTests();
+                  }
                 }
             }
         };
@@ -635,16 +658,29 @@ public class CreateJobViewPresenter implements TestSelectorListener {
             }
         });
 
-        display.getFetchImageTestsButton().addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                String imageUrl = display.getImageUrl().getText();
-                if (imageUrl == null || imageUrl.isEmpty()) {
-                    NotifyManager.getInstance().showMessage(
-                        "No build was specified for fetching tests.");
-                }
+        display.getTestSourceBuildList().addChangeHandler(new ChangeHandler() {
+          @Override
+          public void onChange(ChangeEvent event) {
+              Boolean fetchedTests = display.getFetchTestsFromBuildCheckBox().getValue();
+              display.getFetchTestsFromBuildCheckBox().setValue(false);
+              if (fetchedTests) {
                 fetchImageTests();
-            }
+              }
+          }
         });
+
+        display.getFetchTestsFromBuildCheckBox()
+            .addValueChangeHandler(new ValueChangeHandler<Boolean>() {
+              @Override
+              public void onValueChange(ValueChangeEvent<Boolean> event) {
+                  String imageUrl = display.getImageUrl().getText();
+                  if (imageUrl == null || imageUrl.isEmpty()) {
+                      NotifyManager.getInstance().showMessage(
+                          "No build was specified for fetching tests.");
+                  }
+                  fetchImageTests();
+              }
+            });
 
         handleBuildChange();
 
@@ -973,16 +1009,19 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     private void fetchImageTests() {
         testSelector.setImageTests(new JSONArray());
 
-        String imageUrl = display.getImageUrl().getText();
-        if (imageUrl == null || imageUrl.isEmpty()) {
-            testSelector.reset();
-            return;
+        String currentTestSourceBuild = display.getTestSourceBuildList().getSelectedValue();
+        Boolean fetchedFromBuild = display.getFetchTestsFromBuildCheckBox().getValue();
+        if (!fetchedFromBuild ||
+            currentTestSourceBuild == null || currentTestSourceBuild.isEmpty()) {
+          // Tests are from static Moblab build.
+          testSelector.setImageTests(new JSONArray());
+          testSelector.reset();
+          return;
         }
 
         JSONObject params = new JSONObject();
-        params.put("build", new JSONString(imageUrl));
-        params.put("ignore_invalid_tests", JSONBoolean.getInstance(
-              display.getIgnoreInvalidTestsCheckBox().getValue()));
+        params.put("build", new JSONString(currentTestSourceBuild));
+        params.put("ignore_invalid_tests", JSONBoolean.getInstance(true));
         rpcProxy.rpcCall("get_tests_by_build", params, new JsonRpcCallback() {
             @Override
             public void onSuccess(JSONValue result) {
