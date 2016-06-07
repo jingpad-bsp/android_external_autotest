@@ -16,4 +16,5 @@ This test runs the drawElements Quality Program test suite.
 """
 
 job.run_test('graphics_dEQP',
-             opts = args + ['test_names_file=master/egl-master.txt'])
+             opts = args +
+             ['test_names_file=/usr/local/deqp/master/egl-master.txt'])
