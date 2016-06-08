@@ -45,3 +45,13 @@ def restart_job(service_name):
         utils.system_output('restart %s' % service_name)
     else:
         utils.system_output('start %s' % service_name)
+
+def stop_job(service_name):
+   """
+   Stops an upstart job.
+   Fails if the stop command fails.
+
+   @param service_name: name of service
+   """
+
+   utils.system('stop %s' % service_name)
