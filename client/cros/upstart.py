@@ -25,6 +25,14 @@ def has_service(service_name):
     return os.path.exists('/etc/init/' + service_name + '.conf')
 
 
+def is_running(service_name):
+    """
+    Returns true if |service_name| is running.
+
+    @param service_name: name of service
+    """
+    return utils.system_output('status %s' % service_name).find('start/running') != -1
+
 def restart_job(service_name):
     """
     Restarts an upstart job if it's running.
@@ -33,7 +41,7 @@ def restart_job(service_name):
     @param service_name: name of service
     """
 
-    if utils.system_output('status %s' % service_name).find('start/running') != -1:
+    if is_running(service_name):
         utils.system_output('restart %s' % service_name)
     else:
         utils.system_output('start %s' % service_name)
