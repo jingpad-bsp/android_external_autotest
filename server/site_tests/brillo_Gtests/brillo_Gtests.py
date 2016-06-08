@@ -17,8 +17,8 @@ from autotest_lib.server import test
 
 NATIVE_TESTS_PATH = '/data/nativetest'
 WHITELIST_FILE = '/data/nativetest/tests.txt'
-ANDROID_NATIVE_TESTS_FILE_FMT =
-        '%(build_target)s-continuous_native_tests-%(build_id)s.zip'
+ANDROID_NATIVE_TESTS_FILE_FMT = (
+        '%(build_target)s-continuous_native_tests-%(build_id)s.zip')
 BRILLO_NATIVE_TESTS_FILE_FMT = '%(build_target)s-brillo-tests-%(build_id)s.zip'
 LIST_TEST_BINARIES_TEMPLATE = (
         'find %(path)s -type f -mindepth 2 -maxdepth 2 '
