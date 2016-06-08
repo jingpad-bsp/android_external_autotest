@@ -788,15 +788,27 @@ def get_cpu_family():
     return cpu_family
 
 
+def get_board_property(key):
+    """
+    Get a specific property from /etc/lsb-release.
+
+    @param key: board property to return value for
+
+    @return the value or '' if not present
+    """
+    with open('/etc/lsb-release') as f:
+        pattern = '%s=(.*)' % key
+        pat = re.search(pattern, f.read())
+        if pat:
+            return pat.group(1)
+    return ''
+
+
 def get_board():
     """
     Get the ChromeOS release board name from /etc/lsb-release.
     """
-    f = open('/etc/lsb-release')
-    try:
-        return re.search('BOARD=(.*)', f.read()).group(1)
-    finally:
-        f.close()
+    return get_board_property('BOARD')
 
 
 def get_board_type():
@@ -805,11 +817,7 @@ def get_board_type():
 
     @return device type.
     """
-    with open('/etc/lsb-release') as f:
-        pat = re.search('DEVICETYPE=(.*)', f.read())
-        if pat:
-            return pat.group(1)
-    return ''
+    return get_board_property('DEVICETYPE')
 
 
 def get_board_with_frequency_and_memory():
