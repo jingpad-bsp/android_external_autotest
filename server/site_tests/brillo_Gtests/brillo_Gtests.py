@@ -17,7 +17,9 @@ from autotest_lib.server import test
 
 NATIVE_TESTS_PATH = '/data/nativetest'
 WHITELIST_FILE = '/data/nativetest/tests.txt'
-NATIVE_TESTS_FILE_FMT = '%(build_target)s-brillo-tests-%(build_id)s.zip'
+ANDROID_NATIVE_TESTS_FILE_FMT =
+        '%(build_target)s-continuous_native_tests-%(build_id)s.zip'
+BRILLO_NATIVE_TESTS_FILE_FMT = '%(build_target)s-brillo-tests-%(build_id)s.zip'
 LIST_TEST_BINARIES_TEMPLATE = (
         'find %(path)s -type f -mindepth 2 -maxdepth 2 '
         '\( -perm -100 -o -perm -010 -o -perm -001 \)')
@@ -33,10 +35,15 @@ class brillo_Gtests(test.test):
                    filter_tests=None, native_tests=None):
         if not afe_utils.host_in_lab(host):
             return
-        self._install_nativetests(host)
+        # TODO(ralphnathan): Remove this once we can determine this in another
+        # way (b/29185385).
+        if host.get_board_name() == 'dragonboard':
+            self._install_nativetests(host, BRILLO_NATIVE_TESTS_FILE_FMT)
+        else:
+            self._install_nativetests(host, ANDROID_NATIVE_TESTS_FILE_FMT)
 
 
-    def _install_nativetests(self, host):
+    def _install_nativetests(self, host, test_file_format):
         """Install the nativetests zip onto the DUT.
 
         Device images built by the Android Build System do not have the
@@ -45,12 +52,13 @@ class brillo_Gtests(test.test):
         will download/unzip the package, and finally install it onto the DUT.
 
         @param host: host object to install the nativetests onto.
+        @param test_file_format: Format of the zip file containing the tests.
         """
         build = afe_utils.get_build(host)
         ds = dev_server.AndroidBuildServer.resolve(build, host.hostname)
         ds.stage_artifacts(image=build, artifacts=['nativetests'])
         build_url = os.path.join(ds.url(), 'static', build)
-        nativetests_file = (NATIVE_TESTS_FILE_FMT %
+        nativetests_file = (test_file_format %
                             host.get_build_info_from_build_url(build_url))
         tmp_dir = host.teststation.get_tmp_dir()
         host.download_file(build_url, nativetests_file, tmp_dir, unzip=True)
