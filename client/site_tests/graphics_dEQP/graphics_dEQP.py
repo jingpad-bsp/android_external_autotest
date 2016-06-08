@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import xml.etree.ElementTree as et
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -313,6 +314,7 @@ class graphics_dEQP(test.test):
                 # Must initialize because some errors don't repopulate
                 # run_result, leaving old results.
                 run_result = {}
+                start_time = time.time()
                 try:
                     run_result = utils.run(command,
                                            timeout=self._timeout,
@@ -331,10 +333,13 @@ class graphics_dEQP(test.test):
                     result = 'CommandFailed'
                 except Exception:
                     result = 'UnexpectedError'
+                end_time = time.time()
 
                 if self._debug:
                     # Collect debug info and save to json file.
-                    output_msgs = {'stdout': [], 'stderr': [], 'dmesg': []}
+                    output_msgs = {'start_time': start_time,
+                                   'end_time': end_time,
+                                   'stdout': [], 'stderr': [], 'dmesg': []}
                     logs = self._log_reader.get_logs()
                     self._log_reader.set_start_by_current()
                     output_msgs['dmesg'] = [msg
