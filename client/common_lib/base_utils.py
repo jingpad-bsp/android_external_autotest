@@ -1761,15 +1761,3 @@ def wait_for_value_changed(func,
         time.sleep(0.1)
 
     return value
-
-
-def restart_job(name):
-    """
-    Restarts an upstart job if it's running.
-    If it's not running, start it.
-    """
-
-    if system_output('status %s' % name).find('start/running') != -1:
-        system_output('restart %s' % name)
-    else:
-        system_output('start %s' % name)

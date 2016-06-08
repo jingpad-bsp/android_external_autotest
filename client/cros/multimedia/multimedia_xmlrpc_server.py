@@ -11,9 +11,9 @@ import logging
 import xmlrpclib
 import traceback
 import common   # pylint: disable=unused-import
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.client.cros import constants
+from autotest_lib.client.cros import upstart
 from autotest_lib.client.cros import xmlrpc_server
 from autotest_lib.client.cros.multimedia import audio_facade_native
 from autotest_lib.client.cros.multimedia import browser_facade_native
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
 
         # Restart Cras to clean up any audio activities.
-        utils.restart_job('cras')
+        upstart.restart_job('cras')
 
         with facade_resource.FacadeResource(restart=args.restart) as res:
             server = xmlrpc_server.XmlRpcServer(
