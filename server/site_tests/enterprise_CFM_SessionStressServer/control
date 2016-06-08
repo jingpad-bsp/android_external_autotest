@@ -22,9 +22,10 @@ via command propmt when run manually.
 """
 
 args_dict = utils.args_to_dict(args)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_test(machine):
-    host = hosts.create_host(machine)
+    host = hosts.create_host(machine, servo_args=servo_args)
     repeat = int(args_dict.get('repeat', 1000))
 
     job.run_test('enterprise_CFM_SessionStressServer',
