@@ -4,8 +4,8 @@
 
 
 import os, random, subprocess, time
-import commands, logging, random, time, utils
-from autotest_lib.client.bin import site_utils, test
+import commands, logging, random, time
+from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 
 SUSPEND_START = '/tmp/power_state_cycle_begin'
@@ -25,18 +25,17 @@ class platform_CryptohomeStress(test.test):
 
     def run_once(self, runtime=300):
         # check that fio has started, waiting for up to TIMEOUT
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: os.path.exists(CRYPTOHOMESTRESS_START),
             error.TestFail('fiostress not triggered.'),
             timeout=30, sleep_interval=1)
         open(SUSPEND_START, 'w').close()
         # Pad disk stress runtime by 60s for safety.
         runtime = runtime + 60
-        site_utils.poll_for_condition(
+        utils.poll_for_condition(
             lambda: os.path.exists(CRYPTOHOMESTRESS_END),
             error.TestFail('fiostress runtime exceeded.'),
             timeout=runtime, sleep_interval=10)
 
     def cleanup(self):
         open(SUSPEND_END, 'w').close()
-        
