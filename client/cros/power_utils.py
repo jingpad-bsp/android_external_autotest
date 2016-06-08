@@ -5,6 +5,7 @@ import glob, logging, os, re, shutil, time
 from autotest_lib.client.bin import site_utils, utils
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import upstart
 
 
 # Possible display power settings. Copied from chromeos::DisplayPowerState
@@ -495,7 +496,7 @@ class PowerPrefChanger(object):
         for name, value in prefs.iteritems():
             utils.write_one_line('%s/%s' % (self._TEMPDIR, name), value)
         utils.system('mount --bind %s %s' % (self._TEMPDIR, self._PREFDIR))
-        utils.restart_job('powerd')
+        upstart.restart_job('powerd')
 
 
     def finalize(self):
@@ -503,7 +504,7 @@ class PowerPrefChanger(object):
         if os.path.exists(self._TEMPDIR):
             utils.system('umount %s' % self._PREFDIR, ignore_status=True)
             shutil.rmtree(self._TEMPDIR)
-            utils.restart_job('powerd')
+            upstart.restart_job('powerd')
 
 
     def __del__(self):
