@@ -8,7 +8,7 @@ import contextlib
 import logging
 
 import common
-from autotest_lib.client.bin import site_utils as client_site_utils
+from autotest_lib.client.bin import utils
 
 
 _RUN_BACKGROUND_TEMPLATE = '( %(cmd)s ) </dev/null >/dev/null 2>&1 & echo -n $!'
@@ -75,7 +75,7 @@ def connect_to_ssid(host, ssid, passphrase):
                      'service weaved \/system\/bin\/weaved --disable_privet/\' '
                      '-i /system/etc/init/weaved.rc')
             host.reboot()
-            client_site_utils.poll_for_condition(
+            utils.poll_for_condition(
                     lambda: 'running' in host.run('getprop init.svc.shill'
                                                   ).stdout,
                     sleep_interval=1, timeout=300,
