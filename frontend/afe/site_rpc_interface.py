@@ -153,7 +153,7 @@ def create_suite_job(name='', board='', pool='', control_file='',
                      max_retries=None, max_runtime_mins=None, suite_min_duts=0,
                      offload_failures_only=False, builds={},
                      test_source_build=None, run_prod_code=False,
-                     delay_minutes=0, **kwargs):
+                     delay_minutes=0, is_cloning=False, **kwargs):
     """
     Create a job to run a test suite on the given device with the given image.
 
@@ -201,6 +201,7 @@ def create_suite_job(name='', board='', pool='', control_file='',
                           build artifacts.
     @param delay_minutes: Delay the creation of test jobs for a given number of
                           minutes.
+    @param is_cloning: True if creating a cloning job.
     @param kwargs: extra keyword args. NOT USED.
 
     @raises ControlFileNotFound: if a unique suite control file doesn't exist.
@@ -292,6 +293,8 @@ def create_suite_job(name='', board='', pool='', control_file='',
                    'delay_minutes': delay_minutes,
                    }
 
+    if is_cloning:
+        control_file = tools.remove_injection(control_file)
     control_file = tools.inject_vars(inject_dict, control_file)
 
     return rpc_utils.create_job_common(name,
@@ -1029,7 +1032,7 @@ def get_tests_by_build(build, ignore_invalid_tests=False):
         try:
             control_obj = control_data.parse_control_string(control_file)
         except:
-            logging.info('Failed to parse congtrol file: %s', control_file_path)
+            logging.info('Failed to parse control file: %s', control_file_path)
             if not ignore_invalid_tests:
                 raise
 
