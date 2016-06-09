@@ -2,9 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json
-import logging
-import time
+import json, logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -94,7 +92,7 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
         tree_items = self.get_elements_from_page(tab, cmd)
 
         # Scan bookmark tree for a folder with the domain-name in title.
-        domain_name = self.USERNAME.split('@')[1]
+        domain_name = self.username.split('@')[1]
         folder_title = domain_name + ' bookmarks'
         for bookmark_element in tree_items.itervalues():
             bookmark_node = bookmark_element['bookmarkNode']

@@ -24,13 +24,6 @@ that is in a domain listed in the PopupsBlockedForUrls policy. A test shall
 fail if the browser blocks popups on a page where they should be allowed, or
 allows popups on a page where they should be blocked.
 
-Usage example:
-$ test_that <IPAddress> PopupsBlockedForUrls
-
-Runs all the test cases against a device with the specified IP address, using
-the DM Test environment with the given DM Server name, and signing in to the
-device with the given username and password.
-
 """
 
 job.run_test("policy_PopupsBlockedForUrls", args=args)
