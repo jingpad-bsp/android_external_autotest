@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import utils
+import logging, utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -84,9 +83,9 @@ class policy_ImagesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
     def _test_images_blocked_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the ImagesBlockedForUrls policy.
 
-        When ImagesBlockedForUrls is undefined, images shall not be blocked on
-        any page. When ImagesBlockedForUrls contains one or more URLs, images
-        are blocked on any page whose domain matches any of the listed
+        When ImagesBlockedForUrls is undefined, images shall be allowed on
+        all pages. When ImagesBlockedForUrls contains one or more URLs, images
+        shall be blocked on any page whose domain matches any of the listed
         domains.
 
         @param policy_value: policy value expected on chrome://policy page.
@@ -116,7 +115,9 @@ class policy_ImagesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
+        the specified test |case|, and run the test. If the user specified an
+        expected |value| in the command line args, then it will be used to set
+        the |policy_value|.
 
         @param case: Name of the test case to run.
 
