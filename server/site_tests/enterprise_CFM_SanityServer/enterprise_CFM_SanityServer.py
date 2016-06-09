@@ -20,6 +20,7 @@ class enterprise_CFM_SanityServer(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            self.client.servo.set('dut_hub1_rst1', 'off')
 
         autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition',
                                                 check_client_result=True)
