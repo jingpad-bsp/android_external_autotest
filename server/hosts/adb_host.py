@@ -435,7 +435,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         parent's job_start().  The sync call is made so that logcat logs can be
         approximately matched to server logs.
         """
-        self._sync_time()
+        if self.is_up():
+            self._sync_time()
 
 
     def run(self, command, timeout=3600, ignore_status=False,
@@ -722,8 +723,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         try:
             self.adb_run('logcat -v time -d > "%s"' % (teststation_filename),
                          timeout=20)
-        except (error.AutoservRunError, error.AutoservSSHTimeout,
-                error.CmdTimeoutError):
+        except (error.AutotestHostRunError, error.AutoservRunError,
+                error.AutoservSSHTimeout, error.CmdTimeoutError):
             return
         # Copy-back the log to the drone's results directory.
         logcat_filename = os.path.join(self.job.resultdir, LOGCAT_FILE)
