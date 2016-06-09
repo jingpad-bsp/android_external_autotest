@@ -474,7 +474,8 @@ class ChromiumOSUpdater(BaseUpdater):
         auserver_host = urlparse.urlparse(self.update_url)[1]
         try:
             httplib.HTTPConnection(auserver_host).connect()
-        except IOError:
+        except IOError as e:
+            logging.debug('http IOError to devserver: %r', e)
             raise ChromiumOSError(
                 'Update server at %s not available' % auserver_host)
 
