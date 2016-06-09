@@ -629,5 +629,74 @@ class RpcInterfaceTest(unittest.TestCase,
         self.god.check_playback()
 
 
+    def test_get_image_for_job_parameterized(self):
+        test = models.Test.objects.create(
+            name='name', author='author', test_class='class',
+            test_category='category',
+            test_type=control_data.CONTROL_TYPE.SERVER, path='path')
+        parameterized_job = models.ParameterizedJob.objects.create(test=test)
+        job = self._create_job(hosts=[1])
+        job.parameterized_job = parameterized_job
+        self.god.stub_function_to_return(rpc_interface,
+                'get_parameterized_autoupdate_image_url', 'cool-image')
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
+        self.god.check_playback()
+
+
+    def test_get_image_for_job_with_keyval_build(self):
+        keyval_dict = {'build': 'cool-image'}
+        job_id = rpc_interface.create_job(name='test', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          hosts=['host1'],
+                                          keyvals=keyval_dict)
+        job = models.Job.objects.get(id=job_id)
+        self.assertIsNotNone(job)
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
+
+
+    def test_get_image_for_job_with_keyval_builds(self):
+        keyval_dict = {'builds': {'cros-version': 'cool-image'}}
+        job_id = rpc_interface.create_job(name='test', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          hosts=['host1'],
+                                          keyvals=keyval_dict)
+        job = models.Job.objects.get(id=job_id)
+        self.assertIsNotNone(job)
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
+
+
+    def test_get_image_for_job_with_control_build(self):
+        CONTROL_FILE = """build='cool-image'
+        """
+        job_id = rpc_interface.create_job(name='test', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          hosts=['host1'])
+        job = models.Job.objects.get(id=job_id)
+        self.assertIsNotNone(job)
+        job.control_file = CONTROL_FILE
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
+
+
+    def test_get_image_for_job_with_control_builds(self):
+        CONTROL_FILE = """builds={'cros-version': 'cool-image'}
+        """
+        job_id = rpc_interface.create_job(name='test', priority='Medium',
+                                          control_file='foo',
+                                          control_type=CLIENT,
+                                          hosts=['host1'])
+        job = models.Job.objects.get(id=job_id)
+        self.assertIsNotNone(job)
+        job.control_file = CONTROL_FILE
+        image = rpc_interface._get_image_for_job(job, True)
+        self.assertEquals('cool-image', image)
+
+
 if __name__ == '__main__':
     unittest.main()

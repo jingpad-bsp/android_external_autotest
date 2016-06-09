@@ -258,6 +258,14 @@ class ControlData(object):
         self._set_bool('require_ssp', val)
 
 
+    def set_build(self, val):
+        self._set_string('build', val)
+
+
+    def set_builds(self, val):
+        if type(val) == dict:
+            setattr(self, 'builds', val)
+
     def set_attributes(self, val):
         # Add subsystem:default if subsystem is not specified.
         self._set_set('attributes', val)
