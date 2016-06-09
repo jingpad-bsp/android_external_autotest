@@ -157,6 +157,10 @@ class kernel_ConfigVerify(test.test):
 
         if utils.compare_versions(kernel_ver, "3.14") >= 0:
             self.IS_MODULE.append('TEST_ASYNC_DRIVER_PROBE')
+            for entry in self.IS_EXCLUSIVE:
+                if entry['regex'] == 'BINFMT_':
+                    entry['builtin'].append('BINFMT_MISC')
+
 
         if utils.compare_versions(kernel_ver, "3.18") >= 0:
             for entry in self.IS_EXCLUSIVE:
