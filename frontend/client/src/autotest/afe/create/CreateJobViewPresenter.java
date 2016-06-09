@@ -149,6 +149,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
     private JSONArray dependencies = new JSONArray();
 
     private Display display;
+    private boolean cloning;
 
     public void bindDisplay(Display display) {
         this.display = display;
@@ -158,7 +159,16 @@ public class CreateJobViewPresenter implements TestSelectorListener {
         this.listener = listener;
     }
 
+    public void setCloning(boolean cloning) {
+      this.cloning = cloning;
+    }
+
+    public boolean isCloning() {
+      return cloning;
+    }
+
     public void cloneJob(JSONValue cloneInfo) {
+        setCloning(true);
         // reset() fires the TestSelectorListener, which will generate a new control file. We do
         // no want this, so we'll stop listening to it for a bit.
         testSelector.setListener(null);
@@ -825,6 +835,7 @@ public class CreateJobViewPresenter implements TestSelectorListener {
                     args.put(TEST_SOURCE_BUILD, new JSONString(testSourceBuild));
                 }
 
+                args.put("is_cloning", JSONBoolean.getInstance(isCloning()));
                 rpcProxy.rpcCall("create_job_page_handler", args, new JsonRpcCallback() {
                     @Override
                     public void onSuccess(JSONValue result) {

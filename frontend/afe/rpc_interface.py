@@ -31,12 +31,14 @@ See doctests/001_rpc_test.txt for (lots) more examples.
 
 __author__ = 'showard@google.com (Steve Howard)'
 
+import ast
 import sys
 import datetime
 import logging
 
 from django.db.models import Count
 import common
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -890,7 +892,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 def create_job_page_handler(name, priority, control_file, control_type,
                             image=None, hostless=False, firmware_rw_build=None,
                             firmware_ro_build=None, test_source_build=None,
-                            **kwargs):
+                            is_cloning = False, **kwargs):
     """\
     Create and enqueue a job.
 
@@ -905,11 +907,16 @@ def create_job_page_handler(name, priority, control_file, control_type,
                               None, i.e., RO firmware will not be updated.
     @param test_source_build: Build to be used to retrieve test code. Default
                               to None.
+    @param is_cloning: True if creating a cloning job.
     @param kwargs extra args that will be required by create_suite_job or
                   create_job.
 
     @returns The created Job id number.
     """
+    if is_cloning:
+        logging.info('Start to clone a new job')
+    else:
+        logging.info('Start to create a new job')
     control_file = rpc_utils.encode_ascii(control_file)
     if not control_file:
         raise model_logic.ValidationError({
@@ -924,9 +931,10 @@ def create_job_page_handler(name, priority, control_file, control_type,
             builds[provision.FW_RO_VERSION_PREFIX] = firmware_ro_build
         return site_rpc_interface.create_suite_job(
                 name=name, control_file=control_file, priority=priority,
-                builds=builds, test_source_build=test_source_build, **kwargs)
+                builds=builds, test_source_build=test_source_build,
+                is_cloning=is_cloning, **kwargs)
     return create_job(name, priority, control_file, control_type, image=image,
-                      hostless=hostless, **kwargs)
+                      hostless=hostless, is_cloning=is_cloning, **kwargs)
 
 
 @rpc_utils.route_rpc_to_master
@@ -938,7 +946,7 @@ def create_job(name, priority, control_file, control_type,
                reboot_before=None, reboot_after=None, parse_failed_repair=None,
                hostless=False, keyvals=None, drone_set=None, image=None,
                parent_job_id=None, test_retry=0, run_reset=True,
-               require_ssp=None, args=(), **kwargs):
+               require_ssp=None, args=(), is_cloning=False, **kwargs):
     """\
     Create and enqueue a job.
 
@@ -981,6 +989,7 @@ def create_job(name, priority, control_file, control_type,
                        image is not set, drone will run the test without server-
                        side packaging. Default is None.
     @param args A list of args to be injected into control file.
+    @param is_cloning: True if creating a cloning job.
     @param kwargs extra keyword args. NOT USED.
 
     @returns The created Job id number.
@@ -1266,13 +1275,58 @@ def get_info_for_clone(id, preserve_metahosts, queue_entry_filter_data=None):
     info['hostless'] = job_info['hostless']
     info['drone_set'] = job.drone_set and job.drone_set.name
 
-    if job.parameterized_job:
-        info['job']['image'] = get_parameterized_autoupdate_image_url(job)
+    image = _get_image_for_job(job, job_info['hostless'])
+    if image:
+        info['job']['image'] = image
 
     return rpc_utils.prepare_for_serialization(info)
 
 
-# host queue entries
+def _get_image_for_job(job, hostless):
+    """ Gets the image used for a job.
+
+    Gets the image used for an AFE job. If the job is a parameterized job, get
+    the image from the job parameter; otherwise, tries to get the image from
+    the job's keyvals 'build' or 'builds'. As a last resort, if the job is a
+    hostless job, tries to get the image from its control file attributes
+    'build' or 'builds'.
+
+    TODO(ntang): Needs to handle FAFT with two builds for ro/rw.
+
+    @param job      An AFE job object.
+    @param hostless Boolean on of the job is hostless.
+
+    @returns The image build used for the job.
+    """
+    image = None
+    if job.parameterized_job:
+        image = get_parameterized_autoupdate_image_url(job)
+    else:
+        keyvals = job.keyval_dict()
+        image =  keyvals.get('build')
+        if not image:
+            value = keyvals.get('builds')
+            builds = None
+            if isinstance(value, dict):
+                builds = value
+            elif isinstance(value, basestring):
+                builds = ast.literal_eval(value)
+            if builds:
+                image = builds.get('cros-version')
+        if not image and hostless and job.control_file:
+            try:
+                control_obj = control_data.parse_control_string(
+                        job.control_file)
+                if hasattr(control_obj, 'build'):
+                    image = getattr(control_obj, 'build')
+                if not image and hasattr(control_obj, 'builds'):
+                    builds = getattr(control_obj, 'builds')
+                    image = builds.get('cros-version')
+            except:
+                logging.warning('Failed to parse control file for job: %s',
+                                job.name)
+    return image
+
 
 def get_host_queue_entries(start_time=None, end_time=None, **filter_data):
     """\

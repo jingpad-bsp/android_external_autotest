@@ -86,8 +86,10 @@ public class AfeClient implements EntryPoint {
 
             public void onCloneJob(JSONValue cloneInfo) {
                 createJob.ensureInitialized();
-                createJob.cloneJob(cloneInfo);
                 mainTabPanel.selectTabView(createJob);
+                // Makes sure we set cloning mode after the tab is selected. Otherwise,
+                // the mode will be reset.
+                createJob.cloneJob(cloneInfo);
             }
 
             public void onCreateRecurringJob(int jobId) {
