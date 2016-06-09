@@ -58,7 +58,7 @@ CMD_OUTPUT_REGEX = ('(?P<OUTPUT>[\s\S]*)%s:(?P<EXIT_CODE>\d{1,3})' %
 RELEASE_FILE = 'ro.build.version.release'
 BOARD_FILE = 'ro.product.device'
 SDK_FILE = 'ro.build.version.sdk'
-LOGCAT_FILE = 'logcat.log'
+LOGCAT_FILE_FMT = 'logcat_%s.log'
 TMP_DIR = '/data/local/tmp'
 # Regex to pull out file type, perms and symlink. Example:
 # lrwxrwx--- 1 6 root system 2015-09-12 19:21 blah_link -> ./blah
@@ -730,7 +730,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         super(ADBHost, self).stop_loggers()
         # Record logcat log to a temporary file on the teststation.
         tmp_dir = self.teststation.get_tmp_dir()
-        teststation_filename = os.path.join(tmp_dir, LOGCAT_FILE)
+        logcat_filename = LOGCAT_FILE_FMT % self.adb_serial
+        teststation_filename = os.path.join(tmp_dir, logcat_filename)
         try:
             self.adb_run('logcat -v time -d > "%s"' % (teststation_filename),
                          timeout=20)
@@ -738,8 +739,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 error.AutoservSSHTimeout, error.CmdTimeoutError):
             return
         # Copy-back the log to the drone's results directory.
-        logcat_filename = os.path.join(self.job.resultdir, LOGCAT_FILE)
-        self.teststation.get_file(teststation_filename, logcat_filename)
+        results_logcat_filename = os.path.join(self.job.resultdir,
+                                               logcat_filename)
+        self.teststation.get_file(teststation_filename,
+                                  results_logcat_filename)
         try:
             self.teststation.run('rm -rf %s' % tmp_dir)
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
