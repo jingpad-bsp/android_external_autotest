@@ -19,9 +19,7 @@ the TPM again. Every time the TPM is cleared, the system is rebooted.
 """
 
 args_dict = utils.args_to_dict(args)
-servo_args = None
-if args_dict:
-    servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
+servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
