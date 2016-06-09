@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import time
+import logging, time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -87,14 +86,12 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         @returns: True if add-new-bookmarks-command is disabled.
 
         """
-        tab = self.cr.browser.tabs.New()
-        tab.Navigate('chrome://bookmarks/#1')
-        tab.WaitForDocumentReadyStateToBeComplete()
+        tab = self.navigate_to_url('chrome://bookmarks/#1')
 
         # Wait until list.reload() is defined on bmm page.
         tab.WaitForJavaScriptExpression(
             "typeof bmm.list.reload == 'function'", 60)
-        time.sleep(1)  # Allow JS to run after function is defined.
+        time.sleep(1)  # Allow JS to run after reload function is defined.
 
         # Check if add-new-bookmark menu command has disabled property.
         is_disabled = tab.EvaluateJavaScript(

@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import utils
+import logging, utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -61,17 +60,12 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         super(policy_PopupsBlockedForUrls, self).initialize(args)
         self.start_webserver(self.URL_PORT)
 
-    def cleanup(self):
-        if self._web_server:
-            self._web_server.stop()
-        super(policy_PopupsBlockedForUrls, self).cleanup()
-
     def _wait_for_page_ready(self, tab):
         utils.poll_for_condition(
             lambda: tab.EvaluateJavaScript('pageReady'),
             exception=error.TestError('Test page is not ready.'))
 
-    def _test_popups_blocked_for_urls(self, policy_value, policies_json):
+    def _test_popups_blocked_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the PopupsBlockedForUrls policy.
 
         When PopupsBlockedForUrls is undefined, popups shall be allowed on
@@ -80,12 +74,12 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         listed URLs.
 
         @param policy_value: policy value expected on chrome://policy page.
-        @param policies_json: policy JSON data to send to the fake DM server.
+        @param policies_dict: policy dict data to send to the fake DM server.
 
         """
-        self.setup_case(self.POLICY_NAME, policy_value, policies_json)
         logging.info('Running _test_popups_blocked_for_urls(%s, %s)',
-                     policy_value, policies_json)
+                     policy_value, policies_dict)
+        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
 
         tab = self.navigate_to_url(self.TEST_URL)
         self._wait_for_page_ready(tab)
@@ -102,35 +96,30 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
                 raise error.TestFail('Popups should not be blocked.')
         tab.Close()
 
-    def _run_test_case(self, case):
+    def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_json| data based on the
-        test |case|. If the user specified an expected |value| in the command
-        line args, then use it to set the |policy_value| and blank out the
-        |policies_json|.
+        Set the expected |policy_value| and |policies_dict| data defined for
+        the specified test |case|, and run the test. If the user specified an
+        expected |value| in the command line args, then it will be used to set
+        the |policy_value|.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
+        """if self.is_value_given:
             # If |value| was given in args, then set expected |policy_value|
-            # to the given value, and setup |policies_json| data to None.
+            # to the given value, and setup |policies_dict| data to None.
             policy_value = self.value
-            policies_json = None
+            policies_dict = None
         else:
-            # Otherwise, set expected |policy_value| and setup |policies_json|
+            # Otherwise, set expected |policy_value| and setup |policies_dict|
             # data to the values specified by the test |case|.
             policy_value = ','.join(self.TEST_CASES[case])
-            policy_json = {self.POLICY_NAME: self.TEST_CASES[case]}
-            policies_json = self.SUPPORTING_POLICIES.copy()
-            policies_json.update(policy_json)
+            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+            policies_dict = self.SUPPORTING_POLICIES.copy()
+            policies_dict.update(policy_dict)"""
+        policy_value, policies_dict = self._get_policy_data_for_case(case)
 
         # Run test using the values configured for the test case.
-        self._test_popups_blocked_for_urls(policy_value, policies_json)
-
-    def run_once(self):
-        # The run_once() method is required by autotest. We call the base
-        # class run_once_impl() method, which handles command-line run modes,
-        # and pass in the standard _run_test_case() method of this test.
-        self.run_once_impl(self._run_test_case)
+        self._test_popups_blocked_for_urls(policy_value, policies_dict)

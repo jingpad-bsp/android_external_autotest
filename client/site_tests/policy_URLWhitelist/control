@@ -11,29 +11,18 @@ TEST_CLASS = "enterprise"
 TEST_TYPE = "client"
 
 DOC = """
-Verify effects of policy_URLWhitelist policy on client behavior & appearance.
+Verify effects of policy_URLWhitelist policy on client behavior.
 
 This test verifies the effect of the URLWhitelist user policy on Chrome OS
-client behavior and appearance. It exercises a range of policy values using
-three unique test cases, named: NotSet, SingleWhitelistedFile and
-MultipleWhitelistedFiles.
+client behavior. It exercises a range of policy values using three unique test
+cases, named: NotSet_Blocked, SinglePage_Allowed and MultiplePages_Allowed.
 See the test file for a full description of what each test case does.
 
 The test case shall pass if:
- -only the URLs that are part of the URLWhitelist policy value are not blocked.
- -all other URLs are blocked.
+ - Only URLs that in the URLWhitelist policy value are allowed.
+ - All other URLs are blocked.
 The test case shall fail if the above behavior is not enforced.
-
-Usage example:
-$ test_that <IPAddress> policy_URLWhitelist --args="mode=single
-case=MultipleWhitelistedFiles nv=dm-test dms_name=xot-dmst
-username=test@crosprqa1.com password=test1234"
-
-This command runs a single test case (e.g., MultipleWhitelistedFiles) using
-the specified test DM Server environment, signing in with the specified
-username and password.
 
 """
 
 job.run_test("policy_URLWhitelist", args=args)
-

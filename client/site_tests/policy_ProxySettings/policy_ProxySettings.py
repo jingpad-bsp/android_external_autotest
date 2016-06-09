@@ -2,31 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import threading
+import logging, threading
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
 from SocketServer import ThreadingTCPServer, StreamRequestHandler
-
-POLICY_NAME = 'ProxySettings'
-PROXY_HOST = 'localhost'
-PROXY_PORT = 3128
-WEB_PORT = 8080
-PAC_FILE_URL = 'http://localhost:%d/test_data/test_proxy.pac' % WEB_PORT
-FIXED_PROXY = '''{
-  "ProxyBypassList": "www.google.com,www.googleapis.com",
-  "ProxyMode": "fixed_servers",
-  "ProxyServer": "localhost:%s"
-}''' % PROXY_PORT
-DIRECT_PROXY = '''{
-  "ProxyMode": "direct"
-}'''
-PAC_PROXY = '''{
-  "ProxyMode": "pac_script",
-  "ProxyPacUrl": "%s"
-}''' % PAC_FILE_URL
-TEST_URL = 'http://www.wired.com/'
 
 
 class ProxyHandler(StreamRequestHandler):
@@ -122,6 +102,26 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
     entry should be used.
     """
     version = 1
+
+    POLICY_NAME = 'ProxySettings'
+    PROXY_HOST = 'localhost'
+    PROXY_PORT = 3128
+    WEB_PORT = 8080
+    PAC_FILE_URL = 'http://localhost:%d/test_data/test_proxy.pac' % WEB_PORT
+    FIXED_PROXY = '''{
+      "ProxyBypassList": "www.google.com,www.googleapis.com",
+      "ProxyMode": "fixed_servers",
+      "ProxyServer": "localhost:%s"
+    }''' % PROXY_PORT
+    DIRECT_PROXY = '''{
+      "ProxyMode": "direct"
+    }'''
+    PAC_PROXY = '''{
+      "ProxyMode": "pac_script",
+      "ProxyPacUrl": "%s"
+    }''' % PAC_FILE_URL
+    TEST_URL = 'http://www.wired.com/'
+
     TEST_CASES = {
         'FixedProxy_UseFixedProxy': FIXED_PROXY,
         'PacProxy_UsePacFile': PAC_PROXY,
@@ -131,9 +131,9 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
 
     def initialize(self, args=()):
         super(policy_ProxySettings, self).initialize(args)
-        self._proxy_server = ProxyListener(('', PROXY_PORT))
+        self._proxy_server = ProxyListener(('', self.PROXY_PORT))
         self._proxy_server.run()
-        self.start_webserver(WEB_PORT)
+        self.start_webserver(self.WEB_PORT)
 
     def cleanup(self):
         self._proxy_server.stop()
@@ -147,10 +147,10 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         """
         logging.info('Running _test_proxy_configuration(%s, %s)',
                      policy_value, policies_dict)
-        self.setup_case(POLICY_NAME, policy_value, policies_dict)
+        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
 
         self._proxy_server.reset_requests_received()
-        self.navigate_to_url(TEST_URL)
+        self.navigate_to_url(self.TEST_URL)
         proxied_requests = self._proxy_server.get_requests_received()
 
         # Determine whether TEST_URL is in |proxied_requests|. Comprehension
@@ -159,7 +159,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         # elements inside |proxied_requests| are not necessarily equal, i.e.,
         # TEST_URL is a substring of the received request.
         matching_requests = [request for request in proxied_requests
-                             if TEST_URL in request]
+                             if self.TEST_URL in request]
         logging.info('matching_requests: %s', matching_requests)
 
         if policy_value is None or 'direct' in policy_value:
@@ -192,6 +192,6 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
             # Otherwise, set expected |policy_value| and setup |policies_dict|
             # data to the values required by the specified test |case|.
             policy_value = self.TEST_CASES[case]
-            policies_dict = {POLICY_NAME: self.TEST_CASES[case]}
+            policies_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
 
         self._test_proxy_configuration(policy_value, policies_dict)

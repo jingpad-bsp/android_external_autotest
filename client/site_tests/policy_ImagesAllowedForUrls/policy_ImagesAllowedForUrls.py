@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-import utils
+import logging, utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -85,9 +84,9 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         """Verify CrOS enforces the ImagesAllowedForUrls policy.
 
         When ImagesAllowedForUrls is undefined, images shall be blocked on
-        all pages. When ImagesAllowedForUrls contains one or more domains,
-        images shall be shown only on the pages whose domain matches any of
-        the listed domains.
+        all pages. When ImagesAllowedForUrls contains one or more URLs, images
+        shall be shown only on the pages whose domain matches any of the
+        listed domains.
 
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
@@ -116,7 +115,9 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
+        the specified test |case|, and run the test. If the user specified an
+        expected |value| in the command line args, then it will be used to set
+        the |policy_value|.
 
         @param case: Name of the test case to run.
 
