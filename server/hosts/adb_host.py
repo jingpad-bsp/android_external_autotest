@@ -515,6 +515,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         def _wait_up():
             if not self.is_up(command=command):
                 raise error.TimeoutException('Device is still down.')
+            bootcomplete = self._run_output_with_retry(
+                    'getprop dev.bootcomplete')
+            if bootcomplete != PROPERTY_VALUE_TRUE:
+                raise error.TimeoutException('dev.bootcomplete is %s.' %
+                                             bootcomplete)
+            if self.get_os_type() == OS_TYPE_ANDROID:
+                boot_completed = self._run_output_with_retry(
+                        'getprop sys.boot_completed')
+                if boot_completed != PROPERTY_VALUE_TRUE:
+                    raise error.TimeoutException('sys.boot_completed is %s.' %
+                                                 boot_completed)
             return True
 
         try:
