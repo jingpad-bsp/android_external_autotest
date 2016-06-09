@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os
+import logging, os, re
 
 from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils
@@ -39,6 +39,21 @@ def _is_arc_available():
 
 if _is_arc_available():
     from autotest_lib.client.common_lib.cros import arc_util
+
+
+def NormalizeEmail(username):
+    """Remove dots from username. Add @gmail.com if necessary.
+
+    TODO(achuith): Get rid of this when crbug.com/358427 is fixed.
+
+    @param username: username/email to be scrubbed.
+    """
+    parts = re.split('@', username)
+    parts[0] = re.sub('\.', '', parts[0])
+
+    if len(parts) == 1:
+        parts.append('gmail.com')
+    return '@'.join(parts)
 
 
 class Chrome(object):
@@ -137,6 +152,7 @@ class Chrome(object):
         b_options.gaia_login = gaia_login
         self.username = b_options.username if username is None else username
         self.password = b_options.password if password is None else password
+        self.username = NormalizeEmail(self.username)
         b_options.username = self.username
         b_options.password = self.password
         # gaia_id will be added to telemetry code in chromium repository later
