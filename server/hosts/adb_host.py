@@ -392,8 +392,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def _run_output_with_retry(self, cmd):
         """Call run_output method for the given command with retry.
 
-        adb command can be flaky some time and return empty string. It may take
-        several retries until a value can be returned.
+        adb command can be flaky some time, and the command may fail or return
+        empty string. It may take several retries until a value can be returned.
 
         @param cmd: The command to run.
 
@@ -401,7 +401,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         try:
             return client_utils.poll_for_condition(
-                    lambda: self.run_output(cmd),
+                    lambda: self.run_output(cmd, ignore_status=True),
                     timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
                     sleep_interval=0.5,
                     desc='Get return value for command `%s`' % cmd)
