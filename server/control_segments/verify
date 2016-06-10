@@ -11,12 +11,10 @@ labels_list = [l.strip() for l in job_labels.split(',') if l]
 def verify(machine):
     print 'Initializing host %s' % machine
     timer = None
-    # We set try_lab_servo to True to trigger servo verify and
-    # servo update if needed.
+    job.record('START', None, 'verify')
     target = hosts.create_target_machine(machine,
                                          try_lab_servo=True)
     try:
-        job.record('START', None, 'verify')
         timer = autotest_stats.Timer('verify_time')
         timer.start()
 
