@@ -2182,6 +2182,41 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return int(re.search(r'\d+', meminfo).group(0))
 
 
+    def get_cpu_arch(self):
+        """Returns CPU arch of the device.
+
+        @return CPU architecture of the DUT.
+        """
+        # Add CPUs by following logic in client/bin/base_utils.py.
+        if self.run("grep '^flags.*:.* lm .*' /proc/cpuinfo",
+                ignore_status=True).stdout:
+            return 'x86_64'
+        if self.run("grep -Ei 'ARM|CPU implementer' /proc/cpuinfo",
+                ignore_status=True).stdout:
+            return 'arm'
+        return 'i386'
+
+
+    def get_cts_abis(self):
+        """Return supported CTS ABIs.
+
+        @return List of supported CTS bundle ABIs.
+        """
+        cts_abis = {'x86_64': ['arm', 'x86'], 'arm': ['arm']}
+        cpu_arch = self.get_cpu_arch()
+        if cpu_arch in cts_abis:
+            return cts_abis[self.get_cpu_arch()]
+        return []
+
+
+    def get_cts_labels(self):
+        """Convert cts abi into machine labels.
+
+        @return List of machine labels.
+        """
+        return ['cts_abi_' + abi for abi in self.get_cts_abis()]
+
+
     def get_board_type(self):
         """
         Get the DUT's device type from /etc/lsb-release.
