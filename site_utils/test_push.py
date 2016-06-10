@@ -56,6 +56,7 @@ RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_canary'
+DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -177,7 +178,7 @@ def parse_arguments():
                         default=None,
                         help='devserver to find what\'s the latest build.')
     parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
-                        default=24,
+                        default=DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB,
                         help='Time in mins to wait before abort the jobs we '
                              'are waiting on. Only for the asynchronous suites '
                              'triggered by create_and_return flag.')
