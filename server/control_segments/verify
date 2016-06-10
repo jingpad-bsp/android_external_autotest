@@ -30,8 +30,9 @@ def verify(machine):
         # doing this.
         raise Exception('')
     else:
+        hostname = utils.get_hostname_from_machine(machine)
         job.record('END GOOD', None, 'verify',
-                   '%s verified successfully' % machine)
+                   '%s verified successfully' % hostname)
     finally:
         if timer:
             timer.stop()

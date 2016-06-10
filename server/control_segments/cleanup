@@ -46,7 +46,7 @@ def cleanup(machine):
         raise Exception('')
     else:
         job.record('END GOOD', None, 'cleanup',
-                   '%s cleaned successfully' % machine)
+                   '%s cleaned successfully' % hostname)
     finally:
         if timer:
             timer.stop()
