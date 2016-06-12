@@ -1069,6 +1069,21 @@ class ImagingLibraryPackage(ExternalPackage):
             ExternalPackage._build_and_install_current_dir_noegg)
 
 
+class PyLintPackage(ExternalPackage):
+    """pylint package."""
+    version = '1.1.0'
+    url_filename = 'pylint-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=017299b5911838a9347a71de5f946afc
+    urls = ('https://pypi.python.org/packages/09/69/'
+            'cf252f211dbbf58bbbe01a3931092d8a8df8d55f5fe23ac5cef145aa6468/%s' %
+            (url_filename),)
+    hex_sum = 'b33594a2c627d72007bfa8c6d7619af699e26085'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
 class _ExternalGitRepo(ExternalPackage):
     """
     Parent class for any package which needs to pull a git repo.
