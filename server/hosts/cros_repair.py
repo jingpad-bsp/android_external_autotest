@@ -360,6 +360,11 @@ def create_cros_repair_strategy():
     # more verifiers than the one before.  The 'triggers' lists below
     # show the progression.
     #
+    # N.B. AC power detection depends on software on the DUT, and there
+    # have been bugs where detection failed even though the DUT really
+    # did have power.  So, we make the 'power' verifier a trigger for
+    # reinstall repair actions, too.
+    #
     # TODO(jrbarnette):  AU repair can't fix all problems reported by
     # the 'cros' verifier; it's listed as an AU trigger as a
     # simplification.  The ultimate fix is to split the 'cros' verifier
@@ -367,7 +372,7 @@ def create_cros_repair_strategy():
 
     usb_triggers       = ['ssh', 'writable']
     powerwash_triggers = ['tpm', 'good_au']
-    au_triggers        = ['python', 'cros']
+    au_triggers        = ['python', 'cros', 'power']
 
     repair_actions = [
         # RPM cycling must precede Servo reset:  if the DUT has a dead
@@ -430,7 +435,7 @@ def create_moblab_repair_strategy():
     repair_actions = [
         (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
         (ServoResetRepair, 'reset', [], ['ssh']),
-        (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros']),
-        (ServoInstallRepair, 'usb', [], ['ssh', 'python', 'cros']),
+        (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros', 'power']),
+        (ServoInstallRepair, 'usb', [], ['ssh', 'python', 'cros', 'power']),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
