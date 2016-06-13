@@ -70,7 +70,7 @@ class Chrome(object):
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
-                 arc_mode=None):
+                 arc_mode=None, disable_arc_opt_in=True):
         """
         Constructor of telemetry wrapper.
 
@@ -99,6 +99,8 @@ class Chrome(object):
         @param gaia_id: Log in using this gaia_id instead of the default.
         @param arc_mode: How ARC instance should be started.  Default is to not
                          start.
+        @param disable_arc_opt_in: For opt in flow autotest. This option is used
+                                   to disable the arc opt in flow.
         """
         self._autotest_ext_path = None
         if autotest_ext:
@@ -110,8 +112,9 @@ class Chrome(object):
         if _is_arc_available() and arc_util.should_start_arc(arc_mode):
             # TODO(achuith): Fix extra_browser_args, so that appending the
             # following flags to it is simpler.
-            finder_options.browser_options.AppendExtraBrowserArgs(
-                    arc_util.get_extra_chrome_flags())
+            if disable_arc_opt_in:
+                finder_options.browser_options.AppendExtraBrowserArgs(
+                        arc_util.get_extra_chrome_flags())
             logged_in = True
 
         self._browser_type = (self.BROWSER_TYPE_LOGIN
@@ -150,6 +153,10 @@ class Chrome(object):
 
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
+
+        if _is_arc_available() and not disable_arc_opt_in:
+            arc_util.set_browser_options_for_opt_in(b_options)
+
         self.username = b_options.username if username is None else username
         self.password = b_options.password if password is None else password
         self.username = NormalizeEmail(self.username)
@@ -184,7 +191,9 @@ class Chrome(object):
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
                 if _is_arc_available():
-                    arc_util.post_processing_after_browser(self)
+                    if not disable_arc_opt_in:
+                        arc_util.opt_in(self.browser)
+                    arc_util.post_processing_after_browser(arc_mode)
                 break
             except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
