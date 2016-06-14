@@ -410,15 +410,16 @@ def create_moblab_repair_strategy():
     Return a `RepairStrategy` for a `MoblabHost`.
 
     Moblab is a subset of the CrOS verify and repair.  Several pieces
-    are removed, for various reasons:
+    are removed because they're not expected to be meaningful.  Some
+    others are removed for more specific reasons:
 
     'tpm':  Moblab DUTs don't run the tests that matter to this
         verifier.  TODO(jrbarnette)  This assertion is unproven.
 
     'good_au':  This verifier can't pass, because the Moblab AU
         procedure doesn't properly delete CrosHost.PROVISION_FAILED.
-        TODO(jrbarnette) We should refactor _machine_install() so that it
-        can be different for Moblab.
+        TODO(jrbarnette) We should refactor _machine_install() so that
+        it can be different for Moblab.
 
     'firmware':  Moblab DUTs shouldn't be in FAFT pools, so we don't try
         this.
@@ -434,8 +435,6 @@ def create_moblab_repair_strategy():
     ]
     repair_actions = [
         (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
-        (ServoResetRepair, 'reset', [], ['ssh']),
         (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros', 'power']),
-        (ServoInstallRepair, 'usb', [], ['ssh', 'python', 'cros', 'power']),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
