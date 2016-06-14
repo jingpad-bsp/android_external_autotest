@@ -414,6 +414,18 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         raise NotImplementedError
 
 
+    def is_spec_supported(self, spec):
+        """
+        Returns if a given spec is supported by the router.
+
+        @param spec: an instance of the
+        autotest_lib.server.cros.ap_configurators.APSpec class.
+
+        @return: True if supported. False otherwise.
+        """
+        return True
+
+
     def navigate_to_page(self, page_number):
         """
         Navigates to the page corresponding to the given page number.
