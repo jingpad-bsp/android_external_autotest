@@ -2197,26 +2197,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return 'i386'
 
 
-    def get_cts_abis(self):
-        """Return supported CTS ABIs.
-
-        @return List of supported CTS bundle ABIs.
-        """
-        cts_abis = {'x86_64': ['arm', 'x86'], 'arm': ['arm']}
-        cpu_arch = self.get_cpu_arch()
-        if cpu_arch in cts_abis:
-            return cts_abis[self.get_cpu_arch()]
-        return []
-
-
-    def get_cts_labels(self):
-        """Convert cts abi into machine labels.
-
-        @return List of machine labels.
-        """
-        return ['cts_abi_' + abi for abi in self.get_cts_abis()]
-
-
     def get_board_type(self):
         """
         Get the DUT's device type from /etc/lsb-release.
