@@ -43,7 +43,9 @@ WEP_AUTHENTICATION_SHARED = object()
 # TODO (krisr) the configurators do not support WEP at this time.
 VALID_SECURITIES = [SECURITY_TYPE_DISABLED,
                     SECURITY_TYPE_WPAPSK,
-                    SECURITY_TYPE_WPA2PSK]
+                    SECURITY_TYPE_WPA2PSK,
+                    SECURITY_TYPE_MIXED,
+                    SECURITY_TYPE_WEP]
 
 # List of valid channels.
 VALID_2GHZ_CHANNELS = range(1,15)
@@ -293,7 +295,10 @@ class APSpec(object):
         if self._security == SECURITY_TYPE_DISABLED:
             self._password = None
         elif (self._security == SECURITY_TYPE_WPAPSK or
-             self._security == SECURITY_TYPE_WPA2PSK):
+             self._security == SECURITY_TYPE_WPA2PSK or
+             self._security == SECURITY_TYPE_MIXED):
              self._password = 'chromeos'
+        elif (self._security==SECURITY_TYPE_WEP):
+             self._password = 'chros'
         else:
             raise ValueError('Invalid security passed.')

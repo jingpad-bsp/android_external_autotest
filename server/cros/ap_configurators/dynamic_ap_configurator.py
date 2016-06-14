@@ -538,8 +538,11 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         if self.is_visibility_supported():
             self.set_visibility(set_ap_spec.visible)
         if (set_ap_spec.security == ap_spec.SECURITY_TYPE_WPAPSK or
-            set_ap_spec.security == ap_spec.SECURITY_TYPE_WPA2PSK):
+            set_ap_spec.security == ap_spec.SECURITY_TYPE_WPA2PSK or
+            set_ap_spec.security == ap_spec.SECURITY_TYPE_MIXED):
             self.set_security_wpapsk(set_ap_spec.security, set_ap_spec.password)
+        elif set_ap_spec.security == ap_spec.SECURITY_TYPE_WEP:
+            self.set_security_wep(set_ap_spec.security, set_ap_spec.password)
         else:
             self.set_security_disabled()
         self.set_band(set_ap_spec.band)
@@ -712,7 +715,6 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         self.configuration_success = ap_constants.CONFIG_FAIL
         if len(self._command_list) == 0:
             return
-
         # If all we are doing is powering down the router, don't mess with
         # starting up webdriver.
         if (len(self._command_list) == 1 and
@@ -721,6 +723,7 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
             self._command_list.pop()
             self.destroy_driver_connection()
             return
+
         self.establish_driver_connection()
         # Pull items by page and then sort
         if self.get_number_of_pages() == -1:
