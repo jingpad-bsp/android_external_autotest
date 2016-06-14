@@ -751,7 +751,7 @@ def get_acl_groups(**filter_data):
 def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
                           client_control_file='', use_container=False,
                           profile_only=None, upload_kernel_config=False,
-                          db_tests=True):
+                          db_tests=True, test_source_build=None):
     """
     Generates a client-side control file to load a kernel and run tests.
 
@@ -781,6 +781,8 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
                      of test IDs which are used to retrieve the test objects
                      from the database. If False, tests is a tuple of test
                      dictionaries stored client-side in the AFE.
+    @param test_source_build: Build to be used to retrieve test code. Default
+                              to None.
 
     @returns a dict with the following keys:
         control_file: str, The control file text.
@@ -800,7 +802,8 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
         tests=test_objects, kernels=kernel, platform=label,
         profilers=profiler_objects, is_server=cf_info['is_server'],
         client_control_file=client_control_file, profile_only=profile_only,
-        upload_kernel_config=upload_kernel_config)
+        upload_kernel_config=upload_kernel_config,
+        test_source_build=test_source_build)
     return cf_info
 
 
@@ -892,7 +895,7 @@ def create_parameterized_job(name, priority, test, parameters, kernel=None,
 def create_job_page_handler(name, priority, control_file, control_type,
                             image=None, hostless=False, firmware_rw_build=None,
                             firmware_ro_build=None, test_source_build=None,
-                            is_cloning = False, **kwargs):
+                            is_cloning=False, **kwargs):
     """\
     Create and enqueue a job.
 
@@ -1303,7 +1306,7 @@ def _get_image_for_job(job, hostless):
         image = get_parameterized_autoupdate_image_url(job)
     else:
         keyvals = job.keyval_dict()
-        image =  keyvals.get('build')
+        image = keyvals.get('build')
         if not image:
             value = keyvals.get('builds')
             builds = None
