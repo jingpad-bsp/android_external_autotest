@@ -41,7 +41,7 @@ class display_SuspendStress(test.test):
         _, width, height = testcase_spec
         test_resolution = (width, height)
 
-        if not edid.is_edid_supported(host, *testcase_spec):
+        if not edid.is_edid_supported(host, testcase_spec[1], testcase_spec[2]):
             raise error.TestFail('Error: EDID is not supported by the platform'
                     ': %s', test_name)
 
