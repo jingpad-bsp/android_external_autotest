@@ -991,13 +991,12 @@ def delete_stable_version(board):
     stable_version_utils.delete(board=board)
 
 
-def get_tests_by_build(build, ignore_invalid_tests=False):
-    """Get the tests that are available for the specified build.
+def _initialize_control_file_getter(build):
+    """Get the remote control file getter.
 
-    @param build: unique name by which to refer to the image.
-    @param ignore_invalid_tests: flag on if unparsable tests are ignored.
+    @param build: unique name by which to refer to a remote build image.
 
-    @return: A sorted list of all tests that are in the build specified.
+    @return: A control file getter object.
     """
     # Stage the test artifacts.
     try:
@@ -1013,7 +1012,19 @@ def get_tests_by_build(build, ignore_invalid_tests=False):
                 'Failed to stage %s: %s' % (build, e))
 
     # Collect the control files specified in this build
-    cfile_getter = control_file_getter.DevServerGetter.create(build, ds)
+    return control_file_getter.DevServerGetter.create(build, ds)
+
+
+def get_tests_by_build(build, ignore_invalid_tests=True):
+    """Get the tests that are available for the specified build.
+
+    @param build: unique name by which to refer to the image.
+    @param ignore_invalid_tests: flag on if unparsable tests are ignored.
+
+    @return: A sorted list of all tests that are in the build specified.
+    """
+    # Collect the control files specified in this build
+    cfile_getter = _initialize_control_file_getter(build)
     if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
         control_file_info_list = cfile_getter.get_suite_info()
         control_file_list = control_file_info_list.keys()
@@ -1078,3 +1089,32 @@ def get_tests_by_build(build, ignore_invalid_tests=False):
 
     test_objects = sorted(test_objects, key=lambda x: x.get('name'))
     return rpc_utils.prepare_for_serialization(test_objects)
+
+
+def get_test_control_files_by_build(tests, build, ignore_invalid_tests=False):
+    """Get the test control files that are available for the specified build.
+
+    @param tests A sequence of test objects to run.
+    @param build: unique name by which to refer to the image.
+    @param ignore_invalid_tests: flag on if unparsable tests are ignored.
+
+    @return: A sorted list of all tests that are in the build specified.
+    """
+    raw_control_files = []
+    # shortcut to avoid staging the image.
+    if not tests:
+        return raw_control_files
+
+    cfile_getter = _initialize_control_file_getter(build)
+    if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+        control_file_info_list = cfile_getter.get_suite_info()
+
+    for test in tests:
+        # Read and parse the control file
+        if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+            control_file = control_file_info_list[test.path]
+        else:
+            control_file = cfile_getter.get_control_file_contents(
+                    test.path)
+        raw_control_files.append(control_file)
+    return raw_control_files
