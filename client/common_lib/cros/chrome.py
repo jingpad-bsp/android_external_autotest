@@ -193,7 +193,7 @@ class Chrome(object):
                 if _is_arc_available():
                     if not disable_arc_opt_in:
                         arc_util.opt_in(self.browser)
-                    arc_util.post_processing_after_browser(arc_mode)
+                    arc_util.post_processing_after_browser(self)
                 break
             except (exceptions.LoginException) as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
