@@ -80,6 +80,9 @@ class APConfiguratorFactory(object):
         'Buffaloag300hAPConfigurator':
             [PREFIX + 'buffaloag300h_ap_configurator',
                 'Buffaloag300hAPConfigurator'],
+        'BuffaloWSR1166DDAPConfigurator':
+            [PREFIX + 'buffalo_wsr_1166dd_ap_configurator',
+                'BuffaloWSR1166DDAPConfigurator'],
         'AsusAPConfigurator':
             [PREFIX + 'asus_ap_configurator',
                 'AsusAPConfigurator'],
