@@ -48,6 +48,8 @@ class security_StatefulPermissions(test.test):
                      "chronos-access": [],
                      "cras": [],
                      "cros-disks": [],
+                     "cups": ["/encrypted/var/cache/cups",
+                              "/encrypted/var/spool/cups"],
                      "daemon": [],
                      "debugd": [],
                      "dhcp": ["/encrypted/var/lib/dhcpcd"],
