@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import glob
-import httplib
 import logging
 import os
 import re
@@ -471,11 +470,13 @@ class ChromiumOSUpdater(BaseUpdater):
 
         # Check that Dev Server is accepting connections (from autoserv's host).
         # If we can't talk to it, the machine host probably can't either.
-        auserver_host = urlparse.urlparse(self.update_url)[1]
+        auserver_host = 'http://%s' % urlparse.urlparse(self.update_url)[1]
         try:
-            httplib.HTTPConnection(auserver_host).connect()
-        except IOError as e:
-            logging.debug('http IOError to devserver: %r', e)
+            if not dev_server.ImageServer.devserver_healthy(auserver_host):
+                raise ChromiumOSError(
+                    'Update server at %s not healthy' % auserver_host)
+        except Exception as e:
+            logging.debug('Error happens in connection to devserver: %r', e)
             raise ChromiumOSError(
                 'Update server at %s not available' % auserver_host)
 
