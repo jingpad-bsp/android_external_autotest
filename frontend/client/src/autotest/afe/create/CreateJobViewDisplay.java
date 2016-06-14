@@ -57,8 +57,15 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         "Name of the test image to use. Example: \"x86-alex-release/R27-3837.0.0\". " +
         "If no image is specified, regular tests will use current image on the Host. " +
         "Please note that an image is required to run a test suite.");
-    private Button fetchImageTestsButton = new Button("Fetch Tests from Build");
-    private CheckBoxImpl ignoreInvalidTestsCheckBox = new CheckBoxImpl("Ignore Invalid Tests");
+    /**
+     * - When the fetch tests from build checkbox is unchecked (by default), the tests
+     * selection dropdown list is filled up by using the build on Moblab device.
+     * - You can only check the checkbox if a build is selected in the test source build
+     * dropdown list
+     * - Whenever the source build dropdown selection changes, automatically switch back
+     * to fetch tests from Moblab device.
+     */
+    private CheckBoxImpl fetchTestsCheckBox = new CheckBoxImpl("Fetch Tests from Build");
     private TextBox timeout = new TextBox();
     private ToolTip timeoutToolTip = new ToolTip(
         "?",
@@ -331,6 +338,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
 
         testSourceBuildList.getElement().getStyle().setProperty("minWidth", "15em");
 
+        fetchTestsCheckBox.setEnabled(false);
         // Add the remaining widgets to the main panel
         panel.add(jobName, "create_job_name");
         panel.add(jobNameToolTip, "create_job_name");
@@ -338,8 +346,7 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         panel.add(image_urlToolTip, "create_image_url");
         panel.add(testSourceBuildList, "create_test_source_build");
         panel.add(testSourceBuildListToolTip, "create_test_source_build");
-        panel.add(fetchImageTestsButton, "fetch_image_tests");
-        panel.add(ignoreInvalidTestsCheckBox, "ignore_invalid_tests");
+        panel.add(fetchTestsCheckBox, "fetch_tests_from_build");
         panel.add(testSelector, "create_tests");
         panel.add(controlFilePanel, "create_edit_control");
         panel.add(hostSelector, "create_host_selector");
@@ -480,12 +487,8 @@ public class CreateJobViewDisplay implements CreateJobViewPresenter.Display {
         controlFilePanel.setOpen(isOpen);
     }
 
-    public HasClickHandlers getFetchImageTestsButton() {
-        return fetchImageTestsButton;
-    }
-
-    public ICheckBox getIgnoreInvalidTestsCheckBox() {
-      return ignoreInvalidTestsCheckBox;
+    public ICheckBox getFetchTestsFromBuildCheckBox() {
+      return fetchTestsCheckBox;
     }
 
     public ITextBox getFirmwareRWBuild() {

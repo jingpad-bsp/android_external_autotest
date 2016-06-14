@@ -268,6 +268,23 @@ def afe_test_dict_to_test_object(test_dict):
     return type('TestObject', (object,), numerized_dict)
 
 
+def _check_is_server_test(test_type):
+    """Checks if the test type is a server test.
+
+    @param test_type The test type in enum integer or string.
+
+    @returns A boolean to identify if the test type is server test.
+    """
+    if test_type is not None:
+        if isinstance(test_type, basestring):
+            try:
+                test_type = control_data.CONTROL_TYPE.get_value(test_type)
+            except AttributeError:
+                return False
+        return (test_type == control_data.CONTROL_TYPE.SERVER)
+    return False
+
+
 def prepare_generate_control_file(tests, kernel, label, profilers,
                                   db_tests=True):
     if db_tests:
@@ -287,7 +304,7 @@ def prepare_generate_control_file(tests, kernel, label, profilers,
              'tests together (tests %s and %s differ' % (
             test1.name, test2.name)})
 
-    is_server = (test_type == control_data.CONTROL_TYPE.SERVER)
+    is_server = _check_is_server_test(test_type)
     if test_objects:
         synch_count = max(test.sync_count for test in test_objects)
     else:
