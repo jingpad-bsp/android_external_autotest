@@ -60,7 +60,7 @@ var tasks = [
   {
     // After 36 minutes, start streaming audio (background tab), total playtime
     // 12 minutes
-    type: 'window',
+    type: 'cycle',
     name: 'audio',
     start: minutes(36),
     duration: minutes(12),
@@ -69,7 +69,8 @@ var tasks = [
     focus: false,
     // Google Play Music requires MP3 decoder for playing music.
     // Fall back to BBC if the browser does not have MP3 decoder bundle.
-    tabs: isMP3DecoderPresent() ? [PLAY_MUSIC_URL] : [BBC_AUDIO_URL]
+    urls: isMP3DecoderPresent() ? [PLAY_MUSIC_URL, PLAY_MUSIC_URL] :
+                                  [BBC_AUDIO_URL, BBC_AUDIO_URL]
   },
   {
     // After 48 minutes, play with Google Docs for 6 minutes
