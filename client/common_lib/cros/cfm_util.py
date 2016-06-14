@@ -18,7 +18,7 @@ def get_cfm_webview_context(browser, ext_id):
     @param ext_id: Extension id of the hangouts app.
     @return webview context.
     """
-    ext_contexts = wait_for_hangouts_ext(browser, ext_id)
+    ext_contexts = wait_for_kiosk_ext(browser, ext_id)
 
     for context in ext_contexts:
         context.WaitForDocumentReadyStateToBeInteractiveOrBetter()
@@ -41,14 +41,14 @@ def get_cfm_webview_context(browser, ext_id):
                     sleep_interval=1)
 
 
-def wait_for_hangouts_ext(browser, ext_id):
-    """Wait for hangouts extension launch.
+def wait_for_kiosk_ext(browser, ext_id):
+    """Wait for kiosk extension launch.
 
     @param browser: Telemetry browser object.
     @param ext_id: Extension id of the hangouts app.
     @return extension contexts.
     """
-    def hangout_ext_contexts():
+    def kiosk_ext_contexts():
         try:
             ext_contexts = browser.extensions.GetByExtensionId(ext_id)
             if len(ext_contexts) > 1:
@@ -57,8 +57,8 @@ def wait_for_hangouts_ext(browser, ext_id):
             pass
         return []
     return utils.poll_for_condition(
-            hangout_ext_contexts,
-            exception=error.TestFail('Hangouts app failed to launch'),
+            kiosk_ext_contexts,
+            exception=error.TestFail('Kiosk app failed to launch'),
             timeout=DEFAULT_TIMEOUT,
             sleep_interval=1)
 

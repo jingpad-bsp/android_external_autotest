@@ -1,0 +1,30 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = "harpreet"
+NAME = "enterprise_LongevityTrackerServer.riseplayer"
+TIME = "SHORT"
+TEST_CATEGORY = "Functional"
+TEST_CLASS = "enterprise"
+TEST_TYPE = "server"
+ATTRIBUTES = "suite:longevity"
+DEPENDENCIES = "riseplayer"
+
+DOC = """
+This test enrolls ChromeOS device into kiosk mode and captures device resource
+data including cpu, memory and temperature data after the kiosk app auto
+launches.
+"""
+
+
+def run_test(machine):
+    host = hosts.create_host(machine)
+    # Kiosk app attributes include app name, extension id and extension page
+    kiosk_app_attributes = \
+            'riseplayer:mfpgpdablffhbfofnhlpgmokokbahooi:index.html'
+    job.run_test('enterprise_LongevityTrackerServer', host=host,
+            kiosk_app_attributes=kiosk_app_attributes, tag='riseplayer')
+
+
+parallel_simple(run_test, machines)
