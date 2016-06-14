@@ -324,6 +324,24 @@ class VideoLabel(base_label.StringLabel):
         return re.findall('^Detected label: (\w+)$', result, re.M)
 
 
+class CTSArchLabel(base_label.StringLabel):
+    """Labels to determine CTS abi."""
+
+    _NAME = ['cts_abi_arm', 'cts_abi_x86']
+
+    def _get_cts_abis(self, host):
+        """Return supported CTS ABIs.
+
+        @return List of supported CTS bundle ABIs.
+        """
+        cts_abis = {'x86_64': ['arm', 'x86'], 'arm': ['arm']}
+        return cts_abis.get(host.get_cpu_arch(), [])
+
+
+    def generate_labels(self, host):
+        return ['cts_abi_' + abi for abi in self._get_cts_abis(host)]
+
+
 class VideoGlitchLabel(base_label.BaseLabel):
     """Label indicates if host supports video glitch detection tests."""
 
@@ -435,6 +453,7 @@ CROS_LABELS = [
     ChameleonConnectionLabel(),
     ChameleonLabel(),
     common_label.OSLabel(),
+    CTSArchLabel(),
     ECLabel(),
     HWIDLabel(),
     InternalDisplayLabel(),
