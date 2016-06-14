@@ -8,6 +8,7 @@ import re, os
 
 import common
 from autotest_lib.frontend.afe import model_logic
+from autotest_lib.frontend.afe import site_rpc_interface
 import frontend.settings
 
 AUTOTEST_DIR = os.path.abspath(os.path.join(
@@ -147,6 +148,13 @@ CALL_UPLOAD_CONFIG = 'kernel_info = upload_kernel_config(host, kernel_info)'
 
 
 def kernel_config_file(kernel, platform):
+    """Gets the kernel config.
+
+    @param kernel The kernel rpm .
+    @param platform The platform object.
+
+    @return The kernel config string or None.
+    """
     if (not kernel.endswith('.rpm') and platform and
         platform.kernel_config):
         return platform.kernel_config
@@ -154,6 +162,12 @@ def kernel_config_file(kernel, platform):
 
 
 def read_control_file(test):
+    """Reads the test control file from local disk.
+
+    @param test The test name.
+
+    @return The test control file string.
+    """
     control_file = open(os.path.join(AUTOTEST_DIR, test.path))
     control_contents = control_file.read()
     control_file.close()
@@ -197,6 +211,12 @@ def get_kernel_stanza(kernel_list, platform=None, kernel_args='',
 
 
 def add_boilerplate_to_nested_steps(lines):
+    """Adds boilerplate magic.
+
+    @param lines The string of lines.
+
+    @returns The string lines.
+    """
     # Look for a line that begins with 'def step_init():' while
     # being flexible on spacing.  If it's found, this will be
     # a nested set of steps, so add magic to make it work.
@@ -208,13 +228,19 @@ def add_boilerplate_to_nested_steps(lines):
 
 
 def format_step(item, lines):
+    """Format a line item.
+    @param item The item number.
+    @param lines The string of lines.
+
+    @returns The string lines.
+    """
     lines = indent_text(lines, '    ')
     lines = 'def step%d():\n%s' % (item, lines)
     return lines
 
 
 def get_tests_stanza(tests, is_server, prepend=None, append=None,
-                     client_control_file=''):
+                     client_control_file='', test_source_build=None):
     """ Constructs the control file test step code from a list of tests.
 
     @param tests A sequence of test control files to run.
@@ -225,6 +251,8 @@ def get_tests_stanza(tests, is_server, prepend=None, append=None,
         Defaults to [].
     @param client_control_file If specified, use this text as the body of a
         final client control file to run after tests.  is_server must be False.
+    @param test_source_build: Build to be used to retrieve test code. Default
+                              to None.
 
     @returns The control file test code to be run.
     """
@@ -233,7 +261,11 @@ def get_tests_stanza(tests, is_server, prepend=None, append=None,
         prepend = []
     if not append:
         append = []
-    raw_control_files = [read_control_file(test) for test in tests]
+    if test_source_build:
+        raw_control_files = site_rpc_interface.get_test_control_files_by_build(
+                tests, test_source_build)
+    else:
+        raw_control_files = [read_control_file(test) for test in tests]
     return _get_tests_stanza(raw_control_files, is_server, prepend, append,
                              client_control_file=client_control_file)
 
@@ -277,7 +309,13 @@ def _get_tests_stanza(raw_control_files, is_server, prepend, append,
 
 def indent_text(text, indent):
     """Indent given lines of python code avoiding indenting multiline
-    quoted content (only for triple " and ' quoting for now)."""
+    quoted content (only for triple " and ' quoting for now).
+
+    @param text The string of lines.
+    @param indent The indent string.
+
+    @return The indented string.
+    """
     regex = re.compile('(\\\\*)("""|\'\'\')')
 
     res = []
@@ -355,7 +393,7 @@ def _sanity_check_generate_control(is_server, client_control_file, kernels,
 
 def generate_control(tests, kernels=None, platform=None, is_server=False,
                      profilers=(), client_control_file='', profile_only=None,
-                     upload_kernel_config=False):
+                     upload_kernel_config=False, test_source_build=None):
     """
     Generate a control file for a sequence of tests.
 
@@ -373,6 +411,8 @@ def generate_control(tests, kernels=None, platform=None, is_server=False,
             file code that uploads the kernel config file to the client and
             tells the client of the new (local) path when compiling the kernel;
             the tests must be server side tests
+    @param test_source_build: Build to be used to retrieve test code. Default
+                              to None.
 
     @returns The control file text as a string.
     """
@@ -391,5 +431,6 @@ def generate_control(tests, kernels=None, platform=None, is_server=False,
     prepend, append = _get_profiler_commands(profilers, is_server, profile_only)
 
     control_file_text += get_tests_stanza(tests, is_server, prepend, append,
-                                          client_control_file)
+                                          client_control_file,
+                                          test_source_build)
     return control_file_text
