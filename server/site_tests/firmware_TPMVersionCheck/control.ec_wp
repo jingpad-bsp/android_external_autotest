@@ -13,6 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "firmware"
 TEST_TYPE = "server"
+DEPENDENCIES = "ec:cros"
 JOB_RETRIES = 4
 
 DOC = """
