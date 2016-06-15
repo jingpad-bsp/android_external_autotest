@@ -1,6 +1,7 @@
 import sys
 
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 
@@ -34,8 +35,9 @@ def reset(machine):
         # doing this.
         raise Exception('')
     else:
+        hostname = utils.get_hostname_from_machine(machine)
         job.record('END GOOD', None, 'reset',
-                   '%s reset successfully' % machine)
+                   '%s reset successfully' % hostname)
     finally:
         if timer:
             timer.stop()
