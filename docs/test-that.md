@@ -61,7 +61,10 @@ $ test_that -b ${board} ${host} f:.*control.dummy
 running tests against a specified host. The keyword :lab: is used as
 test\_that's REMOTE argument, and the -i/--build argument is required, and takes
 a trybot, paladin, or canary build number. To learn how to build a trybot image
-with a new test that you're iterating on, see "dynamic suite" codelab.
+with a new test that you're iterating on, see "dynamic suite" codelab or the
+[Chromium OS Remote
+Trybots](https://sites.google.com/a/chromium.org/dev/chromium-os/build/using-remote-trybots)
+guide.
 
 For instance:
 
