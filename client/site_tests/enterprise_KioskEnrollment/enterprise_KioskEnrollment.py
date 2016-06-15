@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,20 +10,22 @@ from autotest_lib.client.common_lib.cros import chrome, enrollment, cfm_util
 
 TIMEOUT = 20
 
-class enterprise_RemoraRequisition(test.test):
-    """Enroll as a Remora device."""
+class enterprise_KioskEnrollment(test.test):
+    """Enroll the device in enterprise."""
     version = 1
 
-    _HANGOUTS_EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
+    APP_NAME = 'chromesign'
+    EXT_ID = 'odjaaghiehpobimgdjjfofmablbaleem'
+    EXT_PAGE = 'viewer.html'
 
-    def _CheckHangoutsExtensionContexts(self, browser):
+    def _CheckKioskExtensionContexts(self, browser):
         ext_contexts = cfm_util.wait_for_kiosk_ext(
-                browser, self._HANGOUTS_EXT_ID)
+                browser, self.EXT_ID)
         ext_urls = set([context.EvaluateJavaScript('location.href;')
                        for context in ext_contexts])
         expected_urls = set(
-                ['chrome-extension://' + self._HANGOUTS_EXT_ID + '/' + path
-                for path in ['hangoutswindow.html?windowid=0',
+                ['chrome-extension://' + self.EXT_ID + '/' + path
+                for path in [self.EXT_PAGE,
                              '_generated_background_page.html']])
         if expected_urls != ext_urls:
             raise error.TestFail(
@@ -31,24 +33,26 @@ class enterprise_RemoraRequisition(test.test):
                     % (expected_urls, ext_urls))
 
 
-    def run_once(self):
+    def run_once(self, kiosk_app_attributes=None):
+        if kiosk_app_attributes:
+            self.APP_NAME, self.EXT_ID, self.EXT_PAGE = \
+                    kiosk_app_attributes.rstrip().split(':')
         user_id, password = utils.get_signin_credentials(os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), 'credentials.txt'))
+                os.path.dirname(os.path.realpath(__file__)),
+                'credentials.' + self.APP_NAME))
         if not (user_id and password):
             logging.warn('No credentials found - exiting test.')
             return
 
         with chrome.Chrome(auto_login=False) as cr:
-            enrollment.RemoraEnrollment(cr.browser, user_id, password)
-            # Timeout to allow for the device to stablize and go back to the
-            # login screen before proceeding.
+            enrollment.EnterpriseEnrollment(cr.browser, user_id, password)
             time.sleep(TIMEOUT)
 
         # This is a workaround fix for crbug.com/495847. A more permanent fix
-        # should be to get the hotrod app to auto launch after enrollment.
+        # should be to get the kiosk app to auto launch after enrollment.
         with chrome.Chrome(clear_enterprise_policy=False,
                            dont_override_profile=True,
                            disable_gaia_services=False,
                            disable_default_apps=False,
                            auto_login=False) as cr:
-            self._CheckHangoutsExtensionContexts(cr.browser)
+            self._CheckKioskExtensionContexts(cr.browser)
