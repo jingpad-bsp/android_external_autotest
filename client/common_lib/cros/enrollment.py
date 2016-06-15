@@ -38,3 +38,16 @@ def RemoraEnrollment(browser, user_id, password):
             lambda: browser.oobe.NavigateGaiaLogin(
                     user_id, password, enterprise_enroll=True,
                     for_user_triggered_enrollment=False))
+
+
+def EnterpriseEnrollment(browser, user_id, password):
+    """Enterprise login for a kiosk device.
+
+    @param browser: telemetry browser object.
+    @param user_id: login credentials user_id.
+    @param password: login credentials password.
+    """
+    chrome.Chrome.wait_for_browser_restart(
+            lambda: browser.oobe.NavigateGaiaLogin(
+                    user_id, password, enterprise_enroll=True,
+                    for_user_triggered_enrollment=True))
