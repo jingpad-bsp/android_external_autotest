@@ -41,7 +41,7 @@ def repair(machine):
         raise Exception('')
     else:
         job.record('END GOOD', None, 'repair',
-                   '%s repaired successfully' % machine)
+                   '%s repaired successfully' % hostname)
 
 
 job.parallel_simple(repair, machines)
