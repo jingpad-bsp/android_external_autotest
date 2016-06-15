@@ -34,10 +34,10 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 _BUG_TEMPLATE = {
     'labels': ['Type-Bug', 'Cros-Perf-Test'],
     'owner': 'rohitbm@chromium.org',
-    'ccs': ['lafeenstra@chromium.org']
+    'ccs': []
 }
 
-args_dict['timeout_mins'] = 480
+args_dict['timeout_mins'] = 960
 args_dict['file_bugs'] = False
 args_dict['name'] = 'crosbolt_perf_perbuild'
 args_dict['job'] = job
