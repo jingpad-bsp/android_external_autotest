@@ -9,7 +9,7 @@ import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
 from autotest_lib.server.hosts import label_verify
-from autotest_lib.server.hosts import ssh_verify
+from autotest_lib.server.hosts import repair
 
 
 class ACPowerVerifier(hosts.Verifier):
@@ -182,52 +182,6 @@ class PythonVerifier(hosts.Verifier):
         return 'Python on the host is installed and working'
 
 
-class CrosHostVerifier(hosts.Verifier):
-    """
-    Ask a CrOS host to perform its own verification.
-
-    This class exists as a temporary legacy during refactoring to
-    provide access to code that hasn't yet been rewritten to use the new
-    repair and verify framework.
-    """
-
-    def verify(self, host):
-        host.verify_software()
-        host.verify_hardware()
-
-
-    @property
-    def description(self):
-        return 'Miscellaneous CrOS host verification checks'
-
-
-class RPMCycleRepair(hosts.RepairAction):
-    """
-    Cycle AC power using the RPM infrastructure.
-
-    This is meant to catch two distinct kinds of failure:
-      * If the DUT is wedged and has no battery (i.e. a chromebox),
-        power cycling it may force it back on.
-      * If the DUT has had AC power incorrectly turned off, power
-        cycling will turn AC power back on.
-    """
-
-    def repair(self, host):
-        if not host.has_power():
-            raise hosts.AutoservRepairError(
-                    '%s has no RPM connection.' % host.hostname)
-        host.power_cycle()
-        if not host.wait_up(timeout=host.BOOT_TIMEOUT):
-            raise hosts.AutoservRepairError(
-                    '%s is still offline after powercycling' %
-                    host.hostname)
-
-
-    @property
-    def description(self):
-        return 'Power cycle the DUT with RPM'
-
-
 class ServoResetRepair(hosts.RepairAction):
     """Repair a Chrome device by resetting it with servo."""
 
@@ -245,18 +199,6 @@ class ServoResetRepair(hosts.RepairAction):
     @property
     def description(self):
         return 'Reset the DUT via servo'
-
-
-class RebootRepair(hosts.RepairAction):
-    """Repair a Chrome device by rebooting it."""
-
-    def repair(self, host):
-        host.reboot()
-
-
-    @property
-    def description(self):
-        return 'Reboot the DUT'
 
 
 class FirmwareRepair(hosts.RepairAction):
@@ -345,14 +287,14 @@ class ServoInstallRepair(hosts.RepairAction):
 def create_cros_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
     verify_dag = [
-        (ssh_verify.SshVerifier,      'ssh',      []),
-        (ACPowerVerifier,             'power',    ['ssh']),
-        (WritableVerifier,            'writable', ['ssh']),
-        (TPMStatusVerifier,           'tpm',      ['ssh']),
-        (UpdateSuccessVerifier,       'good_au',  ['ssh']),
-        (PythonVerifier,              'python',   ['ssh']),
-        (CrosHostVerifier,            'cros',     ['ssh']),
-        (label_verify.LabelVerifier,  'label',    ['ssh']),
+        (repair.SshVerifier,         'ssh',      []),
+        (ACPowerVerifier,            'power',    ['ssh']),
+        (WritableVerifier,           'writable', ['ssh']),
+        (TPMStatusVerifier,          'tpm',      ['ssh']),
+        (UpdateSuccessVerifier,      'good_au',  ['ssh']),
+        (PythonVerifier,             'python',   ['ssh']),
+        (repair.LegacyHostVerifier,  'cros',     ['ssh']),
+        (label_verify.LabelVerifier, 'label',    ['ssh']),
     ]
 
     # The dependencies and triggers for the 'au', 'powerwash', and 'usb'
@@ -377,7 +319,7 @@ def create_cros_repair_strategy():
     repair_actions = [
         # RPM cycling must precede Servo reset:  if the DUT has a dead
         # battery, we need to reattach AC power before we reset via servo.
-        (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
+        (repair.RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
         (ServoResetRepair, 'reset', [], ['ssh']),
 
         # TODO(jrbarnette):  the real dependency for firmware isn't
@@ -392,7 +334,7 @@ def create_cros_repair_strategy():
         # firmware.
         (FirmwareRepair, 'firmware', [], ['ssh', 'cros', 'good_au']),
 
-        (RebootRepair,   'reboot', ['ssh'], ['writable']),
+        (repair.RebootRepair, 'reboot', ['ssh'], ['writable']),
 
         (AutoUpdateRepair, 'au',
                 usb_triggers + powerwash_triggers, au_triggers),
@@ -428,13 +370,13 @@ def create_moblab_repair_strategy():
         DHCP leases file, so we skip it.
     """
     verify_dag = [
-        (ssh_verify.SshVerifier,  'ssh',     []),
-        (ACPowerVerifier,         'power',   ['ssh']),
-        (PythonVerifier,          'python',  ['ssh']),
-        (CrosHostVerifier,        'cros',    ['ssh']),
+        (repair.SshVerifier,         'ssh',     []),
+        (ACPowerVerifier,            'power',   ['ssh']),
+        (PythonVerifier,             'python',  ['ssh']),
+        (repair.LegacyHostVerifier,  'cros',    ['ssh']),
     ]
     repair_actions = [
-        (RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
+        (repair.RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
         (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros', 'power']),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
