@@ -4,6 +4,7 @@
 
 
 from autotest_lib.client.cros import constants
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 
@@ -56,8 +57,9 @@ def provision_machine(machine):
     else:
         # If we finish successfully, nothing in autotest ever looks at the
         # status.log, so it's purely for human consumption and tracability.
+        hostname = utils.get_hostname_from_machine(machine)
         job.record('END GOOD', None, 'provision',
-                   '%s provisioned successfully' % machine)
+                   '%s provisioned successfully' % hostname)
 
 
 job.parallel_simple(provision_machine, machines)
