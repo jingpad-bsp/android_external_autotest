@@ -105,8 +105,8 @@ class CsvFolder(object):
         gs_url = self._get_url()
         # Find all csv files in given GS url recursively
         files = utils.run('gsutil ls -r %s | grep -e .*\\\\.csv$' %
-                          gs_url).stdout.strip().split('\n')
-        if not files:
+                          gs_url, ignore_status=True).stdout.strip().split('\n')
+        if not files or files == ['']:
             raise CsvNonexistenceException('No csv file found in %s', gs_url)
 
         # Copy files from GS to temp_dir
@@ -135,7 +135,7 @@ class CsvFolder(object):
                     str(self.test_view.job_finished_time.minute).zfill(2))
             utils.run('fileutil mkdir -p %s' % path_in_cns)
             for f in files:
-                utils.run('fileutil copytodir %s %s' %
+                utils.run('fileutil copytodir -f %s %s' %
                           (os.path.join(temp_dir, f), path_in_cns))
         finally:
             shutil.rmtree(temp_dir)
