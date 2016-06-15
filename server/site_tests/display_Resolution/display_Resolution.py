@@ -31,14 +31,12 @@ class display_Resolution(test.test):
     WAIT_TIME_LID_TRANSITION = 5
 
     DEFAULT_RESOLUTION_LIST = [
-            # Mix DP and HDMI together to test the converter cases.
-            ('DP', 1280, 800),
-            ('DP', 1440, 900),
-            ('DP', 1600, 900),
-            ('DP', 1680, 1050),
-            ('DP', 1920, 1080),
-            ('HDMI', 1280, 720),
-            ('HDMI', 1920, 1080),
+            ('EDIDv1', 1280, 800),
+            ('EDIDv1', 1440, 900),
+            ('EDIDv1', 1600, 900),
+            ('EDIDv1', 1680, 1050),
+            ('EDIDv2', 1280, 720),
+            ('EDIDv2', 1920, 1080),
     ]
 
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
@@ -68,13 +66,11 @@ class display_Resolution(test.test):
                     chameleon_port, display_facade, self.outputdir)
             chameleon_port_name = chameleon_port.get_connector_type()
             logging.info('Detected %s chameleon port.', chameleon_port_name)
-            for interface, width, height in resolution_list:
-                if not chameleon_port_name.startswith(interface):
-                    continue
+            for label, width, height in resolution_list:
                 test_resolution = (width, height)
-                test_name = "%s_%dx%d" % ((interface,) + test_resolution)
+                test_name = "%s_%dx%d" % ((label,) + test_resolution)
 
-                if not edid.is_edid_supported(host, interface, width, height):
+                if not edid.is_edid_supported(host, width, height):
                     logging.info('Skip unsupported EDID: %s', test_name)
                     continue
 
