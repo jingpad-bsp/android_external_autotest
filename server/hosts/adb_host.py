@@ -824,15 +824,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                               'match to ro.build.product: %s' %
                                               (hardware, product))
 
-            # Check the bootloader is not locked. sys.oem_unlock_allowed is not
-            # applicable to Brillo devices.
-            result = self._run_output_with_retry(
-                    'getprop sys.oem_unlock_allowed')
-            if result != PROPERTY_VALUE_TRUE:
-                raise error.AutoservHostError(
-                        'The bootloader is locked. sys.oem_unlock_allowed: %s.'
-                        % result)
-
 
     def verify_job_repo_url(self, tag=''):
         """Make sure job_repo_url of this host is valid.
