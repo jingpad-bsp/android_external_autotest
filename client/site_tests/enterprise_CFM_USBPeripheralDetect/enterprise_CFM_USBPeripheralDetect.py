@@ -19,14 +19,11 @@ class enterprise_CFM_USBPeripheralDetect(test.test):
     version = 1
 
 
-    def peripheral_detection(self, webview_context):
-        """Get attached peripheral information.
+    def set_preferred_peripherals(self, webview_context, cros_peripherals):
+        """Set perferred peripherals.
 
         @param webview_context: Context for hangouts window.
         """
-        cfm_peripheral_dict = {'Microphone': None, 'Speaker': None,
-                               'Camera': None}
-
         cfm_util.wait_for_telemetry_commands(webview_context)
         cfm_util.wait_for_oobe_start_page(webview_context)
 
@@ -35,6 +32,29 @@ class enterprise_CFM_USBPeripheralDetect(test.test):
 
         cfm_util.skip_oobe_screen(webview_context)
         time.sleep(SHORT_TIMEOUT)
+
+        avail_mics = cfm_util.get_mic_devices(webview_context)
+        avail_speakers = cfm_util.get_speaker_devices(webview_context)
+        avail_cameras = cfm_util.get_camera_devices(webview_context)
+
+        if cros_peripherals.get('Microphone') in avail_mics:
+            cfm_util.set_preferred_mic(
+                    webview_context, cros_peripherals.get('Microphone'))
+        if cros_peripherals.get('Speaker') in avail_speakers:
+            cfm_util.set_preferred_speaker(
+                    webview_context, cros_peripherals.get('Speaker'))
+        if cros_peripherals.get('Camera') in avail_cameras:
+            cfm_util.set_preferred_camera(
+                    webview_context, cros_peripherals.get('Camera'))
+
+
+    def peripheral_detection(self, webview_context):
+        """Get attached peripheral information.
+
+        @param webview_context: Context for hangouts window.
+        """
+        cfm_peripheral_dict = {'Microphone': None, 'Speaker': None,
+                               'Camera': None}
 
         cfm_peripheral_dict['Microphone'] = cfm_util.get_preferred_mic(
                 webview_context)
@@ -59,6 +79,8 @@ class enterprise_CFM_USBPeripheralDetect(test.test):
                            auto_login=False) as cr:
             cfm_webview_context = cfm_util.get_cfm_webview_context(
                     cr.browser, EXT_ID)
+            self.set_preferred_peripherals(cfm_webview_context,
+                                           cros_peripheral_dict)
             cfm_peripheral_dict = self.peripheral_detection(cfm_webview_context)
             logging.debug('Peripherals detected by hotrod: %s',
                           cfm_peripheral_dict)

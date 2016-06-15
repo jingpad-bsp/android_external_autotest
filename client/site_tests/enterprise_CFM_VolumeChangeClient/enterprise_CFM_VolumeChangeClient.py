@@ -11,8 +11,6 @@ from autotest_lib.client.common_lib.cros import chrome, cfm_util
 LONG_TIMEOUT = 10
 SHORT_TIMEOUT = 2
 EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
-CMD = "cras_test_client --dump_server_info | awk '/Output Nodes:/," \
-      "/Input Devices:/' | grep -E 'USB' | awk -v N=3 '{print $N}'"
 
 
 class enterprise_CFM_VolumeChangeClient(test.test):
@@ -61,7 +59,7 @@ class enterprise_CFM_VolumeChangeClient(test.test):
             raise error.TestFail('CFM should not be in hangout session.')
 
 
-    def run_once(self, repeat):
+    def run_once(self, repeat, cmd):
         """Runs the test."""
         with chrome.Chrome(clear_enterprise_policy=False,
                            dont_override_profile=True,
@@ -90,7 +88,7 @@ class enterprise_CFM_VolumeChangeClient(test.test):
                 cfm_util.set_speaker_volume(cfm_webview_context, cfm_volume)
                 time.sleep(SHORT_TIMEOUT)
 
-                cras_volume = utils.system_output(CMD)
+                cras_volume = utils.system_output(cmd)
                 if cras_volume != cfm_volume:
                     raise error.TestFail('Cras volume (%s) does not match '
                                          'volume set by CFM (%s).' %

@@ -5,12 +5,13 @@
 from autotest_lib.server import utils
 
 AUTHOR = "harpreet@chromium.org"
-NAME = "enterprise_CFM_VolumeChange"
+NAME = "enterprise_CFM_VolumeChange.internal_speaker"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
+DEPENDENCIES = "internal_speaker"
 
 DOC = """
 This test clears the TPM and enables the appropriate usb port on the servo
@@ -26,10 +27,11 @@ servo_args = hosts.CrosHost.get_servo_arguments(args_dict)
 def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     repeat = int(args_dict.get('repeat', 10))
+    cmd = "cras_test_client --dump_server_info | awk '/Output Nodes:/," \
+          "/Input Devices:/' | grep -E 'INTERNAL_*' | awk -v N=2 '{print $N}'"
 
-    job.run_test('enterprise_CFM_VolumeChange',
-                 host=host,
-                 repeat=repeat)
+    job.run_test('enterprise_CFM_VolumeChange', host=host, repeat=repeat,
+            cmd=cmd, tag="internal_speaker")
 
 
 parallel_simple(run_test, machines)
