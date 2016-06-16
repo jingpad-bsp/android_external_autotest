@@ -90,7 +90,7 @@ class UpdateSuccessVerifier(hosts.Verifier):
     """
     def verify(self, host):
         result = host.run('test -f %s' % host.PROVISION_FAILED,
-                          ignore_status=True, timeout=5)
+                          ignore_status=True)
         if result.exit_status == 0:
             raise hosts.AutoservVerifyError(
                     'Last AU on this DUT failed')
