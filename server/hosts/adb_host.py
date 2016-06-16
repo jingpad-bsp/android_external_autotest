@@ -497,6 +497,26 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result
 
 
+    def check_boot_to_adb_complete(self, exception_type=error.TimeoutException):
+        """Check if the device has finished booting and accessible by adb.
+
+        @param exception_type: Type of exception to raise. Default is set to
+                error.TimeoutException for retry.
+
+        @raise exception_type: If the device has not finished booting yet, raise
+                an exception of type `exception_type`.
+        """
+        bootcomplete = self._run_output_with_retry('getprop dev.bootcomplete')
+        if bootcomplete != PROPERTY_VALUE_TRUE:
+            raise exception_type('dev.bootcomplete is %s.' % bootcomplete)
+        if self.get_os_type() == OS_TYPE_ANDROID:
+            boot_completed = self._run_output_with_retry(
+                    'getprop sys.boot_completed')
+            if boot_completed != PROPERTY_VALUE_TRUE:
+                raise exception_type('sys.boot_completed is %s.' %
+                                     boot_completed)
+
+
     def wait_up(self, timeout=DEFAULT_WAIT_UP_TIME_SECONDS, command=ADB_CMD):
         """Wait until the remote host is up or the timeout expires.
 
@@ -515,17 +535,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         def _wait_up():
             if not self.is_up(command=command):
                 raise error.TimeoutException('Device is still down.')
-            bootcomplete = self._run_output_with_retry(
-                    'getprop dev.bootcomplete')
-            if bootcomplete != PROPERTY_VALUE_TRUE:
-                raise error.TimeoutException('dev.bootcomplete is %s.' %
-                                             bootcomplete)
-            if self.get_os_type() == OS_TYPE_ANDROID:
-                boot_completed = self._run_output_with_retry(
-                        'getprop sys.boot_completed')
-                if boot_completed != PROPERTY_VALUE_TRUE:
-                    raise error.TimeoutException('sys.boot_completed is %s.' %
-                                                 boot_completed)
+            if command == ADB_CMD:
+                self.check_boot_to_adb_complete()
             return True
 
         try:
