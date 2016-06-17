@@ -148,7 +148,7 @@ def _get_crash_server_list():
         default=[])
 
 
-def remote_devserver_call(timeout_min=30):
+def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN):
     """A decorator to use with remote devserver calls.
 
     This decorator converts urllib2.HTTPErrors into DevServerExceptions
