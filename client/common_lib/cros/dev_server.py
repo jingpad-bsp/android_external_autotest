@@ -75,6 +75,8 @@ ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
 
 DEFAULT_SUBNET_MASKBIT = 19
 
+_timer = autotest_stats.Timer('devserver')
+
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
 
@@ -333,6 +335,7 @@ class DevServer(object):
 
 
     @classmethod
+    @_timer.decorate
     def devserver_healthy(cls, devserver,
                           timeout_min=DEVSERVER_SSH_TIMEOUT_MINS):
         """Returns True if the |devserver| is healthy to stage build.
