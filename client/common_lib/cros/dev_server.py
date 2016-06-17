@@ -252,7 +252,8 @@ class DevServer(object):
 
 
     @classmethod
-    def get_devserver_load(cls, devserver, timeout_min=0.1):
+    def get_devserver_load(cls, devserver,
+                           timeout_min=DEVSERVER_SSH_TIMEOUT_MINS):
         """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
@@ -332,7 +333,8 @@ class DevServer(object):
 
 
     @classmethod
-    def devserver_healthy(cls, devserver, timeout_min=0.1):
+    def devserver_healthy(cls, devserver,
+                          timeout_min=DEVSERVER_SSH_TIMEOUT_MINS):
         """Returns True if the |devserver| is healthy to stage build.
 
         @param devserver: url of the devserver.
@@ -1271,7 +1273,7 @@ class ImageServer(ImageServerBase):
         self._stage_artifacts(image, artifacts, files, archive_url)
 
 
-    @remote_devserver_call(timeout_min=0.5)
+    @remote_devserver_call(timeout_min=DEVSERVER_SSH_TIMEOUT_MINS)
     def list_image_dir(self, image):
         """List the contents of the image stage directory, on the devserver.
 
