@@ -836,17 +836,20 @@ class ImageServerBase(DevServer):
 
             """
             try:
-                return self.run_call(call) == 'True'
+                result = self.run_call(call)
+                logging.debug('whether artifact is staged: %r', result)
+                return result == 'True'
             except urllib2.HTTPError as e:
                 error_markup = e.read()
                 raise DevServerException(_strip_http_message(error_markup))
-            except urllib2.URLError:
+            except urllib2.URLError as e:
                 # Could be connection issue, retry it.
                 # For example: <urlopen error [Errno 111] Connection refused>
+                logging.error('URLError happens in is_stage: %r', e)
                 return False
-            except error.CmdError:
+            except error.CmdError as e:
                 # Retry if SSH failed to connect to the devserver.
-                logging.warning('CmdError: Retrying SSH connection to check is_stage.')
+                logging.warning('CmdError happens in is_stage: %r, will retry', e)
                 return False
 
         site_utils.poll_for_condition(
