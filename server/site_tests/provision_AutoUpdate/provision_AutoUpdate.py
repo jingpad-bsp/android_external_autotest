@@ -4,6 +4,7 @@
 
 import logging
 import socket
+import urllib2
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -117,11 +118,19 @@ class provision_AutoUpdate(test.test):
         # Add an asynchronous staging call so that we can ask the devserver to
         # fetch autotest in the background here, and then wait on it after
         # reimaging finishes or at some other point in the provisioning.
+        ds = None
         try:
             ds = dev_server.ImageServer.resolve(image, host.hostname)
             ds.stage_artifacts(image, ['full_payload', 'stateful',
                                        'autotest_packages'])
         except dev_server.DevServerException as e:
+            # If a devserver is resolved, Log what has been downloaded so far.
+            if ds:
+                try:
+                    ds.list_image_dir(image)
+                except (dev_server.DevServerException, urllib2.URLError) as e2:
+                    logging.warning('Failed to list_image_dir for build %s. '
+                                    'Error: %s', image, e2)
             raise error.TestFail(str(e))
 
         self.log_devserver_match_stats(host.hostname, ds.url())
