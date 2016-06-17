@@ -21,21 +21,22 @@ class platform_FilePerms(test.test):
     """
     version = 2
     mount_path = '/bin/mount'
-    standard_rw_options = ['rw', 'nosuid', 'nodev', 'noexec', 'relatime']
-    # When adding an expectation that isn't simply "standard_rw_options,"
+    standard_options = ['nosuid', 'nodev', 'noexec']
+    standard_rw_options = ['rw'] + standard_options
+    standard_ro_options = ['ro'] + standard_options
+    # When adding an expectation that isn't simply "standard_*_options",
     # please leave either an explanation for why that mount is special,
     # or a bug number tracking work to harden that mount point, in a comment.
     expected_mount_options = {
         '/dev': {
             'type': 'devtmpfs',
-            'options': ['rw', 'nosuid', 'noexec', 'relatime', 'mode=755']},
+            'options': ['rw', 'nosuid', 'noexec', 'mode=755']},
         '/dev/pstore': {
             'type': 'pstore',
             'options': standard_rw_options},
         '/dev/pts': { # Special case, we want to track gid/mode too.
             'type': 'devpts',
-            'options': ['rw', 'nosuid', 'noexec', 'relatime', 'gid=5',
-                        'mode=620']},
+            'options': ['rw', 'nosuid', 'noexec', 'gid=5', 'mode=620']},
         '/dev/shm': {'type': 'tmpfs', 'options': standard_rw_options},
         '/home': {'type': 'ext4', 'options': standard_rw_options},
         '/home/chronos': {'type': 'ext4', 'options': standard_rw_options},
@@ -46,17 +47,23 @@ class platform_FilePerms(test.test):
         '/mnt/stateful_partition/encrypted': {
             'type': 'ext4',
             'options': standard_rw_options},
-        '/proc': {'type': 'proc', 'options': standard_rw_options},
+        # Special case - Android container has devices and suid programs.
+        # Note that later (after user logs in) we remount it as "exec".
+        '/opt/google/containers/android/rootfs/root': {
+            'type': 'squashfs',
+            'options': ['ro', 'noexec']},
+        '/opt/google/containers/android/rootfs/root/vendor': {
+            'type': 'squashfs',
+            'options': standard_ro_options},
+        '/proc': { 'type': 'proc', 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
             'type': 'tmpfs',
-            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
-                        'mode=755']},
+            'options': standard_rw_options + ['mode=755']},
         # Special case, we want to track group/mode too.
         # gid 236 == debugfs-access
         '/run/debugfs_gpu': {
             'type': 'debugfs',
-            'options': ['rw', 'nosuid', 'nodev', 'noexec', 'relatime',
-                        'gid=236', 'mode=750']},
+            'options': standard_rw_options + ['gid=236', 'mode=750']},
         '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
         '/sys/fs/cgroup': {
@@ -77,6 +84,9 @@ class platform_FilePerms(test.test):
         '/sys/fs/fuse/connections': {
             'type': 'fusectl',
             'options': standard_rw_options},
+        '/sys/fs/selinux': {
+            'type': 'selinuxfs',
+            'options': ['rw', 'nosuid', 'noexec']},
         '/sys/kernel/debug': {
             'type': 'debugfs',
             'options': standard_rw_options},
@@ -87,7 +97,7 @@ class platform_FilePerms(test.test):
         '/var': {'type': 'ext4', 'options': standard_rw_options},
         '/usr/share/oem': {
             'type': 'ext4',
-            'options': ['ro', 'nosuid', 'nodev', 'noexec', 'relatime']},
+            'options': standard_ro_options},
     }
     testmode_modded_fses = set(['/home', '/tmp', '/usr/local'])
 
