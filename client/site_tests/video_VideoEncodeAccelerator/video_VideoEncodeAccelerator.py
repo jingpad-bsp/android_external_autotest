@@ -12,8 +12,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros import chrome_binary_test
 
-from contextlib import closing
-
 DOWNLOAD_BASE = 'http://commondatastorage.googleapis.com/chromiumos-test-assets-public/'
 BINARY = 'video_encode_accelerator_unittest'
 
@@ -50,6 +48,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     def run_once(self, in_cloud, streams, profile):
         """Runs video_encode_accelerator_unittest on the streams.
 
+        @param in_cloud: Input file needs to be downloaded first.
         @param streams: The test streams for video_encode_accelerator_unittest.
         @param profile: The profile to encode into.
 
@@ -82,6 +81,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                 # Remove the downloaded video
                 if in_cloud:
                     _remove_if_exists(input_path)
+                _remove_if_exists(output_path)
 
         if last_test_failure:
             raise last_test_failure
