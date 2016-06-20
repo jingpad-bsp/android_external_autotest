@@ -1137,7 +1137,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
 
     def get_num_card_resets(self):
         """Get card reset count."""
-        reset_msg = 'mwifiex_sdio_card_reset'
+        reset_msg = '[m]wifiex_sdio_card_reset'
         result = self.host.run('grep -c %s /var/log/messages' % reset_msg,
                                ignore_status=True)
         if result.exit_status == 1:
