@@ -21,12 +21,16 @@ MODE_AC = 0x10
 MODE_AUTO = 0x20
 MODE_M = MODE_A | MODE_B | MODE_G # Used for standard maintenance
 MODE_D = MODE_A | MODE_B | MODE_N # International roaming extensions
+MODE_B_G = MODE_B | MODE_G
+MODE_B_G_N = MODE_B | MODE_G | MODE_N
+MODE_AC_N = MODE_AC | MODE_N
+MODE_A_N = MODE_A | MODE_N
 
 # List of valid modes.
 VALID_MODES = [MODE_A, MODE_AC, MODE_AUTO, MODE_B, MODE_D, MODE_G, MODE_M,
-               MODE_N]
-VALID_2GHZ_MODES = [MODE_B, MODE_G, MODE_N]
-VALID_5GHZ_MODES = [MODE_A, MODE_AC, MODE_N]
+               MODE_N, MODE_B_G, MODE_B_G_N, MODE_A_N, MODE_AC_N]
+VALID_2GHZ_MODES = [MODE_B, MODE_G, MODE_N, MODE_B_G, MODE_B_G_N]
+VALID_5GHZ_MODES = [MODE_A, MODE_AC, MODE_N, MODE_A_N, MODE_AC_N]
 
 # Supported security types
 SECURITY_TYPE_DISABLED = iw_runner.SECURITY_OPEN
