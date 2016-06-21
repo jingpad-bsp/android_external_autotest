@@ -26,6 +26,9 @@ _LSOF_SIZE_OFF = 6
 _LSOF_NODE = -3
 _LSOF_NAME = -2
 
+
+_BASELINE_DEFAULT_NAME = 'baseline'
+
 # We log in so that we include any daemons that
 # might be spawned at login in our test results.
 class security_NetworkListeners(test.test):
@@ -78,12 +81,18 @@ class security_NetworkListeners(test.test):
         return lines_to_keep
 
 
-    def run_once(self):
+    def run_once(self, baseline_filename=None, arc_mode=None):
         """
         Compare a list of processes, listening on TCP ports, to a
         baseline. Test fails if there are mismatches.
+
+        @param baseline_filename: file with expected processes listening
+        @param arc_mode: ARC++ enabled or not
         """
-        with chrome.Chrome():
+        if baseline_filename is None:
+            baseline_filename = _BASELINE_DEFAULT_NAME
+
+        with chrome.Chrome(arc_mode=arc_mode):
             cmd = (r'lsof -n -i -sTCP:LISTEN | '
                    # Workaround for crosbug.com/28235 using a dynamic port #.
                    r'sed "s/\\(shill.*127.0.0.1\\):.*/\1:DYNAMIC LISTEN/g"')
@@ -101,7 +110,7 @@ class security_NetworkListeners(test.test):
                 observed_set.add('%s %s' % (fields[_LSOF_COMMAND],
                                             fields[_LSOF_NAME]))
 
-            baseline_set = self.load_baseline('baseline')
+            baseline_set = self.load_baseline(baseline_filename)
             # TODO(wiley) Remove when we get per-board
             #             baselines (crbug.com/406013)
             if webservd_helper.webservd_is_installed():

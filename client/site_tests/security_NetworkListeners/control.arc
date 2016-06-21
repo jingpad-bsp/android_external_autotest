@@ -13,11 +13,12 @@ CRITERIA = """
 Fail if the list of processes listening on the network doesn't match the
 baseline
 """
-ATTRIBUTES = "suite:bvt-inline, suite:smoke"
+ATTRIBUTES = "suite:arc-bvt-cq"
 TEST_CLASS = "security"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
-ARC_MODE = "disabled"
+ARC_MODE = "enabled"
 
-job.run_test("security_NetworkListeners")
+job.run_test("security_NetworkListeners", baseline_filename='baseline.arc',
+             arc_mode=ARC_MODE)
