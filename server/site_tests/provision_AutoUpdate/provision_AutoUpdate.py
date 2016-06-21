@@ -124,6 +124,8 @@ class provision_AutoUpdate(test.test):
             ds.stage_artifacts(image, ['full_payload', 'stateful',
                                        'autotest_packages'])
         except dev_server.DevServerException as e:
+            raise error.TestFail(str(e))
+        finally:
             # If a devserver is resolved, Log what has been downloaded so far.
             if ds:
                 try:
@@ -131,7 +133,7 @@ class provision_AutoUpdate(test.test):
                 except (dev_server.DevServerException, urllib2.URLError) as e2:
                     logging.warning('Failed to list_image_dir for build %s. '
                                     'Error: %s', image, e2)
-            raise error.TestFail(str(e))
+
 
         self.log_devserver_match_stats(host.hostname, ds.url())
 
