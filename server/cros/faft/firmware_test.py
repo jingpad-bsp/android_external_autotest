@@ -1276,7 +1276,8 @@ class FirmwareTest(FAFTBase):
             bios_in_work_path = os.path.join(work_path, 'bios.bin')
             ec_in_work_path = os.path.join(work_path, 'ec.bin')
             self.faft_client.bios.dump_whole(bios_in_work_path)
-            self.faft_client.ec.dump_firmware(ec_in_work_path)
+            if self.faft_config.chrome_ec:
+                self.faft_client.ec.dump_firmware(ec_in_work_path)
             self.faft_client.updater.repack_shellball()
 
     def is_kernel_changed(self):
