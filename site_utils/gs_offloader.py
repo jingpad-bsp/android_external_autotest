@@ -120,8 +120,8 @@ CTS_RESULT_PATTERN = 'testResult.xml'
 # Google Storage bucket URI to store results in.
 DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
-COMMON_PATH = os.path.join('cheets_CTS.android.dpi', 'results', 'cts-results')
-CTS_GS_PATH = os.path.join(DEFAULT_CTS_RESULTS_GSURI, COMMON_PATH) + '/'
+DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'cts_apfe_server', default='')
 
 class TimeoutException(Exception):
     """Exception raised by the timeout_handler."""
@@ -313,20 +313,30 @@ def correct_results_folder_permission(dir_entry):
 
 
 def upload_testresult_files(dir_entry, multiprocessing):
-    """upload testResult.xml.gz file and timestamp.zip file to cts_results_bucket
+    """Upload cts test results to separate gs buckets.
 
+    Upload testResult.xml.gz file to cts_results_bucket.
+    Upload timestamp.zip to cts_apfe_bucket.
     @param dir_entry: Path to the results folder.
     @param multiprocessing: True to turn on -m option for gsutil.
     """
-    for path in glob.glob(os.path.join(dir_entry, '*', COMMON_PATH, TIMESTAMP_PATTERN)):
+    for path in glob.glob(os.path.join(
+            dir_entry, '*', 'cheets_CTS.*', 'results', '*', TIMESTAMP_PATTERN)):
         try:
+            folders = path.split(os.sep)
+            # Path for apfe: cheets_CTS.*/results/*/
+            sub_apfe_path = os.path.join(*folders[-4:-1])
+            # Path for result: cheets_CTS.*/results/*/timestamp_folder/
+            sub_result_path = os.path.join(*folders[-4:])
+
+            cts_apfe_gs_path = DEFAULT_CTS_APFE_GSURI + sub_apfe_path + '/'
+            test_result_gs_path = DEFAULT_CTS_RESULTS_GSURI + sub_result_path + '/'
+
             for zip_file in glob.glob(os.path.join('%s.zip' % path)):
-                utils.run(' '.join(get_cmd_list(multiprocessing, zip_file, CTS_GS_PATH)))
-                logging.debug('Upload %s to %s ', zip_file, CTS_GS_PATH)
+                utils.run(' '.join(get_cmd_list(multiprocessing, zip_file, cts_apfe_gs_path)))
+                logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
 
             for test_result_file in glob.glob(os.path.join(path, CTS_RESULT_PATTERN)):
-                test_result_gs_path = os.path.join(CTS_GS_PATH, os.path.basename(path)) + '/'
-
                 # gzip testResult.xml file
                 test_result_file_gz =  '%s.gz' % test_result_file
                 with open(test_result_file, 'r') as f_in, (
@@ -339,8 +349,8 @@ def upload_testresult_files(dir_entry, multiprocessing):
                 # Remove testResult.xml.gz file
                 os.remove(test_result_file_gz)
         except error.CmdError as e:
-            logging.error('ERROR uploading test results %s to GS %s %s',
-                          dir_entry, CTS_GS_PATH, e)
+            logging.error('ERROR uploading test results %s to GS: %s',
+                          dir_entry, e)
             raise e
 
 
