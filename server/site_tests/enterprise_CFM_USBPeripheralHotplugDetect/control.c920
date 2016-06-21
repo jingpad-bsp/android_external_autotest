@@ -30,9 +30,8 @@ def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     peripheral_whitelist_dict = {'0b0e:0412': 'Jabra SPEAK 410',
                                  '046d:082d': 'HD Pro Webcam C920 (046d:082d)'}
-    job.run_test('enterprise_CFM_USBPeripheralHotplugDetect',
-                 host=host,
-                 peripheral_whitelist_dict=peripheral_whitelist_dict)
+    job.run_test('enterprise_CFM_USBPeripheralHotplugDetect', host=host,
+            peripheral_whitelist_dict=peripheral_whitelist_dict, tag="c920")
 
 
 parallel_simple(run_test, machines)
