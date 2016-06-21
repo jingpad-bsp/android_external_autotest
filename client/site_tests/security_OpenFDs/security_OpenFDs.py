@@ -195,8 +195,7 @@ class security_OpenFDs(test.test):
                         # for performance reasons.
                         # See crbug.com/452227.
                         r'0500 /usr/share/fonts/.*',
-                        # TODO(ihf): investigate this transient FD.
-                        # crbug.com/607632.
+                        # Zero-copy texture uploads. crbug.com/607632.
                         r'0700 anon_inode:dmabuf',
                        ])
         try:
