@@ -193,6 +193,7 @@ class LabelRetriever(object):
         """
         labels = []
         for label in self._labels:
+            logging.info('checking label %s', label.__class__.__name__)
             try:
                 labels.extend(label.get(host))
             except Exception as e:
@@ -233,6 +234,7 @@ class LabelRetriever(object):
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         afe_host = afe.get_hosts(hostname=host.hostname)[0]
         old_labels = set(afe_host.labels)
+        logging.info('existing labels: %s', old_labels)
         known_labels = set([l for l in old_labels
                             if self._is_known_label(l)])
         new_labels = set(self.get_labels(host))
