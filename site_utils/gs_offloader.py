@@ -12,6 +12,8 @@ Upon successful copy, the local results directory is deleted.
 
 import datetime
 import errno
+import glob
+import gzip
 import logging
 import logging.handlers
 import os
@@ -112,6 +114,14 @@ LIMIT_FILE_COUNT = global_config.global_config.get_config_value(
 GS_OFFLOADER_MULTIPROCESSING = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_multiprocessing', type=bool, default=False)
 
+D = '[0-9][0-9]'
+TIMESTAMP_PATTERN =  '%s%s.%s.%s_%s.%s.%s' % (D, D, D, D, D, D, D)
+CTS_RESULT_PATTERN = 'testResult.xml'
+# Google Storage bucket URI to store results in.
+DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
+        'CROS', 'cts_results_server', default='')
+COMMON_PATH = os.path.join('cheets_CTS.android.dpi', 'results', 'cts-results')
+CTS_GS_PATH = os.path.join(DEFAULT_CTS_RESULTS_GSURI, COMMON_PATH) + '/'
 
 class TimeoutException(Exception):
     """Exception raised by the timeout_handler."""
@@ -302,6 +312,38 @@ def correct_results_folder_permission(dir_entry):
                       dir_entry, e)
 
 
+def upload_testresult_files(dir_entry, multiprocessing):
+    """upload testResult.xml.gz file and timestamp.zip file to cts_results_bucket
+
+    @param dir_entry: Path to the results folder.
+    @param multiprocessing: True to turn on -m option for gsutil.
+    """
+    for path in glob.glob(os.path.join(dir_entry, '*', COMMON_PATH, TIMESTAMP_PATTERN)):
+        try:
+            for zip_file in glob.glob(os.path.join('%s.zip' % path)):
+                utils.run(' '.join(get_cmd_list(multiprocessing, zip_file, CTS_GS_PATH)))
+                logging.debug('Upload %s to %s ', zip_file, CTS_GS_PATH)
+
+            for test_result_file in glob.glob(os.path.join(path, CTS_RESULT_PATTERN)):
+                test_result_gs_path = os.path.join(CTS_GS_PATH, os.path.basename(path)) + '/'
+
+                # gzip testResult.xml file
+                test_result_file_gz =  '%s.gz' % test_result_file
+                with open(test_result_file, 'r') as f_in, (
+                        gzip.open(test_result_file_gz, 'w')) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                utils.run(' '.join(get_cmd_list(
+                        multiprocessing, test_result_file_gz, test_result_gs_path)))
+                logging.debug('Zip and upload %s to %s',
+                              test_result_file_gz, test_result_gs_path)
+                # Remove testResult.xml.gz file
+                os.remove(test_result_file_gz)
+        except error.CmdError as e:
+            logging.error('ERROR uploading test results %s to GS %s %s',
+                          dir_entry, CTS_GS_PATH, e)
+            raise e
+
+
 def get_offload_dir_func(gs_uri, multiprocessing):
     """Returns the offload directory function for the given gs_uri
 
@@ -324,6 +366,8 @@ def get_offload_dir_func(gs_uri, multiprocessing):
             counter.increment('jobs_offload_started')
 
             sanitize_dir(dir_entry)
+            if DEFAULT_CTS_RESULTS_GSURI:
+              upload_testresult_files(dir_entry, multiprocessing)
 
             if LIMIT_FILE_COUNT:
                 limit_file_count(dir_entry)
