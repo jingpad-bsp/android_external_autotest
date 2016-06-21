@@ -4,6 +4,7 @@
 
 import json
 import logging
+import os
 
 import common
 from autotest_lib.client.common_lib import hosts
@@ -52,26 +53,43 @@ class ACPowerVerifier(hosts.Verifier):
 
 class WritableVerifier(hosts.Verifier):
     """
-    Confirm the stateful file system is writable.
+    Confirm the stateful file systems are writable.
 
     The standard linux response to certain unexpected file system errors
     (including hardware errors in block devices) is to change the file
     system status to read-only.  This checks that that hasn't happened.
+
+    The test covers the two file systems that need to be writable for
+    critical operations like AU:
+      * The (unencrypted) stateful system which includes
+        /mnt/stateful_partition.
+      * The encrypted stateful partition, which includes /var.
+
+    The test doesn't check various bind mounts; those are expected to
+    fail the same way as their underlying main mounts.  Whether the
+    Linux kernel can guarantee that is untested...
     """
 
-    def verify(self, host):
-        filename = "/mnt/stateful_partition/writable_test"
-        command = 'touch %s && rm %s' % (filename, filename)
-        rv = host.run(command=command, ignore_status=True)
+    # N.B. Order matters here:  Encrypted stateful is loop-mounted from
+    # a file in unencrypted stateful, so we don't test for errors in
+    # encrypted stateful if unencrypted fails.
+    _TEST_DIRECTORIES = ['/mnt/stateful_partition', '/var/tmp']
 
-        if rv.exit_status != 0:
-            raise hosts.AutoservVerifyError(
-                    'DUT stateful filesystem is read-only.')
+    def verify(self, host):
+        # This deliberately stops looking after the first error.
+        # See above for the details.
+        for testdir in self._TEST_DIRECTORIES:
+            filename = os.path.join(testdir, 'writable_test')
+            command = 'touch %s && rm %s' % (filename, filename)
+            rv = host.run(command=command, ignore_status=True)
+            if rv.exit_status != 0:
+                msg = 'Can\'t create a file in %s' % testdir
+                raise hosts.AutoservVerifyError(msg)
 
 
     @property
     def description(self):
-        return 'The stateful filesystem is writable'
+        return 'The stateful filesystems are writable'
 
 
 class UpdateSuccessVerifier(hosts.Verifier):
