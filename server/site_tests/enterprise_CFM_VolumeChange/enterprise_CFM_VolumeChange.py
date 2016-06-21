@@ -11,7 +11,7 @@ class enterprise_CFM_VolumeChange(test.test):
     """
     version = 1
 
-    def run_once(self, host, repeat):
+    def run_once(self, host, repeat, cmd):
         self.client = host
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
@@ -26,6 +26,7 @@ class enterprise_CFM_VolumeChange(test.test):
         autotest.Autotest(self.client).run_test(
                 'enterprise_CFM_VolumeChangeClient',
                 repeat=repeat,
+                cmd=cmd,
                 check_client_result=True)
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
