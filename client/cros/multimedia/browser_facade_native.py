@@ -13,6 +13,7 @@ class BrowserFacadeNativeError(Exception):
 
 class BrowserFacadeNative(object):
     """Facade to access the browser-related functionality."""
+
     def __init__(self, resource):
         """Initializes the USB facade.
 
@@ -20,6 +21,22 @@ class BrowserFacadeNative(object):
 
         """
         self._resource = resource
+
+
+    def start_custom_chrome(self, kwargs):
+        """Start a custom Chrome with given arguments.
+
+        @param kwargs: A dict of keyword arguments passed to Chrome.
+        """
+        self._resource.start_custom_chrome(kwargs)
+
+
+    def start_default_chrome(self, restart=False):
+        """Start the default Chrome.
+
+        @param restart: True to start Chrome without clearing previous state.
+        """
+        self._resource.start_default_chrome(restart)
 
 
     def new_tab(self, url):
