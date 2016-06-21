@@ -4,9 +4,10 @@
 
 import csv, logging, os, shutil, time
 
+from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.bin import site_utils, test, utils
 
-TEST_DURATION = 82800  # Duration of test (23 hrs) in seconds.
+TEST_DURATION = 72000  # Duration of test (20 hrs) in seconds.
 SAMPLE_INTERVAL = 60  # Length of measurement samples in seconds.
 REPORT_INTERVAL = 3600  # Interval between perf data reports in seconds.
 STABILIZATION_DURATION = 60  # Time for test stabilization in seconds.
@@ -273,9 +274,14 @@ class longevity_Tracker(test.test):
         if os.path.isfile(EXIT_FLAG_FILE):
             os.remove(EXIT_FLAG_FILE)
 
-        # Run a single 23-hour test cycle.
+        # Run a single 20-hour test cycle.
         median_metrics = {'cpu': '0', 'mem': '0', 'temp': '0'}
-        median_metrics = self._run_test_cycle()
+        with chrome.Chrome(clear_enterprise_policy=False,
+                           dont_override_profile=True,
+                           disable_gaia_services=False,
+                           disable_default_apps=False,
+                           auto_login=False) as cr:
+            median_metrics = self._run_test_cycle()
 
         # Write metrics to keyval file for AutoTest results.
         self._write_perf_keyvals(median_metrics)
