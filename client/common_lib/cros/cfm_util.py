@@ -294,7 +294,7 @@ def set_preferred_mic(webview_context, mic):
     @param mic: String with mic name.
     """
     webview_context.ExecuteJavaScript(
-            "window.hrSetAudioInPrefForTest(" + mic + ")")
+            "window.hrSetAudioInPrefForTest('" + mic + "')")
     logging.info('Setting preferred mic to %s.', mic)
 
 
@@ -324,7 +324,7 @@ def set_preferred_speaker(webview_context, speaker):
     @param mic: String with speaker name.
     """
     webview_context.ExecuteJavaScript(
-            "window.hrSetAudioOutPrefForTest(" + speaker + ")")
+            "window.hrSetAudioOutPrefForTest('" + speaker + "')")
     logging.info('Set preferred speaker to %s.', speaker)
 
 
@@ -335,7 +335,7 @@ def set_speaker_volume(webview_context, volume_level):
     @param volume_level: String value ranging from 0-100 to set volume to.
     """
     webview_context.ExecuteJavaScript(
-            "window.hrSetAudioOutVolumeLevelForTest(" + volume_level + ")")
+            "window.hrSetAudioOutVolumeLevelForTest('" + volume_level + "')")
     logging.info('Set speaker volume to %s', volume_level)
 
 
@@ -383,7 +383,7 @@ def set_preferred_camera(webview_context, camera):
     @param mic: String with camera name.
     """
     webview_context.ExecuteJavaScript(
-            "window.hrSetVideoCapturePrefForTest(" + camera + ")")
+            "window.hrSetVideoCapturePrefForTest('" + camera + "')")
     logging.info('Set preferred camera to %s.', camera)
 
 

@@ -8,7 +8,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome, cfm_util
 
-LONG_TIMEOUT = 10
+LONG_TIMEOUT = 7
 SHORT_TIMEOUT = 2
 EXT_ID = 'ikfcpmgefdpheiiomgmhlmmkihchmdlj'
 
@@ -30,23 +30,9 @@ class enterprise_CFM_SessionStress(test.test):
         hangout_name = 'auto-hangout-' + current_time
         logging.info('Session name: %s', hangout_name)
 
-        if not cfm_util.is_ready_to_start_hangout_session(webview_context):
-            raise error.TestFail('CFM should be ready to start new session.')
-
         cfm_util.start_new_hangout_session(webview_context, hangout_name)
-
-        if not cfm_util.is_in_hangout_session(webview_context):
-            raise error.TestFail('CFM was not able to start hangout session.')
-
-        if cfm_util.is_ready_to_start_hangout_session(webview_context):
-            raise error.TestFail('Is already in hangout session and should not '
-                                 'be able to start another session.')
-
         time.sleep(LONG_TIMEOUT)
         cfm_util.end_hangout_session(webview_context)
-
-        if cfm_util.is_in_hangout_session(webview_context):
-            raise error.TestFail('CFM should not be in hangout session.')
 
 
     def run_once(self, repeat):
