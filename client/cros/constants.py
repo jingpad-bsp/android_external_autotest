@@ -172,9 +172,6 @@ MULTIMEDIA_XMLRPC_SERVER_PORT = 9991
 MULTIMEDIA_XMLRPC_SERVER_COMMAND = (
         'cd /usr/local/autotest/cros/multimedia; '
         './multimedia_xmlrpc_server.py')
-MULTIMEDIA_XMLRPC_SERVER_RESTART_COMMAND = (
-        'cd /usr/local/autotest/cros/multimedia; '
-        './multimedia_xmlrpc_server.py --restart')
 MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN = 'multimedia_xmlrpc_server'
 MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
 MULTIMEDIA_XMLRPC_SERVER_LOG_FILE= '/var/log/multimedia_xmlrpc_server.log'

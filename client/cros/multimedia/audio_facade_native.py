@@ -48,17 +48,19 @@ class AudioFacadeNative(object):
         self._recorder = None
         self._player = None
         self._counter = None
-        self._extension_handler = None
-        self._create_extension_handler()
+        self._loaded_extension_handler = None
 
 
-    def _create_extension_handler(self):
-        """Loads multimedia test extension and creates extension handler."""
-        extension = self._resource.get_extension(
-                constants.MULTIMEDIA_TEST_EXTENSION)
-        logging.debug('Loaded extension: %s', extension)
-        self._extension_handler = audio_extension_handler.AudioExtensionHandler(
-                extension)
+    @property
+    def _extension_handler(self):
+        """Multimedia test extension handler."""
+        if not self._loaded_extension_handler:
+            extension = self._resource.get_extension(
+                    constants.MULTIMEDIA_TEST_EXTENSION)
+            logging.debug('Loaded extension: %s', extension)
+            self._loaded_extension_handler = (
+                    audio_extension_handler.AudioExtensionHandler(extension))
+        return self._loaded_extension_handler
 
 
     def get_audio_info(self):
