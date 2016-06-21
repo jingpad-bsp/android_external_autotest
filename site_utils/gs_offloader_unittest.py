@@ -736,6 +736,10 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         logging.getLogger().setLevel(self._saved_loglevel)
         super(OffloadDirectoryTests, self).tearDown()
 
+    def _mock_upload_testresult_files(self):
+        self.mox.StubOutWithMock(gs_offloader, 'upload_testresult_files')
+        gs_offloader.upload_testresult_files(
+                mox.IgnoreArg(),mox.IgnoreArg()).AndReturn(None)
 
     def _mock_offload_dir_calls(self, command, queue_args):
         """Mock out the calls needed by `offload_dir()`.
@@ -752,6 +756,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                 False, queue_args[0],
                 '%s%s' % (utils.DEFAULT_OFFLOAD_GSURI,
                           queue_args[1])).AndReturn(command)
+        self._mock_upload_testresult_files()
         signal.alarm(0)
         signal.alarm(0)
 
@@ -797,6 +802,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         at the first call to set the timeout alarm.
 
         """
+        self._mock_upload_testresult_files()
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS).AndRaise(
                         gs_offloader.TimeoutException('fubar'))
         signal.alarm(0)
@@ -814,6 +820,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         gs_offloader.get_cmd_list(
                 False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                         ['test', '-d', self._job.queue_args[0]])
+        self._mock_upload_testresult_files()
         signal.alarm(0).AndRaise(
                 gs_offloader.TimeoutException('fubar'))
         signal.alarm(0)
@@ -897,6 +904,41 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.check_limit_file_count(is_test_job=True)
         self.check_limit_file_count(is_test_job=False)
 
+    def test_upload_testresult_files(self):
+        """Test upload_testresult_files"""
+        results_folder = tempfile.mkdtemp()
+        host_folder = os.path.join(results_folder, 'chromeos4-row9-rack11-host22')
+        debug_folder = os.path.join(host_folder, 'debug')
+        sysinfo_folder = os.path.join(host_folder, 'sysinfo')
+        cts_result_folder = os.path.join(
+                host_folder, 'cheets_CTS.android.dpi', 'results', 'cts-results')
+        timestamp_str = '2016.04.28_01.41.44'
+        timestamp_folder = os.path.join(cts_result_folder, timestamp_str)
+        for folder in [debug_folder, sysinfo_folder, cts_result_folder, timestamp_folder]:
+            os.makedirs(folder)
+        zip_file = os.path.join(cts_result_folder, timestamp_str + '.zip')
+        with open(zip_file, 'w') as f:
+            f.write('test')
+
+        test_result_file = os.path.join(timestamp_folder, 'testResult.xml')
+        with open(test_result_file, 'w') as f:
+            f.write('test')
+
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', cts_result_folder])
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', cts_result_folder])
+
+        self.mox.ReplayAll()
+        gs_offloader.upload_testresult_files(results_folder, False)
+        self.mox.VerifyAll()
+        self.assertTrue(os.path.exists(zip_file))
+        self.assertFalse(os.path.exists(
+                os.path.join(timestamp_folder,'testResult.xml.gz')))
+
+        shutil.rmtree(results_folder)
 
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
     """Tests for `_JobDirectory.enqueue_offload()`.
