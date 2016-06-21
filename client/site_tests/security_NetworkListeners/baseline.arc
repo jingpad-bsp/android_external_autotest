@@ -5,6 +5,7 @@
 # On ARC++ sshl-fork listens on port 22 and selects between adb and
 # sshd
 sshd *:2222
+adb 127.0.0.1:5037
 sslh-fork *:ssh
 # Shill internal http proxy. crosbug.com/28235
 shill 127.0.0.1:DYNAMIC
