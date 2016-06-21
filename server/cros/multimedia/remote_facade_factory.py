@@ -55,13 +55,15 @@ class RemoteFacadeProxy(object):
     XMLRPC_RETRY_TIMEOUT = 180
     XMLRPC_RETRY_DELAY = 10
 
-    def __init__(self, host):
+    def __init__(self, host, no_chrome):
         """Construct a RemoteFacadeProxy.
 
         @param host: Host object representing a remote host.
+        @param no_chrome: Don't start Chrome by default.
         """
         self._client = host
         self._xmlrpc_proxy = None
+        self._no_chrome = no_chrome
         self.connect(reconnect=False)
 
 
@@ -120,18 +122,10 @@ class RemoteFacadeProxy(object):
                       httplib.BadStatusLine),
                       timeout_min=self.XMLRPC_RETRY_TIMEOUT / 60.0,
                       delay_sec=self.XMLRPC_RETRY_DELAY)
-        def connect_with_retries(reconnect):
-            """Connects the XML-RPC proxy with retries.
-
-            @param reconnect: True for reconnection, False for the first-time.
-            """
-            if reconnect:
-                command = constants.MULTIMEDIA_XMLRPC_SERVER_RESTART_COMMAND
-            else:
-                command = constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND
-
+        def connect_with_retries():
+            """Connects the XML-RPC proxy with retries."""
             self._xmlrpc_proxy = self._client.rpc_server_tracker.xmlrpc_connect(
-                    command,
+                    constants.MULTIMEDIA_XMLRPC_SERVER_COMMAND,
                     constants.MULTIMEDIA_XMLRPC_SERVER_PORT,
                     command_name=(
                         constants.MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN
@@ -142,7 +136,10 @@ class RemoteFacadeProxy(object):
                     logfile=constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE)
 
         logging.info('Setup the connection to RPC server, with retries...')
-        connect_with_retries(reconnect)
+        connect_with_retries()
+        if not self._no_chrome:
+            logging.info('Start Chrome with default arguments...')
+            self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
 
 
     def __del__(self):
@@ -159,17 +156,18 @@ class RemoteFacadeFactory(object):
 
     """
 
-    def __init__(self, host):
+    def __init__(self, host, no_chrome=False):
         """Construct a RemoteFacadeFactory.
 
         @param host: Host object representing a remote host.
+        @param no_chrome: Don't start Chrome by default.
         """
         self._client = host
         # Make sure the client library is on the device so that the proxy code
         # is there when we try to call it.
         client_at = autotest.Autotest(self._client)
         client_at.install()
-        self._proxy = RemoteFacadeProxy(self._client)
+        self._proxy = RemoteFacadeProxy(self._client, no_chrome)
 
 
     def ready(self):

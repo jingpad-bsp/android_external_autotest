@@ -31,6 +31,22 @@ class BrowserFacadeRemoteAdapter(object):
         return self._proxy.browser
 
 
+    def start_custom_chrome(self, kwargs):
+        """Start a custom Chrome with given arguments.
+
+        @param kwargs: A dict of keyword arguments passed to Chrome.
+        """
+        self._browser_proxy.start_custom_chrome(kwargs)
+
+
+    def start_default_chrome(self, restart=False):
+        """Start the default Chrome.
+
+        @param restart: True to start Chrome without clearing previous state.
+        """
+        self._browser_proxy.start_default_chrome(restart)
+
+
     def new_tab(self, url):
         """Opens a new tab and loads URL.
 
