@@ -342,6 +342,16 @@ class CTSArchLabel(base_label.StringLabel):
         return ['cts_abi_' + abi for abi in self._get_cts_abis(host)]
 
 
+class ArcLabel(base_label.BaseLabel):
+    """Label indicates if host has ARC support."""
+
+    _NAME = 'arc'
+
+    def exists(self, host):
+        return 0 == host.run('grep CHROMEOS_ARC_VERSION /etc/lsb-release',
+                             ignore_status=True).exit_status
+
+
 class VideoGlitchLabel(base_label.BaseLabel):
     """Label indicates if host supports video glitch detection tests."""
 
@@ -447,6 +457,7 @@ class HWIDLabel(base_label.StringLabel):
 
 CROS_LABELS = [
     AccelsLabel(),
+    ArcLabel(),
     AudioLoopbackDongleLabel(),
     BluetoothLabel(),
     BoardLabel(),
