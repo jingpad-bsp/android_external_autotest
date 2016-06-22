@@ -561,6 +561,8 @@ class WiFiClient(site_linux_system.LinuxSystem):
         mode = 'off'
         if turn_on:
             mode = 'on'
+        # Turn ON interface and set power_save option.
+        self.host.run('ifconfig %s up' % self.wifi_if)
         self.host.run('iw dev %s set power_save %s' % (self.wifi_if, mode))
 
 
