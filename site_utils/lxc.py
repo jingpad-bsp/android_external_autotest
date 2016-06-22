@@ -42,7 +42,7 @@ from autotest_lib.site_utils import lxc_utils
 config = global_config.global_config
 
 # Name of the base container.
-BASE = 'base'
+BASE = config.get_config_value('AUTOSERV', 'container_base_name')
 # Naming convention of test container, e.g., test_300_1422862512_2424, where:
 # 300:        The test job ID.
 # 1422862512: The tick when container is created.
@@ -61,8 +61,10 @@ MOUNT_FMT = ('lxc.mount.entry = %(source)s %(destination)s none '
              'bind%(readonly)s 0 0')
 SSP_ENABLED = config.get_config_value('AUTOSERV', 'enable_ssp_container',
                                       type=bool, default=True)
-# url to the base container.
-CONTAINER_BASE_URL = config.get_config_value('AUTOSERV', 'container_base')
+# url to the folder stores base container.
+CONTAINER_BASE_FOLDER_URL = config.get_config_value('AUTOSERV',
+                                                    'container_base_folder_url')
+CONTAINER_BASE_URL = '%s/%s.tar.xz' % (CONTAINER_BASE_FOLDER_URL, BASE)
 # Default directory used to store LXC containers.
 DEFAULT_CONTAINER_PATH = config.get_config_value('AUTOSERV', 'container_path')
 
@@ -183,7 +185,10 @@ def get_container_info(container_path, **filters):
     output = utils.run(cmd).stdout
     info_collection = []
 
-    for line in output.splitlines()[2:]:
+    for line in output.splitlines()[1:]:
+        # Only LXC 1.x has the second line of '-' as a separator.
+        if line.startswith('------'):
+            continue
         info_collection.append(dict(zip(ATTRIBUTES, line.split())))
     if filters:
         filtered_collection = []
