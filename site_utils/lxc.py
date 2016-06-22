@@ -64,7 +64,8 @@ SSP_ENABLED = config.get_config_value('AUTOSERV', 'enable_ssp_container',
 # url to the folder stores base container.
 CONTAINER_BASE_FOLDER_URL = config.get_config_value('AUTOSERV',
                                                     'container_base_folder_url')
-CONTAINER_BASE_URL = '%s/%s.tar.xz' % (CONTAINER_BASE_FOLDER_URL, BASE)
+CONTAINER_BASE_URL_FMT = '%s/%%s.tar.xz' % CONTAINER_BASE_FOLDER_URL
+CONTAINER_BASE_URL = CONTAINER_BASE_URL_FMT % BASE
 # Default directory used to store LXC containers.
 DEFAULT_CONTAINER_PATH = config.get_config_value('AUTOSERV', 'container_path')
 
@@ -810,7 +811,8 @@ class ContainerBucket(object):
         for path in path_to_cleanup:
             if os.path.exists(path):
                 utils.run('sudo rm -rf "%s"' % path)
-        download_extract(CONTAINER_BASE_URL, tar_path, self.container_path)
+        container_url = CONTAINER_BASE_URL_FMT % name
+        download_extract(container_url, tar_path, self.container_path)
         # Remove the downloaded container tar file.
         utils.run('sudo rm "%s"' % tar_path)
         # Set proper file permission.
@@ -960,6 +962,9 @@ def parse_options():
                         default=False,
                         help=('Force to delete existing containers and rebuild '
                               'base containers.'))
+    parser.add_argument('-n', '--name', type=str,
+                        help='Name of the base container.',
+                        default=BASE)
     options = parser.parse_args()
     if not options.setup and not options.force_delete:
         raise argparse.ArgumentError(
@@ -981,7 +986,7 @@ def main():
     options = parse_options()
     bucket = ContainerBucket(container_path=options.path)
     if options.setup:
-        bucket.setup_base(force_delete=options.force_delete)
+        bucket.setup_base(name=options.name, force_delete=options.force_delete)
     elif options.force_delete:
         bucket.destroy_all()
 
