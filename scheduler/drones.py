@@ -11,11 +11,10 @@ from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error, global_config, utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
-
-AUTOTEST_INSTALL_DIR = global_config.global_config.get_config_value('SCHEDULER',
-                                                 'drone_installation_directory')
-DEFAULT_CONTAINER_PATH = global_config.global_config.get_config_value(
-        'AUTOSERV', 'container_path')
+CONFIG = global_config.global_config
+AUTOTEST_INSTALL_DIR = CONFIG.get_config_value('SCHEDULER',
+                                               'drone_installation_directory')
+DEFAULT_CONTAINER_PATH = CONFIG.get_config_value('AUTOSERV', 'container_path')
 
 class DroneUnreachable(Exception):
     """The drone is non-sshable."""
@@ -161,7 +160,10 @@ class _BaseAbstractDrone(object):
                 # obsoleted once that bug is fixed.
                 self._host.run('which lxc-start')
                 # Test if base container is setup.
-                base_container = os.path.join(DEFAULT_CONTAINER_PATH, 'base')
+                base_container_name = CONFIG.get_config_value(
+                        'AUTOSERV', 'container_base_name')
+                base_container = os.path.join(DEFAULT_CONTAINER_PATH,
+                                              base_container_name)
                 # SSP uses privileged containers, sudo access is required. If
                 # the process can't run sudo command without password, SSP can't
                 # work properly. sudo command option -n will avoid user input.
