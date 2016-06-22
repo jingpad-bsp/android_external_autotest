@@ -1272,165 +1272,354 @@ class host_jobs_unittest(cli_mock.cli_unittest):
                                    'testjob'])
 
 
-class host_mod_unittest(cli_mock.cli_unittest):
-    def test_execute_lock_one_host(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', '--lock', 'host0'],
-                     rpcs=[('modify_host', {'id': 'host0', 'locked': True},
-                            True, None)],
-                     out_words_ok=['Locked', 'host0'])
+class host_mod_create_tests(object):
+
+    def _gen_attributes_rpcs(self, host, attributes):
+        """Generate RPCs expected to add attributes to host.
+
+        @param host: hostname
+        @param attributes: dict of attributes
+
+        @return: list of rpcs to expect
+        """
+        rpcs = []
+        for attr, val in attributes.iteritems():
+            rpcs.append(('set_host_attribute',
+                         {
+                             'hostname': host,
+                             'attribute': attr,
+                             'value': val,
+                         },
+                         True, None))
+        return rpcs
 
 
-    def test_execute_unlock_two_hosts(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', '-u', 'host0,host1'],
-                     rpcs=[('modify_host', {'id': 'host1', 'locked': False,
-                                            'lock_reason': ''},
-                            True, None),
-                           ('modify_host', {'id': 'host0', 'locked': False,
-                                            'lock_reason': ''},
-                            True, None)],
-                     out_words_ok=['Unlocked', 'host0', 'host1'])
+    def _gen_labels_rpcs(self, labels, platform=False, host_id=None):
+        """Generate RPCS expected to add labels.
+
+        @param labels: list of label names
+        @param platform: labels are platform labels
+        @param host_id: Host id old labels will be deleted from (if host exists)
+        """
+        rpcs = []
+        if host_id:
+            rpcs.append(('get_labels', {'host': host_id}, True, []))
+        for label in labels:
+            rpcs += [
+                ('get_labels', {'name': label}, True, []),
+                ('add_label', {'name': label}, True, None)
+            ]
+            if platform:
+                rpcs[-1][1]['platform'] = True
+        return rpcs
 
 
-    def test_execute_force_lock_one_host(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', '--lock',
-                           '--force_modify_locking', 'host0'],
-                     rpcs=[('modify_host',
-                            {'id': 'host0', 'locked': True,
-                             'force_modify_locking': True},
-                            True, None)],
-                     out_words_ok=['Locked', 'host0'])
+    def _gen_acls_rpcs(self, hosts, acls, host_ids=[]):
+        """Generate RPCs expected to add acls.
+
+        @param hosts: list of hostnames
+        @param acls: list of acl names
+        @param host_ids: List of host_ids if hosts already exist
+        """
+        rpcs = []
+        for host_id in host_ids:
+            rpcs.append(('get_acl_groups', {'hosts': host_id}, True, []))
+        for acl in acls:
+            rpcs.append(('get_acl_groups', {'name': acl}, True, []))
+            rpcs.append(('add_acl_group', {'name': acl}, True, None))
+        for acl in acls:
+            rpcs.append((
+                'acl_group_add_hosts',
+                {
+                    'hosts': hosts,
+                    'id': acl,
+                },
+                True,
+                None,
+            ))
+        return rpcs
 
 
-    def test_execute_force_unlock_one_host(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', '--unlock',
-                           '--force_modify_locking', 'host0'],
-                     rpcs=[('modify_host',
-                            {'id': 'host0', 'locked': False,
-                             'force_modify_locking': True,
-                             'lock_reason': ''},
-                            True, None)],
-                     out_words_ok=['Unlocked', 'host0'])
+    def test_lock_one_host(self):
+        """Test locking host / creating host locked."""
+        lock_reason = 'Because'
+        rpcs, out = self._gen_expectations(locked=True, lock_reason=lock_reason)
+        self.run_cmd(argv=self._command_single + ['--lock', '--lock_reason',
+                                                  lock_reason],
+                     rpcs=rpcs, out_words_ok=out)
 
 
-    def test_execute_lock_unknown_hosts(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', '-l', 'host0,host1',
-                           'host2'],
-                     rpcs=[('modify_host', {'id': 'host2', 'locked': True},
-                            True, None),
-                           ('modify_host', {'id': 'host1', 'locked': True},
-                            False, 'DoesNotExist: Host matching '
-                            'query does not exist.'),
-                           ('modify_host', {'id': 'host0', 'locked': True},
-                            True, None)],
-                     out_words_ok=['Locked', 'host0', 'host2'],
-                     err_words_ok=['Host', 'matching', 'query', 'host1'])
+    def test_unlock_multiple_hosts(self):
+        """Test unlocking host / creating host unlocked."""
+        rpcs, out = self._gen_expectations(hosts=self._hosts, locked=False)
+        self.run_cmd(argv=self._command_multiple + ['--unlock'], rpcs=rpcs,
+                     out_words_ok=out)
 
 
-    def test_execute_protection_hosts(self):
-        mfile = cli_mock.create_file('host0\nhost1,host2\nhost3 host4')
+    def test_machine_list(self):
+        """Test action an machines from machine list file."""
+        mfile = cli_mock.create_file(','.join(self._hosts))
+        rpcs, out = self._gen_expectations(hosts=self._hosts, locked=False)
         try:
-            self.run_cmd(argv=['atest', 'host', 'mod', '--protection',
-                               'Do not repair', 'host5' ,'--mlist', mfile.name,
-                               'host1', 'host6'],
-                         rpcs=[('modify_host', {'id': 'host6',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host5',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host4',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host3',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host2',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host1',
-                                                'protection': 'Do not repair'},
-                                True, None),
-                               ('modify_host', {'id': 'host0',
-                                                'protection': 'Do not repair'},
-                                True, None)],
-                         out_words_ok=['Do not repair', 'host0', 'host1',
-                                       'host2', 'host3', 'host4', 'host5',
-                                       'host6'])
+            self.run_cmd(argv=self._command_multiple + ['--unlock'], rpcs=rpcs,
+                         out_words_ok=out)
         finally:
             mfile.clean()
 
-    def test_execute_attribute_host(self):
-        self.run_cmd(argv=['atest', 'host', 'mod', 'host0', '--attribute',
-                           'foo=bar'],
-                     rpcs=[('modify_host', {'id': 'host0'}, True, None),
-                           ('set_host_attribute', {'hostname': 'host0',
-                                                   'attribute': 'foo',
-                                                   'value': 'bar'},
-                            True, None)],
-                     out_words_ok=[])
+
+    def test_single_attributes(self):
+        """Test applying one attribute to one host."""
+        attrs = {'foo': 'bar'}
+        s_attrs = ','.join(['='.join((k,v)) for k,v in attrs.items()])
+        rpcs, out = self._gen_expectations(attributes=attrs)
+        self.run_cmd(self._command_single + ['--attributes', s_attrs],
+                     rpcs=rpcs, out_words_ok=out)
 
 
-class host_create_unittest(cli_mock.cli_unittest):
-    _out = ['Added', 'host', 'localhost']
-    _command = ['atest', 'host', 'create', 'localhost']
+    def test_multiple_attributes_multiple_hosts(self):
+        """Test applying multiple attributes to multiple hosts."""
+        attrs = {'foo': 'bar', 'baz': 'zip'}
+        s_attrs = ','.join(['='.join((k,v)) for k,v in attrs.items()])
+        rpcs, out = self._gen_expectations(hosts=self._hosts, attributes=attrs)
+        self.run_cmd(self._command_multiple + ['--attributes', s_attrs],
+                     rpcs=rpcs, out_words_ok=out)
+
+
+    def test_platform(self):
+        """Test applying platform label."""
+        rpcs, out = self._gen_expectations(platform='some_platform')
+        self.run_cmd(argv=self._command_single + ['--platform',
+                                                  'some_platform'],
+                     rpcs=rpcs, out_words_ok=out)
+
+
+    def test_labels(self):
+        """Test applying labels."""
+        labels = ['label0', 'label1']
+        rpcs, out = self._gen_expectations(labels=labels)
+        self.run_cmd(argv=self._command_single + ['--labels', ','.join(labels)],
+                     rpcs=rpcs, out_words_ok=out)
+
+
+    def test_labels_from_file(self):
+        """Test applying labels from file."""
+        labels = ['label0', 'label1']
+        rpcs, out = self._gen_expectations(labels=labels)
+        labelsf = cli_mock.create_file(','.join(labels))
+        try:
+            self.run_cmd(argv=self._command_single + ['--blist', labelsf.name],
+                         rpcs=rpcs, out_words_ok=out)
+        finally:
+            labelsf.clean()
+
+
+    def test_acls(self):
+        """Test applying acls."""
+        acls = ['acl0', 'acl1']
+        rpcs, out = self._gen_expectations(acls=acls)
+        self.run_cmd(argv=self._command_single + ['--acls', ','.join(acls)],
+                     rpcs=rpcs, out_words_ok=out)
+
+
+    def test_acls_from_file(self):
+        """Test applying acls from file."""
+        acls = ['acl0', 'acl1']
+        rpcs, out = self._gen_expectations(acls=acls)
+        aclsf = cli_mock.create_file(','.join(acls))
+        try:
+            self.run_cmd(argv=self._command_single + ['-A', aclsf.name],
+                         rpcs=rpcs, out_words_ok=out)
+        finally:
+            aclsf.clean()
+
+
+    def test_protection(self):
+        """Test applying host protection."""
+        protection = 'Do not repair'
+        rpcs, out = self._gen_expectations(protection=protection)
+        self.run_cmd(argv=self._command_single + ['--protection', protection],
+                     rpcs=rpcs,out_words_ok=out)
+
+
+    def test_protection_invalid(self):
+        """Test invalid protection causes failure."""
+        protection = 'Invalid protection'
+        rpcs, out = self._gen_expectations(hosts=[])
+        self.run_cmd(argv=self._command_single + ['--protection', protection],
+                     exit_code=2, err_words_ok=['invalid', 'choice'] +
+                     protection.split())
+
+
+    def test_complex(self):
+        """Test applying multiple modifications / creating a complex host."""
+        lock_reason = 'Because I said so.'
+        platform = 'some_platform'
+        labels = ['label0', 'label1']
+        acls = ['acl0', 'acl1']
+        protection = 'Do not verify'
+        labelsf = cli_mock.create_file(labels[1])
+        aclsf = cli_mock.create_file(acls[1])
+        cmd_args = ['-l', '-r', lock_reason, '-t', platform, '-b', labels[0],
+                    '-B', labelsf.name, '-a', acls[0], '-A', aclsf.name, '-p',
+                    protection]
+        rpcs, out = self._gen_expectations(locked=True, lock_reason=lock_reason,
+                                           acls=acls, labels=labels,
+                                           platform=platform,
+                                           protection=protection)
+
+        try:
+            self.run_cmd(argv=self._command_single + cmd_args, rpcs=rpcs,
+                         out_words_ok=out)
+        finally:
+            labelsf.clean()
+            aclsf.clean()
+
+
+class host_mod_unittest(host_mod_create_tests, cli_mock.cli_unittest):
+    """Tests specific to the mod action and expectation generator for shared
+    tests.
+    """
+    _hosts = ['localhost', '127.0.0.1']
+    _host_ids = [1, 2]
+    _command_base = ['atest', 'host', 'mod']
+    _command_single = _command_base + [_hosts[0]]
+    _command_multiple = _command_base + _hosts
+
+    def _gen_expectations(self, hosts=['localhost'], locked=None,
+                          lock_reason='', force_lock=False, protection=None,
+                          acls=[], labels=[], platform=None, attributes={}):
+        rpcs = []
+        out = set()
+        hosts = hosts[:]
+        hosts.reverse()
+
+        # Genarate result for get_hosts command to include all known hosts
+        host_dicts = []
+        for h, h_id in zip(self._hosts, self._host_ids):
+            host_dicts.append({'hostname': h, 'id': h_id})
+        rpcs.append(('get_hosts', {'hostname__in': hosts}, True, host_dicts))
+
+        # Expect actions only for known hosts
+        host_ids = []
+        for host in hosts:
+            if host not in self._hosts:
+                continue
+            host_id = self._host_ids[self._hosts.index(host)]
+            host_ids.append(host_id)
+            modify_args = {'id': host}
+
+            if locked is not None:
+                out.add('Locked' if locked else 'Unlocked')
+                modify_args['locked'] = locked
+                modify_args['lock_reason'] = lock_reason
+            if force_lock:
+                modify_args['force_modify_locking'] = True
+            if protection:
+                modify_args['protection'] = protection
+
+            if len(modify_args.keys()) > 1:
+                out.add(host)
+                rpcs.append(('modify_host', modify_args, True, None))
+
+            if labels:
+                rpcs += self._gen_labels_rpcs(labels, host_id=host_id)
+                rpcs.append(('host_add_labels', {'id': host, 'labels': labels},
+                             True, None))
+
+            if platform:
+                rpcs += self._gen_labels_rpcs([platform], platform=True,
+                                              host_id=host_id)
+                rpcs.append(('host_add_labels', {'id': host,
+                                                 'labels': [platform]},
+                             True, None))
+
+            rpcs += self._gen_attributes_rpcs(host, attributes)
+
+        if acls:
+            rpcs += self._gen_acls_rpcs(hosts, acls, host_ids=host_ids)
+
+        return rpcs, list(out)
+
+
+    def test_mod_force_lock_one_host(self):
+        """Test mod with forced locking."""
+        lock_reason = 'Because'
+        rpcs, out = self._gen_expectations(locked=True, force_lock=True,
+                                           lock_reason=lock_reason)
+        self.run_cmd(argv=self._command_single + [
+                            '--lock', '--force_modify_locking', '--lock_reason',
+                            lock_reason],
+                     rpcs=rpcs, out_words_ok=out)
+
+    def test_mod_force_unlock_one_host(self):
+        """Test mod forced unlocking."""
+        rpcs, out = self._gen_expectations(locked=False, force_lock=True)
+        self.run_cmd(argv=self._command_single + ['--unlock',
+                                                   '--force_modify_locking'],
+                      rpcs=rpcs, out_words_ok=out)
+
+    def test_mod_fail_unknown_host(self):
+        """Test mod fails with unknown host."""
+        rpcs, out = self._gen_expectations(hosts=['nope'], locked=True)
+        self.run_cmd(argv=self._command_base + ['nope', '--lock'],
+                     rpcs=rpcs, err_words_ok=['Cannot', 'modify', 'nope'])
+
+
+class host_create_unittest(host_mod_create_tests, cli_mock.cli_unittest):
+    """Test specific to create action and expectation generator for shared
+    tests.
+    """
+    _hosts = ['localhost', '127.0.0.1']
+    _command_base = ['atest', 'host', 'create']
+    _command_single = _command_base + [_hosts[0]]
+    _command_multiple = _command_base + _hosts
 
     def _mock_host(self, platform=None, labels=[]):
         mock_host = self.god.create_mock_class(hosts.Host, 'Host')
         hosts.create_host = self.god.create_mock_function('create_host')
-        hosts.create_host.expect_any_call().and_return(mock_host)
-        mock_host.get_platform.expect_call().and_return(platform)
-        mock_host.get_labels.expect_call().and_return(labels)
         return mock_host
 
 
-    def _mock_testbed(self, platform=None, labels=[]):
-        mock_tb = self.god.create_mock_class(hosts.TestBed, 'TestBed')
-        hosts.create_testbed = self.god.create_mock_function('create_testbed')
-        hosts.create_testbed.expect_any_call().and_return(mock_tb)
-        mock_tb.get_platform.expect_call().and_return(platform)
-        mock_tb.get_labels.expect_call().and_return(labels)
-        return mock_tb
+    def _mock_create_host_call(self, mock_host, platform=None, labels=[]):
+        hosts.create_host.expect_any_call().and_return(mock_host)
+        mock_host.get_platform.expect_call().and_return(platform)
+        mock_host.get_labels.expect_call().and_return(labels)
 
 
-    def _gen_rpcs_for_label(self, label, platform=False):
-        rpcs = [
-            ('get_labels', {'name': label}, True, []),
-            ('add_label', {'name': label, 'platform': platform}, True, None)
-        ]
-        return rpcs
-
-
-    def _gen_expected_rpcs(self, hosts=None, locked=False,
-                           lock_reason=None, platform=None, labels=None,
-                           acls=None, protection=None, serials=None):
+    def _gen_expectations(self, hosts=['localhost'], locked=False,
+                          lock_reason=None, platform=None,
+                          discovered_platform=None, labels=[],
+                          discovered_labels=[], acls=[], protection=None,
+                          attributes={}):
         """Build a list of expected RPC calls based on values to host command.
 
         @param hosts: list of hostname being created (default ['localhost'])
         @param locked: end state of host (bool)
         @param lock_reason: reason for host to be locked
         @param platform: platform label
+        @param discovered_platform: platform discovered automatically by host
         @param labels: list of host labels (excluding platform)
+        @param discovered_labels: list of labels discovered automatically
         @param acls: list of host acls
         @param protection: host protection level
 
         @return: list of expect rpc calls (each call is (op, args, success,
             result))
         """
-        rpcs = []
-        hosts = hosts[:] if hosts else ['localhost']
+        hosts = hosts[:]
         hosts.reverse() # No idea why
         lock_reason = lock_reason or 'Forced lock on device creation'
         acls = acls or []
-        labels = labels or []
 
-        if platform:
-            rpcs += self._gen_rpcs_for_label(platform, platform=True)
-        for label in labels:
-            rpcs += self._gen_rpcs_for_label(label) * len(hosts)
+        rpcs = []
+        out = ['Added', 'host'] + hosts
 
-        for acl in acls:
-            rpcs.append(('get_acl_groups', {'name': acl}, True, []))
-            rpcs.append(('add_acl_group', {'name': acl}, True, None))
+        # Expect calls to create_host, host.labels and host.platform
+        mock_host = self._mock_host()
+        for host in hosts:
+            self._mock_create_host_call(mock_host, discovered_platform,
+                                        discovered_labels)
+
 
         for host in hosts:
             add_args = {
@@ -1443,41 +1632,20 @@ class host_create_unittest(cli_mock.cli_unittest):
                 add_args['protection'] = protection
             rpcs.append(('add_host', add_args, True, None))
 
-            if labels or platform:
-                rpcs.append((
-                    'host_add_labels',
-                    {
-                        'id': host,
-                        'labels': labels + [platform] if platform else labels,
-                    },
-                    True,
-                    None
-                ))
+            rpcs += self._gen_labels_rpcs(labels)
+            if labels:
+                rpcs.append(('host_add_labels', {'id': host, 'labels': labels},
+                             True, None))
 
-        if serials:
-            for host in hosts:
-                rpcs.append((
-                    'set_host_attribute',
-                    {
-                        'hostname': host,
-                        'attribute': 'serials',
-                        'value': ','.join(serials),
-                    },
-                    True,
-                    None
-                ))
+            if platform:
+                rpcs += self._gen_labels_rpcs([platform], platform=True)
+                rpcs.append(('host_add_labels', {'id': host,
+                                                 'labels': [platform]},
+                             True, None))
 
-        for acl in acls:
-            for host in hosts:
-                rpcs.append((
-                    'acl_group_add_hosts',
-                    {
-                        'hosts': [host],
-                        'id': acl,
-                    },
-                    True,
-                    None,
-                ))
+            rpcs += self._gen_attributes_rpcs(host, attributes)
+
+        rpcs += self._gen_acls_rpcs(hosts, acls)
 
         if not locked:
             for host in hosts:
@@ -1491,165 +1659,46 @@ class host_create_unittest(cli_mock.cli_unittest):
                     True,
                     None,
                 ))
-        return rpcs
+        return rpcs, out
+
+    def test_create_no_args(self):
+        """Test simple creation with to arguments."""
+        rpcs, out = self._gen_expectations()
+        self.run_cmd(argv=self._command_single, rpcs=rpcs, out_words_ok=out)
 
 
-    def test_create_simple(self):
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs()
-        self.run_cmd(argv=self._command, rpcs=rpcs, out_words_ok=self._out)
-
-
-    def test_create_locked(self):
-        self._mock_host()
-        lock_reason = 'Because I said so.'
-        rpcs = self._gen_expected_rpcs(locked=True,
-                                                   lock_reason=lock_reason)
-        self.run_cmd(argv=self._command + ['-l', '-r', lock_reason],
-                     rpcs=rpcs, out_words_ok=self._out)
-
-
-    def test_create_discovered_platform(self):
-        self._mock_host(platform='some_platform')
-        rpcs = self._gen_expected_rpcs(platform='some_platform')
-        self.run_cmd(argv=self._command, rpcs=rpcs, out_words_ok=self._out)
-
-
-    def test_create_specified_platform(self):
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(platform='some_platform')
-        self.run_cmd(argv=self._command + ['-t', 'some_platform'], rpcs=rpcs,
-                     out_words_ok=self._out)
+    def test_create_with_discovered_platform(self):
+        """Test discovered platform is used when platform isn't specified."""
+        rpcs, out = self._gen_expectations(platform='some_platform',
+                                           discovered_platform='some_platform')
+        self.run_cmd(argv=self._command_single, rpcs=rpcs, out_words_ok=out)
 
 
     def test_create_specified_platform_overrides_discovered_platform(self):
-        self._mock_host(platform='wrong_platform')
-        rpcs = self._gen_expected_rpcs(platform='some_platform')
-        self.run_cmd(argv=self._command + ['-t', 'some_platform'], rpcs=rpcs,
-                     out_words_ok=self._out)
+        """Test that the specified platform overrides the discovered platform.
+        """
+        rpcs, out = self._gen_expectations(platform='some_platform',
+                                           discovered_platform='wrong_platform')
+        self.run_cmd(argv=self._command_single + ['--platform',
+                                                  'some_platform'],
+                     rpcs=rpcs, out_words_ok=out)
 
 
     def test_create_discovered_labels(self):
+        """Test applying automatically discovered labels."""
         labels = ['label0', 'label1']
-        self._mock_host(labels=labels)
-        rpcs = self._gen_expected_rpcs(labels=labels)
-        self.run_cmd(argv=self._command, rpcs=rpcs, out_words_ok=self._out)
+        rpcs, out = self._gen_expectations(labels=labels,
+                                           discovered_labels=labels)
+        self.run_cmd(argv=self._command_single, rpcs=rpcs, out_words_ok=out)
 
-
-    def test_create_specified_labels(self):
-        labels = ['label0', 'label1']
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(labels=labels)
-        self.run_cmd(argv=self._command + ['-b', ','.join(labels)], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_specified_labels_from_file(self):
-        labels = ['label0', 'label1']
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(labels=labels)
-        labelsf = cli_mock.create_file(','.join(labels))
-        try:
-            self.run_cmd(argv=self._command + ['-B', labelsf.name], rpcs=rpcs,
-                         out_words_ok=self._out)
-        finally:
-            labelsf.clean()
 
     def test_create_specified_discovered_labels_combine(self):
+        """Test applying both discovered and specified labels."""
         labels = ['label0', 'label1']
-        self._mock_host(labels=labels[0:1])
-        rpcs = self._gen_expected_rpcs(labels=labels)
-        self.run_cmd(argv=self._command + ['-b', labels[1]], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_acls(self):
-        acls = ['acl0', 'acl1']
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(acls=acls)
-        self.run_cmd(argv=self._command + ['-a', ','.join(acls)], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_acls_from_file(self):
-        acls = ['acl0', 'acl1']
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(acls=acls)
-        aclsf = cli_mock.create_file(','.join(acls))
-        try:
-            self.run_cmd(argv=self._command + ['-A', aclsf.name], rpcs=rpcs,
-                         out_words_ok=self._out)
-        finally:
-            aclsf.clean()
-
-
-    def test_create_protection(self):
-        protection = 'Do not repair'
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(protection=protection)
-        self.run_cmd(argv=self._command + ['-p', protection], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_protection_invalid(self):
-        protection = 'Invalid protection'
-        rpcs = self._gen_expected_rpcs()
-        self.run_cmd(argv=self._command + ['-p', protection], exit_code=2,
-                     err_words_ok=['invalid', 'choice'] + protection.split())
-
-
-    def test_create_one_serial(self):
-        serial = 'device0'
-        self._mock_host()
-        rpcs = self._gen_expected_rpcs(serials=[serial])
-        self.run_cmd(argv=self._command + ['-s', serial], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_multiple_serials(self):
-        serials = ['device0', 'device1']
-        self._mock_testbed()
-        rpcs = self._gen_expected_rpcs(serials=serials)
-        self.run_cmd(argv=self._command + ['-s', ','.join(serials)], rpcs=rpcs,
-                     out_words_ok=self._out)
-
-
-    def test_create_multiple_simple_hosts(self):
-        mock_host = self._mock_host()
-        hosts.create_host.expect_any_call().and_return(mock_host)
-        mock_host.get_platform.expect_call()
-        mock_host.get_labels.expect_call().and_return([])
-
-        hostnames = ['localhost', '127.0.0.1']
-        rpcs = self._gen_expected_rpcs(hosts=hostnames)
-
-        self.run_cmd(argv=['atest', 'host', 'create'] + hostnames,
-                     rpcs=rpcs[0:4],
-                     out_words_ok=['Added', 'hosts'] + hostnames)
-
-
-    def test_create_complex(self):
-        lock_reason = 'Because I said so.'
-        platform = 'some_platform'
-        labels = ['label0', 'label1', 'label2']
-        acls = ['acl0', 'acl1']
-        protection = 'Do not verify'
-        labelsf = cli_mock.create_file(labels[2])
-        aclsf = cli_mock.create_file(acls[1])
-        cmd_args = ['-l', '-r', lock_reason, '-t', platform, '-b', labels[1],
-                    '-B', labelsf.name, '-a', acls[0], '-A', aclsf.name, '-p',
-                    protection]
-        self._mock_host(labels=labels[0:1])
-        rpcs = self._gen_expected_rpcs(locked=True, lock_reason=lock_reason,
-                                       acls=acls, labels=labels,
-                                       platform=platform, protection=protection)
-
-        try:
-            self.run_cmd(argv=self._command + cmd_args, rpcs=rpcs,
-                         out_words_ok=self._out)
-        finally:
-            labelsf.clean()
-            aclsf.clean()
+        rpcs, out = self._gen_expectations(labels=labels,
+                                           discovered_labels=[labels[0]])
+        self.run_cmd(argv=self._command_single + ['--labels', labels[1]],
+                     rpcs=rpcs, out_words_ok=out)
 
 
 if __name__ == '__main__':
