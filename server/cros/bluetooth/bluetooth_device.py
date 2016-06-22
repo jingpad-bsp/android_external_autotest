@@ -350,6 +350,27 @@ class BluetoothDevice(object):
         return json.loads(self._proxy.get_devices())
 
 
+    def get_device_properties(self, address):
+        """Read information about remote devices known to the adapter.
+
+        An example of the device information of RN-42 looks like
+
+        @param address: Address of the device to pair.
+        @param pin: The pin code of the device to pair.
+        @param timeout: The timeout in seconds for pairing.
+
+        @returns: a dictionary of device properties of the device on success;
+                  an empty dictionary otherwise.
+
+        """
+        return json.loads(self._proxy.get_device_by_address(address))
+
+        for device in self.get_devices():
+            if device.get['Address'] == address:
+                return device
+        return dict()
+
+
     def start_discovery(self):
         """Start discovery of remote devices.
 
@@ -424,7 +445,30 @@ class BluetoothDevice(object):
         return self._proxy.has_device(address)
 
 
-    def pair_legacy_device(self, address, pin, timeout):
+    def device_is_paired(self, address):
+        """Checks if a device is paired.
+
+        @param address: address of the device.
+
+        @returns: True if device is paired. False otherwise.
+
+        """
+        return self._proxy.device_is_paired(address)
+
+
+    def set_trusted(self, address, trusted=True):
+        """Set the device trusted.
+
+        @param address: The bluetooth address of the device.
+        @param trusted: True or False indicating whether to set trusted or not.
+
+        @returns: True if successful. False otherwise.
+
+        """
+        return self._proxy.set_trusted(address, trusted)
+
+
+    def pair_legacy_device(self, address, pin, trusted, timeout):
         """Pairs a device with a given pin code.
 
         Registers an agent who handles pin code request and
@@ -432,12 +476,27 @@ class BluetoothDevice(object):
 
         @param address: Address of the device to pair.
         @param pin: The pin code of the device to pair.
+        @param trusted: indicating whether to set the device trusted.
         @param timeout: The timeout in seconds for pairing.
 
         @returns: True on success. False otherwise.
 
         """
-        return self._proxy.pair_legacy_device(address, pin, timeout)
+        return self._proxy.pair_legacy_device(address, pin, trusted, timeout)
+
+
+    def remove_device_object(self, address):
+        """Removes a device object and the pairing information.
+
+        Calls RemoveDevice method to remove remote device
+        object and the pairing information.
+
+        @param address: address of the device to unpair.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self._proxy.remove_device_object(address)
 
 
     def connect_device(self, address):
