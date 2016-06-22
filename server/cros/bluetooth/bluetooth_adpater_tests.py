@@ -14,6 +14,48 @@ from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
+# Delay binding the methods since host is only available at run time.
+SUPPORTED_DEVICE_TYPES = {
+        'MOUSE': lambda host: host.chameleon.get_bluetooh_hid_mouse}
+
+def get_bluetooth_emulated_device(host, device_type):
+    """Get the bluetooth emulated device object.
+
+    @param host: the DUT, usually a chromebook
+    @param device_type : the bluetooth HID device type, e.g., 'MOUSE'
+
+    @returns: the bluetooth device object
+
+    """
+    if device_type not in SUPPORTED_DEVICE_TYPES:
+        raise error.TestError('The device type is not supported: %s',
+                              device_type)
+
+    # Get the device object and query some important properties.
+    device = SUPPORTED_DEVICE_TYPES[device_type](host)()
+    device.Init()
+    device.name = device.GetChipName()
+    device.address = device.GetLocalBluetoothAddress()
+    device.pin = device.GetPinCode()
+    device.class_of_service = device.GetClassOfService()
+    device.class_of_device = device.GetClassOfDevice()
+    device.device_type = device.GetHIDDeviceType()
+    device.authenticaiton_mode = device.GetAuthenticationMode()
+    device.port = device.GetPort()
+
+    logging.info('device type: %s', device_type)
+    logging.info('device name: %s', device.name)
+    logging.info('address: %s', device.address)
+    logging.info('pin: %s', device.pin)
+    logging.info('class of service: 0x%04X', device.class_of_service)
+    logging.info('class of device: 0x%04X', device.class_of_device)
+    logging.info('device type: %s', device.device_type)
+    logging.info('authenticaiton mode: %s', device.authenticaiton_mode)
+    logging.info('serial port: %s\n', device.port)
+
+    return device
+
+
 def _TestLog(func):
     """A decorator that logs the test reuslts and collects error messages."""
     @functools.wraps(func)
@@ -77,34 +119,10 @@ class BluetoothAdapterTests(test.test):
         @returns: the bluetooth device object
 
         """
-        self.SUPPORTED_DEVICE_TYPES = {
-                'MOUSE': host.chameleon.get_bluetooh_hid_mouse}
-
-        if device_type not in self.SUPPORTED_DEVICE_TYPES:
-            raise error.TestError('The device type is not supported: %s',
-                                  device_type)
-
-        # Get the device object and query some important properties.
-        device = self.SUPPORTED_DEVICE_TYPES[device_type]()
-        device.Init()
-        device.name = device.GetChipName()
-        device.address = device.GetLocalBluetoothAddress()
-        device.pin = device.GetPinCode()
-        device.class_of_service = device.GetClassOfService()
-        device.class_of_device = device.GetClassOfDevice()
-        device.device_type = device.GetHIDDeviceType()
-        device.authenticaiton_mode = device.GetAuthenticationMode()
-        device.port = device.GetPort()
-        logging.info('device type: %s', device_type)
-        logging.info('device name: %s', device.name)
-        logging.info('address: %s', device.address)
-        logging.info('pin: %s', device.pin)
-        logging.info('class of service: 0x%04X', device.class_of_service)
-        logging.info('class of device: 0x%04X', device.class_of_device)
-        logging.info('device type: %s', device.device_type)
-        logging.info('authenticaiton mode: %s', device.authenticaiton_mode)
-        logging.info('serial port: %s\n', device.port)
-        return device
+        if self.devices[device_type] is None:
+            self.devices[device_type] = get_bluetooth_emulated_device(
+                    host, device_type)
+        return self.devices[device_type]
 
 
     @_TestLog
@@ -682,9 +700,14 @@ class BluetoothAdapterTests(test.test):
         # what conditions failed by looking at the log.
         self.results = None
 
+        # Some tests may instantiate a peripheral device for testing.
+        self.devices = dict()
+        for device_type in SUPPORTED_DEVICE_TYPES:
+            self.devices[device_type] = None
+
 
     def run_once(self, *args, **kwargs):
-        """This mehtod should be implemented by children classes.
+        """This method should be implemented by children classes.
 
         Typically, the run_once() method would look like:
 
@@ -701,3 +724,17 @@ class BluetoothAdapterTests(test.test):
 
         """
         raise NotImplementedError
+
+
+    def cleanup(self):
+        """Clean up bluetooth adapter tests."""
+        # Close the device properly if a device is instantiated.
+        # Note: do not write something like the following statements
+        #           if self.devices[device_type]:
+        #       or
+        #           if bool(self.devices[device_type]):
+        #       Othereise, it would try to invoke bluetooth_mouse.__nonzero__()
+        #       which just does not exist.
+        for device_type in SUPPORTED_DEVICE_TYPES:
+            if self.devices[device_type] is not None:
+                self.devices[device_type].Close()
