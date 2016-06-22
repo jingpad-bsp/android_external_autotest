@@ -202,6 +202,14 @@ class ChameleonBoard(object):
         return self._usb_ctrl
 
 
+    def get_bluetooh_hid_mouse(self):
+        """Gets the emulated bluetooth hid mouse on Chameleon.
+
+        @return: A BluetoothHIDMouseFlow object.
+        """
+        return self._chameleond_proxy.bluetooth_mouse
+
+
     def get_mac_address(self):
         """Gets the MAC address of Chameleon.
 
