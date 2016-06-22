@@ -41,10 +41,6 @@ NO:  return 'class: %s, host: %s, args = %s' % (self.__class__.__name__,
 
 Don't leave trailing whitespace, or put whitespace on blank lines.
 
-Leave TWO blank lines between functions - this is Python, there are no clear
-function end markers, and we need help.  Note that this intentionally
-contradicts PEP-8.
-
 
 ## Variable names and UpPeR cAsE
  * Use descriptive variable names where possible
