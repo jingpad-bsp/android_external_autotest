@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+#pylint: disable=C0111
+
 """
 Autotest scheduler
 """
@@ -16,6 +19,7 @@ import common
 from autotest_lib.frontend import setup_django_environment
 
 import django.db
+from chromite.lib import ts_mon_config
 
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
@@ -166,6 +170,8 @@ def main_without_exception_handling():
 
     # Start the thread to report metadata.
     metadata_reporter.start()
+
+    ts_mon_config.SetupTsMonGlobalState('autotest_scheduler')
 
     try:
         initialize()
