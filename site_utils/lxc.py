@@ -615,6 +615,13 @@ class Container(object):
             if int(result) < count:
                 raise error.ContainerError('%s is not properly set up.' %
                                            directory)
+        # lxc-attach and run command does not run in shell, thus .bashrc is not
+        # loaded. Following command creates a symlink in /usr/bin/ for gsutil
+        # if it's installed.
+        # TODO(dshi): Remove this code after lab container is updated with
+        # gsutil installed in /usr/bin/
+        self.attach_run('test -f /root/gsutil/gsutil && '
+                        'ln -s /root/gsutil/gsutil /usr/bin/gsutil || true')
 
 
     def modify_import_order(self):
