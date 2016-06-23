@@ -377,7 +377,7 @@ def get_offload_dir_func(gs_uri, multiprocessing):
 
             sanitize_dir(dir_entry)
             if DEFAULT_CTS_RESULTS_GSURI:
-              upload_testresult_files(dir_entry, multiprocessing)
+                upload_testresult_files(dir_entry, multiprocessing)
 
             if LIMIT_FILE_COUNT:
                 limit_file_count(dir_entry)
