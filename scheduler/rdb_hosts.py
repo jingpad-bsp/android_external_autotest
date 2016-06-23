@@ -18,7 +18,9 @@ back to the rdb.
 
 import logging
 import time
+
 from django.core import exceptions as django_exceptions
+from chromite.lib import metrics
 
 import common
 from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
@@ -174,6 +176,9 @@ class RDBClientHostWrapper(RDBHost):
     to the host.
     """
 
+    _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working')
+
+
     def __init__(self, **kwargs):
 
         # This class is designed to only check for the bare minimum
@@ -238,6 +243,21 @@ class RDBClientHostWrapper(RDBHost):
         """
         self._update({'status': status})
         self.record_state('host_history', 'status', status)
+
+
+    def record_working_state(self, working, timestamp):
+        """Report to Monarch whether we are working or broken.
+
+        @param working    Host repair status. `True` means that the DUT
+                          is up and expected to pass tests.  `False`
+                          means the DUT has failed repair and requires
+                          manual intervention.
+        @param timestamp  Time that the status was recorded.
+        """
+        fields = {'hostname': self.hostname, 'board': self.board}
+        if len(self.pools) == 1:
+            fields['pool'] = self.pools[0]
+        self._HOST_WORKING_METRIC.set(working, fields=fields)
 
 
     def update_field(self, fieldname, value):
