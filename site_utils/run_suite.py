@@ -1656,17 +1656,17 @@ def main_without_exception_handling(options):
                                  'because suite job has timed out.',
                                  RETURN_CODES.get_string(old_code),
                                  RETURN_CODES.get_string(code))
-            if is_suite_timeout:
-                logging.info('\nAttempting to diagnose pool: %s', options.pool)
-                try:
-                    # Add some jitter to make up for any latency in
-                    # aborting the suite or checking for results.
-                    cutoff = (job_timer.timeout_hours +
-                              datetime_base.timedelta(hours=0.3))
-                    rpc_helper.diagnose_pool(
-                            options.board, options.pool, cutoff)
-                except proxy.JSONRPCException as e:
-                    logging.warning('Unable to diagnose suite abort.')
+
+            logging.info('\nAttempting to display pool info: %s', options.pool)
+            try:
+                # Add some jitter to make up for any latency in
+                # aborting the suite or checking for results.
+                cutoff = (job_timer.timeout_hours +
+                          datetime_base.timedelta(hours=0.3))
+                rpc_helper.diagnose_pool(
+                        options.board, options.pool, cutoff)
+            except proxy.JSONRPCException as e:
+                logging.warning('Unable to display pool info.')
 
         # And output return message.
         if return_message:
