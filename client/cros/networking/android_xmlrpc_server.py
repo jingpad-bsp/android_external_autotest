@@ -240,7 +240,7 @@ class AndroidXmlRpcDelegate(object):
         @param epoch_seconds: float number of seconds from the epoch.
 
         """
-        self.ad.droid.setTime(epoch_seconds)
+        # The adb_host is already doing this; just return True.
         return True
 
 
