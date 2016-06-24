@@ -9,6 +9,7 @@ import os
 import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
+from autotest_lib.server import crashcollect
 from autotest_lib.server.hosts import label_verify
 from autotest_lib.server.hosts import repair
 
@@ -209,6 +210,11 @@ class ServoResetRepair(hosts.RepairAction):
                     '%s has no servo support.' % host.hostname)
         host.servo.get_power_state_controller().reset()
         if host.wait_up(host.BOOT_TIMEOUT):
+            # Collect logs once we regain ssh access before clobbering them.
+            local_log_dir = crashcollect.get_crashinfo_dir(host, 'after_reset')
+            host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
+            # Collect crash info.
+            crashcollect.get_crashinfo(host, None)
             return
         raise hosts.AutoservRepairError(
                 '%s is still offline after reset.' % host.hostname)
