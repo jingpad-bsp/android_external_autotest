@@ -388,29 +388,6 @@ class AudioWidgetFactory(object):
         return audio_widget_link.WidgetBinderChain(binders)
 
 
-def compare_recorded_result(golden_file, recorder, method, parameters=None):
-    """Check recoded audio in a AudioInputWidget against a golden file.
-
-    Compares recorded data with golden data by cross correlation method.
-    Refer to audio_helper.compare_data for details of comparison.
-
-    @param golden_file: An AudioTestData object that serves as golden data.
-    @param recorder: An AudioInputWidget that has recorded some audio data.
-    @param method: The method to compare recorded result. Currently,
-                   'correlation' and 'frequency' are supported.
-    @param parameters: A dict containing parameters for method.
-
-    @returns: True if the recorded data and golden data are similar enough.
-
-    """
-    logging.info('Comparing recorded data with golden file %s ...',
-                 golden_file.path)
-    return audio_helper.compare_data(
-            golden_file.get_binary(), golden_file.data_format,
-            recorder.get_binary(), recorder.data_format, recorder.channel_map,
-            method, parameters)
-
-
 @contextmanager
 def bind_widgets(binder):
     """Context manager for widget binders.
