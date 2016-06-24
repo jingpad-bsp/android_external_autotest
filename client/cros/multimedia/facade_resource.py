@@ -100,6 +100,7 @@ class FacadeResource(object):
     def __exit__(self, *args):
         if self._chrome:
             self._chrome.close()
+            self._chrome = None
 
 
     @staticmethod
