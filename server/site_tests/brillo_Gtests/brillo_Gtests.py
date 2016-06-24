@@ -23,6 +23,7 @@ BRILLO_NATIVE_TESTS_FILE_FMT = '%(build_target)s-brillo-tests-%(build_id)s.zip'
 LIST_TEST_BINARIES_TEMPLATE = (
         'find %(path)s -type f -mindepth 2 -maxdepth 2 '
         '\( -perm -100 -o -perm -010 -o -perm -001 \)')
+NATIVE_ONLY_BOARDS = ['dragonboard']
 
 GtestSuite = namedtuple('GtestSuite', ['path', 'run_as_root', 'args'])
 
@@ -37,13 +38,16 @@ class brillo_Gtests(test.test):
             return
         # TODO(ralphnathan): Remove this once we can determine this in another
         # way (b/29185385).
-        if host.get_board_name() == 'dragonboard':
-            self._install_nativetests(host, BRILLO_NATIVE_TESTS_FILE_FMT)
+        if host.get_board_name() in NATIVE_ONLY_BOARDS:
+            self._install_nativetests(
+                    host, BRILLO_NATIVE_TESTS_FILE_FMT, 'nativetests')
         else:
-            self._install_nativetests(host, ANDROID_NATIVE_TESTS_FILE_FMT)
+            self._install_nativetests(host,
+                                      ANDROID_NATIVE_TESTS_FILE_FMT,
+                                      'continuous_naive_tests')
 
 
-    def _install_nativetests(self, host, test_file_format):
+    def _install_nativetests(self, host, test_file_format, artifact):
         """Install the nativetests zip onto the DUT.
 
         Device images built by the Android Build System do not have the
@@ -53,10 +57,11 @@ class brillo_Gtests(test.test):
 
         @param host: host object to install the nativetests onto.
         @param test_file_format: Format of the zip file containing the tests.
+        @param artifact: Devserver artifact to stage.
         """
         build = afe_utils.get_build(host)
         ds = dev_server.AndroidBuildServer.resolve(build, host.hostname)
-        ds.stage_artifacts(image=build, artifacts=['nativetests'])
+        ds.stage_artifacts(image=build, artifacts=[artifact])
         build_url = os.path.join(ds.url(), 'static', build)
         nativetests_file = (test_file_format %
                             host.get_build_info_from_build_url(build_url))
