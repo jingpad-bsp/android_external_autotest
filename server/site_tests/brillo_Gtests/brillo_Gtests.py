@@ -44,7 +44,7 @@ class brillo_Gtests(test.test):
         else:
             self._install_nativetests(host,
                                       ANDROID_NATIVE_TESTS_FILE_FMT,
-                                      'continuous_naive_tests')
+                                      'continuous_native_tests')
 
 
     def _install_nativetests(self, host, test_file_format, artifact):
