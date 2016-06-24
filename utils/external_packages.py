@@ -858,42 +858,6 @@ class GdataPackage(ExternalPackage):
         return self.version
 
 
-class GoogleAPIClientPackage(ExternalPackage):
-    """
-    Pulls the Python Google API client library.
-    """
-    version = '1.5.1'
-    module_name = 'apiclient'
-    url_filename = 'google-api-python-client-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('https://pypi.python.org/packages/b5/b4/'
-            'e7030ec96ce8eb5b00707d2530906c0c6389eb61af8f5a7ca4ee29d02643/'
-            '%s' % url_filename,)
-    hex_sum = 'f46b94b03bf7b9ba2f8671f62a341b5aa2a4c07c'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_setup_py)
-
-
-class OAuth2Client(ExternalPackage):
-    """
-    Pulls the Oauth2Client library.
-    """
-    version = '1.5.2'
-    module_name = 'oauth2client'
-    url_filename = 'oauth2client-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('https://pypi.python.org/packages/fc/41/'
-            '974970101bde842f23031075bea7f6d051ed82b5fd806b6ef9cc7e983c01/'
-            '%s' % url_filename,)
-    hex_sum = '18e2356be4234bce2c191495ee2c96f2eafaf7bb'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_setup_py)
-
-
 class GFlagsPackage(ExternalPackage):
     """
     Gets the Python GFlags client library.
