@@ -122,7 +122,7 @@ AUDIO_PATH = os.path.join(os.path.dirname(__file__))
 This test data contains frequency sweep from 20Hz to 20000Hz in two channels.
 Left channel sweeps from 20Hz to 20000Hz, while right channel sweeps from
 20000Hz to 20Hz. The sweep duration is 2 seconds. The begin and end of the file
-is padded with 0.2 seconds of silence. The file is two-channel raw data with
+is padded with 0.4 seconds of silence. The file is two-channel raw data with
 each sample being a signed 16-bit integer in little-endian with sampling rate
 48000 samples/sec.
 """
