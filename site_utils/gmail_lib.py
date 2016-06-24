@@ -27,8 +27,6 @@ from email.mime.text import MIMEText
 import common
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.server import utils as server_utils
-from chromite.lib import retry_util
 
 try:
   from apiclient.discovery import build as apiclient_build
@@ -37,6 +35,11 @@ try:
 except ImportError as e:
   apiclient_build = None
   logging.debug("API client for gmail disabled. %s", e)
+
+# TODO(akeshet) These imports needs to come after the apiclient imports, because
+# of a sys.path war between chromite and autotest crbug.com/622988
+from autotest_lib.server import utils as server_utils
+from chromite.lib import retry_util
 
 
 EMAIL_COUNT_KEY = 'emails.%s'
