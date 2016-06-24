@@ -112,6 +112,8 @@ import os
 import urllib
 import time
 
+from chromite.lib import metrics
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -578,6 +580,7 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
     TASK_TYPE = None
     host = None
     queue_entry = None
+    _SPECIAL_TASK_COUNT_METRIC = metrics.Counter('chromeos/autotest/scheduler/special_task_count')
 
     def __init__(self, task, extra_command_args):
         super(SpecialAgentTask, self).__init__()
@@ -659,6 +662,18 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
             return # entry has been aborted
 
         self._actually_fail_queue_entry()
+
+
+    def epilog(self):
+        super(SpecialAgentTask, self).epilog()
+        self._emit_special_task_status_metric()
+
+
+    def _emit_special_task_status_metric(self):
+        """Increments an accumulator associated with this special task."""
+        self._SPECIAL_TASK_COUNT_METRIC.increment(fields={
+            'type': self.TASK_TYPE,
+            'success': bool(self.success)})
 
 
     # TODO(milleral): http://crbug.com/268607
