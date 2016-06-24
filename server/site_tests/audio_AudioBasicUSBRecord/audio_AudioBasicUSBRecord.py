@@ -93,7 +93,4 @@ class audio_AudioBasicUSBRecord(audio_test.AudioTest):
         logging.info('Saving recorded data to %s', recorded_file)
         recorder.save_file(recorded_file)
 
-        if not chameleon_audio_helper.compare_recorded_result(
-                golden_file, recorder, 'correlation'):
-            raise error.TestFail(
-                    'Recorded file does not match playback file')
+        audio_test_utils.compare_recorded_correlation(golden_file, recorder)

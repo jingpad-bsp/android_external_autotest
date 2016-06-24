@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.audio import audio_analysis
 from autotest_lib.client.cros.audio import audio_data
+from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 
 CHAMELEON_AUDIO_IDS_TO_CRAS_NODE_TYPES = {
@@ -426,3 +427,22 @@ def switch_to_hsp(audio_facade):
     audio_facade.start_recording(
             dict(file_type='raw', sample_format='S16_LE', channel=2,
                  rate=48000))
+
+
+def compare_recorded_correlation(golden_file, recorder, parameters=None):
+    """Checks recorded audio in an AudioInputWidget against a golden file.
+
+    Compares recorded data with golden data by cross correlation method.
+    Refer to audio_helper.compare_data for details of comparison.
+
+    @param golden_file: An AudioTestData object that serves as golden data.
+    @param recorder: An AudioInputWidget that has recorded some audio data.
+    @param parameters: A dict containing parameters for method.
+
+    """
+    logging.info('Comparing recorded data with golden file %s ...',
+                 golden_file.path)
+    audio_helper.compare_data_correlation(
+            golden_file.get_binary(), golden_file.data_format,
+            recorder.get_binary(), recorder.data_format, recorder.channel_map,
+            parameters)
