@@ -8,7 +8,6 @@ import inspect, new, socket, sys
 from autotest_lib.client.bin import utils
 from autotest_lib.cli import host, rpc
 from autotest_lib.server import hosts
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.client.common_lib import error, host_protections
 
 
@@ -20,8 +19,8 @@ hosts.factory.ssh_verbosity_flag = ''
 hosts.factory.ssh_options = ''
 
 
-# pylint: disable=missing-docstring
 class site_host(host.host):
+    """Required by atest's site logic."""
     pass
 
 
@@ -96,10 +95,8 @@ class site_host_create(site_host, host.host_create):
             self.execute_rpc('host_add_labels', id=host, labels=list(labels))
 
         if self.serials:
-            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-            afe.set_host_attribute('serials', ','.join(self.serials),
-                                   hostname=host)
-
+            self.execute_rpc('set_host_attribute', hostname=host,
+                             attribute='serials', value=','.join(self.serials))
 
     def execute(self):
         # Check to see if the platform or any other labels can be grabbed from
