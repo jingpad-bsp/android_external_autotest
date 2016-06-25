@@ -28,6 +28,7 @@ _LSOF_NAME = -2
 
 
 _BASELINE_DEFAULT_NAME = 'baseline'
+_BASELINE_ARC_NAME = 'baseline.arc'
 
 # We log in so that we include any daemons that
 # might be spawned at login in our test results.
@@ -81,16 +82,17 @@ class security_NetworkListeners(test.test):
         return lines_to_keep
 
 
-    def run_once(self, baseline_filename=None, arc_mode=None):
+    def run_once(self):
         """
         Compare a list of processes, listening on TCP ports, to a
         baseline. Test fails if there are mismatches.
-
-        @param baseline_filename: file with expected processes listening
-        @param arc_mode: ARC++ enabled or not
         """
-        if baseline_filename is None:
-            baseline_filename = _BASELINE_DEFAULT_NAME
+        baseline_filename = _BASELINE_DEFAULT_NAME
+        arc_mode = None
+
+        if chrome.is_arc_available():
+            baseline_filename = _BASELINE_ARC_NAME
+            arc_mode = 'enabled'
 
         with chrome.Chrome(arc_mode=arc_mode):
             cmd = (r'lsof -n -i -sTCP:LISTEN | '
