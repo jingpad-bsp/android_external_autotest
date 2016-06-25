@@ -17,7 +17,7 @@ Error = exceptions.Error
 _arc_available = None
 
 
-def _is_arc_available():
+def is_arc_available():
     """Returns true if ARC is available on current device."""
     global _arc_available
     if _arc_available is not None:
@@ -37,7 +37,7 @@ def _is_arc_available():
     return _arc_available
 
 
-if _is_arc_available():
+if is_arc_available():
     from autotest_lib.client.common_lib.cros import arc_util
 
 
@@ -109,7 +109,7 @@ class Chrome(object):
             extension_paths.append(self._autotest_ext_path)
 
         finder_options = browser_options.BrowserFinderOptions()
-        if _is_arc_available() and arc_util.should_start_arc(arc_mode):
+        if is_arc_available() and arc_util.should_start_arc(arc_mode):
             # TODO(achuith): Fix extra_browser_args, so that appending the
             # following flags to it is simpler.
             if disable_arc_opt_in:
@@ -154,7 +154,7 @@ class Chrome(object):
         b_options.auto_login = auto_login
         b_options.gaia_login = gaia_login
 
-        if _is_arc_available() and not disable_arc_opt_in:
+        if is_arc_available() and not disable_arc_opt_in:
             arc_util.set_browser_options_for_opt_in(b_options)
 
         self.username = b_options.username if username is None else username
@@ -190,7 +190,7 @@ class Chrome(object):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
-                if _is_arc_available():
+                if is_arc_available():
                     if not disable_arc_opt_in:
                         arc_util.opt_in(self.browser)
                     arc_util.post_processing_after_browser(self)
@@ -321,7 +321,7 @@ class Chrome(object):
     def close(self):
         """Closes the browser."""
         try:
-            if _is_arc_available():
+            if is_arc_available():
                 arc_util.pre_processing_before_close(self)
         finally:
             self._browser.Close()
