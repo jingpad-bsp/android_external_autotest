@@ -1,8 +1,9 @@
-# Copyright 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import Queue
+import base64
 import datetime
 import logging
 import os
@@ -64,7 +65,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         gs_offloader.GS_OFFLOADER_MULTIPROCESSING = False
 
 
-    def _mock_get_offload_func(self, is_moblab, multiprocessing=False):
+    def _mock_get_offload_func(self, is_moblab, multiprocessing=False,
+                               pubsub_topic=None):
         """Mock the process of getting the offload_dir function."""
         if is_moblab:
             expected_gsuri = '%sresults/%s/%s/' % (
@@ -77,8 +79,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         offload_func = gs_offloader.get_offload_dir_func(
                 expected_gsuri, multiprocessing)
         self.mox.StubOutWithMock(gs_offloader, 'get_offload_dir_func')
-        gs_offloader.get_offload_dir_func(expected_gsuri, multiprocessing).AndReturn(
-                offload_func)
+        gs_offloader.get_offload_dir_func(expected_gsuri, multiprocessing,
+                pubsub_topic).AndReturn(offload_func)
         self.mox.ReplayAll()
         return offload_func
 
@@ -142,6 +144,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._offload_func,
                          gs_offloader.delete_files)
         self.assertEqual(offloader._age_limit, 0)
+        self.assertIsNone(offloader._pubsub_topic)
 
 
     def test_days_old_option(self):
@@ -199,6 +202,22 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         gs_offloader.GS_OFFLOADER_MULTIPROCESSING = True
         offload_func = self._mock_get_offload_func(True, True)
         offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.mox.VerifyAll()
+
+    def test_offloader_pubsub_topic_not_set(self):
+        """Test multiprocessing is set."""
+        offload_func = self._mock_get_offload_func(True, False)
+        offloader = gs_offloader.Offloader(_get_options([]))
+        self.assertEqual(offloader._offload_func,
+                         offload_func)
+        self.mox.VerifyAll()
+
+    def test_offloader_pubsub_topic_set(self):
+        """Test multiprocessing is set."""
+        offload_func = self._mock_get_offload_func(True, False, 'test-topic')
+        offloader = gs_offloader.Offloader(_get_options(['-t', 'test-topic']))
         self.assertEqual(offloader._offload_func,
                          offload_func)
         self.mox.VerifyAll()
@@ -466,6 +485,17 @@ class EmailTemplateTests(mox.MoxTestBase):
         """Check that the expected helper url is in the email header."""
         self.assertIn(gs_offloader.ERROR_EMAIL_HELPER_URL,
                       gs_offloader.ERROR_EMAIL_REPORT_FORMAT)
+
+
+class PubSubTest(mox.MoxTestBase):
+    """Test the test result notifcation data structure."""
+
+    def test_create_test_result_notification(self):
+        """Tests the test result notification message."""
+        msg = gs_offloader._create_test_result_notification('gs://test_bucket')
+        self.assertEquals(base64.b64encode(
+            gs_offloader.NEW_TEST_RESULT_MESSAGE), msg['data'])
+        self.assertEquals('gs://test_bucket', msg['attributes']['gcs_uri'])
 
 
 class _MockJob(object):
@@ -942,6 +972,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                 os.path.join(timestamp_folder,'testResult.xml.gz')))
 
         shutil.rmtree(results_folder)
+
 
 class JobDirectoryOffloadTests(_TempResultsDirTestBase):
     """Tests for `_JobDirectory.enqueue_offload()`.
