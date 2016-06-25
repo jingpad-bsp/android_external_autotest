@@ -29,7 +29,7 @@ SERVER_SEQUENCES = [
     sequence.SequenceJob(
             'hardware_StorageQualSuspendStress',
             {'tag': 'suspend'},
-            iteration=2, duration=510),
+            iteration=2, duration=sequence.HOUR_IN_SECS / 2),
     sequence.SequenceJob(
             'hardware_StorageQualBase',
             {'tag': 'after', 'client_tag': 'after', 'crypto_runtime': 30}),
