@@ -325,6 +325,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return self.fastboot_run(command, **kwargs)
 
 
+    def _log_adb_pid(self):
+        """Log the pid of adb server.
+
+        adb's server is known to have bugs and randomly restart. BY logging
+        the server's pid it will allow us to better debug random adb failures.
+        """
+        adb_pid = self.teststation.run('pgrep -f "adb.*server"')
+        logging.debug('ADB Server PID: %s', adb_pid.stdout)
+
+
     def _device_run(self, function, command, shell=False,
                     timeout=3600, ignore_status=False, ignore_timeout=False,
                     stdout=utils.TEE_TO_LOGS, stderr=utils.TEE_TO_LOGS,
@@ -378,6 +388,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         if shell:
             cmd += '%s ' % SHELL_CMD
         cmd += command
+
+        self._log_adb_pid()
 
         if verbose:
             logging.debug('Command: %s', cmd)
