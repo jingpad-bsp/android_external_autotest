@@ -713,19 +713,6 @@ class ParamikoPackage(ExternalPackage):
         return True
 
 
-class RequestsPackage(ExternalPackage):
-    """requests package"""
-    version = '0.11.2'
-    local_filename = 'requests-%s.tar.gz' % version
-    urls = ('http://pypi.python.org/packages/source/r/requests/' +
-            local_filename,)
-    hex_sum = '00a49e8bd6dd8955acf6f6269d1b85f50c70b712'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_setup_py)
-
-
 class JsonRPCLib(ExternalPackage):
     """jsonrpclib package"""
     version = '0.1.3'
