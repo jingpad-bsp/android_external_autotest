@@ -4,6 +4,8 @@
 import unittest
 
 import common
+from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock
 
@@ -190,6 +192,56 @@ class LaunchControlBuildParseUnittest(unittest.TestCase):
                 (None, None): 'target'}
         for result, target in target_tests.items():
             self.assertEqual(result, utils.parse_launch_control_target(target))
+
+
+class GetOffloaderUriTest(unittest.TestCase):
+    """Test get_offload_gsuri function."""
+    _IMAGE_STORAGE_SERVER = 'gs://test_image_bucket'
+
+    def test_get_default_lab_offload_gsuri(self):
+        """Test default lab offload gsuri ."""
+        god = mock.mock_god()
+        god.mock_up(utils.CONFIG, 'CONFIG')
+        god.stub_function_to_return(lsbrelease_utils, 'is_moblab', False)
+        self.assertEqual(utils.DEFAULT_OFFLOAD_GSURI,
+                utils.get_offload_gsuri())
+
+        god.check_playback()
+
+    def test_get_default_moblab_offload_gsuri(self):
+        """Test default lab offload gsuri ."""
+        god = mock.mock_god()
+        god.mock_up(utils.CONFIG, 'CONFIG')
+        god.stub_function_to_return(lsbrelease_utils, 'is_moblab', True)
+        utils.CONFIG.get_config_value.expect_call(
+                'CROS', 'image_storage_server').and_return(
+                        self._IMAGE_STORAGE_SERVER)
+        god.stub_function_to_return(site_utils, 'get_interface_mac_address',
+                'test_mac')
+        god.stub_function_to_return(site_utils, 'get_moblab_id', 'test_id')
+        expected_gsuri = '%sresults/%s/%s/' % (
+                self._IMAGE_STORAGE_SERVER, 'test_mac', 'test_id')
+        cached_gsuri = site_utils.DEFAULT_OFFLOAD_GSURI
+        site_utils.DEFAULT_OFFLOAD_GSURI = None
+        gsuri = utils.get_offload_gsuri()
+        site_utils.DEFAULT_OFFLOAD_GSURI = cached_gsuri
+        self.assertEqual(expected_gsuri, gsuri)
+
+        god.check_playback()
+
+    def test_get_moblab_offload_gsuri(self):
+        """Test default lab offload gsuri ."""
+        god = mock.mock_god()
+        god.mock_up(utils.CONFIG, 'CONFIG')
+        god.stub_function_to_return(lsbrelease_utils, 'is_moblab', True)
+        god.stub_function_to_return(site_utils, 'get_interface_mac_address',
+                'test_mac')
+        god.stub_function_to_return(site_utils, 'get_moblab_id', 'test_id')
+        gsuri = '%sresults/%s/%s/' % (
+                utils.DEFAULT_OFFLOAD_GSURI, 'test_mac', 'test_id')
+        self.assertEqual(gsuri, utils.get_offload_gsuri())
+
+        god.check_playback()
 
 
 if __name__ == "__main__":
