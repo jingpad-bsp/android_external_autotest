@@ -138,7 +138,7 @@ class android_ACTS(test.test):
         try:
             logging.debug('Running: %s', act_cmd)
             # TODO: Change below to be test_bed.teststation_host.run
-            act_result = self.test_station.run(act_cmd)
+            act_result = self.test_station.run(act_cmd, timeout=7200)
             logging.debug('ACTS Output:\n%s', act_result.stdout)
         finally:
             self.post_act_cmd(config_file, testbed_name, test_case)
