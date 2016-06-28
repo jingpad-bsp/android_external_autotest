@@ -7,7 +7,7 @@ from django.forms.util import flatatt
 from django.utils.encoding import smart_str
 from django.utils.safestring import mark_safe
 
-from autotest_lib.cli import rpc, site_host
+from autotest_lib.cli import rpc, host
 from autotest_lib.frontend import settings
 from autotest_lib.frontend.afe import model_logic, models
 
@@ -227,7 +227,7 @@ class HostAdmin(SiteAdmin):
         acls = []
 
         # Pipe to cli to perform autodetection and create host.
-        host_create_obj = site_host.site_host_create.construct_without_parse(
+        host_create_obj = shost.host_create.construct_without_parse(
                 web_server, hosts, platform,
                 locked, lock_reason, labels, acls,
                 protection)
