@@ -384,10 +384,10 @@ class WiFiClient(site_linux_system.LinuxSystem):
         logging.debug('WiFi interface is: %r',
                       self._interface.device_description)
         self._firewall_rules = []
-        # Turn off powersave mode by default.
-        self.powersave_switch(False)
         # All tests that use this object assume the interface starts enabled.
         self.set_device_enabled(self._wifi_if, True)
+        # Turn off powersave mode by default.
+        self.powersave_switch(False)
         # Invoke the |capabilities| property defined in the parent |Linuxsystem|
         # to workaround the lazy loading of the capabilities cache and supported
         # frequency list. This is needed for tests that may need access to these
