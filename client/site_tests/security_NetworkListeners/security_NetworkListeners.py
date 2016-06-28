@@ -26,7 +26,9 @@ _LSOF_SIZE_OFF = 6
 _LSOF_NODE = -3
 _LSOF_NAME = -2
 
-
+# Open ports on ARC-enabled test firmwares are different from the non-ARC case
+# These files provide a whitelist of services expected to listen in each case
+# (ARC and non-ARC)
 _BASELINE_DEFAULT_NAME = 'baseline'
 _BASELINE_ARC_NAME = 'baseline.arc'
 
@@ -134,4 +136,4 @@ class security_NetworkListeners(test.test):
 
             # Only fail if there's unexpected listeners.
             if new_listeners:
-                raise error.TestFail('Baseline mismatch')
+                raise error.TestFail('Found unexpected network listeners')
