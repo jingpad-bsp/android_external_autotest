@@ -8,6 +8,7 @@ cd $SCRIPT_DIR/..
 . contrib/inventory_options
 
 # Let's balance out the pools for the deputies before sending the eMail.
-site_utils/balance_pools.py --all-boards all_critical_pools
+BALANCE_POOL_LOG=balance_pool.log.$(date +%Y-%m-%d)
+site_utils/balance_pools.py --all-boards all_critical_pools &> logs/dut-data/$BALANCE_POOL_LOG
 
 site_utils/lab_inventory.py $OPTIONS "${BOARD_NOTIFY[@]}" "${POOL_NOTIFY[@]}"
