@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import datetime
+import errno
 import functools
 import logging
 import os
@@ -129,6 +130,9 @@ PROPERTY_VALUE_TRUE = '1'
 # Timeout used for retrying installing apk. After reinstall apk failed, we try
 # to reboot the device and try again.
 APK_INSTALL_TIMEOUT_MIN = 5
+
+# Directory where Brillo stores crash logs for native (non-Java) crashes.
+BRILLO_NATIVE_CRASH_LOG_DIR = '/data/misc/crash_reporter/crash'
 
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
@@ -449,6 +453,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self.is_up():
             self._sync_time()
+            self._enable_native_crash_logging()
 
 
     def run(self, command, timeout=3600, ignore_status=False,
@@ -770,6 +775,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self.teststation.run('rm -rf %s' % tmp_dir)
         except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
             logging.warn('failed to remove dir %s: %s', tmp_dir, e)
+
+        self._collect_crash_logs()
 
 
     def close(self):
@@ -1698,3 +1705,55 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             command += datetime.datetime.now().strftime('%m%d%H%M%Y.%S')
         self.run(command, timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
                  ignore_timeout=True)
+
+
+    def _enable_native_crash_logging(self):
+        """Enable native (non-Java) crash logging.
+
+        Currently only supported on Brillo devices.
+        """
+        if self._os_type != OS_TYPE_BRILLO:
+            return
+
+        self.run('touch /data/misc/metrics/enabled',
+                 timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                 ignore_timeout=True)
+        # If running, crash_sender will delete crash files every hour.
+        self.run('stop crash_sender',
+                 timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                 ignore_timeout=True)
+
+
+    def _collect_crash_logs(self):
+        """Copies crash log files from the DUT to the drone.
+
+        Currently only supported on Brillo devices.
+        """
+        if self.get_os_type() != OS_TYPE_BRILLO:
+            return
+
+        files = None
+        try:
+            result = self.run('ls %s' % BRILLO_NATIVE_CRASH_LOG_DIR,
+                              timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS)
+            files = result.stdout.strip().split()
+        except (error.AutotestHostRunError, error.AutoservRunError,
+                error.AutoservSSHTimeout, error.CmdTimeoutError):
+            logging.debug('Unable to ls %s, unable to find crash logs',
+                          BRILLO_NATIVE_CRASH_LOG_DIR)
+        if not files:
+            logging.debug('There are no Brillo crash logs.')
+            return
+
+        crash_dir = os.path.join(self.job.resultdir, 'crash')
+        try:
+            os.mkdir(crash_dir)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise e
+
+        for f in files:
+            logging.debug('Brillo native crash file produced: %s', f)
+            source = os.path.join(BRILLO_NATIVE_CRASH_LOG_DIR, f)
+            dest = os.path.join(crash_dir, f)
+            self.get_file(source=source, dest=dest)
