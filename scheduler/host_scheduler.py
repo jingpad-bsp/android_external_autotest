@@ -62,6 +62,9 @@ import time
 import common
 from autotest_lib.frontend import setup_django_environment
 
+from chromite.lib import metrics
+from chromite.lib import ts_mon_config
+
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
@@ -340,6 +343,7 @@ class HostScheduler(BaseHostScheduler):
         autotest_stats.Gauge(key).send('new_jobs_without_hosts',
                                        len(unverified_host_jobs) -
                                        new_jobs_with_hosts)
+        metrics.Counter('chromeos/autotest/host_scheduler/tick').increment()
 
 
     @_timer.decorate
@@ -478,6 +482,8 @@ def main():
 
         # Start the thread to report metadata.
         metadata_reporter.start()
+
+        ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler')
 
         host_scheduler = HostScheduler()
         minimum_tick_sec = global_config.global_config.get_config_value(
