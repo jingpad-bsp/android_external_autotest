@@ -21,7 +21,7 @@ for software decode on all devices and hardware decode on those devices with
 hardware acceleration support.
 """
 
-VIDEO_NAME = 'traffic-1920x1080-83a1e5f8b7944577425f039034e64c76.vp9.webm'
+VIDEO_NAME = 'traffic/traffic-1920x1080-83a1e5f8b7944577425f039034e64c76.vp9.webm'
 VIDEO_DESCRIPTION = 'vp9_1080p'
 job.run_test('video_PlaybackPerf', video_name=VIDEO_NAME,
              video_description=VIDEO_DESCRIPTION, arc_mode=ARC_MODE)
