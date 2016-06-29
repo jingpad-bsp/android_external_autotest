@@ -254,7 +254,7 @@ class RDBClientHostWrapper(RDBHost):
                           manual intervention.
         @param timestamp  Time that the status was recorded.
         """
-        fields = {'dut_host_name': self.hostname, 'board': self.board}
+        fields = {'dut_host_name': self.hostname, 'board': self.board, 'pool': ''}
         if len(self.pools) == 1:
             fields['pool'] = self.pools[0]
         self._HOST_WORKING_METRIC.set(working, fields=fields)
