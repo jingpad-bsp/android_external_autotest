@@ -19,6 +19,7 @@ import common
 from autotest_lib.frontend import setup_django_environment
 
 import django.db
+from chromite.lib import metrics
 from chromite.lib import ts_mon_config
 
 from autotest_lib.client.common_lib import control_data
@@ -386,6 +387,7 @@ class BaseDispatcher(object):
         with timer.get_client('django_db_reset_queries'):
             django.db.reset_queries()
         self._tick_count += 1
+        metrics.Counter('chromeos/autotest/scheduler/tick').increment()
 
 
     def _run_cleanup(self):
