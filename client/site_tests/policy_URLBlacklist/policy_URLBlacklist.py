@@ -42,7 +42,7 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
     BLOCKED_ERROR_MESSAGE = 'ERR_BLOCKED_BY_ADMINISTRATOR'
 
     TEST_CASES = {
-        'NotSet_Allowed': '',
+        'NotSet_Allowed': None,
         'SinglePage_Blocked': SINGLE_BLACKLISTED_FILE_DATA,
         'MultiplePages_Blocked': MULTIPLE_BLACKLISTED_FILES_DATA,
     }
@@ -125,7 +125,7 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
                                          ' by policy, but was allowed.' % url)
             elif url_is_blocked:
                 raise error.TestFail('The URL %s should have been allowed'
-                                      'by policy, but was blocked' % url)
+                                      'by policy, but was blocked.' % url)
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
