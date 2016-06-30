@@ -413,7 +413,7 @@ class AndroidXmlRpcDelegate(object):
                         wep_hex_keys.append(key)
                     else:
                         hex_key = ""
-                        for byte in bytes(key, 'utf-8'):
+                        for byte in bytearray(key, 'utf-8'):
                             hex_key += '%x' % byte
                         wep_hex_keys.append(hex_key)
                 network_config["wepKeys"] = wep_hex_keys
