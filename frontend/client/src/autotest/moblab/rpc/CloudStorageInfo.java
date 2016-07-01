@@ -109,6 +109,8 @@ public class CloudStorageInfo extends JsonRpcEntity {
     }
     if (resultStorageServer != null) {
       object.put(JSON_FIELD_RESULT_STORAGE_URL, new JSONString(resultStorageServer));
+    } else {
+      object.put(JSON_FIELD_RESULT_STORAGE_URL, new JSONString(""));
     }
     object.put(JSON_FIELD_USE_EXISTING_BOTO_FILE, JSONBoolean.getInstance(useExistingBotoFile));
     return object;

@@ -161,6 +161,25 @@ def get_interface_mac_address(interface):
     return interface_link.split()[1]
 
 
+def get_moblab_id():
+    """Gets the moblab random id.
+
+    The random id file is cached on disk. If it does not exist, a new file is
+    created the first time.
+
+    @returns the moblab random id.
+    """
+    moblab_id_filepath = '/home/moblab/.moblab_id'
+    if os.path.exists(moblab_id_filepath):
+        with open(moblab_id_filepath, 'r') as moblab_id_file:
+            random_id = moblab_id_file.read()
+    else:
+        random_id = uuid.uuid1()
+        with open(moblab_id_filepath, 'w') as moblab_id_file:
+            moblab_id_file.write('%s' % random_id)
+    return random_id
+
+
 def get_offload_gsuri():
     """Return the GSURI to offload test results to.
 
@@ -173,19 +192,18 @@ def get_offload_gsuri():
 
     @returns gsuri to offload test results to.
     """
+    # For non-moblab, use results_storage_server or default.
     if not lsbrelease_utils.is_moblab():
         return DEFAULT_OFFLOAD_GSURI
-    moblab_id_filepath = '/home/moblab/.moblab_id'
-    if os.path.exists(moblab_id_filepath):
-        with open(moblab_id_filepath, 'r') as moblab_id_file:
-            random_id = moblab_id_file.read()
-    else:
-        random_id = uuid.uuid1()
-        with open(moblab_id_filepath, 'w') as moblab_id_file:
-            moblab_id_file.write('%s' % random_id)
+
+    # For moblab, use results_storage_server or image_storage_server as bucket
+    # name and mac-address/moblab_id as path.
+    gsuri = DEFAULT_OFFLOAD_GSURI
+    if not gsuri:
+        gsuri = CONFIG.get_config_value('CROS', 'image_storage_server')
+
     return '%sresults/%s/%s/' % (
-            CONFIG.get_config_value('CROS', 'image_storage_server'),
-            get_interface_mac_address(MOBLAB_ETH), random_id)
+            gsuri, get_interface_mac_address(MOBLAB_ETH), get_moblab_id())
 
 
 # TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
