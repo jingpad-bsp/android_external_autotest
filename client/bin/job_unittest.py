@@ -1,14 +1,20 @@
 #!/usr/bin/python
 
-import logging, os, shutil, sys, time, StringIO
-import common
+import logging
+import os
+import shutil
+import StringIO
+import sys
+import time
+import unittest
 
+import common
 from autotest_lib.client.bin import job, boottool, config, sysinfo, harness
 from autotest_lib.client.bin import test, xen, kernel, utils
 from autotest_lib.client.common_lib import packages, error, log
 from autotest_lib.client.common_lib import logging_manager, logging_config
 from autotest_lib.client.common_lib import base_job_unittest
-from autotest_lib.client.common_lib.test_utils import mock, unittest
+from autotest_lib.client.common_lib.test_utils import mock
 
 
 class job_test_case(unittest.TestCase):
