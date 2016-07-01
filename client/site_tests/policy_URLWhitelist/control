@@ -4,7 +4,7 @@
 
 AUTHOR = "krishnargv"
 NAME = "policy_URLWhitelist"
-ATTRIBUTES = "suite:regression"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
@@ -18,8 +18,8 @@ client behavior. It exercises a range of policy values using three unique test
 cases, named: NotSet_Blocked, SinglePage_Allowed and MultiplePages_Allowed.
 See the test file for a full description of what each test case does.
 
-The test case shall pass if:
- - Only URLs that in the URLWhitelist policy value are allowed.
+A test case shall pass if:
+ - Only URLs that are in the URLWhitelist policy value are allowed.
  - All other URLs are blocked.
 The test case shall fail if the above behavior is not enforced.
 
