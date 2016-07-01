@@ -199,3 +199,17 @@ def get_labels(host, prefix):
     @param prefix: Prefix of label names.
     """
     return AFE.get_labels(name__startswith=prefix, host__hostname=host.hostname)
+
+
+def get_os(host):
+    """Retrieve the os for a given host from the AFE.
+
+    Contacts the AFE to retrieve the os for a given host.
+
+    @param host: Host object to get board.
+
+    @returns The os or None if it could not find it.
+    """
+    if not host_in_lab(host):
+        return None
+    return utils.get_label_from_afe(host.hostname, 'os:', AFE)
