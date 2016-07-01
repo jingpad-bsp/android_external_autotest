@@ -13,6 +13,7 @@ import autotest.moblab.rpc.CloudStorageInfo;
 import autotest.moblab.rpc.MoblabRpcCallbacks;
 import autotest.moblab.rpc.MoblabRpcHelper;
 import autotest.moblab.rpc.OperationStatus;
+import autotest.common.ui.ToolTip;
 
 import java.util.HashMap;
 
@@ -88,13 +89,17 @@ public class CloudStorageCard extends FlexWizardCard {
 
       // Row for result bucket url.
       row++;
-      layoutTable.setWidget(row, 0, new Label("Result Bucket URL"));
+      layoutTable.setWidget(row, 0, new Label("Result Bucket URL(optional)"));
       url = cloudStorageInfo.getResultStorageServer();
       layoutTable.setWidget(row, 1,
           createValueFieldWidget(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL, url));
       if (url != null && ConfigWizard.Mode.View == getMode()) {
         Anchor link = Utils.createGoogleStorageHttpUrlLink("link", url);
         layoutTable.setWidget(row, 2, link);
+      } else if (ConfigWizard.Mode.Edit == getMode()){
+        ToolTip tip = new ToolTip( "?",
+          "If not specicifed, Molab will use the image bucket for result uploading.");
+        layoutTable.setWidget(row, 2, tip);
       }
 
       if (ConfigWizard.Mode.Edit == getMode()) {
@@ -131,10 +136,9 @@ public class CloudStorageCard extends FlexWizardCard {
     cloudStorageInfo.setResultStorageServer(
         getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL));
     // Image bucket and result bucket can not be empty.
-    if (cloudStorageInfo.getImageStorageServer() == null
-        || cloudStorageInfo.getResultStorageServer() == null) {
+    if (cloudStorageInfo.getImageStorageServer() == null) {
       callback.onValidationStatus(
-          new OperationStatus(false, "The bucket URL fields could not be empty"));
+          new OperationStatus(false, "The image bucket URL fields could not be empty"));
       return;
     }
 
