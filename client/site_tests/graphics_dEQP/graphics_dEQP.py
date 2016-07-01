@@ -57,7 +57,7 @@ class graphics_dEQP(test.test):
         self._gpu_type = utils.get_gpu_family()
         # Determine which executable should be run. Right now never egl.
         major, minor = graphics_utils.get_gles_version()
-        logging.info('Found gles%d.%d.' % (major, minor))
+        logging.info('Found gles%d.%d.', (major, minor))
         if major is None or minor is None:
             raise error.TestError(
                 'Could not get gles version information (%d, %d).' %
@@ -208,9 +208,7 @@ class graphics_dEQP(test.test):
                   timeout=60,
                   stderr_is_expected=False,
                   ignore_status=False,
-                  stdin=None,
-                  stdout_tee=utils.TEE_TO_LOGS,
-                  stderr_tee=utils.TEE_TO_LOGS)
+                  stdin=None)
 
         # Now read this caselist file.
         caselist_name = '%s-cases.txt' % test_filter.split('.')[0]
@@ -310,7 +308,7 @@ class graphics_dEQP(test.test):
                 result = 'Skipped'
                 logging.info('Skipping on %s: %s', self._gpu_type, test_case)
             else:
-                logging.info('Running single: %s', command)
+                logging.debug('Running single: %s', command)
                 # Must initialize because some errors don't repopulate
                 # run_result, leaving old results.
                 run_result = {}
@@ -319,9 +317,7 @@ class graphics_dEQP(test.test):
                     run_result = utils.run(command,
                                            timeout=self._timeout,
                                            stderr_is_expected=False,
-                                           ignore_status=True,
-                                           stdout_tee=utils.TEE_TO_LOGS,
-                                           stderr_tee=utils.TEE_TO_LOGS)
+                                           ignore_status=True)
                     result_counts = self._parse_test_results(log_file)
                     if result_counts:
                         result = result_counts.keys()[0]
@@ -430,9 +426,7 @@ class graphics_dEQP(test.test):
                               timeout=batch_timeout,
                               stderr_is_expected=False,
                               ignore_status=False,
-                              stdin=batch_cases,
-                              stdout_tee=utils.TEE_TO_LOGS,
-                              stderr_tee=utils.TEE_TO_LOGS)
+                              stdin=batch_cases)
                 except Exception:
                     pass
                 # We are trying to handle all errors by parsing the log file.
