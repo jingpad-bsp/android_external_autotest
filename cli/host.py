@@ -358,6 +358,20 @@ class BaseHostModCreate(host):
                                help='Sets the platform label')
 
 
+    def _scrub(self, raw_attribute):
+        """
+        Helper method to scrub out backslashes.
+
+        The host attributes can use backslashes to escape the comma delimitter.
+        We want to scrub them out though.
+
+        @param raw_attribute: String to be scrubbed.
+
+        @returns String that has been removed of the backslashes.
+        """
+        return raw_attribute.replace('\\,', ',')
+
+
     def parse(self):
         """Consume the options common to host create and host mod.
         """
@@ -386,10 +400,12 @@ class BaseHostModCreate(host):
             for m in re.finditer(self.attr_split_regex, options.attributes):
                 # The first char of the match must be included because it is
                 # the char before the delimitter
-                groups.append(options.attributes[last_end:m.start()+1])
+                groups.append(
+                    self._scrub(options.attributes[last_end:m.start()+1]))
                 last_end = m.end()
             if options.attributes[last_end:]:
-                groups.append(options.attributes[last_end:])
+                groups.append(
+                    self._scrub(options.attributes[last_end:]))
 
             # Process pairs of attributes
             for group in groups:

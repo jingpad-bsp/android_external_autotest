@@ -1376,6 +1376,16 @@ class host_mod_create_tests(object):
                      rpcs=rpcs, out_words_ok=out)
 
 
+    def test_attributes_escape_comma(self):
+        """Test setting an attribute with an escaped comma in the value."""
+        attrs = {'foo': 'bar,zip'}
+        s_attrs = ','.join(['='.join((k,v.replace(',', '\\,')))
+                                     for k,v in attrs.items()])
+        rpcs, out = self._gen_expectations(attributes=attrs)
+        self.run_cmd(self._command_single + ['--attributes', s_attrs],
+                     rpcs=rpcs, out_words_ok=out)
+
+
     def test_multiple_attributes_multiple_hosts(self):
         """Test applying multiple attributes to multiple hosts."""
         attrs = {'foo': 'bar', 'baz': 'zip'}
