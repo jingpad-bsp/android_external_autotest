@@ -1,9 +1,10 @@
-#pylint: disable-msg=C0111
 #!/usr/bin/python
+#pylint: disable-msg=C0111
 
 import datetime
-import common
+import unittest
 
+import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models, rpc_interface, frontend_test_utils
@@ -13,7 +14,6 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.test_utils import mock
-from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.server import frontend
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers

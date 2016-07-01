@@ -5,10 +5,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import common
+import unittest
 
+import common
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.frontend.afe import models
@@ -131,4 +131,7 @@ class ShardClientIntegrationTest(rdb_testing_utils.AbstractBaseRDBTester,
         models.User.deserialize(serialized_user)
         models.User.objects.get(login='new_user')
 
+
+if __name__ == '__main__':
+    unittest.main()
 
