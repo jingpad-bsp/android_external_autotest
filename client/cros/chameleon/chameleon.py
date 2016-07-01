@@ -630,6 +630,41 @@ class ChameleonVideoInput(ChameleonPort):
         return fps_list
 
 
+    def search_fps_pattern(self, pattern_diff_frame, pattern_window=None,
+                           time_to_start=0):
+        """Search the captured frames and return the time where FPS is greater
+        than given FPS pattern.
+
+        A FPS pattern is described as how many different frames in a sliding
+        window. For example, 5 differnt frames in a window of 60 frames.
+
+        @param pattern_diff_frame: number of different frames for the pattern.
+        @param pattern_window: number of frames for the sliding window. Default
+                               is 1 second.
+        @param time_to_start: time in second, support floating number,
+                              start to search from the given time.
+        @return: the time matching the pattern. -1.0 if not found.
+
+        """
+        if pattern_window is None:
+            pattern_window = self._FRAME_RATE
+
+        checksums = self.get_captured_checksums()
+
+        frame_to_start = int(round(time_to_start * self._FRAME_RATE))
+        first_checksum = checksums[frame_to_start]
+
+        for i in xrange(frame_to_start + 1, len(checksums) - pattern_window):
+            unique_count = 0
+            for j in xrange(i, i + pattern_window):
+                if j == 0 or checksums[j] != checksums[j - 1]:
+                    unique_count += 1
+            if unique_count >= pattern_diff_frame:
+                return float(i) / self._FRAME_RATE
+
+        return -1.0
+
+
     def get_captured_resolution(self):
         """
         @return: (width, height) tuple, the resolution of captured frames.
