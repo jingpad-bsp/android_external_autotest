@@ -58,6 +58,8 @@ class touch_playback_test_base(test.test):
         self._autotest_ext = None
         self._has_inputcontrol = os.path.isfile(self._INPUTCONTROL)
         self._platform = utils.get_board()
+        if 'cheets' in self._platform:
+            self._platform = self._platform[:-len('-cheets')]
 
 
     def _find_test_files(self, input_type, gestures):
@@ -446,10 +448,7 @@ class EventsPage(TestPage):
         @param is_vertical: True for vertical scrolling; False for horizontal.
 
         """
-        if is_vertical:
-            axis = 'y'
-        else:
-            axis = 'x'
+        axis = 'y' if is_vertical else 'x'
         return self._tab.EvaluateJavaScript('netScrollDelta.%s' % axis)
 
 
