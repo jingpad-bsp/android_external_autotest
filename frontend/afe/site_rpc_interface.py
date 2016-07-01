@@ -548,7 +548,8 @@ def get_cloud_storage_info():
     value =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
     if value is not None:
         cloud_storage_info[_IMAGE_STORAGE_SERVER] = value
-    value =_CONFIG.get_config_value('CROS', _RESULT_STORAGE_SERVER)
+    value = _CONFIG.get_config_value('CROS', _RESULT_STORAGE_SERVER,
+            default=None)
     if value is not None:
         cloud_storage_info[_RESULT_STORAGE_SERVER] = value
 
@@ -656,7 +657,8 @@ def _validate_cloud_storage_info(cloud_storage_info):
             valid, details = _is_valid_bucket_url(
                 key_id, key_secret, cloud_storage_info[_IMAGE_STORAGE_SERVER])
 
-        if valid:
+        # allows result bucket to be empty.
+        if valid and cloud_storage_info[_RESULT_STORAGE_SERVER]:
             valid, details = _is_valid_bucket_url(
                 key_id, key_secret, cloud_storage_info[_RESULT_STORAGE_SERVER])
     return (valid, details)
