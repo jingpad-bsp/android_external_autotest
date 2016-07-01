@@ -16,10 +16,10 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
     verify that the websites not in the URLWhitelist policy value are blocked.
 
     Two TEST_CASES (SinglePage_Allowed, MultiplePages_Allowed) are designed to
-    verify that a website is allowed regardless of whether a SINGLE webpage is
-    specified in the URLWhitelist policy, or if MULTIPLE webpages are
-    specified. The third TEST_CASE (NotSet_Blocked) is designed to verify that
-    all websites are blocked since the URLWhitelistlist policy is set to None.
+    verify that a website is allowed regardless of whether a single webpage is
+    specified in the URLWhitelist policy, or multiple webpages are specified.
+    The third TEST_CASE (NotSet_Blocked) is designed to verify that all
+    websites are blocked since the URLWhitelistlist policy is set to None.
 
     The test case shall pass if the URLs that are part of the URLWhitelist
     policy value are allowed. The test case shall also pass if the URLs that
@@ -43,7 +43,7 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
     BLOCKED_ERROR_MESSAGE = 'ERR_BLOCKED_BY_ADMINISTRATOR'
 
     TEST_CASES = {
-        'NotSet_Blocked': '',
+        'NotSet_Blocked': None,
         'SinglePage_Allowed': SINGLE_WHITELISTED_FILE_DATA,
         'MultiplePages_Allowed': MULTIPLE_WHITELISTED_FILES_DATA
     }
@@ -128,11 +128,11 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
                 elif url not in policy_value and not url_is_blocked:
                     raise error.TestFail('The URL %s should have been '
                                          'blocked by policy, but it '
-                                         'was allowed' % url)
+                                         'was allowed.' % url)
 
             elif not url_is_blocked:
                 raise error.TestFail('The URL %s should have been blocked'
-                                      'by policy, but it was allowed' % url)
+                                      'by policy, but it was allowed.' % url)
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.

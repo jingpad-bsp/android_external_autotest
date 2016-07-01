@@ -4,7 +4,7 @@
 
 AUTHOR = "scunningham"
 NAME = "policy_ImagesAllowedForUrls"
-ATTRIBUTES = "suite:regression"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "enterprise"
@@ -25,16 +25,6 @@ A test shall fail if the browser blocks images on a page where they should be
 allowed to be shown, or allows images to be shown on a page where they should
 be blocked.
 
-Usage example:
-$ test_that <IPAddress> ImagesAllowedForUrls --args="mode=single
-case=1Url_Allowed env=dm-test dms_name=xot-dmst username=test@crosprqa1.com
-password=test1234"
-
-Runs a single test case (e.g., 1Url_Allowed) against a device with the
-specified IP address, using the DM Test environment with the given DM Server
-name, and signing in to the device with the given username and password.
-
 """
 
 job.run_test("policy_ImagesAllowedForUrls", args=args)
-
