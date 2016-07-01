@@ -1,12 +1,14 @@
 #!/usr/bin/python
 
-import gc, time
+import gc
+import time
+import unittest
+
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
-from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task

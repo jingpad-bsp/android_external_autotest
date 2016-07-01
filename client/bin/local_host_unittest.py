@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 import os
-import common
+import unittest
 
-from autotest_lib.client.common_lib.test_utils import mock, unittest
+import common
+from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib import autotemp
 from autotest_lib.client.bin import local_host
 
@@ -98,7 +99,7 @@ class test_local_host_class(unittest.TestCase):
         open(files[0], 'w').close()
         open(files[1], 'w').close()
 
-        self.assertSameElements(
+        self.assertItemsEqual(
                 files,
                 host.list_files_glob(os.path.join(self.tmpdir.name, '*')))
 
@@ -114,7 +115,7 @@ class test_local_host_class(unittest.TestCase):
 
         # test that when the symlinks point to already know files
         # nothing is added
-        self.assertSameElements(
+        self.assertItemsEqual(
                 [fname, sname],
                 host.symlink_closure([fname, sname]))
 
@@ -129,7 +130,7 @@ class test_local_host_class(unittest.TestCase):
         os.symlink(fname, sname)
 
         # test that when the symlinks point to unknown files they are added
-        self.assertSameElements(
+        self.assertItemsEqual(
                 [fname, sname],
                 host.symlink_closure([sname]))
 
