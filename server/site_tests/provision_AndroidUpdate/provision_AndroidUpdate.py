@@ -8,7 +8,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
-from autotest_lib.server.hosts import adb_host
 
 
 _CONFIG = global_config.global_config
@@ -74,17 +73,15 @@ class provision_AndroidUpdate(test.test):
                             'Host already running %s' % value)
             return
 
-        os_type = None
+        os_type = afe_utils.get_os(host)
         board = afe_utils.get_board(host)
-        if board:
-            logging.debug('Host %s is board type: %s', host, board)
-            if adb_host.OS_TYPE_BRILLO in board:
-                os_type = adb_host.OS_TYPE_BRILLO
-            else:
-                os_type = adb_host.OS_TYPE_ANDROID
+        logging.debug('Host %s is board type: %s', host, board)
 
         if repair:
-            board=board.split('-')[-1]
+            # TODO(kevcheng): remove the board.split() line when all android
+            # devices have their board label updated to have no android in
+            # there.
+            board = board.split('-')[-1]
             value = afe_utils.get_stable_version(board=board, android=True)
             if not value:
                 raise error.TestFail('No stable version assigned for board: '
