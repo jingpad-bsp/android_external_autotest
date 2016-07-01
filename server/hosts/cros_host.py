@@ -302,7 +302,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # process of servo and servo_host initialization.
         # crbug.com/298432
         self._servo_host =  servo_host.create_servo_host(
-                dut=self.hostname, servo_args=servo_args,
+                dut=self, servo_args=servo_args,
                 try_lab_servo=try_lab_servo)
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = chameleon_host.create_chameleon_host(
@@ -1025,7 +1025,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             # Setting servo_args to {} will force it to create the servo_host
             # object if possible.
             self._servo_host = servo_host.create_servo_host(
-                    dut=self.hostname, servo_args={})
+                    dut=self, servo_args={})
             if self._servo_host:
                 self.servo = self._servo_host.get_servo()
             else:
@@ -1094,7 +1094,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # can be repaired by PoE.
         if not self._servo_host:
             self._servo_host =  servo_host.create_servo_host(
-                    dut=self.hostname, servo_args=None, try_lab_servo=True,
+                    dut=self, servo_args=None, try_lab_servo=True,
                     skip_host_up_check=True)
 
         if self._servo_host and not self.servo:
