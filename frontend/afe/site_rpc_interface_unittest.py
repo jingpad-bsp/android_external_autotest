@@ -422,7 +422,8 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         config_mock.get_config_value(
             'CROS', 'image_storage_server').AndReturn('gs://bucket1')
         config_mock.get_config_value(
-            'CROS', 'results_storage_server').AndReturn('gs://bucket2')
+            'CROS', 'results_storage_server', default=None).AndReturn(
+                    'gs://bucket2')
         self.mox.StubOutWithMock(site_rpc_interface, '_get_boto_config')
         site_rpc_interface._get_boto_config().AndReturn(config_mock)
         config_mock.sections().AndReturn(['Credentials', 'b'])
