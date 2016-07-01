@@ -6,17 +6,17 @@ Mostly test if the serialized object has the expected content.
 
 """
 
-import common
 import datetime
 import os
 import re
 import tempfile
 import time
+import unittest
 
+import common
 from autotest_lib.tko import tko_pb2
 from autotest_lib.tko import job_serializer
 from autotest_lib.tko import models
-from autotest_lib.client.common_lib.test_utils import unittest
 
 NamedTemporaryFile = tempfile.NamedTemporaryFile
 datetime = datetime.datetime

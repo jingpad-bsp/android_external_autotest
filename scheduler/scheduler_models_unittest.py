@@ -2,12 +2,13 @@
 #pylint: disable-msg=C0111
 
 import datetime
+import unittest
+
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
 from autotest_lib.client.common_lib import host_queue_entry_states
 from autotest_lib.client.common_lib.test_utils import mock
-from autotest_lib.client.common_lib.test_utils import unittest
 from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models, model_attributes
 from autotest_lib.scheduler import monitor_db
