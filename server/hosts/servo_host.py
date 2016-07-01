@@ -67,39 +67,6 @@ class ServoHostRepairTotalFailure(ServoHostException):
     pass
 
 
-def make_servo_hostname(dut_hostname):
-    """Given a DUT's hostname, return the hostname of its servo.
-
-    @param dut_hostname: hostname of a DUT.
-
-    @return hostname of the DUT's servo.
-
-    """
-    host_parts = dut_hostname.split('.')
-    host_parts[0] = host_parts[0] + '-servo'
-    return '.'.join(host_parts)
-
-
-def servo_host_is_up(servo_hostname):
-    """
-    Given a servo host name, return if it's up or not.
-
-    @param servo_hostname: hostname of the servo host.
-
-    @return True if it's up, False otherwise
-    """
-    # Technically, this duplicates the SSH ping done early in the servo
-    # proxy initialization code.  However, this ping ends in a couple
-    # seconds when if fails, rather than the 60 seconds it takes to decide
-    # that an SSH ping has timed out.  Specifically, that timeout happens
-    # when our servo DNS name resolves, but there is no host at that IP.
-    logging.info('Pinging servo host at %s', servo_hostname)
-    ping_config = ping_runner.PingConfig(
-            servo_hostname, count=3,
-            ignore_result=True, ignore_status=True)
-    return ping_runner.PingRunner().ping(ping_config).received > 0
-
-
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
 
@@ -726,80 +693,153 @@ class ServoHost(ssh_host.SSHHost):
         return self._servo
 
 
+def make_servo_hostname(dut_hostname):
+    """Given a DUT's hostname, return the hostname of its servo.
+
+    @param dut_hostname: hostname of a DUT.
+
+    @return hostname of the DUT's servo.
+
+    """
+    host_parts = dut_hostname.split('.')
+    host_parts[0] = host_parts[0] + '-servo'
+    return '.'.join(host_parts)
+
+
+def servo_host_is_up(servo_hostname):
+    """
+    Given a servo host name, return if it's up or not.
+
+    @param servo_hostname: hostname of the servo host.
+
+    @return True if it's up, False otherwise
+    """
+    # Technically, this duplicates the SSH ping done early in the servo
+    # proxy initialization code.  However, this ping ends in a couple
+    # seconds when if fails, rather than the 60 seconds it takes to decide
+    # that an SSH ping has timed out.  Specifically, that timeout happens
+    # when our servo DNS name resolves, but there is no host at that IP.
+    logging.info('Pinging servo host at %s', servo_hostname)
+    ping_config = ping_runner.PingConfig(
+            servo_hostname, count=3,
+            ignore_result=True, ignore_status=True)
+    return ping_runner.PingRunner().ping(ping_config).received > 0
+
+
+def _get_standard_servo_args(dut_host):
+    """
+    Return servo data associated with a given DUT.
+
+    This checks for the presence of servo host and port attached to the
+    given `dut_host`.  This data should be stored in the
+    `host_attributes` field in the provided `dut_host` parameter.
+
+    @param dut_host   Instance of `Host` on which to find the servo
+                      attributes.
+    @return A tuple of `servo_args` dict with host and an option port,
+            plus an `is_in_lab` flag indicating whether this in the CrOS
+            test lab, or some different environment.
+    """
+    servo_args = None
+    is_in_lab = False
+    is_ssp_moblab = False
+    if utils.is_in_container():
+        is_moblab = _CONFIG.get_config_value(
+                'SSP', 'is_moblab', type=bool, default=False)
+        is_ssp_moblab = is_moblab
+    else:
+        is_moblab = utils.is_moblab()
+    attrs = dut_host.host_attributes
+    if attrs and SERVO_HOST_ATTR in attrs:
+        servo_host = attrs[SERVO_HOST_ATTR]
+        if (is_ssp_moblab and servo_host in ['localhost', '127.0.0.1']):
+            servo_host = _CONFIG.get_config_value(
+                    'SSP', 'host_container_ip', type=str, default=None)
+        servo_args = {SERVO_HOST_ATTR: servo_host}
+        if SERVO_PORT_ATTR in attrs:
+            servo_args[SERVO_PORT_ATTR] = attrs[SERVO_PORT_ATTR]
+        is_in_lab = (not is_moblab
+                     and utils.host_is_in_lab_zone(servo_host))
+
+    # TODO(jrbarnette):  This test to use the default lab servo hostname
+    # is a legacy that we need only until every host in the DB has
+    # proper attributes.
+    elif (not is_moblab and
+            not dnsname_mangler.is_ip_address(dut_host.hostname)):
+        servo_host = make_servo_hostname(dut_host.hostname)
+        is_in_lab = utils.host_is_in_lab_zone(servo_host)
+        if is_in_lab:
+            servo_args = {SERVO_HOST_ATTR: servo_host}
+    return servo_args, is_in_lab
+
+
 def create_servo_host(dut, servo_args, try_lab_servo=False,
                       skip_host_up_check=False):
-    """Create a ServoHost object.
+    """
+    Create a ServoHost object for a given DUT, if appropriate.
 
-    The `servo_args` parameter is a dictionary specifying optional
-    Servo client parameter overrides (i.e. a specific host or port).
-    When specified, the caller requires that an exception be raised
-    unless both the ServoHost and the Servo are successfully
-    created.
+    This function attempts to create a `ServoHost` object for a servo
+    connected to the given `dut`.  The function distinguishes these
+    cases:
+      * No servo parameters for the DUT can be determined.  No servo
+        host is created.
+      * The servo host should be created if parameters can be
+        determined.
+      * The servo host should not be created even if parameters are
+        known.
 
-    There are three possible cases:
-    1. If the DUT is in the Cros test lab then the ServoHost object
-       is only created for the host in the lab.  Alternate host or
-       port settings in `servo_host` will be ignored.
-    2. When not case 1., but `servo_args` is not `None`, then create
-       a ServoHost object using `servo_args`.
-    3. Otherwise, return `None`.
+    Servo parameters consist of a host name and port number, and are
+    determined from one of these sources, in order of priority:
+      * Servo attributes from the `dut` parameter take precedence over
+        all other sources of information.
+      * If a DNS entry for the servo based on the DUT hostname exists in
+        the CrOS lab network, that hostname is used with the default
+        port.
+      * If no other options are found, the parameters will be taken
+        from a `servo_args` dict passed in from the caller.
 
-    When the `try_lab_servo` parameter is false, it indicates that a
-    ServoHost should not be created for a device in the Cros test
-    lab.  The setting of `servo_args` takes precedence over the
-    setting of `try_lab_servo`.
+    A servo host object will be created if servo parameters can be
+    determined and any of the following criteria are met:
+      * The `servo_args` parameter was not `None`.
+      * The `skip_host_up_check` parameter is true.
+      * The `try_lab_servo` parameter is true, and the specified
+        servo host responds to ping.
 
-    @param dut: host name of the host that servo connects. It can be used to
-                lookup the servo in test lab using naming convention.
-    @param servo_args: A dictionary that contains args for creating
-                       a ServoHost object,
-                       e.g. {'servo_host': '172.11.11.111',
-                             'servo_port': 9999}.
-                       See comments above.
-    @param try_lab_servo: Boolean. Whether to create ServoHost for a device
-                          in test lab. See above.
-    @param skip_host_up_check: True to skip the check of if servo host is
-            pingable when creating the ServoHost object. This can be used when
-            creating a servo host object to be repaired by PoE. Default is False
+    The servo host will be checked via `verify()` at the time of
+    creation.  Failures are ignored unless the `servo_args` parameter
+    was not `None`.  In that case:
+      * If the servo appears to be in the test lab, an attempt will
+        be made to repair it.
+      * If the error isn't repaired, the exception from `verify()` will
+        be passed back to the caller.
+
+    @param dut            An instance of `Host` from which to take
+                          servo parameters (if available).
+    @param servo_args     A dictionary with servo parameters to use if
+                          they can't be found from `dut`.  If this
+                          argument is supplied, unrepaired exceptions
+                          from `verify()` will be passed back to the
+                          caller.
+    @param try_lab_servo  If not true, servo host creation will be
+                          skipped unless otherwise required by the
+                          caller.
+    @param skip_host_up_check  If true, do not check whether the host
+                          responds to ping.
 
     @returns: A ServoHost object or None. See comments above.
 
     """
     required_by_test = servo_args is not None
-    if not utils.is_in_container():
-        is_moblab = utils.is_moblab()
-    else:
-        is_moblab = _CONFIG.get_config_value(
-                'SSP', 'is_moblab', type=bool, default=False)
-    if not is_moblab:
-        dut_is_hostname = not dnsname_mangler.is_ip_address(dut)
-        if dut_is_hostname:
-            lab_servo_hostname = make_servo_hostname(dut)
-            is_in_lab = utils.host_is_in_lab_zone(lab_servo_hostname)
-        else:
-            is_in_lab = False
-    else:
-        # Servos on Moblab are not in the actual lab.
-        is_in_lab = False
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        hosts = afe.get_hosts(hostname=dut)
-        if hosts and SERVO_HOST_ATTR in hosts[0].attributes:
-            servo_args = {}
-            servo_args[SERVO_HOST_ATTR] = hosts[0].attributes[SERVO_HOST_ATTR]
-            servo_args[SERVO_PORT_ATTR] = hosts[0].attributes.get(
-                    SERVO_PORT_ATTR, 9999)
-            if (utils.is_in_container() and
-                servo_args[SERVO_HOST_ATTR] in ['localhost', '127.0.0.1']):
-                servo_args[SERVO_HOST_ATTR] = _CONFIG.get_config_value(
-                        'SSP', 'host_container_ip', type=str, default=None)
-
-    if not is_in_lab:
-        if not required_by_test:
-            return None
-        return ServoHost(required_by_test=True, is_in_lab=False, **servo_args)
-    elif ((servo_args is not None or try_lab_servo)
-          and (skip_host_up_check or servo_host_is_up(lab_servo_hostname))):
-        return ServoHost(servo_host=lab_servo_hostname, is_in_lab=is_in_lab,
-                         required_by_test=required_by_test)
+    is_in_lab = False
+    if try_lab_servo or required_by_test:
+        servo_args_override, is_in_lab = _get_standard_servo_args(dut)
+        if servo_args_override is not None:
+            servo_args = servo_args_override
+    if servo_args is None:
+        return None
+    if (required_by_test or skip_host_up_check
+            or servo_host_is_up(servo_args[SERVO_HOST_ATTR])):
+        return ServoHost(required_by_test=required_by_test,
+                         is_in_lab=is_in_lab, **servo_args)
     else:
         return None
