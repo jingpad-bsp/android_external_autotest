@@ -245,6 +245,30 @@ class test(object):
 
 
     @staticmethod
+    def _parse_keyval(job_dir, sub_keyval_path):
+        """
+        Parse a file of keyvals.
+
+        @param job_dir: The string directory name of the associated job.
+        @param sub_keyval_path: Path to a keyval file relative to job_dir.
+
+        @return A dictionary representing the keyvals.
+
+        """
+        # The "real" job dir may be higher up in the directory tree.
+        job_dir = tko_utils.find_toplevel_job_dir(job_dir)
+        if not job_dir:
+            return {}  # We can't find a top-level job dir with job keyvals.
+
+        # The keyval is <job_dir>/`sub_keyval_path` if it exists.
+        keyval_path = os.path.join(job_dir, sub_keyval_path)
+        if os.path.isfile(keyval_path):
+            return utils.read_keyval(keyval_path)
+        else:
+            return {}
+
+
+    @staticmethod
     def parse_host_keyval(job_dir, hostname):
         """
         Parse host keyvals.
@@ -255,17 +279,23 @@ class test(object):
         @return A dictionary representing the host keyvals.
 
         """
-        # The "real" job dir may be higher up in the directory tree.
-        job_dir = tko_utils.find_toplevel_job_dir(job_dir)
-        if not job_dir:
-            return {}  # We can't find a top-level job dir with host keyvals.
+        # The host keyval is <job_dir>/host_keyvals/<hostname> if it exists.
+        return test._parse_keyval(job_dir,
+                                  os.path.join('host_keyvals', hostname))
 
-        # The keyval is <job_dir>/host_keyvals/<hostname> if it exists.
-        keyval_path = os.path.join(job_dir, 'host_keyvals', hostname)
-        if os.path.isfile(keyval_path):
-            return utils.read_keyval(keyval_path)
-        else:
-            return {}
+
+    @staticmethod
+    def parse_job_keyval(job_dir):
+        """
+        Parse job keyvals.
+
+        @param job_dir: The string directory name of the associated job.
+
+        @return A dictionary representing the job keyvals.
+
+        """
+        # The job keyval is <job_dir>/keyval if it exists.
+        return test._parse_keyval(job_dir, 'keyval')
 
 
 class patch(object):
