@@ -1,10 +1,14 @@
 #!/usr/bin/python
 
-import os, stat, tempfile, shutil, logging, tempfile
+import logging
+import os
+import shutil
+import stat
+import tempfile
+import unittest
 
 import common
 from autotest_lib.client.common_lib import base_job, error
-from autotest_lib.client.common_lib.test_utils import unittest
 
 
 class stub_job_directory(object):
