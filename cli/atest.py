@@ -22,6 +22,9 @@ import common
 from autotest_lib.cli import topic_common
 from autotest_lib.server import utils
 
+# Topics that no longer user site_ files
+MERGED_TOPICS = ['host']
+
 
 def main():
     """
@@ -55,6 +58,10 @@ def main():
     ignore_site = '--ignore_site_file' in sys.argv
     if ignore_site:
         sys.argv.remove('--ignore_site_file')
+
+    # Ignore site logic for topics that have been merged
+    # TODO(jgiorgi): remove all site logic and this hack
+    ignore_site = ignore_site or topic in MERGED_TOPICS
 
     # Import the topic specific file
     cli_dir = os.path.abspath(os.path.dirname(__file__))
