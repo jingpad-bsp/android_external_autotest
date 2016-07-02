@@ -129,6 +129,23 @@ class platform_ExternalUsbPeripherals(test.test):
         logging.debug('--- Resumed')
         self.suspend_status = False
 
+    def close_lid(self):
+        """Close lid through servo to suspend the device."""
+        boot_id = self.host.get_boot_id()
+        logging.info('Closing lid...')
+        self.host.servo.lid_close()
+        self.host.test_wait_for_sleep(_LONG_TIMEOUT)
+        self.suspend_status = True
+        return boot_id
+
+
+    def open_lid(self, boot_id):
+        """Open lid through servo to resume."""
+        logging.info('Opening lid...')
+        self.host.servo.lid_open()
+        self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
+        self.suspend_status = False
+
 
     def crash_not_detected(self, crash_path):
         """Check for kernel, browser, process crashes
@@ -304,6 +321,9 @@ class platform_ExternalUsbPeripherals(test.test):
                 if action == 'RESUME':
                     self.action_resume(boot_id)
                     time.sleep(_WAIT_DELAY)
+                elif action == 'OPENLID':
+                    self.open_lid(boot_id)
+                    time.sleep(_WAIT_DELAY)
                 elif action == 'UNPLUG':
                     self.set_hub_power(False)
                 elif action == 'PLUG':
@@ -322,6 +342,8 @@ class platform_ExternalUsbPeripherals(test.test):
                         self.login_status = False
                     elif action == 'SUSPEND':
                         boot_id = self.action_suspend()
+                    elif action == 'CLOSELID':
+                        boot_id = self.close_lid()
                 else:
                     logging.info('WRONG ACTION: %s .', self.action_step)
 
