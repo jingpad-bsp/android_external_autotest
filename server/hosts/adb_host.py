@@ -236,7 +236,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self.fastboot_serial = fastboot_serial or adb_serial
             self._use_tcpip = False
         self.teststation = (teststation if teststation
-                else teststation_host.create_teststationhost(hostname=hostname))
+                else teststation_host.create_teststationhost(
+                        hostname=hostname,
+                        user=self.user,
+                        password=self.password,
+                        port=self.port
+                ))
 
         msg ='Initializing ADB device on host: %s' % hostname
         if self.adb_serial:
