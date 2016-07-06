@@ -140,6 +140,8 @@ function makeTouchList(touches, verbose) {
   return touchStr;
 }
 
+activeTouchData = {};
+
 // Touch event handler.
 function touchEventHandler(event) {
   var touchStr =
@@ -171,11 +173,12 @@ function touchEventHandler(event) {
           Math.sqrt(distX * distX + distY * distY));
       touchData.maxMDist = Math.max(touchData.maxMDist, distX + distY);
       if (event.type == 'touchend') {
-        log('touch ' + touch.identifier + ' summary:' +
-            ' dist=(' + distX + ',' + distY + ')' +
-            ' max-dist=' + Math.round(touchData.maxDist) +
-            ' max-manhattan-dist=' + touchData.maxMDist +
-            ' dur=' + (Math.round(event.timeStamp - touchData.startTime)));
+        msg = ('touch ' + touch.identifier + ' summary:' +
+               ' dist=(' + distX + ',' + distY + ')' +
+               ' max-dist=' + Math.round(touchData.maxDist) +
+               ' max-manhattan-dist=' + touchData.maxMDist +
+               ' dur=' + (Math.round(event.timeStamp - touchData.startTime)));
+        logEvent(event, msg);
         delete activeTouchData[touch.identifier];
       }
     }
