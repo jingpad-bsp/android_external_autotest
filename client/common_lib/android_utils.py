@@ -115,9 +115,20 @@ class AndroidArtifacts(object):
     """
 
     BOOTLOADER_IMAGE = 'bootloader_image'
+    DTB = 'dtb'
     RADIO_IMAGE = 'radio_image'
-    ZIP_IMAGE = 'zip_images'
+    TARGET_FILES = 'target_files'
     TEST_ZIP = 'test_zip'
+    VENDOR_PARTITIONS = 'vendor_partitions'
+    ZIP_IMAGE = 'zip_images'
+
+    # (os, board) = 'artifacts'
+    DEFAULT_ARTIFACTS_MAP = {
+        ('android', 'default'): [BOOTLOADER_IMAGE, RADIO_IMAGE, ZIP_IMAGE,
+                                 TEST_ZIP],
+        ('brillo', 'default'):  [ZIP_IMAGE, VENDOR_PARTITIONS],
+        ('emulated_brillo', 'default'): [TARGET_FILES, DTB],
+    }
 
     # Default artifacts for Android provision
     DEFAULT_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE = (
@@ -135,7 +146,7 @@ class AndroidArtifacts(object):
     artifacts_map = get_config_value_regex('CLIENT', ARTIFACTS_LIST_PATTERN)
 
     @classmethod
-    def get_artifacts_for_reimage(cls, board):
+    def get_artifacts_for_reimage(cls, board, os='android'):
         """Get artifacts need to be staged for reimage for given board.
 
         @param board: Name of the board.
@@ -145,6 +156,10 @@ class AndroidArtifacts(object):
         if board in cls.artifacts_map:
             logging.debug('Found override of artifacts for board %s: %s', board,
                           cls.artifacts_map[board])
-            return ','.join(cls.artifacts_map[board])
+            artifacts = cls.artifacts_map[board]
+        elif (os, board) in cls.DEFAULT_ARTIFACTS_MAP:
+            artifacts = cls.DEFAULT_ARTIFACTS_MAP[(os, board)]
         else:
-            return cls.DEFAULT_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
+            artifacts = cls.DEFAULT_ARTIFACTS_MAP[(os, 'default')]
+        return ','.join(artifacts)
+

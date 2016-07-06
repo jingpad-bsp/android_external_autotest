@@ -1604,7 +1604,7 @@ class AndroidBuildServer(ImageServerBase):
 
 
     def trigger_download(self, target, build_id, branch, artifacts=None,
-                         is_brillo=False, synchronous=True):
+                         os='android', synchronous=True):
         """Tell the devserver to download and stage an Android build.
 
         Tells the devserver to fetch an Android build from the image storage
@@ -1622,7 +1622,7 @@ class AndroidBuildServer(ImageServerBase):
         @param branch: Branch of the android build to stage.
         @param artifacts: A string of artifacts separated by comma. If None,
                use the default artifacts for Android or Brillo build.
-        @param is_brillo: Set to True if it's a Brillo build. Default is False.
+        @param os: OS artifacts to download (android/brillo).
         @param synchronous: if True, waits until all components of the image are
                staged before returning.
 
@@ -1634,18 +1634,15 @@ class AndroidBuildServer(ImageServerBase):
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
         if not artifacts:
-            if is_brillo:
-                artifacts = _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
-            else:
-                board = target.split('-')[0]
-                artifacts = (
-                    android_utils.AndroidArtifacts.get_artifacts_for_reimage(
-                            board))
+            board = target.split('-')[0]
+            artifacts = (
+                android_utils.AndroidArtifacts.get_artifacts_for_reimage(
+                        board, os))
         self._trigger_download(build, artifacts, files='',
                                synchronous=synchronous, **android_build_info)
 
 
-    def finish_download(self, target, build_id, branch, is_brillo=False):
+    def finish_download(self, target, build_id, branch, os='android'):
         """Tell the devserver to finish staging an Android build.
 
         If trigger_download is called with synchronous=False, it will return
@@ -1657,7 +1654,7 @@ class AndroidBuildServer(ImageServerBase):
                        shamu-userdebug.
         @param build_id: Build id of the android build to stage.
         @param branch: Branch of the android build to stage.
-        @param is_brillo: Set to True if it's a Brillo build. Default is False.
+        @param os: OS artifacts to download (android/brillo).
 
         @raise DevServerException upon any return code that's not HTTP OK.
         """
@@ -1665,13 +1662,10 @@ class AndroidBuildServer(ImageServerBase):
                               'build_id': build_id,
                               'branch': branch}
         build = ANDROID_BUILD_NAME_PATTERN % android_build_info
-        if is_brillo:
-            artifacts = _BRILLO_ARTIFACTS_TO_BE_STAGED_FOR_IMAGE
-        else:
-            board = target.split('-')[0]
-            artifacts = (
-                    android_utils.AndroidArtifacts.get_artifacts_for_reimage(
-                            board))
+        board = target.split('-')[0]
+        artifacts = (
+                android_utils.AndroidArtifacts.get_artifacts_for_reimage(
+                        board))
         self._finish_download(build, artifacts, files='', **android_build_info)
 
 
