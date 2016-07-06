@@ -132,7 +132,7 @@ def pair_legacy_bluetooth_module(bt_adapter, target_mac_address, pin=_PIN,
     # Pairs the bluetooth adapter with bluetooth module.
     for trial in xrange(retries):
         if bt_adapter.pair_legacy_device(
-            target_mac_address, pin, pairing_timeout):
+            target_mac_address, pin, False, pairing_timeout):
                 logging.debug('Pairing to %s succeeded', target_mac_address)
                 return
         elif trial == retries - 1:
