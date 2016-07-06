@@ -64,6 +64,9 @@ class network_WlanDriver(test.test):
             'Broadcom BCM4356 PCIE': {
                      '3.10': 'wireless-3.8/brcm80211/brcmfmac/brcmfmac.ko'
             },
+            'Marvell 88W8997 PCIE': {
+                     '4.4': 'wireless/marvell/mwifiex/mwifiex_pcie.ko',
+            },
     }
 
 
