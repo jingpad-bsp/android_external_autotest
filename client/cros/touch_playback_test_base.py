@@ -6,10 +6,12 @@ import logging
 import os
 import shutil
 import time
+import urllib2
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.cros.input_playback import input_playback
 
 
@@ -88,7 +90,11 @@ class touch_playback_test_base(test.test):
             filepath = os.path.join(gesture_dir, filename)
             if not os.path.exists(filepath):
                 logging.info('Did not find %s!', filepath)
-                return None
+
+                filepath = self._download_remote_test_file(filename)
+                if not filepath:
+                    return None
+
             filepaths[gesture] = filepath
 
         return filepaths
@@ -114,6 +120,28 @@ class touch_playback_test_base(test.test):
             filepaths = {d: temp_filepaths[fmt_str % d] for d in directions}
 
         return filepaths
+
+
+    def _download_remote_test_file(self, filename):
+        """Download a file from the remote touch playback folder.
+
+        @returns: Path to local file or None if file is not found.
+
+        """
+        REMOTE_STORAGE_URL = ('https://storage.googleapis.com/'
+                              'chromiumos-test-assets-public/touch_playback')
+        url = '%s/%s/%s' % (REMOTE_STORAGE_URL, self._platform, filename)
+        local_file = os.path.join(self.bindir, filename)
+
+        logging.info('Looking for %s', url)
+        try:
+            file_utils.download_file(url, local_file)
+        except urllib2.URLError as e:
+            logging.info('File download failed!')
+            logging.debug(e.msg)
+            return None
+
+        return local_file
 
 
     def _emulate_mouse(self, property_file=None):
