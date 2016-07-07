@@ -32,6 +32,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import job_directories
+from autotest_lib.tko import models
 
 try:
     # Does not exist, nor is needed, on moblab.
@@ -320,38 +321,49 @@ def upload_testresult_files(dir_entry, multiprocessing):
     @param dir_entry: Path to the results folder.
     @param multiprocessing: True to turn on -m option for gsutil.
     """
-    for path in glob.glob(os.path.join(
-            dir_entry, '*', 'cheets_CTS.*', 'results', '*', TIMESTAMP_PATTERN)):
-        try:
-            folders = path.split(os.sep)
-            # Path for apfe: cheets_CTS.*/results/*/
-            sub_apfe_path = os.path.join(*folders[-4:-1])
-            # Path for result: cheets_CTS.*/results/*/timestamp_folder/
-            sub_result_path = os.path.join(*folders[-4:])
+    for host in glob.glob(os.path.join(dir_entry, '*')):
+        for path in glob.glob(os.path.join(
+                host, 'cheets_CTS.*', 'results', '*', TIMESTAMP_PATTERN)):
+            try:
+                keyval = models.test.parse_job_keyval(host)
+                parent_job_id = str(keyval['parent_job_id'])
+                build = keyval['build']
 
-            cts_apfe_gs_path = DEFAULT_CTS_APFE_GSURI + sub_apfe_path + '/'
-            test_result_gs_path = DEFAULT_CTS_RESULTS_GSURI + sub_result_path + '/'
+                folders = path.split(os.sep)
+                job_id = folders[-6]
+                CTS_packge = folders[-4]
+                timestamp = folders[-1]
 
-            for zip_file in glob.glob(os.path.join('%s.zip' % path)):
-                utils.run(' '.join(get_cmd_list(multiprocessing, zip_file, cts_apfe_gs_path)))
-                logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
+                # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
+                cts_apfe_gs_path = os.path.join(
+                        DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
+                        CTS_packge, job_id + '_' + timestamp) + '/'
 
-            for test_result_file in glob.glob(os.path.join(path, CTS_RESULT_PATTERN)):
-                # gzip testResult.xml file
-                test_result_file_gz =  '%s.gz' % test_result_file
-                with open(test_result_file, 'r') as f_in, (
-                        gzip.open(test_result_file_gz, 'w')) as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                utils.run(' '.join(get_cmd_list(
-                        multiprocessing, test_result_file_gz, test_result_gs_path)))
-                logging.debug('Zip and upload %s to %s',
-                              test_result_file_gz, test_result_gs_path)
-                # Remove testResult.xml.gz file
-                os.remove(test_result_file_gz)
-        except error.CmdError as e:
-            logging.error('ERROR uploading test results %s to GS: %s',
-                          dir_entry, e)
-            raise e
+                # Path: bucket/cheets_CTS.*/job_id_timestamp/
+                test_result_gs_path = os.path.join(
+                        DEFAULT_CTS_RESULTS_GSURI, CTS_packge,
+                        job_id + '_' + timestamp) + '/'
+
+                for zip_file in glob.glob(os.path.join('%s.zip' % path)):
+                    utils.run(' '.join(get_cmd_list(
+                            multiprocessing, zip_file, cts_apfe_gs_path)))
+                    logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
+
+                for test_result_file in glob.glob(os.path.join(path, CTS_RESULT_PATTERN)):
+                    # gzip testResult.xml file
+                    test_result_file_gz =  '%s.gz' % test_result_file
+                    with open(test_result_file, 'r') as f_in, (
+                            gzip.open(test_result_file_gz, 'w')) as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                    utils.run(' '.join(get_cmd_list(
+                            multiprocessing, test_result_file_gz, test_result_gs_path)))
+                    logging.debug('Zip and upload %s to %s',
+                                  test_result_file_gz, test_result_gs_path)
+                    # Remove testResult.xml.gz file
+                    os.remove(test_result_file_gz)
+            except Exception as e:
+                logging.error('ERROR uploading test results %s to GS: %s',
+                              dir_entry, e)
 
 
 def get_offload_dir_func(gs_uri, multiprocessing):
