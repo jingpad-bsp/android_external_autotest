@@ -456,29 +456,41 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @return: A url to the autotest server-side package.
         """
+        # If enable_drone_in_restricted_subnet is False, do not set hostname
+        # in devserver.resolve call, so a devserver in non-restricted subnet
+        # is picked to stage autotest server package for drone to download.
+        hostname = self.hostname
+        if not server_utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
+            hostname = None
         if image:
             image_name = tools.get_build_from_image(image)
             if not image_name:
                 raise error.AutoservError(
                         'Failed to parse build name from %s' % image)
-            ds = dev_server.ImageServer.resolve(image_name, self.hostname)
+            ds = dev_server.ImageServer.resolve(image_name, hostname)
         else:
             job_repo_url = afe_utils.get_host_attribute(
                     self, ds_constants.JOB_REPO_URL)
             if job_repo_url:
                 devserver_url, image_name = (
                     tools.get_devserver_build_from_package_url(job_repo_url))
-                ds = dev_server.ImageServer(devserver_url)
+                # If enable_drone_in_restricted_subnet is True, use the
+                # existing devserver. Otherwise, resolve a new one in
+                # non-restricted subnet.
+                if server_utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
+                    ds = dev_server.ImageServer(devserver_url)
+                else:
+                    ds = dev_server.ImageServer.resolve(image_name)
             else:
                 labels = self._AFE.get_labels(
-                        name__startswith=ds_constants.VERSION_PREFIX,
+                        name__startswith=self.VERSION_PREFIX,
                         host__hostname=self.hostname)
                 if not labels:
                     raise error.AutoservError(
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
-                image_name = labels[0].name[len(ds_constants.VERSION_PREFIX):]
-                ds = dev_server.ImageServer.resolve(image_name, self.hostname)
+                image_name = labels[0].name[len(self.VERSION_PREFIX):]
+                ds = dev_server.ImageServer.resolve(image_name, hostname)
 
         # Get the OS version of the build, for any build older than
         # MIN_VERSION_SUPPORT_SSP, server side packaging is not supported.
