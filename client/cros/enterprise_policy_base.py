@@ -13,7 +13,7 @@ from autotest_lib.client.cros import cryptohome
 from autotest_lib.client.cros import enterprise_base
 from autotest_lib.client.cros import httpd
 
-CROSDEV_FLAGS = [
+CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
     '--lso-url=https://gaiastaging.corp.google.com',
     '--google-apis-url=https://www-googleapis-test.sandbox.google.com',
@@ -22,7 +22,7 @@ CROSDEV_FLAGS = [
     ('--cloud-print-url='
      'https://cloudprint-nightly-ps.sandbox.google.com/cloudprint'),
     '--ignore-urlfetcher-cert-requests']
-CROSAUTO_FLAGS = [
+CROSALPHA_FLAGS = [
     ('--cloud-print-url='
      'https://cloudprint-nightly-ps.sandbox.google.com/cloudprint'),
     '--ignore-urlfetcher-cert-requests']
@@ -31,15 +31,15 @@ TESTDMS_FLAGS = [
     '--disable-policy-key-verification']
 FLAGS_DICT = {
     'prod': [],
-    'cr-dev': CROSDEV_FLAGS,
-    'cr-auto': CROSAUTO_FLAGS,
+    'cr-qa': CROSQA_FLAGS,
+    'cr-alpha': CROSALPHA_FLAGS,
     'dm-test': TESTDMS_FLAGS,
     'dm-fake': TESTDMS_FLAGS
 }
 DMS_URL_DICT = {
     'prod': 'http://m.google.com/devicemanagement/data/api',
-    'cr-dev': 'https://cros-dev.sandbox.google.com/devicemanagement/data/api',
-    'cr-auto': 'https://cros-auto.sandbox.google.com/devicemanagement/data/api',
+    'cr-qa': 'https://crosman-qa.sandbox.google.com/devicemanagement/data/api',
+    'cr-alpha': 'https://crosman-alpha.sandbox.google.com/devicemanagement/data/api',
     'dm-test': 'http://chromium-dm-test.appspot.com/d/%s',
     'dm-fake': 'http://127.0.0.1:%d/'
 }
