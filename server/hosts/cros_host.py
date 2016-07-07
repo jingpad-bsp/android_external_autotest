@@ -489,7 +489,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     raise error.AutoservError(
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
-                image_name = labels[0].name[len(self.VERSION_PREFIX):]
+                image_name = labels[0].name[len(self.VERSION_PREFIX)+1:]
                 ds = dev_server.ImageServer.resolve(image_name, hostname)
 
         # Get the OS version of the build, for any build older than
