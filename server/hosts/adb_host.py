@@ -1623,8 +1623,14 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                  server-side package is not supported.
         @raise: error.AutoservError if fail to locate the build to test with.
         """
+        # If enable_drone_in_restricted_subnet is False, do not set hostname
+        # in devserver.resolve call, so a devserver in non-restricted subnet
+        # is picked to stage autotest server package for drone to download.
+        hostname = self.hostname
+        if not utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
+            hostname = None
         if image:
-            ds = dev_server.AndroidBuildServer.resolve(image, self.hostname)
+            ds = dev_server.AndroidBuildServer.resolve(image, hostname)
         else:
             job_repo_url = afe_utils.get_host_attribute(
                     self, self.job_repo_url_attribute)
@@ -1632,7 +1638,13 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 devserver_url, image = (
                         tools.get_devserver_build_from_package_url(
                                 job_repo_url, True))
-                ds = dev_server.AndroidBuildServer(devserver_url)
+                # If enable_drone_in_restricted_subnet is True, use the
+                # existing devserver. Otherwise, resolve a new one in
+                # non-restricted subnet.
+                if utils.ENABLE_DRONE_IN_RESTRICTED_SUBNET:
+                    ds = dev_server.AndroidBuildServer(devserver_url)
+                else:
+                    ds = dev_server.AndroidBuildServer.resolve(image)
             else:
                 labels = afe_utils.get_labels(self, self.VERSION_PREFIX)
                 if not labels:
@@ -1640,7 +1652,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
                 image = labels[0].name[len(self.VERSION_PREFIX)+1:]
-                ds = dev_server.AndroidBuildServer.resolve(image, self.hostname)
+                ds = dev_server.AndroidBuildServer.resolve(image, hostname)
 
         branch, target, build_id = utils.parse_launch_control_build(image)
         build_target, _ = utils.parse_launch_control_target(target)
