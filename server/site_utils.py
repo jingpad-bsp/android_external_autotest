@@ -31,15 +31,19 @@ except ImportError:
     cros_build_lib = None
 
 
-_SHERIFF_JS = global_config.global_config.get_config_value(
-    'NOTIFICATIONS', 'sheriffs', default='')
-_LAB_SHERIFF_JS = global_config.global_config.get_config_value(
-    'NOTIFICATIONS', 'lab_sheriffs', default='')
-_CHROMIUM_BUILD_URL = global_config.global_config.get_config_value(
-    'NOTIFICATIONS', 'chromium_build_url', default='')
+CONFIG = global_config.global_config
+
+_SHERIFF_JS = CONFIG.get_config_value('NOTIFICATIONS', 'sheriffs', default='')
+_LAB_SHERIFF_JS = CONFIG.get_config_value(
+        'NOTIFICATIONS', 'lab_sheriffs', default='')
+_CHROMIUM_BUILD_URL = CONFIG.get_config_value(
+        'NOTIFICATIONS', 'chromium_build_url', default='')
 
 LAB_GOOD_STATES = ('open', 'throttled')
 
+ENABLE_DRONE_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
+        'CROS', 'enable_drone_in_restricted_subnet', type=bool,
+        default=False)
 
 class TestLabException(Exception):
     """Exception raised when the Test Lab blocks a test or suite."""
@@ -268,8 +272,7 @@ def is_in_lab():
 
     @return: True if the Autotest instance is in lab.
     """
-    test_server_name = global_config.global_config.get_config_value(
-              'SERVER', 'hostname')
+    test_server_name = CONFIG.get_config_value('SERVER', 'hostname')
     return test_server_name.startswith('cautotest')
 
 
@@ -290,8 +293,7 @@ def check_lab_status(build):
         return
 
     # Download the lab status from its home on the web.
-    status_url = global_config.global_config.get_config_value(
-            'CROS', 'lab_status_url')
+    status_url = CONFIG.get_config_value('CROS', 'lab_status_url')
     json_status = _get_lab_status(status_url)
     if json_status is None:
         # We go ahead and say the lab is open if we can't get the status.
@@ -439,15 +441,13 @@ def is_shard():
 
     @return True, if shard_hostname is set, False otherwise.
     """
-    hostname = global_config.global_config.get_config_value(
-            'SHARD', 'shard_hostname', default=None)
+    hostname = CONFIG.get_config_value('SHARD', 'shard_hostname', default=None)
     return bool(hostname)
 
 
 def get_global_afe_hostname():
     """Read the hostname of the global AFE from the global configuration."""
-    return global_config.global_config.get_config_value(
-            'SERVER', 'global_afe_hostname')
+    return CONFIG.get_config_value('SERVER', 'global_afe_hostname')
 
 
 def is_restricted_user(username):
@@ -462,7 +462,7 @@ def is_restricted_user(username):
     if not username:
         return False
 
-    restricted_groups = global_config.global_config.get_config_value(
+    restricted_groups = CONFIG.get_config_value(
             'AUTOTEST_WEB', 'restricted_groups', default='').split(',')
     for group in restricted_groups:
         try:
@@ -694,8 +694,7 @@ def get_creds_abspath(creds_file):
         return None
     if os.path.isabs(creds_file):
         return creds_file
-    creds_dir = global_config.global_config.get_config_value(
-            'SERVER', 'creds_dir', default='')
+    creds_dir = CONFIG.get_config_value('SERVER', 'creds_dir', default='')
     if not creds_dir or not os.path.exists(creds_dir):
         creds_dir = common.autotest_dir
     return os.path.join(creds_dir, creds_file)
