@@ -95,7 +95,7 @@ class android_ACTS(test.test):
 
 
     def run_once(self, testbed=None, config_file=None, testbed_name=None,
-                 test_case=None, test_file=None):
+                 test_case=None, test_file=None, additional_configs=[]):
         """Run ACTS on the DUT.
 
         Exactly one of test_case and test_file should be provided.
@@ -107,6 +107,9 @@ class android_ACTS(test.test):
                              testbed's hostname without the DNS zone.
         @param test_case: A string that's passed to act.py's -tc option.
         @param test_file: A string that's passed to act.py's -tf option.
+        @param additional_configs: A list of paths to be copied over to
+                                   the test station. These files must reside
+                                   in the TEST_CONFIG_FILE_FOLDER.
         """
         testbed_name = testbed_name or testbed.hostname.split('.')[0]
         for serial, adb_host in testbed.get_adb_devices().iteritems():
@@ -121,6 +124,9 @@ class android_ACTS(test.test):
         config_file = self.push_file_to_teststation(config_file,
                                                     TEST_CONFIG_FILE_FOLDER)
 
+        for additional_config in additional_configs:
+            self.push_file_to_teststation(additional_config,
+                                          TEST_CONFIG_FILE_FOLDER)
         if test_file:
             self.push_file_to_teststation(test_file,
                                           TEST_CAMPAIGN_FILE_FOLDER)
