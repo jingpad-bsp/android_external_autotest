@@ -12,6 +12,7 @@ import Queue
 import select
 import shutil
 import signal
+import subprocess
 import threading
 import time
 
@@ -20,6 +21,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from acts import logger
 from acts import utils
 from acts.controllers import android_device
+from acts.controllers import attenuator
 from acts.test_utils.wifi import wifi_test_utils as wutils
 
 
@@ -154,11 +156,13 @@ class AndroidXmlRpcDelegate(object):
     SHILL_CONNECTED_STATES =  ['portal', 'online', 'ready']
     DISCONNECTED_SSID = '0x'
     DISCOVERY_POLLING_INTERVAL = 1
+    NUM_ATTEN = 4
 
 
-    def __init__(self, serial_number, log_dir):
+    def __init__(self, serial_number, log_dir, test_station):
         """Initializes the ACTS library components.
 
+        @test_station string represting teststation's hostname.
         @param serial_number Serial number of the android device to be tested,
                None if there is only one device connected to the host.
         @param log_dir Path to store output logs of this run.
@@ -179,6 +183,46 @@ class AndroidXmlRpcDelegate(object):
         else:
             msg = ("Specified Android device %s can't be found, abort!"
                    ) % serial_number
+            logging.error(msg)
+            raise XmlRpcServerError(msg)
+        # Even if we find one attenuator assume the rig has attenuators for now.
+        # With the single IP attenuator, this will be a easy check.
+        rig_has_attenuator = False
+        count = 0
+        for i in range(1, self.NUM_ATTEN + 1):
+            atten_addr = test_station+'-attenuator-'+'%d' %i
+            if subprocess.Popen(['ping', '-c', '2', atten_addr],
+                                 stdout=subprocess.PIPE).communicate()[0]:
+                rig_has_attenuator = True
+                count = count + 1
+        if rig_has_attenuator and count == self.NUM_ATTEN:
+            atten = attenuator.create([{"Address":test_station+'-attenuator-1',
+                                        "Port":23,
+                                        "Model":"minicircuits",
+                                        "InstrumentCount": 1,
+                                        "Paths":["Attenuator-1"]},
+                                        {"Address":test_station+'-attenuator-2',
+                                        "Port":23,
+                                        "Model":"minicircuits",
+                                        "InstrumentCount": 1,
+                                        "Paths":["Attenuator-2"]},
+                                        {"Address":test_station+'-attenuator-3',
+                                        "Port":23,
+                                        "Model":"minicircuits",
+                                        "InstrumentCount": 1,
+                                        "Paths":["Attenuator-3"]},
+                                        {"Address":test_station+'-attenuator-4',
+                                        "Port":23,
+                                        "Model":"minicircuits",
+                                        "InstrumentCount": 1,
+                                        "Paths":["Attenuator-4"]}])
+            device = 0
+            # Set attenuation on all attenuators to 0.
+            for device in range(len(atten)):
+               atten[device].set_atten(0)
+            attenuator.destroy(atten)
+        elif rig_has_attenuator and count < self.NUM_ATTEN:
+            msg = 'One or more attenuators are down.'
             logging.error(msg)
             raise XmlRpcServerError(msg)
 
@@ -471,10 +515,13 @@ if __name__ == '__main__':
                          help='Serial Number of the device to test.')
     parser.add_argument('-l', '--log-dir', action='store', default=None,
                          help='Path to store output logs.')
+    parser.add_argument('-t', '--test-station', action='store', default=None,
+                         help='The accompaning teststion hostname.')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG)
     logging.debug("android_xmlrpc_server main...")
     server = XmlRpcServer('localhost', 9989)
     server.register_delegate(
-            AndroidXmlRpcDelegate(args.serial_number, args.log_dir))
+            AndroidXmlRpcDelegate(args.serial_number, args.log_dir,
+                                  args.test_station))
     server.run()
