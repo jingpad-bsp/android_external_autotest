@@ -800,6 +800,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                     ' partition.')
 
             # Updater has returned successfully; reboot the host.
+            #
+            # Regarding the 'crossystem' command: In some cases, the
+            # TPM gets into a state such that it fails verification.
+            # We don't know why.  However, this call papers over the
+            # problem by clearing the TPM during the reboot.
+            #
+            # We ignore failures from 'crossystem'.  Although failure
+            # here is unexpected, and could signal a bug, the point
+            # of the exercise is to paper over problems; allowing
+            # this to fail would defeat the purpose.
+            self.run('crossystem clear_tpm_owner_request=1',
+                     ignore_status=True)
             self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
 
         self._post_update_processing(updater, inactive_kernel)
