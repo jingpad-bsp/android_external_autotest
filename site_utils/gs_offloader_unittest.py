@@ -23,7 +23,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
-
+from autotest_lib.tko import models
 
 # Test value to use for `days_old`, if nothing else is required.
 _TEST_EXPIRATION_AGE = 7
@@ -730,6 +730,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self._job = self.make_job(self.REGULAR_JOBLIST[0])
         self.mox.StubOutWithMock(gs_offloader, 'get_cmd_list')
         self.mox.StubOutWithMock(signal, 'alarm')
+        self.mox.StubOutWithMock(models.test, 'parse_job_keyval')
 
 
     def tearDown(self):
@@ -930,6 +931,8 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         gs_offloader.get_cmd_list(
             False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
                     ['test', '-d', cts_result_folder])
+        models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
+            {'build': 'build_info', 'parent_job_id': 'p_id'})
 
         self.mox.ReplayAll()
         gs_offloader.upload_testresult_files(results_folder, False)
