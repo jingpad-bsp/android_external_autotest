@@ -240,7 +240,7 @@ class ChaosRunner(object):
             capturer.close()
             logging.info('Powering off VM %s', webdriver_instance)
             utils.power_off_VM(webdriver_master, webdriver_instance)
-            lock_manager.unlock(webdriver_instance)
+            lock_manager.unlock(webdriver_instance.hostname)
 
             if self._broken_pdus:
                 logging.info('PDU is down!!!\nThe following PDUs are down:\n')
