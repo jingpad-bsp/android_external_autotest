@@ -111,7 +111,7 @@ class TestStationHost(base_classes.Host):
         return super(TestStationHost, self).get_tmp_dir(parent=parent)
 
 
-    def run(self, cmd, *args, **dargs):
+    def run(self, cmd, force_tty=True, *args, **dargs):
         """Run a command on the adb device.
 
         This will run the command on the test station.  This method only
@@ -119,6 +119,9 @@ class TestStationHost(base_classes.Host):
         command on a moblab, otherwise we leave the command untouched.
 
         @param cmd: The command line string.
+        @param force_tty: Set to True to force pseudo-terminal allocation to
+                run the command. This allows the command running on remote host
+                to abort when the ssh command is timed out. Default is True.
 
         @returns A CMDResult object or None if the call timed out and
                  ignore_timeout is True.
@@ -127,6 +130,8 @@ class TestStationHost(base_classes.Host):
         # on Chrome OS, rather than MobLab when prepending sudo to fastboot.
         if cmd.startswith('fastboot ') and self.is_moblab:
             cmd = 'sudo -n ' + cmd
+        if force_tty:
+            dargs['options'] = dargs.get('options', '') + ' -t '
         return super(TestStationHost, self).run(cmd, *args, **dargs)
 
 
