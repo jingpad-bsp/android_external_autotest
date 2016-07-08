@@ -67,7 +67,7 @@ def power_on_VM(master, instance):
 
     """
     logging.debug('Powering on %s VM', instance.hostname)
-    power_on_cmd = 'VBoxManage startvm %s' % instance.hostname
+    power_on_cmd = 'VBoxManage startvm %s --type headless' % instance.hostname
     master.run(power_on_cmd)
 
 
