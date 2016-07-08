@@ -742,8 +742,9 @@ def _generate_board_inventory_message(inventory):
     ntotal_boards = 0
     summaries = []
     for board in inventory.get_managed_boards():
-        logging.debug('Counting board inventory for %s', board)
         counts = inventory[board]
+        logging.debug('Counting %2d DUTS for board %s',
+                      counts.get_total(), board)
         # Summary elements laid out in the same order as the text
         # headers:
         #     Board Avail   Bad  Idle  Good  Spare Total
@@ -823,8 +824,8 @@ def _generate_pool_inventory_message(inventory):
                 'Board', 'Bad', 'Idle', 'Good', 'Total'))
         data_list = []
         for board, counts in inventory.items():
-            logging.debug('Counting inventory for %s, %s',
-                          board, pool)
+            logging.debug('Counting %2d DUTs for %s, %s',
+                          counts.get_total(pool), board, pool)
             broken = counts.get_broken(pool)
             idle = counts.get_idle(pool)
             # boards at full strength are not reported
@@ -872,7 +873,8 @@ def _generate_idle_inventory_message(inventory):
     data_list = []
     for pool in MANAGED_POOLS:
         for board, counts in inventory.items():
-            logging.debug('Counting inventory for %s, %s', board, pool)
+            logging.debug('Counting %2d DUTs for %s, %s',
+                          counts.get_total(pool), board, pool)
             data_list.extend([(dut.host.hostname, board, pool)
                                   for dut in counts.get_idle_list(pool)])
     if data_list:
