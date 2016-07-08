@@ -5,6 +5,7 @@
 import glob
 import logging
 import os
+import time
 import re
 import urlparse
 import urllib2
@@ -145,7 +146,7 @@ class BaseUpdater(object):
         indicating the update state, e.g. "CURRENT_OP=UPDATE_STATUS_IDLE".
         """
         update_status = self.host.run(
-            '%s -status 2>&1 | grep CURRENT_OP' % self.updater_ctrl_bin)
+            '%s -status | grep CURRENT_OP' % self.updater_ctrl_bin)
         return update_status.stdout.strip().split('=')[-1]
 
 
@@ -229,7 +230,7 @@ class BaseUpdater(object):
 
     def update_image(self):
         """Updates the device image and verifies success."""
-        autoupdate_cmd = ('%s --update --omaha_url=%s 2>&1' %
+        autoupdate_cmd = ('%s --update --omaha_url=%s' %
                           (self.updater_ctrl_bin, self.update_url))
         run_args = {'command': autoupdate_cmd, 'timeout': 3600}
         err_prefix = ('Failed to install device image using payload at %s '
@@ -275,7 +276,22 @@ class ChromiumOSUpdater(BaseUpdater):
         self._run('stop update-engine || true')
         self._run('start update-engine')
 
-        if self.check_update_status() != UPDATER_IDLE:
+        # Wait for update engine to be ready.
+        retry=3
+        while retry >= 0:
+            retry -= 1
+            try:
+                status = self.check_update_status()
+                break
+            except error.AutoservRunError as e:
+              if retry > 0:
+                  logging.info('Retrying to get the update_engine status...')
+                  time.sleep(5)
+                  continue
+              else:
+                  raise e
+
+        if status != UPDATER_IDLE:
             raise ChromiumOSError('%s is not in an installable state' %
                                   self.host.hostname)
 
