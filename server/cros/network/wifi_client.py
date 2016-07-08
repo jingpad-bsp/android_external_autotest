@@ -92,6 +92,7 @@ def get_xmlrpc_proxy(host):
         xmlrpc_server_command = constants.SHILL_BRILLO_XMLRPC_SERVER_COMMAND
         log_path = SHILL_BRILLO_XMLRPC_LOG_PATH
         command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
+        rpc_server_host = host
     elif host.get_os_type() == adb_host.OS_TYPE_ANDROID:
         xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND
         command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
@@ -99,18 +100,22 @@ def get_xmlrpc_proxy(host):
             raise error.TestFail('No serial number detected')
         debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % host.adb_serial
         log_path = ANDROID_XMLRPC_LOG_FILE_FMT % host.adb_serial
+        teststation = host.teststation
+        hostname = teststation.hostname.split('.')[0]
         xmlrpc_server_command = (
-                '%s -s %s -l %s' % (
-                xmlrpc_server_command, host.adb_serial, debug_dir))
+                '%s -s %s -l %s -t %s' % (
+                xmlrpc_server_command, host.adb_serial, debug_dir,
+                hostname))
+        install_android_xmlrpc_server(teststation)
         # For android, start the XML RPC server on the accompanying host.
-        host = host.teststation
-        install_android_xmlrpc_server(host)
+        rpc_server_host = teststation
     else:
         xmlrpc_server_command = constants.SHILL_XMLRPC_SERVER_COMMAND
         log_path = SHILL_XMLRPC_LOG_PATH
         command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
+        rpc_server_host = host
     # Start up the XMLRPC proxy on the client
-    proxy = host.rpc_server_tracker.xmlrpc_connect(
+    proxy = rpc_server_host.rpc_server_tracker.xmlrpc_connect(
             xmlrpc_server_command,
             constants.SHILL_XMLRPC_SERVER_PORT,
             command_name=command_name,
