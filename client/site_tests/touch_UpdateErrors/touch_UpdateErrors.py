@@ -91,11 +91,16 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
             raise error.TestError('%s has no valid hw_id!' % input_type)
 
         start_line = self._find_logs_start_line()
-        log_cmd = 'tail -n +%s /var/log/messages | grep -i touch[^v]' % start_line
+        log_cmd = 'tail -n +%s /var/log/messages | grep -i touch' % start_line
 
         pass_terms = ['touch-firmware-update',
                       '"Product[^a-z0-9]ID[^a-z0-9]*%s"' % hw_id]
         fail_terms = ['error[^s]', 'err[^a-z]']
+        ignore_terms = ['touchview','autotest']
+
+        # Remove lines that match ignore_terms.
+        for term in ignore_terms:
+            log_cmd += ' | grep -v -i %s' % term
 
         # Check for key terms in touch logs.
         for term in pass_terms + fail_terms:
