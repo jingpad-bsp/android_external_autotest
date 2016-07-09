@@ -47,6 +47,7 @@ REPAIR_CONTROL_FILE = _control_segment_path('repair')
 PROVISION_CONTROL_FILE = _control_segment_path('provision')
 VERIFY_JOB_REPO_URL_CONTROL_FILE = _control_segment_path('verify_job_repo_url')
 RESET_CONTROL_FILE = _control_segment_path('reset')
+GET_NETWORK_STATS_CONTROL_FILE = _control_segment_path('get_network_stats')
 
 # by default provide a stub that generates no site data
 def _get_site_job_data_dummy(job):
@@ -648,6 +649,8 @@ class base_server_job(base_job.base_job):
         temp_control_file_dir = None
         try:
             try:
+                namespace['network_stats_label'] = 'at-start'
+                self._execute_code(GET_NETWORK_STATS_CONTROL_FILE, namespace)
                 if install_before and machines:
                     self._execute_code(INSTALL_CONTROL_FILE, namespace)
 
@@ -727,6 +730,8 @@ class base_server_job(base_job.base_job):
                 os.remove(self._uncollected_log_file)
             if install_after and machines:
                 self._execute_code(INSTALL_CONTROL_FILE, namespace)
+            namespace['network_stats_label'] = 'at-end'
+            self._execute_code(GET_NETWORK_STATS_CONTROL_FILE, namespace)
 
 
     def run_test(self, url, *args, **dargs):
