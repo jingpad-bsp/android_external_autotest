@@ -844,7 +844,7 @@ def get_mem_total():
     """
     mem_total = _get_float_from_file(_MEMINFO, 'MemTotal:', 'MemTotal:', ' kB')
     # Sanity check, all Chromebooks have at least 1GB of memory.
-    assert mem_total > 1024 * 1024, 'Unreasonable amount of memory.'
+    assert mem_total > 256 * 1024, 'Unreasonable amount of memory.'
     return mem_total / 1024
 
 
