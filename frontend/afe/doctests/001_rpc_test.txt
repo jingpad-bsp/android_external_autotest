@@ -428,40 +428,15 @@ True
 
 # generate a control file
 >>> cf_info = rpc_interface.generate_control_file(
-...     tests=['sleeptest', 'my_test'],
-...     kernel=[{'version': '2.6.18'}, {'version': '2.6.18-blah.rpm'},
-...             {'version': '2.6.26', 'cmdline': 'foo bar'}],
-...     label='my_label')
+...     tests=['sleeptest', 'my_test'])
 >>> print cf_info['control_file'] #doctest: +NORMALIZE_WHITESPACE
-kernel_list = [{'version': '2.6.18', 'config_file': u'my_kernel_config'}, {'version': '2.6.18-blah.rpm', 'config_file': None}, {'cmdline': 'foo bar', 'version': '2.6.26', 'config_file': u'my_kernel_config'}]
 def step_init():
-    for kernel_info in kernel_list:
-        job.next_step(boot_kernel, kernel_info)
-        job.next_step(step_test, kernel_info['version'])
-    if len(kernel_list) > 1:
-        job.use_sequence_number = True  # include run numbers in directory names
-def boot_kernel(kernel_info):
-    # remove kernels (and associated data) not referenced by the bootloader
-    for host in job.hosts:
-        host.cleanup_kernels()
-    testkernel = job.kernel(kernel_info['version'])
-    if kernel_info['config_file']:
-        testkernel.config(kernel_info['config_file'])
-    testkernel.build()
-    testkernel.install()
-    cmdline = ' '.join((kernel_info.get('cmdline', ''), ''))
-    testkernel.boot(args=cmdline)
-def step_test(kernel_version):
-    global kernel
-    kernel = kernel_version  # Set the global in case anyone is using it.
-    if len(kernel_list) > 1:
-        # this is local to a machine, safe to assume there's only one host
-        host, = job.hosts
-        job.automatic_test_tag = host.get_kernel_ver()
     job.next_step('step0')
     job.next_step('step1')
+<BLANKLINE>
 def step0():
     job.run_test('testname')
+<BLANKLINE>
 def step1():
     job.run_test('testname')
 >>> cf_info['is_server'], cf_info['synch_count'], cf_info['dependencies']
@@ -469,34 +444,9 @@ def step1():
 
 # generate a control file from existing body text.
 >>> cf_info_pi = rpc_interface.generate_control_file(
-...     kernel=[{'version': '3.1.41'}], label='my_label',
 ...     client_control_file='print "Hi"\n')
 >>> print cf_info_pi['control_file'] #doctest: +NORMALIZE_WHITESPACE
-kernel_list = [{'version': '3.1.41', 'config_file': u'my_kernel_config'}]
 def step_init():
-    for kernel_info in kernel_list:
-        job.next_step(boot_kernel, kernel_info)
-        job.next_step(step_test, kernel_info['version'])
-    if len(kernel_list) > 1:
-        job.use_sequence_number = True  # include run numbers in directory names
-def boot_kernel(kernel_info):
-    # remove kernels (and associated data) not referenced by the bootloader
-    for host in job.hosts:
-        host.cleanup_kernels()
-    testkernel = job.kernel(kernel_info['version'])
-    if kernel_info['config_file']:
-        testkernel.config(kernel_info['config_file'])
-    testkernel.build()
-    testkernel.install()
-    cmdline = ' '.join((kernel_info.get('cmdline', ''), ''))
-    testkernel.boot(args=cmdline)
-def step_test(kernel_version):
-    global kernel
-    kernel = kernel_version  # Set the global in case anyone is using it.
-    if len(kernel_list) > 1:
-        # this is local to a machine, safe to assume there's only one host
-        host, = job.hosts
-        job.automatic_test_tag = host.get_kernel_ver()
     job.next_step('step0')
 def step0():
     print "Hi"
@@ -792,8 +742,7 @@ u'mini rack'
 ## hosts or meta_hosts.
 
 >>> sleep_cf_info = rpc_interface.generate_control_file(
-...         tests=['sleeptest'],  kernel=[{'version': '2.6.18'}],
-...         label='two-label')
+...         tests=['sleeptest'])
 >>> job_id = rpc_interface.create_job(
 ...         name='atomic_sleeptest', priority=30,
 ...         control_file=sleep_cf_info['control_file'],

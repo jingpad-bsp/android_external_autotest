@@ -748,17 +748,14 @@ def get_acl_groups(**filter_data):
 
 # jobs
 
-def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
+def generate_control_file(tests=(), profilers=(),
                           client_control_file='', use_container=False,
-                          profile_only=None, upload_kernel_config=False,
-                          db_tests=True, test_source_build=None):
+                          profile_only=None, db_tests=True,
+                          test_source_build=None):
     """
-    Generates a client-side control file to load a kernel and run tests.
+    Generates a client-side control file to run tests.
 
     @param tests List of tests to run. See db_tests for more information.
-    @param kernel A list of kernel info dictionaries configuring which kernels
-        to boot for this job and other options for them
-    @param label Name of label to grab kernel config from.
     @param profilers List of profilers to activate during the job.
     @param client_control_file The contents of a client-side control file to
         run at the end of all tests.  If this is supplied, all tests must be
@@ -772,10 +769,6 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
     @param profile_only A boolean that indicates what default profile_only
         mode to use in the control file. Passing None will generate a
         control file that does not explcitly set the default mode at all.
-    @param upload_kernel_config: if enabled it will generate server control
-            file code that uploads the kernel config file to the client and
-            tells the client of the new (local) path when compiling the kernel;
-            the tests must be server side tests
     @param db_tests: if True, the test object can be found in the database
                      backing the test model. In this case, tests is a tuple
                      of test IDs which are used to retrieve the test objects
@@ -795,14 +788,13 @@ def generate_control_file(tests=(), kernel=None, label=None, profilers=(),
         return dict(control_file='', is_server=False, synch_count=1,
                     dependencies=[])
 
-    cf_info, test_objects, profiler_objects, label = (
-        rpc_utils.prepare_generate_control_file(tests, kernel, label,
-                                                profilers, db_tests))
+    cf_info, test_objects, profiler_objects = (
+        rpc_utils.prepare_generate_control_file(tests, profilers,
+                                                db_tests))
     cf_info['control_file'] = control_file.generate_control(
-        tests=test_objects, kernels=kernel, platform=label,
-        profilers=profiler_objects, is_server=cf_info['is_server'],
+        tests=test_objects, profilers=profiler_objects,
+        is_server=cf_info['is_server'],
         client_control_file=client_control_file, profile_only=profile_only,
-        upload_kernel_config=upload_kernel_config,
         test_source_build=test_source_build)
     return cf_info
 
