@@ -5,12 +5,14 @@ This is the core infrastructure.
 Copyright Andy Whitcroft, Martin J. Bligh 2006
 """
 
+# pylint: disable=missing-docstring
+
 import copy, os, re, shutil, sys, time, traceback, types, glob
 import logging, getpass, weakref
 from autotest_lib.client.bin import client_logging_config
-from autotest_lib.client.bin import utils, parallel, kernel, xen
-from autotest_lib.client.bin import profilers, boottool, harness
-from autotest_lib.client.bin import config, sysinfo, test, local_host
+from autotest_lib.client.bin import utils, parallel
+from autotest_lib.client.bin import profilers, harness
+from autotest_lib.client.bin import sysinfo, test, local_host
 from autotest_lib.client.bin import partition as partition_lib
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, barrier, logging_manager
@@ -76,7 +78,6 @@ class base_client_job(base_job.base_job):
 
     Optional properties provided by this implementation:
         control
-        bootloader
         harness
     """
 
@@ -90,8 +91,7 @@ class base_client_job(base_job.base_job):
         '_state', '_max_disk_usage_rate', 0.0, namespace='client')
 
 
-    def __init__(self, control, options, drop_caches=True,
-                 extra_copy_cmdline=None):
+    def __init__(self, control, options, drop_caches=True):
         """
         Prepare a client side job object.
 
@@ -104,15 +104,11 @@ class base_client_job(base_job.base_job):
                           method will be called during construction.  [False]
         @param drop_caches: If true, utils.drop_caches() is called before and
                 between all tests.  [True]
-        @param extra_copy_cmdline: list of additional /proc/cmdline arguments to
-                copy from the running kernel to all the installed kernels with
-                this job
         """
         super(base_client_job, self).__init__(options=options)
         self._pre_record_init(control, options)
         try:
-            self._post_record_init(control, options, drop_caches,
-                                   extra_copy_cmdline)
+            self._post_record_init(control, options, drop_caches)
         except Exception, err:
             self.record(
                     'ABORT', None, None,'client.bin.job.__init__ failed: %s' %
@@ -212,8 +208,8 @@ class base_client_job(base_job.base_job):
             self, status_indenter(self), record_hook=client_job_record_hook,
             tap_writer=self._tap)
 
-    def _post_record_init(self, control, options, drop_caches,
-                          extra_copy_cmdline):
+
+    def _post_record_init(self, control, options, drop_caches):
         """
         Perform job initialization not required by self.record().
         """
@@ -238,18 +234,14 @@ class base_client_job(base_job.base_job):
                 manage_stdout_and_stderr=True, redirect_fds=True)
         self.logging.start_logging()
 
-        self._config = config.config(self)
         self.profilers = profilers.profilers(self)
-
-        self._init_bootloader()
 
         self.machines = [options.hostname]
         self.machine_dict_list = [{'hostname' : options.hostname}]
         # Client side tests should always run the same whether or not they are
         # running in the lab.
         self.in_lab = False
-        self.hosts = set([local_host.LocalHost(hostname=options.hostname,
-                                               bootloader=self.bootloader)])
+        self.hosts = set([local_host.LocalHost(hostname=options.hostname)])
 
         self.args = []
         if options.args:
@@ -269,8 +261,6 @@ class base_client_job(base_job.base_job):
 
         if options.log:
             self.enable_external_logging()
-
-        self._init_cmdline(extra_copy_cmdline)
 
         self.num_tests_run = None
         self.num_tests_failed = None
@@ -292,40 +282,12 @@ class base_client_job(base_job.base_job):
             utils.drop_caches()
 
 
-    def _init_bootloader(self):
-        """
-        Perform boottool initialization.
-        """
-        tool = self.config_get('boottool.executable')
-        self.bootloader = boottool.boottool(tool)
-
-
     def _init_packages(self):
         """
         Perform the packages support initialization.
         """
         self.pkgmgr = packages.PackageManager(
             self.autodir, run_function_dargs={'timeout':3600})
-
-
-    def _init_cmdline(self, extra_copy_cmdline):
-        """
-        Initialize default cmdline for booted kernels in this job.
-        """
-        copy_cmdline = set(['console'])
-        if extra_copy_cmdline is not None:
-            copy_cmdline.update(extra_copy_cmdline)
-
-        # extract console= and other args from cmdline and add them into the
-        # base args that we use for all kernels we install
-        cmdline = utils.read_one_line('/proc/cmdline')
-        kernel_args = []
-        for karg in cmdline.split():
-            for param in copy_cmdline:
-                if karg.startswith(param) and \
-                    (len(param) == len(karg) or karg[len(param)] == '='):
-                    kernel_args.append(karg)
-        self.config_set('boot.default_args', ' '.join(kernel_args))
 
 
     def _cleanup_results_dir(self):
@@ -376,14 +338,6 @@ class base_client_job(base_job.base_job):
         self._max_disk_usage_rate = max_rate
 
 
-    def relative_path(self, path):
-        """\
-        Return a patch relative to the job results directory
-        """
-        head = len(self.resultdir) + 1     # remove the / inbetween
-        return path[head:]
-
-
     def control_get(self):
         return self.control
 
@@ -394,14 +348,6 @@ class base_client_job(base_job.base_job):
 
     def harness_select(self, which, harness_args):
         self.harness = harness.select(which, self, harness_args)
-
-
-    def config_set(self, name, value):
-        self._config.set(name, value)
-
-
-    def config_get(self, name):
-        return self._config.get(name)
 
 
     def setup_dirs(self, results_dir, tmp_dir):
@@ -417,7 +363,7 @@ class base_client_job(base_job.base_job):
         # as "build.2", "build.3", etc. Whilst this is a little bit
         # inconsistent, 99.9% of jobs will only have one build
         # (that's not done as kernbench, sparse, or buildtest),
-        # so it works out much cleaner. One of life's comprimises.
+        # so it works out much cleaner. One of life's compromises.
         if not results_dir:
             results_dir = os.path.join(self.resultdir, 'build')
             i = 2
@@ -428,23 +374,6 @@ class base_client_job(base_job.base_job):
             os.mkdir(results_dir)
 
         return (results_dir, tmp_dir)
-
-
-    def xen(self, base_tree, results_dir = '', tmp_dir = '', leave = False, \
-                            kjob = None ):
-        """Summon a xen object"""
-        (results_dir, tmp_dir) = self.setup_dirs(results_dir, tmp_dir)
-        build_dir = 'xen'
-        return xen.xen(self, base_tree, results_dir, tmp_dir, build_dir,
-                       leave, kjob)
-
-
-    def kernel(self, base_tree, results_dir = '', tmp_dir = '', leave = False):
-        """Summon a kernel object"""
-        (results_dir, tmp_dir) = self.setup_dirs(results_dir, tmp_dir)
-        build_dir = 'linux'
-        return kernel.auto_kernel(self, base_tree, results_dir, tmp_dir,
-                                  build_dir, leave)
 
 
     def barrier(self, *args, **kwds):
@@ -775,64 +704,6 @@ class base_client_job(base_job.base_job):
             raise error.JobError('Reboot failed: %s' % description)
 
 
-    def end_reboot(self, subdir, kernel, patches, running_id=None):
-        self._check_post_reboot(subdir, running_id=running_id)
-
-        # strip ::<timestamp> from the kernel version if present
-        kernel = kernel.split("::")[0]
-        kernel_info = {"kernel": kernel}
-        for i, patch in enumerate(patches):
-            kernel_info["patch%d" % i] = patch
-        self.record("END GOOD", subdir, "reboot", optional_fields=kernel_info)
-
-
-    def end_reboot_and_verify(self, expected_when, expected_id, subdir,
-                              type='src', patches=[]):
-        """ Check the passed kernel identifier against the command line
-            and the running kernel, abort the job on missmatch. """
-
-        logging.info("POST BOOT: checking booted kernel "
-                     "mark=%d identity='%s' type='%s'",
-                     expected_when, expected_id, type)
-
-        running_id = utils.running_os_ident()
-
-        cmdline = utils.read_one_line("/proc/cmdline")
-
-        find_sum = re.compile(r'.*IDENT=(\d+)')
-        m = find_sum.match(cmdline)
-        cmdline_when = -1
-        if m:
-            cmdline_when = int(m.groups()[0])
-
-        # We have all the facts, see if they indicate we
-        # booted the requested kernel or not.
-        bad = False
-        if (type == 'src' and expected_id != running_id or
-            type == 'rpm' and
-            not running_id.startswith(expected_id + '::')):
-            logging.error("Kernel identifier mismatch")
-            bad = True
-        if expected_when != cmdline_when:
-            logging.error("Kernel command line mismatch")
-            bad = True
-
-        if bad:
-            logging.error("   Expected Ident: " + expected_id)
-            logging.error("    Running Ident: " + running_id)
-            logging.error("    Expected Mark: %d", expected_when)
-            logging.error("Command Line Mark: %d", cmdline_when)
-            logging.error("     Command Line: " + cmdline)
-
-            self._record_reboot_failure(subdir, "reboot.verify", "boot failure",
-                                        running_id=running_id)
-            raise error.JobError("Reboot returned with the wrong kernel")
-
-        self.record('GOOD', subdir, 'reboot.verify',
-                    utils.running_os_full_version())
-        self.end_reboot(subdir, expected_id, patches, running_id=running_id)
-
-
     def partition(self, device, loop_size=0, mountpoint=None):
         """
         Work with a machine partition
@@ -875,19 +746,9 @@ class base_client_job(base_job.base_job):
         self._state.set('client', 'cpu_count', utils.count_cpus())
 
 
-    def reboot(self, tag=LAST_BOOT_TAG):
-        if tag == LAST_BOOT_TAG:
-            tag = self.last_boot_tag
-        else:
-            self.last_boot_tag = tag
-
+    def reboot(self):
         self.reboot_setup()
         self.harness.run_reboot()
-        default = self.config_get('boot.set_default')
-        if default:
-            self.bootloader.set_default(tag)
-        else:
-            self.bootloader.boot_once(tag)
 
         # HACK: using this as a module sometimes hangs shutdown, so if it's
         # installed unload it first
