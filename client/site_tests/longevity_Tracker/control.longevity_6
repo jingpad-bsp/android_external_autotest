@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "scunningham"
-NAME = "longevity_Tracker"
+NAME = "longevity_Tracker.longevity_6"
 PURPOSE = "Monitors performance & stability over long periods of time."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
@@ -12,11 +12,11 @@ TEST_TYPE = "client"
 DEPENDENCIES = "longevity_6"
 
 DOC = """
-This test is used as a stability and longevity test for a Chrome OS device
-and Kiosk App combination (i.e., a Digital Signage Product). The test measures
-CPU and memory usage in the background while a Kiosk App is rendering intense
-graphic and video images. The test terminates after 23:00 hours, or soon after
-a terminate flag file is seen.
+This test is used to track stability and longevity of a Chrome OS device and
+CMS Kiosk App combination (i.e., a Digital Signage Product). The test measures
+CPU and memory usage and temperature in the background, usually while the App
+is running. The test terminates itself after several hours, or soon after a
+terminate flag file is seen.
 """
 
-job.run_test("longevity_Tracker")
+job.run_test("longevity_Tracker", subtest_name=DEPENDENCIES)
