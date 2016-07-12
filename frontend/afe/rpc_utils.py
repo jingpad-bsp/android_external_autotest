@@ -285,8 +285,7 @@ def _check_is_server_test(test_type):
     return False
 
 
-def prepare_generate_control_file(tests, kernel, label, profilers,
-                                  db_tests=True):
+def prepare_generate_control_file(tests, profilers, db_tests=True):
     if db_tests:
         test_objects = [models.Test.smart_get(test) for test in tests]
     else:
@@ -309,8 +308,6 @@ def prepare_generate_control_file(tests, kernel, label, profilers,
         synch_count = max(test.sync_count for test in test_objects)
     else:
         synch_count = 1
-    if label:
-        label = models.Label.smart_get(label)
 
     if db_tests:
         dependencies = set(label.name for label
@@ -321,7 +318,7 @@ def prepare_generate_control_file(tests, kernel, label, profilers,
 
     cf_info = dict(is_server=is_server, synch_count=synch_count,
                    dependencies=list(dependencies))
-    return cf_info, test_objects, profiler_objects, label
+    return cf_info, test_objects, profiler_objects
 
 
 def check_job_dependencies(host_objects, job_dependencies):
