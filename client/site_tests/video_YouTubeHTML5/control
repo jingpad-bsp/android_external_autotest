@@ -8,7 +8,7 @@ PURPOSE = "Verify that YouTube HTML5 video works"
 CRITERIA = """
 This test will fail if YouTube HTML5 video fails to play.
 """
-ATTRIBUTES = "suite:partners"
+ATTRIBUTES = "suite:bvt-perbuild, suite:partners"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
