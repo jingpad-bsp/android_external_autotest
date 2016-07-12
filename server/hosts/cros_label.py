@@ -28,6 +28,15 @@ class BoardLabel(base_label.StringPrefixLabel):
     _NAME = ds_constants.BOARD_PREFIX.rstrip(':')
 
     def generate_labels(self, host):
+        # We only want to apply the board labels once, which is when they get
+        # added to the AFE.  That way we don't have to worry about the board
+        # label switching on us if the wrong builds get put on the devices.
+        # crbug.com/624207 records one event of the board label switching
+        # unexpectedly on us.
+        for label in host._afe_host.labels:
+            if label.startswith(self._NAME):
+                return [label.split(':')[-1]]
+
         # TODO(kevcheng): for now this will dup the code in CrosHost and a
         # separate cl will refactor the get_board in CrosHost to just return the
         # board without the BOARD_PREFIX and all the other callers will be
