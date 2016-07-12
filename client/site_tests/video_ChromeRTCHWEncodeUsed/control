@@ -5,9 +5,9 @@
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_ChromeRTCHWEncodeUsed"
 PURPOSE = "Verify that HW Encoding works for WebRTC/vp8 video."
-# Breaking the commit queue. Disabling while it is investigated.
+# Breaking the commit queue. Moving to bvt-perbuild to monitor.
 # http://crbug.com/541408
-#ATTRIBUTES = "suite:bvt-cq, suite:partners"
+ATTRIBUTES = "suite:bvt-perbuild"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
