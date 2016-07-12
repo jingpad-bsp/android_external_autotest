@@ -232,8 +232,7 @@ class LabelRetriever(object):
             self._populate_known_labels(self._labels)
 
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        afe_host = afe.get_hosts(hostname=host.hostname)[0]
-        old_labels = set(afe_host.labels)
+        old_labels = set(host._afe_host.labels)
         logging.info('existing labels: %s', old_labels)
         known_labels = set([l for l in old_labels
                             if self._is_known_label(l)])
