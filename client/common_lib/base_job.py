@@ -1,3 +1,5 @@
+# pylint: disable=missing-docstring
+
 import os, copy, logging, errno, fcntl, time, re, weakref, traceback
 import tarfile
 import cPickle as pickle
@@ -885,8 +887,6 @@ class base_job(object):
     @property args: A list of addtional miscellaneous command-line arguments
         provided when starting the job.
 
-    @property last_boot_tag: The label of the kernel from the last reboot.
-        [OPTIONAL,PERSISTENT]
     @property automatic_test_tag: A string which, if set, will be automatically
         added to the test name when running tests.
 
@@ -904,9 +904,6 @@ class base_job(object):
     @property num_tests_failed: The number of tests failed during the job.
         [OPTIONAL]
 
-    @property bootloader: An instance of the boottool class. May not be
-        available on job instances where access to the bootloader is not
-        available (e.g. on the server running a server job). [OPTIONAL]
     @property harness: An instance of the client test harness. Only available
         in contexts where client test execution happens. [OPTIONAL]
     @property logging: An instance of the logging manager associated with the
@@ -959,8 +956,6 @@ class base_job(object):
         '_state', 'default_profile_only', False)
     run_test_cleanup = _job_state.property_factory(
         '_state', 'run_test_cleanup', True)
-    last_boot_tag = _job_state.property_factory(
-        '_state', 'last_boot_tag', None)
     automatic_test_tag = _job_state.property_factory(
         '_state', 'automatic_test_tag', None)
 
