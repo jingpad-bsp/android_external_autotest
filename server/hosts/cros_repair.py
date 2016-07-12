@@ -10,7 +10,6 @@ import common
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
 from autotest_lib.server import crashcollect
-from autotest_lib.server.hosts import label_verify
 from autotest_lib.server.hosts import repair
 
 
@@ -318,7 +317,6 @@ def create_cros_repair_strategy():
         (UpdateSuccessVerifier,      'good_au',  ['ssh']),
         (PythonVerifier,             'python',   ['ssh']),
         (repair.LegacyHostVerifier,  'cros',     ['ssh']),
-        (label_verify.LabelVerifier, 'label',    ['ssh']),
     ]
 
     # The dependencies and triggers for the 'au', 'powerwash', and 'usb'
