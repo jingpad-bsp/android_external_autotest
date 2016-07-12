@@ -4,6 +4,7 @@
 
 """Server side bluetooth adapter subtests."""
 
+import inspect
 import functools
 import logging
 import re
@@ -22,6 +23,17 @@ Event = recorder.Event
 # Delay binding the methods since host is only available at run time.
 SUPPORTED_DEVICE_TYPES = {
         'MOUSE': lambda host: host.chameleon.get_bluetooh_hid_mouse}
+
+
+def method_name():
+    """Get the method name of a class.
+
+    This function is supposed to be invoked inside a class and will
+    return current method name who invokes this function.
+
+    @returns: the string of the method name inside the class.
+    """
+    return inspect.getouterframes(inspect.currentframe())[1][3]
 
 
 def _run_method(method, method_name, *args, **kwargs):
