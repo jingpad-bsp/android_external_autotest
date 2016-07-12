@@ -275,13 +275,15 @@ class base_server_job(base_job.base_job):
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         self.machine_dict_list = []
         for machine in self.machines:
-            host_attributes = host_attributes or {}
+            afe_host_in_lab = None
             if self.in_lab:
-                host = afe.get_hosts(hostname=machine)[0]
-                host_attributes.update(host.attributes)
+                afe_host_in_lab = afe.get_hosts(hostname=machine)[0]
+            afe_host = afe_host_in_lab or server_utils.EmptyAFEHost()
+            if host_attributes:
+                afe_host.attributes.update(host_attributes)
             self.machine_dict_list.append(
                     {'hostname' : machine,
-                     'host_attributes' : host_attributes})
+                     'afe_host' : afe_host})
 
         # TODO(jrbarnette) The three attributes below are only relevant
         # to client jobs, but they're required to be present, or we will

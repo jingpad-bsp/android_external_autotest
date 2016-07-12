@@ -732,7 +732,7 @@ def _get_standard_servo_args(dut_host):
 
     This checks for the presence of servo host and port attached to the
     given `dut_host`.  This data should be stored in the
-    `host_attributes` field in the provided `dut_host` parameter.
+    `_afe_host.attributes` field in the provided `dut_host` parameter.
 
     @param dut_host   Instance of `Host` on which to find the servo
                       attributes.
@@ -749,7 +749,7 @@ def _get_standard_servo_args(dut_host):
         is_ssp_moblab = is_moblab
     else:
         is_moblab = utils.is_moblab()
-    attrs = dut_host.host_attributes
+    attrs = dut_host._afe_host.attributes
     if attrs and SERVO_HOST_ATTR in attrs:
         servo_host = attrs[SERVO_HOST_ATTR]
         if (is_ssp_moblab and servo_host in ['localhost', '127.0.0.1']):

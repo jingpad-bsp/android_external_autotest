@@ -14,8 +14,8 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server.cros.dynamic_suite import constants
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import autoserv_parser
+from autotest_lib.server import utils
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import testbed_label
@@ -38,25 +38,25 @@ class TestBed(object):
     _parser = autoserv_parser.autoserv_parser
     VERSION_PREFIX = 'testbed-version'
 
-    def __init__(self, hostname='localhost', host_attributes={},
-                 adb_serials=None, **dargs):
+    def __init__(self, hostname='localhost', afe_host=None, adb_serials=None,
+                 **dargs):
         """Initialize a TestBed.
 
         This will create the Test Station Host and connected hosts (ADBHost for
         now) and allow the user to retrieve them.
 
         @param hostname: Hostname of the test station connected to the duts.
-        @param host_attributes: Attributes of the host, passed in from
-                factory.create_testbed.
         @param adb_serials: List of adb device serials.
+        @param afe_host: The host object attained from the AFE (get_hosts).
         """
         logging.info('Initializing TestBed centered on host: %s', hostname)
         self.hostname = hostname
+        self._afe_host = afe_host or utils.EmptyAFEHost()
         self.labels = base_label.LabelRetriever(testbed_label.TESTBED_LABELS)
         self.teststation = teststation_host.create_teststationhost(
                 hostname=hostname)
         self.is_client_install_supported = False
-        serials_from_attributes = host_attributes.get('serials')
+        serials_from_attributes = self._afe_host.attributes.get('serials')
         if serials_from_attributes:
             serials_from_attributes = serials_from_attributes.split(',')
 
@@ -69,7 +69,6 @@ class TestBed(object):
                 hostname=hostname, teststation=self.teststation,
                 adb_serial=adb_serial)
 
-        self.host_attributes = host_attributes
 
 
     def query_adb_device_serials(self):
@@ -77,22 +76,8 @@ class TestBed(object):
 
         @returns a list of adb devices.
         """
-        serials = []
-        # Let's see if we can get the serials via host attributes.
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        serials_attr = afe.get_host_attribute('serials', hostname=self.hostname)
-        for serial_attr in serials_attr:
-            serials.extend(serial_attr.value.split(','))
-
-        # Looks like we got nothing from afe, let's probe the test station.
-        if not serials:
-            # TODO(kevcheng): Refactor teststation to be a class and make the
-            # ADBHost adb_devices a static method I can use here.  For now this
-            # is pretty much a c/p of the _adb_devices() method from ADBHost.
-            serials = adb_host.ADBHost.parse_device_serials(
+        return adb_host.ADBHost.parse_device_serials(
                 self.teststation.run('adb devices').stdout)
-
-        return serials
 
 
     def get_all_hosts(self):

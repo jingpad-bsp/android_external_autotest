@@ -8,6 +8,7 @@ import unittest
 import common
 
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server import utils
 from autotest_lib.server.hosts import base_label
 
  # pylint: disable=missing-docstring
@@ -64,11 +65,18 @@ class TestLabelList(base_label.StringLabel):
         return labels
 
 
+class MockAFEHost(utils.EmptyAFEHost):
+
+    def __init__(self, labels=[]):
+        self.labels = labels
+
+
 class MockHost(object):
 
-    def __init__(self, exists=True):
+    def __init__(self, exists=True, afe_host=None):
         self.hostname = 'hostname'
         self.exists = exists
+        self._afe_host = afe_host
 
 
 class BaseLabelUnittests(unittest.TestCase):
@@ -178,12 +186,9 @@ class LabelRetrieverUnittests(unittest.TestCase):
         """Check that we add/remove the expected labels in update_labels()."""
         label_to_add = 'label_to_add'
         label_to_remove = 'prefix:label_to_remove'
-        mock_afe_host = mock.MagicMock()
-        mock_afe_host.labels = [label_to_remove, TestBaseLabel._NAME]
         mock_afe = mock.MagicMock()
-        mock_afe.get_hosts.return_value = [mock_afe_host]
-        mock_retry_afe.return_value = mock_afe
-        mockhost = MockHost()
+        mockhost = MockHost(afe_host=MockAFEHost(
+                labels=[label_to_remove, TestBaseLabel._NAME]))
         expected_remove_labels = [label_to_remove]
         expected_add_labels = ['%s:%s' % (TestStringPrefixLabel._NAME,
                                           label_to_add)]
