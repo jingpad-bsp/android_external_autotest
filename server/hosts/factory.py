@@ -7,7 +7,7 @@ from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
-from autotest_lib.server.hosts import cros_host, ssh_host
+from autotest_lib.server.hosts import common_label, cros_host, ssh_host
 from autotest_lib.server.hosts import moblab_host, sonic_host
 from autotest_lib.server.hosts import adb_host, testbed
 
@@ -32,7 +32,8 @@ _started_hostnames = set()
 host_types = [cros_host.CrosHost, moblab_host.MoblabHost, sonic_host.SonicHost,
               adb_host.ADBHost,]
 OS_HOST_DICT = {'cros' : cros_host.CrosHost,
-                'android': adb_host.ADBHost}
+                'android': adb_host.ADBHost,
+                'brillo': adb_host.ADBHost}
 
 
 def _get_host_arguments():
@@ -121,7 +122,7 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     @param machine: A dict representing the device under test or a String
                     representing the DUT hostname (for legacy caller support).
                     If it is a machine dict, the 'hostname' key is required.
-                    Optional 'host_attributes' key will pipe in host_attributes
+                    Optional 'afe_host' key will pipe in afe_host
                     from the autoserv runtime or the AFE.
     @param host_class: Host class to use, if None, will attempt to detect
                        the correct class.
@@ -133,9 +134,8 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     @returns: A host object which is an instance of the newly created
               host class.
     """
-    hostname, host_attributes = server_utils.get_host_info_from_machine(
+    hostname, afe_host = server_utils.get_host_info_from_machine(
             machine)
-    args['host_attributes'] = host_attributes
     ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
             _get_host_arguments()
 
@@ -144,11 +144,22 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     args['ssh_verbosity_flag'] = ssh_verbosity_flag
     args['ssh_options'] = ssh_options
     args['port'] = ssh_port
+    args['afe_host'] = afe_host
+
+    host_os = None
+    # Let's grab the os from the labels if we can for host class detection.
+    for label in afe_host.labels:
+        if label.startswith(common_label.OSLabel._NAME):
+            host_os = label.split(':')[-1]
+            break
 
     if not connectivity_class:
         connectivity_class = _choose_connectivity_class(hostname, ssh_port)
-    host_attributes = args.get('host_attributes', {})
-    host_class = host_class or OS_HOST_DICT.get(host_attributes.get('os_type'))
+    # TODO(kevcheng): get rid of the host detection using host attributes.
+    host_class = (host_class
+                  or OS_HOST_DICT.get(afe_host.attributes.get('os_type'))
+                  or OS_HOST_DICT.get(host_os))
+
     if host_class:
         classes = [host_class, connectivity_class]
     else:
@@ -174,15 +185,15 @@ def create_testbed(machine, **kwargs):
                     representing the testbed hostname (for legacy caller
                     support).
                     If it is a machine dict, the 'hostname' key is required.
-                    Optional 'host_attributes' key will pipe in host_attributes
-                    from the autoserv runtime or the AFE.
+                    Optional 'afe_host' key will pipe in afe_host from
+                    the afe_host object from the autoserv runtime or the AFE.
     @param kwargs: Keyword args to pass to the testbed initialization.
 
     @returns: The testbed object with all associated host objects instantiated.
     """
-    hostname, host_attributes = server_utils.get_host_info_from_machine(
+    hostname, afe_host = server_utils.get_host_info_from_machine(
             machine)
-    kwargs['host_attributes'] = host_attributes
+    kwargs['afe_host'] = afe_host
     return testbed.TestBed(hostname, **kwargs)
 
 
@@ -193,7 +204,7 @@ def create_target_machine(machine, **kwargs):
                     representing the testbed hostname (for legacy caller
                     support).
                     If it is a machine dict, the 'hostname' key is required.
-                    Optional 'host_attributes' key will pipe in host_attributes
+                    Optional 'afe_host' key will pipe in afe_host
                     from the autoserv runtime or the AFE.
     @param kwargs: Keyword args to pass to the testbed initialization.
 

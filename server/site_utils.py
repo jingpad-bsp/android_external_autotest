@@ -66,6 +66,21 @@ class Singleton(type):
                     *args, **kwargs)
         return cls._instances[cls]
 
+class EmptyAFEHost(object):
+    """Object to represent an AFE host object when there is no AFE."""
+
+    def __init__(self):
+        """
+        We'll be setting the instance attributes as we use them.  Right now
+        we only use attributes and labels but as time goes by and other
+        attributes are used from an actual AFE Host object (check
+        rpc_interfaces.get_hosts()), we'll add them in here so users won't be
+        perplexed why their host's afe_host object complains that attribute
+        doesn't exist.
+        """
+        self.attributes = {}
+        self.labels = []
+
 
 def ParseBuildName(name):
     """Format a build name, given board, type, milestone, and manifest num.
@@ -672,12 +687,21 @@ def get_hostname_from_machine(machine):
 def get_host_info_from_machine(machine):
     """Lookup host information from a machine string or dict.
 
-    @returns: Tuple of (hostname, host_attributes)
+    @returns: Tuple of (hostname, afe_host)
     """
     if isinstance(machine, dict):
-        return (machine['hostname'], machine['host_attributes'])
+        return (machine['hostname'], machine['afe_host'])
     else:
-        return (machine, {})
+        return (machine, EmptyAFEHost())
+
+
+def get_afe_host_from_machine(machine):
+    """Return the afe_host from the machine dict if possible.
+
+    @returns: AFE host object.
+    """
+    _, afe_host = get_host_info_from_machine(machine)
+    return afe_host
 
 
 def get_creds_abspath(creds_file):
@@ -710,7 +734,5 @@ def machine_is_testbed(machine):
 
     @return: True if the machine is a testbed, False otherwise.
     """
-    _, attributes = get_host_info_from_machine(machine)
-    if len(attributes.get('serials', '').split(',')) > 1:
-        return True
-    return False
+    _, afe_host = get_host_info_from_machine(machine)
+    return len(afe_host.attributes.get('serials', '').split(',')) > 1
