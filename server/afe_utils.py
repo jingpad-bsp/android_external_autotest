@@ -32,7 +32,7 @@ def host_in_lab(host):
     """
     if not host.job or not host.job.in_lab:
         return False
-    return AFE.get_hosts(hostname=host.hostname)
+    return host._afe_host
 
 
 def get_build(host):
@@ -123,16 +123,18 @@ def lookup_job_repo_url(host):
     return get_host_attribute(host, host.job_repo_url_attribute)
 
 
-def get_host_attribute(host, attribute):
+def get_host_attribute(host, attribute, use_local_value=True):
     """Looks up the value of host attribute for the host.
 
     @param host: A Host object to lookup for attribute value.
     @param attribute: Name of the host attribute.
+    @param use_local_value: Boolean to indicate if the local value or AFE value
+            should be retrieved.
 
     @returns value for the given attribute or None if not found.
     """
-    local_value = host.host_attributes.get(attribute)
-    if not host_in_lab(host):
+    local_value = host._afe_host.attributes.get(attribute)
+    if not host_in_lab(host) or use_local_value:
         return local_value
 
     hosts = AFE.get_hosts(hostname=host.hostname)
@@ -149,8 +151,7 @@ def clear_host_attributes_before_provision(host):
     """
     attributes = host.get_attributes_to_clear_before_provision()
     for attribute in attributes:
-        if attribute in host.host_attributes:
-            del host.host_attributes[attribute]
+        host._afe_host.attributes.pop(attribute, None)
     if not host_in_lab(host):
         return
 
@@ -167,12 +168,12 @@ def update_host_attribute(host, attribute, value):
 
     @raises AutoservError: If we failed to update the attribute.
     """
-    host.host_attributes[attribute] = value
+    host._afe_host.attributes[attribute] = value
     if not host_in_lab(host):
         return
 
     AFE.set_host_attribute(attribute, value, hostname=host.hostname)
-    if get_host_attribute(host, attribute) != value:
+    if get_host_attribute(host, attribute, use_local_value=False) != value:
         raise error.AutoservError(
                 'Failed to update host attribute `%s` with %s, host %s' %
                 (attribute, value, host.hostname))
@@ -198,6 +199,9 @@ def get_labels(host, prefix):
 
     @param prefix: Prefix of label names.
     """
+    # TODO(kevcheng): Fix up this call to use host._afe_host to get the labels
+    # and adjust the callers to use just a list of labels (instead of a list of
+    # label objects).
     return AFE.get_labels(name__startswith=prefix, host__hostname=host.hostname)
 
 

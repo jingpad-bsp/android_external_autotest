@@ -26,10 +26,19 @@ class AbstractSSHHost(remote.RemoteHost):
     VERSION_PREFIX = ''
 
     def _initialize(self, hostname, user="root", port=22, password="",
-                    is_client_install_supported=True, host_attributes={},
+                    is_client_install_supported=True, afe_host=None,
                     *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
+        """
+        @param hostname: The hostname of the host.
+        @param user: The username to use when ssh'ing into the host.
+        @param password: The password to use when ssh'ing into the host.
+        @param port: The port to use for ssh.
+        @param is_client_install_supported: Boolean to indicate if we can
+                install autotest on the host.
+        @param afe_host: The host object attained from the AFE (get_hosts).
+        """
         # IP address is retrieved only on demand. Otherwise the host
         # initialization will fail for host is not online.
         self._ip = None
@@ -53,8 +62,7 @@ class AbstractSSHHost(remote.RemoteHost):
         # Create a Lock to protect against race conditions.
         self._lock = Lock()
 
-        self.host_attributes = host_attributes
-
+        self._afe_host = afe_host or utils.EmptyAFEHost()
 
     @property
     def ip(self):
