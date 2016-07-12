@@ -180,7 +180,9 @@ class FirmwareTest(FAFTBase):
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
         self._start_service('update-engine')
-        # FAFT client stopped tcsd at startup. Restart it.
+        # FAFT client stopped tcsd or trunksd at startup. Restart it.
+        # Only one is present, so only one will start.
+        self._start_service('trunksd')
         self._start_service('tcsd')
         self._remove_faft_lockfile()
         self._record_servo_log()
