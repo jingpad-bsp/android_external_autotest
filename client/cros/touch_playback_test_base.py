@@ -4,7 +4,10 @@
 
 import logging
 import os
+import re
 import shutil
+import subprocess
+import tempfile
 import time
 import urllib2
 
@@ -271,8 +274,91 @@ class touch_playback_test_base(test.test):
                 'mouse_center_cursor_gesture', input_type='mouse')
 
 
+    def _get_kernel_events_recorder(self, input_type):
+        """Return a kernel event recording object for the given input type.
+
+        @param input_type: device type, e.g. 'touchpad'
+
+        @returns: KernelEventsRecorder instance.
+
+        """
+        node = self.player.devices[input_type].node
+        return KernelEventsRecorder(node)
+
+
     def cleanup(self):
         self.player.close()
+
+
+class KernelEventsRecorder(object):
+    """Object to record kernel events for a particular device."""
+
+    def __init__(self, node):
+        """Setup to record future evtest output for this node.
+
+        @param input_type: the device which to inspect, e.g. 'mouse'
+
+        """
+        self.node = node
+        self.fh = tempfile.NamedTemporaryFile()
+        self.evtest_process = None
+        self.start()
+
+
+    def start(self):
+        """Start recording events."""
+        self.evtest_process = subprocess.Popen(
+                ['evtest', self.node], stdout=self.fh)
+
+        # Wait until the initial output has finished before returning.
+        def find_exit():
+            """Polling function for end of output."""
+            interrupt_cmd = ('grep "interrupt to exit" %s | wc -l' %
+                             self.fh.name)
+            line_count = utils.run(interrupt_cmd).stdout.strip()
+            return line_count != '0'
+        utils.poll_for_condition(find_exit)
+
+
+    def stop(self):
+        """Stop recording events."""
+        if self.evtest_process:
+            self.evtest_process.kill()
+            self.evtest_process = None
+
+
+    def get_recorded_events(self):
+        """Get the evtest output since object was created."""
+        self.fh.seek(0)
+        events = self.fh.read()
+        return events
+
+
+    def log_recorded_events(self):
+        """Save recorded events into logs."""
+        events = self.get_recorded_events()
+        logging.info('Kernel events seen:\n%s', events)
+
+
+    def get_last_event_timestamp(self):
+        """Return the timestamp of the last event since recording started.
+
+        Events are in the form "Event: time <epoch time>, <info>\n"
+
+        @returns: float of last Unix timestamp value (in seconds).
+
+        """
+        events = self.get_recorded_events()
+        findall = re.findall(r' time (.*?),', events, re.MULTILINE)
+        if not findall:
+            raise error.TestError('Could not find any kernel timestamps!')
+        return float(findall[-1])
+
+
+    def close(self):
+        """Clean up this class."""
+        self.stop()
+        self.fh.close()
 
 
 class TestPage(object):
@@ -463,6 +549,11 @@ class EventsPage(TestPage):
         """Put the test page's event log into logging.info."""
         logging.info('EVENTS LOG:')
         logging.info(self.get_events_log())
+
+
+    def get_time_of_last_event(self):
+        """Return the timestamp of the last seen event (if any)."""
+        return self._tab.EvaluateJavaScript('timeOfLastEvent')
 
 
     def get_event_count(self):
