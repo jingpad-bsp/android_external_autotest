@@ -146,14 +146,18 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if self.env is not None and self.env not in FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
-        # If |env| is 'dm-fake', ensure value and credentials are not given.
+        # If |env| is 'dm-fake', set |gaia_login| flag to False, and ensure
+        # that value and credentials were not given.
         if self.env == 'dm-fake':
+            self.gaia_login = False
             if self.is_value_given:
                 raise error.TestError('value must not be given when using '
                                       'the fake DM Server.')
             if self.username or self.password:
                 raise error.TestError('user credentials must not be given '
                                       'when using the fake DM Server.')
+        else:
+            self.gaia_login = True
 
         # If either credential is not given, set both to default.
         if self.username is None or self.password is None:
@@ -253,11 +257,12 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         logging.info('  extra_browser_args: %s', self.extra_flags)
         logging.info('  username: %s', self.username)
         logging.info('  password: %s', self.password)
+        logging.info('  gaia_login: %s', self.gaia_login)
 
         self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
                                 username=self.username,
                                 password=self.password,
-                                gaia_login=False,
+                                gaia_login=self.gaia_login,
                                 disable_gaia_services=False,
                                 autotest_ext=True)
 
