@@ -2,32 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import os
+# pylint: disable=missing-docstring
+
 from datetime import datetime
-from autotest_lib.client.bin import boottool, utils
+
+from autotest_lib.client.bin import utils
 from autotest_lib.client.bin.job import base_client_job
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import cros_logging
 
-
-LAST_BOOT_TAG = object()
 
 class site_job(base_client_job):
 
 
     def __init__(self, *args, **kwargs):
         base_client_job.__init__(self, *args, **kwargs)
-
-
-    def _runtest(self, url, timeout, tag, args, dargs):
-        # this replaced base_client_job._runtest, which is called by
-        # base_client_job.runtest.group_func (see job.py)
-        try:
-            self.last_error = None
-            base_client_job._runtest(self, url, timeout,tag, args, dargs)
-        except error.TestBaseException, detail:
-            self.last_error = detail
-            raise
 
 
     def run_test(self, url, *args, **dargs):
@@ -49,12 +37,7 @@ class site_job(base_client_job):
         return passed
 
 
-    def reboot(self, tag=LAST_BOOT_TAG):
-        if tag == LAST_BOOT_TAG:
-            tag = self.last_boot_tag
-        else:
-            self.last_boot_tag = tag
-
+    def reboot(self):
         self.reboot_setup()
         self.harness.run_reboot()
 

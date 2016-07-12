@@ -285,16 +285,13 @@ class base_server_job(base_job.base_job):
                     {'hostname' : machine,
                      'afe_host' : afe_host})
 
-        # TODO(jrbarnette) The three attributes below are only relevant
-        # to client jobs, but they're required to be present, or we will
-        # fail server job unit tests.  Yes, really.
+        # TODO(jrbarnette) The harness attribute is only relevant to
+        # client jobs, but it's required to be present, or we will fail
+        # server job unit tests.  Yes, really.
         #
-        # TODO(jrbarnette) bootloader and last_boot_tag aren't even
-        # needed in the client job, but we're deleting them piecemeal,
-        # and the server job change comes first.
+        # TODO(jrbarnette) The utility of the 'harness' attribute even
+        # to client jobs is suspect.  Probably, we should remove it.
         self.harness = None
-        self.bootloader = None
-        self.last_boot_tag = None
 
 
     @classmethod

@@ -202,13 +202,6 @@ class test_setup_job(unittest.TestCase):
         self.construct_job()
 
 
-    def test_relative_path(self):
-        self.construct_job()
-        dummy = "asdf"
-        ret = self.job.relative_path(os.path.join(self.job.resultdir, dummy))
-        self.assertEquals(ret, dummy)
-
-
     def test_setup_dirs_raise(self):
         self.construct_job()
 
