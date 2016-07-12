@@ -179,7 +179,7 @@ PKG_LIST="libapache2-mod-wsgi gnuplot apache2-mpm-prefork unzip \
 python-imaging libpng12-dev libfreetype6-dev \
 sqlite3 python-pysqlite2 git-core pbzip2 openjdk-6-jre openjdk-6-jdk \
 python-crypto  python-dev subversion build-essential python-setuptools \
-python-numpy python-scipy"
+python-numpy python-scipy libmysqlclient-dev"
 
 if ! sudo apt-get install -y ${PKG_LIST}; then
   echo "Could not install packages: $?"
