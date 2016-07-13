@@ -580,7 +580,11 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
     TASK_TYPE = None
     host = None
     queue_entry = None
-    _SPECIAL_TASK_COUNT_METRIC = metrics.Counter('chromeos/autotest/scheduler/special_task_count')
+    _SPECIAL_TASK_COUNT_METRIC = metrics.Counter(
+        'chromeos/autotest/scheduler/special_task_count')
+    _SPECIAL_TASK_DURATION_METRIC = metrics.SecondsDistribution(
+        'chromeos/autotest/scheduler/special_task_durations')
+
 
     def __init__(self, task, extra_command_args):
         super(SpecialAgentTask, self).__init__()
@@ -595,6 +599,7 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
                     id=task.queue_entry.id)
             self.host.dbg_str += self.queue_entry.get_dbg_str()
 
+        # This is of type SpecialTask (as defined in frontend/afe/models.py)
         self.task = task
         self._extra_command_args = extra_command_args
         self.host.metadata = self.get_metadata()
@@ -671,9 +676,13 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
 
     def _emit_special_task_status_metric(self):
         """Increments an accumulator associated with this special task."""
-        self._SPECIAL_TASK_COUNT_METRIC.increment(fields={
-            'type': self.TASK_TYPE,
-            'success': bool(self.success)})
+        fields = {'type': self.TASK_TYPE,
+                  'success': bool(self.success),
+                  'board': str(self.host.board)}
+        self._SPECIAL_TASK_COUNT_METRIC.increment(fields=fields)
+        duration = (self.task.time_finished -
+                    self.task.time_started).total_seconds()
+        self._SPECIAL_TASK_DURATION_METRIC.add(duration, fields=fields)
 
 
     # TODO(milleral): http://crbug.com/268607
