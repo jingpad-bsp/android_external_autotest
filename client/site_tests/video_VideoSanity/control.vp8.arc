@@ -3,16 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = 'Chrome OS Project, chromeos-video@google.com'
-NAME = 'video_VideoSanity.vp8'
+NAME = 'video_VideoSanity.vp8.arc'
 PURPOSE = 'Verify that Chrome media and video works'
 CRITERIA = """
 This test will fail if Chrome media is not enable or video doesn't play.
 """
-ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TIME = 'SHORT'
 TEST_CATEGORY = 'General'
 TEST_CLASS = 'video'
 TEST_TYPE = 'client'
+DEPENDENCIES = "arc"
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],

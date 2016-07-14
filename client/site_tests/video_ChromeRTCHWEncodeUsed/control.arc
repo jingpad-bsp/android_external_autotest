@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeRTCHWEncodeUsed"
+NAME = "video_ChromeRTCHWEncodeUsed.arc"
 PURPOSE = "Verify that HW Encoding works for WebRTC/vp8 video."
-#ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "hw_video_acc_enc_vp8"
+DEPENDENCIES = "hw_video_acc_enc_vp8, arc"
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],

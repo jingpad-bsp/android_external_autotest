@@ -4,7 +4,7 @@
 
 AUTHOR = 'chromeos-gfx'
 NAME = "graphics_Idle.arc"
-ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 PURPOSE = "Verify that graphics behaves as expected on idle."
 CRITERIA = """
 This test will fail if we don't see the appropriate GPU idle states.
@@ -14,6 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
+DEPENDENCIES = "arc"
 BUG_TEMPLATE = {
     'labels': ['Cr-OS-Kernel-Graphics'],
 }
