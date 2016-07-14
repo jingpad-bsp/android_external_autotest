@@ -121,6 +121,11 @@ def start_new_hangout_session(webview_context, hangout_name):
     if not is_ready_to_start_hangout_session(webview_context):
         if is_in_hangout_session(webview_context):
             end_hangout_session(webview_context)
+        utils.poll_for_condition(lambda: webview_context.EvaluateJavaScript(
+                "window.hrIsReadyToStartHangoutForTest()"),
+                exception=error.TestFail('Not ready to start hangout session.'),
+                timeout=DEFAULT_TIMEOUT,
+                sleep_interval=1)
 
     webview_context.ExecuteJavaScript("window.hrStartCallForTest('" +
                                   hangout_name + "')")
