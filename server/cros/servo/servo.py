@@ -380,6 +380,16 @@ class Servo(object):
         self._server.imaginary_key(press_secs)
 
 
+    def sysrq_x(self, press_secs=''):
+        """Simulate Alt VolumeUp X simulataneous press.
+
+        This key combination is the kernel system request (sysrq) X.
+
+        @param press_secs : Str. Time to press key.
+        """
+        self._server.sysrq_x(press_secs)
+
+
     def toggle_recovery_switch(self):
         """Toggle recovery switch on and off."""
         self.enable_recovery_mode()
