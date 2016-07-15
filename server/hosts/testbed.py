@@ -67,7 +67,7 @@ class TestBed(object):
         for adb_serial in self.adb_device_serials:
             self.adb_devices[adb_serial] = adb_host.ADBHost(
                 hostname=hostname, teststation=self.teststation,
-                adb_serial=adb_serial)
+                adb_serial=adb_serial, afe_host=self._afe_host)
 
 
 
