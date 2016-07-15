@@ -1,21 +1,13 @@
 #!/usr/bin/python
-#pylint: disable-msg=C0111
 
-import gc
-import time
+#pylint: disable=missing-docstring
+
 import unittest
 
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
-from autotest_lib.client.common_lib.test_utils import mock
-from autotest_lib.database import database_connection
 from autotest_lib.frontend.afe import models
-from autotest_lib.scheduler import agent_task
-from autotest_lib.scheduler import monitor_db, drone_manager, email_manager
-from autotest_lib.scheduler import pidfile_monitor
-from autotest_lib.scheduler import scheduler_config, gc_stats, host_scheduler
-from autotest_lib.scheduler import monitor_db_functional_test
 from autotest_lib.scheduler import monitor_db_unittest
 from autotest_lib.scheduler import scheduler_models
 
@@ -199,7 +191,8 @@ class AtomicGroupTest(monitor_db_unittest.DispatcherSchedulingTest):
         job = scheduler_models.Job(id=model_job.id)
         self._run_scheduler()
         self._check_for_extra_schedulings()
-        queue_entries = job.get_host_queue_entries()
+        queue_entries = scheduler_models.HostQueueEntry.fetch(
+                where='job_id=%d' % job.id)
         self.assertEqual(1, len(queue_entries))
         self.assertEqual(queue_entries[0].status,
                          models.HostQueueEntry.Status.ABORTED)
