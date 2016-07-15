@@ -424,6 +424,20 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             return None
         return value_shown
 
+    def _get_policy_value_from_new_tab(self, policy_name):
+        """Get a given policy value by opening a new tab then closing it.
+
+        @param policy_name: string of policy name.
+
+        @returns: (string) value of the policy as shown on chrome://policy.
+
+        """
+        tab = self.navigate_to_url('chrome://policy')
+        value = self._get_policy_value_shown(tab, policy_name)
+        tab.Close()
+
+        return value
+
     def get_elements_from_page(self, tab, cmd):
         """Get collection of page elements that match the |cmd| filter.
 
