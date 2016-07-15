@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
+from chromite.lib import metrics
 
 
 CONFIG = global_config.global_config
@@ -67,6 +68,8 @@ class DedupingScheduler(object):
     @var _afe: a frontend.AFE instance used to talk to autotest.
     """
 
+    _SUITE_SCHEDULER_SUITE_COUNT = metrics.Counter(
+            'chromeos/autotest/suite_scheduler/suite/created')
 
     def __init__(self, afe=None, file_bug=False):
         """Constructor
@@ -224,6 +227,12 @@ class DedupingScheduler(object):
                              delay_minutes=delay_minutes,
                              run_prod_code=run_prod_code,
                              min_rpc_timeout=_MIN_RPC_TIMEOUT) is not None:
+                # Report data to metrics.
+                fields = {'suite': suite,
+                          'board': board,
+                          'pool': pool,
+                          'priority': str(priority)}
+                self._SUITE_SCHEDULER_SUITE_COUNT.increment(fields=fields)
                 return True
             else:
                 raise ScheduleException(
