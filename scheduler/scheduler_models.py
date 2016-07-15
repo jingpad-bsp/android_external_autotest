@@ -19,7 +19,6 @@ _drone_manager: reference to global DroneManager instance.
 """
 
 import datetime, itertools, logging, os, re, sys, time, weakref
-from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
@@ -966,24 +965,8 @@ class Job(DBObject):
         return self._owner_model
 
 
-    def is_server_job(self):
-        return self.control_type == control_data.CONTROL_TYPE.SERVER
-
-
     def tag(self):
         return "%s-%s" % (self.id, self.owner)
-
-
-    def get_host_queue_entries(self):
-        rows = _db.execute("""
-                SELECT * FROM afe_host_queue_entries
-                WHERE job_id= %s
-        """, (self.id,))
-        entries = [HostQueueEntry(row=i) for i in rows]
-
-        assert len(entries)>0
-
-        return entries
 
 
     def is_image_update_job(self):
@@ -1113,15 +1096,6 @@ class Job(DBObject):
             stats['execution_time'] = '(none)'
 
         return stats
-
-
-    @_timer.decorate
-    def set_status(self, status, update_queues=False):
-        self.update_field('status',status)
-
-        if update_queues:
-            for queue_entry in self.get_host_queue_entries():
-                queue_entry.set_status(status)
 
 
     def keyval_dict(self):
