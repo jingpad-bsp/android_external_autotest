@@ -368,6 +368,30 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         raise NotImplementedError
 
 
+    def get_supported_channel_widths(self):
+        """
+        Returns a dictionary describing supported channel widths based on
+        band and mode.
+
+        Example:
+        channel_width_2GHZ = [{ap_spec.MODE_B : [20]},
+                              {ap_spec.MODE_B|ap_spec.MODE_G : [20,40]},
+                              {ap_spec.MODE_N : [20]}]
+
+        channel_width_5GHZ = [{ap_spec.MODE_N : [20,40]},
+                              {ap_spec.MODE_AC : [20,40,80]}]
+
+        channel_width = {ap_spec.BAND_2GHZ : channel_width_2GHZ,
+                         ap_spec.BAND_5GHZ : channel_width_5GHZ}
+
+        Note: The derived class implements this method and returns
+        channel_width.
+
+        @return a dictionary as described above.
+        """
+        raise NotImplementedError
+
+
     def is_visibility_supported(self):
         """
         Returns if AP supports setting the visibility (SSID broadcast).
@@ -618,6 +642,17 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
 
         @param band: Constant describing the band type
 
+        """
+        raise NotImplementedError
+
+
+    def set_channel_width(self, channel_width):
+        """
+        Sets the channel width of the wireless network.
+
+        Note: The derived class must implement this method.
+
+        @param channel_width: integer value of the channel width.
         """
         raise NotImplementedError
 
