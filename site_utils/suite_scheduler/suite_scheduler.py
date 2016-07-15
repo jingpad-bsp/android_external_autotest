@@ -51,6 +51,7 @@ except ImportError:
     server_manager_utils = None
     logging.debug('Could not load server_manager_utils module, expected '
                   'if you are running sanity check or pre-submit hook')
+from chromite.lib import ts_mon_config
 
 
 CONFIG_SECTION = 'SCHEDULER'
@@ -261,6 +262,9 @@ def main():
     mv = manifest_versions.ManifestVersions(options.tmp_repo_dir)
     d = driver.Driver(scheduler, enumerator)
     d.SetUpEventsAndTasks(config, mv)
+
+    # Set up metrics upload for Monarch.
+    ts_mon_config.SetupTsMonGlobalState('autotest_suite_scheduler')
 
     try:
         if options.events:
