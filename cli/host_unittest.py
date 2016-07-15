@@ -1370,28 +1370,34 @@ class host_mod_create_tests(object):
     def test_single_attributes(self):
         """Test applying one attribute to one host."""
         attrs = {'foo': 'bar'}
-        s_attrs = ','.join(['='.join((k,v)) for k,v in attrs.items()])
         rpcs, out = self._gen_expectations(attributes=attrs)
-        self.run_cmd(self._command_single + ['--attributes', s_attrs],
+        self.run_cmd(self._command_single + ['--attribute', 'foo=bar'],
                      rpcs=rpcs, out_words_ok=out)
 
 
-    def test_attributes_escape_comma(self):
-        """Test setting an attribute with an escaped comma in the value."""
+    def test_attributes_comma(self):
+        """Test setting an attribute with a comma in the value."""
         attrs = {'foo': 'bar,zip'}
-        s_attrs = ','.join(['='.join((k,v.replace(',', '\\,')))
-                                     for k,v in attrs.items()])
         rpcs, out = self._gen_expectations(attributes=attrs)
-        self.run_cmd(self._command_single + ['--attributes', s_attrs],
+        self.run_cmd(self._command_single + ['--attribute', 'foo=bar,zip'],
+                     rpcs=rpcs, out_words_ok=out)
+
+
+    def test_multiple_attributes_comma(self):
+        """Test setting attributes when one of the values contains a comma."""
+        attrs = {'foo': 'bar,zip', 'zang': 'poodle'}
+        rpcs, out = self._gen_expectations(attributes=attrs)
+        self.run_cmd(self._command_single + ['--attribute', 'foo=bar,zip',
+                                             '--attribute', 'zang=poodle'],
                      rpcs=rpcs, out_words_ok=out)
 
 
     def test_multiple_attributes_multiple_hosts(self):
         """Test applying multiple attributes to multiple hosts."""
         attrs = {'foo': 'bar', 'baz': 'zip'}
-        s_attrs = ','.join(['='.join((k,v)) for k,v in attrs.items()])
         rpcs, out = self._gen_expectations(hosts=self._hosts, attributes=attrs)
-        self.run_cmd(self._command_multiple + ['--attributes', s_attrs],
+        self.run_cmd(self._command_multiple + ['--attribute', 'foo=bar',
+                                               '--attribute', 'baz=zip'],
                      rpcs=rpcs, out_words_ok=out)
 
 

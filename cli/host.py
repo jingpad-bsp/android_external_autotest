@@ -314,8 +314,8 @@ class host_jobs(host):
                                                 'status'])
 
 class BaseHostModCreate(host):
-    attribute_regex = r'^(?P<attribute>\w+)=(?P<value>.+)?'
-    attr_split_regex = r'[^\\],' # Matches , not preceeded by \
+    # Matches one attribute=value pair
+    attribute_regex = r'(?P<attribute>\w+)=(?P<value>.+)?'
 
     def __init__(self):
         """Add the options shared between host mod and host create actions."""
@@ -337,11 +337,14 @@ class BaseHostModCreate(host):
                                      ', '.join('"%s"' % p
                                                for p in self.protections)),
                                choices=self.protections)
-        self.parser.add_option('--attributes', '-i', default='',
-                               help=('Host attributes to add or change. Format '
-                                     'is <attribute>=<value>. Comma delimited '
-                                     'for multiple attributes. Use \\\\ (two '
-                                     'backslashes) to escape delimitter.'))
+        self._attributes = []
+        self.parser.add_option('--attribute', '-i',
+                               help=('Host attribute to add or change. Format '
+                                     'is <attribute>=<value>. Multiple '
+                                     'attributes can be set by passing the '
+                                     'argument multiple times. Attributes can '
+                                     'be unset by providing an empty value.'),
+                               action='append')
         self.parser.add_option('-b', '--labels',
                                help='Comma separated list of labels')
         self.parser.add_option('-B', '--blist',
@@ -356,20 +359,6 @@ class BaseHostModCreate(host):
                                metavar='ACL_FLIST')
         self.parser.add_option('-t', '--platform',
                                help='Sets the platform label')
-
-
-    def _scrub(self, raw_attribute):
-        """
-        Helper method to scrub out backslashes.
-
-        The host attributes can use backslashes to escape the comma delimitter.
-        We want to scrub them out though.
-
-        @param raw_attribute: String to be scrubbed.
-
-        @returns String that has been removed of the backslashes.
-        """
-        return raw_attribute.replace('\\,', ',')
 
 
     def parse(self):
@@ -393,34 +382,16 @@ class BaseHostModCreate(host):
             self.messages.append('Protection set to "%s"' % options.protection)
 
         self.attributes = {}
-        if options.attributes:
-            # Extract pairs of attributes
-            last_end = 0
-            groups = []
-            for m in re.finditer(self.attr_split_regex, options.attributes):
-                # The first char of the match must be included because it is
-                # the char before the delimitter
-                groups.append(
-                    self._scrub(options.attributes[last_end:m.start()+1]))
-                last_end = m.end()
-            if options.attributes[last_end:]:
-                groups.append(
-                    self._scrub(options.attributes[last_end:]))
-
-            # Process pairs of attributes
-            for group in groups:
-                match = re.match(self.attribute_regex, group)
-                if not match:
-                    self.invalid_syntax('Attributes must be in '
-                                        '<attribute>=<value> syntax!')
-
-                attribute = match.group('attribute')
-                value = match.group('value')
-
-                if attribute in self.attributes:
+        if options.attribute:
+            for pair in options.attribute:
+                m = re.match(self.attribute_regex, pair)
+                if not m:
+                    raise topic_common.CliError('Attribute must be in key=value '
+                                                'syntax.')
+                elif m.group('attribute') in self.attributes:
                     raise topic_common.CliError('Multiple values provided for '
                                                 'attribute %s.' % attribute)
-                self.attributes[attribute] = value
+                self.attributes[m.group('attribute')] = m.group('value')
 
         self.platform = options.platform
         return (options, leftover)
@@ -511,7 +482,6 @@ class host_mod(BaseHostModCreate):
     --attributes <attr>=<value>;<attr>=<value>
     --mlist <mach_file>] <hosts>"""
     usage_action = 'mod'
-    attribute_regex = r'^(?P<attribute>\w+)=(?P<value>.+)?'
 
     def __init__(self):
         """Add the options specific to the mod action"""
