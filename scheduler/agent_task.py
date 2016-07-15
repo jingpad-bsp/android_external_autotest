@@ -680,9 +680,10 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
                   'success': bool(self.success),
                   'board': str(self.host.board)}
         self._SPECIAL_TASK_COUNT_METRIC.increment(fields=fields)
-        duration = (self.task.time_finished -
-                    self.task.time_started).total_seconds()
-        self._SPECIAL_TASK_DURATION_METRIC.add(duration, fields=fields)
+        if (self.task.time_finished and self.task.time_started):
+            duration = (self.task.time_finished -
+                        self.task.time_started).total_seconds()
+            self._SPECIAL_TASK_DURATION_METRIC.add(duration, fields=fields)
 
 
     # TODO(milleral): http://crbug.com/268607
