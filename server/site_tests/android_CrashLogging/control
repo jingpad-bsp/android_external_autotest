@@ -3,16 +3,16 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bryanlew'
-NAME = 'brillo_CrashLogging'
+NAME = 'android_CrashLogging'
 TIME = 'FAST'
 TEST_TYPE = 'Server'
-DEPENDENCIES = 'os:brillo'
+DEPENDENCIES = 'os:android'
 
 DOC = """
-Check that native (non-Java) crash logs are being generated.
+Check that Android non-Java crash logs are being generated.
 """
 
 def run(machine):
-    job.run_test('brillo_CrashLogging', host=hosts.create_host(machine))
+    job.run_test('android_CrashLogging', host=hosts.create_host(machine))
 
 parallel_simple(run, machines)
