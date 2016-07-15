@@ -131,6 +131,8 @@ PROPERTY_VALUE_TRUE = '1'
 # to reboot the device and try again.
 APK_INSTALL_TIMEOUT_MIN = 5
 
+# Directory where (non-Brillo) Android stores tombstone crash logs.
+ANDROID_TOMBSTONE_CRASH_LOG_DIR = '/data/tombstones'
 # Directory where Brillo stores crash logs for native (non-Java) crashes.
 BRILLO_NATIVE_CRASH_LOG_DIR = '/data/misc/crash_reporter/crash'
 
@@ -1708,12 +1710,16 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def _enable_native_crash_logging(self):
         """Enable native (non-Java) crash logging.
-
-        Currently only supported on Brillo devices.
         """
-        if self._os_type != OS_TYPE_BRILLO:
-            return
+        if self.get_os_type() == OS_TYPE_BRILLO:
+            self._enable_brillo_native_crash_logging()
+        elif self.get_os_type() == OS_TYPE_ANDROID:
+            self._enable_android_native_crash_logging()
 
+
+    def _enable_brillo_native_crash_logging(self):
+        """Enables native crash logging for a Brillo DUT.
+        """
         self.run('touch /data/misc/metrics/enabled',
                  timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
                  ignore_timeout=True)
@@ -1723,25 +1729,43 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                  ignore_timeout=True)
 
 
+    def _enable_android_native_crash_logging(self):
+        """Enables native crash logging for an Android DUT.
+        """
+        # debuggerd should be enabled by default on Android.
+        result = self.run('pgrep debuggerd',
+                          timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                          ignore_timeout=True, ignore_status=True)
+        if not result or result.exit_status != 0:
+            logging.debug('Unable to confirm that debuggerd is running.')
+
+
     def _collect_crash_logs(self):
         """Copies crash log files from the DUT to the drone.
-
-        Currently only supported on Brillo devices.
         """
-        if self.get_os_type() != OS_TYPE_BRILLO:
-            return
+        if self.get_os_type() == OS_TYPE_BRILLO:
+            self._collect_crash_logs_dut(BRILLO_NATIVE_CRASH_LOG_DIR)
+        elif self.get_os_type() == OS_TYPE_ANDROID:
+            self._collect_crash_logs_dut(ANDROID_TOMBSTONE_CRASH_LOG_DIR)
 
+
+    def _collect_crash_logs_dut(self, log_directory):
+        """Copies native crash logs from the Android/Brillo DUT to the drone.
+
+        @param log_directory: absolute path of the directory on the DUT where
+                log files are stored.
+        """
         files = None
         try:
-            result = self.run('ls %s' % BRILLO_NATIVE_CRASH_LOG_DIR,
+            result = self.run('find %s -maxdepth 1 -type f' % log_directory,
                               timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS)
             files = result.stdout.strip().split()
         except (error.AutotestHostRunError, error.AutoservRunError,
                 error.AutoservSSHTimeout, error.CmdTimeoutError):
-            logging.debug('Unable to ls %s, unable to find crash logs',
-                          BRILLO_NATIVE_CRASH_LOG_DIR)
+            logging.debug('Unable to call find %s, unable to find crash logs',
+                          log_directory)
         if not files:
-            logging.debug('There are no Brillo crash logs.')
+            logging.debug('There are no crash logs on the DUT.')
             return
 
         crash_dir = os.path.join(self.job.resultdir, 'crash')
@@ -1752,7 +1776,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 raise e
 
         for f in files:
-            logging.debug('Brillo native crash file produced: %s', f)
-            source = os.path.join(BRILLO_NATIVE_CRASH_LOG_DIR, f)
-            dest = os.path.join(crash_dir, f)
-            self.get_file(source=source, dest=dest)
+            logging.debug('DUT native crash file produced: %s', f)
+            dest = os.path.join(crash_dir, os.path.basename(f))
+            self.get_file(source=f, dest=dest)
