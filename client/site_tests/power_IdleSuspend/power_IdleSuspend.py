@@ -79,6 +79,9 @@ class power_IdleSuspend(test.test):
             thread = threading.Thread(target=self.wait_for_suspend)
             thread.start()
 
+            # touch OOBE completed file so powerd won't ignore idle state.
+            utils.run('touch /home/chronos/.oobe_completed')
+
             # restart powerd to pick up new settings
             logging.info('restarting powerd')
             utils.run('start powerd')
