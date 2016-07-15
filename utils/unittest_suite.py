@@ -108,6 +108,8 @@ SKIP = set((
     'des_02_test.py',
     # Rquire lxc to be installed
     'lxc_functional_test.py',
+    # Require sponge utils installed in site-packages
+    'sponge_utils_functional_test.py',
     ))
 
 LONG_TESTS = (REQUIRES_MYSQLDB |
