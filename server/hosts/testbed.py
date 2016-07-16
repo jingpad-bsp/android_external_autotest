@@ -54,7 +54,7 @@ class TestBed(object):
         self._afe_host = afe_host or utils.EmptyAFEHost()
         self.labels = base_label.LabelRetriever(testbed_label.TESTBED_LABELS)
         self.teststation = teststation_host.create_teststationhost(
-                hostname=hostname)
+                hostname=hostname, afe_host=self._afe_host, **dargs)
         self.is_client_install_supported = False
         serials_from_attributes = self._afe_host.attributes.get('serials')
         if serials_from_attributes:
@@ -67,8 +67,7 @@ class TestBed(object):
         for adb_serial in self.adb_device_serials:
             self.adb_devices[adb_serial] = adb_host.ADBHost(
                 hostname=hostname, teststation=self.teststation,
-                adb_serial=adb_serial, afe_host=self._afe_host)
-
+                adb_serial=adb_serial, afe_host=self._afe_host, **dargs)
 
 
     def query_adb_device_serials(self):
