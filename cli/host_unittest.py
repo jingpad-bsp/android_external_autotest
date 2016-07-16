@@ -9,6 +9,8 @@
 import sys
 import unittest
 
+import mock
+
 import common
 from autotest_lib.cli import cli_mock, host
 from autotest_lib.client.common_lib import control_data
@@ -1590,16 +1592,32 @@ class host_create_unittest(host_mod_create_tests, cli_mock.cli_unittest):
     _command_single = _command_base + [_hosts[0]]
     _command_multiple = _command_base + _hosts
 
+
+    def setUp(self):
+        """Mock out the create_host method.
+        """
+        super(host_create_unittest, self).setUp()
+        self._orig_create_host = hosts.create_host
+
+
+    def tearDown(self):
+        """Undo mock.
+        """
+        super(host_create_unittest, self).tearDown()
+        hosts.create_host = self._orig_create_host
+
+
     def _mock_host(self, platform=None, labels=[]):
-        mock_host = self.god.create_mock_class(hosts.Host, 'Host')
-        hosts.create_host = self.god.create_mock_function('create_host')
-        return mock_host
+        """Update the return values of the mocked host object.
 
-
-    def _mock_create_host_call(self, mock_host, platform=None, labels=[]):
-        hosts.create_host.expect_any_call().and_return(mock_host)
-        mock_host.get_platform.expect_call().and_return(platform)
-        mock_host.get_labels.expect_call().and_return(labels)
+        @param platform: return value of Host.get_platform()
+        @param labels: return value of Host.get_labels()
+        """
+        mock_host = mock.MagicMock()
+        mock_host.get_platform.return_value = platform
+        mock_host.get_labels.return_value = labels
+        hosts.create_host = mock.MagicMock()
+        hosts.create_host.return_value = mock_host
 
 
     def _gen_expectations(self, hosts=['localhost'], locked=False,
@@ -1630,12 +1648,8 @@ class host_create_unittest(host_mod_create_tests, cli_mock.cli_unittest):
         rpcs = []
         out = ['Added', 'host'] + hosts
 
-        # Expect calls to create_host, host.labels and host.platform
-        mock_host = self._mock_host()
-        for host in hosts:
-            self._mock_create_host_call(mock_host, discovered_platform,
-                                        discovered_labels)
-
+        # Mock platform and label detection results
+        self._mock_host(discovered_platform, discovered_labels)
 
         for host in hosts:
             add_args = {
