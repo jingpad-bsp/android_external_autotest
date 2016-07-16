@@ -79,7 +79,7 @@ DEFAULT_WAIT_UP_TIME_SECONDS = 300
 WAIT_UP_AFTER_WIPE_TIME_SECONDS = 1200
 
 # Default timeout for retrying adb/fastboot command.
-DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS = 10
+DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS = 20
 
 OS_TYPE_ANDROID = 'android'
 OS_TYPE_BRILLO = 'brillo'
@@ -138,6 +138,12 @@ BRILLO_NATIVE_CRASH_LOG_DIR = '/data/misc/crash_reporter/crash'
 
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
+
+
+class AutoservRunParseError(error.AutoservRunError):
+    """Error when a command return successfully but the return value is failed
+    to be parsed.
+    """
 
 
 class ADBHost(abstract_ssh.AbstractSSHHost):
@@ -462,6 +468,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self._enable_native_crash_logging()
 
 
+    @retry.retry(AutoservRunParseError,
+                 timeout_min=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS/60.0)
     def run(self, command, timeout=3600, ignore_status=False,
             ignore_timeout=False, stdout_tee=utils.TEE_TO_LOGS,
             stderr_tee=utils.TEE_TO_LOGS, connect_timeout=30, options='',
@@ -493,6 +501,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                  ignore_timeout is True.
 
         @raises AutoservRunError: If the command failed.
+        @raises AutoservRunParseError: If the command finished but failed to
+                pass the return value.
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         command = ('"%s; echo %s:\$?"' %
@@ -509,7 +519,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         parse_output = re.match(CMD_OUTPUT_REGEX, result.stdout)
         if not parse_output and not ignore_status:
-            raise error.AutoservRunError(
+            raise AutoservRunParseError(
                     'Failed to parse the exit code for command: %s' %
                     command, result)
         elif parse_output:
