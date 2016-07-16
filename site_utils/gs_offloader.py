@@ -10,6 +10,7 @@ Uses gsutil to archive files to the configured Google Storage bucket.
 Upon successful copy, the local results directory is deleted.
 """
 
+import base64
 import datetime
 import errno
 import glob
@@ -41,6 +42,7 @@ except ImportError:
     psutil = None
 
 import job_directories
+import pubsub_utils
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
@@ -116,13 +118,22 @@ GS_OFFLOADER_MULTIPROCESSING = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_multiprocessing', type=bool, default=False)
 
 D = '[0-9][0-9]'
-TIMESTAMP_PATTERN =  '%s%s.%s.%s_%s.%s.%s' % (D, D, D, D, D, D, D)
+TIMESTAMP_PATTERN = '%s%s.%s.%s_%s.%s.%s' % (D, D, D, D, D, D, D)
 CTS_RESULT_PATTERN = 'testResult.xml'
 # Google Storage bucket URI to store results in.
 DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
 DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_apfe_server', default='')
+
+_PUBSUB_ENABLED = global_config.global_config.get_config_value(
+        'CROS', 'cloud_notification_enabled:', type=bool, default=False)
+_PUBSUB_TOPIC = global_config.global_config.get_config_value(
+        'CROS', 'cloud_notification_topic::', type='string', default=None)
+
+# the message data for new test result notification.
+NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'
+
 
 class TimeoutException(Exception):
     """Exception raised by the timeout_handler."""
@@ -366,11 +377,29 @@ def upload_testresult_files(dir_entry, multiprocessing):
                               dir_entry, e)
 
 
-def get_offload_dir_func(gs_uri, multiprocessing):
+def _create_test_result_notification(gs_path):
+    """Construct a test result notification.
+
+    @param gs_path: The test result Google Cloud Storage URI.
+
+    @returns The notification message.
+    """
+    data = base64.b64encode(NEW_TEST_RESULT_MESSAGE)
+    msg_payload = {'data': data}
+    msg_attributes = {}
+    msg_attributes['gcs_uri'] = gs_path
+    msg_payload['attributes'] = msg_attributes
+
+    return msg_payload
+
+
+def get_offload_dir_func(gs_uri, multiprocessing, pubsub_topic=None):
     """Returns the offload directory function for the given gs_uri
 
     @param gs_uri: Google storage bucket uri to offload to.
     @param multiprocessing: True to turn on -m option for gsutil.
+    @param pubsub_topic: The pubsub topic to publish notificaitons. If None,
+          pubsub is not enabled.
 
     @return offload_dir function to perform the offload.
     """
@@ -420,7 +449,16 @@ def get_offload_dir_func(gs_uri, multiprocessing):
                 autotest_stats.Gauge(STATS_KEY, metadata=metadata).send(
                         'kibibytes_transferred', dir_size)
                 counter.increment('jobs_offloaded')
-                shutil.rmtree(dir_entry)
+
+                if pubsub_topic:
+                    message = _create_test_result_notification(gs_path)
+                    msg_ids = pubsub_utils.publish_notifications(
+                            pubsub_topic, [message])
+                    if not msg_ids:
+                        error = True
+
+                if not error:
+                    shutil.rmtree(dir_entry)
             else:
                 error = True
         except TimeoutException:
@@ -549,6 +587,7 @@ class Offloader(object):
     """
 
     def __init__(self, options):
+        self._pubsub_topic = None
         if options.delete_only:
             self._offload_func = delete_files
         else:
@@ -561,8 +600,12 @@ class Offloader(object):
                 multiprocessing = GS_OFFLOADER_MULTIPROCESSING
             logging.info(
                     'Offloader multiprocessing is set to:%r', multiprocessing)
+            if options.pubsub_topic_for_job_upload:
+              self._pubsub_topic = options.pubsub_topic_for_job_upload
+            elif _PUBSUB_ENABLED:
+              self._pubsub_topic = _PUBSUB_TOPIC
             self._offload_func = get_offload_dir_func(
-                    self.gs_uri, multiprocessing)
+                    self.gs_uri, multiprocessing, self._pubsub_topic)
         classlist = []
         if options.process_hosts_only or options.process_all:
             classlist.append(job_directories.SpecialJobDirectory)
@@ -574,6 +617,7 @@ class Offloader(object):
         self._age_limit = options.days_old
         self._open_jobs = {}
         self._next_report_time = time.time()
+        self._pusub_topic = None
 
 
     def _add_new_jobs(self):
@@ -694,6 +738,11 @@ def parse_options():
     parser.add_option('-d', '--days_old', dest='days_old',
                       help='Minimum job age in days before a result can be '
                       'offloaded.', type='int', default=0)
+    parser.add_option('-t', '--pubsub_topic_for_job_upload',
+                      dest='pubsub_topic_for_job_upload',
+                      help='The pubsub topic to send notifciations for '
+                      'new job upload',
+                      action='store', type='string', default=None)
     parser.add_option('-l', '--log_size', dest='log_size',
                       help='Limit the offloader logs to a specified '
                       'number of Mega Bytes.', type='int', default=0)
