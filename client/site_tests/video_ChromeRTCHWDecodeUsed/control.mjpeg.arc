@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeCameraMJpegHWDecodeUsed"
+NAME = "video_ChromeCameraMJpegHWDecodeUsed.arc"
 PURPOSE = "Verify MJPEG camera video are HW accelerated."
-ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "hw_jpeg_acc_dec"
+DEPENDENCIES = "hw_jpeg_acc_dec, arc"
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
