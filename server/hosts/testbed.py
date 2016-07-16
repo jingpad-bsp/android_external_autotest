@@ -16,6 +16,7 @@ from autotest_lib.client.common_lib import logging_config
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
 from autotest_lib.server.hosts import adb_host
 from autotest_lib.server.hosts import base_label
 from autotest_lib.server.hosts import testbed_label
@@ -36,7 +37,7 @@ class TestBed(object):
     """This class represents a collection of connected teststations and duts."""
 
     _parser = autoserv_parser.autoserv_parser
-    VERSION_PREFIX = 'testbed-version'
+    VERSION_PREFIX = provision.TESTBED_BUILD_VERSION_PREFIX
 
     def __init__(self, hostname='localhost', afe_host=None, adb_serials=None,
                  **dargs):

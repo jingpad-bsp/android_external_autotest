@@ -30,8 +30,8 @@ class provision_FirmwareUpdate(test.test):
             logging.warn('Failed to get version label from the DUT, skip '
                          'staging ChromeOS image on the servo USB stick.')
         else:
-            cros_image_name = cros_image_labels[0].name[
-                    len(host.VERSION_PREFIX)+1:]
+            cros_image_name = cros_image_labels[0][len(
+                    host.VERSION_PREFIX + ':'):]
             host.servo.image_to_servo_usb(
                     host.stage_image_for_servo(cros_image_name))
             logging.debug('ChromeOS image %s is staged on the USB stick.',

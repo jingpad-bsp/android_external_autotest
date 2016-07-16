@@ -11,7 +11,8 @@ NOTE: This module should only be used in the context of a running test. Any
 
 import common
 from autotest_lib.client.common_lib import error
-from autotest_lib.server import utils
+from autotest_lib.server.cros import provision
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
@@ -35,33 +36,65 @@ def host_in_lab(host):
     return host._afe_host
 
 
-def get_build(host):
-    """Retrieve the current build for a given host from the AFE.
+def get_labels(host, prefix=None):
+    """Get labels of a host with name started with given prefix.
 
-    Looks through a host's labels in the AFE to determine its build.
+    @param prefix: Prefix of label names, if None, return all labels.
+
+    @returns List of labels that match the prefix or if prefix is None, all
+             labels.
+    """
+    if not prefix:
+        return host._afe_host.labels
+
+    return [label for label in host._afe_host.labels
+            if label.startswith(prefix)]
+
+
+def get_build(host):
+    """Retrieve the current build for a given host stored inside host._afe_host.
+
+    Looks through a host's labels in host._afe_host.labels to determine
+    its build.
 
     @param host: Host object to get build.
 
     @returns The current build or None if it could not find it or if there
              were multiple build labels assigned to the host.
     """
-    if not host_in_lab(host):
-        return None
-    return utils.get_build_from_afe(host.hostname, AFE)
+    for label_prefix in [provision.CROS_VERSION_PREFIX,
+                         provision.ANDROID_BUILD_VERSION_PREFIX,
+                         provision.TESTBED_BUILD_VERSION_PREFIX]:
+        full_label_prefix = label_prefix + ':'
+        build_labels = get_labels(host, full_label_prefix)
+        if build_labels:
+            return build_labels[0][len(full_label_prefix):]
+    return None
+
+
+def get_boards(host):
+    """Retrieve all boards for a given host stored inside host._afe_host.
+
+    @param host: Host object to get board.
+
+    @returns List of all boards.
+    """
+    return [board[len(constants.BOARD_PREFIX):]
+            for board in get_labels(host, constants.BOARD_PREFIX)]
 
 
 def get_board(host):
-    """Retrieve the board for a given host from the AFE.
-
-    Contacts the AFE to retrieve the board for a given host.
+    """Retrieve the board for a given host stored inside host._afe_host.
 
     @param host: Host object to get board.
 
     @returns The current board or None if it could not find it.
     """
-    if not host_in_lab(host):
+    boards = get_boards(host)
+    if not boards:
         return None
-    return utils.get_board_from_afe(host.hostname, AFE)
+    return boards[0]
+
 
 
 def clear_version_labels(host):
@@ -194,26 +227,15 @@ def machine_install_and_update_labels(host, *args, **dargs):
         update_host_attribute(host, attribute, value)
 
 
-def get_labels(host, prefix):
-    """Get labels of a host with name started with given prefix.
-
-    @param prefix: Prefix of label names.
-    """
-    # TODO(kevcheng): Fix up this call to use host._afe_host to get the labels
-    # and adjust the callers to use just a list of labels (instead of a list of
-    # label objects).
-    return AFE.get_labels(name__startswith=prefix, host__hostname=host.hostname)
-
-
 def get_os(host):
-    """Retrieve the os for a given host from the AFE.
-
-    Contacts the AFE to retrieve the os for a given host.
+    """Retrieve the os for a given host stored inside host._afe_host.
 
     @param host: Host object to get board.
 
     @returns The os or None if it could not find it.
     """
-    if not host_in_lab(host):
+    full_os_prefix = constants.OS_PREFIX + ':'
+    os_labels = get_labels(host, full_os_prefix)
+    if not os_labels:
         return None
-    return utils.get_label_from_afe(host.hostname, 'os:', AFE)
+    return os_labels[0][len(full_os_prefix):]
