@@ -7,7 +7,8 @@ from autotest_lib.client.bin import local_host
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.server import utils as server_utils
-from autotest_lib.server.hosts import common_label, cros_host, ssh_host
+from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.server.hosts import cros_host, ssh_host
 from autotest_lib.server.hosts import moblab_host, sonic_host
 from autotest_lib.server.hosts import adb_host, testbed
 
@@ -160,10 +161,11 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     args.update(detected_args)
 
     host_os = None
+    full_os_prefix = constants.OS_PREFIX + ':'
     # Let's grab the os from the labels if we can for host class detection.
     for label in afe_host.labels:
-        if label.startswith(common_label.OSLabel._NAME):
-            host_os = label.split(':')[-1]
+        if label.startswith(full_os_prefix):
+            host_os = label[len(full_os_prefix):]
             break
 
     if not connectivity_class:

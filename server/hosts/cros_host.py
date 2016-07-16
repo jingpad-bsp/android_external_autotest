@@ -482,14 +482,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 else:
                     ds = dev_server.ImageServer.resolve(image_name)
             else:
-                labels = self._AFE.get_labels(
-                        name__startswith=self.VERSION_PREFIX,
-                        host__hostname=self.hostname)
+                labels = afe_utils.get_labels(self, self.VERSION_PREFIX)
                 if not labels:
                     raise error.AutoservError(
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
-                image_name = labels[0].name[len(self.VERSION_PREFIX)+1:]
+                image_name = labels[0][len(self.VERSION_PREFIX + ':'):]
                 ds = dev_server.ImageServer.resolve(image_name, hostname)
 
         # Get the OS version of the build, for any build older than
@@ -940,7 +938,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _get_board_from_afe(self):
-        """Retrieve this host's board from its labels in the AFE.
+        """Retrieve this host's board from its labels stored locally.
 
         Looks for a host label of the form "board:<board>", and
         returns the "<board>" part of the label.  `None` is returned
@@ -948,7 +946,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @returns board from label, or `None`.
         """
-        return server_utils.get_board_from_afe(self.hostname, self._AFE)
+        return afe_utils.get_board(self)
 
 
     def get_build(self):
