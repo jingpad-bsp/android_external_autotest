@@ -3,13 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "cmasone, antrim"
-NAME = "desktopui_ExitOnSupervisedUserCrash"
-ATTRIBUTES = "suite:arc-bvt-cq"
+NAME = "desktopui_ExitOnSupervisedUserCrash.arc"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "General"
 TEST_CLASS = "desktopui"
 TEST_TYPE = "client"
 JOB_RETRIES = 2
+DEPENDENCIES = "arc"
 ARC_MODE = "enabled"
 
 DOC = """
