@@ -26,7 +26,7 @@ import socket
 from autotest_lib.cli import action_common, rpc, topic_common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, host_protections
-from autotest_lib.server import hosts
+from autotest_lib.server import frontend, hosts
 
 
 class host(topic_common.atest):
@@ -621,6 +621,41 @@ class host_create(BaseHostModCreate):
         return obj
 
 
+    def _detect_host_info(self, host):
+        """Detect platform and labels from the host.
+
+        @param host: hostname
+
+        @return: HostInfo object
+        """
+        # Mock an afe_host object so that the host is constructed as if the
+        # data was already in afe
+        data = {'attributes': self.attributes, 'labels': self.labels}
+        afe_host = frontend.Host(None, data)
+        machine = {'hostname': host, 'afe_host': afe_host}
+        try:
+            if utils.ping(host, tries=1, deadline=1) == 0:
+                serials = self.attributes.get('serials', '').split(',')
+                if serials and len(serials) > 1:
+                    host_dut = hosts.create_testbed(machine,
+                                                    adb_serials=serials)
+                else:
+                    adb_serial = self.attributes.get('serials')
+                    host_dut = hosts.create_host(machine,
+                                                 adb_serial=adb_serial)
+                host_info = HostInfo(host, host_dut.get_platform(),
+                                     host_dut.get_labels())
+            else:
+                # Can't ping the host, use default information.
+                host_info = HostInfo(host, None, [])
+        except (socket.gaierror, error.AutoservRunError,
+                error.AutoservSSHTimeout):
+            # We may be adding a host that does not exist yet or we can't
+            # reach due to hostname/address issues or if the host is down.
+            host_info = HostInfo(host, None, [])
+        return host_info
+
+
     def _execute_add_one_host(self, host):
         # Always add the hosts as locked to avoid the host
         # being picked up by the scheduler before it's ACL'ed.
@@ -630,7 +665,7 @@ class host_create(BaseHostModCreate):
         self.execute_rpc('add_host', hostname=host, status="Ready", **self.data)
 
         # If there are labels avaliable for host, use them.
-        host_info = self.host_info_map[host]
+        host_info = self._detect_host_info(host)
         labels = set(self.labels)
         if host_info.labels:
             labels.update(host_info.labels)
@@ -649,7 +684,7 @@ class host_create(BaseHostModCreate):
             self._set_attributes(host, self.attributes)
 
 
-    def _execute_add_hosts(self):
+    def execute(self):
         successful_hosts = []
         for host in self.hosts:
             try:
@@ -666,36 +701,6 @@ class host_create(BaseHostModCreate):
                     self.execute_rpc('modify_host', id=host, locked=False,
                                      lock_reason='')
         return successful_hosts
-
-
-    def execute(self):
-        # Check to see if the platform or any other labels can be grabbed from
-        # the hosts.
-        self.host_info_map = {}
-        for host in self.hosts:
-            try:
-                if utils.ping(host, tries=1, deadline=1) == 0:
-                    serials = self.attributes.get('serials', '').split(',')
-                    if serials and len(serials) > 1:
-                        host_dut = hosts.create_testbed(host,
-                                                        adb_serials=serials)
-                    else:
-                        adb_serial = self.attributes.get('serials')
-                        host_dut = hosts.create_host(host,
-                                                     adb_serial=adb_serial)
-                    host_info = HostInfo(host, host_dut.get_platform(),
-                                         host_dut.get_labels())
-                else:
-                    # Can't ping the host, use default information.
-                    host_info = HostInfo(host, None, [])
-            except (socket.gaierror, error.AutoservRunError,
-                    error.AutoservSSHTimeout):
-                # We may be adding a host that does not exist yet or we can't
-                # reach due to hostname/address issues or if the host is down.
-                host_info = HostInfo(host, None, [])
-            self.host_info_map[host] = host_info
-
-        return self._execute_add_hosts()
 
 
     def output(self, hosts):

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -67,8 +68,9 @@ class TestLabelList(base_label.StringLabel):
 
 class MockAFEHost(utils.EmptyAFEHost):
 
-    def __init__(self, labels=[]):
+    def __init__(self, labels=[], attributes={}):
         self.labels = labels
+        self.attributes = attributes
 
 
 class MockHost(object):
@@ -99,7 +101,8 @@ class BaseLabelUnittests(unittest.TestCase):
         self.assertEqual(self.test_base_label.get(MockHost(exists=True)),
                          [self.test_base_label._NAME])
         # We should get nothing here.
-        self.assertEqual(self.test_base_label.get(MockHost(exists=False)), [])
+        self.assertEqual(self.test_base_label.get(MockHost(exists=False)),
+                         [])
 
 
     def test_get_all_labels(self):
@@ -208,3 +211,8 @@ class LabelRetrieverUnittests(unittest.TestCase):
         mock_afe.run.has_calls('host_add_labels',
                                id=mockhost.hostname,
                                labels=expected_add_labels)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
