@@ -36,8 +36,8 @@ OS_HOST_DICT = {'cros' : cros_host.CrosHost,
                 'brillo': adb_host.ADBHost}
 
 
-def _get_host_arguments():
-    """Returns parameters needed to ssh into a host.
+def _get_host_arguments(machine):
+    """Get parameters to construct a host object.
 
     There are currently 2 use cases for creating a host.
     1. Through the server_job, in which case the server_job injects
@@ -46,15 +46,35 @@ def _get_host_arguments():
     2. Directly through factory.create_host, in which case we use
        the same defaults as used in the server job to create a host.
 
-    @returns: A tuple of parameters needed to create an ssh connection, ordered
-              as: ssh_user, ssh_pass, ssh_port, ssh_verbosity, ssh_options.
+    @param machine: machine dict
+    @return: A dictionary containing arguments for host specifically hostname,
+              afe_host, user, password, port, ssh_verbosity_flag and
+              ssh_options.
     """
+    hostname, afe_host = server_utils.get_host_info_from_machine(
+            machine)
+
     g = globals()
-    return (g.get('ssh_user', DEFAULT_SSH_USER),
-            g.get('ssh_pass', DEFAULT_SSH_PASS),
-            g.get('ssh_port', DEFAULT_SSH_PORT),
-            g.get('ssh_verbosity_flag', DEFAULT_SSH_VERBOSITY),
-            g.get('ssh_options', DEFAULT_SSH_OPTIONS))
+    user = afe_host.attributes.get('ssh_user', g.get('ssh_user',
+                                                     DEFAULT_SSH_USER))
+    password = afe_host.attributes.get('ssh_pass', g.get('ssh_pass',
+                                                         DEFAULT_SSH_PASS))
+    port = afe_host.attributes.get('ssh_port', g.get('ssh_port',
+                                                     DEFAULT_SSH_PORT))
+    ssh_verbosity_flag = afe_host.attributes.get('ssh_verbosity_flag',
+                                                 g.get('ssh_verbosity_flag',
+                                                       DEFAULT_SSH_VERBOSITY))
+    ssh_options = afe_host.attributes.get('ssh_options',
+                                          g.get('ssh_options',
+                                                DEFAULT_SSH_OPTIONS))
+
+    hostname, user, password, port = server_utils.parse_machine(hostname, user,
+                                                                password, port)
+
+    return {'hostname': hostname, 'afe_host': afe_host, 'user': user,
+            'password': password, 'port': int(port),
+            'ssh_verbosity_flag': ssh_verbosity_flag,
+            'ssh_options': ssh_options}
 
 
 def _detect_host(connectivity_class, hostname, **args):
@@ -105,7 +125,7 @@ def _choose_connectivity_class(hostname, ssh_port):
     elif SSH_ENGINE == 'raw_ssh':
         return ssh_host.SSHHost
     else:
-        raise error.AutoServError("Unknown SSH engine %s. Please verify the "
+        raise error.AutoservError("Unknown SSH engine %s. Please verify the "
                                   "value of the configuration key 'ssh_engine' "
                                   "on autotest's global_config.ini file." %
                                   SSH_ENGINE)
@@ -134,17 +154,10 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     @returns: A host object which is an instance of the newly created
               host class.
     """
-    hostname, afe_host = server_utils.get_host_info_from_machine(
-            machine)
-    ssh_user, ssh_pass, ssh_port, ssh_verbosity_flag, ssh_options = \
-            _get_host_arguments()
-
-    hostname, args['user'], args['password'], ssh_port = \
-            server_utils.parse_machine(hostname, ssh_user, ssh_pass, ssh_port)
-    args['ssh_verbosity_flag'] = ssh_verbosity_flag
-    args['ssh_options'] = ssh_options
-    args['port'] = ssh_port
-    args['afe_host'] = afe_host
+    detected_args = _get_host_arguments(machine)
+    hostname = detected_args.pop('hostname')
+    afe_host = detected_args['afe_host']
+    args.update(detected_args)
 
     host_os = None
     # Let's grab the os from the labels if we can for host class detection.
@@ -154,7 +167,7 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
             break
 
     if not connectivity_class:
-        connectivity_class = _choose_connectivity_class(hostname, ssh_port)
+        connectivity_class = _choose_connectivity_class(hostname, args['port'])
     # TODO(kevcheng): get rid of the host detection using host attributes.
     host_class = (host_class
                   or OS_HOST_DICT.get(afe_host.attributes.get('os_type'))
@@ -191,9 +204,9 @@ def create_testbed(machine, **kwargs):
 
     @returns: The testbed object with all associated host objects instantiated.
     """
-    hostname, afe_host = server_utils.get_host_info_from_machine(
-            machine)
-    kwargs['afe_host'] = afe_host
+    detected_args = _get_host_arguments(machine)
+    hostname = detected_args.pop('hostname')
+    kwargs.update(detected_args)
     return testbed.TestBed(hostname, **kwargs)
 
 
