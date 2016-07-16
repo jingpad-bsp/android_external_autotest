@@ -12,6 +12,7 @@ from autotest_lib.server.cros import provision_actionables as actionables
 ### Constants for label prefixes
 CROS_VERSION_PREFIX = 'cros-version'
 ANDROID_BUILD_VERSION_PREFIX = 'ab-version'
+TESTBED_BUILD_VERSION_PREFIX = 'testbed-version'
 FW_RW_VERSION_PREFIX = 'fwrw-version'
 FW_RO_VERSION_PREFIX = 'fwro-version'
 

@@ -6,13 +6,14 @@
 
 import common
 
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import base_label
 
 
 class OSLabel(base_label.StringPrefixLabel):
     """Return the os label."""
 
-    _NAME = 'os'
+    _NAME = constants.OS_PREFIX
 
     # pylint: disable=missing-docstring
     def generate_labels(self, host):
