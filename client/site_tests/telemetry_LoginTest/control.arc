@@ -3,18 +3,19 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Lab Infrastructure Team"
-NAME = "telemetry_LoginTest"
+NAME = "telemetry_LoginTest.arc"
 PURPOSE = "Login through telemetry."
 CRITERIA = """
 This test will fail if telemetry login is broken, or if
 the autotest extension doesn't load/is inaccessible, or if
 chrome.autotestPrivate.loginStatus doesn't work.
 """
-ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
+DEPENDENCIES = "arc"
 JOB_RETRIES = 2
 ARC_MODE = "enabled"
 
