@@ -80,8 +80,14 @@ class ChaosRunner(object):
             iw_command = iw_runner.IwRunner(capture_host)
             start_time = time.time()
             logging.info('Performing a scan with a max timeout of 30 seconds.')
+            capture_interface = 'wlan0'
+            capturer_info = capture_host.run('cat /etc/lsb-release',
+                                             ignore_status=True, timeout=5).stdout
+            if 'whirlwind' in capturer_info:
+                # Use the dual band aux radio for scanning networks.
+                capture_interface = 'wlan2'
             while time.time() - start_time <= ap_constants.MAX_SCAN_TIMEOUT:
-                networks = iw_command.scan('wlan0')
+                networks = iw_command.scan(capture_interface)
                 if networks is None:
                     if (time.time() - start_time ==
                             ap_constants.MAX_SCAN_TIMEOUT):
