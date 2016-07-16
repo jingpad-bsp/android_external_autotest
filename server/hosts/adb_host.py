@@ -1674,7 +1674,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     raise error.AutoservError(
                             'Failed to stage server-side package. The host has '
                             'no job_report_url attribute or version label.')
-                image = labels[0].name[len(self.VERSION_PREFIX)+1:]
+                image = labels[0][len(self.VERSION_PREFIX + ':'):]
                 ds = dev_server.AndroidBuildServer.resolve(image, hostname)
 
         branch, target, build_id = utils.parse_launch_control_build(image)
