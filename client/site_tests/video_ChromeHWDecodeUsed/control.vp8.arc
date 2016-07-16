@@ -3,17 +3,17 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_ChromeHWDecodeUsed.vp8"
+NAME = "video_ChromeHWDecodeUsed.vp8.arc"
 PURPOSE = "Verify that VP8 video decode acceleration works in Chrome"
 CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to a webm file.
 """
 TIME = "SHORT"
-ATTRIBUTES = "suite:arc-bvt-cq"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
-DEPENDENCIES = "hw_video_acc_vp8"
+DEPENDENCIES = "hw_video_acc_vp8, arc"
 JOB_RETRIES = 2
 BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
