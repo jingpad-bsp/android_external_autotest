@@ -133,7 +133,7 @@ def has_battery():
     if power_supply == 'power:battery':
         # TODO(tbroch) if/when 'power:battery' param is reliable
         # remove board type logic.  Also remove verbose mosys call.
-        _NO_BATTERY_BOARD_TYPE = ['CHROMEBOX', 'CHROMEBIT']
+        _NO_BATTERY_BOARD_TYPE = ['CHROMEBOX', 'CHROMEBIT', 'CHROMEBASE']
         board_type = site_utils.get_board_type()
         if board_type in _NO_BATTERY_BOARD_TYPE:
             logging.warn('Do NOT believe type %s has battery. '
