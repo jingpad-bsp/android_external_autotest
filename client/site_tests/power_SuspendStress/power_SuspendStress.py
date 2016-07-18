@@ -10,10 +10,11 @@ from autotest_lib.client.cros import power_suspend, sys_power
 
 
 class power_SuspendStress(test.test):
+    """Class for test."""
     version = 1
 
     def initialize(self, duration, idle=False, init_delay=0, min_suspend=0,
-                   min_resume=0, check_connection=False):
+                   min_resume=0, check_connection=False, iterations=None):
         """
         Entry point.
 
@@ -27,20 +28,29 @@ class power_SuspendStress(test.test):
         @param min_resume: minimal time in seconds between suspends.
         @param check_connection: If true, we check that the network interface
                 used for testing is up after resume. Otherwsie we reboot.
+        @param iterations: number of times to attempt suspend.  If !=None has
+                precedence over duration.
         """
-        self._duration = duration
+        self._endtime = time.time()
+        if duration:
+            self._endtime += duration
         self._init_delay = init_delay
         self._min_suspend = min_suspend
         self._min_resume = min_resume
         self._check_connection = check_connection
+        self._iterations = iterations
         self._method = sys_power.idle_suspend if idle else sys_power.do_suspend
 
+    def _done(self):
+        if self._iterations != None:
+            self._iterations -= 1
+            return self._iterations < 0
+        return time.time() >= self._endtime
 
     def run_once(self):
         time.sleep(self._init_delay)
         self._suspender = power_suspend.Suspender(
                 self.resultsdir, method=self._method)
-        timeout = time.time() + self._duration
         # Find the interface which is used for most communication.
         if self._check_connection:
             with open('/proc/net/route') as fh:
@@ -50,7 +60,7 @@ class power_SuspendStress(test.test):
                         continue
                     interface = fields[0]
 
-        while time.time() < timeout:
+        while not self._done():
             time.sleep(self._min_resume + random.randint(0, 3))
             # Check the network interface to the caller is still available
             if self._check_connection:
@@ -59,7 +69,7 @@ class power_SuspendStress(test.test):
                     with open('/sys/class/net/' + interface +
                               '/operstate') as link_file:
                         link_status = link_file.readline().strip()
-                except:
+                except Exception:
                     pass
                 if link_status != 'up':
                     logging.error('Link to the server gone, reboot')
