@@ -4,6 +4,7 @@
 
 import logging, os, re
 
+from autotest_lib.client.common_lib.cros import arc_util
 from autotest_lib.client.cros import constants
 from autotest_lib.client.bin import utils
 from telemetry.core import cros_interface, exceptions, util
@@ -35,10 +36,6 @@ def is_arc_available():
 
     _arc_available = _check_lsb_release()
     return _arc_available
-
-
-if is_arc_available():
-    from autotest_lib.client.common_lib.cros import arc_util
 
 
 def NormalizeEmail(username):
