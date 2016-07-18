@@ -1,4 +1,4 @@
-# pylint: disable-msg=C0111
+# pylint: disable=missing-docstring
 
 """Database model classes for the scheduler.
 
@@ -18,7 +18,17 @@ _db: DatabaseConnection for this module.
 _drone_manager: reference to global DroneManager instance.
 """
 
-import datetime, itertools, logging, os, re, sys, time, weakref
+import datetime
+import itertools
+import logging
+import os
+import re
+import sys
+import time
+import weakref
+
+from chromite.lib import metrics
+
 from autotest_lib.client.common_lib import global_config, host_protections
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
@@ -467,6 +477,8 @@ class HostQueueEntry(DBObject):
                'atomic_group_id', 'aborted', 'started_on', 'finished_on')
     _timer = autotest_stats.Timer('scheduler_models.HostQueueEntry')
 
+    _COMPLETION_COUNT_METRIC = metrics.Counter(
+        'chromeos/autotest/scheduler/hqe_completion_count')
 
     def __init__(self, id=None, row=None, **kwargs):
         assert id or row
@@ -641,9 +653,6 @@ class HostQueueEntry(DBObject):
         # and the scheduler should never be killed mid-tick.
         if complete:
             self._on_complete(status)
-            if self.job.shard_id is not None:
-                # If shard_id is None, the job will be synced back to the master
-                self.job.update_field('shard_id', None)
             self._email_on_job_complete()
 
         self.update_field('complete', complete)
@@ -656,13 +665,25 @@ class HostQueueEntry(DBObject):
         self.record_state('hqe_status', 'status', status)
 
 
-
     def _on_complete(self, status):
+        metric_fields = {'status': status.lower()}
+        if self.host:
+            metric_fields['board'] = self.host.board
+            if len(self.host.pools) == 1:
+                metric_fields['pool'] = self.host.pools[0]
+            else:
+                metric_fields['pool'] = 'MULTIPLE'
+        else:
+            metric_fields['board'] = 'NO_HOST'
+            metric_fields['pool'] = 'NO_HOST'
+        self._COMPLETION_COUNT_METRIC.increment(fields=metric_fields)
         if status is not models.HostQueueEntry.Status.ABORTED:
             self.job.stop_if_necessary()
-
         if self.started_on:
             self.set_finished_on_now()
+        if self.job.shard_id is not None:
+            # If shard_id is None, the job will be synced back to the master
+            self.job.update_field('shard_id', None)
         if not self.execution_subdir:
             return
         # unregister any possible pidfiles associated with this queue entry
