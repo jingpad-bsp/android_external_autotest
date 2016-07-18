@@ -48,13 +48,14 @@ class platform_FilePerms(test.test):
             'type': 'ext4',
             'options': standard_rw_options},
         # Special case - Android container has devices and suid programs.
-        # Note that later (after user logs in) we remount it as "exec".
+        # Note that after the user logs in we remount it as "exec",
+        # therefore we do not enforce 'noexec'.
         '/opt/google/containers/android/rootfs/root': {
             'type': 'squashfs',
-            'options': ['ro', 'noexec']},
+            'options': ['ro']},
         '/opt/google/containers/android/rootfs/root/vendor': {
             'type': 'squashfs',
-            'options': standard_ro_options},
+            'options': ['ro', 'nosuid', 'nodev']},
         '/proc': { 'type': 'proc', 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
             'type': 'tmpfs',
