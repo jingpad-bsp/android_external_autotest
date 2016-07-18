@@ -56,6 +56,9 @@ class platform_FilePerms(test.test):
         '/opt/google/containers/android/rootfs/root/vendor': {
             'type': 'squashfs',
             'options': ['ro', 'nosuid', 'nodev']},
+        '/run/arc/obb': {
+            'type': 'tmpfs',
+            'options': standard_ro_options + ['mode=755']},
         '/proc': { 'type': 'proc', 'options': standard_rw_options},
         '/run': { # Special case, we want to track mode too.
             'type': 'tmpfs',
