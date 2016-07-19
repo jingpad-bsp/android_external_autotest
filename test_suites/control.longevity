@@ -29,7 +29,8 @@ _BUG_TEMPLATE = {
     'summary': None,
     'title': None,
     'cc': ['krishnargv@chromium.org', 'xiyuan@chromium.org',
-           'sduraisamy@chromium.org', 'afakhry@chromium.org']
+           'sduraisamy@chromium.org', 'afakhry@chromium.org',
+           'scunningham@chromium.org']
 }
 
 args_dict['name'] = 'longevity'
