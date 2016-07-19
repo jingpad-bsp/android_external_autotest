@@ -459,7 +459,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         if self.is_up():
             self._sync_time()
-            self._enable_native_crash_logging()
 
 
     def run(self, command, timeout=3600, ignore_status=False,
