@@ -78,9 +78,14 @@ class TpmHandler(object):
     def init(self, os_if):
         self.os_if = os_if
         status = self.os_if.run_shell_command_get_output(
-            'initctl status tcsd')[0]
-        if status.startswith('tcsd start/running'):
+            'initctl status tcsd') or ['']
+        if status[0].startswith('tcsd start/running'):
             self.os_if.run_shell_command('stop tcsd')
+
+        status = self.os_if.run_shell_command_get_output(
+            'initctl status trunksd') or ['']
+        if status[0].startswith('trunksd start/running'):
+            self.os_if.run_shell_command('stop trunksd')
 
         for nvram in self.nvrams.itervalues():
             nvram.init(self.os_if)
