@@ -1070,7 +1070,7 @@ class ChromiumOSTestPlatform(TestPlatform):
             logging.info('Attempting to login (release %s).', release_string)
 
             client_at = autotest.Autotest(self._host)
-            client_at.run_test('login_LoginSuccess')
+            client_at.run_test('login_LoginSuccess', arc_mode='enabled')
         else:
             logging.info('Not attempting login test because %s is older than '
                          '%d.', release_string, self._LOGINABLE_MINIMUM_RELEASE)
