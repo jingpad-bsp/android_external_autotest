@@ -58,6 +58,7 @@ except ImportError, e:
         print e
         sys.exit(1)
 
+from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
@@ -285,7 +286,7 @@ def _start_servod(machine):
 
     logging.debug('Trying to start servod.')
     try:
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        afe = frontend.AFE()
         board = server_utils.get_board_from_afe(machine, afe)
         hosts = afe.get_hosts(hostname=machine)
         servo_host = hosts[0].attributes.get('servo_host', None)
@@ -728,8 +729,7 @@ def main():
                 machines = parser.options.machines.replace(',', ' '
                                                            ).strip().split()
                 try:
-                    afe = frontend_wrappers.RetryingAFE(timeout_min=5,
-                                                        delay_sec=10)
+                    afe = frontend.AFE()
                     board = server_utils.get_board_from_afe(machines[0], afe)
                     timer = autotest_stats.Timer('autoserv_run_time.%s.%s' %
                                                  (board, test_name))
