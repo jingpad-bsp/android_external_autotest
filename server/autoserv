@@ -58,10 +58,10 @@ except ImportError, e:
         print e
         sys.exit(1)
 
-from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import lxc
@@ -130,9 +130,18 @@ def _stage_ssp(parser):
     @return: url of the staged server-side package. Return None if server-
              side package is not found for the build.
     """
+    machines_list = _get_machines(parser)
+    if bool(parser.options.lab):
+        machine_dict_list = []
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        for machine in machines_list:
+           afe_host = afe.get_hosts(hostname=machine)[0]
+           machine_dict_list.append({'hostname': machine, 'afe_host': afe_host})
+        machines_list = machine_dict_list
+
     # If test_source_build is not specified, default to use server-side test
     # code from build specified in --image.
-    namespace = {'machines': _get_machines(parser),
+    namespace = {'machines': machines_list,
                  'image': (parser.options.test_source_build or
                            parser.options.image),}
     script_locals = {}
@@ -276,7 +285,7 @@ def _start_servod(machine):
 
     logging.debug('Trying to start servod.')
     try:
-        afe = frontend.AFE()
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         board = server_utils.get_board_from_afe(machine, afe)
         hosts = afe.get_hosts(hostname=machine)
         servo_host = hosts[0].attributes.get('servo_host', None)
@@ -719,7 +728,8 @@ def main():
                 machines = parser.options.machines.replace(',', ' '
                                                            ).strip().split()
                 try:
-                    afe = frontend.AFE()
+                    afe = frontend_wrappers.RetryingAFE(timeout_min=5,
+                                                        delay_sec=10)
                     board = server_utils.get_board_from_afe(machines[0], afe)
                     timer = autotest_stats.Timer('autoserv_run_time.%s.%s' %
                                                  (board, test_name))
