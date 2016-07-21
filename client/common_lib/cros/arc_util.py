@@ -26,6 +26,14 @@ _PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
 
 
 def should_start_arc(arc_mode):
+    """
+    Determines whether ARC should be started.
+
+    @param arc_mode: mode as defined in arc_common.
+
+    @returns: True or False.
+
+    """
     logging.debug('ARC is enabled in mode ' + str(arc_mode))
     assert arc_mode is None or arc_mode in arc_common.ARC_MODES
     return arc_mode in [arc_common.ARC_MODE_ENABLED,
@@ -38,11 +46,13 @@ def get_extra_chrome_flags():
 
 
 def post_processing_after_browser(chrome):
-    """Called when a new browser instance has been initialized.
+    """
+    Called when a new browser instance has been initialized.
 
     Note that this hook function is called regardless of arc_mode.
 
     @param chrome: Chrome object.
+
     """
     # Wait for Android container ready if ARC is enabled.
     if chrome.arc_mode == arc_common.ARC_MODE_ENABLED:
@@ -50,11 +60,13 @@ def post_processing_after_browser(chrome):
 
 
 def pre_processing_before_close(chrome):
-    """Called when the browser instance is being closed.
+    """
+    Called when the browser instance is being closed.
 
     Note that this hook function is called regardless of arc_mode.
 
     @param chrome: Chrome object.
+
     """
     if not should_start_arc(chrome.arc_mode):
         return
@@ -71,9 +83,11 @@ def pre_processing_before_close(chrome):
 
 
 def _backup_arc_logcat(username):
-    """Copies ARC's logcat files to /var/log/arc-logd.
+    """
+    Copies ARC's logcat files to /var/log/arc-logd.
 
     @param username: Login user name.
+
     """
     arc_logcat_dir = os.path.join(
             cryptohome.system_path(username),
@@ -96,6 +110,12 @@ def _backup_arc_logcat(username):
 
 
 def set_browser_options_for_opt_in(b_options):
+    """
+    Setup Chrome for gaia login and opt_in.
+
+    @param b_options: browser options object used by chrome.Chrome.
+
+    """
     b_options.username = _USERNAME
     with tempfile.NamedTemporaryFile() as pltp:
         file_utils.download_file(_PLTP_URL, pltp.name)
@@ -106,6 +126,14 @@ def set_browser_options_for_opt_in(b_options):
 
 
 def opt_in(browser):
+    """
+    Step through opt in and wait for it to complete.
+
+    @param browser: chrome.Chrome broswer object.
+
+    @raises: error.TestFail if opt in fails.
+
+    """
     logging.info('Initializing arc opt-in flow.')
 
     opt_in_extension_id = extension_page.UrlToExtensionId(_ARC_SUPPORT_HOST_URL)
@@ -172,10 +200,9 @@ def opt_in(browser):
         raise error.TestFail('Error occured while waiting for lso session. This' +
                              'may have been caused if gaia login was not used.')
 
-
-    web_views = extension_main_page.GetWebviewContexts()
-    if not web_views:
-        raise error.TestFail('opt_in() could not get extension web views!')
+    web_views = utils.poll_for_condition(
+            extension_main_page.GetWebviewContexts, timeout=60,
+            exception=error.TestError('WebviewContexts error during opt in!'))
 
     js_code_is_sign_in_button_enabled = """
         !document.getElementById('submit_approve_access')
