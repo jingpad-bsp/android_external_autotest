@@ -99,12 +99,18 @@ def _get_graphics_memory_usage():
         path = GEM_OBJECTS_PATH[arch]
     except KeyError:
         raise error.TestError('unknown platform: %s' % arch)
+    try:
+        with open(path, 'r') as input:
+            for line in input:
+                result = GEM_OBJECTS_RE.match(line)
+                if result:
+                    return int(result.group(2)) / 1024 # in KB
+    except IOError as e:
+        if e.errno == os.errno.ENOENT: # no such file
+            logging.warning('graphics memory info is not available.')
+            return 0
+        raise
 
-    with open(path, 'r') as input:
-        for line in input:
-            result = GEM_OBJECTS_RE.match(line)
-            if result:
-                return int(result.group(2)) / 1024 # in KB
     raise error.TestError('Cannot parse the content')
 
 
@@ -197,8 +203,6 @@ class MemoryTest(object):
 
         # total = browser + renderer + gpu + kernal
         result += (sum(result), _get_graphics_memory_usage())
-
-        assert all(x > 0 for x in result) # Make sure we read values back
         return result
 
 
