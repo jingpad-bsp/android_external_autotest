@@ -66,7 +66,6 @@ EXPECTED_TEST_RESULTS = {'^SERVER_JOB$':                 'GOOD',
                          # This is related to dummy_Fail/control.dependency.
                          'dummy_Fail.dependency$':       'TEST_NA',
                          'login_LoginSuccess.*':         'GOOD',
-                         'platform_InstallTestImage_SERVER_JOB$': 'GOOD',
                          'provision_AutoUpdate.double':  'GOOD',
                          'dummy_Pass.*':                 'GOOD',
                          'dummy_Fail.Fail$':             'FAIL',
@@ -339,15 +338,14 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
     found_keys = set()
     for test_name,test_status in test_views.items():
         print "%s%s" % (test_name.ljust(30), test_status)
+        # platform_InstallTestImage test may exist in old builds.
+        if re.search('platform_InstallTestImage_SERVER_JOB$', test_name):
+            continue
         test_found = False
         for key,val in expected_results.items():
             if re.search(key, test_name):
                 test_found = True
                 found_keys.add(key)
-                # TODO(dshi): result for this test is ignored until servo is
-                # added to a host accessible by cbf server (crbug.com/277109).
-                if key == 'platform_InstallTestImage_SERVER_JOB$':
-                    continue
                 if val != test_status:
                     error = ('%s Expected: [%s], Actual: [%s]' %
                              (test_name, val, test_status))
