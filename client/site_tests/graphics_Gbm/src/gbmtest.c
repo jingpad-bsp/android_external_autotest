@@ -522,13 +522,14 @@ static int test_import_dmabuf()
 
 	prime_fd = gbm_bo_get_fd(bo1);
 	CHECK(prime_fd >= 0);
-	gbm_bo_destroy(bo1);
 
 	fd_data.fd = prime_fd;
 	fd_data.width = width;
 	fd_data.height = height;
 	fd_data.stride = gbm_bo_get_stride(bo1);
 	fd_data.format = GBM_FORMAT_XRGB8888;
+
+	gbm_bo_destroy(bo1);
 
 	bo2 = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
 	CHECK(check_bo(bo2));
