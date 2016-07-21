@@ -340,6 +340,7 @@ class _BaseModeSwitcher(object):
         """
         psc = self.servo.get_power_state_controller()
         psc.power_off()
+        time.sleep(self.faft_config.ec_boot_to_pwr_button)
         psc.power_on(psc.REC_OFF)
 
 
