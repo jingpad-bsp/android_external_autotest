@@ -25,7 +25,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Power"
 TEST_CLASS = "power"
 TEST_TYPE = "server"
-DEPENDENCIES = "rpm"
+DEPENDENCIES = "servo, rpm"
 
 DOC = """
 This test is used to verify the power_supply_info 'status' of the DUT on
