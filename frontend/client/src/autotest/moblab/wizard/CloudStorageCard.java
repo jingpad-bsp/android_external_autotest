@@ -72,7 +72,7 @@ public class CloudStorageCard extends FlexWizardCard {
 
       // Row for boto key secret.
       row++;
-      layoutTable.setWidget(row, 0, new Label("Boto Key Secrete"));
+      layoutTable.setWidget(row, 0, new Label("Boto Key Secret"));
       layoutTable.setWidget(row, 1, createStringValueFieldWidget(
           CloudStorageInfo.JSON_FIELD_BOTO_SECRET_KEY, cloudStorageInfo.getBotoSecret(), true));
 
