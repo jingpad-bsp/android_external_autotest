@@ -177,7 +177,7 @@ def opt_in(browser):
 
     js_code_did_start_conditions = ['appWindow', 'termsView',
             ('!appWindow.contentWindow.document'
-             '.getElementById(\'start\').hidden')]
+             '.getElementById(\'terms\').hidden')]
 
     extension_main_page.WaitForDocumentReadyStateToBeComplete()
     for condition in js_code_did_start_conditions:
