@@ -12,7 +12,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import adb_utils
 from autotest_lib.server import constants
 from autotest_lib.server import test
-
+from autotest_lib.site_utils import sponge_utils
 
 CONFIG_FOLDER_LOCATION = global_config.global_config.get_config_value(
         'ACTS', 'acts_config_folder', default='')
@@ -84,6 +84,7 @@ class android_ACTS(test.test):
                                     'test_run_summary.json')
         # If the test has failed, test_run_summary.json may not exist.
         if os.path.exists(summary_path):
+            sponge_utils.upload_results_in_test(self, acts_summary=summary_path)
             with open(summary_path, 'r') as f:
                 results = json.load(f)['Results']
             # Report results to Autotest.
