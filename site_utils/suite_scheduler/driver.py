@@ -214,7 +214,7 @@ class Driver(object):
             logging.info('Build is not a ChromeOS build, try to parse as a '
                          'Launch Control build.')
             _,target,_ = utils.parse_launch_control_build(build_name)
-            board = '%s-%s' % (os_type, utils.parse_launch_control_target(target)[0])
+            board = utils.parse_launch_control_target(target)[0]
             launch_control_builds = [build_name]
             logging.info('Testing Launch Control build %s on %s', build_name,
                          board)
