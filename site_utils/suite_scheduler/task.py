@@ -277,7 +277,7 @@ class Task(object):
             for target in lc_targets.split(','):
                 board_name, _ = server_utils.parse_launch_control_target(
                         target.strip())
-                boards += '%s-%s,' % (os_type, board_name)
+                boards += '%s,' % board_name
             boards = boards.strip(',')
 
         return keyword, Task(section, suite, specs, pool, num, boards,
