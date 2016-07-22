@@ -64,9 +64,9 @@ TELEMETRY_AFDO_BENCHMARKS = (
 # 'media.tough_video_cases' -> removed this because it does not bring
 #                              any benefit and takes more than 12 mins
 
-# List of boards where this test can be run.
-# Currently, this has only been tested on 'sandybridge' boards.
-VALID_BOARDS = ['butterfly', 'lumpy', 'parrot', 'stumpy']
+# List of boards where this test can be run.  Currently, it needs a
+# machines with at least 4GB of memory or 2GB of /tmp.
+VALID_BOARDS = ['samus', 'link', 'lumpy']
 
 class telemetry_AFDOGenerate(test.test):
     """
