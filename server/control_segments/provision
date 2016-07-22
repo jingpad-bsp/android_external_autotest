@@ -2,16 +2,31 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import re
 
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
+LABEL_REGEX = r',.*:'
 
 # job_labels should be a string like "name:setting,name:setting"
+# However setting might also contain ',' therefore we need more advanced logic
+# than split.
 # non-provisionable labels are currently skipped, so they're safe to pass in.
 job_labels = locals().get('job_labels') or ','.join(args)
-labels_list = [label.strip() for label in job_labels.split(',') if label]
+labels_list = []
+while job_labels:
+    # Split based off of a comma followed by colon regex.
+    split = re.split(LABEL_REGEX, job_labels)
+    # First value found is a proper key value pair.
+    labels_list.append(split[0].strip())
+    # Remove this key value pair.
+    job_labels = job_labels[len(split[0]):]
+    # If a comma remains at the start of the remaining labels, remove it.
+    # This should happen on every loop except the last one.
+    if job_labels.startswith(','):
+        job_labels = job_labels.lstrip(',')
 
 
 def provision_machine(machine):
@@ -19,7 +34,7 @@ def provision_machine(machine):
     Run the appropriate provisioning tests to make the machine's labels match
     those given in job_labels.
     """
-    host = hosts.create_host(machine, try_lab_servo=True)
+    host = hosts.create_target_machine(machine, try_lab_servo=True)
 
     job.record('START', None, 'provision')
     try:

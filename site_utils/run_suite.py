@@ -81,6 +81,7 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.INFRA_FAILURE: 3,
             RETURN_CODES.ERROR: 4}
 ANDROID_BUILD_REGEX = r'.+/.+/P?([0-9]+|LATEST)'
+ANDROID_TESTBED_BUILD_REGEX = ANDROID_BUILD_REGEX + '(,|(#[0-9]+))'
 
 
 def get_worse_code(code1, code2):
@@ -1459,7 +1460,9 @@ def create_suite(afe, options):
     """
     builds = {}
     if options.build:
-        if re.match(ANDROID_BUILD_REGEX, options.build):
+        if re.match(ANDROID_TESTBED_BUILD_REGEX, options.build):
+            builds[provision.TESTBED_BUILD_VERSION_PREFIX] = options.build
+        elif re.match(ANDROID_BUILD_REGEX, options.build):
             builds[provision.ANDROID_BUILD_VERSION_PREFIX] = options.build
         else:
             builds[provision.CROS_VERSION_PREFIX] = options.build
