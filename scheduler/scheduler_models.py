@@ -668,7 +668,7 @@ class HostQueueEntry(DBObject):
     def _on_complete(self, status):
         metric_fields = {'status': status.lower()}
         if self.host:
-            metric_fields['board'] = self.host.board
+            metric_fields['board'] = self.host.board or ''
             if len(self.host.pools) == 1:
                 metric_fields['pool'] = self.host.pools[0]
             else:
