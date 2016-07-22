@@ -212,6 +212,8 @@ class Provision(_SpecialTaskAction):
                               'tag': 'rw_only'}),
         ANDROID_BUILD_VERSION_PREFIX : actionables.TestActionable(
                 'provision_AndroidUpdate'),
+        TESTBED_BUILD_VERSION_PREFIX : actionables.TestActionable(
+                'provision_TestbedUpdate'),
     }
 
     name = 'provision'
