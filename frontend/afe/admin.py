@@ -227,7 +227,7 @@ class HostAdmin(SiteAdmin):
         acls = []
 
         # Pipe to cli to perform autodetection and create host.
-        host_create_obj = shost.host_create.construct_without_parse(
+        host_create_obj = host.host_create.construct_without_parse(
                 web_server, hosts, platform,
                 locked, lock_reason, labels, acls,
                 protection)
@@ -244,6 +244,7 @@ class HostAdmin(SiteAdmin):
                            'Label autodetection failed. '
                            'Host created with selected labels.')
             super(HostAdmin, self).save_model(request, obj, form, change)
+
 
     def save_related(self, request, form, formsets, change):
         """Save many-to-many relations between host and labels."""
