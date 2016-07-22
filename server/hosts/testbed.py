@@ -307,8 +307,11 @@ class TestBed(object):
         return build_url, build_local_path, teststation
 
 
-    def machine_install(self):
+    def machine_install(self, image=None):
         """Install the DUT.
+
+        @param image: Image we want to install on this testbed, e.g.,
+                      `branch1/shamu-eng/1001,branch2/shamu-eng/1002`
 
         @returns A tuple of (the name of the image installed, None), where None
                 is a placeholder for update_url. Testbed does not have a single
@@ -326,9 +329,10 @@ class TestBed(object):
                 {'job_repo_url_XZ001': 'http://10.1.1.3/branch1/shamu-eng/1001',
                  'job_repo_url_XZ002': 'http://10.1.1.3/branch2/shamu-eng/1002'}
         """
-        if not self._parser.options.image:
+        image = image or self._parser.options.image
+        if not image:
             raise error.InstallError('No image string is provided to test bed.')
-        images = self._parse_image(self._parser.options.image)
+        images = self._parse_image(image)
         host_attributes = {}
 
         # Change logging formatter to include thread name. This is to help logs
@@ -365,7 +369,7 @@ class TestBed(object):
                               teststation.hostname, build_local_path)
                 teststation.run('rm -rf %s' % build_local_path)
 
-        return self._parser.options.image, host_attributes
+        return image, host_attributes
 
 
     def get_attributes_to_clear_before_provision(self):
