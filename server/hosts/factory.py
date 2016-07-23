@@ -10,7 +10,7 @@ from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.hosts import cros_host, ssh_host
 from autotest_lib.server.hosts import moblab_host, sonic_host
-from autotest_lib.server.hosts import adb_host, testbed
+from autotest_lib.server.hosts import adb_host, emulated_adb_host, testbed
 
 
 CONFIG = global_config.global_config
@@ -34,7 +34,8 @@ host_types = [cros_host.CrosHost, moblab_host.MoblabHost, sonic_host.SonicHost,
               adb_host.ADBHost,]
 OS_HOST_DICT = {'cros' : cros_host.CrosHost,
                 'android': adb_host.ADBHost,
-                'brillo': adb_host.ADBHost}
+                'brillo': adb_host.ADBHost,
+                'emulated_brillo': emulated_adb_host.EmulatedADBHost}
 
 
 def _get_host_arguments(machine):
