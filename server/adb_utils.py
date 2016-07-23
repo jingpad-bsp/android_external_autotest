@@ -52,8 +52,7 @@ def install_apk_from_build(host, apk, build_artifact, package_name=None,
     devserver = dev_server.AndroidBuildServer(devserver_url)
     build_info = host.get_build_info_from_build_url(job_repo_url)
     devserver.trigger_download(build_info['target'], build_info['build_id'],
-                               build_info['branch'], is_brillo=False,
-                               synchronous=True)
+                               build_info['branch'], synchronous=True)
     build_info['os_type'] = 'android'
     apk_url = devserver.locate_file(apk, build_artifact, None, build_info)
     logging.debug('Found apk at: %s', apk_url)
