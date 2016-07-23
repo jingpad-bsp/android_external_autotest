@@ -250,14 +250,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             msg += ', fastboot serial: %s' % self.fastboot_serial
         logging.debug(msg)
 
-        # Try resetting the ADB daemon on the device, however if we are
-        # creating the host to do a repair job, the device maybe inaccesible
-        # via ADB.
-        try:
-            self._reset_adbd_connection()
-        except (error.AutotestHostRunError, error.AutoservRunError) as e:
-            logging.error('Unable to reset the device adb daemon connection: '
-                          '%s.', e)
         self._os_type = None
 
 
@@ -457,6 +449,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         parent's job_start().  The sync call is made so that logcat logs can be
         approximately matched to server logs.
         """
+        # Try resetting the ADB daemon on the device, however if we are
+        # creating the host to do a repair job, the device maybe inaccesible
+        # via ADB.
+        try:
+            self._reset_adbd_connection()
+        except (error.AutotestHostRunError, error.AutoservRunError) as e:
+            logging.error('Unable to reset the device adb daemon connection: '
+                          '%s.', e)
+
         if self.is_up():
             self._sync_time()
 
@@ -1343,9 +1344,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                                           self.hostname)
         build_name = devserver.translate(build_name)
         branch, target, build_id = utils.parse_launch_control_build(build_name)
-        is_brillo = os_type == OS_TYPE_BRILLO
         devserver.trigger_download(target, build_id, branch,
-                                   is_brillo=is_brillo, synchronous=False)
+                                   os=os_type, synchronous=False)
         return '%s/static/%s' % (devserver.url(), build_name), devserver
 
 
