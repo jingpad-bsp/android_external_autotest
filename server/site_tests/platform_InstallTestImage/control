@@ -15,7 +15,6 @@ TIME = "MEDIUM"
 TEST_CATEGORY = "Install"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:push_to_prod"
 
 DOC = """
 This test installs a specified test image onto a servo-connected DUT.
