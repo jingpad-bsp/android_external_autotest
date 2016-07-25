@@ -136,6 +136,9 @@ ANDROID_TOMBSTONE_CRASH_LOG_DIR = '/data/tombstones'
 # Directory where Brillo stores crash logs for native (non-Java) crashes.
 BRILLO_NATIVE_CRASH_LOG_DIR = '/data/misc/crash_reporter/crash'
 
+# A specific string value to return when a timeout has occurred.
+TIMEOUT_MSG = 'TIMEOUT_OCCURRED'
+
 class AndroidInstallError(error.InstallError):
     """Generic error for Android installation related exceptions."""
 
@@ -497,28 +500,41 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservSSHTimeout: Ssh connection has timed out.
         """
         command = ('"%s; echo %s:\$?"' %
-                (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
-        result = self.adb_run(
-                command, shell=True, timeout=timeout,
-                ignore_status=ignore_status, ignore_timeout=ignore_timeout,
-                stdout=stdout_tee, stderr=stderr_tee,
-                connect_timeout=connect_timeout, options=options, stdin=stdin,
-                verbose=verbose, args=args)
-        if not result:
-            # In case of timeouts.
-            return None
+                   (utils.sh_escape(command), CMD_OUTPUT_PREFIX))
 
-        parse_output = re.match(CMD_OUTPUT_REGEX, result.stdout)
-        if not parse_output and not ignore_status:
-            raise error.AutoservRunError(
-                    'Failed to parse the exit code for command: %s' %
-                    command, result)
-        elif parse_output:
-            result.stdout = parse_output.group('OUTPUT')
-            result.exit_status = int(parse_output.group('EXIT_CODE'))
-            if result.exit_status != 0 and not ignore_status:
-                raise error.AutoservRunError(command, result)
-        return result
+        def _run():
+            """Run the command and try to parse the exit code.
+            """
+            result = self.adb_run(
+                    command, shell=True, timeout=timeout,
+                    ignore_status=ignore_status, ignore_timeout=ignore_timeout,
+                    stdout=stdout_tee, stderr=stderr_tee,
+                    connect_timeout=connect_timeout, options=options,
+                    stdin=stdin, verbose=verbose, args=args)
+            if not result:
+                # In case of timeouts. Set the return to a specific string
+                # value. That way the caller of poll_for_condition knows
+                # a timeout occurs and should return None. Return None here will
+                # lead to the command to be retried.
+                return TIMEOUT_MSG
+            parse_output = re.match(CMD_OUTPUT_REGEX, result.stdout)
+            if not parse_output and not ignore_status:
+                logging.error('Failed to parse the exit code for command: `%s`.'
+                              ' result: `%s`', command, result.stdout)
+                return None
+            elif parse_output:
+                result.stdout = parse_output.group('OUTPUT')
+                result.exit_status = int(parse_output.group('EXIT_CODE'))
+                if result.exit_status != 0 and not ignore_status:
+                    raise error.AutoservRunError(command, result)
+            return result
+
+        result = client_utils.poll_for_condition(
+                lambda: _run(),
+                timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                sleep_interval=0.5,
+                desc='Run command `%s`' % command)
+        return None if result == TIMEOUT_MSG else result
 
 
     def check_boot_to_adb_complete(self, exception_type=error.TimeoutException):
