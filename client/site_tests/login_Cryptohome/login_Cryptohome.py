@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 import os
-import time
 
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
@@ -26,9 +25,6 @@ class login_Cryptohome(test.test):
                                                allow_fail=False):
                 raise error.TestFail('Expected to find a mounted vault.')
 
-        # TODO(apronin): temp fix to delay restarting the session until after
-        # tpm initialization is complete. crbug.com/616854
-        time.sleep(5)
         if cryptohome.is_vault_mounted(user=username,
                                        allow_fail=True):
             raise error.TestFail('Expected to not find a mounted vault.')
