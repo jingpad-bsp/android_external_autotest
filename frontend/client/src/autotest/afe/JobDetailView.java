@@ -46,7 +46,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
         {DataTable.CLICKABLE_WIDGET_COLUMN, ""}, // selection checkbox
         {"hostname", "Host"}, {"full_status", "Status"},
         {"host_status", "Host Status"}, {"host_locked", "Host Locked"},
-        // columns for status log and debug log links
+        // columns for all logs and debug log links
         {DataTable.CLICKABLE_WIDGET_COLUMN, ""}, {DataTable.CLICKABLE_WIDGET_COLUMN, ""}
     };
     private static final String[][] CHILD_JOBS_COLUMNS = {
@@ -584,7 +584,7 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
         if (cell == JOB_HOSTS_COLUMNS.length - 1) {
             return new HTML(getLogsLinkHtml(basePath + "debug", "Debug logs"));
         } else {
-            return new HTML(getLogsLinkHtml(basePath + "status.log", "Status log"));
+            return new HTML(getLogsLinkHtml(basePath, "All logs"));
         }
     }
 
