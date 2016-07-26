@@ -56,6 +56,18 @@ class platform_FilePerms(test.test):
         '/opt/google/containers/android/rootfs/root/vendor': {
             'type': 'squashfs',
             'options': ['ro', 'nosuid', 'nodev']},
+        '/opt/google/containers/android-sdcard/mountpoints/container-root': {
+            'type': 'squashfs',
+            'options': ['ro', 'noexec']},
+        '/opt/google/containers/arc-downloads-filesystem/mountpoints/container-root': {
+            'type': 'squashfs',
+            'options': ['ro', 'noexec']},
+        '/opt/google/containers/arc-obb-mounter/mountpoints/container-root': {
+            'type': 'squashfs',
+            'options': ['ro', 'noexec']},
+        '/opt/google/containers/arc-removable-media/mountpoints/container-root': {
+            'type': 'squashfs',
+            'options': ['ro', 'noexec']},
         '/run/arc/obb': {
             'type': 'tmpfs',
             'options': standard_ro_options + ['mode=755']},
