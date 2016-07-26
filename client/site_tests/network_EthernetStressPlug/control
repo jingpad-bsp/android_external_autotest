@@ -22,6 +22,7 @@ DOC = """
 # We want the default number of loops per test run
 # to be 100.
 num_iterations = 100
+interface=None # autodetect interface
 
 # Parse comma-separated args.
 for arg in args:
@@ -29,5 +30,8 @@ for arg in args:
         key, val = item.split('=')
         if key == 'num_iterations':
             num_iterations = int(val)
+        if key == 'interface':
+            interface = val
 
-job.run_test('network_EthernetStressPlug', num_iterations=num_iterations)
+job.run_test('network_EthernetStressPlug', num_iterations=num_iterations,
+    interface=interface)
