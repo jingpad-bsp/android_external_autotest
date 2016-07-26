@@ -1723,8 +1723,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             command += ('-s %s' %
                         datetime.datetime.now().strftime('%Y%m%d.%H%M%S'))
         else:
-            # Android M and later use this format: date (format).
-            command += datetime.datetime.now().strftime('%m%d%H%M%Y.%S')
+            # Android M and later use this format: date -u (format).
+            command += ('-u %s' %
+                        datetime.datetime.utcnow().strftime('%m%d%H%M%Y.%S'))
         self.run(command, timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
                  ignore_timeout=True)
 
