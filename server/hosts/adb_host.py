@@ -460,6 +460,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         if self.is_up():
             self._sync_time()
+            self._enable_native_crash_logging()
 
 
     def run(self, command, timeout=3600, ignore_status=False,
@@ -1724,13 +1725,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def _enable_brillo_native_crash_logging(self):
         """Enables native crash logging for a Brillo DUT.
         """
-        self.run('touch /data/misc/metrics/enabled',
-                 timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
-                 ignore_timeout=True)
-        # If running, crash_sender will delete crash files every hour.
-        self.run('stop crash_sender',
-                 timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
-                 ignore_timeout=True)
+        try:
+            self.run('touch /data/misc/metrics/enabled',
+                     timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                     ignore_timeout=True)
+            # If running, crash_sender will delete crash files every hour.
+            self.run('stop crash_sender',
+                     timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
+                     ignore_timeout=True)
+        except error.AutoservRunError as e:
+            logging.warn(e)
+            logging.warn('Failed to enable Brillo native crash logging.')
 
 
     def _enable_android_native_crash_logging(self):
