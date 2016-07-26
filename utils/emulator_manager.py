@@ -15,6 +15,7 @@ import os
 import time
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 
 
@@ -35,8 +36,11 @@ class EmulatorManager(object):
         if not port % 2 or port < 5555 or port > 5585:
              raise EmulatorManagerException('Port must be an odd number '
                                             'between 5555 and 5585.')
-        if not os.path.exists(imagedir):
-             raise EmulatorManagerException('Image directory must exist.')
+        try:
+            run('test -f %s' % os.path.join(imagedir, 'system.img'))
+        except (error.AutoservHostRunError, error.AutoservRunError):
+            raise EmulatorManagerException('Image directory must exist and '
+                                           'contain emulator images.')
 
         self.port = port
         self.imagedir = imagedir
