@@ -402,6 +402,15 @@ class DynamicAPConfigurator(web_driver_core_helpers.WebDriverCoreHelpers,
         return True
 
 
+    def is_radio_switchable(self):
+        """
+        Returns if AP supports setting the radio ON/OFF.
+
+        @return True if supported; False otherwise.
+        """
+        return True
+
+
     def is_band_and_channel_supported(self, band, channel):
         """
         Returns if a given band and channel are supported.
