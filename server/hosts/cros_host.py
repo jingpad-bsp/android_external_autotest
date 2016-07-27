@@ -660,6 +660,80 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return tools.factory_image_url_pattern() % (devserver.url(), image_name)
 
 
+    def machine_install_by_devserver(self, build=None, force_update=False,
+                    local_devserver=False, repair=False,
+                    force_full_update=False):
+        """Ultiize devserver to install the DUT.
+
+        (TODO) crbugs.com/627269: The logic in this function has some overlap
+        with those in function machine_install. The merge will be done later,
+        not in the same CL.
+
+        @param build: The build name to be updated on the host.
+        @param force_update: Force an update even if the version installed
+                is the same. Default:False
+        @param local_devserver: Used by test_that to allow people to
+                use their local devserver. Default: False
+        @param repair: Forces update to repair image. Implies force_update.
+        @param force_full_update: If True, do not attempt to run stateful
+                update, force a full reimage. If False, try stateful update
+                first when the dut is already installed with the same version.
+        @raises autoupdater.ChromiumOSError
+
+        @returns A tuple of (image_name, host_attributes).
+                image_name is the name of image installed, e.g.,
+                veyron_jerry-release/R50-7871.0.0
+                host_attributes is a dictionary of (attribute, value), which
+                can be saved to afe_host_attributes table in database. This
+                method returns a dictionary with a single entry of
+                `job_repo_url`: repo_url, where repo_url is a devserver url to
+                autotest packages.
+        """
+        devserver = None
+        logging.debug('Resolving a devserver for auto-update')
+        if repair:
+            build = self.get_repair_image_name()
+            force_update = True
+
+        if not build and not self._parser.options.image:
+            raise error.AutoservError(
+                    'There is no update URL, nor a method to get one.')
+
+        if not build and self._parser.options.image:
+            build = self._parser.options.image
+
+        logging.info('Staging build for AU: %s', build)
+
+        # Get build from parameter or AFE.
+        # If the build is not a URL, let devserver to stage it first.
+        # Otherwise, choose a devserver to trigger auto-update.
+        if build.startswith('http://'):
+            build = autoupdater.url_to_image_name(build)
+            devserver = dev_server.ImageServer.resolve(build, self.hostname)
+        else:
+            devserver = dev_server.ImageServer.resolve(build, self.hostname)
+            devserver.trigger_download(build, synchronous=False)
+
+        # Report provision stats.
+        server_name = dev_server.ImageServer.get_server_name(devserver.url())
+        server_name = server_name.replace('.', '_')
+        autotest_stats.Counter('cros_host_provision.' + server_name).increment()
+        autotest_stats.Counter('cros_host_provision.total').increment()
+
+        devserver.auto_update(self.hostname, build,
+                              log_dir=self.job.sysinfo.sysinfodir,
+                              force_update=force_update,
+                              full_update=force_full_update)
+
+        # The reason to resolve a new devserver in function machine_install
+        # is mostly because that the update_url there may has a strange format,
+        # and it's hard to parse the devserver url from it.
+        # Since we already resolve a devserver to trigger auto-update, the same
+        # devserver is used to form JOB_REPO_URL here. Verified in local test.
+        repo_url = tools.get_package_url(devserver.url(), build)
+        return build, {ds_constants.JOB_REPO_URL: repo_url}
+
+
     def machine_install(self, update_url=None, force_update=False,
                         local_devserver=False, repair=False,
                         force_full_update=False):
