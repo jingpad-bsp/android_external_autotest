@@ -51,8 +51,9 @@ def allocate_webdriver_instance(lock_manager):
     """
     afe = frontend.AFE(debug=True,
                        server=site_utils.get_global_afe_hostname())
-    webdriver_host = hosts.SSHHost(site_utils.lock_host_with_labels(
-                        afe, lock_manager, labels=['webdriver']))
+    hostname = '%s.cros' % site_utils.lock_host_with_labels(
+        afe, lock_manager, labels=['webdriver'])
+    webdriver_host = hosts.SSHHost(hostname)
     if webdriver_host is not None:
         return webdriver_host
     logging.error("Unable to allocate VM instance")
@@ -66,8 +67,9 @@ def power_on_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    logging.debug('Powering on %s VM', instance.hostname)
-    power_on_cmd = 'VBoxManage startvm %s --type headless' % instance.hostname
+    hostname = instance.hostname.replace('.cros', '')
+    logging.debug('Powering on %s VM', hostname)
+    power_on_cmd = 'VBoxManage startvm %s --type headless' % hostname
     master.run(power_on_cmd)
 
 
@@ -78,8 +80,9 @@ def power_off_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    logging.debug('Powering off %s VM', instance.hostname)
-    power_off_cmd = 'VBoxManage controlvm %s poweroff' % instance.hostname
+    hostname = instance.hostname.replace('.cros', '')
+    logging.debug('Powering off %s VM', hostname)
+    power_off_cmd = 'VBoxManage controlvm %s poweroff' % hostname
     master.run(power_off_cmd)
 
 
