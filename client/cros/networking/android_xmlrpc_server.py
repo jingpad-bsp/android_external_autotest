@@ -120,7 +120,7 @@ class XmlRpcServer(threading.Thread):
                     if v[0] != errno.EINTR:
                         raise
                 except Exception as e:
-                    logging.error("Error in handle request: %s" % str(e))
+                    logging.error("Error in handle request: %s", e)
         logging.info('XmlRpcServer exited.')
 
 
@@ -263,6 +263,7 @@ class AndroidXmlRpcDelegate(object):
 
 
     def list_controlled_wifi_interfaces(self):
+        """List all controlled wifi interfaces (just wlan0 for Android). """
         return ['wlan0']
 
 
@@ -289,22 +290,37 @@ class AndroidXmlRpcDelegate(object):
 
 
     def clean_profiles(self):
+        """ Not applicable for Android.
+        @param profile_name: Ignored.
+        """
         return True
 
 
     def create_profile(self, profile_name):
+        """ Not applicable for Android.
+        @param profile_name: Ignored.
+        """
         return True
 
 
     def push_profile(self, profile_name):
+        """ Not applicable for Android.
+        @param profile_name: Ignored.
+        """
         return True
 
 
     def remove_profile(self, profile_name):
+        """ Not applicable for Android.
+        @param profile_name: Ignored.
+        """
         return True
 
 
     def pop_profile(self, profile_name):
+        """ Not applicable for Android.
+        @param profile_name: Ignored.
+        """
         return True
 
 
@@ -339,9 +355,9 @@ class AndroidXmlRpcDelegate(object):
         except Queue.Empty:
             logging.error("Scan results available event timed out!")
         except Exception as e:
-            logging.error("Scan results error: %s" % str(e))
+            logging.error("Scan results error: %s", e)
         finally:
-            logging.debug(ssids)
+            logging.debug("Scan Results: %r", ssids)
             return ssids
 
 
@@ -385,7 +401,7 @@ class AndroidXmlRpcDelegate(object):
         except Queue.Empty:
             logging.error("No state change available yet!")
         except Exception as e:
-            logging.error("State change error: %s" % str(e))
+            logging.error("State change error: %s", e)
         finally:
             logging.debug((result, final_state, wait_time))
             self.ad.droid.wifiStopTrackingStateChange()
@@ -402,7 +418,7 @@ class AndroidXmlRpcDelegate(object):
         try:
             wutils.wifi_forget_network(self.ad, ssid)
         except Exception as e:
-            logging.error(str(e))
+            logging.error(e)
             return False
         return True
 
@@ -418,7 +434,7 @@ class AndroidXmlRpcDelegate(object):
         params = Map(raw_params)
         params.security_config = Map(raw_params['security_config'])
         params.bgscan_config = Map(raw_params['bgscan_config'])
-        logging.debug('connect_wifi(). Params: %r' % params)
+        logging.debug('connect_wifi(). Params: %r', params)
         network_config = {
             "SSID": params.ssid,
             "hiddenSSID":  True if params.is_hidden else False
@@ -427,7 +443,7 @@ class AndroidXmlRpcDelegate(object):
             "discovery_time" : 0,
             "association_time" : 0,
             "configuration_time" : 0,
-            "failure_reason" : "Oops!",
+            "failure_reason" : "None",
             "xmlrpc_struct_type_key" : "AssociationResult"
         }
         duration = lambda: (utils.get_current_epoch_time() - start_time) / 1000
@@ -467,13 +483,13 @@ class AndroidXmlRpcDelegate(object):
             result = self.ad.droid.wifiConnect(network_config)
             assert result, "wifiConnect call failed."
             # Verify connection successful and correct.
-            logging.debug('wifiConnect result: %s. Waiting for connection' % result);
+            logging.debug('wifiConnect result: %s. Waiting for connection', result);
             timeout = params.association_timeout + params.configuration_timeout
             connect_result = self.ad.ed.pop_event(
                 wutils.WifiEventNames.WIFI_CONNECTED, timeout)
             assoc_result["association_time"] = duration()
             actual_ssid = connect_result['data'][wutils.WifiEnums.SSID_KEY]
-            logging.debug('Connected to SSID: %s' % params.ssid);
+            logging.debug('Connected to SSID: %s', actual_ssid);
             assert actual_ssid == params.ssid, ("Expected to connect to %s, "
                 "connected to %s") % (params.ssid, actual_ssid)
             result = True
@@ -484,7 +500,7 @@ class AndroidXmlRpcDelegate(object):
             assoc_result["failure_reason"] = msg
             result = False
         except Exception as e:
-            msg = str(e)
+            msg = e
             logging.error(msg)
             assoc_result["failure_reason"] = msg
             result = False
@@ -503,8 +519,9 @@ class AndroidXmlRpcDelegate(object):
         self.test_begin_time = logger.get_log_line_timestamp()
         try:
             wutils.wifi_test_device_init(self.ad)
+            self.ad.ed.clear_all_events()
         except AssertionError as e:
-            logging.error(str(e))
+            logging.error(e)
             return False
         return True
 
