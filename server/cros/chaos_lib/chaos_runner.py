@@ -109,7 +109,7 @@ class ChaosRunner(object):
 
             webdriver_instance = utils.allocate_webdriver_instance(lock_manager)
             if not site_utils.host_is_in_lab_zone(webdriver_instance.hostname):
-                self._ap_spec._webdriver_hostname = webdriver_instance
+                self._ap_spec._webdriver_hostname = webdriver_instance.hostname
             else:
                 # If in the lab then port forwarding must be done so webdriver
                 # connection will be over localhost.
@@ -243,6 +243,10 @@ class ChaosRunner(object):
                         continue
 
                 batch_locker.unlock_aps()
+            if webdriver_tunnel:
+                webdriver_instance.disconnect_ssh_tunnel(webdriver_tunnel,
+                                                         WEBDRIVER_PORT)
+                webdriver_instance.close()
             capturer.close()
             logging.info('Powering off VM %s', webdriver_instance)
             utils.power_off_VM(webdriver_master, webdriver_instance)
