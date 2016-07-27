@@ -5,9 +5,10 @@
 import json
 import logging
 import os
+import time
 
 import common
-from autotest_lib.client.common_lib import hosts
+from autotest_lib.client.common_lib import hosts, error
 from autotest_lib.server import afe_utils
 from autotest_lib.server import crashcollect
 from autotest_lib.server.hosts import repair
@@ -200,6 +201,47 @@ class PythonVerifier(hosts.Verifier):
         return 'Python on the host is installed and working'
 
 
+class ServoSysRqRepair(hosts.RepairAction):
+    """
+    Repair a Chrome device by sending a system request to the kernel.
+
+    Sending 3 times the Alt+VolUp+x key combination (aka sysrq-x)
+    will ask the kernel to panic itself and reboot while conserving
+    the kernel logs in console ramoops.
+    """
+
+    def repair(self, host):
+        if not host.servo:
+            raise hosts.AutoservRepairError(
+                    '%s has no servo support.' % host.hostname)
+        # Press 3 times Alt+VolUp+X
+        # no checking DUT health between each press as
+        # killing Chrome is not really likely to fix the DUT SSH.
+        for i in range(3):
+            try:
+              host.servo.sysrq_x()
+            except error.TestFail, ex:
+              raise hosts.AutoservRepairError(
+                      'cannot press sysrq-x: %s.' % str(ex))
+            # less than 5 seconds between presses.
+            time.sleep(2.0)
+
+        if host.wait_up(host.BOOT_TIMEOUT):
+            # Collect logs once we regain ssh access before clobbering them.
+            local_log_dir = crashcollect.get_crashinfo_dir(host, 'after_sysrq')
+            host.collect_logs('/var/log', local_log_dir, ignore_errors=True)
+            # Collect crash info.
+            crashcollect.get_crashinfo(host, None)
+            return
+        raise hosts.AutoservRepairError(
+                '%s is still offline after reset.' % host.hostname)
+
+
+    @property
+    def description(self):
+        return 'Reset the DUT via kernel sysrq'
+
+
 class ServoResetRepair(hosts.RepairAction):
     """Repair a Chrome device by resetting it with servo."""
 
@@ -342,6 +384,7 @@ def create_cros_repair_strategy():
         # RPM cycling must precede Servo reset:  if the DUT has a dead
         # battery, we need to reattach AC power before we reset via servo.
         (repair.RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
+        (ServoSysRqRepair, 'sysrq', [], ['ssh']),
         (ServoResetRepair, 'reset', [], ['ssh']),
 
         # TODO(jrbarnette):  the real dependency for firmware isn't
