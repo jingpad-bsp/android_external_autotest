@@ -935,6 +935,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.check_limit_file_count(is_test_job=True)
         self.check_limit_file_count(is_test_job=False)
 
+
     def test_upload_testresult_files(self):
         """Test upload_testresult_files"""
         results_folder = tempfile.mkdtemp()
@@ -943,33 +944,59 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         sysinfo_folder = os.path.join(host_folder, 'sysinfo')
         cts_result_folder = os.path.join(
                 host_folder, 'cheets_CTS.android.dpi', 'results', 'cts-results')
+        gts_result_folder = os.path.join(
+                host_folder, 'cheets_GTS.google.admin', 'results', 'android-xts')
         timestamp_str = '2016.04.28_01.41.44'
-        timestamp_folder = os.path.join(cts_result_folder, timestamp_str)
-        for folder in [debug_folder, sysinfo_folder, cts_result_folder, timestamp_folder]:
+        timestamp_cts_folder = os.path.join(cts_result_folder, timestamp_str)
+        timestamp_gts_folder = os.path.join(gts_result_folder, timestamp_str)
+
+        for folder in [debug_folder, sysinfo_folder, cts_result_folder,
+                       timestamp_cts_folder, timestamp_gts_folder]:
             os.makedirs(folder)
-        zip_file = os.path.join(cts_result_folder, timestamp_str + '.zip')
-        with open(zip_file, 'w') as f:
+
+        # Create CTS files
+        cts_zip_file = os.path.join(cts_result_folder, timestamp_str + '.zip')
+        with open(cts_zip_file, 'w') as f:
             f.write('test')
 
-        test_result_file = os.path.join(timestamp_folder, 'testResult.xml')
-        with open(test_result_file, 'w') as f:
+        cts_result_file = os.path.join(timestamp_cts_folder, 'testResult.xml')
+        with open(cts_result_file, 'w') as f:
             f.write('test')
 
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', cts_result_folder])
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', cts_result_folder])
+        # Create GTS files
+        gts_zip_file = os.path.join(gts_result_folder, timestamp_str + '.zip')
+        with open(gts_zip_file, 'w') as f:
+            f.write('test')
+
+        gts_result_file = os.path.join(timestamp_gts_folder, 'xtsTestResult.xml')
+        with open(gts_result_file, 'w') as f:
+            f.write('test')
+
         models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
             {'build': 'build_info', 'parent_job_id': 'p_id'})
+
+        models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
+            {'build': 'build_info', 'parent_job_id': 'p_id'})
+
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', cts_result_folder])
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', cts_result_folder])
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', gts_result_folder])
+        gs_offloader.get_cmd_list(
+            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', gts_result_folder])
 
         self.mox.ReplayAll()
         gs_offloader.upload_testresult_files(results_folder, False)
         self.mox.VerifyAll()
-        self.assertTrue(os.path.exists(zip_file))
+        self.assertTrue(os.path.exists(cts_zip_file))
         self.assertFalse(os.path.exists(
-                os.path.join(timestamp_folder,'testResult.xml.gz')))
+                os.path.join(timestamp_cts_folder,'testResult.xml.gz')))
 
         shutil.rmtree(results_folder)
 
