@@ -92,6 +92,9 @@ class APConfiguratorFactory(object):
         'Asus66RAPConfigurator':
             [PREFIX + 'asus_ac66r_ap_configurator',
                 'Asus66RAPConfigurator'],
+        'AsusRTAC68UAPConfigurator':
+            [PREFIX + 'asus_rtac68u_ap_configurator',
+                'AsusRTAC68UAPConfigurator'],
         'Netgear3700APConfigurator':
             [PREFIX + 'netgear3700_ap_configurator',
                 'Netgear3700APConfigurator'],
