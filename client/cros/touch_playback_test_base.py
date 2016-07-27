@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib
 import urllib2
 
 from autotest_lib.client.bin import test
@@ -78,23 +79,32 @@ class touch_playback_test_base(test.test):
 
         @returns: None if not all files are found.  Dictionary of filepaths if
                   they are found, indexed by gesture names as given.
-        @raises: error.TestError if no hw_id is found.
+        @raises: error.TestError if no device is found or if device should have
+                 a hw_id but does not.
 
         """
-        hw_id = self.player.devices[input_type].hw_id
-        if not hw_id:
-            raise error.TestError('No valid hw_id for this %s!' % input_type)
+        if not self.player.has(input_type):
+            raise error.TestError('Device does not have a %s!' % input_type)
+
+        if input_type in ['touchpad', 'touchscreen', 'stylus']:
+            hw_id = self.player.devices[input_type].hw_id
+            if not hw_id:
+                raise error.TestError('No valid hw_id for %s!' % input_type)
+            filename_fmt = '%s_%s_%s' % (self._platform, input_type, hw_id)
+
+        else:
+            device_name = self.player.devices[input_type].name
+            filename_fmt = '%s_%s' % (device_name, input_type)
 
         filepaths = {}
         gesture_dir = os.path.join(self.bindir, 'gestures')
         for gesture in gestures:
-            filename = '%s_%s_%s_%s' % (self._platform, input_type, hw_id,
-                                        gesture)
+            filename = '%s_%s' % (filename_fmt, gesture)
             filepath = os.path.join(gesture_dir, filename)
             if not os.path.exists(filepath):
                 logging.info('Did not find %s!', filepath)
 
-                filepath = self._download_remote_test_file(filename)
+                filepath = self._download_remote_test_file(filename, input_type)
                 if not filepath:
                     return None
 
@@ -125,15 +135,23 @@ class touch_playback_test_base(test.test):
         return filepaths
 
 
-    def _download_remote_test_file(self, filename):
+    def _download_remote_test_file(self, filename, input_type):
         """Download a file from the remote touch playback folder.
+
+        @param filename: string of filename
+        @param input_type: device type, e.g. 'touchpad'
 
         @returns: Path to local file or None if file is not found.
 
         """
         REMOTE_STORAGE_URL = ('https://storage.googleapis.com/'
                               'chromiumos-test-assets-public/touch_playback')
-        url = '%s/%s/%s' % (REMOTE_STORAGE_URL, self._platform, filename)
+        filename = urllib.quote(filename)
+
+        if input_type in ['touchpad', 'touchscreen', 'stylus']:
+            url = '%s/%s/%s' % (REMOTE_STORAGE_URL, self._platform, filename)
+        else:
+            url = '%s/TYPE-%s/%s' % (REMOTE_STORAGE_URL, input_type, filename)
         local_file = os.path.join(self.bindir, filename)
 
         logging.info('Looking for %s', url)
@@ -302,7 +320,6 @@ class KernelEventsRecorder(object):
         self.node = node
         self.fh = tempfile.NamedTemporaryFile()
         self.evtest_process = None
-        self.start()
 
 
     def start(self):
@@ -318,6 +335,13 @@ class KernelEventsRecorder(object):
             line_count = utils.run(interrupt_cmd).stdout.strip()
             return line_count != '0'
         utils.poll_for_condition(find_exit)
+
+
+    def clear(self):
+        """Clear previous events."""
+        self.stop()
+        self.fh.close()
+        self.fh = tempfile.NamedTemporaryFile()
 
 
     def stop(self):
@@ -340,18 +364,24 @@ class KernelEventsRecorder(object):
         logging.info('Kernel events seen:\n%s', events)
 
 
-    def get_last_event_timestamp(self):
+    def get_last_event_timestamp(self, filter_str=''):
         """Return the timestamp of the last event since recording started.
 
         Events are in the form "Event: time <epoch time>, <info>\n"
 
-        @returns: float of last Unix timestamp value (in seconds).
+        @param filter_str: a regex string to match to the <info> section.
+
+        @returns: floats matching
 
         """
         events = self.get_recorded_events()
-        findall = re.findall(r' time (.*?),', events, re.MULTILINE)
+        findall = re.findall(r' time (.*?), [^\n]*?%s' % filter_str,
+                             events, re.MULTILINE)
+        re.findall(r' time (.*?), [^\n]*?%s' % filter_str, events, re.MULTILINE)
         if not findall:
-            raise error.TestError('Could not find any kernel timestamps!')
+            self.log_recorded_events()
+            raise error.TestError('Could not find any kernel timestamps!'
+                                  '  Filter: %s' % filter_str)
         return float(findall[-1])
 
 
