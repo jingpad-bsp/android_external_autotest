@@ -13,10 +13,16 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+
+_CONFIG = global_config.global_config
+ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = _CONFIG.get_config_value(
+        'CROS', 'enable_devserver_trigger_auto_update', type=bool,
+        default=False)
 
 
 def host_in_lab(host):
@@ -221,7 +227,11 @@ def machine_install_and_update_labels(host, *args, **dargs):
     """
     clear_version_labels(host)
     clear_host_attributes_before_provision(host)
-    image_name, host_attributes = host.machine_install(*args, **dargs)
+    if not ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE:
+        image_name, host_attributes = host.machine_install(*args, **dargs)
+    else:
+        image_name, host_attributes = host.machine_install_by_devserver(
+            *args, **dargs)
     add_version_label(host, image_name)
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
