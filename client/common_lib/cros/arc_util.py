@@ -6,7 +6,10 @@
 # It should not import arc.py since it will create a import loop.
 
 import logging
+import os
+import select
 import tempfile
+import time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -15,6 +18,9 @@ from autotest_lib.client.common_lib.cros import arc_common
 from telemetry.internal.browser import extension_page
 
 _ARC_SUPPORT_HOST_URL = 'chrome-extension://cnbgggchhmkkdmeppjobngjoejnihlei/'
+_DUMPSTATE_DEFAULT_TIMEOUT = 20
+_DUMPSTATE_PATH = '/var/log/arc-dumpstate.log'
+_DUMPSTATE_PIPE_PATH = '/var/run/arc/bugreport/pipe'
 _USERNAME = 'powerloadtest@gmail.com'
 _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
 _PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
@@ -53,6 +59,9 @@ def post_processing_after_browser(chrome):
     # Wait for Android container ready if ARC is enabled.
     if chrome.arc_mode == arc_common.ARC_MODE_ENABLED:
         arc_common.wait_for_android_boot()
+    # Remove any stale dumpstate files.
+    if os.path.isfile(_DUMPSTATE_PATH):
+        os.unlink(_DUMPSTATE_PATH)
 
 
 def pre_processing_before_close(chrome):
@@ -68,6 +77,43 @@ def pre_processing_before_close(chrome):
         return
     # TODO(b/29341443): Implement stopping of adb logcat when we start adb
     # logcat for all tests
+
+    # Save dumpstate just before logout.
+    try:
+        logging.info('Saving Android dumpstate.')
+        _save_android_dumpstate()
+        logging.info('Android dumpstate successfully saved.')
+    except Exception:
+        # Dumpstate is nice-to-have stuff. Do not make it as a fatal error.
+        logging.exception('Failed to save Android dumpstate.')
+
+
+def _save_android_dumpstate(timeout=_DUMPSTATE_DEFAULT_TIMEOUT):
+    """
+    Triggers a dumpstate and saves its contents to to /var/log/arc-dumpstate.log
+
+    @param timeout: The timeout in seconds.
+    """
+
+    with open(_DUMPSTATE_PATH, 'w') as out:
+        # _DUMPSTATE_PIPE_PATH is a named pipe, so it permanently blocks if
+        # opened normally if the other end has not been opened. In order to
+        # avoid that, open the file with O_NONBLOCK and use a select loop to
+        # read from the file with a timeout.
+        fd = os.open(_DUMPSTATE_PIPE_PATH, os.O_RDONLY | os.O_NONBLOCK)
+        with os.fdopen(fd, 'r') as pipe:
+            end_time = time.time() + timeout
+            while True:
+                remaining_time = end_time - time.time()
+                if remaining_time <= 0:
+                    break
+                rlist, _, _ = select.select([pipe], [], [], remaining_time)
+                if pipe not in rlist:
+                    break
+                buf = os.read(pipe.fileno(), 1024)
+                if len(buf) == 0:
+                    break
+                out.write(buf)
 
 
 def set_browser_options_for_opt_in(b_options):
