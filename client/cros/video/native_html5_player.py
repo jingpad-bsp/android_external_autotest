@@ -119,3 +119,11 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
         """
         self.tab.ExecuteJavaScript('location.reload()')
+
+
+    def enable_VideoControls(self):
+        """
+        For enabling controls
+
+        """
+        self.tab.ExecuteJavaScript('setControls()')
