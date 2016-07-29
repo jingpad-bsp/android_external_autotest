@@ -48,16 +48,16 @@ class policy_CookiesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
                                           'http://doesnotmatter.com']
 
     TEST_CASES = {
-        'NotSet_CookiesAllowed': '',
-        'SingleUrl_CookiesBlocked': COOKIE_BLOCKED_SINGLE_FILE_DATA,
-        'MultipleUrls_CookiesBlocked': COOKIE_BLOCKED_MULTIPLE_FILES_DATA,
-        'MultipleUrls_CookiesAllowed' : COOKIE_ALLOWED_MULTIPLE_FILES_DATA
+        'NotSet_Allow': None,
+        'SingleUrl_Block': COOKIE_BLOCKED_SINGLE_FILE_DATA,
+        'MultipleUrls_Block': COOKIE_BLOCKED_MULTIPLE_FILES_DATA,
+        'MultipleUrls_Allow' : COOKIE_ALLOWED_MULTIPLE_FILES_DATA
     }
 
     SUPPORTING_POLICIES = {'DefaultCookiesSetting': 1}
 
-    def initialize(self, args=()):
-        super(policy_CookiesBlockedForUrls, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_CookiesBlockedForUrls, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _is_cookie_blocked(self, url):

@@ -13,7 +13,7 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
 
     This test verifies the behavior of Chrome OS for a range of valid values
     in the RestoreOnStartupURLs user policy. It also exercises the dependent
-    user policy RestoreOnStartup, which must be set equal to 4 to utilize the
+    user policy RestoreOnStartup, which must be set to 4 to utilize the
     specified startup URLs, and to None to when no URLs are specified.
 
     The combination of policy values are covered by three test cases named:
@@ -77,27 +77,18 @@ class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| string and |policies_dict| data based
-        on the test |case|. If the user specified an expected |value| in the
-        command line args, then use it to set the |policy_value| and blank out
-        the |policies_dict|.
+        on the test |case|. Set RestoreOnStartup=4 when there is 1 or more
+        startup urls given. Otherwise, set to None.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
-            # If |value| was given by user, then set expected |policy_value|
-            # to the given value, and setup |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
+        if self.TEST_CASES[case] is None:
+            policy_value = None
+            policies_dict = {'RestoreOnStartup': None}
         else:
-            if self.TEST_CASES[case] is None:
-                policy_value = None
-                policies_dict = {'RestoreOnStartup': None}
-            else:
-                policy_value = ','.join(self.TEST_CASES[case])
-                policies_dict = {'RestoreOnStartup': 4}
-            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-            policies_dict.update(policy_dict)
-
-        # Run test using values configured for the test case.
+            policy_value = ','.join(self.TEST_CASES[case])
+            policies_dict = {'RestoreOnStartup': 4}
+        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+        policies_dict.update(policy_dict)
         self._test_startup_urls(policy_value, policies_dict)

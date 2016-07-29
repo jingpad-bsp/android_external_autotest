@@ -66,8 +66,8 @@ class policy_JavaScriptAllowedForUrls(
         'RestoreOnStartup': 4
     }
 
-    def initialize(self, args=()):
-        super(policy_JavaScriptAllowedForUrls, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_JavaScriptAllowedForUrls, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _can_execute_javascript(self, tab):
@@ -87,10 +87,10 @@ class policy_JavaScriptAllowedForUrls(
     def _test_javascript_allowed_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the JavaScriptAllowedForUrls policy.
 
-        When JavaScriptAllowedForUrls is undefined, JavaScript shall be blocked
-        on all pages. When JavaScriptAllowedForUrls contains one or more URL,
-        patterns, JavaScript shall be allowed to run only on the pages whose
-        URL matches any of the listed patterns.
+        When JavaScriptAllowedForUrls is undefined, JavaScript execution shall
+        be blocked on all pages. When JavaScriptAllowedForUrls contains one or
+        more URL patterns, JavaScript execution shall be allowed only on the
+        pages whose URL matches any of the listed patterns.
 
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
@@ -124,14 +124,10 @@ class policy_JavaScriptAllowedForUrls(
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| string and |policies_dict| data based
-        on the test |case|. If the user specified an expected |value| in the
-        command line args, then use it to set the |policy_value| and blank out
-        the |policies_dict|.
+        on the test |case|.
 
         @param case: Name of the test case to run.
 
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
-
-        # Run test using the values configured for the test |case|.
         self._test_javascript_allowed_for_urls(policy_value, policies_dict)

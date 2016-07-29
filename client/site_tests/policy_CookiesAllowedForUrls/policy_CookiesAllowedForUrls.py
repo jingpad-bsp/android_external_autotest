@@ -48,16 +48,16 @@ class policy_CookiesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
                                           'http://doesnotmatter.com']
 
     TEST_CASES = {
-        'NotSet_CookiesBlocked': '',
-        'SingleUrl_CookiesAllowed': COOKIE_ALLOWED_SINGLE_FILE_DATA,
-        'MultipleUrls_CookiesAllowed': COOKIE_ALLOWED_MULTIPLE_FILES_DATA,
-        'MultipleUrls_CookiesBlocked': COOKIE_BLOCKED_MULTIPLE_FILES_DATA
+        'NotSet_Block': None,
+        'SingleUrl_Allow': COOKIE_ALLOWED_SINGLE_FILE_DATA,
+        'MultipleUrls_Allow': COOKIE_ALLOWED_MULTIPLE_FILES_DATA,
+        'MultipleUrls_Block': COOKIE_BLOCKED_MULTIPLE_FILES_DATA
     }
 
     SUPPORTING_POLICIES = {'DefaultCookiesSetting': 2}
 
-    def initialize(self, args=()):
-        super(policy_CookiesAllowedForUrls, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_CookiesAllowedForUrls, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _is_cookie_blocked(self, url):
@@ -101,9 +101,7 @@ class policy_CookiesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test. If the user specified an
-        expected |value| in the command line args, then it will be used to set
-        the |policy_value|.
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
 
