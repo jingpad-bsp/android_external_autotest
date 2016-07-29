@@ -251,15 +251,12 @@ class BaseEvent(object):
     def _LatestLaunchControlBuilds(self, board):
         """Get latest per-branch, per-board builds.
 
-        @param board: the board whose builds we want, e.g., android-shamu.
+        @param board: the board whose builds we want, e.g., shamu.
 
         @return: A list of Launch Control builds for the given board, e.g.,
                 ['git_mnc_release/shamu-eng/123',
                  'git_mnc_release/shamu-eng/124'].
         """
-        # Strip the android- or brillo- prefix from the board name. Build target
-        # only uses build name, e.g., shamu-eng and dragonboard-eng.
-        _,board_name = utils.parse_android_board_label(board)
         # Pick a random devserver based on tick, this is to help load balancing
         # across all devservers.
         devserver = dev_server.AndroidBuildServer.random()
@@ -269,7 +266,7 @@ class BaseEvent(object):
             # The first part should match the board name.
             match_targets = [
                     t for t in targets
-                    if board_name == utils.parse_launch_control_target(t)[0]]
+                    if board == utils.parse_launch_control_target(t)[0]]
             for target in match_targets:
                 latest_build = (_LATEST_LAUNCH_CONTROL_BUILD_FMT %
                                 (branch, target))
