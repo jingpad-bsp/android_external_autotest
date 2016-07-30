@@ -110,6 +110,7 @@ class ServoHost(ssh_host.SSHHost):
         else:
             self._is_in_lab = is_in_lab
         self._is_localhost = (self.hostname == 'localhost')
+        self._servo_port = servo_port
 
         # Commands on the servo host must be run by the superuser. Our account
         # on Beaglebone is root, but locally we might be running as a
@@ -334,19 +335,34 @@ class ServoHost(ssh_host.SSHHost):
         @raises ServoHostVerifyFailure if /var/lib/servod/config does not exist.
 
         """
-        if self._is_localhost:
+        if self._is_localhost or not self._is_cros_host():
+            logging.info('We will skip servo config check, either %s '
+                         'is not running chromeos or we cannot find enough '
+                         'information about the host.', self.hostname)
             return
-        try:
-            self.run('test -f /var/lib/servod/config')
-        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
-            if not self._is_cros_host():
-                logging.info('Ignoring servo config check failure, either %s '
-                             'is not running chromeos or we cannot find enough '
-                             'information about the host.', self.hostname)
+
+        failure_data = []
+        servod_config_file = '/var/lib/servod/config'
+        config_files = ['%s_%s' % (servod_config_file, self._servo_port),
+                        servod_config_file]
+
+        # We'll need to check for two types of config files since we're
+        # transistioning to support a new servo setup and we need to keep both
+        # to enable successful reverts.
+        # TODO(kevcheng): We can get rid of checking for servod_config_file once
+        # the fleet of beaglebones all have new style config file.
+        for config_file in config_files:
+            try:
+                self.run('test -f %s' % config_file)
                 return
-            raise ServoHostVerifyFailure(
-                    'Servo config file check failed for %s: %s' %
-                    (self.hostname, e))
+            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+                failure_data.append((config_file, e))
+
+        failure_message = ('Servo config file check failed for %s: ' %
+                           self.hostname)
+        for data in failure_data:
+            failure_message += '%s (%s) ' % (data[0], data[1])
+        raise ServoHostVerifyFailure(failure_message)
 
 
     def _check_servod_status(self):
