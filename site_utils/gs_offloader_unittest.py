@@ -936,6 +936,20 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.check_limit_file_count(is_test_job=False)
 
 
+    def test_is_release_builder(self):
+        """Test _is_release_build"""
+        release_build = 'veyron_minnie-cheets-release/R52-8248.0.0'
+        pfq_build = 'cyan-cheets-android-pfq/R54-8623.0.0-rc1'
+        trybot_build = 'trybot-samus-release/R54-8640.0.0-b5092'
+        trybot_2_build = 'trybot-samus-pfq/R54-8640.0.0-b5092'
+        release_2_build = 'test-trybot-release/R54-8640.0.0-b5092'
+        self.assertTrue(gs_offloader._is_release_build(release_build))
+        self.assertFalse(gs_offloader._is_release_build(pfq_build))
+        self.assertFalse(gs_offloader._is_release_build(trybot_build))
+        self.assertFalse(gs_offloader._is_release_build(trybot_2_build))
+        self.assertTrue(gs_offloader._is_release_build(release_2_build))
+
+
     def test_upload_testresult_files(self):
         """Test upload_testresult_files"""
         results_folder = tempfile.mkdtemp()
@@ -973,10 +987,12 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
             f.write('test')
 
         models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
-            {'build': 'build_info', 'parent_job_id': 'p_id'})
+            {'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
+             'parent_job_id': 'p_id'})
 
         models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
-            {'build': 'build_info', 'parent_job_id': 'p_id'})
+            {'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
+             'parent_job_id': 'p_id'})
 
         gs_offloader.get_cmd_list(
             False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(

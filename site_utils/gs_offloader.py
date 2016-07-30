@@ -344,11 +344,21 @@ def upload_testresult_files(dir_entry, multiprocessing):
                 _upload_files(host, path, result_pattern, multiprocessing)
 
 
+def _is_release_build(build):
+    """Check if it's a release build."""
+    return re.match(r'(?!trybot-).*-release/.*', build)
+
+
 def _upload_files(host, path, result_pattern, multiprocessing):
     try:
         keyval = models.test.parse_job_keyval(host)
-        parent_job_id = str(keyval['parent_job_id'])
         build = keyval['build']
+
+        if not _is_release_build(build):
+            # Only upload results for release builds.
+            return
+
+        parent_job_id = str(keyval['parent_job_id'])
 
         folders = path.split(os.sep)
         job_id = folders[-6]
