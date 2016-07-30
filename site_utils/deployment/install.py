@@ -215,7 +215,10 @@ def _check_servo(host):
         raise Exception('No answer to ssh from Servo host')
     # Force an update now.  The update needs to be first up, in case the
     # latest image is required to support our chosen board.
-    servo_host.update_image(wait_for_update=True)
+    try:
+        servo_host.update_image(wait_for_update=True)
+    except error.AutoservHostError:
+        logging.exception('Could not verify servo update')
     servo_board = (
         servo_afe_board_map.map_afe_board_to_servo_board(
             host._get_board_from_afe()))
@@ -227,7 +230,7 @@ def _check_servo(host):
     # There's a lag between when `start servod` completes above and when
     # servod is actually up and serving.  The call to time.sleep() below
     # gives time to make sure that the verify() call won't fail.
-    time.sleep(10)
+    time.sleep(20)
     logging.debug('Starting servo host verification')
     servo_host.verify()
     host.servo = servo_host.get_servo()
