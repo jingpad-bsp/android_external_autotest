@@ -56,16 +56,16 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
     def initialize(self, args=()):
         self._initialize_test_context(args)
 
-        # Start AutoTest DM Server if using local fake server.
-        if self.env == 'dm-fake':
+        # Start AutoTest DM Server iff using local fake server.
+        if self.dms_is_fake:
             self.import_dmserver(self.srcdir)
             self.start_dmserver()
         self._initialize_chrome_extra_flags()
         self._web_server = None
 
     def cleanup(self):
-        # Clean up AutoTest DM Server if using local fake server.
-        if self.env == 'dm-fake':
+        # Clean up AutoTest DM Server iff using local fake server.
+        if self.dms_is_fake:
             super(EnterprisePolicyTest, self).cleanup()
 
         # Stop web server if it was started.
@@ -82,9 +82,8 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         @param port: Port used by HTTP server.
 
         """
-        if self.mode != 'list':
-            self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
-            self._web_server.run()
+        self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
+        self._web_server.run()
 
     def _initialize_test_context(self, args=()):
         """Initialize class-level test context parameters.
@@ -95,7 +94,6 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         """
         # Extract local parameters from command line args.
         args_dict = utils.args_to_dict(args)
-        self.mode = args_dict.get('mode', 'all')
         self.case = args_dict.get('case')
         self.value = args_dict.get('value')
         self.env = args_dict.get('env', 'dm-fake')
@@ -103,79 +101,42 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.password = args_dict.get('password')
         self.dms_name = args_dict.get('dms_name')
 
-        # If |mode| is 'list', set |env| to generic 'prod', and blank out
-        # the other key parameters: case, value.
-        if self.mode == 'list':
-            self.env = 'prod'
-            self.case = None
-            self.value = None
+        # Verify that both |case| and |value| were not given.
+        if self.case is not None and self.value is not None:
+            raise error.TestError('Give only case or value, not both.')
 
-        # If |case| is given, then set |mode| to 'single'.
-        if self.case:
-            self.mode = 'single'
+        # Set |run_by_case| to True when |value| is not given.
+        self.run_by_case = self.value is None
 
-        # If |value| is given but not |case|, then set |mode| to 'by_value'.
-        if self.value and not self.case:
-            self.mode = 'by_value'
-
-        # If |mode| is 'all', then |env| must be 'dm-fake', and
-        # the |case| and |value| args must not be given.
-        if self.mode == 'all':
-            if self.env != 'dm-fake':
-                raise error.TestError('env must be "dm-fake" '
-                                      'when mode=all.')
-            if self.case:
-                raise error.TestError('case must not be given '
-                                      'when mode=all.')
-            if self.value:
-                raise error.TestError('value must not be given '
-                                      'when mode=all.')
-
-        # If |value| is given, set |is_value_given| flag to True. If it
-        # was given as 'none', 'null', or '', then set |value| to 'null'.
+        # If |value| is given as 'None', 'Null', or '', then set to 'null'.
         if self.value is not None:
-            self.is_value_given = True
             if (self.value.lower() == 'none' or
                 self.value.lower() == 'null' or
                 self.value == ''):
                 self.value = 'null'
-        else:
-            self.is_value_given = False
+
+        # TODO(scunningham): Remove |is_value_given| from the framework after
+        # it has been removed from all tests.
+        self.is_value_given = False
 
         # Verify |env| is a valid environment.
         if self.env is not None and self.env not in FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
-        # If |env| is 'dm-fake', set |gaia_login| flag to False, and ensure
-        # that value and credentials were not given.
-        if self.env == 'dm-fake':
-            self.gaia_login = False
-            if self.is_value_given:
-                raise error.TestError('value must not be given when using '
-                                      'the fake DM Server.')
-            if self.username or self.password:
-                raise error.TestError('user credentials must not be given '
-                                      'when using the fake DM Server.')
-        else:
-            self.gaia_login = True
+        # Set |dms_is_fake| flag if fake DM Server will be used.
+        self.dms_is_fake = (self.env == 'dm-fake')
 
-        # If either credential is not given, set both to default.
+        # If |dms_is_fake|, then ensure value and credentials are not given.
+        if self.dms_is_fake and (self.username or self.password):
+            raise error.TestError('User credentials must not be given '
+                                  'when using the fake DM Server.')
+
+        # If either credential is not given, set both to defaults.
         if self.username is None or self.password is None:
             self.username = self.USERNAME
             self.password = self.PASSWORD
 
-        # Verify |case| is given if |mode| is 'single'.
-        if self.mode == 'single' and not self.case:
-            raise error.TestError('case must be given when mode is single.')
-
-        # If |mode| is not 'by_value' and |value| is given, then verify that
-        # |case| is also given.
-        if (self.mode != 'by_value' and self.is_value_given and
-            self.case is None):
-                raise error.TestError('value must not be given without '
-                                      'also giving a test case.')
-
-        # Verify |dms_name| is given iff |env| is 'dm-test'.
+        # Verify test |dms_name| is given iff |env| is 'dm-test'.
         if self.env == 'dm-test' and not self.dms_name:
             raise error.TestError('dms_name must be given when using '
                                   'env=dm-test.')
@@ -185,9 +146,8 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         # Log the test context parameters.
         logging.info('Test Context Parameters:')
-        logging.info('  Run Mode: %r', self.mode)
-        logging.info('  Test Case: %r', self.case)
-        logging.info('  Expected Value: %r', self.value)
+        logging.info('  Case: %r', self.case)
+        logging.info('  Value: %r', self.value)
         logging.info('  Environment: %r', self.env)
         logging.info('  Username: %r', self.username)
         logging.info('  Password: %r', self.password)
@@ -195,14 +155,14 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
     def _initialize_chrome_extra_flags(self):
         """Initialize flags used to create Chrome instance."""
-        # Construct DM Server URL flags.
+        # Construct DM Server URL flags if not using production server.
         env_flag_list = []
         if self.env != 'prod':
-            if self.env == 'dm-fake':
-                # Use URL provided by AutoTest DM server.
+            if self.dms_is_fake:
+                # Use URL provided by the fake AutoTest DM server.
                 dmserver_str = (DMSERVER % self.dm_server_url)
             else:
-                # Use URL defined in DMS URL dictionary.
+                # Use URL defined in the DMS URL dictionary.
                 dmserver_str = (DMSERVER % (DMS_URL_DICT[self.env]))
                 if self.env == 'dm-test':
                     dmserver_str = (dmserver_str % self.dms_name)
@@ -216,11 +176,11 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
     def setup_case(self, policy_name, policy_value, policies_dict):
         """Set up and confirm the preconditions of a test case.
 
-        If the AutoTest fake DM Server is initialized, make a JSON policy blob
+        If the AutoTest fake DM Server is used, make a JSON policy blob
         from |policies_dict|, and upload it to the fake DM server.
 
-        Launch a chrome browser, and sign in to Chrome OS. Examine the user's
-        cryptohome vault, to confirm it signed in successfully.
+        Launch Chrome and sign in to Chrome OS. Examine the user's
+        cryptohome vault, to confirm user is signed in successfully.
 
         Open the Policies page, and confirm that it shows the specified
         |policy_name| and has the correct |policy_value|.
@@ -234,8 +194,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 shown on the Policies page.
 
         """
-        # Set up policy on AutoTest DM Server only if initialized.
-        if self.env == 'dm-fake':
+        if self.dms_is_fake:
             self.setup_policy(self._make_json_blob(policies_dict))
 
         self._launch_chrome_browser()
@@ -257,12 +216,12 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         logging.info('  extra_browser_args: %s', self.extra_flags)
         logging.info('  username: %s', self.username)
         logging.info('  password: %s', self.password)
-        logging.info('  gaia_login: %s', self.gaia_login)
+        logging.info('  gaia_login: %s', not self.dms_is_fake)
 
         self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
                                 username=self.username,
                                 password=self.password,
-                                gaia_login=self.gaia_login,
+                                gaia_login=not self.dms_is_fake,
                                 disable_gaia_services=False,
                                 autotest_ext=True)
 
@@ -479,25 +438,22 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
     def _get_policy_data_for_case(self, case):
         """Get policy value and policies dict data for specified test |case|.
 
+        Set expected |policy_value| string and |policies_dict| data to the
+        values defined for the specified test |case|. If the value specified
+        for the |case| is None, then set |policy_value| to None. Note that
+        |policy_value| will be correct only for those policies where
+        |policy_dict| contains a list of things (strings, dictionaries, etc).
+
         @param case: Name of the test case to run.
         @returns: policy_value string and policies_dict data.
 
         """
-        if self.is_value_given:
-            # If |value| was given by user, then set expected |policy_value|
-            # to the user-given value, and set |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
-        else:
-            # Otherwise, set expected |policy_value| string and |policies_dict|
-            # data to the values defined for the specified test |case|.
-            if not self.TEST_CASES[case]:
-                policy_value = None
-            else:
-                policy_value = ','.join(self.TEST_CASES[case])
-            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-            policies_dict = self.SUPPORTING_POLICIES.copy()
-            policies_dict.update(policy_dict)
+        policy_value = None
+        if self.TEST_CASES[case]:
+             policy_value = ','.join(self.TEST_CASES[case])
+        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+        policies_dict = self.SUPPORTING_POLICIES.copy()
+        policies_dict.update(policy_dict)
         return policy_value, policies_dict
 
     def _get_test_case_by_value(self, policy_value):
@@ -512,31 +468,25 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         for test_case, value in self.TEST_CASES.items():
             if self.packed_json_string(value) == trimmed_value:
                 return test_case
-        raise error.TestError('Test case not found for: %r' % trimmed_value)
-
-    def run_once_impl(self, run_test):
-        """Dispatch the common run modes for all child test classes.
-
-        @param run_test: method in test class that runs a test case.
-
-        """
-        if self.mode == 'all':
-            for test_case in sorted(self.TEST_CASES):
-                self._validate_and_run_test_case(test_case, run_test)
-        elif self.mode == 'single':
-            self._validate_and_run_test_case(self.case, run_test)
-        elif self.mode == 'by_value':
-            self.case = self._get_test_case_by_value(self.value)
-            self._validate_and_run_test_case(self.case, run_test)
-        elif self.mode == 'list':
-            logging.info('List Test Cases:')
-            for test_case, value in sorted(self.TEST_CASES.items()):
-                logging.info('  case=%s, value="%s"', test_case,
-                             self.packed_json_string(value))
-        else:
-            raise error.TestError('Run mode is not valid: %s' % self.mode)
+        raise error.TestError('No test case for value: %r' % trimmed_value)
 
     def run_once(self):
-        # The run_once() method is core to all autotest tests. We define it
-        # herein to support tests that do not define their own override.
-        self.run_once_impl(self.run_test_case)
+        """The run_once() method is required by all AutoTest tests.
+
+        It is defined herein to automatically determine which test case(s)
+        to run. Test may override if test will determine case(s) on its own.
+
+        """
+        # If DMS is fake, and value & case are not given, then run all cases.
+        # This functionality is provided for backward compatibility with tests
+        # running in regression and bvt-perbuild suites. It will be removed
+        # once crbug.com/629357 has been implemented.
+        if self.dms_is_fake and not (self.case or self.value):
+            for test_case in sorted(self.TEST_CASES):
+                self._validate_and_run_test_case(test_case, self.run_test_case)
+            return
+
+        # Run the single test case identified by case or by value.
+        if not self.run_by_case:
+            self.case = self._get_test_case_by_value(self.value)
+        self._validate_and_run_test_case(self.case, self.run_test_case)
