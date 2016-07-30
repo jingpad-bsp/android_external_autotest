@@ -34,6 +34,9 @@ class Driver(object):
                      build_event.NewBuild]
     _LOOP_INTERVAL_SECONDS = 5 * 60
 
+    # Cache for known ChromeOS boards. The cache helps to avoid unnecessary
+    # repeated calls to Launch Control API.
+    _cros_boards = set()
 
     def __init__(self, scheduler, enumerator, is_sanity=False):
         """Constructor
@@ -150,14 +153,21 @@ class Driver(object):
         event = inputs['event']
         board = inputs['board']
 
-        logging.info('Handling %s event for board %s', event.keyword, board)
-        os_type, _ = utils.parse_android_board_label(board)
-        if os_type in {task.OS_TYPE_BRILLO, task.OS_TYPE_ANDROID}:
+        # Try to get builds from LaunchControl first. If failed, the board could
+        # be ChromeOS. Use the cache Driver._cros_boards to avoid unnecessary
+        # repeated call to LaunchControl API.
+        launch_control_builds = None
+        if board not in Driver._cros_boards:
             launch_control_builds = event.GetLaunchControlBuildsForBoard(board)
+        if launch_control_builds:
             event.Handle(scheduler, branch_builds=None, board=board,
                          launch_control_builds=launch_control_builds)
         else:
             branch_builds = event.GetBranchBuildsForBoard(board)
+            if branch_builds:
+                Driver._cros_boards.add(board)
+                logging.info('Found ChromeOS build for board %s. This should '
+                             'be a ChromeOS board.', board)
             event.Handle(scheduler, branch_builds, board)
         logging.info('Finished handling %s event for board %s', event.keyword,
                      board)
