@@ -754,28 +754,6 @@ def parse_android_target(target):
     return board, build_type
 
 
-def parse_android_board_label(board_label_name):
-    """Parse the os_type and board name from board label name of an
-    Android/Brillo board.
-
-    Board label for Android/Brillo DUTs is like board:android-shamu or
-    board:brillo-dragonboard. The board name, shamu or dragonboard is the one
-    used in Launch Control build's target, e.g., shamu-eng or dragonboard-eng.
-    This method extracts the os_type and board name from the board label.
-
-    @param board_label_name: Name of an Android/Brillo board label, e.g.,
-            android-shamu.
-
-    @return: (os_type, board), e.g., ('android', 'shamu').
-    """
-    match = re.match('(?P<os_type>android|brillo)-(?P<board>.+)',
-                     board_label_name)
-    if match:
-        return match.group('os_type'), match.group('board')
-    else:
-        return None, None
-
-
 def parse_launch_control_target(target):
     """Parse the build target and type from a Launch Control target.
 
