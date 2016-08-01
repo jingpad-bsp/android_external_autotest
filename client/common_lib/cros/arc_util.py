@@ -6,18 +6,14 @@
 # It should not import arc.py since it will create a import loop.
 
 import logging
-import os
-import shutil
 import tempfile
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import arc_common
-from autotest_lib.client.cros import cryptohome
 from telemetry.internal.browser import extension_page
 
-_VAR_LOGCAT_DIR = '/var/log/arc-logd'
 _ARC_SUPPORT_HOST_URL = 'chrome-extension://cnbgggchhmkkdmeppjobngjoejnihlei/'
 _USERNAME = 'powerloadtest@gmail.com'
 _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
@@ -70,43 +66,8 @@ def pre_processing_before_close(chrome):
     """
     if not should_start_arc(chrome.arc_mode):
         return
-
-    # Save the logcat data just before the log-out.
-    # TODO(b/29138685): stop android before saving logcat, in order to
-    # avoid a race of log rotation happening during trying to save.
-    try:
-        _backup_arc_logcat(chrome.username)
-    except Exception:
-        # Log cat backup is also nice-to-have stuff. Do not make it as a
-        # fatal error.
-        logging.exception('Failed to back up the logcat data.')
-
-
-def _backup_arc_logcat(username):
-    """
-    Copies ARC's logcat files to /var/log/arc-logd.
-
-    @param username: Login user name.
-
-    """
-    arc_logcat_dir = os.path.join(
-            cryptohome.system_path(username),
-            'android-data', 'data', 'misc', 'logd')
-
-    if not os.path.isdir(arc_logcat_dir):
-        logging.error('Missing logcat directory.')
-        return
-
-    # Just in case there are old data.
-    shutil.rmtree(_VAR_LOGCAT_DIR, ignore_errors=True)
-
-    os.makedirs(_VAR_LOGCAT_DIR)
-    for filename in os.listdir(arc_logcat_dir):
-        if not filename.startswith('logcat'):
-            # Do not copy other than logcat files.
-            continue
-        shutil.copy2(os.path.join(arc_logcat_dir, filename),
-                     os.path.join(_VAR_LOGCAT_DIR, filename))
+    # TODO(b/29341443): Implement stopping of adb logcat when we start adb
+    # logcat for all tests
 
 
 def set_browser_options_for_opt_in(b_options):
