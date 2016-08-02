@@ -302,3 +302,7 @@ class MoblabHost(cros_host.CrosHost):
         """
         self.run('mkdir -p %s' % base)
         return self.run('mktemp -d -p %s' % base).stdout.strip()
+
+
+    def get_os_type(self):
+        return 'moblab'
