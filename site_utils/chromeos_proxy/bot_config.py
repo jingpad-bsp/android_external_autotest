@@ -104,8 +104,13 @@ def on_before_task(bot, bot_file=None):
     """
     # TODO(fdeng): it is possible that the format gets updated
     # without warning. It would be better to find a long term solution.
-    work_dir = os.path.join(bot.base_dir, 'work')
-    path = os.path.join(work_dir, 'task_runner_in.json')
+    path = os.path.join(bot.base_dir, 'w', 'task_runner_in.json')
+    if not os.path.isfile(path):
+        # For older version.
+        path = os.path.join(bot.base_dir, 'work', 'task_runner_in.json')
+        if not os.path.isfile(path):
+            bot.post_error('Failed to process task_runner_in.json')
+            return
     manifest = {}
     with open(path) as f:
         manifest = json.load(f)
@@ -113,7 +118,6 @@ def on_before_task(bot, bot_file=None):
     if full_command and not full_command[0] in CMD_WHITELIST:
         # override the command with a safe "echo"
         manifest['command'] = ['echo', '"Command not allowed"']
-        manifest['data'] = []
         with open(path, 'wb') as f:
             f.write(json.dumps(manifest))
         raise Exception('Command not allowed: %s' % full_command)
