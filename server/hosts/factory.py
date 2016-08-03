@@ -32,10 +32,11 @@ _started_hostnames = set()
 # overhead in checking for less common host types.
 host_types = [cros_host.CrosHost, moblab_host.MoblabHost, sonic_host.SonicHost,
               adb_host.ADBHost,]
-OS_HOST_DICT = {'cros' : cros_host.CrosHost,
-                'android': adb_host.ADBHost,
+OS_HOST_DICT = {'android': adb_host.ADBHost,
                 'brillo': adb_host.ADBHost,
-                'emulated_brillo': emulated_adb_host.EmulatedADBHost}
+                'cros' : cros_host.CrosHost,
+                'emulated_brillo': emulated_adb_host.EmulatedADBHost,
+                'moblab': moblab_host.MoblabHost}
 
 
 def _get_host_arguments(machine):
