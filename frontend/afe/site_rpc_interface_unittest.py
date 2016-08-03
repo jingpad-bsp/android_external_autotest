@@ -1059,12 +1059,17 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
                                                   platform=True)
         stumpy_label = models.Label.objects.create(name='board:stumpy',
                                                   platform=True)
+        peppy_label = models.Label.objects.create(name='board:peppy',
+                                                  platform=True)
 
         shard_id = site_rpc_interface.add_shard(
             hostname='host1', labels='board:lumpy,board:stumpy')
-        self.assertRaises(model_logic.ValidationError,
+        self.assertRaises(error.RPCException,
                           site_rpc_interface.add_shard,
                           hostname='host1', labels='board:lumpy,board:stumpy')
+        self.assertRaises(model_logic.ValidationError,
+                          site_rpc_interface.add_shard,
+                          hostname='host1', labels='board:peppy')
         shard = models.Shard.objects.get(pk=shard_id)
         self.assertEqual(shard.hostname, 'host1')
         self.assertEqual(shard.labels.values_list('pk')[0], (lumpy_label.id,))
@@ -1073,6 +1078,32 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         self.assertEqual(site_rpc_interface.get_shards(),
                          [{'labels': ['board:lumpy','board:stumpy'],
                            'hostname': 'host1',
+                           'id': 1}])
+
+
+    def testAddBoardsToShard(self):
+        """Add boards to a given shard."""
+        shard1, host1, lumpy_label = self._createShardAndHostWithLabel()
+        stumpy_label = models.Label.objects.create(name='board:stumpy',
+                                                   platform=True)
+        shard_id = site_rpc_interface.add_board_to_shard(
+            hostname='shard1', labels='board:stumpy')
+        # Test whether raise exception when board label does not exist.
+        self.assertRaises(models.Label.DoesNotExist,
+                          site_rpc_interface.add_board_to_shard,
+                          hostname='shard1', labels='board:test')
+        # Test whether raise exception when board already sharded.
+        self.assertRaises(error.RPCException,
+                          site_rpc_interface.add_board_to_shard,
+                          hostname='shard1', labels='board:lumpy')
+        shard = models.Shard.objects.get(pk=shard_id)
+        self.assertEqual(shard.hostname, 'shard1')
+        self.assertEqual(shard.labels.values_list('pk')[0], (lumpy_label.id,))
+        self.assertEqual(shard.labels.values_list('pk')[1], (stumpy_label.id,))
+
+        self.assertEqual(site_rpc_interface.get_shards(),
+                         [{'labels': ['board:lumpy','board:stumpy'],
+                           'hostname': 'shard1',
                            'id': 1}])
 
 

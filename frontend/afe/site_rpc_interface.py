@@ -846,29 +846,79 @@ def get_shards(**filter_data):
     return serialized_shards
 
 
-def add_shard(hostname, labels):
-    """Add a shard and start running jobs on it.
+def _assign_board_to_shard_precheck(labels):
+    """Verify whether board labels are valid to be added to a given shard.
 
-    @param hostname: The hostname of the shard to be added; needs to be unique.
-    @param labels: Board labels separated by a comma. Jobs of one of the labels
-                   will be assigned to the shard.
+    First check whether board label is in correct format. Second, check whether
+    the board label exist. Third, check whether the board has already been
+    assigned to shard.
+
+    @param labels: Board labels separated by comma.
 
     @raises error.RPCException: If label provided doesn't start with `board:`
-    @raises model_logic.ValidationError: If a shard with the given hostname
-            already exists.
+            or board has been added to shard already.
     @raises models.Label.DoesNotExist: If the label specified doesn't exist.
+
+    @returns: A list of label models that ready to be added to shard.
     """
     labels = labels.split(',')
     label_models = []
     for label in labels:
+        # Check whether the board label is in correct format.
         if not label.startswith('board:'):
-            raise error.RPCException('Sharding only supports for `board:.*` '
-                                     'labels.')
-        # Fetch label first, so shard isn't created when label doesn't exist.
-        label_models.append(models.Label.smart_get(label))
+            raise error.RPCException('Sharding only supports `board:.*` label.')
+        # Check whether the board label exist. If not, exception will be thrown
+        # by smart_get function.
+        label = models.Label.smart_get(label)
+        label_id = models.Label.list_objects({'name':label})[0].get('id')
+        # Check whether the board has been sharded already
+        try:
+            shard = models.Shard.objects.get(labels=label)
+            raise error.RPCException(
+                    '%s is already on shard %s' % (label, shard.hostname))
+        except models.Shard.DoesNotExist as e:
+            # board is not on any shard, so it's valid.
+            label_models.append(label)
+    return label_models
 
+
+def add_shard(hostname, labels):
+    """Add a shard and start running jobs on it.
+
+    @param hostname: The hostname of the shard to be added; needs to be unique.
+    @param labels: Board labels separated by comma. Jobs of one of the labels
+                   will be assigned to the shard.
+
+    @raises error.RPCException: If label provided doesn't start with `board:` or
+            board has been added to shard already.
+    @raises model_logic.ValidationError: If a shard with the given hostname
+            already exist.
+    @raises models.Label.DoesNotExist: If the label specified doesn't exist.
+
+    @returns: The id of the added shard.
+    """
+    labels = _assign_board_to_shard_precheck(labels)
     shard = models.Shard.add_object(hostname=hostname)
-    for label in label_models:
+    for label in labels:
+        shard.labels.add(label)
+    return shard.id
+
+
+def add_board_to_shard(hostname, labels):
+    """Add boards to a given shard
+
+    @param hostname: The hostname of the shard to be changed.
+    @param labels: Board labels separated by comma.
+
+    @raises error.RPCException: If label provided doesn't start with `board:` or
+            board has been added to shard already.
+    @raises models.Label.DoesNotExist: If the label specified doesn't exist.
+
+    @returns: The id of the changed shard.
+    """
+    labels = _assign_board_to_shard_precheck(labels)
+    shard = models.Shard.objects.get(hostname=hostname)
+    for label in labels:
         shard.labels.add(label)
     return shard.id
 
