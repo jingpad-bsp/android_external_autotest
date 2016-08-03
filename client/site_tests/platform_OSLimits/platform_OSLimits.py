@@ -11,6 +11,7 @@ import os
 
 from autotest_lib.client.bin import utils, test
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import chrome
 
 
 class platform_OSLimits(test.test):
@@ -115,10 +116,14 @@ class platform_OSLimits(test.test):
 
         # Adjust arch-specific values.
         if utils.get_arch().startswith('arm'):
-            ref_min['mmap_min_addr'] = 32768;
+            ref_min['mmap_min_addr'] = 32768
 
         if utils.get_arch().startswith('aarch64'):
-            ref_min['mmap_min_addr'] = 32768;
+            ref_min['mmap_min_addr'] = 32768
+
+        # ARM-compatible limit on x86 if ARC++ is present (b/30146997)
+        if chrome.is_arc_available():
+            ref_min['mmap_min_addr'] = 32768
 
         # Adjust version-specific details.
         kernel_ver = os.uname()[2]
