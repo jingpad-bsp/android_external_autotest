@@ -395,6 +395,12 @@ class DisplayFacadeNative(object):
         return True
 
 
+    def hide_typing_cursor(self):
+        """Hides typing cursor."""
+        graphics_utils.hide_typing_cursor()
+        return True
+
+
     def is_mirrored_enabled(self):
         """Checks the mirrored state.
 
