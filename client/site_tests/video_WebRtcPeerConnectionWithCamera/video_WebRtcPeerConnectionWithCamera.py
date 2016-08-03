@@ -107,55 +107,49 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
-            if not self.check_loopback_result():
-                raise error.TestFail('Failed %s local peer connection test' %
-                                     self.chosen_resolution)
+            passed, message = self.check_loopback_result()
+            if not passed:
+                logging.error(message)
+                raise error.TestFail(
+                        'Failed at resolution %s because %s' %
+                        (self.chosen_resolution, message)
+                )
 
 
     def check_loopback_result(self):
         """Get the WebRTC Peerconnection loopback results."""
         if not self.is_test_completed():
-            logging.error('loopback.html did not complete')
-            return False
+            return False, 'loopback.html did not complete'
+
         try:
             results = self.tab.EvaluateJavaScript('getResults()')
         except:
-            logging.error('Cannot retrieve results from loopback.html page')
-            return False
+            return False, 'Cannot retrieve results from loopback.html page'
+
         logging.info('Camera Type: %s', results['cameraType'])
         logging.info('Camera Errors: %s', results['cameraErrors'])
-        logging.info('PeerConnectionstats: %s',
-                     results['peerConnectionStats'])
+        logging.info('PeerConnectionstats: %s', results['peerConnectionStats'])
         logging.info('FrameStats: %s', results['frameStats'])
+
         if results['cameraErrors']:
-            logging.error('Camera error: %s', results['cameraErrors'])
-            return False
+            return False, 'of camera error: %s' % results['cameraErrors']
         if not results['peerConnectionStats']:
-            logging.info('Peer Connection Stats is empty')
-            return False
+            return False, 'Peer Connection Stats is empty'
         if results['peerConnectionStats'][1] == 0:
-            logging.error('Max Input FPS is zero')
-            return False
+            return False, 'Max Input FPS is zero'
         if results['peerConnectionStats'][4] == 0:
-            logging.error('Max Sent FPS is zero')
-            return False
+            return False, 'Max Sent FPS is zero'
         if not results['frameStats']:
-            logging.error('Frame Stats is empty')
-            return False
+            return False, 'Frame Stats is empty'
         if results['frameStats']['numBlackFrames'] > BLACK_FRAMES_THRESHOLD:
-            logging.error('BlackFrames threshold overreach: '
-                          'got %s > %s allowed',
-                          results['frameStats']['numBlackFrames'],
-                          BLACK_FRAMES_THRESHOLD)
-            return False
+            return (False,
+                    'Black frames threshold was exceeded. Black frames: %s, Threshold: %s' %
+                    (results['frameStats']['numBlackFrames'], BLACK_FRAMES_THRESHOLD))
         if results['frameStats']['numFrozenFrames'] > FROZEN_FRAMES_THRESHOLD:
-            logging.error('Frozen Frames threshold overreach: '
-                          'got %s > %s allowed',
-                          results['frameStats']['numFrozenFrames'],
-                          FROZEN_FRAMES_THRESHOLD)
-            return False
+            return (False,
+                    'Frozen frames threshold was exceeded. Frozen frames: %s, Threshold: %s' %
+                    (results['frameStats']['numFrozenFrames'], FROZEN_FRAMES_THRESHOLD))
         if results['frameStats']['numFrames'] == 0:
-            logging.error('%s Frames were found',
-                          results['frameStats']['numFrames'])
-            return False
-        return True
+            return False, 'No frames were found'
+
+        return True, "All good"
