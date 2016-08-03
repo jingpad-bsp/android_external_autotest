@@ -119,6 +119,15 @@ def hide_cursor():
         press_key_X('Up')
 
 
+def hide_typing_cursor():
+    """Hides typing cursor."""
+    # Press the tab key to move outside the typing bar.
+    if utils.is_freon():
+        press_keys(['KEY_TAB'])
+    else:
+        press_key_X('Tab')
+
+
 def screen_wakeup():
     """Wake up the screen if it is dark."""
     # Move the mouse a little bit to wake up the screen.

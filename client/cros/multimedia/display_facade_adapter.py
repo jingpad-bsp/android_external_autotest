@@ -180,6 +180,11 @@ class DisplayFacadeLocalAdapter(object):
         self._display_component.hide_cursor()
 
 
+    def hide_typing_cursor(self):
+        """Hides typing cursor by moving outside typing bar."""
+        self._display_component.hide_typing_cursor()
+
+
     def set_content_protection(self, state):
         """Sets the content protection of the external screen.
 
