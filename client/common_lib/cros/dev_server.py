@@ -71,7 +71,7 @@ DEVSERVER_IS_STAGING_RETRY_MIN = 100
 DEVSERVER_IS_CROS_AU_FINISHED_TIMEOUT_MIN = 100
 
 # The total times of devserver triggering CrOS auto-update.
-AU_RETRY_LIMIT = 1
+AU_RETRY_LIMIT = 2
 
 # Number of seconds for caller to poll devserver's get_au_status call to
 # check if cros auto-update is finished.
@@ -90,6 +90,12 @@ ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
 DEFAULT_SUBNET_MASKBIT = 19
 
 _timer = autotest_stats.Timer('devserver')
+
+
+class DevServerException(Exception):
+    """Raised when the dev server returns a non-200 HTTP response."""
+    pass
+
 
 class MarkupStripper(HTMLParser.HTMLParser):
     """HTML parser that strips HTML tags, coded characters like &amp;
@@ -164,7 +170,8 @@ def _get_crash_server_list():
         default=[])
 
 
-def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN):
+def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
+                          exception_to_raise=DevServerException):
     """A decorator to use with remote devserver calls.
 
     This decorator converts urllib2.HTTPErrors into DevServerExceptions
@@ -176,7 +183,7 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN):
 
         @retry.retry((urllib2.URLError, error.CmdError),
                      timeout_min=timeout_min,
-                     exception_to_raise=DevServerException)
+                     exception_to_raise=exception_to_raise)
         def wrapper(*args, **kwargs):
             """This wrapper actually catches the HTTPError."""
             try:
@@ -188,11 +195,6 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN):
         return wrapper
 
     return inner_decorator
-
-
-class DevServerException(Exception):
-    """Raised when the dev server returns a non-200 HTTP response."""
-    pass
 
 
 class DevServer(object):
@@ -1496,70 +1498,133 @@ class ImageServer(ImageServerBase):
 
 
     @remote_devserver_call()
-    def _collect_au_log(self, host_name, pid, log_dir):
+    def _kill_au_process_for_host(self, **kwargs):
+        """Kill the triggerred auto_update process if error happens in cros_au.
+
+        @param kwargs: Arguments to make kill_au_proc devserver call.
+        """
+        call = self.build_call('kill_au_proc', **kwargs)
+        response = self.run_call(call)
+        if not response == 'True':
+            raise DevServerException(
+                    'Failed to kill the triggerred CrOS auto_update process'
+                    'on devserver %s, the response is %s' % (
+                            self.url(), response))
+
+
+    def kill_au_process_for_host(self, host_name):
+        """Kill the triggerred auto_update process if error happens.
+
+        @param host_name: The DUT's hostname.
+
+        @return: True if successfully kill the auto-update process for host.
+        """
+        kwargs = {'host_name': host_name}
+        try:
+            self._kill_au_process_for_host(**kwargs)
+        except DevServerException:
+            return False
+
+        return True
+
+
+    @remote_devserver_call()
+    def _clean_track_log(self, **kwargs):
+        """Clean track log for the current auto-update process."""
+        call = self.build_call('handler_cleanup', **kwargs)
+        self.run_call(call)
+
+
+    def clean_track_log(self, host_name, pid):
+        """Clean track log for the current auto-update process.
+
+        @param host_name: The host name to be updated.
+        @param pid: The auto-update process id.
+
+        @return: True if track log is successfully cleaned, False otherwise.
+        """
+        if not pid:
+            return False
+
+        kwargs = {'host_name': host_name, 'pid': pid}
+        try:
+            self._clean_track_log(**kwargs)
+        except DevServerException as e:
+            logging.debug('Failed to clean track_status_file on '
+                          'devserver for host %s and process id %s: %s',
+                          host_name, pid, str(e))
+            return False
+
+        return True
+
+    @remote_devserver_call()
+    def _collect_au_log(self, log_dir, **kwargs):
         """Collect logs from devserver after cros-update process is finished.
 
         Collect the logs that recording the whole cros-update process, and
         write it to sysinfo path of a job.
 
         The example log file name that is stored is like:
-            '1220-repair/sysinfo/hostname_year_month_date_time.log'
+            '1220-repair/sysinfo/CrOS_update_host_name_pid.log'
 
-        @param log_file: The log file of cros-update process  on the remote
-                         devserver.
+        @param host_name: the DUT's hostname.
+        @param pid: the auto-update process id on devserver.
         @param log_dir: The directory to save the cros-update process log
                         retrieved from devserver.
         """
-        kwargs = {'host_name': host_name, 'pid': pid}
         call = self.build_call('collect_cros_au_log', **kwargs)
         response = self.run_call(call)
-        write_file = os.path.join(log_dir, 'CrOS_update_%s.log' % host_name)
+        write_file = os.path.join(
+                log_dir, 'CrOS_update_%s_%s.log' % (
+                        kwargs['host_name'], kwargs['pid']))
         logging.debug('Saving auto-update logs into %s', write_file)
         try:
             with open(write_file, 'w') as out_log:
                 out_log.write(response)
-        except Exception:
-            logging.debug('Error occurred in writing logs to %s', write_file)
-            raise
+        except:
+            raise DevServerException('Failed to write auto-update logs into '
+                                     '%s' % write_file)
 
 
-    @remote_devserver_call()
-    def _kill_au_process_for_host(self, **kwargs):
-        """Kill the triggerred auto_update process if error happens in cros_au.
+    def collect_au_log(self, host_name, pid, log_dir):
+        """Collect logs from devserver after cros-update process is finished.
 
-        @param pid: The auto_update process id.
+        @param host_name: the DUT's hostname.
+        @param pid: the auto-update process id on devserver.
+        @param log_dir: The directory to save the cros-update process log
+                        retrieved from devserver.
+
+        @return: True if auto-update log is successfully collected, False
+          otherwise.
         """
-        call = self.build_call('kill_au_proc', **kwargs)
-        response = self.run_call(call)
-        if not response == 'True':
-            raise DevServerException(
-                    'Failed to kill the triggerred CrOS auto_update process '
-                    'on devserver %s, the response is %s' % (self.url(),
-                                                             response))
+        # No log_dir means no need to collect auto-update logs, thus return
+        # True.
+        if not log_dir:
+            return True
 
+        if not pid:
+            return False
 
-    @remote_devserver_call()
-    def _clean_track_log(self, host_name, pid):
-        """Clean track log for the current auto-update process.
-
-        @param host_name: The host name to be updated.
-        @param pid: The auto-update process id._
-        """
         kwargs = {'host_name': host_name, 'pid': pid}
-        call = self.build_call('handler_cleanup', **kwargs)
         try:
-            self.run_call(call)
-        except Exception as e:
-            logging.debug('Failed to clean track_status_file on devserver '
-                          'for host %s and process id %s', host_name, pid)
-            raise
+            self._collect_au_log(log_dir, **kwargs)
+        except DevServerException as e:
+            logging.debug('Failed to collect auto-update log on '
+                          'devserver for host %s and process id %s: %s',
+                          host_name, pid, str(e))
+            return False
+
+        return True
 
 
     @remote_devserver_call()
-    def _start_auto_update(self, **kwargs):
-        """Start auto-update by calling devserver.cros_au.
+    def _trigger_auto_update(self, **kwargs):
+        """Trigger auto-update by calling devserver.cros_au.
 
         @param kwargs:  Arguments to make cros_au devserver call.
+
+        @return: a tuple indicates whether the RPC call cros_au succeeds and
+          the auto-update process id running on devserver.
         """
         host_name = kwargs['host_name']
         call = self.build_call('cros_au', async=True, **kwargs)
@@ -1574,19 +1639,7 @@ class ImageServer(ImageServerBase):
                                      'might have gone down while handling '
                                      'the call: %s' % (self.url(), call))
 
-        pid = 0
-        try:
-            response = json.loads(response)
-            if response[0]:
-                pid = response[1]
-                logging.debug('start process %r for auto_update in devserver',
-                              pid)
-                self._wait_for_auto_update_finished(pid, **kwargs)
-        except Exception as e:
-            logging.debug('Failed to trigger auto-update process on devserver')
-            raise
-        finally:
-            return pid
+        return response
 
 
     def _wait_for_auto_update_finished(self, pid, **kwargs):
@@ -1658,8 +1711,37 @@ class ImageServer(ImageServerBase):
         return True
 
 
-    def auto_update(self, host_name, build_name, log_dir=None, force_update=False,
-                    full_update=False):
+    def wait_for_auto_update_finished(self, response, **kwargs):
+        """Processing response of 'cros_au' and polling for auto-update status.
+
+        Will wait for the whole auto-update process is finished.
+
+        @param response: The response from RPC 'cros_au'
+        @param kwargs: keyword arguments to make get_au_status devserver call.
+
+        @return: a tuple includes two elements.
+          raised_error: None if everything works well or the raised error.
+          pid: the auto-update process id on devserver.
+        """
+
+        pid = 0
+        raised_error = None
+        try:
+            response = json.loads(response)
+            if response[0]:
+                pid = response[1]
+                logging.debug('start process %r for auto_update in devserver',
+                              pid)
+                self._wait_for_auto_update_finished(pid, **kwargs)
+        except Exception as e:
+            logging.debug('Failed to trigger auto-update process on devserver')
+            raised_error = e
+        finally:
+            return raised_error, pid
+
+
+    def auto_update(self, host_name, build_name, log_dir=None,
+                    force_update=False, full_update=False):
         """Auto-update a CrOS host.
 
         @param host_name:    The hostname of the DUT to auto-update.
@@ -1678,29 +1760,57 @@ class ImageServer(ImageServerBase):
                   'force_update': force_update,
                   'full_update': full_update}
 
+        error_msg = 'CrOS auto-update failed for host %s: %s'
+        error_msg_attempt = 'Exception raised on auto_update attempt #%s: %s'
+        is_au_success = False
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
+            # No matter _start_auto_update succeeds or fails, the auto-update
+            # track_status_file should be cleaned, and the auto-update execute
+            # log should be collected to directory sysinfo. Also, the error
+            # raised by _start_auto_update should be displayed.
             try:
-                pid = self._start_auto_update(**kwargs)
-                if pid:
-                    self._clean_track_log(host_name, pid)
+                response = self._trigger_auto_update(**kwargs)
+            except DevServerException as e:
+                logging.debug(error_msg_attempt, au_attempt+1, str(e))
+            else:
+                raised_error, pid = self.wait_for_auto_update_finished(response,
+                                                                       **kwargs)
+                # Error happens in _clean_track_log won't be raised. Auto-update
+                # process will be retried.
+                is_clean_success = self.clean_track_log(host_name, pid)
+                # Error happens in _collect_au_log won't be raised. Auto-update
+                # process will be retried.
+                is_collect_success = self.collect_au_log(host_name, pid,
+                                                         log_dir)
+                # If any error is raised previously, log it and retry
+                # auto-update. Otherwise, claim a success CrOS auto-update.
+                if not raised_error and is_clean_success and is_collect_success:
+                    logging.debug('CrOS auto-update succeed for host %s',
+                                  host_name)
+                    is_au_success = True
+                    break
+                else:
+                    if raised_error:
+                        logging.debug(error_msg_attempt, au_attempt+1,
+                                      str(raised_error))
+                    if not self.kill_au_process_for_host(host_name):
+                        logging.debug('Failed to kill auto_update process %d',
+                                      pid)
 
-                if pid and log_dir:
-                    self._collect_au_log(host_name, pid, log_dir)
-
-                break
-            except Exception as e:
-                logging.debug('Exception raised on auto_update attempt #%s: %s',
-                              au_attempt+1, str(e))
-                self._kill_au_process_for_host(**kwargs)
-                au_attempt += 1
-                # wait for several seconds for devserver/DUT to come back
+                # Already reached the auto-update retry limit, report failure.
                 if au_attempt >= AU_RETRY_LIMIT:
-                  raise DevServerException(
-                          'CrOS auto-update failed for host: %s', host_name)
+                    raise DevServerException(
+                            error_msg % (host_name,
+                                         'has reached AU retry limit.'))
+            finally:
+                if not is_au_success and au_attempt < AU_RETRY_LIMIT - 1:
+                    time.sleep(CROS_AU_RETRY_INTERVAL)
 
-                time.sleep(CROS_AU_RETRY_INTERVAL)
+        if not is_au_success:
+            raise DevServerException(
+                    error_msg % (host_name, 'has reached AU retry limit.'))
 
 
 class AndroidBuildServer(ImageServerBase):

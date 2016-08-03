@@ -317,20 +317,20 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def testCmdErrorRetryCollectAULog(self):
-        """Should retry dev server's _clean_track_log when getting
-        error.CmdError, raise exception for urllib2.HTTPError."""
+        """Devserver should retry _collect_au_log() on CMDError,
+        but pass through real exception."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._collect_au_log,
-                          '', '', '')
+        self.assertFalse(self.dev_server.collect_au_log(
+                '100.0.0.0', 100, 'path/'))
 
 
     def testURLErrorRetryCollectAULog(self):
-        """Should retry on URLError, but pass through real exception."""
+        """Devserver should retry _collect_au_log() on URLError,
+        but pass through real exception."""
         self.mox.StubOutWithMock(time, 'sleep')
 
         refused = urllib2.URLError('[Errno 111] Connection refused')
@@ -339,25 +339,25 @@ class DevServerTest(mox.MoxTestBase):
         time.sleep(mox.IgnoreArg())
         dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._collect_au_log,
-                          '', '', '')
+        self.assertFalse(self.dev_server.collect_au_log(
+                '100.0.0.0', 100, 'path/'))
 
 
     def testCmdErrorRetryKillAUProcess(self):
-        """Should retry dev server's _clean_track_log when getting
-        error.CmdError, raise exception for urllib2.HTTPError."""
+        """Devserver should retry _kill_au_process() on CMDError,
+        but pass through real exception."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._kill_au_process_for_host)
+        self.assertFalse(self.dev_server.kill_au_process_for_host(
+                '100.0.0.0'))
 
 
     def testURLErrorRetryKillAUProcess(self):
-        """Should retry on URLError, but pass through real exception."""
+        """Devserver should retry _kill_au_process() on URLError,
+        but pass through real exception."""
         self.mox.StubOutWithMock(time, 'sleep')
 
         refused = urllib2.URLError('[Errno 111] Connection refused')
@@ -366,25 +366,23 @@ class DevServerTest(mox.MoxTestBase):
         time.sleep(mox.IgnoreArg())
         dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._kill_au_process_for_host)
+        self.assertFalse(self.dev_server.kill_au_process_for_host('100.0.0.0'))
 
 
     def testCmdErrorRetryCleanTrackLog(self):
-        """Should retry dev server's _clean_track_log when getting
-        error.CmdError, raise exception for urllib2.HTTPError."""
+        """Devserver should retry _clean_track_log() on CMDError,
+        but pass through real exception."""
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(CMD_ERROR)
         dev_server.ImageServerBase.run_call(
                 mox.IgnoreArg()).AndRaise(E500)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._clean_track_log,
-                          '', '')
+        self.assertFalse(self.dev_server.clean_track_log('100.0.0.0', 100))
 
 
     def testURLErrorRetryCleanTrackLog(self):
-        """Should retry on URLError, but pass through real exception."""
+        """Devserver should retry _clean_track_log() on URLError,
+        but pass through real exception."""
         self.mox.StubOutWithMock(time, 'sleep')
 
         refused = urllib2.URLError('[Errno 111] Connection refused')
@@ -393,181 +391,154 @@ class DevServerTest(mox.MoxTestBase):
         time.sleep(mox.IgnoreArg())
         dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
         self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server._clean_track_log,
-                          '', '')
-
-
-    def _preSetupForSuccessfullyTriggerAutoUpdate(self):
-        """Pre-setup for running tests related to auto-update."""
-        kwargs = {'host_name': '100.0.0.0', 'pid': 100, 'log_dir': 'path/'}
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(kwargs['host_name']),
-                            mox.StrContains('cros_au?'))
-        argument2 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(kwargs['host_name']),
-                            mox.StrContains('get_au_status'))
-
-        response = (True, kwargs['pid'])
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(
-            json.dumps(response))
-        response2 = (True, 'Completed')
-        dev_server.ImageServerBase.run_call(argument2).AndReturn(
-            json.dumps(response2))
-
-        return kwargs
+        self.assertFalse(self.dev_server.clean_track_log('100.0.0.0', 100))
 
 
     def _mockWriteFile(self):
         """Mock write content to a file."""
         mock_file = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(__builtin__, 'open')
         open(mox.IgnoreArg(), 'w').AndReturn(mock_file)
         mock_file.__enter__().AndReturn(mock_file)
         mock_file.write(mox.IgnoreArg())
         mock_file.__exit__(None, None, None)
 
 
-    def testSuccessfulTriggerAutoUpdate(self):
-        """Call the dev server's auto update method."""
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
+    def _preSetupForAutoUpdate(self, **kwargs):
+        """Pre-setup for testing auto_update logics and error handling in
+        devserver."""
+        response1 = (True, 100)
+        response2 = (True, 'Completed')
         argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
+                            mox.StrContains('cros_au'))
+        argument2 = mox.And(mox.StrContains(self._HOST),
+                            mox.StrContains('get_au_status'))
+        argument3 = mox.And(mox.StrContains(self._HOST),
                             mox.StrContains('handler_cleanup'))
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(True)
+        argument4 = mox.And(mox.StrContains(self._HOST),
+                            mox.StrContains('collect_cros_au_log'))
+        argument5 = mox.And(mox.StrContains(self._HOST),
+                            mox.StrContains('kill_au_proc'))
+
+        retry_error = None
+        if 'retry_error' in kwargs:
+            retry_error = kwargs['retry_error']
+
+        raised_error = E403
+        if 'raised_error' in kwargs:
+            raised_error = kwargs['raised_error']
+
+        if 'cros_au_error' in kwargs:
+            if retry_error:
+                dev_server.ImageServerBase.run_call(argument1).AndRaise(
+                        retry_error)
+                time.sleep(mox.IgnoreArg())
+
+            if kwargs['cros_au_error']:
+                dev_server.ImageServerBase.run_call(argument1).AndRaise(
+                        raised_error)
+            else:
+                dev_server.ImageServerBase.run_call(argument1).AndReturn(
+                        json.dumps(response1))
+
+        if 'get_au_status_error' in kwargs:
+            if retry_error:
+                dev_server.ImageServerBase.run_call(argument2).AndRaise(
+                        retry_error)
+                time.sleep(mox.IgnoreArg())
+
+            if kwargs['get_au_status_error']:
+                dev_server.ImageServerBase.run_call(argument2).AndRaise(
+                        raised_error)
+            else:
+                dev_server.ImageServerBase.run_call(argument2).AndReturn(
+                        json.dumps(response2))
+
+        if 'handler_cleanup_error' in kwargs:
+            if kwargs['handler_cleanup_error']:
+                dev_server.ImageServerBase.run_call(argument3).AndRaise(
+                        raised_error)
+            else:
+                dev_server.ImageServerBase.run_call(argument3).AndReturn('True')
+
+        if 'collect_au_log_error' in kwargs:
+            if kwargs['collect_au_log_error']:
+                dev_server.ImageServerBase.run_call(argument4).AndRaise(
+                        raised_error)
+            else:
+                dev_server.ImageServerBase.run_call(argument4).AndReturn('log')
+                self._mockWriteFile()
+
+        if 'kill_au_proc_error' in kwargs:
+            if kwargs['kill_au_proc_error']:
+                dev_server.ImageServerBase.run_call(argument5).AndRaise(
+                        raised_error)
+            else:
+                dev_server.ImageServerBase.run_call(argument5).AndReturn('True')
+
+
+    def testSuccessfulTriggerAutoUpdate(self):
+        """Verify the dev server's auto_update() succeeds."""
+        kwargs={'cros_au_error': False, 'get_au_status_error': False,
+                'handler_cleanup_error': False}
+        self._preSetupForAutoUpdate(**kwargs)
 
         self.mox.ReplayAll()
-        self.dev_server.auto_update(host_name, '')
+        self.dev_server.auto_update('100.0.0.0', '')
         self.mox.VerifyAll()
 
 
     def testSuccessfulTriggerAutoUpdateWithCollectingLog(self):
-        """Call the dev server's auto update method with collecting logs."""
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
-        pid = kwargs['pid']
-        log_dir = kwargs['log_dir']
-
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('handler_cleanup'))
-        self.mox.StubOutWithMock(dev_server.ImageServer, '_collect_au_log')
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(True)
-        self.dev_server._collect_au_log(host_name, pid, log_dir)
+        """Verify the dev server's auto_update() with collecting logs
+        succeeds."""
+        kwargs={'cros_au_error': False, 'get_au_status_error': False,
+                'handler_cleanup_error': False, 'collect_au_log_error': False}
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        self._preSetupForAutoUpdate(**kwargs)
 
         self.mox.ReplayAll()
-        self.dev_server.auto_update(host_name, '', log_dir=log_dir)
+        self.dev_server.auto_update('100.0.0.0', '', log_dir='path/')
         self.mox.VerifyAll()
 
 
-    def testSuccessfulTriggerAutoUpdateWithRetryHandleCleanupCmdError(self):
-        """Call the dev server's auto update method with collecting logs."""
-        ori_au_retry_limit = dev_server.AU_RETRY_LIMIT
-        dev_server.AU_RETRY_LIMIT = 1
-
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
-        pid = kwargs['pid']
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('handler_cleanup'))
-        dev_server.ImageServerBase.run_call(argument1).AndRaise(CMD_ERROR)
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(True)
-
-        self.mox.ReplayAll()
-        self.dev_server.auto_update(host_name, '')
-        self.mox.VerifyAll()
-
-
-    def testSuccessfulTriggerAutoUpdateWithRetryCollectAULogCmdError(self):
-        """Call the dev server's auto update method with collecting logs."""
-        ori_au_retry_limit = dev_server.AU_RETRY_LIMIT
-        dev_server.AU_RETRY_LIMIT = 1
-
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
-        pid = kwargs['pid']
-        log_dir = kwargs['log_dir']
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('handler_cleanup'))
-        argument2 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('collect_cros_au_log'))
-
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(True)
-        dev_server.ImageServerBase.run_call(argument2).AndRaise(CMD_ERROR)
-        dev_server.ImageServerBase.run_call(argument2).AndReturn('log')
-        self._mockWriteFile()
-
-        self.mox.ReplayAll()
-        self.dev_server.auto_update(host_name, '', log_dir=log_dir)
-        self.mox.VerifyAll()
-
-
-    def testSuccessfulTriggerAutoUpdateWithRaiseHandleCleanupError(self):
-        """Call the dev server's auto update method with collecting logs."""
-        ori_au_retry_limit = dev_server.AU_RETRY_LIMIT
-        dev_server.AU_RETRY_LIMIT = 1
-
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('handler_cleanup'))
-        dev_server.ImageServerBase.run_call(argument1).AndRaise(CMD_ERROR)
-        dev_server.ImageServerBase.run_call(argument1).AndRaise(E500)
-        dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
-
-
-        self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server.auto_update,
-                          host_name, '')
-
-
-    def testSuccessfulTriggerAutoUpdateWithRaiseCollectAULogError(self):
-        """Call the dev server's auto update method with collecting logs."""
-        ori_au_retry_limit = dev_server.AU_RETRY_LIMIT
-        dev_server.AU_RETRY_LIMIT = 1
-
-        kwargs = self._preSetupForSuccessfullyTriggerAutoUpdate()
-        host_name = kwargs['host_name']
-        pid = kwargs['pid']
-        log_dir = kwargs['log_dir']
-        argument1 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('handler_cleanup'))
-        argument2 = mox.And(mox.StrContains(self._HOST),
-                            mox.StrContains(host_name),
-                            mox.StrContains('collect_cros_au_log'))
-
-        dev_server.ImageServerBase.run_call(argument1).AndReturn(True)
-        dev_server.ImageServerBase.run_call(argument2).AndRaise(CMD_ERROR)
-        dev_server.ImageServerBase.run_call(argument2).AndRaise(E500)
-        dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
-
-        self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server.auto_update,
-                          host_name, '', log_dir)
-
-
-    def testURLErrorRetryTriggerAutoUpdate(self):
-        """Should retry on URLError, but pass through real exception."""
+    def testCrOSAUURLErrorRetryTriggerAutoUpdateSucceed(self):
+        """Devserver should retry cros_au() on URLError."""
         self.mox.StubOutWithMock(time, 'sleep')
-
         refused = urllib2.URLError('[Errno 111] Connection refused')
+        kwargs={'retry_error': refused, 'cros_au_error': False,
+                'get_au_status_error': False, 'handler_cleanup_error': False,
+                'collect_au_log_error': False}
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        self._preSetupForAutoUpdate(**kwargs)
+
+        self.mox.ReplayAll()
+        self.dev_server.auto_update('100.0.0.0', '', log_dir='path/')
+        self.mox.VerifyAll()
+
+
+    def testCrOSAUCmdErrorRetryTriggerAutoUpdateSucceed(self):
+        """Devserver should retry cros_au() on CMDError."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        kwargs={'retry_error': CMD_ERROR, 'cros_au_error': False,
+                'get_au_status_error': False, 'handler_cleanup_error': False,
+                'collect_au_log_error': False}
+        self._preSetupForAutoUpdate(**kwargs)
+
+        self.mox.ReplayAll()
+        self.dev_server.auto_update('100.0.0.0', '', log_dir='path/')
+        self.mox.VerifyAll()
+
+
+    def testCrOSAUURLErrorRetryTriggerAutoUpdateFail(self):
+        """Devserver should retry cros_au() on URLError, but pass through
+        real exception."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        refused = urllib2.URLError('[Errno 111] Connection refused')
+        kwargs={'retry_error': refused, 'cros_au_error': True,
+                'raised_error': E500}
+
         for i in range(dev_server.AU_RETRY_LIMIT):
-            dev_server.ImageServerBase.run_call(
-                mox.IgnoreArg()).AndRaise(refused)
-            time.sleep(mox.IgnoreArg())
-            dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
-            dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
+            self._preSetupForAutoUpdate(**kwargs)
             if i < dev_server.AU_RETRY_LIMIT - 1:
                 time.sleep(mox.IgnoreArg())
 
@@ -577,61 +548,162 @@ class DevServerTest(mox.MoxTestBase):
                           '', '')
 
 
-    def testCmdErrorRetryTriggerAutoUpdate(self):
-        """Should retry on CmdError, but pass through real exception."""
+    def testCrOSAUCmdErrorRetryTriggerAutoUpdateFail(self):
+        """Devserver should retry cros_au() on CMDError, but pass through
+        real exception."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        kwargs={'retry_error': CMD_ERROR, 'cros_au_error': True}
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '', '')
+
+
+    def testGetAUStatusErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling get_au_status
+        errors.
+
+        Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
+        even if '_start_auto_update()' failed.
+        """
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        kwargs={'cros_au_error': False, 'get_au_status_error': True,
+                'handler_cleanup_error': False, 'collect_au_log_error': False,
+                'kill_au_proc_error': False}
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '100.0.0.0', 'build', 'path/')
+
+
+    def testCleanUpErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling handler_cleanup
+        errors.
+
+        Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
+        no matter '_start_auto_update()' succeeds or fails.
+        """
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        kwargs={'cros_au_error': False, 'get_au_status_error': False,
+                'handler_cleanup_error': True, 'collect_au_log_error': False,
+                'kill_au_proc_error': False}
+
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '100.0.0.0', 'build', 'path/')
+
+
+    def testCollectLogErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling collect_au_log
+        errors."""
+        self.mox.StubOutWithMock(time, 'sleep')
+        kwargs={'cros_au_error': False, 'get_au_status_error': False,
+                'handler_cleanup_error': False, 'collect_au_log_error': True,
+                'kill_au_proc_error': False}
+
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '100.0.0.0', 'build', 'path/')
+
+
+    def testGetAUStatusErrorAndCleanUpErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling get_au_status
+        and handler_cleanup errors.
+
+        Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
+        even if '_start_auto_update()' fails.
+        """
+        self.mox.StubOutWithMock(time, 'sleep')
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        kwargs={'cros_au_error': False, 'get_au_status_error': True,
+                'handler_cleanup_error': True, 'collect_au_log_error': False,
+                'kill_au_proc_error': False}
+
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '100.0.0.0', 'build', 'path/')
+
+
+    def testGetAUStatusErrorAndCleanUpErrorAndCollectLogErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling get_au_status,
+        handler_cleanup, and collect_au_log errors.
+
+        Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
+        even if '_start_auto_update()' fails.
+        """
+        self.mox.StubOutWithMock(time, 'sleep')
+        kwargs={'cros_au_error': False, 'get_au_status_error': True,
+                'handler_cleanup_error': True, 'collect_au_log_error': True,
+                'kill_au_proc_error': False}
+
+        for i in range(dev_server.AU_RETRY_LIMIT):
+            self._preSetupForAutoUpdate(**kwargs)
+            if i < dev_server.AU_RETRY_LIMIT - 1:
+                time.sleep(mox.IgnoreArg())
+
+        self.mox.ReplayAll()
+        self.assertRaises(dev_server.DevServerException,
+                          self.dev_server.auto_update,
+                          '100.0.0.0', 'build', 'path/')
+
+
+    def testGetAUStatusErrorAndCleanUpErrorAndCollectLogErrorAndKillErrorInAutoUpdate(self):
+        """Verify devserver's auto_update() logics for handling get_au_status,
+        handler_cleanup, collect_au_log, and kill_au_proc errors.
+
+        Func auto_update() should call 'handler_cleanup' and 'collect_au_log'
+        even if '_start_auto_update()' fails.
+        """
         self.mox.StubOutWithMock(time, 'sleep')
 
+        kwargs={'cros_au_error': False, 'get_au_status_error': True,
+                'handler_cleanup_error': True, 'collect_au_log_error': True,
+                'kill_au_proc_error': True}
+
         for i in range(dev_server.AU_RETRY_LIMIT):
-            dev_server.ImageServerBase.run_call(
-                    mox.IgnoreArg()).AndRaise(CMD_ERROR)
-            time.sleep(mox.IgnoreArg())
-            dev_server.ImageServerBase.run_call(
-                    mox.IgnoreArg()).AndRaise(E500)
-            dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
+            self._preSetupForAutoUpdate(**kwargs)
             if i < dev_server.AU_RETRY_LIMIT - 1:
                 time.sleep(mox.IgnoreArg())
 
         self.mox.ReplayAll()
         self.assertRaises(dev_server.DevServerException,
                           self.dev_server.auto_update,
-                          '', '')
-
-
-    def testErrorTriggerAutoUpdate(self):
-        """Allow the dev server's auto_update method to trigger auto_update
-        for AU_RETRY_LIMIT times, fail due to unretriable exceptions."""
-        self.mox.StubOutWithMock(time, 'sleep')
-
-        for i in range(dev_server.AU_RETRY_LIMIT):
-            dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E500)
-            dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
-            if i < dev_server.AU_RETRY_LIMIT - 1:
-                time.sleep(mox.IgnoreArg())
-
-        self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server.auto_update,
-                          '', '')
-
-
-    def testForbiddenTriggerAutoUpdate(self):
-        """Allow the dev server's auto_update method to trigger auto_update
-        for AU_RETRY_LIMIT times, fail due to unretriable exceptions."""
-        self.mox.StubOutWithMock(time, 'sleep')
-
-        for i in range(dev_server.AU_RETRY_LIMIT):
-            dev_server.ImageServerBase.run_call(mox.IgnoreArg()).AndRaise(E403)
-            dev_server.ImageServerBase.run_call(
-                    mox.StrContains('kill_au_proc')).AndReturn('Success')
-            if i < dev_server.AU_RETRY_LIMIT - 1:
-                time.sleep(mox.IgnoreArg())
-
-        self.mox.ReplayAll()
-        self.assertRaises(dev_server.DevServerException,
-                          self.dev_server.auto_update,
-                          '', '')
+                          '100.0.0.0', 'build', 'path/')
 
 
     def testSuccessfulTriggerDownloadSync(self):
