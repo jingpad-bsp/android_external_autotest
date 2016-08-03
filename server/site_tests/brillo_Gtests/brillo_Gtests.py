@@ -25,7 +25,7 @@ LIST_TEST_BINARIES_TEMPLATE = (
         '\( -perm -100 -o -perm -010 -o -perm -001 \)')
 NATIVE_ONLY_BOARDS = ['dragonboard']
 
-GtestSuite = namedtuple('GtestSuite', ['path', 'run_as_root', 'args'])
+GtestSuite = namedtuple('GtestSuite', ['name', 'path', 'run_as_root', 'args'])
 
 class brillo_Gtests(test.test):
     """Run one or more native gTest Suites."""
@@ -84,9 +84,9 @@ class brillo_Gtests(test.test):
 
         @param whitelist_path: Path to the whitelist.
 
-        @return a list of GtestSuite tuples.
+        @return a map of test name to GtestSuite tuple.
         """
-        suites = []
+        suite_map = dict()
         for line in self.host.run_output(
                 'cat %s' % whitelist_path).splitlines():
             # Remove anything after the first # (comments).
@@ -102,10 +102,10 @@ class brillo_Gtests(test.test):
 
             name = parts[0].strip()
             extra_args = parts[2].strip() if len(parts) > 2 else ''
-            path = os.path.join(NATIVE_TESTS_PATH, name, name)
-            suites.append(GtestSuite(path, parts[1].strip() == 'yes',
-                                     extra_args))
-        return suites
+            path = '' # Path will be updated if the test is present on the DUT.
+            suite_map[name] = GtestSuite(name, path, parts[1].strip() == 'yes',
+                                         extra_args)
+        return suite_map
 
 
     def _find_all_gtestsuites(self, use_whitelist=False, filter_tests=None):
@@ -117,14 +117,33 @@ class brillo_Gtests(test.test):
         """
         list_cmd = LIST_TEST_BINARIES_TEMPLATE % {'path': NATIVE_TESTS_PATH}
         gtest_suites_path = self.host.run_output(list_cmd).splitlines()
-        gtest_suites = [GtestSuite(path, True, '')
+        gtest_suites = [GtestSuite(os.path.basename(path), path, True, '')
                         for path in gtest_suites_path]
 
         if use_whitelist:
             try:
                 whitelisted = self._get_whitelisted_tests(WHITELIST_FILE)
-                gtest_suites = [t for t in whitelisted
-                                if t.path in gtest_suites_path]
+                suites_to_run = []
+                for suite in gtest_suites:
+                    if whitelisted.get(suite.name):
+                        whitelisted_suite = whitelisted.get(suite.name)
+                        # Get the name and path from the suites on the DUT and
+                        # get the other args from the whitelist map.
+                        suites_to_run.append(GtestSuite(
+                                suite.name, suite.path,
+                                whitelisted_suite.run_as_root,
+                                whitelisted_suite.args))
+                gtest_suites = suites_to_run
+                if (len(suites_to_run) != len(whitelisted)):
+                    whitelist_test_names = set(whitelisted.keys())
+                    found_test_names = set([t.name for t in suites_to_run])
+                    diff_tests = list(whitelist_test_names - found_test_names)
+                    for t in diff_tests:
+                        logging.warning('Could not find %s', t);
+                    raise error.TestWarn(
+                            'Not all whitelisted tests found on the DUT. '
+                            'Expected %i tests but only found %i' %
+                            (len(whitelisted), len(suites_to_run)))
             except error.AutoservRunError:
                 logging.error('Failed to read whitelist %s', WHITELIST_FILE)
 
@@ -210,7 +229,7 @@ class brillo_Gtests(test.test):
         """
         self.host = host
         if not gtest_suites and native_tests:
-            gtest_suites = [GtestSuite(t, True, '') for t in native_tests]
+            gtest_suites = [GtestSuite('', t, True, '') for t in native_tests]
         if not gtest_suites:
             gtest_suites = self._find_all_gtestsuites(
                     use_whitelist=use_whitelist, filter_tests=filter_tests)
