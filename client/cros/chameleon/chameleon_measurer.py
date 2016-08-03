@@ -6,7 +6,6 @@ import logging
 import time
 from contextlib import contextmanager
 
-from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.multimedia import local_facade_factory
@@ -14,6 +13,8 @@ from autotest_lib.client.cros.multimedia import local_facade_factory
 
 class _BaseChameleonMeasurer(object):
     """Base class of performing measurement using Chameleon."""
+
+    _TIME_WAIT_FADE_OUT = 10
 
     def __init__(self, cros_host, outputdir=None):
         """Initializes the object."""
@@ -49,6 +50,12 @@ class _BaseChameleonMeasurer(object):
 
             logging.info('Setting to mirrored mode')
             self.display_facade.set_mirrored(True)
+
+            # Hide the typing cursor.
+            self.display_facade.hide_typing_cursor()
+
+            # Sleep a while to wait the pop-up window faded-out.
+            time.sleep(self._TIME_WAIT_FADE_OUT)
 
             # Get the resolution to make sure Chameleon in a good state.
             resolution = chameleon_port.get_resolution()
