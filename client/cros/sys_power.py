@@ -75,6 +75,8 @@ class SpuriousWakeupError(SuspendFailure):
     S0_WHITELIST = [  # (<board>, <kernel wake source>)
             # crbug.com/290923: spurious keyboard IRQ, believed to be from Servo
             ('^x86-alex|^lumpy|^parrot|^butterfly', 'serio0'),
+            # crosbug.com/p/46140: battery event caused by MKBP
+            ('^elm|^oak', 'spi32766.0'),
         ]
 
 class MemoryError(SuspendFailure):
