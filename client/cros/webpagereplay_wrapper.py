@@ -3,7 +3,12 @@
 # found in the LICENSE file.
 
 from autotest_lib.client.bin import utils
-from telemetry.internal.util import webpagereplay
+
+# Workaround for crbug.com/634017
+try:
+  from telemetry.internal.util import webpagereplay as wpr_server
+except ImportError:
+  from telemetry.internal.util import wpr_server
 
 
 class WebPageReplayWrapper(object):
@@ -29,7 +34,7 @@ class WebPageReplayWrapper(object):
         port = utils.get_unused_port()
         self._https_port = port if port else 8713
 
-        self._server = webpagereplay.ReplayServer(
+        self._server = wpr_server.ReplayServer(
                 archive_path=archive_path,
                 replay_host=WebPageReplayWrapper._REPLAY_HOST,
                 http_port=self._http_port,
