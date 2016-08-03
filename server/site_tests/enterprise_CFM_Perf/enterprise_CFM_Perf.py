@@ -2,14 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import csv, os, re, time
+import csv, datetime, os, re, time
 
-from autotest_lib.client.bin import utils, site_utils
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test, autotest, afe_utils
+from autotest_lib.server import test, autotest
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 _MEASUREMENT_DURATION_SECONDS = 10
-_TOTAL_TEST_DURATION_SECONDS = 30
+_TOTAL_TEST_DURATION_SECONDS = 600
 _PERF_RESULT_FILE = 'perf.csv'
 
 
@@ -23,23 +25,24 @@ class enterprise_CFM_Perf(test.test):
 
     def _cpu_usage(self):
         """Returns cpu usage in %."""
-        cpu_usage_start = site_utils.get_cpu_usage()
+        cpu_usage_start = self.system_facade.get_cpu_usage()
         time.sleep(_MEASUREMENT_DURATION_SECONDS)
-        cpu_usage_end = site_utils.get_cpu_usage()
-        return site_utils.compute_active_cpu_time(cpu_usage_start,
-                                                  cpu_usage_end) * 100
+        cpu_usage_end = self.system_facade.get_cpu_usage()
+        return self.system_facade.compute_active_cpu_time(cpu_usage_start,
+                cpu_usage_end) * 100
 
 
     def _memory_usage(self):
         """Returns total used memory in %."""
-        total_memory = site_utils.get_mem_total()
-        return (total_memory - site_utils.get_mem_free()) * 100 / total_memory
+        total_memory = self.system_facade.get_mem_total()
+        return ((total_memory - self.system_facade.get_mem_free())
+                * 100 / total_memory)
 
 
     def _temperature_data(self):
         """Returns temperature sensor data in fahrenheit."""
         if (utils.system('which ectool', ignore_status=True) == 0):
-            ec_temp = site_utils.get_ec_temperatures()
+            ec_temp = self.system_facade.get_ec_temperatures()
             return ec_temp[1]
         else:
             temp_sensor_name = 'temp0'
@@ -56,24 +59,37 @@ class enterprise_CFM_Perf(test.test):
             return values['reading']
 
 
-    def run_once(self, host=None):
-        self.client = host
+    def enroll_device_and_start_hangout(self):
+        """Enroll device into CFM and start hangout session."""
+        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        hangout_name = 'auto-hangout-' + current_time
 
-        tpm_utils.ClearTPMOwnerRequest(self.client)
+        self.cfm_facade.enroll_device()
+        self.cfm_facade.restart_chrome_for_cfm()
+        self.cfm_facade.wait_for_telemetry_commands()
 
-        if self.client.servo:
-            self.client.servo.switch_usbkey('dut')
-            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-            self.client.servo.set('dut_hub1_rst1', 'off')
+        if not self.cfm_facade.is_oobe_start_page():
+            self.cfm_facade.wait_for_oobe_start_page()
 
-        autotest.Autotest(self.client).run_test('enterprise_RemoraRequisition',
-                                                check_client_result=True)
+        self.cfm_facade.skip_oobe_screen()
+        self.cfm_facade.start_new_hangout_session(hangout_name)
 
-        # TODO: Start a hangout session after device enrollment succeeds.
+
+    def collect_perf_data(self):
+        """Use system facade to collect performance data from the DUT using
+        xmlrpc and save it to csv file in results directory. Data collected
+        includes:
+                1. CPU usage
+                2. Memory usage
+                3. Thermal temperature
+                4. Timestamp
+                5. Board name
+                6. Build id
+        """
         start_time = time.time()
         perf_keyval = {}
-        board_name = self.client.get_board().split(':')[1]
-        build_id = afe_utils.get_build(self.client)
+        board_name = self.system_facade.get_current_board()
+        build_id = self.system_facade.get_chromeos_release_version()
         perf_file = open(os.path.join(self.resultsdir, _PERF_RESULT_FILE), 'w')
         writer = csv.writer(perf_file)
         writer.writerow(['cpu', 'memory', 'temperature', 'timestamp', 'board',
@@ -94,7 +110,27 @@ class enterprise_CFM_Perf(test.test):
         utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
                            {'perf_csv_folder': self.resultsdir})
 
-        # TODO: End the hangout session after performance data collection is
-        # done.
+
+    def run_once(self, host=None):
+        self.client = host
+
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, no_chrome=True)
+        self.system_facade = factory.create_system_facade()
+        self.cfm_facade = factory.create_cfm_facade()
+
+        tpm_utils.ClearTPMOwnerRequest(self.client)
+
+        if self.client.servo:
+            self.client.servo.switch_usbkey('dut')
+            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            self.client.servo.set('dut_hub1_rst1', 'off')
+
+        try:
+            self.enroll_device_and_start_hangout()
+            self.collect_perf_data()
+            self.cfm_facade.end_hangout_session()
+        except Exception as e:
+            raise error.TestFail(str(e))
 
         tpm_utils.ClearTPMOwnerRequest(self.client)
