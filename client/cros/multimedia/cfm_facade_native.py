@@ -44,7 +44,6 @@ class CFMFacadeNative(object):
         time.sleep(self._ENROLLMENT_DELAY)
         self.restart_chrome_for_cfm()
         self.check_hangout_extension_context()
-        self.wait_for_telemetry_commands()
 
 
     def restart_chrome_for_cfm(self):
