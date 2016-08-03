@@ -5,8 +5,8 @@
 from autotest_lib.server import utils
 
 AUTHOR = "harpreet@chromium.org"
-NAME = "enterprise_CFM_SessionStressServer"
-TIME = "SHORT"
+NAME = "enterprise_CFM_SessionStress"
+TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
@@ -14,11 +14,10 @@ ATTRIBUTES = "suite:hotrod"
 
 DOC = """
 This test clears the TPM and enables the appropriate usb port on the servo
-before kicking off a client side test that enrolls the device into CFM. Once
-the device in enrolled, a different client test is kicked off to stress test
-the device by starting and ending new hangout sessions. This is repeated for
-the number of times defined below which can be overwritten by an arg passed
-via command propmt when run manually.
+before enrolling the device into CFM. Once the device in enrolled, it tries to
+stress test the device by repeatedly starting and ending new hangout sessions.
+This is repeated for the number of times defined below which can be overwritten
+by an arg passed via command propmt when run manually.
 """
 
 args_dict = utils.args_to_dict(args)
@@ -28,7 +27,7 @@ def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     repeat = int(args_dict.get('repeat', 1000))
 
-    job.run_test('enterprise_CFM_SessionStressServer',
+    job.run_test('enterprise_CFM_SessionStress',
                  host=host,
                  repeat=repeat)
 
