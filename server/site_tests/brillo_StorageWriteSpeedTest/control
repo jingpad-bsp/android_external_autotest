@@ -9,7 +9,7 @@ NAME = 'brillo_StorageWriteSpeedTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
+ATTRIBUTES = 'suite:brillo-bvt,suite:brillo-postsubmit'
 
 DOC = """
 Tests whether a Brillo device's storage can be written to faster than
