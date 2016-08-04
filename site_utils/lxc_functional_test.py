@@ -35,7 +35,7 @@ RESULT_PATH = os.path.join(TEMP_DIR, 'results', str(TEST_JOB_ID))
 # Ideally the test should stage a build on devserver and download the
 # autotest_server_package from devserver. This test is focused on testing
 # container, so it's prefered to avoid dependency on devserver.
-AUTOTEST_SERVER_PKG = ('http://storage.googleapis.com/chromeos-image-archive/'
+AUTOTEST_SERVER_PKG = ('http://storage.googleapis.com/abci-ssp/'
                        'autotest-containers/autotest_server_package.tar.bz2')
 
 # Test log file to be created in result folder, content is `test`.
