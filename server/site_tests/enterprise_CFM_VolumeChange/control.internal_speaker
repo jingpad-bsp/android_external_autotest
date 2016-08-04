@@ -28,7 +28,7 @@ def run_test(machine):
     host = hosts.create_host(machine, servo_args=servo_args)
     repeat = int(args_dict.get('repeat', 10))
     cmd = "cras_test_client --dump_server_info | awk '/Output Nodes:/," \
-          "/Input Devices:/' | grep -E 'INTERNAL_*' | awk -v N=2 '{print $N}'"
+          "/Input Devices:/' | grep -E 'INTERNAL_*' | awk -v N=3 '{print $N}'"
 
     job.run_test('enterprise_CFM_VolumeChange', host=host, repeat=repeat,
             cmd=cmd, tag="internal_speaker")
