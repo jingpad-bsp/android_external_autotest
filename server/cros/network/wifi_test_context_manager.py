@@ -82,7 +82,7 @@ class WiFiTestContextManager(object):
         self._cmdline_args = cmdline_args.copy()
         self._client_proxy = wifi_client.WiFiClient(
                 host, debug_dir,
-                self._get_bool_cmdline_value(self.CMDLINE_USE_WPA_CLI, True))
+                self._get_bool_cmdline_value(self.CMDLINE_USE_WPA_CLI, False))
         self._attenuator = None
         self._router = None
         self._pcap_host = None
