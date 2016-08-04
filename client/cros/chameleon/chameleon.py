@@ -585,25 +585,35 @@ class ChameleonVideoInput(ChameleonPort):
                                                           stop_index)
 
 
-    def get_captured_fps_list(self, time_before_stop=None):
+    def get_captured_fps_list(self, time_to_start=0, total_period=None):
         """
-        @param time_before_stop: time in second, only measure the last X
-                                 seconds before stop. If not given, measure
-                                 the whole period except the fractional part
-                                 of the beginning.
-        @return: a list of fps numbers.
+        @param time_to_start: time in second, support floating number, only
+                              measure the period starting at this time.
+                              If negative, it is the time before stop, e.g.
+                              -2 meaning 2 seconds before stop.
+        @param total_period: time in second, integer, the total measuring
+                             period. If not given, use the maximum time
+                             (integer) to the end.
+        @return: a list of fps numbers, or [-1] if any error.
 
         """
         checksums = self.get_captured_checksums()
 
-        if time_before_stop is None:
-            # Skip the fractional part of the beginning
-            time_before_stop = len(checksums) / self._FRAME_RATE
+        frame_to_start = int(round(time_to_start * self._FRAME_RATE))
+        if total_period is None:
+            # The default is the maximum time (integer) to the end.
+            total_period = (len(checksums) - frame_to_start) / self._FRAME_RATE
+        frame_to_stop = frame_to_start + total_period * self._FRAME_RATE
 
-        # Only look at the last X seconds
-        checksums = checksums[-(self._FRAME_RATE * time_before_stop):]
+        if frame_to_start >= len(checksums) or frame_to_stop >= len(checksums):
+            logging.error('The given time interval is out-of-range.')
+            return [-1]
+
+        # Only pick the checksum we are interested.
+        checksums = checksums[frame_to_start:frame_to_stop]
 
         # Count the unique checksums per second, i.e. FPS
+        logging.debug('Output the fps info below:')
         fps_list = []
         for i in xrange(0, len(checksums), self._FRAME_RATE):
             unique_count = 0
