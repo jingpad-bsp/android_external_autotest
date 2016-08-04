@@ -194,7 +194,8 @@ class firmware_Mosys(FirmwareTest):
         command = 'mosys -k ec info'
         if self.faft_config.chrome_ec:
           output = self.run_cmd(command)[0]
-          p = re.compile('vendor="[a-z]+" name="[ -~]+" fw_version="(.*)"')
+          p = re.compile(
+            'vendor="[A-Z]?[a-z]+" name="[ -~]+" fw_version="(.*)"')
           v = p.match(output)
           if v:
              version = v.group(1)
