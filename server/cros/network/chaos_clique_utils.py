@@ -60,6 +60,21 @@ def allocate_webdriver_instance(lock_manager):
     return None
 
 
+def is_VM_running(master, instance):
+    """Check if locked VM is running.
+
+    @param master: chaosvmmaster SSHHost
+    @param instance: locked webdriver instance
+
+    @return True if locked VM is running; False otherwise
+    """
+    hostname = instance.hostname.split('.')[0]
+    logging.debug('Check %s VM status', hostname)
+    list_running_vms_cmd = 'VBoxManage list runningvms'
+    running_vms = master.run(list_running_vms_cmd).stdout
+    return hostname in running_vms
+
+
 def power_on_VM(master, instance):
     """Power on VM
 
@@ -67,8 +82,8 @@ def power_on_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    hostname = instance.hostname.replace('.cros', '')
-    logging.debug('Powering on %s VM', hostname)
+    hostname = instance.hostname.split('.')[0]
+    logging.debug('Powering on %s VM without GUI', hostname)
     power_on_cmd = 'VBoxManage startvm %s --type headless' % hostname
     master.run(power_on_cmd)
 
@@ -80,7 +95,7 @@ def power_off_VM(master, instance):
     @param instance: locked webdriver instance
 
     """
-    hostname = instance.hostname.replace('.cros', '')
+    hostname = instance.hostname.split('.')[0]
     logging.debug('Powering off %s VM', hostname)
     power_off_cmd = 'VBoxManage controlvm %s poweroff' % hostname
     master.run(power_off_cmd)

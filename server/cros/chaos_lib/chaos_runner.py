@@ -10,6 +10,7 @@ import time
 
 import common
 from autotest_lib.client.common_lib import error, site_utils
+from autotest_lib.client.common_lib import utils as base_utils
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
@@ -107,7 +108,21 @@ class ChaosRunner(object):
                         lock_manager, hostname=work_client_hostname)
                 conn_worker.prepare_work_client(work_client_machine)
 
+            # Lock VM. If on, power off; always power on. Then create a tunnel.
             webdriver_instance = utils.allocate_webdriver_instance(lock_manager)
+
+            if utils.is_VM_running(webdriver_master, webdriver_instance):
+                logging.info('VM %s was on; powering off for a clean instance',
+                             webdriver_instance)
+                utils.power_off_VM(webdriver_master, webdriver_instance)
+                logging.info('Allow VM time to gracefully shut down')
+                time.sleep(5)
+
+            logging.info('Starting up VM %s', webdriver_instance)
+            utils.power_on_VM(webdriver_master, webdriver_instance)
+            logging.info('Allow VM time to power on before creating a tunnel.')
+            time.sleep(5)
+
             if not site_utils.host_is_in_lab_zone(webdriver_instance.hostname):
                 self._ap_spec._webdriver_hostname = webdriver_instance.hostname
             else:
@@ -116,17 +131,16 @@ class ChaosRunner(object):
                 self._ap_spec._webdriver_hostname = 'localhost'
                 webdriver_tunnel = webdriver_instance.create_ssh_tunnel(
                                                 WEBDRIVER_PORT, WEBDRIVER_PORT)
-
-            # If a test is cancelled or aborted the VM may be left on.  Always
-            # turn of the VM to return it to a clean state.
-            try:
-                logging.info('Always power off VM %s', webdriver_instance)
-                utils.power_off_VM(webdriver_master, webdriver_instance)
-            except:
-                logging.debug('VM was already off, ignoring.')
-
-            logging.info('Starting up VM %s', webdriver_instance)
-            utils.power_on_VM(webdriver_master, webdriver_instance)
+                logging.info('Wait for tunnel to be created.')
+                for i in range(3):
+                    time.sleep(10)
+                    results = base_utils.run('lsof -i:%s' % WEBDRIVER_PORT,
+                                             ignore_status=True)
+                    if results:
+                        break
+                if not results:
+                    raise error.TestError(
+                            'Unable to listen to WEBDRIVER_PORT: %s', results)
 
             batch_locker = ap_batch_locker.ApBatchLocker(
                     lock_manager, self._ap_spec,
