@@ -22,11 +22,13 @@ are omitted from the command line.
 """
 
 import argparse
+import datetime
 import os
 import re
 import subprocess
 import sys
-import time
+
+import dateutil.tz
 
 
 # _BUILD_URI_FORMAT
@@ -357,7 +359,7 @@ def _read_arguments(input, arguments):
 
     @param input      File-like object from which to read user
                       responses.
-    @param arguments  Arguments object returned from
+    @param arguments  Namespace object returned from
                       `ArgumentParser.parse_args()`.  Results are
                       stored here.
     """
@@ -371,25 +373,60 @@ def _read_arguments(input, arguments):
     arguments.hostnames = _read_hostnames(input)
 
 
-def _parse(argv):
-    """Parse the command line arguments.
+def get_default_logdir_name(arguments):
+    """Get default log directory name.
 
-    Create an argument parser for this command's syntax, parse the
-    command line, and return the result of the ArgumentParser
-    parse_args() method.
-
-    @param argv Standard command line argument vector; argv[0] is
-                assumed to be the command name.
-    @return Result returned by ArgumentParser.parse_args().
+    @param arguments  Namespace object returned from argument parsing.
+    @return  A filename as a string.
     """
-    parser = argparse.ArgumentParser(
-            prog=argv[0],
+    return '{time}-{board}'.format(
+        time=arguments.start_time.isoformat(),
+        board=arguments.board)
+
+
+class _ArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser extended with boolean option pairs."""
+
+    # Arguments required when adding an option pair.
+    _REQUIRED_PAIR_ARGS = {'dest', 'default'}
+
+    def add_argument_pair(self, yes_flags, no_flags, **kwargs):
+        """Add a pair of argument flags for a boolean option.
+
+        @param yes_flags  Iterable of flags to turn option on.
+                          May also be a single string.
+        @param no_flags   Iterable of flags to turn option off.
+                          May also be a single string.
+        @param *kwargs    Other arguments to pass to add_argument()
+        """
+        missing_args = self._REQUIRED_PAIR_ARGS - set(kwargs)
+        if missing_args:
+            raise ValueError("Argument pair must have explicit %s"
+                             % (', '.join(missing_args),))
+
+        if isinstance(yes_flags, (str, unicode)):
+            yes_flags = [yes_flags]
+        if isinstance(no_flags, (str, unicode)):
+            no_flags = [no_flags]
+
+        self.add_argument(*yes_flags, action='store_true', **kwargs)
+        self.add_argument(*no_flags, action='store_false', **kwargs)
+
+
+def _make_common_parser(command_name):
+    """Create argument parser for common arguments.
+
+    @param command_name The command name.
+    @return ArgumentParser instance.
+    """
+    parser = _ArgumentParser(
+            prog=command_name,
             description='Install a test image on newly deployed DUTs')
     # frontend.AFE(server=None) will use the default web server,
     # so default for --web is `None`.
     parser.add_argument('-w', '--web', metavar='SERVER', default=None,
                         help='specify web server')
-    parser.add_argument('-d', '--dir',
+    parser.add_argument('-d', '--dir', dest='logdir',
                         help='directory for logs')
     parser.add_argument('-i', '--build',
                         help='select stable test build version')
@@ -404,7 +441,18 @@ def _parse(argv):
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
                         help='host names of DUTs to be installed')
-    return parser.parse_args(argv[1:])
+    return parser
+
+
+def _add_upload_argument_pair(parser, default):
+    """Add option pair for uploading logs.
+
+    @param parser   _ArgumentParser instance.
+    @param default  Default option value.
+    """
+    parser.add_argument_pair('--upload', '--noupload', dest='upload',
+                             default=default,
+                             help='upload logs to GS bucket',)
 
 
 def parse_command(argv, full_deploy):
@@ -425,19 +473,23 @@ def parse_command(argv, full_deploy):
 
     @return Result, as returned by ArgumentParser.parse_args().
     """
-    arguments = _parse(argv)
+    command_name = os.path.basename(argv[0])
+    parser = _make_common_parser(command_name)
+    _add_upload_argument_pair(parser, default=full_deploy)
+
+    arguments = parser.parse_args(argv[1:])
     arguments.full_deploy = full_deploy
     if arguments.board is None:
         _read_arguments(sys.stdin, arguments)
     elif not _validate_arguments(arguments):
         return None
-    if not arguments.dir:
-        basename = 'deploy.%s.%s' % (
-                time.strftime('%Y-%m-%d.%H:%M:%S'),
-                arguments.board)
-        arguments.dir = os.path.join(os.environ['HOME'],
+
+    arguments.start_time = datetime.datetime.now(dateutil.tz.tzlocal())
+    if not arguments.logdir:
+        basename = get_default_logdir_name(arguments)
+        arguments.logdir = os.path.join(os.environ['HOME'],
                                      'Documents', basename)
-        os.makedirs(arguments.dir)
-    elif not os.path.isdir(arguments.dir):
-        os.mkdir(arguments.dir)
+        os.makedirs(arguments.logdir)
+    elif not os.path.isdir(arguments.logdir):
+        os.mkdir(arguments.logdir)
     return arguments

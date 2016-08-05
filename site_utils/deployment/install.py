@@ -48,16 +48,20 @@ installations in parallel, separate processes.
 
 """
 
+import atexit
+from collections import namedtuple
 import functools
 import json
 import logging
 import multiprocessing
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
+import traceback
+
+from chromite.lib import gs
 
 import common
 from autotest_lib.client.common_lib import error
@@ -79,6 +83,8 @@ _DEFAULT_POOL = Labels.POOL_PREFIX + 'suites'
 
 _DIVIDER = '\n============\n'
 
+_LOG_BUCKET_NAME = 'chromeos-install-logs'
+
 _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
 
 # Lock reasons we'll pass when locking DUTs, depending on the
@@ -86,18 +92,43 @@ _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
 _LOCK_REASON_EXISTING = 'Repairing or deploying an existing host'
 _LOCK_REASON_NEW_HOST = 'Repairing or deploying a new host'
 
+_ReportResult = namedtuple('_ReportResult', ['hostname', 'message'])
 
-def _report_write(report_log, message):
-    """Write a message to the report log.
 
-    Report output goes both to stdout, and to a given report
-    file.
+class _MultiFileWriter(object):
 
-    @param report_log   Write the message here and to stdout.
-    @param message      Write this message.
+    """Group file objects for writing at once."""
+
+    def __init__(self, files):
+        """Initialize _MultiFileWriter.
+
+        @param files  Iterable of file objects for writing.
+        """
+        self._files = files
+
+    def write(self, s):
+        """Write a string to the files.
+
+        @param s  Write this string.
+        """
+        for file in self._files:
+            file.write(s)
+
+
+def _get_upload_log_path(arguments):
+    return 'gs://{bucket}/{name}'.format(
+        bucket=_LOG_BUCKET_NAME,
+        name=commandline.get_default_logdir_name(arguments))
+
+
+def _upload_logs(dirpath, gspath):
+    """Upload report logs to Google Storage.
+
+    @param dirpath  Path to directory containing the logs.
+    @param gspath   Path to GS bucket.
     """
-    report_log.write(message)
-    sys.stdout.write(message)
+    ctx = gs.GSContext()
+    ctx.Copy(dirpath, gspath, recursive=True)
 
 
 def _get_omaha_build(board):
@@ -114,10 +145,9 @@ def _get_omaha_build(board):
             R##-####.#.#.  Will return `None` if no Beta channel
             entry is found.
     """
+    ctx = gs.GSContext()
+    omaha_status = json.loads(ctx.Cat(_OMAHA_STATUS))
     omaha_board = board.replace('_', '-')
-    sp = subprocess.Popen(['gsutil', 'cat', _OMAHA_STATUS],
-                          stdout=subprocess.PIPE)
-    omaha_status = json.load(sp.stdout)
     for e in omaha_status['omaha_data']:
         if (e['channel'] == 'beta' and
                 e['board']['public_codename'] == omaha_board):
@@ -152,8 +182,8 @@ def _update_build(afe, report_log, arguments):
     afe_version = afe.run('get_stable_version',
                           board=arguments.board)
     omaha_version = _get_omaha_build(arguments.board)
-    _report_write(report_log, 'AFE   version is %s.\n' % afe_version)
-    _report_write(report_log, 'Omaha version is %s.\n' % omaha_version)
+    report_log.write('AFE   version is %s.\n' % afe_version)
+    report_log.write('Omaha version is %s.\n' % omaha_version)
     if (omaha_version is not None and
             utils.compare_versions(afe_version, omaha_version) < 0):
         version = omaha_version
@@ -163,9 +193,8 @@ def _update_build(afe, report_log, arguments):
         if utils.compare_versions(arguments.build, version) >= 0:
             version = arguments.build
         else:
-            _report_write(report_log,
-                          'Selected version %s is too old.\n' %
-                          arguments.build)
+            report_log.write('Selected version %s is too old.\n' %
+                             (arguments.build,))
     if version != afe_version and not arguments.nostable:
         afe.run('set_stable_version',
                 version=version,
@@ -182,29 +211,6 @@ def _create_host(hostname, afe_host):
     machine_dict = {'hostname': hostname, 'afe_host': afe_host}
     servo_args = hosts.CrosHost.get_servo_arguments({})
     return hosts.create_host(machine_dict, servo_args=servo_args)
-
-
-def _configure_install_logging(log_name):
-    """Configure the logging module for `_install_dut()`.
-
-    @param log_name  Name of the log file for all output.
-    """
-    # In some cases, autotest code that we call during install may
-    # put stuff onto stdout with 'print' statements.  Most notably,
-    # the AFE frontend may print 'FAILED RPC CALL' (boo, hiss).  We
-    # want nothing from this subprocess going to the output we
-    # inherited from our parent, so redirect stdout and stderr here,
-    # before we make any AFE calls.  Note that this does what we
-    # want only because we're in a subprocess.
-    sys.stdout = open(log_name, 'w')
-    sys.stderr = sys.stdout
-    handler = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(_LOG_FORMAT, time_utils.TIME_FMT)
-    handler.setFormatter(formatter)
-    root_logger = logging.getLogger()
-    for h in root_logger.handlers:
-        root_logger.removeHandler(h)
-    root_logger.addHandler(handler)
 
 
 def _try_lock_host(afe_host):
@@ -418,8 +424,19 @@ def _install_dut(arguments, hostname):
     @return On success, return `None`.  On failure, return a string
             with an error message.
     """
-    _configure_install_logging(
-            os.path.join(arguments.dir, hostname + '.log'))
+    logpath = os.path.join(arguments.logdir, hostname + '.log')
+    logfile = open(logpath, 'w')
+
+    # In some cases, autotest code that we call during install may
+    # put stuff onto stdout with 'print' statements.  Most notably,
+    # the AFE frontend may print 'FAILED RPC CALL' (boo, hiss).  We
+    # want nothing from this subprocess going to the output we
+    # inherited from our parent, so redirect stdout and stderr here,
+    # before we make any AFE calls.  Note that this does what we
+    # want only because we're in a subprocess.
+    sys.stderr = sys.stdout = logfile
+    _configure_logging_to_file(logfile)
+
     afe = frontend.AFE(server=arguments.web)
     try:
         _install_and_update_afe(afe, hostname, arguments)
@@ -440,16 +457,17 @@ def _report_hosts(report_log, heading, host_results_list):
                               output.
     @param heading            The header string to be printed before
                               results.
-    @param host_results_list  A list of (hostname, message) tuples
+    @param host_results_list  A list of _ReportResult tuples
                               to be printed one per line.
     """
     if not host_results_list:
         return
-    _report_write(report_log, heading)
-    _report_write(report_log, _DIVIDER)
-    for t in host_results_list:
-        _report_write(report_log, '%-30s %s\n' % t)
-    _report_write(report_log, '\n')
+    report_log.write(heading)
+    report_log.write(_DIVIDER)
+    for result in host_results_list:
+        report_log.write('{result.hostname:30} {result.message}\n'
+                         .format(result=result))
+    report_log.write('\n')
 
 
 def _report_results(afe, report_log, hostnames, results):
@@ -466,34 +484,54 @@ def _report_results(afe, report_log, hostnames, results):
                         as the hostnames.  `None` means the
                         corresponding host succeeded.
     """
-    success_hosts = []
+    successful_hosts = []
     success_reports = []
     failure_reports = []
-    for r, h in zip(results, hostnames):
-        if r is None:
-            success_hosts.append(h)
+    for result, hostname in zip(results, hostnames):
+        if result is None:
+            successful_hosts.append(hostname)
         else:
-            failure_reports.append((h, r))
-    if success_hosts:
-        afe_host_list = afe.get_hosts(hostnames=success_hosts)
-        afe.reverify_hosts(hostnames=success_hosts)
-        for h in afe.get_hosts(hostnames=success_hosts):
+            failure_reports.append(_ReportResult(hostname, result))
+    if successful_hosts:
+        afe.reverify_hosts(hostnames=successful_hosts)
+        for h in afe.get_hosts(hostnames=successful_hosts):
             for label in h.labels:
                 if label.startswith(Labels.POOL_PREFIX):
-                    success_reports.append(
-                            (h.hostname, 'Host already in %s' % label))
+                    result = _ReportResult(h.hostname,
+                                           'Host already in %s' % label)
+                    success_reports.append(result)
                     break
             else:
                 h.add_labels([_DEFAULT_POOL])
-                success_reports.append(
-                        (h.hostname, 'Host added to %s' % _DEFAULT_POOL))
-    _report_write(report_log, _DIVIDER)
+                result = _ReportResult(h.hostname,
+                                       'Host added to %s' % _DEFAULT_POOL)
+                success_reports.append(result)
+    report_log.write(_DIVIDER)
     _report_hosts(report_log, 'Successes', success_reports)
     _report_hosts(report_log, 'Failures', failure_reports)
-    _report_write(report_log,
-                  'Installation complete:  '
-                  '%d successes, %d failures.\n' %
-                  (len(success_reports), len(failure_reports)))
+    report_log.write(
+        'Installation complete:  %d successes, %d failures.\n' %
+        (len(success_reports), len(failure_reports)))
+
+
+def _clear_root_logger_handlers():
+    """Remove all handlers from root logger."""
+    root_logger = logging.getLogger()
+    for h in root_logger.handlers:
+        root_logger.removeHandler(h)
+
+
+def _configure_logging_to_file(logfile):
+    """Configure the logging module for `install_duts()`.
+
+    @param log_file  Log file object.
+    """
+    _clear_root_logger_handlers()
+    handler = logging.StreamHandler(logfile)
+    formatter = logging.Formatter(_LOG_FORMAT, time_utils.TIME_FMT)
+    handler.setFormatter(formatter)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
 
 
 def install_duts(argv, full_deploy):
@@ -514,27 +552,47 @@ def install_duts(argv, full_deploy):
     # put the temp files in our results directory, so that we can
     # clean up everything in one fell swoop.
     tempfile.tempdir = tempfile.mkdtemp()
+    # MALCOLM:
+    #   Be comforted.
+    #   Let's make us med'cines of our great revenge,
+    #   To cure this deadly grief.
+    atexit.register(shutil.rmtree, tempfile.tempdir)
 
     arguments = commandline.parse_command(argv, full_deploy)
     if not arguments:
         sys.exit(1)
-    sys.stderr.write('Installation output logs in %s\n' % arguments.dir)
-    report_log = open(os.path.join(arguments.dir, 'report.log'), 'w')
-    afe = frontend.AFE(server=arguments.web)
-    current_build = _update_build(afe, report_log, arguments)
-    _report_write(report_log, _DIVIDER)
-    _report_write(report_log,
-                  'Repair version for board %s is now %s.\n' %
-                  (arguments.board, current_build))
-    install_pool = multiprocessing.Pool(len(arguments.hostnames))
-    install_function = functools.partial(_install_dut, arguments)
-    results_list = install_pool.map(install_function,
-                                    arguments.hostnames)
-    _report_results(afe, report_log, arguments.hostnames, results_list)
+    sys.stderr.write('Installation output logs in %s\n' % arguments.logdir)
 
-    # MacDuff:
-    #   [ ... ]
-    #   Did you say all? O hell-kite! All?
-    #   What, all my pretty chickens and their dam
-    #   At one fell swoop?
-    shutil.rmtree(tempfile.tempdir)
+    # We don't want to distract the user with logging output, so we catch
+    # logging output in a file.
+    logging_file_path = os.path.join(arguments.logdir, 'debug.log')
+    logfile = open(logging_file_path, 'w')
+    _configure_logging_to_file(logfile)
+
+    report_log_path = os.path.join(arguments.logdir, 'report.log')
+    with open(report_log_path, 'w') as report_log_file:
+        report_log = _MultiFileWriter([report_log_file, sys.stdout])
+        afe = frontend.AFE(server=arguments.web)
+        current_build = _update_build(afe, report_log, arguments)
+        report_log.write(_DIVIDER)
+        report_log.write('Repair version for board %s is now %s.\n' %
+                         (arguments.board, current_build))
+        install_pool = multiprocessing.Pool(len(arguments.hostnames))
+        install_function = functools.partial(_install_dut, arguments)
+        results_list = install_pool.map(install_function,
+                                        arguments.hostnames)
+        _report_results(afe, report_log, arguments.hostnames, results_list)
+
+        gspath = _get_upload_log_path(arguments)
+        report_log.write('Logs will be uploaded to %s\n' % (gspath,))
+
+    try:
+        _upload_logs(arguments.logdir, gspath)
+    except Exception as e:
+        upload_failure_log_path = os.path.join(arguments.logdir,
+                                               'gs_upload_failure.log')
+        with open(upload_failure_log_path, 'w') as file:
+            traceback.print_exc(limit=None, file=file)
+        sys.stderr.write('Failed to upload logs;'
+                         ' failure details are stored in {}.'
+                         .format(upload_failure_log_path))
