@@ -61,11 +61,13 @@ import time
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import servo_afe_board_map
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
+from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
 from autotest_lib.site_utils.deployment import commandline
 from autotest_lib.site_utils.suite_scheduler.constants import Labels
@@ -78,6 +80,11 @@ _DEFAULT_POOL = Labels.POOL_PREFIX + 'suites'
 _DIVIDER = '\n============\n'
 
 _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
+
+# Lock reasons we'll pass when locking DUTs, depending on the
+# host's prior state.
+_LOCK_REASON_EXISTING = 'Repairing or deploying an existing host'
+_LOCK_REASON_NEW_HOST = 'Repairing or deploying a new host'
 
 
 def _report_write(report_log, message):
@@ -138,9 +145,8 @@ def _update_build(afe, report_log, arguments):
 
     @param afe          AFE object for RPC calls.
     @param report_log   File-like object for logging report output.
-    @param arguments    Command line arguments determining the
-                        target board and user-specified build
-                        (if any).
+    @param arguments    Command line arguments with options.
+
     @return Returns the version selected.
     """
     afe_version = afe.run('get_stable_version',
@@ -167,23 +173,14 @@ def _update_build(afe, report_log, arguments):
     return version
 
 
-def _create_host(hostname, board):
+def _create_host(hostname, afe_host):
     """Create a CrosHost object for a DUT to be installed.
 
     @param hostname  Hostname of the target DUT.
-    @param board     Board name of the target DUT.
+    @param afe_host  AFE Host object for the DUT.
     """
-    host = hosts.create_host(hostname, try_lab_servo=True)
-    # Monkey patch our host object to think there's a board label
-    # in the AFE.  The horror!  The horror!
-    #
-    # TODO(jrbarnette):  This is wrong, wrong, wrong; we patch the
-    # method because CrosHost.stage_image_for_servo() calls it, but
-    # that means we're coupled to the implementation of CrosHost.
-    # Alas, it's hard to do better without either 1) copying large
-    # chunks of stage_image_for_servo(), or 2) extensively
-    # refactoring CrosHost.
-    host._get_board_from_afe = lambda: board
+    machine_dict = {'hostname': hostname, 'afe_host': afe_host}
+    host = hosts.create_host(machine_dict, try_lab_servo=True)
     return host
 
 
@@ -269,12 +266,13 @@ def _try_lock_host(afe_host):
     logged if they occur.
 
     @param afe_host AFE Host instance to be locked.
+
     @return `True` on success, or `False` on failure.
     """
     try:
         logging.warning('Locking host now.')
         afe_host.modify(locked=True,
-                        lock_reason='Running deployment_test')
+                        lock_reason=_LOCK_REASON_EXISTING)
     except Exception as e:
         logging.exception('Failed to lock: %s', e)
         return False
@@ -288,6 +286,7 @@ def _try_unlock_host(afe_host):
     logged if they occur.
 
     @param afe_host AFE Host instance to be unlocked.
+
     @return `True` on success, or `False` on failure.
     """
     try:
@@ -297,6 +296,53 @@ def _try_unlock_host(afe_host):
         logging.exception('Failed to unlock: %s', e)
         return False
     return True
+
+
+def _get_afe_host(afe, hostname, arguments):
+    """Get an AFE Host object for the given host.
+
+    If the host is found in the database, return the object
+    from the RPC call.
+
+    If no host is found, create one with appropriate servo
+    attributes and the given board label.
+
+    @param afe        AFE from which to get the host.
+    @param hostname   Name of the host to look up or create.
+    @param arguments  Command line arguments with options.
+
+    @return A tuple of the afe_host, plus a flag. The flag indicates
+            whether the Host should be unlocked if subsequent operations
+            fail.  (Hosts are always unlocked after success).
+    """
+    hostlist = afe.get_hosts([hostname])
+    unlock_on_failure = False
+    if hostlist:
+        afe_host = hostlist[0]
+        if not afe_host.locked:
+            if _try_lock_host(afe_host):
+                unlock_on_failure = True
+            else:
+                raise Exception('Failed to lock host')
+        if afe_host.status not in host_states.IDLE_STATES:
+            if unlock_on_failure and not _try_unlock_host(afe_host):
+                raise Exception('Host is in use, and failed to unlock it')
+            raise Exception('Host is in use by Autotest')
+    else:
+        afe_host = afe.create_host(hostname,
+                                   locked=True,
+                                   lock_reason=_LOCK_REASON_NEW_HOST)
+        servo_hostname = servo_host.make_servo_hostname(hostname)
+        servo_port = str(servo_host.DEFAULT_PORT)
+        afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
+                               servo_hostname,
+                               hostname=hostname)
+        afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
+                               servo_port,
+                               hostname=hostname)
+        afe_host.add_labels([Labels.BOARD_PREFIX + arguments.board])
+        afe_host = afe.get_hosts([hostname])[0]
+    return afe_host, unlock_on_failure
 
 
 def _install_firmware(host):
@@ -343,17 +389,15 @@ def _install_firmware(host):
     host.halt()
 
 
-def _install_test_image(hostname, arguments):
+def _install_test_image(host, arguments):
     """Install a test image to the DUT.
 
     Install a stable test image on the DUT using the full servo
     repair flow.
 
-    @param hostname   Host name of the DUT to install on.
-    @param arguments  Parsed results from
-                      ArgumentParser.parse_args().
+    @param host       Host instance for the DUT being installed.
+    @param arguments  Command line arguments with options.
     """
-    host = _create_host(hostname, arguments.board)
     _check_servo(host)
     try:
         if not arguments.noinstall:
@@ -370,7 +414,7 @@ def _install_test_image(hostname, arguments):
         host.close()
 
 
-def _install_and_record(afe, hostname, arguments):
+def _install_and_update_afe(afe, hostname, arguments):
     """Perform all installation and AFE updates.
 
     First, lock the host if it exists and is unlocked.  Then,
@@ -385,58 +429,31 @@ def _install_and_record(afe, hostname, arguments):
     @param hostname     Host name of the DUT.
     @param arguments    Command line arguments with options.
     """
-    hostlist = afe.get_hosts([hostname])
-    unlock_on_failure = False
-    if hostlist:
-        afe_host = hostlist[0]
-        if not afe_host.locked:
-            if _try_lock_host(afe_host):
-                unlock_on_failure = True
-            else:
-                raise Exception('Failed to lock host')
-        if (afe_host.status != 'Ready' and
-                 afe_host.status != 'Repair Failed'):
-            if unlock_on_failure and not _try_unlock_host(afe_host):
-                raise Exception('Host is in use, and failed to unlock it')
-            raise Exception('Host is in use by Autotest')
-    else:
-        afe_host = None
+    afe_host, unlock_on_failure = _get_afe_host(afe, hostname, arguments)
 
     try:
-        _install_test_image(hostname, arguments)
+        host = _create_host(hostname, afe_host)
+        _install_test_image(host, arguments)
+        host.labels.update_labels(host)
+        platform_labels = afe.get_labels(
+                host__hostname=hostname, platform=True)
+        if not platform_labels:
+            platform = host.get_platform()
+            new_labels = afe.get_labels(name=platform)
+            if not new_labels:
+                afe.create_label(platform, platform=True)
+            afe_host.add_labels([platform])
+        version = [label for label in afe_host.labels
+                       if label.startswith(VERSION_PREFIX)]
+        if version:
+            afe_host.remove_labels(version)
     except Exception as e:
         if unlock_on_failure and not _try_unlock_host(afe_host):
             logging.error('Failed to unlock host!')
         raise
 
-    if afe_host is not None:
-        if not _try_unlock_host(afe_host):
-            raise Exception('Failed to unlock after successful install')
-    else:
-        logging.debug('Creating host in AFE.')
-        atest_path = os.path.join(
-                os.path.dirname(os.path.abspath(sys.argv[0])),
-                'atest')
-        # Logging configuration reset sys.stdout to the log file,
-        # but apparently subprocess.call() uses FD 0, which is
-        # still our parent's stdout.  So, explicitly redirect.
-        status = subprocess.call(
-                [atest_path, 'host', 'create', hostname],
-                stdout=sys.stdout, stderr=subprocess.STDOUT)
-        if status != 0:
-            logging.error('Host creation failed, status = %d', status)
-            raise Exception('Failed to add host to AFE')
-    # Must re-query to get state changes, especially label changes.
-    afe_host = afe.get_hosts([hostname])[0]
-    have_board = any([label.startswith(Labels.BOARD_PREFIX)
-                         for label in afe_host.labels])
-    if not have_board:
-        afe_host.delete()
-        raise Exception('Failed to add labels to host')
-    version = [label for label in afe_host.labels
-                   if label.startswith(VERSION_PREFIX)]
-    if version:
-        afe_host.remove_labels(version)
+    if not _try_unlock_host(afe_host):
+        raise Exception('Install succeeded, but failed to unlock the DUT.')
 
 
 def _install_dut(arguments, hostname):
@@ -447,8 +464,7 @@ def _install_dut(arguments, hostname):
     it can't (shouldn't) write to shared files like `sys.stdout`.
 
     @param hostname   Host name of the DUT to install on.
-    @param arguments  Parsed results from
-                      ArgumentParser.parse_args().
+    @param arguments  Command line arguments with options.
 
     @return On success, return `None`.  On failure, return a string
             with an error message.
@@ -457,7 +473,7 @@ def _install_dut(arguments, hostname):
             os.path.join(arguments.dir, hostname + '.log'))
     afe = frontend.AFE(server=arguments.web)
     try:
-        _install_and_record(afe, hostname, arguments)
+        _install_and_update_afe(afe, hostname, arguments)
     except Exception as e:
         logging.exception('Original exception: %s', e)
         return str(e)
