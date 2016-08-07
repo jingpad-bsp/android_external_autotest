@@ -57,7 +57,7 @@ class graphics_dEQP(test.test):
         self._gpu_type = utils.get_gpu_family()
         # Determine which executable should be run. Right now never egl.
         major, minor = graphics_utils.get_gles_version()
-        logging.info('Found gles%d.%d.', (major, minor))
+        logging.info('Found gles%d.%d.', major, minor)
         if major is None or minor is None:
             raise error.TestError(
                 'Could not get gles version information (%d, %d).' %
