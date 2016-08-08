@@ -2,15 +2,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "harpreet"
-NAME = "enterprise_LongevityTrackerServer.riseplayer"
+AUTHOR = "scunningham"
+NAME = "enterprise_LongevityTrackerServer.stratosmedia"
 PURPOSE = "Tracks Chrome OS performance over long periods."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:longevity"
-DEPENDENCIES = "riseplayer"
+DEPENDENCIES = "stratosmedia"
 
 DOC = """
 This test enrolls ChromeOS device into kiosk mode and captures device resource
@@ -23,9 +23,9 @@ def run_test(machine):
     host = hosts.create_host(machine)
     # Kiosk app attributes include app name, extension id and extension page
     kiosk_app_attributes = \
-            'riseplayer:mfpgpdablffhbfofnhlpgmokokbahooi:index.html'
+            'stratosmedia:alhlkpgheiefedomljbenmkpconkffhk:index.html'
     job.run_test('enterprise_LongevityTrackerServer', host=host,
-            kiosk_app_attributes=kiosk_app_attributes, tag='riseplayer')
+            kiosk_app_attributes=kiosk_app_attributes, tag='stratosmedia')
 
 
 parallel_simple(run_test, machines)

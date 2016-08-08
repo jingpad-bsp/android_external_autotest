@@ -7,9 +7,9 @@ from autotest_lib.server import test, autotest
 
 
 class enterprise_LongevityTrackerServer(test.test):
-    """A test that runs enterprise_KioskEnrollment and clears the TPM as necessary.
-    After enterprise enrollment is successful, it collects and logs cpu, memory
-    and temperature data from the device under test."""
+    """A test that runs enterprise_KioskEnrollment and clears the TPM as
+    necessary. After enterprise enrollment is successful, it collects and logs
+    cpu, memory and temperature data from the device under test."""
     version = 1
 
 
@@ -20,6 +20,8 @@ class enterprise_LongevityTrackerServer(test.test):
         autotest.Autotest(self.client).run_test('enterprise_KioskEnrollment',
                 kiosk_app_attributes=kiosk_app_attributes,
                 check_client_result=True)
-        autotest.Autotest(self.client).run_test('longevity_Tracker',
-                check_client_result=True)
+        for cycle in range(5):
+            autotest.Autotest(self.client).run_test('longevity_Tracker',
+                    kiosk_app_attributes=kiosk_app_attributes,
+                    check_client_result=True)
         tpm_utils.ClearTPMOwnerRequest(self.client)
