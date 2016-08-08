@@ -93,6 +93,7 @@ suite:kernel_usb
 suite:kernel_usb_set1
 suite:kernel_weekly_regression
 suite:link_perf
+suite:longevity
 suite:manual
 suite:memory_qual
 suite:memory_qual_quick
