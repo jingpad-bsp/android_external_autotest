@@ -341,7 +341,11 @@ def upload_testresult_files(dir_entry, multiprocessing):
         for result_path, result_pattern in [(cts_path, CTS_RESULT_PATTERN),
                             (gts_path, GTS_RESULT_PATTERN)]:
             for path in glob.glob(result_path):
-                _upload_files(host, path, result_pattern, multiprocessing)
+                try:
+                    _upload_files(host, path, result_pattern, multiprocessing)
+                except Exception as e:
+                    logging.error('ERROR uploading test results %s to GS: %s',
+                                  path, e)
 
 
 def _is_release_build(build):
@@ -350,53 +354,50 @@ def _is_release_build(build):
 
 
 def _upload_files(host, path, result_pattern, multiprocessing):
-    try:
-        keyval = models.test.parse_job_keyval(host)
-        build = keyval['build']
+    keyval = models.test.parse_job_keyval(host)
+    build = keyval['build']
 
-        if not _is_release_build(build):
-            # Only upload results for release builds.
-            return
+    if not _is_release_build(build):
+        # Only upload results for release builds.
+        return
 
-        parent_job_id = str(keyval['parent_job_id'])
+    parent_job_id = str(keyval['parent_job_id'])
 
-        folders = path.split(os.sep)
-        job_id = folders[-6]
-        package = folders[-4]
-        timestamp = folders[-1]
+    folders = path.split(os.sep)
+    job_id = folders[-6]
+    package = folders[-4]
+    timestamp = folders[-1]
 
-        # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
-        # or bucket/build/parent_job_id/cheets_GTS.*/job_id_timestamp/
-        cts_apfe_gs_path = os.path.join(
-                DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
-                package, job_id + '_' + timestamp) + '/'
+    # Path: bucket/build/parent_job_id/cheets_CTS.*/job_id_timestamp/
+    # or bucket/build/parent_job_id/cheets_GTS.*/job_id_timestamp/
+    cts_apfe_gs_path = os.path.join(
+            DEFAULT_CTS_APFE_GSURI, build, parent_job_id,
+            package, job_id + '_' + timestamp) + '/'
 
-        # Path: bucket/cheets_CTS.*/job_id_timestamp/
-        # or bucket/cheets_GTS.*/job_id_timestamp/
-        test_result_gs_path = os.path.join(
-                DEFAULT_CTS_RESULTS_GSURI, package,
-                job_id + '_' + timestamp) + '/'
+    # Path: bucket/cheets_CTS.*/job_id_timestamp/
+    # or bucket/cheets_GTS.*/job_id_timestamp/
+    test_result_gs_path = os.path.join(
+            DEFAULT_CTS_RESULTS_GSURI, package,
+            job_id + '_' + timestamp) + '/'
 
-        for zip_file in glob.glob(os.path.join('%s.zip' % path)):
-            utils.run(' '.join(get_cmd_list(
-                    multiprocessing, zip_file, cts_apfe_gs_path)))
-            logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
+    for zip_file in glob.glob(os.path.join('%s.zip' % path)):
+        utils.run(' '.join(get_cmd_list(
+                multiprocessing, zip_file, cts_apfe_gs_path)))
+        logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
 
-        for test_result_file in glob.glob(os.path.join(path, result_pattern)):
-            # gzip test_result_file(testResult.xml/xtsTestResult.xml)
-            test_result_file_gz =  '%s.gz' % test_result_file
-            with open(test_result_file, 'r') as f_in, (
-                    gzip.open(test_result_file_gz, 'w')) as f_out:
-                shutil.copyfileobj(f_in, f_out)
-            utils.run(' '.join(get_cmd_list(
-                    multiprocessing, test_result_file_gz, test_result_gs_path)))
-            logging.debug('Zip and upload %s to %s',
-                          test_result_file_gz, test_result_gs_path)
-            # Remove test_result_file_gz(estResult.xml.gz/xtsTestResult.xml.gz)
-            os.remove(test_result_file_gz)
-    except Exception as e:
-        logging.error('ERROR uploading test results %s to GS: %s',
-                      path, e)
+    for test_result_file in glob.glob(os.path.join(path, result_pattern)):
+        # gzip test_result_file(testResult.xml/xtsTestResult.xml)
+        test_result_file_gz =  '%s.gz' % test_result_file
+        with open(test_result_file, 'r') as f_in, (
+                gzip.open(test_result_file_gz, 'w')) as f_out:
+            shutil.copyfileobj(f_in, f_out)
+        utils.run(' '.join(get_cmd_list(
+                multiprocessing, test_result_file_gz, test_result_gs_path)))
+        logging.debug('Zip and upload %s to %s',
+                      test_result_file_gz, test_result_gs_path)
+        # Remove test_result_file_gz(estResult.xml.gz/xtsTestResult.xml.gz)
+        os.remove(test_result_file_gz)
+
 
 def _create_test_result_notification(gs_path):
     """Construct a test result notification.
