@@ -950,8 +950,8 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.assertTrue(gs_offloader._is_release_build(release_2_build))
 
 
-    def test_upload_testresult_files(self):
-        """Test upload_testresult_files"""
+    def create_results_folder(self):
+        """Create CTS/GTS results folders."""
         results_folder = tempfile.mkdtemp()
         host_folder = os.path.join(results_folder, 'chromeos4-row9-rack11-host22')
         debug_folder = os.path.join(host_folder, 'debug')
@@ -964,55 +964,78 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         timestamp_cts_folder = os.path.join(cts_result_folder, timestamp_str)
         timestamp_gts_folder = os.path.join(gts_result_folder, timestamp_str)
 
+        # Test results in cts_result_folder with a different time-stamp.
+        timestamp_str_2 = '2016.04.28_10.41.44'
+        timestamp_cts_folder_2 = os.path.join(cts_result_folder, timestamp_str_2)
+
         for folder in [debug_folder, sysinfo_folder, cts_result_folder,
-                       timestamp_cts_folder, timestamp_gts_folder]:
+                       timestamp_cts_folder, timestamp_gts_folder, timestamp_cts_folder_2]:
             os.makedirs(folder)
 
-        # Create CTS files
+        path_pattern_pair = [(timestamp_cts_folder, gs_offloader.CTS_RESULT_PATTERN),
+                             (timestamp_cts_folder_2, gs_offloader.CTS_RESULT_PATTERN),
+                             (timestamp_gts_folder, gs_offloader.GTS_RESULT_PATTERN)]
+
+        # Create timestamp.zip file_path.
         cts_zip_file = os.path.join(cts_result_folder, timestamp_str + '.zip')
-        with open(cts_zip_file, 'w') as f:
-            f.write('test')
-
-        cts_result_file = os.path.join(timestamp_cts_folder, 'testResult.xml')
-        with open(cts_result_file, 'w') as f:
-            f.write('test')
-
-        # Create GTS files
+        cts_zip_file_2 = os.path.join(cts_result_folder, timestamp_str_2 + '.zip')
         gts_zip_file = os.path.join(gts_result_folder, timestamp_str + '.zip')
-        with open(gts_zip_file, 'w') as f:
-            f.write('test')
 
+        # Create xml file_path.
+        cts_result_file = os.path.join(timestamp_cts_folder, 'testResult.xml')
+        cts_result_file_2 = os.path.join(timestamp_cts_folder_2, 'testResult.xml')
         gts_result_file = os.path.join(timestamp_gts_folder, 'xtsTestResult.xml')
-        with open(gts_result_file, 'w') as f:
-            f.write('test')
 
-        models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
-            {'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
-             'parent_job_id': 'p_id'})
+        for file_path in [cts_zip_file, cts_zip_file_2, gts_zip_file,
+                          cts_result_file, cts_result_file_2, gts_result_file]:
+            with open(file_path, 'w') as f:
+                f.write('test')
 
-        models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn(
-            {'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
-             'parent_job_id': 'p_id'})
+        return (results_folder, host_folder, path_pattern_pair)
 
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', cts_result_folder])
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', cts_result_folder])
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', gts_result_folder])
-        gs_offloader.get_cmd_list(
-            False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
-                    ['test', '-d', gts_result_folder])
+
+    def test_upload_testresult_files(self):
+        """Test upload_testresult_files."""
+        results_folder, host_folder, path_pattern_pair = self.create_results_folder()
+
+        self.mox.StubOutWithMock(gs_offloader, '_upload_files')
+        gs_offloader._upload_files(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+                ['test', '-d', host_folder])
+        gs_offloader._upload_files(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+                ['test', '-d', host_folder])
+        gs_offloader._upload_files(
+            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg(), False).AndReturn(
+                ['test', '-d', host_folder])
 
         self.mox.ReplayAll()
         gs_offloader.upload_testresult_files(results_folder, False)
         self.mox.VerifyAll()
-        self.assertTrue(os.path.exists(cts_zip_file))
-        self.assertFalse(os.path.exists(
-                os.path.join(timestamp_cts_folder,'testResult.xml.gz')))
+        shutil.rmtree(results_folder)
+
+
+    def test_upload_files(self):
+        """Test upload_files"""
+        results_folder, host_folder, path_pattern_pair = self.create_results_folder()
+
+        for path, pattern in path_pattern_pair:
+            models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn({
+                'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
+                'parent_job_id': 'p_id'
+            })
+
+            gs_offloader.get_cmd_list(
+                False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', path])
+            gs_offloader.get_cmd_list(
+                False, mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+                    ['test', '-d', path])
+
+            self.mox.ReplayAll()
+            gs_offloader._upload_files(host_folder, path, pattern, False)
+            self.mox.VerifyAll()
+            self.mox.ResetAll()
 
         shutil.rmtree(results_folder)
 
