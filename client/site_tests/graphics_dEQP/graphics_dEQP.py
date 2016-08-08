@@ -527,6 +527,7 @@ class graphics_dEQP(test.test):
             if result.lower() in ['pass']:
                 test_passes += test_results[result]
             if result.lower() not in ['pass', 'notsupported', 'internalerror',
+                                      'qualitywarning', 'compatibilitywarning',
                                       'skipped']:
                 test_failures += test_results[result]
             if result.lower() in ['skipped']:
