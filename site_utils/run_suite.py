@@ -1564,8 +1564,8 @@ def main_without_exception_handling(options):
             raise
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
-            logging.warning('Error Message: %s', e)
-            return (RETURN_CODES.INFRA_FAILURE, {'return_message': e})
+            logging.exception('Error Message: %s', e)
+            return (RETURN_CODES.INFRA_FAILURE, {'return_message': str(e)})
         except AttributeError:
             return (RETURN_CODES.INVALID_OPTIONS, {})
 
