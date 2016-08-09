@@ -27,8 +27,14 @@ class audio_MediaBasicVerification(audio_test.AudioTest):
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 10
     DELAY_AFTER_BINDING = 0.5
+    UNSUPPORTED_BOARD_TYPES = ['CHROMEBIT']
 
     def run_once(self, host, audio_test_file):
+
+        if host.get_board_type() in self.UNSUPPORTED_BOARD_TYPES:
+            raise error.TestNAError(
+                    'DUT is not supported for this scenario. Skipping test.')
+
         chameleon_board = host.chameleon
         factory = self.create_remote_facade_factory(host)
         chameleon_board.setup_and_reset(self.outputdir)
