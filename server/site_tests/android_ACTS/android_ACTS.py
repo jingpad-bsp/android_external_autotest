@@ -5,6 +5,7 @@
 import logging
 import json
 import os
+import sys
 
 import common
 from autotest_lib.client.common_lib import error
@@ -93,6 +94,8 @@ class android_ACTS(test.test):
                 details = result['Details']
                 self.job.record(verdict, None, test_case,
                                 status=(details or ''))
+        else:
+            logging.debug('summary at path %s does not exist!', summary_path)
 
 
     def run_once(self, testbed=None, config_file=None, testbed_name=None,
@@ -147,5 +150,7 @@ class android_ACTS(test.test):
             # TODO: Change below to be test_bed.teststation_host.run
             act_result = self.test_station.run(act_cmd, timeout=7200)
             logging.debug('ACTS Output:\n%s', act_result.stdout)
+        except:
+            raise error.TestError('Unexpected error: %s', sys.exc_info())
         finally:
             self.post_act_cmd(config_file, testbed_name, test_case)
