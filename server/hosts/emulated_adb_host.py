@@ -75,7 +75,7 @@ class EmulatedADBHost(adb_host.ADBHost):
                                                             'system.img'))
 
         # Use default images
-        except (error.AutoservRunError, error.AutoservHostRunError):
+        except (error.AutoservRunError, error.AutotestHostRunError):
             self.teststation.run('cp %s/* %s/' % (
                 os.path.join('/usr/local/emulator_images', host_os, board),
                 self.imagedir
