@@ -18,7 +18,7 @@ class touch_UpdateErrors(touch_playback_test_base.touch_playback_test_base):
                        'x86-mario', 'stout']
 
     # Devices which have errors in older builds but not newer ones.
-    _IGNORE_OLDER_LOGS = ['expresso', 'enguarde', 'cyan']
+    _IGNORE_OLDER_LOGS = ['expresso', 'enguarde', 'cyan', 'wizpig']
 
     # Devices which have errors in the first build after update.
     _IGNORE_AFTER_UPDATE_LOGS = ['link']
