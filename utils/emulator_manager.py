@@ -38,7 +38,7 @@ class EmulatorManager(object):
                                             'between 5555 and 5585.')
         try:
             run('test -f %s' % os.path.join(imagedir, 'system.img'))
-        except (error.AutoservHostRunError, error.AutoservRunError):
+        except (error.AutoservRunError, error.AutotestHostRunError):
             raise EmulatorManagerException('Image directory must exist and '
                                            'contain emulator images.')
 
@@ -94,10 +94,10 @@ class EmulatorManager(object):
             '-nographic',
             '-device', 'virtio-scsi-device,id=scsi',
             '-device', 'scsi-hd,drive=system',
-            '-drive', ('file=%s,if=none,id=system,format=raw'
+            '-drive', ('file="%s,if=none,id=system,format=raw"'
                        % os.path.join(self.imagedir, 'system.img')),
             '-device', 'scsi-hd,drive=userdata',
-            '-drive', ('file=%s,if=none,id=userdata,format=raw'
+            '-drive', ('file="%s,if=none,id=userdata,format=raw"'
                        % os.path.join(self.imagedir, 'userdata.img')),
             '-redir', 'tcp:%s::5555' % self.port,
         ]
