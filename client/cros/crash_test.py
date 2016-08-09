@@ -694,3 +694,7 @@ class CrashTest(test.test):
 
             # Call the test function
             getattr(self, '_test_' + test_name)()
+
+        # Clear the intentional crashes, so that the server won't automatically
+        # report crash as failure.
+        self._clear_spooled_crashes()
