@@ -307,8 +307,15 @@ class ServoLabel(base_label.BaseLabel):
     _NAME = 'servo'
 
     def exists(self, host):
-        return servo_host.servo_host_is_up(
-                servo_host.make_servo_hostname(host.hostname))
+        """
+        Check if the servo label should apply to the host or not.
+
+        @returns True if a servo host is detected, False otherwise.
+        """
+        servo_args, _ = servo_host._get_standard_servo_args(host)
+        servo_host_hostname = servo_args.get(servo_host.SERVO_HOST_ATTR)
+        return (servo_host_hostname is not None
+                and servo_host.servo_host_is_up(servo_host_hostname))
 
 
 class VideoLabel(base_label.StringLabel):
