@@ -6,8 +6,7 @@ from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
 NAME = "platform_ExternalUsbPeripherals.detect.unplug_login_plug"
-TAG = "detect.unplug_login_plug"
-PURPOSE = "Servo based USB boot stress test"
+PURPOSE = "Servo based USB peripherals detection test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
@@ -80,6 +79,6 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks, tag="detect")
+                 usb_list=usb_list, usb_checks=usb_checks, tag="detect.unplug_login_plug")
 
 parallel_simple(run, machines)
