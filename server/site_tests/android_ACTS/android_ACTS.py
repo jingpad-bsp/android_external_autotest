@@ -99,7 +99,8 @@ class android_ACTS(test.test):
 
 
     def run_once(self, testbed=None, config_file=None, testbed_name=None,
-                 test_case=None, test_file=None, additional_configs=[]):
+                 test_case=None, test_file=None, additional_configs=[],
+                 acts_timeout=7200):
         """Run ACTS on the DUT.
 
         Exactly one of test_case and test_file should be provided.
@@ -114,6 +115,7 @@ class android_ACTS(test.test):
         @param additional_configs: A list of paths to be copied over to
                                    the test station. These files must reside
                                    in the TEST_CONFIG_FILE_FOLDER.
+        @param acts_timeout: A timeout for the specific ACTS test.
         """
         testbed_name = testbed_name or testbed.hostname.split('.')[0]
         for serial, adb_host in testbed.get_adb_devices().iteritems():
@@ -148,7 +150,7 @@ class android_ACTS(test.test):
         try:
             logging.debug('Running: %s', act_cmd)
             # TODO: Change below to be test_bed.teststation_host.run
-            act_result = self.test_station.run(act_cmd, timeout=7200)
+            act_result = self.test_station.run(act_cmd, timeout=acts_timeout)
             logging.debug('ACTS Output:\n%s', act_result.stdout)
         except:
             raise error.TestError('Unexpected error: %s', sys.exc_info())
