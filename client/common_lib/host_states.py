@@ -13,3 +13,7 @@ from autotest_lib.client.common_lib import enum
 Status = enum.Enum('Verifying', 'Running', 'Ready', 'Repairing',
 'Repair Failed', 'Cleaning', 'Pending', 'Resetting',
 'Provisioning', string_values=True)
+
+# States associated with a DUT that is doing nothing, whether or not
+# it's eligible to run a test.
+IDLE_STATES = set([Status.READY, Status.REPAIR_FAILED])

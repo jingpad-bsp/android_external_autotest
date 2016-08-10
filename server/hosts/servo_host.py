@@ -38,6 +38,8 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 
+DEFAULT_PORT = 9999
+
 _CONFIG = global_config.global_config
 ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
         'CROS', 'enable_ssh_tunnel_for_servo', type=bool, default=False)
@@ -88,8 +90,9 @@ class ServoHost(ssh_host.SSHHost):
     _timer = autotest_stats.Timer('servo_host')
 
 
-    def _initialize(self, servo_host='localhost', servo_port=9999,
-                    required_by_test=True, is_in_lab=None, *args, **dargs):
+    def _initialize(self, servo_host='localhost',
+                    servo_port=DEFAULT_PORT, required_by_test=True,
+                    is_in_lab=None, *args, **dargs):
         """Initialize a ServoHost instance.
 
         A ServoHost instance represents a host that controls a servo.
