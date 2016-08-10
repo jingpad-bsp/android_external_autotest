@@ -108,6 +108,8 @@ def clear_version_labels(host):
 
     @param host: Host whose version labels to clear.
     """
+    host._afe_host.labels = [label for label in host._afe_host.labels
+                             if not label.startswith(host.VERSION_PREFIX)]
     if not host_in_lab(host):
         return
 
@@ -126,9 +128,10 @@ def add_version_label(host, image_name):
     @param host: Host to add the version label for.
     @param image_name: Name of the build version to add to the host.
     """
+    label = '%s:%s' % (host.VERSION_PREFIX, image_name)
+    host._afe_host.labels.append(label)
     if not host_in_lab(host):
         return
-    label = '%s:%s' % (host.VERSION_PREFIX, image_name)
     AFE.run('label_add_hosts', id=label, hosts=[host.hostname])
 
 
