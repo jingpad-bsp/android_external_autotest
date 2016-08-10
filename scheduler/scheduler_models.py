@@ -1215,18 +1215,19 @@ class Job(DBObject):
         return self.num_complete() == self.num_machines()
 
 
-    def _not_yet_run_entries(self, include_verifying=True):
-        statuses = [models.HostQueueEntry.Status.QUEUED,
-                    models.HostQueueEntry.Status.PENDING]
-        if include_verifying:
-            statuses.append(models.HostQueueEntry.Status.VERIFYING)
+    def _not_yet_run_entries(self, include_active=True):
+        if include_active:
+          statuses = list(models.HostQueueEntry.PRE_JOB_STATUSES)
+        else:
+          statuses = list(models.HostQueueEntry.IDLE_PRE_JOB_STATUSES)
         return models.HostQueueEntry.objects.filter(job=self.id,
                                                     status__in=statuses)
 
 
     def _stop_all_entries(self):
+        """Stops the job's inactive pre-job HQEs."""
         entries_to_stop = self._not_yet_run_entries(
-            include_verifying=False)
+            include_active=False)
         for child_entry in entries_to_stop:
             assert not child_entry.complete, (
                 '%s status=%s, active=%s, complete=%s' %

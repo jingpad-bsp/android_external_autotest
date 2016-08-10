@@ -1764,6 +1764,8 @@ class HostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     Status = host_queue_entry_states.Status
     ACTIVE_STATUSES = host_queue_entry_states.ACTIVE_STATUSES
     COMPLETE_STATUSES = host_queue_entry_states.COMPLETE_STATUSES
+    PRE_JOB_STATUSES = host_queue_entry_states.PRE_JOB_STATUSES
+    IDLE_PRE_JOB_STATUSES = host_queue_entry_states.IDLE_PRE_JOB_STATUSES
 
     job = dbmodels.ForeignKey(Job)
     host = dbmodels.ForeignKey(Host, blank=True, null=True)
