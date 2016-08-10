@@ -55,8 +55,8 @@ class android_CrashLogging(test.test):
                 logs = self.host.run_output(
                         'find /data/tombstones -maxdepth 1 -type f',
                         timeout=COMMAND_TIMEOUT_SECONDS).split()
-            except (error.AutotestHostRunError, error.AutoservRunError,
-                    error.AutoservSSHTimeout, error.CmdTimeoutError):
+            except (error.GenericHostRunError, error.AutoservSSHTimeout,
+                    error.CmdTimeoutError):
                 raise error.TestFail('No crash logs were created because of a '
                                      'host error or because the directory '
                                      'where crash logs are written to does not '

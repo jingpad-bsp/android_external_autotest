@@ -50,8 +50,8 @@ class brillo_CrashLogging(test.test):
                 logs = self.host.run_output(
                         'ls /data/misc/crash_reporter/crash',
                         timeout=COMMAND_TIMEOUT_SECONDS).split()
-            except (error.AutotestHostRunError, error.AutoservRunError,
-                    error.AutoservSSHTimeout, error.CmdTimeoutError):
+            except (error.GenericHostRunError, error.AutoservSSHTimeout,
+                    error.CmdTimeoutError):
                 raise error.TestFail('No crash logs were created because of a '
                                      'host error or because the directory '
                                      'where crash logs are written to does not '
