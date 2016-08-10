@@ -57,6 +57,10 @@ class ExternalPackage(object):
       @attribute urls - A tuple of URLs to try fetching the package from.
       @attribute local_filename - A local filename to use when saving the
               fetched package.
+      @attribute dist_name - The name of the Python distribution.  For example,
+              the package MySQLdb is included in the distribution named
+              MySQL-python.  This is generally the PyPI name.  Defaults to the
+              name part of the local_filename.
       @attribute hex_sum - The hex digest (currently SHA1) of this package
               to be used to verify its contents.
       @attribute module_name - The installed python module name to be used for
@@ -80,6 +84,7 @@ class ExternalPackage(object):
     subclasses = []
     urls = ()
     local_filename = None
+    dist_name = None
     hex_sum = None
     module_name = None
     version = None
@@ -97,6 +102,8 @@ class ExternalPackage(object):
         self.verified_package = ''
         if not self.module_name:
             self.module_name = self.name.lower()
+        if not self.dist_name and self.local_filename:
+            self.dist_name = self.local_filename[:self.local_filename.rindex('-')]
         self.installed_version = ''
 
 
@@ -337,10 +344,34 @@ class ExternalPackage(object):
         if status:
             logging.error('unzip of %s failed', egg_path)
             return False
-        egg_info = os.path.join(install_dir, 'EGG-INFO')
-        if os.path.isdir(egg_info):
-            shutil.rmtree(egg_info)
+        egg_info_dir = os.path.join(install_dir, 'EGG-INFO')
+        if os.path.isdir(egg_info_dir):
+            egg_info_new_path = self._get_egg_info_path(install_dir)
+            if egg_info_new_path:
+                if os.path.exists(egg_info_new_path):
+                    shutil.rmtree(egg_info_new_path)
+                os.rename(egg_info_dir, egg_info_new_path)
+            else:
+                shutil.rmtree(egg_info_dir)
         return True
+
+
+    def _get_egg_info_path(self, install_dir):
+        """Get egg-info path for this package.
+
+        Example path: install_dir/MySQL_python-1.2.3.egg-info
+
+        """
+        if self.dist_name:
+            egg_info_name_part = self.dist_name.replace('-', '_')
+            if self.version:
+                egg_info_filename = '%s-%s.egg-info' % (egg_info_name_part,
+                                                        self.version)
+            else:
+                egg_info_filename = '%s.egg-info' % (egg_info_name_part,)
+            return os.path.join(install_dir, egg_info_filename)
+        else:
+            return None
 
 
     def _get_temp_dir(self):
@@ -1037,6 +1068,37 @@ class ImagingLibraryPackage(ExternalPackage):
 
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_noegg)
+
+
+class AstroidPackage(ExternalPackage):
+    """astroid package."""
+    version = '1.0.0'
+    url_filename = 'astroid-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=e74430dfbbe09cd18ef75bd76f95425a
+    urls = ('https://pypi.python.org/packages/15/ef/'
+            '1c01161c40ce08451254125935c5bca85b08913e610a4708760ee1432fa8/%s' %
+            (url_filename),)
+    hex_sum = '2ebba76d115cb8a2d84d8777d8535ddac86daaa6'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
+
+
+class LogilabCommonPackage(ExternalPackage):
+    """logilab-common package."""
+    version = '1.2.2'
+    module_name = 'logilab'
+    url_filename = 'logilab-common-%s.tar.gz' % version
+    local_filename = url_filename
+    #md5=daa7b20c8374ff5f525882cf67e258c0
+    urls = ('https://pypi.python.org/packages/63/5b/'
+            'd4d93ad9e683a06354bc5893194514fbf5d05ef86b06b0285762c3724509/%s' %
+            (url_filename),)
+    hex_sum = 'ecad2d10c31dcf183c8bed87b6ec35e7ed397d27'
+    _build_and_install = ExternalPackage._build_and_install_from_package
+    _build_and_install_current_dir = (
+            ExternalPackage._build_and_install_current_dir_setup_py)
 
 
 class PyLintPackage(ExternalPackage):
