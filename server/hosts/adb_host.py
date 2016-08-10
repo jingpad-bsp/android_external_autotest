@@ -591,8 +591,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def wait_down(self, timeout=DEFAULT_WAIT_DOWN_TIME_SECONDS,
-                  warning_timer=None, old_boot_id=None, command=ADB_CMD):
-        """Wait till the host goes down, i.e., not accessible by given command.
+                  warning_timer=None, old_boot_id=None, command=ADB_CMD,
+                  boot_id=None):
+        """Wait till the host goes down.
+
+        Return when the host is down (not accessible via the command) OR when
+        the device's boot_id changes (if a boot_id was provided).
 
         Overrides wait_down from AbstractSSHHost.
 
@@ -604,6 +608,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @param command: `adb`, test if the device can be accessed by adb
                 command, or `fastboot`, test if the device can be accessed by
                 fastboot command. Default is set to `adb`.
+        @param boot_id: UUID of previous boot (consider the device down when the
+                        boot_id changes from this value). Ignored if None.
 
         @returns True if the device goes down before the timeout, False
                  otherwise.
@@ -611,9 +617,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         @retry.retry(error.TimeoutException, timeout_min=timeout/60.0,
                      delay_sec=1)
         def _wait_down():
-            if self.is_up(command=command):
-                raise error.TimeoutException('Device is still up.')
-            return True
+            up = self.is_up(command=command)
+            if not up:
+                return True
+            if boot_id:
+                try:
+                    new_boot_id = self.get_boot_id()
+                    if new_boot_id != boot_id:
+                        return True
+                except (error.AutotestHostRunError, error.AutoservHostError):
+                    pass
+            raise error.TimeoutException('Device is still up.')
 
         try:
             _wait_down()
@@ -632,8 +646,9 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         """
         # Not calling super.reboot() as we want to reboot the ADB device not
         # the test station we are running ADB on.
+        boot_id = self.get_boot_id()
         self.adb_run('reboot', timeout=10, ignore_timeout=True)
-        if not self.wait_down():
+        if not self.wait_down(boot_id=boot_id):
             raise error.AutoservRebootError(
                     'ADB Device is still up after reboot')
         if not self.wait_up():
