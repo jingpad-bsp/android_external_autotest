@@ -146,6 +146,14 @@ class MockDroneManager(NullMethodObject):
         pidfile_id = self.pidfile_from_path(working_directory, pidfile_name)
         self._set_pidfile_exit_status(pidfile_id, 0)
 
+    def finish_active_process_on_host(self, host_id):
+        match = 'hosts/host%d/' % host_id
+        for pidfile_id in self.nonfinished_pidfile_ids():
+            if pidfile_id._working_directory.startswith(match):
+                self._set_pidfile_exit_status(pidfile_id, 0)
+                break
+        else:
+          raise KeyError('No active process matched %s' % match)
 
     def _set_pidfile_exit_status(self, pidfile_id, exit_status):
         assert pidfile_id is not None
@@ -1150,6 +1158,33 @@ class SchedulerFunctionalTestNoArchiving(SchedulerFunctionalTest):
         self.mock_drone_manager.finish_process(_PidfileType.PARSE)
         self._run_dispatcher()
         self._check_entry_status(entry, HqeStatus.COMPLETED)
+
+    def test_synchronous_with_reset(self):
+        # For crbug/621257.
+        job = self._create_job(hosts=[1, 2])
+        job.synch_count = 2
+        job.reboot_before = model_attributes.RebootBefore.ALWAYS
+        job.save()
+
+        hqe1 = job.hostqueueentry_set.get(host__hostname='host1')
+        hqe2 = job.hostqueueentry_set.get(host__hostname='host2')
+
+        self._run_dispatcher()
+
+        self._check_statuses(hqe1, HqeStatus.RESETTING, HostStatus.RESETTING)
+        self._check_statuses(hqe2, HqeStatus.RESETTING, HostStatus.RESETTING)
+
+        self.mock_drone_manager.finish_active_process_on_host(1)
+        self._run_dispatcher()
+
+        self._check_statuses(hqe1, HqeStatus.PENDING, HostStatus.PENDING)
+        self._check_statuses(hqe2, HqeStatus.RESETTING, HostStatus.RESETTING)
+
+        self.mock_drone_manager.finish_active_process_on_host(2)
+        self._run_dispatcher()
+
+        self._check_statuses(hqe1, HqeStatus.RUNNING, HostStatus.RUNNING)
+        self._check_statuses(hqe2, HqeStatus.RUNNING, HostStatus.RUNNING)
 
 
 if __name__ == '__main__':
