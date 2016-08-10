@@ -177,11 +177,15 @@ def update_server(inputs):
     output = '%s: %s' % (server, cmd)
     success = True
     if not options.dryrun:
-        try:
-            output = infra.execute_command(server, cmd)
-        except subprocess.CalledProcessError as e:
-            success = False
-            output = e.output
+        for i in range(5):
+            try:
+                print('[%s/5] Try to update server %s' % (i, server))
+                output = infra.execute_command(server, cmd)
+                break
+            except subprocess.CalledProcessError as e:
+                print('%s: Command failed with error: %s' % (server, e))
+                success = False
+                output = e.output
 
     print('Time used to update server %s: %s' % (server, time.time()-start))
     return server, success, output
