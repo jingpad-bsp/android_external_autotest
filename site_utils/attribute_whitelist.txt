@@ -11,6 +11,7 @@ suite:arc-cts-12h
 suite:arc-cts-18h
 suite:arc-cts-24h
 suite:arc-gts
+suite:arc-gts-tot
 suite:arc-nightly
 suite:arc-weekly
 suite:au
