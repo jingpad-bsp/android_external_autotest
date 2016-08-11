@@ -79,10 +79,5 @@ class display_SwitchMode(test.test):
 
             for i in xrange(repeat):
                 logging.info("Iteration %d", (i + 1))
-                self.set_mode_and_check(False, no_check)
-                # Workaround the bug crbug.com/589562 that fails to switch
-                # to mirrored mode immediately. Add 4 seconds delay here.
-                # TODO: Remove this sleep once the bug is fixed.
-                if no_check:
-                    time.sleep(4)
                 self.set_mode_and_check(True, no_check)
+                self.set_mode_and_check(False, no_check)
