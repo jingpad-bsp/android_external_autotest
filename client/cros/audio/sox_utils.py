@@ -207,7 +207,7 @@ def convert_raw_file(path_src, channels_src, bits_src, rate_src,
 
 def convert_format(path_src, channels_src, bits_src, rate_src,
                    path_dst, channels_dst, bits_dst, rate_dst,
-                   volume_scale):
+                   volume_scale, use_src_header=False):
     """Converts a raw file to a new format.
 
     @param path_src: The path to the source file.
@@ -221,10 +221,14 @@ def convert_format(path_src, channels_src, bits_src, rate_src,
     @param volume_scale: A float for volume scale used in sox command.
                          E.g. 1.0 is the same. 0.5 to scale volume by
                          half. -1.0 to invert the data.
+    @param use_src_header: True to use header from source file and skip
+                           specifying channel, sample format, and rate for
+                           source. False otherwise.
 
     """
     sox_cmd = [SOX_PATH]
-    sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
+    if not use_src_header:
+        sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
     sox_cmd += ['-v', '%f' % volume_scale]
     sox_cmd += [path_src]
     sox_cmd += _raw_format_args(channels_dst, bits_dst, rate_dst)
