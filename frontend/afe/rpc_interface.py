@@ -910,6 +910,11 @@ def create_job_page_handler(name, priority, control_file, control_type,
     """
     if is_cloning:
         logging.info('Start to clone a new job')
+        # When cloning a job, hosts and meta_hosts should not exist together,
+        # which would cause host-scheduler to schedule two hqe jobs to one host
+        # at the same time, and crash itself. Clear meta_hosts for this case.
+        if kwargs.get('hosts') and kwargs.get('meta_hosts'):
+            kwargs['meta_hosts'] = []
     else:
         logging.info('Start to create a new job')
     control_file = rpc_utils.encode_ascii(control_file)
