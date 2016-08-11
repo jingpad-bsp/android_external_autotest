@@ -244,3 +244,21 @@ class AudioFacadeRemoteAdapter(object):
         """
         self._audio_proxy.set_chrome_active_node_type(
                 output_node_type, input_node_type)
+
+
+    def start_arc_recording(self):
+        """Starts recording using microphone app in container."""
+        self._audio_proxy.start_arc_recording()
+
+
+    def stop_arc_recording(self):
+        """Checks the recording is stopped and gets the recorded path.
+
+        The recording duration of microphone app is fixed, so this method just
+        asks Cros device to copy the recorded result from container to a path
+        on Cros device.
+
+        @returns: Path to the recorded file on DUT.
+
+        """
+        return self._audio_proxy.stop_arc_recording()
