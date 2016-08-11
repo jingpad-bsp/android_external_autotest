@@ -10,7 +10,6 @@ import time
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros import webpagereplay_wrapper
 
 
 class video_VimeoVideo(test.test):
@@ -108,11 +107,6 @@ class video_VimeoVideo(test.test):
 
 
     def run_once(self):
-        wpr_wrapper = webpagereplay_wrapper.WebPageReplayWrapper(
-                self._WPR_ARCHIVE)
-
-        args = wpr_wrapper.chrome_flags_for_wpr
-
-        with chrome.Chrome(extra_browser_args=args) as cr, wpr_wrapper:
+        with chrome.Chrome() as cr:
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.run_vimeo_tests(cr.browser)
