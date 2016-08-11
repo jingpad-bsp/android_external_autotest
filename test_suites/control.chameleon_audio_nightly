@@ -48,7 +48,7 @@ _BUG_TEMPLATE = {
 }
 
 args_dict['name'] = NAME
-args_dict['suite_dependencies'] = 'chameleon'
+args_dict['suite_dependencies'] = 'chameleon, nightly_set'
 args_dict['job'] = job
 args_dict['add_experimental'] = True
 args_dict['max_runtime_mins'] = 240
