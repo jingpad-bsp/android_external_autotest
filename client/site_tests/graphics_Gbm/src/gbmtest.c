@@ -533,6 +533,10 @@ static int test_import_dmabuf()
 
 	bo2 = gbm_bo_import(gbm, GBM_BO_IMPORT_FD, &fd_data, GBM_BO_USE_RENDERING);
 	CHECK(check_bo(bo2));
+	CHECK(fd_data.width == gbm_bo_get_width(bo2));
+	CHECK(fd_data.height == gbm_bo_get_height(bo2));
+	CHECK(fd_data.stride == gbm_bo_get_stride(bo2));
+
 	gbm_bo_destroy(bo2);
 	close(prime_fd);
 
