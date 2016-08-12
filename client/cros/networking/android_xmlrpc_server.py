@@ -534,10 +534,14 @@ if __name__ == '__main__':
                          help='Path to store output logs.')
     parser.add_argument('-t', '--test-station', action='store', default=None,
                          help='The accompaning teststion hostname.')
+    parser.add_argument('-p', '--port', action='store', default=9989,
+                        type=int, help='The port number to listen on.')
     args = parser.parse_args()
+    listen_port = args.port
     logging.basicConfig(level=logging.DEBUG)
     logging.debug("android_xmlrpc_server main...")
-    server = XmlRpcServer('localhost', 9989)
+    logging.debug('xmlrpc instance on port %d' % listen_port)
+    server = XmlRpcServer('localhost', listen_port)
     server.register_delegate(
             AndroidXmlRpcDelegate(args.serial_number, args.log_dir,
                                   args.test_station))
