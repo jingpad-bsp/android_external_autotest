@@ -1060,12 +1060,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             command = '[ -d %s ]' % source
             source_is_dir = self.run(command,
                                      ignore_status=True).exit_status == 0
+            logging.debug('%s on the device %s a directory', source,
+                          'is' if source_is_dir else 'is not')
 
             if ((source_is_dir and not source.endswith(os.sep)) or
                 (not source_is_dir and os.path.isdir(dest))):
                 receive_path = os.path.join(dest, os.path.basename(source))
             else:
                 receive_path = dest
+
+            if not os.path.exists(receive_path):
+                logging.warning('Expected file %s does not exist; skipping'
+                                ' permissions copy', receive_path)
+                return
 
             # Set the permissions of the received file/dirs.
             if os.path.isdir(receive_path):
