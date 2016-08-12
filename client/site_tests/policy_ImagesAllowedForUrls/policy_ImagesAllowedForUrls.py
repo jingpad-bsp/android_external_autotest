@@ -52,10 +52,10 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
                  'https://www.yahoo.com']
 
     TEST_CASES = {
-        'NotSet_Blocked': None,
-        '1Url_Allowed': URL1_DATA,
-        '2Urls_Blocked': URL2_DATA,
-        '3Urls_Allowed': URL3_DATA
+        'NotSet_Block': None,
+        '1Url_Allow': URL1_DATA,
+        '2Urls_Block': URL2_DATA,
+        '3Urls_Allow': URL3_DATA
     }
 
     STARTUP_URLS = ['chrome://policy', 'chrome://settings']
@@ -66,8 +66,8 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         'RestoreOnStartup': 4
     }
 
-    def initialize(self, args=()):
-        super(policy_ImagesAllowedForUrls, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_ImagesAllowedForUrls, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _wait_for_page_ready(self, tab):
@@ -115,14 +115,10 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test. If the user specified an
-        expected |value| in the command line args, then it will be used to set
-        the |policy_value|.
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
 
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
-
-        # Run test using the values configured for the test case.
         self._test_images_allowed_for_urls(policy_value, policies_dict)

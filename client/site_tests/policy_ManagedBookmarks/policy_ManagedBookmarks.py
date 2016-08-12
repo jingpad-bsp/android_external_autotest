@@ -13,9 +13,9 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
 
     This test verifies the behavior of Chrome OS for a range of valid values
     of the ManagedBookmarks user policy, as defined by three test cases:
-    NotSet, SingleBookmark_Shown, and MultiBookmark_Shown.
+    NotSet_NotShown, SingleBookmark_Shown, and MultiBookmarks_Shown.
 
-    When NotSet, the policy value is undefined. This induces the default
+    When not set, the policy value is undefined. This induces the default
     behavior of not showing the managed bookmarks folder, which is equivalent
     to what is seen by an un-managed user.
 
@@ -54,7 +54,7 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
     TEST_CASES = {
         'NotSet_NotShown': None,
         'SingleBookmark_Shown': SINGLE_BOOKMARK,
-        'MultiBookmark_Shown': MULTI_BOOKMARK
+        'MultipleBookmarks_Shown': MULTI_BOOKMARK
     }
 
     def _test_managed_bookmarks(self, policy_value, policies_dict):
@@ -151,25 +151,13 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| string and |policies_dict| data based
-        on the test |case|. If the user specified an expected |value| in the
-        command line args, then use it to set the |policy_value| and blank out
-        the |policies_dict|.
+        on the test |case|.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
-            # If |value| was given by user, then set expected |policy_value|
-            # to the given value, and setup |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
-        else:
-            # Otherwise, set expected |policy_value| and setup |policies_dict|
-            # data to the defaults required by the test |case|.
-            policy_value = self.TEST_CASES[case]
-            policy_dict = {self.POLICY_NAME: ('[%s]' % policy_value)}
-            policies_dict = self.SUPPORTING_POLICIES.copy()
-            policies_dict.update(policy_dict)
-
-        # Run test using values configured for the test case.
+        policy_value = self.TEST_CASES[case]
+        policy_dict = {self.POLICY_NAME: ('[%s]' % policy_value)}
+        policies_dict = self.SUPPORTING_POLICIES.copy()
+        policies_dict.update(policy_dict)
         self._test_managed_bookmarks(policy_value, policies_dict)
