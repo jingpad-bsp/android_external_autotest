@@ -2,15 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "scunningham"
-NAME = "policy_ImagesAllowedForUrls"
-ATTRIBUTES = "suite:bvt-perbuild"
-TIME = "SHORT"
-TEST_CATEGORY = "General"
-TEST_CLASS = "enterprise"
-TEST_TYPE = "client"
+AUTHOR = 'scunningham'
+NAME = 'policy_ImagesAllowedForUrls'
+TIME = 'SHORT'
+TEST_CATEGORY = 'General'
+TEST_CLASS = 'enterprise'
+TEST_TYPE = 'client'
 
-DOC = """
+DOC = '''
 Verify effects of ImagesAllowedForUrls policy on client look and feel.
 
 This test verifies the effect of the ImagesAllowedForUrls user policy on
@@ -25,6 +24,8 @@ A test shall fail if the browser blocks images on a page where they should be
 allowed to be shown, or allows images to be shown on a page where they should
 be blocked.
 
-"""
+'''
 
-job.run_test("policy_ImagesAllowedForUrls", args=args)
+args_dict = utils.args_to_dict(args)
+
+job.run_test('policy_ImagesAllowedForUrls', **args_dict)
