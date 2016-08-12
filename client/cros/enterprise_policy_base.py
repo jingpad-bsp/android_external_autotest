@@ -31,15 +31,15 @@ TESTDMS_FLAGS = [
     '--disable-policy-key-verification']
 FLAGS_DICT = {
     'prod': [],
-    'cr-qa': CROSQA_FLAGS,
-    'cr-alpha': CROSALPHA_FLAGS,
+    'crosman-qa': CROSQA_FLAGS,
+    'crosman-alpha': CROSALPHA_FLAGS,
     'dm-test': TESTDMS_FLAGS,
     'dm-fake': TESTDMS_FLAGS
 }
 DMS_URL_DICT = {
     'prod': 'http://m.google.com/devicemanagement/data/api',
-    'cr-qa': 'https://crosman-qa.sandbox.google.com/devicemanagement/data/api',
-    'cr-alpha': 'https://crosman-alpha.sandbox.google.com/devicemanagement/data/api',
+    'crosman-qa': 'https://crosman-qa.sandbox.google.com/devicemanagement/data/api',
+    'crosman-alpha': 'https://crosman-alpha.sandbox.google.com/devicemanagement/data/api',
     'dm-test': 'http://chromium-dm-test.appspot.com/d/%s',
     'dm-fake': 'http://127.0.0.1:%d/'
 }
@@ -53,8 +53,24 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         os.chdir(self.srcdir)
         utils.make()
 
-    def initialize(self, args=()):
-        self._initialize_test_context(args)
+    def initialize(self, case=None, value=None, env='dm-fake', dms_name=None,
+                   username=None, password=None):
+        """
+        @param case: String name of the test case to run.
+        @param value: String policy value of the test case to run.
+        @param env: String environment of DMS and Gaia servers.
+        @param username: String user name login credential.
+        @param password: String password login credential.
+        @param dms_name: String name of test DM Server.
+
+        """
+        self.case = case
+        self.value = value
+        self.env = env
+        self.username = username
+        self.password = password
+        self.dms_name = dms_name
+        self._initialize_context()
 
         # Start AutoTest DM Server iff using local fake server.
         if self.dms_is_fake:
@@ -85,51 +101,50 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
         self._web_server.run()
 
-    def _initialize_test_context(self, args=()):
+    def _initialize_context(self):
         """Initialize class-level test context parameters.
 
-        @raises error.TestError if an arg is given an invalid value or some
-                combination of args is given incompatible values.
+        @raises error.TestError if context parameter has an invalid value,
+                or a combination of parameters have incompatible values.
 
         """
-        # Extract local parameters from command line args.
-        args_dict = utils.args_to_dict(args)
-        self.case = args_dict.get('case')
-        self.value = args_dict.get('value')
-        self.env = args_dict.get('env', 'dm-fake')
-        self.username = args_dict.get('username')
-        self.password = args_dict.get('password')
-        self.dms_name = args_dict.get('dms_name')
-
         # Verify that both |case| and |value| were not given.
         if self.case is not None and self.value is not None:
             raise error.TestError('Give only case or value, not both.')
 
-        # Set |run_by_case| to True when |value| is not given.
-        self.run_by_case = self.value is None
-
-        # If |value| is given as 'None', 'Null', or '', then set to 'null'.
+        # If |value| given as 'None', 'Null', or '', then set it to 'null'.
+        # If |value| was given, then set |case| from it.
         if self.value is not None:
             if (self.value.lower() == 'none' or
                 self.value.lower() == 'null' or
                 self.value == ''):
                 self.value = 'null'
+            self.case = self._get_case_by_value(self.value)
 
         # TODO(scunningham): Remove |is_value_given| from the framework after
-        # it has been removed from all tests.
+        # it has been removed from all tests (or replaced by |dms_is_fake|).
         self.is_value_given = False
 
-        # Verify |env| is a valid environment.
+        # If |case| is set, verify |case| is defined by test class.
+        if self.case is not None and self.case not in self.TEST_CASES:
+            raise error.TestError('Test case is not valid: %s' % self.case)
+
+        # If |env\ is set, verify |env| is a valid environment.
         if self.env is not None and self.env not in FLAGS_DICT:
             raise error.TestError('env=%s is invalid.' % self.env)
 
         # Set |dms_is_fake| flag if fake DM Server will be used.
         self.dms_is_fake = (self.env == 'dm-fake')
 
-        # If |dms_is_fake|, then ensure value and credentials are not given.
+        # If |dms_is_fake|, then ensure credentials were not given.
         if self.dms_is_fake and (self.username or self.password):
-            raise error.TestError('User credentials must not be given '
+            raise error.TestError('Must not give User credentials '
                                   'when using the fake DM Server.')
+
+        # If not |dms_is_fake|, then ensure |case| or |value| are set.
+        if not self.dms_is_fake and not (self.case or self.value):
+            raise error.TestError('Must give either case or value when '
+                                  'not using the fake DM Server.')
 
         # If either credential is not given, set both to defaults.
         if self.username is None or self.password is None:
@@ -422,19 +437,6 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
          """
          return ''.join(json.dumps(policy_value))
 
-    def _validate_and_run_test_case(self, test_case, run_test):
-        """Validate test case and call the test runner in the test class.
-
-        @param test_case: name of the test case to run.
-        @param run_test: method in test class that runs a test case.
-        @raises: TestError if test case is not valid.
-
-        """
-        if test_case not in self.TEST_CASES:
-            raise error.TestError('Test case is not valid: %s' % test_case)
-        logging.info('Running test case: %s', test_case)
-        run_test(test_case)
-
     def _get_policy_data_for_case(self, case):
         """Get policy value and policies dict data for specified test |case|.
 
@@ -456,7 +458,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         policies_dict.update(policy_dict)
         return policy_value, policies_dict
 
-    def _get_test_case_by_value(self, policy_value):
+    def _get_case_by_value(self, policy_value):
         """Get test case for given |policy_value|.
 
         @param policy_value: expected value of policy given on command line.
@@ -470,23 +472,31 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
                 return test_case
         raise error.TestError('No test case for value: %r' % trimmed_value)
 
+
+    def _run_test(self, test_case):
+        """Log and call the test case runner in the test class.
+
+        @param test_case: name of the test case to run.
+
+        """
+        logging.info('Running test case: %s', test_case)
+        self.run_test_case(test_case)
+
     def run_once(self):
         """The run_once() method is required by all AutoTest tests.
 
-        It is defined herein to automatically determine which test case(s)
-        to run. Test may override if test will determine case(s) on its own.
+        run_once() is defined herein to automatically determine which test
+        case(s) in the test class to run. The test class must have a public
+        run_test_case() method defined. Note: The test class may override
+        run_once if it will determine which test case(s) to run on its own.
 
         """
-        # If DMS is fake, and value & case are not given, then run all cases.
-        # This functionality is provided for backward compatibility with tests
-        # running in regression and bvt-perbuild suites. It will be removed
-        # once crbug.com/629357 has been implemented.
-        if self.dms_is_fake and not (self.case or self.value):
-            for test_case in sorted(self.TEST_CASES):
-                self._validate_and_run_test_case(test_case, self.run_test_case)
-            return
-
-        # Run the single test case identified by case or by value.
-        if not self.run_by_case:
-            self.case = self._get_test_case_by_value(self.value)
-        self._validate_and_run_test_case(self.case, self.run_test_case)
+        # If |case| is not set, then run all cases. This will work only on
+        # the fake DM Server. This Functionality is provided for backward
+        # compatibility with tests running in regression and bvt-perbuild
+        # suites. Remove after crbug.com/629357 is merged.
+        if not self.case:
+           for test_case in sorted(self.TEST_CASES):
+               self._run_test(test_case)
+           return
+        self._run_test(self.case)

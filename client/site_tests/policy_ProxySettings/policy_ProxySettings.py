@@ -129,8 +129,8 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         'NotSet_UseNoProxy': None
     }
 
-    def initialize(self, args=()):
-        super(policy_ProxySettings, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_ProxySettings, self).initialize(**kwargs)
         self._proxy_server = ProxyListener(('', self.PROXY_PORT))
         self._proxy_server.run()
         self.start_webserver(self.WEB_PORT)
@@ -177,21 +177,11 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data based on the
-        test |case|. If the user gave an expected |value| on the command line,
-        then set |policy_value| to |value|, and |policies_dict| to None.
+        test |case|.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
-            # If |value| was given in the command line args, then set expected
-            # |policy_value| to the given value, and |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
-        else:
-            # Otherwise, set expected |policy_value| and setup |policies_dict|
-            # data to the values required by the specified test |case|.
-            policy_value = self.TEST_CASES[case]
-            policies_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-
+        policy_value = self.TEST_CASES[case]
+        policies_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
         self._test_proxy_configuration(policy_value, policies_dict)

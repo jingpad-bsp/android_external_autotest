@@ -2,15 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "krishnargv"
-NAME = "policy_URLBlacklist"
-ATTRIBUTES = "suite:bvt-perbuild"
-TIME = "SHORT"
-TEST_CATEGORY = "General"
-TEST_CLASS = "enterprise"
-TEST_TYPE = "client"
+AUTHOR = 'krishnargv'
+NAME = 'policy_URLBlacklist'
+TIME = 'SHORT'
+TEST_CATEGORY = 'General'
+TEST_CLASS = 'enterprise'
+TEST_TYPE = 'client'
 
-DOC = """
+DOC = '''
 Verify effects of policy_URLBlacklist policy on client behavior.
 
 This test verifies the effect of the URLBlacklist user policy on Chrome OS
@@ -23,6 +22,8 @@ A test case shall pass if:
  - All other URLs are allowed.
 The test case shall fail if the above behavior is not enforced.
 
-"""
+'''
 
-job.run_test("policy_URLBlacklist", args=args)
+args_dict = utils.args_to_dict(args)
+
+job.run_test('policy_URLBlacklist', **args_dict)
