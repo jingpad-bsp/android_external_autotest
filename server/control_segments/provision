@@ -2,13 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import datetime
 import re
+
+from chromite.lib import metrics
 
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
 LABEL_REGEX = r',.*:'
+_LABEL_UPDATE_DURATION_METRIC = metrics.SecondsDistribution(
+        'chromeos/autotest/provision/label_update_durations')
 
 # job_labels should be a string like "name:setting,name:setting"
 # However setting might also contain ',' therefore we need more advanced logic
@@ -42,6 +47,27 @@ def provision_machine(machine):
         provision.run_special_task_actions(job, host, labels_list,
                                            provision.Provision)
         host.verify()
+
+        # Let's update the labels on the host and track how long it takes.
+        # Don't fail while updating the labels, provision is flaky enough by
+        # itself.
+        label_update_success = True
+        start_time = datetime.datetime.now()
+        try:
+            host.update_labels()
+        except Exception as e:
+            logging.exception('Exception while updating labels: %s', e)
+            label_update_success = False
+
+        end_time = datetime.datetime.now()
+        duration = (end_time - start_time).total_seconds()
+
+        fields = {'success': label_update_success,
+                  # TODO(kevcheng): Need a better way of classifying testbeds.
+                  'board': (host.get_board()
+                            if not utils.machine_is_testbed(machine)
+                            else host.get_platform())}
+        _LABEL_UPDATE_DURATION_METRIC.add(duration, fields=fields)
     except Exception as e:
         logging.exception(e)
         job.record('END FAIL', None, 'provision')
