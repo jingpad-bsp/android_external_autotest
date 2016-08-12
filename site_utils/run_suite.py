@@ -1460,9 +1460,9 @@ def create_suite(afe, options):
     """
     builds = {}
     if options.build:
-        if re.match(ANDROID_TESTBED_BUILD_REGEX, options.build):
+        if re.match(ANDROID_TESTBED_BUILD_REGEX, options.build, re.I):
             builds[provision.TESTBED_BUILD_VERSION_PREFIX] = options.build
-        elif re.match(ANDROID_BUILD_REGEX, options.build):
+        elif re.match(ANDROID_BUILD_REGEX, options.build, re.I):
             builds[provision.ANDROID_BUILD_VERSION_PREFIX] = options.build
         else:
             builds[provision.CROS_VERSION_PREFIX] = options.build

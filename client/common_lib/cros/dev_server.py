@@ -1463,7 +1463,7 @@ class ImageServer(ImageServerBase):
 
         @return The actual build name to use.
         """
-        match = re.match(r'([\w-]+)-(\w+)/LATEST', build_name)
+        match = re.match(r'([\w-]+)-(\w+)/LATEST', build_name, re.I)
         if not match:
             return build_name
         translated_build = self.get_latest_build_in_gs(match.groups()[0])
@@ -2032,7 +2032,7 @@ class AndroidBuildServer(ImageServerBase):
         @return The actual build name to use.
         """
         branch, target, build_id = utils.parse_launch_control_build(build_name)
-        if build_id != 'LATEST':
+        if build_id.upper() != 'LATEST':
             return build_name
         call = self.build_call('latestbuild', branch=branch, target=target,
                                os_type='android')
