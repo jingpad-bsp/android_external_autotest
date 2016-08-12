@@ -15,8 +15,8 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
     websites specified by the URLBlackList policy are blocked. Throw a warning
     if the user message on the blocked page is incorrect.
 
-    Two test cases (SinglePage_Blocked, MultiplePages_Blocked) are designed
-    to verify that URLs specified in the URLBlacklist policy are blocked.
+    Two test cases (SinglePage_Blocked, MultiplePages_Blocked) are designed to
+    verify that the URLs specified in the URLBlacklist policy are blocked.
     The third test case (NotSet_Allowed) is designed to verify that none of
     the URLs are blocked since the URLBlacklist policy is set to None
 
@@ -48,8 +48,8 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
     }
     SUPPORTING_POLICIES = {'URLWhitelist': None}
 
-    def initialize(self, args=()):
-        super(policy_URLBlacklist, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_URLBlacklist, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _scrape_text_from_webpage(self, tab):
@@ -131,9 +131,7 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test. If the user specified an
-        expected |value| in the command line args, then it will be used to set
-        the |policy_value|.
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
 

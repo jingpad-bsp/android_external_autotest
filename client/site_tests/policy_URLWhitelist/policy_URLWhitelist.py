@@ -15,11 +15,10 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
     websites specified by the URLWhitelist policy value are allowed. Also
     verify that the websites not in the URLWhitelist policy value are blocked.
 
-    Two TEST_CASES (SinglePage_Allowed, MultiplePages_Allowed) are designed to
-    verify that a website is allowed regardless of whether a single webpage is
-    specified in the URLWhitelist policy, or multiple webpages are specified.
-    The third TEST_CASE (NotSet_Blocked) is designed to verify that all
-    websites are blocked since the URLWhitelistlist policy is set to None.
+    Two test cases (SinglePage_Allowed, MultiplePages_Allowed) are designed to
+    verify that the URLs specified in the URLWhitelist policy are allowed.
+    The third test case (NotSet_Blocked) is designed to verify that all of
+    the URLs are blocked since the URLWhitelistlist policy is set to None.
 
     The test case shall pass if the URLs that are part of the URLWhitelist
     policy value are allowed. The test case shall also pass if the URLs that
@@ -49,8 +48,8 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
     }
     SUPPORTING_POLICIES = {'URLBlacklist': BLOCKED_URLS_LIST}
 
-    def initialize(self, args=()):
-        super(policy_URLWhitelist, self).initialize(args)
+    def initialize(self, **kwargs):
+        super(policy_URLWhitelist, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT)
 
     def _scrape_text_from_webpage(self, tab):
@@ -138,9 +137,7 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test. If the user specified an
-        expected |value| in the command line args, then it will be used to set
-        the |policy_value|.
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
 

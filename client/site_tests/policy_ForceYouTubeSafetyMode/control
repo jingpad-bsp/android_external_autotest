@@ -2,15 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "scunningham"
-NAME = "policy_ForceYouTubeSafetyMode"
-ATTRIBUTES = "suite:bvt-perbuild"
-TIME = "SHORT"
-TEST_CATEGORY = "General"
-TEST_CLASS = "enterprise"
-TEST_TYPE = "client"
+AUTHOR = 'scunningham'
+NAME = 'policy_ForceYouTubeSafetyMode'
+TIME = 'SHORT'
+TEST_CATEGORY = 'General'
+TEST_CLASS = 'enterprise'
+TEST_TYPE = 'client'
 
-DOC = """
+DOC = '''
 Verify effect of ForceYouTubeSafetyMode policy on client behavior.
 
 This test verifies the effect of the ForceYouTubeSafetyMode user policy on
@@ -22,6 +21,8 @@ A test case shall pass when the YouTube.com page indicates that 'Restricted
 Mode' is On (or Off) when the policy is set true (or is set false or not set).
 A test case shall fail if the above behavior is not enforced.
 
-"""
+'''
 
-job.run_test("policy_ForceYouTubeSafetyMode", args=args)
+args_dict = utils.args_to_dict(args)
+
+job.run_test('policy_ForceYouTubeSafetyMode', **args_dict)

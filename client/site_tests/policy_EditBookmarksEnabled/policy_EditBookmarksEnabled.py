@@ -47,38 +47,10 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
 
     # Dictionary of named test cases and policy data.
     TEST_CASES = {
-        'True_Enabled': True,
-        'False_Disabled': False,
-        'NotSet_Enabled': None
+        'True_Enable': True,
+        'False_Disable': False,
+        'NotSet_Enable': None
     }
-
-    def _test_edit_bookmarks_enabled(self, policy_value, policies_dict):
-        """Verify CrOS enforces EditBookmarksEnabled policy.
-
-        When EditBookmarksEnabled is true or not set, the UI allows the user
-        to add bookmarks. When false, the UI does not allow the user to add
-        bookmarks.
-
-        Warning: When the 'Bookmark Editing' setting on the CPanel User
-        Settings page is set to 'Enable bookmark editing', then the
-        EditBookmarksEnabled policy on the client will be not set. Thus, to
-        verify the 'Enable bookmark editing' choice from a production or
-        staging DMS, use case=NotSet_Enabled.
-
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
-
-        """
-        logging.info('Running _test_edit_bookmarks_enabled(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-        add_bookmark_is_disabled = self._is_add_bookmark_disabled()
-        if policy_value == 'true' or policy_value == 'null':
-            if add_bookmark_is_disabled:
-                raise error.TestFail('Add Bookmark should be enabled.')
-        else:
-            if not add_bookmark_is_disabled:
-                raise error.TestFail('Add Bookmark should be disabled.')
 
     def _is_add_bookmark_disabled(self):
         """Check whether add-new-bookmark-command menu item is disabled.
@@ -100,28 +72,45 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         tab.Close()
         return is_disabled
 
+    def _test_edit_bookmarks_enabled(self, policy_value, policies_dict):
+        """Verify CrOS enforces EditBookmarksEnabled policy.
+
+        When EditBookmarksEnabled is true or not set, the UI allows the user
+        to add bookmarks. When false, the UI does not allow the user to add
+        bookmarks.
+
+        Warning: When the 'Bookmark Editing' setting on the CPanel User
+        Settings page is set to 'Enable bookmark editing', then the
+        EditBookmarksEnabled policy on the client will be not set. Thus, to
+        verify the 'Enable bookmark editing' choice from a production or
+        staging DMS, use case=NotSet_Enable.
+
+        @param policy_value: policy value expected on chrome://policy page.
+        @param policies_dict: policy dict data to send to the fake DM server.
+
+        """
+        logging.info('Running _test_edit_bookmarks_enabled(%s, %s)',
+                     policy_value, policies_dict)
+        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
+        add_bookmark_is_disabled = self._is_add_bookmark_disabled()
+        if policy_value == 'true' or policy_value == 'null':
+            if add_bookmark_is_disabled:
+                raise error.TestFail('Add Bookmark should be enabled.')
+        else:
+            if not add_bookmark_is_disabled:
+                raise error.TestFail('Add Bookmark should be disabled.')
+
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data based on the
-        test |case|. If the user specified an expected |value|, then use it to
-        set the |policy_value| and blank out |policies_dict|.
+        Set the expected |policy_value| and |policies_dict| data defined for
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
-            # If |value| was given by user, then set expected |policy_value|
-            # to the given value, and setup |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
-        else:
-            # Otherwise, set expected |policy_value| and setup |policies_dict|
-            # data to the defaults required by the test |case|.
-            policy_value = self.packed_json_string(self.TEST_CASES[case])
-            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-            policies_dict = self.SUPPORTING_POLICIES.copy()
-            policies_dict.update(policy_dict)
-
-        # Run test using values configured for the test case.
+        policy_value = self.packed_json_string(self.TEST_CASES[case])
+        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+        policies_dict = self.SUPPORTING_POLICIES.copy()
+        policies_dict.update(policy_dict)
         self._test_edit_bookmarks_enabled(policy_value, policies_dict)
