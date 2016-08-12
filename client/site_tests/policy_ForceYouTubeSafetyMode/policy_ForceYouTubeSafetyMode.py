@@ -81,24 +81,13 @@ class policy_ForceYouTubeSafetyMode(
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data based on the
-        test |case|. If the user specified an expected |value|, then use it to
-        set the |policy_value| and blank out |policies_dict|.
+        test |case|.
 
         @param case: Name of the test case to run.
 
         """
-        if self.is_value_given:
-            # If |value| was given by user, then set expected |policy_value|
-            # to the given value, and setup |policies_dict| to None.
-            policy_value = self.value
-            policies_dict = None
-        else:
-            # Otherwise, set expected |policy_value| and setup |policies_dict|
-            # data to the defaults required by the test |case|.
-            policy_value = self.packed_json_string(self.TEST_CASES[case])
-            policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-            policies_dict = self.SUPPORTING_POLICIES.copy()
-            policies_dict.update(policy_dict)
-
-        # Run test using values configured for the test case.
+        policy_value = self.packed_json_string(self.TEST_CASES[case])
+        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+        policies_dict = self.SUPPORTING_POLICIES.copy()
+        policies_dict.update(policy_dict)
         self._test_force_youtube_safety(policy_value, policies_dict)
