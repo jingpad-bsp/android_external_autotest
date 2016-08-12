@@ -58,17 +58,20 @@ ANDROID_XMLRPC_LOG_FILE_FMT = '/var/log/android_xmlrpc_server-%s.log'
 ANDROID_LOCAL_DEBUG_DIR_FMT = 'android_debug_%s'
 
 
-def install_android_xmlrpc_server(host):
+def install_android_xmlrpc_server(host, server_port):
     """Install Android XMLRPC server script on |host|.
 
     @param host: host object representing a remote device.
+    @param server_port string of port number to start server on.
 
     """
     current_dir = os.path.dirname(os.path.realpath(__file__))
     xmlrpc_server_script = os.path.join(
             current_dir, ANDROID_XMLRPC_SERVER_AUTOTEST_PATH)
-    host.send_file(
-            xmlrpc_server_script, constants.ANDROID_XMLRPC_SERVER_TARGET_DIR)
+    script_instance = constants.ANDROID_XMLRPC_SERVER_FMT % server_port
+    target_file = (constants.ANDROID_XMLRPC_SERVER_TARGET_DIR + '/'
+                   + script_instance)
+    host.send_file(xmlrpc_server_script, target_file)
 
 
 def get_xmlrpc_proxy(host):
@@ -88,25 +91,33 @@ def get_xmlrpc_proxy(host):
     if host.is_client_install_supported:
         client_at = autotest.Autotest(host)
         client_at.install()
+    # This is the default port for shill xmlrpc server.
+    server_port = constants.SHILL_XMLRPC_SERVER_PORT
+
     if host.get_os_type() == adb_host.OS_TYPE_BRILLO:
         xmlrpc_server_command = constants.SHILL_BRILLO_XMLRPC_SERVER_COMMAND
         log_path = SHILL_BRILLO_XMLRPC_LOG_PATH
         command_name = constants.SHILL_BRILLO_XMLRPC_SERVER_CLEANUP_PATTERN
         rpc_server_host = host
     elif host.get_os_type() == adb_host.OS_TYPE_ANDROID:
-        xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND
-        command_name = constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN
         if not host.adb_serial:
             raise error.TestFail('No serial number detected')
         debug_dir = ANDROID_XMLRPC_DEBUG_DIR_FMT % host.adb_serial
         log_path = ANDROID_XMLRPC_LOG_FILE_FMT % host.adb_serial
         teststation = host.teststation
         hostname = teststation.hostname.split('.')[0]
+        instance = re.search("(\d+)(?!.*\d)", hostname)
+        val = int(instance.group())
+        server_port = constants.SHILL_XMLRPC_SERVER_PORT + val
+        xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND_FMT % (
+                constants.ANDROID_XMLRPC_SERVER_TARGET_DIR, server_port)
+        command_name = (constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN +
+                       str(server_port))
         xmlrpc_server_command = (
-                '%s -s %s -l %s -t %s' % (
+                '%s -s %s -l %s -t %s -p %d' % (
                 xmlrpc_server_command, host.adb_serial, debug_dir,
-                hostname))
-        install_android_xmlrpc_server(teststation)
+                hostname, server_port))
+        install_android_xmlrpc_server(teststation, str(server_port))
         # For android, start the XML RPC server on the accompanying host.
         rpc_server_host = teststation
     else:
@@ -114,10 +125,11 @@ def get_xmlrpc_proxy(host):
         log_path = SHILL_XMLRPC_LOG_PATH
         command_name = constants.SHILL_XMLRPC_SERVER_CLEANUP_PATTERN
         rpc_server_host = host
+
     # Start up the XMLRPC proxy on the client
     proxy = rpc_server_host.rpc_server_tracker.xmlrpc_connect(
             xmlrpc_server_command,
-            constants.SHILL_XMLRPC_SERVER_PORT,
+            server_port,
             command_name=command_name,
             ready_test_name=constants.SHILL_XMLRPC_SERVER_READY_METHOD,
             timeout_seconds=XMLRPC_BRINGUP_TIMEOUT_SECONDS,
