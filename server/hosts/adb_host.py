@@ -1748,9 +1748,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def _enable_native_crash_logging(self):
         """Enable native (non-Java) crash logging.
         """
-        if self.get_os_type() == OS_TYPE_BRILLO:
-            self._enable_brillo_native_crash_logging()
-        elif self.get_os_type() == OS_TYPE_ANDROID:
+        # TODO(b/30820403): Enable Brillo native crash logging.
+        # if self.get_os_type() == OS_TYPE_BRILLO:
+        #     self._enable_brillo_native_crash_logging()
+        if self.get_os_type() == OS_TYPE_ANDROID:
             self._enable_android_native_crash_logging()
 
 
