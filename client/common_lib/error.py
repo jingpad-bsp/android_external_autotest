@@ -189,12 +189,13 @@ class AutotestTimeoutError(AutotestError):
     pass
 
 
-class HostRunErrorMixIn(Exception):
-    """
-    Indicates a problem in the host run() function raised from client code.
+class GenericHostRunError(Exception):
+    """Indicates a problem in the host run() function running in either client
+    or server code.
+
     Should always be constructed with a tuple of two args (error description
-    (str), run result object). This is a common class mixed in to create the
-    client and server side versions of it.
+    (str), run result object). This is a common class used to create the client
+    and server side versions of it when the distinction is useful.
     """
     def __init__(self, description, result_obj):
         self.description = description
@@ -213,7 +214,7 @@ class HostInstallTimeoutError(JobError):
     pass
 
 
-class AutotestHostRunError(HostRunErrorMixIn, AutotestError):
+class AutotestHostRunError(GenericHostRunError, AutotestError):
     pass
 
 
@@ -228,7 +229,7 @@ class AutoservSSHTimeout(AutoservError):
     pass
 
 
-class AutoservRunError(HostRunErrorMixIn, AutoservError):
+class AutoservRunError(GenericHostRunError, AutoservError):
     pass
 
 

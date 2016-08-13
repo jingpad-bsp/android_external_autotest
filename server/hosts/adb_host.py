@@ -188,7 +188,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             result = host.run(
                     'test -f %s' % server_constants.ANDROID_TESTER_FILEFLAG,
                     timeout=timeout)
-        except (error.AutoservRunError, error.AutoservSSHTimeout):
+        except (error.GenericHostRunError, error.AutoservSSHTimeout):
             if current_user is not None:
                 host.user = current_user
             return False
@@ -266,7 +266,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def _restart_adbd_with_root_permissions(self):
         """Restarts the adb daemon with root permissions."""
-        @retry.retry(error.AutoservRunError, timeout_min=20/60.0, delay_sec=1)
+        @retry.retry(error.GenericHostRunError, timeout_min=20/60.0,
+                     delay_sec=1)
         def run_adb_root():
             """Run command `adb root`."""
             self.adb_run('root')
@@ -318,7 +319,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     # pylint: disable=missing-docstring
-    @retry.retry(error.AutoservRunError,
+    @retry.retry(error.GenericHostRunError,
                  timeout_min=DEFAULT_FASTBOOT_RETRY_TIMEOUT_MIN)
     def _fastboot_run_with_retry(self, command, **kwargs):
         """Runs an fastboot command with retry.
@@ -457,7 +458,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # via ADB.
         try:
             self._reset_adbd_connection()
-        except (error.AutotestHostRunError, error.AutoservRunError) as e:
+        except error.GenericHostRunError as e:
             logging.error('Unable to reset the device adb daemon connection: '
                           '%s.', e)
 
@@ -801,8 +802,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         try:
             self.adb_run('logcat -v time -d > "%s"' % (teststation_filename),
                          timeout=20)
-        except (error.AutotestHostRunError, error.AutoservRunError,
-                error.AutoservSSHTimeout, error.CmdTimeoutError):
+        except (error.GenericHostRunError, error.AutoservSSHTimeout,
+                error.CmdTimeoutError):
             return
         # Copy-back the log to the drone's results directory.
         results_logcat_filename = os.path.join(self.job.resultdir,
@@ -811,7 +812,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                   results_logcat_filename)
         try:
             self.teststation.run('rm -rf %s' % tmp_dir)
-        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+        except (error.GenericHostRunError, error.AutoservSSHTimeout) as e:
             logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
         self._collect_crash_logs()
@@ -970,7 +971,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # Cleanup the test station.
         try:
             self.teststation.run('rm -rf %s' % tmp_dir)
-        except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+        except (error.GenericHostRunError, error.AutoservSSHTimeout) as e:
             logging.warn('failed to remove dir %s: %s', tmp_dir, e)
 
 
@@ -1049,7 +1050,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                                       delete_dest=delete_dest)
             try:
                 self.teststation.run('rm -rf %s' % teststation_temp_dir)
-            except (error.AutoservRunError, error.AutoservSSHTimeout) as e:
+            except (error.GenericHostRunError, error.AutoservSSHTimeout) as e:
                 logging.warn('failed to remove dir %s: %s',
                              teststation_temp_dir, e)
 
@@ -1274,7 +1275,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     'Failed to parse build url: %s\nError: %s' % (build_url, e))
 
 
-    @retry.retry(error.AutoservRunError, timeout_min=10)
+    @retry.retry(error.GenericHostRunError, timeout_min=10)
     def download_file(self, build_url, file, dest_dir, unzip=False,
                       unzip_dest=None):
         """Download the given file from the build url.
@@ -1579,7 +1580,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.stdout.splitlines()
 
 
-    @retry.retry(error.AutoservRunError, timeout_min=APK_INSTALL_TIMEOUT_MIN)
+    @retry.retry(error.GenericHostRunError, timeout_min=APK_INSTALL_TIMEOUT_MIN)
     def install_apk(self, apk, force_reinstall=True):
         """Install the specified apk.
 
@@ -1603,12 +1604,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     timeout=120)
             return self.adb_run('install %s -d %s' %
                                 ('-r' if force_reinstall else '', apk))
-        except error.AutoservRunError:
+        except error.GenericHostRunError:
             self.reboot()
             raise
 
 
-    @retry.retry(error.AutoservRunError, timeout_min=0.2)
+    @retry.retry(error.GenericHostRunError, timeout_min=0.2)
     def _confirm_apk_installed(self, package_name):
         """Confirm if apk is already installed with the given name.
 
@@ -1766,7 +1767,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             self.run('stop crash_sender',
                      timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS,
                      ignore_timeout=True)
-        except error.AutoservRunError as e:
+        except error.GenericHostRunError as e:
             logging.warn(e)
             logging.warn('Failed to enable Brillo native crash logging.')
 
@@ -1802,8 +1803,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             result = self.run('find %s -maxdepth 1 -type f' % log_directory,
                               timeout=DEFAULT_COMMAND_RETRY_TIMEOUT_SECONDS)
             files = result.stdout.strip().split()
-        except (error.AutotestHostRunError, error.AutoservRunError,
-                error.AutoservSSHTimeout, error.CmdTimeoutError):
+        except (error.GenericHostRunError, error.AutoservSSHTimeout,
+                error.CmdTimeoutError):
             logging.debug('Unable to call find %s, unable to find crash logs',
                           log_directory)
         if not files:

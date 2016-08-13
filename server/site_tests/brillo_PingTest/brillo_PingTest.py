@@ -47,7 +47,7 @@ class brillo_PingTest(test.test):
                                               ping_host)
             try:
                 host.run(cmd)
-            except error.AutoservRunError:
+            except error.GenericHostRunError:
                 raise error.TestFail(
                         'Failed to ping %s in %d seconds on all %d attempts' %
                         (ping_host, ping_timeout, ping_count))
