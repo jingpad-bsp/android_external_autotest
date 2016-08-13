@@ -22,5 +22,5 @@ class brillo_Keymaster(test.test):
         """
         try:
             host.run(self.TEST_EXECUTABLE)
-        except error.AutoservRunError as run_error:
+        except error.GenericHostRunError as run_error:
             raise error.TestFail(run_error)
