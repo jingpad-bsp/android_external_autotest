@@ -11,7 +11,7 @@ from autotest_lib.client.common_lib import utils
 
 def get_network_stats(machine):
     try:
-        dut = hosts.create_target_machine(machine, initialize=False)
+        dut = hosts.create_target_machine(machine)
 
         # The information is not critical, so ping the DUT first
         # and if it doesn't reply quickly, give up.
