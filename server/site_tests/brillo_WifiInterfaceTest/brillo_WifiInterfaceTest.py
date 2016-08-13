@@ -84,7 +84,7 @@ class brillo_WifiInterfaceTest(test.test):
                     if (iface_ssid is not None and
                         (wifi_ssid is None or iface_ssid == wifi_ssid)):
                         active_ifaces.append(iface)
-            except error.AutoservRunError:
+            except error.GenericHostRunError:
                 raise error.TestFail('Failed to run iw')
 
             if not active_ifaces:
@@ -98,7 +98,7 @@ class brillo_WifiInterfaceTest(test.test):
             # Then check IPv4 connectivity.
             try:
                 ifconfig_output = host.run_output('ifconfig').splitlines()
-            except error.AutoservRunError:
+            except error.GenericHostRunError:
                 raise error.TestFail('Failed to run ifconfig')
 
             ifconfig_dict = self.get_ifconfig_dict(ifconfig_output)

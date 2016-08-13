@@ -35,5 +35,5 @@ class brillo_NVRAM(test.test):
             if self._get_prop(host, 'ro.hardware.nvram') == 'testing':
                 raise error.TestFail('NVRAM HAL is not hardware-backed')
             host.run(self.TEST_EXECUTABLE)
-        except error.AutoservRunError as run_error:
+        except error.GenericHostRunError as run_error:
             raise error.TestFail(run_error)

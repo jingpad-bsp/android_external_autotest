@@ -144,7 +144,7 @@ class brillo_Gtests(test.test):
                             'Not all whitelisted tests found on the DUT. '
                             'Expected %i tests but only found %i' %
                             (len(whitelisted), len(suites_to_run)))
-            except error.AutoservRunError:
+            except error.GenericHostRunError:
                 logging.error('Failed to read whitelist %s', WHITELIST_FILE)
 
         if filter_tests:
