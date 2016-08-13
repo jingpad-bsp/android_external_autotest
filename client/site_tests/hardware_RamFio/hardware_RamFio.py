@@ -54,8 +54,14 @@ class hardware_RamFio(test.test):
             return
 
         utils.run('mkdir -p %s' % self._RAMDISK)
-        utils.run('mount -t ramfs -o context=u:object_r:tmpfs:s0 ramfs %s' %
-                  self._RAMDISK)
+        # Don't throw an exception on errors.
+        result = utils.run('mount -t ramfs -o context=u:object_r:tmpfs:s0 '
+                           'ramfs %s' % self._RAMDISK, ignore_status = True)
+        if result.exit_status:
+            logging.info('cannot mount ramfs with context=u:object_r:tmpfs:s0,'
+                         ' trying plain mount')
+            # Try again without selinux options.  This time fail on error.
+            utils.run('mount -t ramfs ramfs %s' % self._RAMDISK)
 
         self.job.run_test('hardware_StorageFio',
                           dev='%s/test_file' % self._RAMDISK,
