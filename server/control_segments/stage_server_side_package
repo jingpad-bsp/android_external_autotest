@@ -15,7 +15,7 @@ ssp_url = None
 # Only need to stage server side package once.
 for machine in machines:
     try:
-        host = hosts.create_host(machine, initialize=False, auto_monitor=False)
+        host = hosts.create_host(machine)
         ssp_url = host.stage_server_side_package(image)
         break
     except (error.AutoservError, dev_server.DevServerException) as e:

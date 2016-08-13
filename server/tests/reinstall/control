@@ -10,7 +10,7 @@ This will re-install a machine, using the code in
 afe_utils.machine_install_and_update_labels()."""
 
 def run(machine):
-    host = hosts.create_host(machine, initialize=False)
+    host = hosts.create_host(machine)
     job.run_test('reinstall', host=host, disable_sysinfo=True)
 
 job.parallel_simple(run, machines)
