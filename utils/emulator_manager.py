@@ -38,7 +38,7 @@ class EmulatorManager(object):
                                             'between 5555 and 5585.')
         try:
             run('test -f %s' % os.path.join(imagedir, 'system.img'))
-        except (error.AutoservRunError, error.AutotestHostRunError):
+        except error.GenericHostRunError:
             raise EmulatorManagerException('Image directory must exist and '
                                            'contain emulator images.')
 
