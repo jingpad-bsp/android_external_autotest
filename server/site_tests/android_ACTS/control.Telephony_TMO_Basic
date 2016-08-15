@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = 'angli, krisr'
-NAME = 'android_ACTS.TelephonyTMOSanity'
-TIME = 'MEDIUM'
+NAME = 'android_ACTS.Telephony_TMO_Basic'
+TIME = 'LONG'
 TEST_TYPE = 'Server'
 
 DOC = """
@@ -15,7 +15,8 @@ def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-telephony-test-station.config',
-                 test_file='telephony_tmo_sanity',
-                 additional_configs=['simcard_list.json'])
+                 test_file='telephony_tmo_basic',
+                 additional_configs=['simcard_list.json'],
+                 acts_timeout=18000)
 
 parallel_simple(run, machines)
