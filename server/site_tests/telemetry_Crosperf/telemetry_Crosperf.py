@@ -1,24 +1,26 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import json
 import logging
-import math
 import re
 import os
-import pprint
 import StringIO
 
 import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
 from autotest_lib.server import utils
+from autotest_lib.site_utils import test_runner_utils
+from autotest_lib.server.cros import telemetry_runner
 
 
 TELEMETRY_TIMEOUT_MINS = 60
 CHROME_SRC_ROOT = '/var/cache/chromeos-cache/distfiles/target/'
 CLIENT_CHROME_ROOT = '/usr/local/telemetry/src'
 RUN_BENCHMARK  = 'tools/perf/run_benchmark'
+
+RSA_KEY = '-i %s' % test_runner_utils.TEST_KEY_PATH
+DUT_CHROME_RESULTS_DIR = '/usr/local/telemetry/src/tools/perf'
 
 # Result Statuses
 SUCCESS_STATUS = 'SUCCESS'
@@ -96,211 +98,36 @@ def _ensure_deps(dut, test_name):
             raise error.TestFail('Error occurred while sending DEPs to dut.\n')
 
 
-class TelemetryResult(object):
-    """Class to represent the results of a telemetry run.
-
-    This class represents the results of a telemetry run, whether it ran
-    successful, failed or had warnings. -- Copied from the old
-    autotest/files/server/cros/telemetry_runner.py.
-    """
-
-
-    def __init__(self, exit_code=0, stdout='', stderr=''):
-        """Initializes this TelemetryResultObject instance.
-
-        @param status: Status of the telemtry run.
-        @param stdout: Stdout of the telemetry run.
-        @param stderr: Stderr of the telemetry run.
-        """
-        if exit_code == 0:
-            self.status = SUCCESS_STATUS
-        else:
-            self.status = FAILED_STATUS
-
-        # A list of perf values, e.g.
-        # [{'graph': 'graphA', 'trace': 'page_load_time',
-        #   'units': 'secs', 'value':0.5}, ...]
-        self.perf_data = []
-        self._stdout = stdout
-        self._stderr = stderr
-        self.output = '\n'.join([stdout, stderr])
-
-
-    def _cleanup_perf_string(self, str):
-        """Clean up a perf-related string by removing illegal characters.
-
-        Perf keys stored in the chromeOS database may contain only letters,
-        numbers, underscores, periods, and dashes.  Transform an inputted
-        string so that any illegal characters are replaced by underscores.
-
-        @param str: The perf string to clean up.
-
-        @return The cleaned-up perf string.
-        """
-        return re.sub(r'[^\w.-]', '_', str)
-
-
-    def _cleanup_units_string(self, units):
-        """Cleanup a units string.
-
-        Given a string representing units for a perf measurement, clean it up
-        by replacing certain illegal characters with meaningful alternatives.
-        Any other illegal characters should then be replaced with underscores.
-
-        Examples:
-            count/time -> count_per_time
-            % -> percent
-            units! --> units_
-            score (bigger is better) -> score__bigger_is_better_
-            score (runs/s) -> score__runs_per_s_
-
-        @param units: The units string to clean up.
-
-        @return The cleaned-up units string.
-        """
-        if '%' in units:
-            units = units.replace('%', 'percent')
-        if '/' in units:
-            units = units.replace('/','_per_')
-        return self._cleanup_perf_string(units)
-
-
-    def parse_benchmark_results(self):
-        """Parse the results of a telemetry benchmark run.
-
-        Stdout has the output in RESULT block format below.
-
-        The lines of interest start with the substring "RESULT".  These are
-        specially-formatted perf data lines that are interpreted by chrome
-        builbot (when the Telemetry tests run for chrome desktop) and are
-        parsed to extract perf data that can then be displayed on a perf
-        dashboard.  This format is documented in the docstring of class
-        GraphingLogProcessor in this file in the chrome tree:
-
-        chromium/tools/build/scripts/slave/process_log_utils.py
-
-        Example RESULT output lines:
-        RESULT average_commit_time_by_url: http___www.ebay.com= 8.86528 ms
-        RESULT CodeLoad: CodeLoad= 6343 score (bigger is better)
-        RESULT ai-astar: ai-astar= [614,527,523,471,530,523,577,625,614,538] ms
-
-        Currently for chromeOS, we can only associate a single perf key (string)
-        with a perf value.  That string can only contain letters, numbers,
-        dashes, periods, and underscores, as defined by write_keyval() in:
-
-        chromeos/src/third_party/autotest/files/client/common_lib/
-        base_utils.py
-
-        We therefore parse each RESULT line, clean up the strings to remove any
-        illegal characters not accepted by chromeOS, and construct a perf key
-        string based on the parsed components of the RESULT line (with each
-        component separated by a special delimiter).  We prefix the perf key
-        with the substring "TELEMETRY" to identify it as a telemetry-formatted
-        perf key.
-
-        Stderr has the format of Warnings/Tracebacks. There is always a default
-        warning of the display enviornment setting, followed by warnings of
-        page timeouts or a traceback.
-
-        If there are any other warnings we flag the test as warning. If there
-        is a traceback we consider this test a failure.
-        """
-        if not self._stdout:
-            # Nothing in stdout implies a test failure.
-            logging.error('No stdout, test failed.')
-            self.status = FAILED_STATUS
-            return
-
-        stdout_lines = self._stdout.splitlines()
-        num_lines = len(stdout_lines)
-        for line in stdout_lines:
-            results_match = RESULTS_REGEX.search(line)
-            histogram_match = HISTOGRAM_REGEX.search(line)
-            if results_match:
-                self._process_results_line(results_match)
-            elif histogram_match:
-                self._process_histogram_line(histogram_match)
-
-        pp = pprint.PrettyPrinter(indent=2)
-        logging.debug('Perf values: %s', pp.pformat(self.perf_data))
-
-        if self.status is SUCCESS_STATUS:
-            return
-
-        # Otherwise check if simply a Warning occurred or a Failure,
-        # i.e. a Traceback is listed.
-        self.status = WARNING_STATUS
-        for line in self._stderr.splitlines():
-            if line.startswith('Traceback'):
-                self.status = FAILED_STATUS
-
-    def _process_results_line(self, line_match):
-        """Processes a line that matches the standard RESULT line format.
-
-        Args:
-          line_match: A MatchObject as returned by re.search.
-        """
-        match_dict = line_match.groupdict()
-        graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
-        trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
-        units = self._cleanup_units_string(
-                (match_dict['UNITS'] or 'units').strip())
-        value = match_dict['VALUE'].strip()
-        unused_important = match_dict['IMPORTANT'] or False  # Unused now.
-
-        if value.startswith('['):
-            # A list of values, e.g., "[12,15,8,7,16]".  Extract just the
-            # numbers, compute the average and use that.  In this example,
-            # we'd get 12+15+8+7+16 / 5 --> 11.6.
-            value_list = [float(x) for x in value.strip('[],').split(',')]
-            value = float(sum(value_list)) / len(value_list)
-        elif value.startswith('{'):
-            # A single value along with a standard deviation, e.g.,
-            # "{34.2,2.15}".  Extract just the value itself and use that.
-            # In this example, we'd get 34.2.
-            value_list = [float(x) for x in value.strip('{},').split(',')]
-            value = value_list[0]  # Position 0 is the value.
-        elif re.search('^\d+$', value):
-            value = int(value)
-        else:
-            value = float(value)
-
-        self.perf_data.append({'graph':graph_name, 'trace': trace_name,
-                               'units': units, 'value': value})
-
-    def _process_histogram_line(self, line_match):
-        """Processes a line that matches the HISTOGRAM line format.
-
-        Args:
-          line_match: A MatchObject as returned by re.search.
-        """
-        match_dict = line_match.groupdict()
-        graph_name = self._cleanup_perf_string(match_dict['GRAPH'].strip())
-        trace_name = self._cleanup_perf_string(match_dict['TRACE'].strip())
-        units = self._cleanup_units_string(
-                (match_dict['UNITS'] or 'units').strip())
-        histogram_json = match_dict['VALUE_JSON'].strip()
-        unused_important = match_dict['IMPORTANT'] or False  # Unused now.
-        histogram_data = json.loads(histogram_json)
-
-        # Compute geometric mean
-        count = 0
-        sum_of_logs = 0
-        for bucket in histogram_data['buckets']:
-            mean = (bucket['low'] + bucket['high']) / 2.0
-            if mean > 0:
-                sum_of_logs += math.log(mean) * bucket['count']
-                count += bucket['count']
-
-        value = math.exp(sum_of_logs / count) if count > 0 else 0.0
-
-        self.perf_data.append({'graph':graph_name, 'trace': trace_name,
-                               'units': units, 'value': value})
-
-
 class telemetry_Crosperf(test.test):
     """Run one or more telemetry benchmarks under the crosperf script."""
     version = 1
+
+    def scp_telemetry_results(self, client_ip, dut):
+        """Copy telemetry results from dut.
+
+        @param client_ip: The ip address of the DUT
+        @param dut: The autotest host object representing DUT.
+
+        @returns status code for scp command.
+        """
+        cmd=[]
+        src = ('root@%s:%s/results-chart.json' %
+               (dut.hostname if dut else client_ip, DUT_CHROME_RESULTS_DIR))
+        cmd.extend(['scp', telemetry_runner.DUT_SCP_OPTIONS, RSA_KEY, '-v',
+                    src, self.resultsdir])
+        command = ' '.join(cmd)
+
+        logging.debug('Retrieving Results: %s', command)
+        try:
+            result = utils.run(command,
+                               timeout=TELEMETRY_TIMEOUT_MINS * 60)
+            exit_code = result.exit_status
+        except Exception as e:
+            logging.info('Failed to retrieve results: %s', e)
+            raise e
+
+        logging.debug('command return value: %d', exit_code)
+        return exit_code
 
     def run_once(self, args, client_ip='', dut=None):
         """
@@ -322,7 +149,8 @@ class telemetry_Crosperf(test.test):
         if 'run_local' in args and args['run_local'].lower() == 'true':
             # The telemetry scripts will run on DUT.
             _ensure_deps(dut, test_name)
-            format_string = ('python %s --browser=system %s %s')
+            format_string = ('python %s --browser=system '
+                             '--output-format=chartjson %s %s')
             command = format_string % (os.path.join(CLIENT_CHROME_ROOT,
                                                     RUN_BENCHMARK),
                                        test_args, test_name)
@@ -330,7 +158,7 @@ class telemetry_Crosperf(test.test):
         else:
             # The telemetry scripts will run on server.
             format_string = ('python %s --browser=cros-chrome --remote=%s '
-                             '%s %s')
+                             '--output-format=chartjson %s %s')
             command = format_string % (os.path.join(_find_chrome_root_dir(),
                                                     RUN_BENCHMARK),
                                        client_ip, test_args, test_name)
@@ -355,24 +183,24 @@ class telemetry_Crosperf(test.test):
             stdout.close()
             stderr.close()
 
-
-        # Parse the result.
-        logging.debug('Telemetry completed with exit code: %d.'
-                      '\nstdout:%s\nstderr:%s', exit_code,
-                      stdout_str, stderr_str)
         logging.info('Telemetry completed with exit code: %d.'
                      '\nstdout:%s\nstderr:%s', exit_code,
                      stdout_str, stderr_str)
 
-        result = TelemetryResult(exit_code=exit_code,
-                                 stdout=stdout_str,
-                                 stderr=stderr_str)
+        # Copy the results-chart.json file into the test_that results
+        # directory.
+        if 'run_local' in args and args['run_local'].lower() == 'true':
+            result = self.scp_telemetry_results(client_ip, dut)
+        else:
+            src_dir = os.path.dirname(os.path.join(_find_chrome_root_dir(),
+                                                   RUN_BENCHMARK))
 
-        result.parse_benchmark_results()
-        for data in result.perf_data:
-            self.output_perf_value(description=data['trace'],
-                                   value=data['value'],
-                                   units=data['units'],
-                                   graph=data['graph'])
+            filepath = os.path.join(src_dir, 'results-chart.json')
+            if os.path.exists(filepath):
+                command = 'cp %s %s' % (filepath, self.resultsdir)
+                result = utils.run(command)
+            else:
+                raise IOError('Missing results file: %s', filepath)
+
 
         return result
