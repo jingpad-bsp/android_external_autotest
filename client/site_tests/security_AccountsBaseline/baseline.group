@@ -4,7 +4,7 @@ daemon:!:2:root,bin,daemon
 sys:!:3:root,bin,adm
 adm:!:4:root,adm,daemon
 disk:!:6:root,adm
-lp:!:7:lp,cups
+lp:!:7:lp,cups,chronos
 mem:!:8:
 kmem:!:9:
 wheel:!:10:root
