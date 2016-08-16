@@ -7,7 +7,7 @@ import csv, datetime, os, re, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test, autotest
+from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 _MEASUREMENT_DURATION_SECONDS = 10
@@ -41,7 +41,8 @@ class enterprise_CFM_Perf(test.test):
 
     def _temperature_data(self):
         """Returns temperature sensor data in fahrenheit."""
-        if (utils.system('which ectool', ignore_status=True) == 0):
+        ectool = self.client.run('which ectool', ignore_status=True)
+        if not ectool.exit_status:
             ec_temp = self.system_facade.get_ec_temperatures()
             return ec_temp[1]
         else:
