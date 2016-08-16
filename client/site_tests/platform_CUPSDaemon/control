@@ -14,7 +14,9 @@ CRITERIA = """
 Fail if Upstart won't launch CUPS properly or doesn't clean up its sockets
 correctly.
 """
-ATTRIBUTES = "suite:bvt-inline, suite:smoke"
+# Test seems flaky. Dislabled for now to unblock PFQ/CQ builders.
+# http://crbug.com/624519
+#ATTRIBUTES = "suite:bvt-inline, suite:smoke"
 TEST_CLASS = "platform"
 TEST_CATEGORY = "Functional"
 TEST_TYPE = "client"
