@@ -129,8 +129,7 @@ RewriteRule ^/afe/server/admin/afe/(aclgroup|atomicgroup|host|label|profiler|tes
     # the autotest memory leak from biting us by setting maximum-requests,
     # which will recycle each daemon process after it gets a certain number of
     # web requests.
-    # TODO(phobbs) consider bumping the number of processes now that the memory leak is under control.
-    WSGIDaemonProcess autotestapache processes=20 threads=1 maximum-requests=200
+    WSGIDaemonProcess autotestapache processes=40 threads=1 maximum-requests=200
     WSGIProcessGroup autotestapache
     WSGIPassAuthorization On
 </IfModule>
