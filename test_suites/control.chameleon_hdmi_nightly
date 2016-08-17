@@ -42,7 +42,7 @@ _BUG_TEMPLATE = {
     'cc': ['waihong@chromium.org', 'conradlo@chromium.org']
 }
 
-args_dict['suite_dependencies'] = 'chameleon:hdmi,nightly_set'
+args_dict['suite_dependencies'] = 'chameleon:hdmi, nightly_set'
 args_dict['name'] = NAME
 args_dict['max_runtime_mins'] = 240
 args_dict['job'] = job
