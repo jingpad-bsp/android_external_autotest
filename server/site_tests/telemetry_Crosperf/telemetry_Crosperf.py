@@ -123,8 +123,8 @@ class telemetry_Crosperf(test.test):
                                timeout=TELEMETRY_TIMEOUT_MINS * 60)
             exit_code = result.exit_status
         except Exception as e:
-            logging.info('Failed to retrieve results: %s', e)
-            raise e
+            logging.error('Failed to retrieve results: %s', e)
+            raise
 
         logging.debug('command return value: %d', exit_code)
         return exit_code
@@ -146,7 +146,7 @@ class telemetry_Crosperf(test.test):
             test_args = args['test_args']
 
         # Decide whether the test will run locally or by a remote server.
-        if 'run_local' in args and args['run_local'].lower() == 'true':
+        if args.get('run_local', 'false').lower() == 'true':
             # The telemetry scripts will run on DUT.
             _ensure_deps(dut, test_name)
             format_string = ('python %s --browser=system '
@@ -189,7 +189,7 @@ class telemetry_Crosperf(test.test):
 
         # Copy the results-chart.json file into the test_that results
         # directory.
-        if 'run_local' in args and args['run_local'].lower() == 'true':
+        if args.get('run_local', 'false').lower() == 'true':
             result = self.scp_telemetry_results(client_ip, dut)
         else:
             src_dir = os.path.dirname(os.path.join(_find_chrome_root_dir(),
@@ -200,7 +200,7 @@ class telemetry_Crosperf(test.test):
                 command = 'cp %s %s' % (filepath, self.resultsdir)
                 result = utils.run(command)
             else:
-                raise IOError('Missing results file: %s', filepath)
+                raise IOError('Missing results file: %s' % filepath)
 
 
         return result
