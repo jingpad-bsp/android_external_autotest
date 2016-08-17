@@ -1,18 +1,18 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
 
 AUTHOR = "Chrome OS Team"
-NAME = "platform_ExternalUsbPeripherals.detect"
+NAME = "platform_ExternalUsbPeripherals.usb_detect.crashes"
 PURPOSE = "Servo based USB boot stress test"
 CRITERIA = "This test will fail if any of the actions or checks fail."
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "platform"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:usb_detect_stress"
+ATTRIBUTES = "suite:manual_platform_suite"
 DEPENDENCIES = "servo, usb_detect"
 
 DOC = """
@@ -81,6 +81,7 @@ def run(machine):
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
                  action_sequence=action_sequence, repeat=repeat,
-                 usb_list=usb_list, usb_checks=usb_checks, tag="detect")
+                 usb_list=usb_list, usb_checks=usb_checks,
+                 crash_check=True, tag="usb_detect.crashes")
 
 parallel_simple(run, machines)
