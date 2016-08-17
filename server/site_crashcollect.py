@@ -12,6 +12,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
+from autotest_lib.server.crashcollect import collect_log_file
 from autotest_lib.server import utils
 
 
@@ -146,7 +147,7 @@ def fetch_orphaned_crashdumps(host, host_resultdir):
     minidumps = []
     for file in host.list_files_glob(os.path.join(constants.CRASH_DIR, '*')):
         logging.info('Collecting %s...', file)
-        host.get_file(file, host_resultdir, preserve_perm=False)
+        collect_log_file(host, file, host_resultdir, clean=True)
         minidumps.append(file)
     return minidumps
 
