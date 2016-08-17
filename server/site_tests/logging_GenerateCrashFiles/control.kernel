@@ -9,7 +9,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "logging"
 TEST_TYPE = "server"
-ATTRIBUTES = "suite:kernel_usb"
+ATTRIBUTES = "suite:usb_detect,suite:manual_platform_suite"
 
 DOC = """
 Crash process and confirm log files are generated.
