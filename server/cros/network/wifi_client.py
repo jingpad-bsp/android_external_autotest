@@ -111,7 +111,7 @@ def get_xmlrpc_proxy(host):
         server_port = constants.SHILL_XMLRPC_SERVER_PORT + val
         xmlrpc_server_command = constants.ANDROID_XMLRPC_SERVER_COMMAND_FMT % (
                 constants.ANDROID_XMLRPC_SERVER_TARGET_DIR, server_port)
-        command_name = (constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN +
+        command_name = (constants.ANDROID_XMLRPC_SERVER_CLEANUP_PATTERN %
                        str(server_port))
         xmlrpc_server_command = (
                 '%s -s %s -l %s -t %s -p %d' % (
