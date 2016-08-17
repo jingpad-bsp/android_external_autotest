@@ -1,10 +1,10 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "kernel_usb"
-PURPOSE = "USB peripherals detection."
+NAME = "platform_manual_suite"
+PURPOSE = "USB peripherals detection during stress procedure."
 
 TIME = "LONG"
 TEST_CATEGORY = "Functional"
@@ -12,11 +12,11 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-This is the kernel_usb test suite.
+This is the manually run usb detection test suite.
 
-This suite is meant to cover boards on different kernel version
-for ARM and non-ARM boards. USB detection tests will be exercizing
-short detect tests and stress scenarios.
+This suite is meant to cover manual test runs.
+USB detection tests will be exercizing
+USB detect tests during multiple steps.
 Consistent failure to detect peripherals will indicate kernel
 regression.
 
@@ -33,16 +33,8 @@ import common
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 
-_BUG_TEMPLATE = {
-    'labels': ['OS-Chrome', 'KernelUsb-Bug'],
-    'components': ['OS>Kernel'],
-    'owner': 'kalin@chromium.org',
-}
 
-
-args_dict['add_experimental'] = True
-args_dict['bug_template'] = _BUG_TEMPLATE
-args_dict['name'] = 'kernel_usb'
+args_dict['name'] = 'platform_manual_suite'
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
 args_dict['job'] = job
 
