@@ -4,9 +4,13 @@
 
 import logging, os, time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import tpm_utils
-from autotest_lib.server import test, autotest
+from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
+
+_SHORT_TIMEOUT = 2
 _WAIT_DELAY = 15
 _USB_DIR = '/sys/bus/usb/devices'
 
@@ -27,7 +31,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         reset = 'off'
         if not on:
             reset = 'on'
-        self.host.servo.set('dut_hub1_rst1', reset)
+        self.client.servo.set('dut_hub1_rst1', reset)
         time.sleep(_WAIT_DELAY)
 
 
@@ -39,7 +43,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         """
         usb_dir_list = list()
         cmd = 'ls %s' % _USB_DIR
-        cmd_output = self.host.run(cmd).stdout.strip().split('\n')
+        cmd_output = self.client.run(cmd).stdout.strip().split('\n')
         for d in cmd_output:
             usb_dir_list.append(os.path.join(_USB_DIR, d))
         return usb_dir_list
@@ -54,7 +58,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         """
         details_list = list()
         cmd = 'lsusb -v -d ' + vendor_id + ': | head -150'
-        cmd_out = self.host.run(cmd).stdout.strip().split('\n')
+        cmd_out = self.client.run(cmd).stdout.strip().split('\n')
         for line in cmd_out:
             if (any(phrase in line for phrase in ('bInterfaceClass',
                     'wTerminalType'))):
@@ -73,7 +77,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         """
         product_file_name = os.path.join(directory, prod_string)
         if self._file_exists_on_host(product_file_name):
-            return self.host.run('cat %s' % product_file_name).stdout.strip()
+            return self.client.run('cat %s' % product_file_name).stdout.strip()
         return None
 
 
@@ -90,7 +94,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         for d_path in dir_list:
             file_name = os.path.join(d_path, 'idVendor')
             if self._file_exists_on_host(file_name):
-                vendor_id = self.host.run('cat %s' % file_name).stdout.strip()
+                vendor_id = self.client.run('cat %s' % file_name).stdout.strip()
                 product_id = self._get_product_info(d_path, 'idProduct')
                 vId_pId = vendor_id + ':' + product_id
                 device_types = self._get_usb_device_type(vendor_id)
@@ -119,8 +123,58 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         @returns True or False
 
         """
-        return self.host.run('ls %s' % path,
+        return self.client.run('ls %s' % path,
                              ignore_status=True).exit_status == 0
+
+
+    def _enroll_device_and_skip_oobe(self):
+        """Enroll device into CFM and skip CFM oobe."""
+        self.cfm_facade.enroll_device()
+        self.cfm_facade.restart_chrome_for_cfm()
+        self.cfm_facade.wait_for_telemetry_commands()
+        self.cfm_facade.wait_for_oobe_start_page()
+
+        if not self.cfm_facade.is_oobe_start_page():
+            raise error.TestFail('CFM did not reach oobe screen.')
+
+        self.cfm_facade.skip_oobe_screen()
+        time.sleep(_SHORT_TIMEOUT)
+
+
+    def _set_preferred_peripherals(self, cros_peripherals):
+        """Set perferred peripherals.
+
+        @param cros_peripherals: Dictionary of peripherals
+        """
+        avail_mics = self.cfm_facade.get_mic_devices()
+        avail_speakers = self.cfm_facade.get_speaker_devices()
+        avail_cameras = self.cfm_facade.get_camera_devices()
+
+        if cros_peripherals.get('Microphone') in avail_mics:
+            self.cfm_facade.set_preferred_mic(
+                    cros_peripherals.get('Microphone'))
+        if cros_peripherals.get('Speaker') in avail_speakers:
+            self.cfm_facade.set_preferred_speaker(
+                    cros_peripherals.get('Speaker'))
+        if cros_peripherals.get('Camera') in avail_cameras:
+            self.cfm_facade.set_preferred_camera(
+                    cros_peripherals.get('Camera'))
+
+
+    def _peripheral_detection(self):
+        """Get attached peripheral information."""
+        cfm_peripheral_dict = {'Microphone': None, 'Speaker': None,
+                               'Camera': None}
+
+        cfm_peripheral_dict['Microphone'] = self.cfm_facade.get_preferred_mic()
+        cfm_peripheral_dict['Speaker'] = self.cfm_facade.get_preferred_speaker()
+        cfm_peripheral_dict['Camera'] = self.cfm_facade.get_preferred_camera()
+
+        for device_type, is_found in cfm_peripheral_dict.iteritems():
+            if not is_found:
+                cfm_peripheral_dict[device_type] = 'Not Found'
+
+        return cfm_peripheral_dict
 
 
     def run_once(self, host, peripheral_whitelist_dict):
@@ -129,26 +183,44 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         @param host: Host object representing the DUT.
 
         """
-        self.host = host
+        self.client = host
 
-        tpm_utils.ClearTPMOwnerRequest(self.host)
-        autotest.Autotest(self.host).run_test('enterprise_RemoraRequisition',
-                                              check_client_result=True)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, no_chrome=True)
+        self.cfm_facade = factory.create_cfm_facade()
 
-        self.host.servo.switch_usbkey('dut')
-        self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
-        time.sleep(_WAIT_DELAY)
+        tpm_utils.ClearTPMOwnerRequest(self.client)
 
-        self._set_hub_power(True)
+        if self.client.servo:
+            self.client.servo.switch_usbkey('dut')
+            self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            self._set_hub_power(True)
+
         usb_list_dir_on = self._get_usb_device_dirs()
 
         cros_peripheral_dict = self._parse_device_dir_for_info(usb_list_dir_on,
                 peripheral_whitelist_dict)
         logging.debug('Peripherals detected by CrOS: %s', cros_peripheral_dict)
 
-        autotest.Autotest(self.host).run_test(
-                'enterprise_CFM_USBPeripheralDetect',
-                cros_peripheral_dict=cros_peripheral_dict,
-                check_client_result=True)
+        try:
+            self._enroll_device_and_skip_oobe()
+            self._set_preferred_peripherals(cros_peripheral_dict)
+            cfm_peripheral_dict = self._peripheral_detection()
+            logging.debug('Peripherals detected by hotrod: %s',
+                          cfm_peripheral_dict)
+        except Exception as e:
+            raise error.TestFail(str(e))
 
-        tpm_utils.ClearTPMOwnerRequest(self.host)
+        tpm_utils.ClearTPMOwnerRequest(self.client)
+
+        cros_peripherals = set(cros_peripheral_dict.iteritems())
+        cfm_peripherals = set(cfm_peripheral_dict.iteritems())
+
+        peripheral_diff = cros_peripherals.difference(cfm_peripherals)
+
+        if peripheral_diff:
+            no_match_list = list()
+            for item in peripheral_diff:
+                no_match_list.append(item[0])
+            raise error.TestFail('Following peripherals do not match: %s' %
+                                 ', '.join(no_match_list))

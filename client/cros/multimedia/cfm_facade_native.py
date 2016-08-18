@@ -238,7 +238,7 @@ class CFMFacadeNative(object):
 
         @param speaker: String with speaker name.
         """
-        cfm_util.set_preferred_speaker(self._webview_context)
+        cfm_util.set_preferred_speaker(self._webview_context, speaker)
 
 
     def set_speaker_volume(self, volume_level):
