@@ -6,12 +6,13 @@ import json
 import logging
 import os
 
+from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import enterprise_base
 from autotest_lib.client.cros import httpd
+from autotest_lib.client.cros import enterprise_fake_dmserver
 
 CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
@@ -44,9 +45,13 @@ DMS_URL_DICT = {
     'dm-fake': 'http://127.0.0.1:%d/'
 }
 DMSERVER = '--device-management-url=%s'
+# Username and password for the fake dm server can be anything
+# they are not used to authenticate against GAIA.
+USERNAME = 'fake-user@managedchrome.com'
+PASSWORD = 'fakepassword'
 
 
-class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
+class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
 
     def setup(self):
@@ -54,7 +59,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         utils.make()
 
     def initialize(self, case=None, value=None, env='dm-fake', dms_name=None,
-                   username=None, password=None):
+                   username=USERNAME, password=PASSWORD):
         """
         @param case: String name of the test case to run.
         @param value: String policy value of the test case to run.
@@ -72,17 +77,18 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         self.dms_name = dms_name
         self._initialize_context()
 
-        # Start AutoTest DM Server iff using local fake server.
+        # Start AutoTest DM Server if using local fake server.
         if self.dms_is_fake:
-            self.import_dmserver(self.srcdir)
-            self.start_dmserver()
+            self.fake_dm_server = enterprise_fake_dmserver.FakeDMServer(
+                    self.srcdir)
+            self.fake_dm_server.start(self.tmpdir, self.debugdir)
         self._initialize_chrome_extra_flags()
         self._web_server = None
 
     def cleanup(self):
-        # Clean up AutoTest DM Server iff using local fake server.
+        # Clean up AutoTest DM Server if using local fake server.
         if self.dms_is_fake:
-            super(EnterprisePolicyTest, self).cleanup()
+            self.fake_dm_server.stop()
 
         # Stop web server if it was started.
         if self._web_server:
@@ -136,22 +142,12 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         # Set |dms_is_fake| flag if fake DM Server will be used.
         self.dms_is_fake = (self.env == 'dm-fake')
 
-        # If |dms_is_fake|, then ensure credentials were not given.
-        if self.dms_is_fake and (self.username or self.password):
-            raise error.TestError('Must not give User credentials '
-                                  'when using the fake DM Server.')
-
         # If not |dms_is_fake|, then ensure |case| or |value| are set.
         if not self.dms_is_fake and not (self.case or self.value):
             raise error.TestError('Must give either case or value when '
                                   'not using the fake DM Server.')
 
-        # If either credential is not given, set both to defaults.
-        if self.username is None or self.password is None:
-            self.username = self.USERNAME
-            self.password = self.PASSWORD
-
-        # Verify test |dms_name| is given iff |env| is 'dm-test'.
+        # Verify test |dms_name| is given if |env| is 'dm-test'.
         if self.env == 'dm-test' and not self.dms_name:
             raise error.TestError('dms_name must be given when using '
                                   'env=dm-test.')
@@ -175,7 +171,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
         if self.env != 'prod':
             if self.dms_is_fake:
                 # Use URL provided by the fake AutoTest DM server.
-                dmserver_str = (DMSERVER % self.dm_server_url)
+                dmserver_str = (DMSERVER % self.fake_dm_server.server_url)
             else:
                 # Use URL defined in the DMS URL dictionary.
                 dmserver_str = (DMSERVER % (DMS_URL_DICT[self.env]))
@@ -210,7 +206,8 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
 
         """
         if self.dms_is_fake:
-            self.setup_policy(self._make_json_blob(policies_dict))
+            self.fake_dm_server.setup_policy(self._make_json_blob(
+                    policies_dict))
 
         self._launch_chrome_browser()
         tab = self.navigate_to_url('chrome://policy')
@@ -302,7 +299,7 @@ class EnterprisePolicyTest(enterprise_base.EnterpriseTest):
             "current_key_index": 0,
             "invalidation_source": 16,
             "invalidation_name": "test_policy"
-        }""" % (json.dumps(policies_dict), self.USERNAME)
+        }""" % (json.dumps(policies_dict), self.username)
         return policy_blob
 
     def _move_modeless_to_mandatory(self, policies_dict):
