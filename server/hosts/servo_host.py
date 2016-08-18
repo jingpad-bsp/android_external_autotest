@@ -809,7 +809,14 @@ def _get_standard_servo_args(dut_host):
                     'SSP', 'host_container_ip', type=str, default=None)
         servo_args = {SERVO_HOST_ATTR: servo_host}
         if SERVO_PORT_ATTR in attrs:
-            servo_args[SERVO_PORT_ATTR] = attrs[SERVO_PORT_ATTR]
+            try:
+                servo_port = attrs[SERVO_PORT_ATTR]
+                servo_args[SERVO_PORT_ATTR] = int(servo_port)
+            except ValueError:
+                logging.error('servo port is not an int: %s', servo_port)
+                # Let's set the servo args to None since we're not creating
+                # the ServoHost object with the proper port now.
+                servo_args = None
         is_in_lab = (not is_moblab
                      and utils.host_is_in_lab_zone(servo_host))
 
