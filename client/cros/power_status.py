@@ -832,7 +832,6 @@ class GPUFreqStats(AbstractStats):
 
     _MALI_DEV = '/sys/class/misc/mali0/device'
     _MALI_EVENTS = ['mali_dvfs:mali_dvfs_set_clock']
-    _MALI_34_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)'
     _MALI_TRACE_CLK_RE = r'(\d+.\d+): mali_dvfs_set_clock: frequency=(\d+)\d{6}'
 
     _I915_ROOT = '/sys/kernel/debug/dri/0'
@@ -851,12 +850,7 @@ class GPUFreqStats(AbstractStats):
     def _get_mali_freqs(self):
         """Get mali clocks based on kernel version.
 
-        For 3.4:
-            # cat /sys/class/misc/mali0/device/clock
-            Current sclk_g3d[G3D_BLK] = 100Mhz
-            Possible settings : 533, 450, 400, 350, 266, 160, 100Mhz
-
-        For 3.8 (and beyond):
+        For 3.8-3.18:
             # cat /sys/class/misc/mali0/device/clock
             100000000
             # cat /sys/class/misc/mali0/device/available_frequencies
@@ -876,18 +870,7 @@ class GPUFreqStats(AbstractStats):
         fqs = []
 
         fname = os.path.join(self._MALI_DEV, 'clock')
-        if os.uname()[2].startswith('3.4'):
-            with open(fname) as fd:
-                for ln in fd.readlines():
-                    result = re.findall(r'Current.* = (\d+)Mhz', ln)
-                    if result:
-                        cur_mhz = result[0]
-                        continue
-                    result = re.findall(r'(\d+)[,M]', ln)
-                    if result:
-                        fqs = result
-                        fd.close()
-        else:
+        if os.path.exists(fname):
             cur_mhz = str(int(int(utils.read_one_line(fname).strip()) / 1e6))
             fname = os.path.join(self._MALI_DEV, 'available_frequencies')
             with open(fname) as fd:
@@ -1017,12 +1000,8 @@ class GPUFreqStats(AbstractStats):
     def _mali_read_stats(self):
         """Read Mali GPU stats
 
-        For 3.4:
-            Frequencies are reported in MHz.
-
-        For 3.8+:
-            Frequencies are reported in Hz, so use a regex that drops the last 6
-            digits.
+        Frequencies are reported in Hz, so use a regex that drops the last 6
+        digits.
 
         Output in trace looks like this:
 
@@ -1033,13 +1012,7 @@ class GPUFreqStats(AbstractStats):
             Dict with frequency in mhz as key and float in seconds for time
               spent at that frequency.
         """
-        regexp = None
-        if os.uname()[2].startswith('3.4'):
-            regexp = self._MALI_34_TRACE_CLK_RE
-        else:
-            regexp = self._MALI_TRACE_CLK_RE
-
-        return self._trace_read_stats(regexp)
+        return self._trace_read_stats(self._MALI_TRACE_CLK_RE)
 
 
     def _i915_read_stats(self):
