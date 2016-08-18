@@ -25,6 +25,7 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
+from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.servo import servo
@@ -37,6 +38,7 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 # the servo_host and servo_port for a servo connected to the DUT.
 SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
+SERVO_BOARD_ATTR = 'servo_board'
 
 DEFAULT_PORT = 9999
 
@@ -91,7 +93,8 @@ class ServoHost(ssh_host.SSHHost):
 
 
     def _initialize(self, servo_host='localhost',
-                    servo_port=DEFAULT_PORT, required_by_test=True,
+                    servo_port=DEFAULT_PORT, servo_board=None,
+                    required_by_test=True,
                     is_in_lab=None, *args, **dargs):
         """Initialize a ServoHost instance.
 
@@ -108,25 +111,30 @@ class ServoHost(ssh_host.SSHHost):
         """
         super(ServoHost, self)._initialize(hostname=servo_host,
                                            *args, **dargs)
-        if is_in_lab is None:
+        self.servo_port = servo_port
+        self.servo_board = servo_board
+        self.required_by_test = required_by_test
+        self._servo = None
+        self._servod_server = None
+        self._is_localhost = (self.hostname == 'localhost')
+        if self._is_localhost:
+            self._is_in_lab = False
+        elif is_in_lab is None:
             self._is_in_lab = utils.host_is_in_lab_zone(self.hostname)
         else:
             self._is_in_lab = is_in_lab
-        self._is_localhost = (self.hostname == 'localhost')
-        self._servo_port = servo_port
 
-        # Commands on the servo host must be run by the superuser. Our account
-        # on Beaglebone is root, but locally we might be running as a
-        # different user. If so - `sudo ' will have to be added to the
-        # commands.
+        # Commands on the servo host must be run by the superuser.
+        # Our account on a remote host is root, but if our target is
+        # localhost then we might be running unprivileged.  If so,
+        # `sudo` will have to be added to the commands.
         if self._is_localhost:
             self._sudo_required = utils.system_output('id -u') != '0'
         else:
             self._sudo_required = False
+
         # Create a cache of Servo object. This must be called at the end of
         # _initialize to make sure all attributes are set.
-        self._servo = None
-        self.required_by_test = required_by_test
         try:
             if ENABLE_SSH_TUNNEL_FOR_SERVO:
                 self._servod_server = self.rpc_server_tracker.xmlrpc_connect(
@@ -346,7 +354,7 @@ class ServoHost(ssh_host.SSHHost):
 
         failure_data = []
         servod_config_file = '/var/lib/servod/config'
-        config_files = ['%s_%s' % (servod_config_file, self._servo_port),
+        config_files = ['%s_%s' % (servod_config_file, self.servo_port),
                         servod_config_file]
 
         # We'll need to check for two types of config files since we're
@@ -745,6 +753,31 @@ def servo_host_is_up(servo_hostname):
     return ping_runner.PingRunner().ping(ping_config).received > 0
 
 
+def _map_afe_board_to_servo_board(afe_board):
+    """Map a board we get from the AFE to a servo appropriate value.
+
+    Many boards are identical to other boards for servo's purposes.
+    This function makes that mapping.
+
+    @param afe_board string board name received from AFE.
+    @return board we expect servo to have.
+
+    """
+    KNOWN_SUFFIXES = ['-freon', '_freon', '_moblab', '-cheets']
+    BOARD_MAP = {'gizmo': 'panther'}
+    mapped_board = afe_board
+    if afe_board in BOARD_MAP:
+        mapped_board = BOARD_MAP[afe_board]
+    else:
+        for suffix in KNOWN_SUFFIXES:
+            if afe_board.endswith(suffix):
+                mapped_board = afe_board[0:-len(suffix)]
+                break
+    if mapped_board != afe_board:
+        logging.info('Mapping AFE board=%s to %s', afe_board, mapped_board)
+    return mapped_board
+
+
 def _get_standard_servo_args(dut_host):
     """
     Return servo data associated with a given DUT.
@@ -789,6 +822,10 @@ def _get_standard_servo_args(dut_host):
         is_in_lab = utils.host_is_in_lab_zone(servo_host)
         if is_in_lab:
             servo_args = {SERVO_HOST_ATTR: servo_host}
+    if servo_args is not None:
+        servo_board = afe_utils.get_board(dut_host)
+        servo_board = _map_afe_board_to_servo_board(servo_board)
+        servo_args[SERVO_BOARD_ATTR] = servo_board
     return servo_args, is_in_lab
 
 
