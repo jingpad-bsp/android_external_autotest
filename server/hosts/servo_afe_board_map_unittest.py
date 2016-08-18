@@ -7,7 +7,7 @@
 import unittest
 
 import common
-from autotest_lib.client.common_lib.cros import servo_afe_board_map
+from autotest_lib.server.hosts import servo_host
 
 
 class ServoAfeBoardMapTest(unittest.TestCase):
@@ -15,7 +15,7 @@ class ServoAfeBoardMapTest(unittest.TestCase):
 
     def test_afe_board_mapping(self):
         """Tests mappings."""
-        afe_map = servo_afe_board_map.map_afe_board_to_servo_board
+        afe_map = servo_host._map_afe_board_to_servo_board
         self.assertEqual(afe_map('kip'), 'kip')
         self.assertEqual(afe_map('gizmo'), 'panther')
         self.assertEqual(afe_map('link_freon'), 'link')
