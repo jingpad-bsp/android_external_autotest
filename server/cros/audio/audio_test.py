@@ -31,32 +31,38 @@ class AudioTest(test.test):
         audio_test_requirement()
 
 
-    def create_remote_facade_factory(self, host, no_chrome=False):
+    def create_remote_facade_factory(self, host, no_chrome=False,
+                                     install_autotest=True):
         """Creates a remote facade factory to access multimedia server.
 
         @param host: A CrosHost object to access Cros device.
         @param no_chrome: Don't start Chrome by default.
+        @param install_autotest: Install autotest on host.
 
         @returns: A RemoteFacadeFactory object to create different facade for
                   different functionalities provided by multimedia server.
 
         """
-        return create_remote_facade_factory(host, self.resultsdir, no_chrome)
+        return create_remote_facade_factory(
+                host, self.resultsdir, no_chrome, install_autotest)
 
 
-def create_remote_facade_factory(host, result_dir, no_chrome=False):
+def create_remote_facade_factory(host, result_dir, no_chrome=False,
+                                 install_autotest=True):
     """Creates a remote facade factory to access multimedia server.
 
     @param host: A CrosHost object to access Cros device.
     @param result_dir: A directory to store multimedia server init log.
     @param no_chrome: Don't start Chrome by default.
+    @param install_autotest: Install autotest on host.
 
     @returns: A RemoteFacadeFactory object to create different facade for
               different functionalities provided by multimedia server.
 
     """
     try:
-        factory = remote_facade_factory.RemoteFacadeFactory(host, no_chrome)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, no_chrome, install_autotest)
     finally:
         host.get_file(
                 constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
