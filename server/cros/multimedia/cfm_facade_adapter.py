@@ -190,7 +190,7 @@ class CFMFacadeRemoteAdapter(object):
 
         @param speaker: String with speaker name.
         """
-        self._cfm_proxy.set_preferred_speaker()
+        self._cfm_proxy.set_preferred_speaker(speaker)
 
 
     def set_speaker_volume(self, volume_level):
