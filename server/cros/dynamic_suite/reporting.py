@@ -9,6 +9,7 @@ import HTMLParser
 import logging
 import os
 import re
+import textwrap
 
 from xml.parsers import expat
 
@@ -17,6 +18,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import afe_urls
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -288,23 +290,44 @@ class MachineKillerBug(Bug):
 class PoolHealthBug(Bug):
     """Report information about a critical pool of DUTs in the lab."""
 
-    _POOL_HEALTH_LABELS = ['recoverduts', 'Build-HardwareLab', 'Pri-1']
+    _POOL_HEALTH_LABELS = global_config.global_config.get_config_value(
+            'BUG_REPORTING', 'pool_health_labels', type=list, default=[])
     _CC_ADDRESS = global_config.global_config.get_config_value(
-                            'BUG_REPORTING', 'pool_health_cc',
-                            type=list, default=[])
+            'BUG_REPORTING', 'pool_health_cc', type=list, default=[])
+    _SUMMARY_TEMPLATE = textwrap.dedent("""\
+    This bug has been automatically filed to track the following issue:
 
+    Not enough DUTs available.
+    Pool: {this._pool}
+    Board: {this._board}
+    DUTs needed: {this._num_required}
+    DUTs available: {this._num_available}
+    Suite: {this._suite_name}
+    Build: {this._build}
 
-    def __init__(self, pool, board, dead_hostnames):
+    Hosts:
+
+    {host_summaries}
+    """)
+    _HOST_TEMPLATE = '{host.hostname} {locked_status} {host.status} {afe_link}'
+
+    def __init__(self, exception):
         """Initialize a PoolHealthBug.
 
-        @param pool: The name of the pool in critical condition.
-        @param board: The board in critical condition.
-        @param dead_hostnames: A list of unusable machines with the given
+        @param exception: NotEnoughDutsError with context information.
+        @param hosts: An Iterable of all Hosts with the
             board, in the given pool.
         """
-        self._pool = pool
-        self._board = board
-        self._dead_hostnames = dead_hostnames
+        self._exception = exception
+        self._board = exception.board
+        self._pool = exception.pool
+        self._num_available = exception.num_available
+        self._num_required = exception.num_required
+        self._bug_id = exception.bug_id
+        self._hosts = exception.hosts
+        self._suite_name = exception.suite_name
+        self._build = exception.build
+
         self.owner = ''
         self.cc = self._CC_ADDRESS
         self.labels = self._POOL_HEALTH_LABELS
@@ -312,32 +335,31 @@ class PoolHealthBug(Bug):
 
 
     def title(self):
-        return ('pool: %s, board: %s in a critical state.' %
+        return ('pool: %s, board: %s in critical state' %
                 (self._pool, self._board))
 
 
     def summary(self):
         """Combines information about this bug into a summary string."""
+        return self._SUMMARY_TEMPLATE.format(
+            this=self,
+            host_summaries='\n'.join(self._make_host_summaries()))
 
-        template = ('This bug has been automatically filed to track the '
-                    'following issue:\n'
-                    'Pool: %(pool)s.\n'
-                    'Board: %(board)s.\n'
-                    'Dead hosts: %(dead_hosts)s.\n'
-                    'Issue: The pool is in a critical condition and cannot '
-                    'complete build verification tests in a timely manner.\n'
-                    'Suggested Actions: Recover the devices ASAP.')
-        specifics = {
-            'pool': self._pool,
-            'board': self._board,
-            'dead_hosts': ','.join(self._dead_hostnames),
-        }
-        return template % specifics
+
+    def _make_host_summaries(self):
+        """Yield hosts summary strings."""
+        host_template = self._HOST_TEMPLATE
+        for host in self._hosts:
+            yield host_template.format(
+                host=host,
+                locked_status='Locked' if host.locked else 'Unlocked',
+                afe_link=afe_urls.get_host_url(host.id))
 
 
     def search_marker(self):
         """Returns an Anchor that we can use to dedupe this bug."""
         return 'PoolHealthBug{%s, %s}' % (self._pool, self._board)
+
 
 class SuiteSchedulerBug(Bug):
     """Bug filed for suite scheduler."""
@@ -403,6 +425,9 @@ class SuiteSchedulerBug(Bug):
         # TODO(fdeng): flaky deduping behavior, see crbug.com/486895
         return 'SuiteSchedulerBug{%s, %s}' % (
                 self._suite, type(self._exception).__name__)
+
+
+ReportResult = collections.namedtuple('ReportResult', ['bug_id', 'update_count'])
 
 
 class Reporter(object):
@@ -538,9 +563,9 @@ class Reporter(object):
                          dynamic it needs to be determined at runtime, as
                          opposed to the normal cc list which is available
                          through the bug template.
-        @return: id of the created issue, or None if an issue wasn't created.
-                 Note that if either the description or title fields are missing
-                 we won't be able to create a bug.
+        @return: id of the created issue as a string, or None if an issue
+                 wasn't created.  Note that if either the description or title
+                 fields are missing we won't be able to create a bug.
         """
         anchored_summary = self._anchor_summary(bug)
 
@@ -829,19 +854,19 @@ class Reporter(object):
         @param bug_template A template dictionary specifying the
                             default bug filing options for an issue
                             with this suite.
-        @param ignore_duplicate: If True, when a duplicate is found,
-                            simply ignore the new one rather than
-                            posting an update.
-        @return             A 2-tuple of the issue id of the issue
-                            that was either created or modified, and
-                            a count of the number of times the bug
-                            has been updated.  For a new bug, the
-                            count is 1. If we could not file a bug
-                            for some reason, the count is 0.
+        @param ignore_duplicate  If True, when a duplicate is found,
+                                 simply ignore the new one rather than
+                                 posting an update.
+        @return   A ReportResult namedtuple containing:
+
+                  - the issue id as a string or None
+                  - the number of times the bug has been updated.  For a new
+                    bug, the count is 1.  If we could not file a bug for some
+                    reason, the count is 0.
         """
         if not self._check_tracker():
             logging.error("Can't file %s", bug.title())
-            return None, 0
+            return ReportResult(None, 0)
 
         project_label = self._get_project_label_from_title(bug.title())
 
@@ -862,7 +887,7 @@ class Reporter(object):
             logging.debug('Duplicate found for %s, not filing as requested.',
                           bug.search_marker())
             _, bug_count = self._get_count_labels_and_max(issue)
-            return issue.id, bug_count
+            return ReportResult(issue.id, bug_count)
 
         if issue:
             comment = '%s\n\n%s' % (bug.title(), self._anchor_summary(bug))
@@ -871,7 +896,7 @@ class Reporter(object):
             if project_label:
                 label_update.append(project_label)
             self.modify_bug_report(issue.id, comment, label_update)
-            return issue.id, bug_count
+            return ReportResult(issue.id, bug_count)
 
         sheriffs = []
 
@@ -891,7 +916,7 @@ class Reporter(object):
             bug_template.get('labels', []).append(project_label)
         bug_id = self._create_bug_report(bug, bug_template, sheriffs)
         bug_count = 1 if bug_id else 0
-        return bug_id, bug_count
+        return ReportResult(bug_id, bug_count)
 
 
 # TODO(beeps): Move this to server/site_utils after crbug.com/281906 is fixed.
