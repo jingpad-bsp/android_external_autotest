@@ -626,7 +626,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     new_boot_id = self.get_boot_id()
                     if new_boot_id != boot_id:
                         return True
-                except (error.AutotestHostRunError, error.AutoservHostError):
+                except error.GenericHostRunError:
                     pass
             raise error.TimeoutException('Device is still up.')
 
