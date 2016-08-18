@@ -202,7 +202,7 @@ class InputPlayback(object):
             if (props.find('BTN_STYLUS') >= 0 or
                 props.find('BTN_STYLUS2') >= 0 or
                 props.find('BTN_TOOL_PEN') >= 0):
-                return 'tablet'
+                return 'stylus'
             if (props.find('ABS_PRESSURE') >= 0 or
                 props.find('BTN_TOUCH') >= 0):
                 if (props.find('BTN_LEFT') >= 0 or
