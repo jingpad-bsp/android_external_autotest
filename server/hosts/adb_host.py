@@ -1616,6 +1616,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             raise
 
 
+    def uninstall_package(self, package):
+        """Remove the specified package.
+
+        @param package: Android package name.
+
+        @raises GenericHostRunError: uninstall failed
+        """
+        result = self.adb_run('uninstall %s' % package)
+
+        if self.is_apk_installed(package):
+            raise error.GenericHostRunError('Uninstall of "%s" failed.'
+                                            % package, result)
+
+
     @retry.retry(error.GenericHostRunError, timeout_min=0.2)
     def _confirm_apk_installed(self, package_name):
         """Confirm if apk is already installed with the given name.
