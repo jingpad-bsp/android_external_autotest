@@ -233,8 +233,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         Recommended usage:
         ~~~~~~~~
             args_dict = utils.args_to_dict(args)
-            plankon_args = hosts.CrosHost.get_plankton_arguments(args_dict)
-            host = hosts.create_host(machine, plankton_args=polankton_args)
+            plankton_args = hosts.CrosHost.get_plankton_arguments(args_dict)
+            host = hosts.create_host(machine, plankton_args=plankton_args)
         ~~~~~~~~
 
         @param args_dict Dictionary from which to extract the plankton
@@ -259,8 +259,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param args_dict Dictionary from which to extract the servo
           arguments.
         """
-        return CrosHost._extract_arguments(
-                args_dict, ('servo_host', 'servo_port'))
+        servo_attrs = (servo_host.SERVO_HOST_ATTR,
+                       servo_host.SERVO_PORT_ATTR,
+                       servo_host.SERVO_BOARD_ATTR)
+        return CrosHost._extract_arguments(args_dict, servo_attrs)
 
 
     def _initialize(self, hostname, chameleon_args=None, servo_args=None,
@@ -304,16 +306,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         self._servo_host =  servo_host.create_servo_host(
                 dut=self, servo_args=servo_args,
                 try_lab_servo=try_lab_servo)
+        if self._servo_host is not None:
+            self.servo = self._servo_host.get_servo()
+        else:
+            self.servo = None
+
         # TODO(waihong): Do the simplication on Chameleon too.
         self._chameleon_host = chameleon_host.create_chameleon_host(
                 dut=self.hostname, chameleon_args=chameleon_args)
         # Add plankton host if plankton args were added on command line
         self._plankton_host = plankton_host.create_plankton_host(plankton_args)
-
-        if self._servo_host is not None:
-            self.servo = self._servo_host.get_servo()
-        else:
-            self.servo = None
 
         if self._chameleon_host:
             self.chameleon = self._chameleon_host.create_chameleon_board()

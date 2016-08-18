@@ -64,7 +64,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros import servo_afe_board_map
 from autotest_lib.server import frontend
 from autotest_lib.server import hosts
 from autotest_lib.server.hosts import servo_host
@@ -216,14 +215,11 @@ def _check_servo(host):
         servo_host.update_image(wait_for_update=True)
     except error.AutoservHostError:
         logging.exception('Could not verify servo update')
-    servo_board = (
-        servo_afe_board_map.map_afe_board_to_servo_board(
-            host._get_board_from_afe()))
     # Stop servod, then restart with the proper board.  It's OK if
     # servod wasn't running (e.g. no board configured), so ignore
     # failures.
     servo_host.run('stop servod || :')
-    servo_host.run('start servod BOARD=%s' % servo_board)
+    servo_host.run('start servod BOARD=%s' % servo_host.servo_board)
     # There's a lag between when `start servod` completes above and when
     # servod is actually up and serving.  The call to time.sleep() below
     # gives time to make sure that the verify() call won't fail.
