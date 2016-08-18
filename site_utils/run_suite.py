@@ -1367,15 +1367,17 @@ class ResultCollector(object):
               test_info['bug_url'] = link.get_bug_link(link.bug_id)
 
         # Write the suite timings into |output_dict|
-        time_dict = output_dict.setdefault('suite_timings', {})
-        time_dict.update({
-            'download_start' : str(self.timings.download_start_time),
-            'payload_download_end' : str(self.timings.payload_end_time),
-            'suite_start' : str(self.timings.suite_start_time),
-            'artifact_download_end' : str(self.timings.artifact_end_time),
-            'tests_start' : str(self.timings.tests_start_time),
-            'tests_end' : str(self.timings.tests_end_time),
-            })
+        timings = self.timings
+        if timings is not None:
+            time_dict = output_dict.setdefault('suite_timings', {})
+            time_dict.update({
+                'download_start' : str(timings.download_start_time),
+                'payload_download_end' : str(timings.payload_end_time),
+                'suite_start' : str(timings.suite_start_time),
+                'artifact_download_end' : str(timings.artifact_end_time),
+                'tests_start' : str(timings.tests_start_time),
+                'tests_end' : str(timings.tests_end_time),
+                })
 
         output_dict['suite_job_id'] = self._suite_job_id
 
