@@ -330,6 +330,7 @@ def upload_testresult_files(dir_entry, multiprocessing):
 
     Upload testResult.xml.gz/xtsTestResult.xml.gz file to cts_results_bucket.
     Upload timestamp.zip to cts_apfe_bucket.
+
     @param dir_entry: Path to the results folder.
     @param multiprocessing: True to turn on -m option for gsutil.
     """
@@ -348,17 +349,36 @@ def upload_testresult_files(dir_entry, multiprocessing):
                                   path, e)
 
 
-def _is_release_build(build):
-    """Check if it's a release build."""
-    return re.match(r'(?!trybot-).*-release/.*', build)
+def _is_valid_result(build, result_pattern, suite):
+    """Check if the result should be uploaded to CTS/GTS buckets.
+
+    @param build: Builder name.
+    @param result_pattern: XML result file pattern.
+    @param suite: Test suite name.
+
+    @returns: Bool flag indicating whether a valid result.
+    """
+    if build is None or suite is None:
+        return False
+
+    # Not valid if it's not a release build.
+    if not re.match(r'(?!trybot-).*-release/.*', build):
+        return False
+
+    # Not valid if it's cts result but not 'arc-cts' suite.
+    if result_pattern == CTS_RESULT_PATTERN and suite != 'arc-cts':
+        return False
+
+    return True
 
 
 def _upload_files(host, path, result_pattern, multiprocessing):
     keyval = models.test.parse_job_keyval(host)
-    build = keyval['build']
+    build = keyval.get('build')
+    suite = keyval.get('suite')
 
-    if not _is_release_build(build):
-        # Only upload results for release builds.
+    if not _is_valid_result(build, result_pattern, suite):
+        # No need to upload current folder, return.
         return
 
     parent_job_id = str(keyval['parent_job_id'])
