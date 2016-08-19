@@ -39,8 +39,10 @@ FLAGS_DICT = {
 }
 DMS_URL_DICT = {
     'prod': 'http://m.google.com/devicemanagement/data/api',
-    'crosman-qa': 'https://crosman-qa.sandbox.google.com/devicemanagement/data/api',
-    'crosman-alpha': 'https://crosman-alpha.sandbox.google.com/devicemanagement/data/api',
+    'crosman-qa':
+        'https://crosman-qa.sandbox.google.com/devicemanagement/data/api',
+    'crosman-alpha':
+        'https://crosman-alpha.sandbox.google.com/devicemanagement/data/api',
     'dm-test': 'http://chromium-dm-test.appspot.com/d/%s',
     'dm-fake': 'http://127.0.0.1:%d/'
 }
@@ -58,11 +60,11 @@ class EnterprisePolicyTest(test.test):
         os.chdir(self.srcdir)
         utils.make()
 
-    def initialize(self, case=None, value=None, env='dm-fake', dms_name=None,
+    def initialize(self, case=None, env='dm-fake', dms_name=None,
                    username=USERNAME, password=PASSWORD):
-        """
+        """Initialize test parameters, fake DM Server, and Chrome flags.
+
         @param case: String name of the test case to run.
-        @param value: String policy value of the test case to run.
         @param env: String environment of DMS and Gaia servers.
         @param username: String user name login credential.
         @param password: String password login credential.
@@ -70,7 +72,6 @@ class EnterprisePolicyTest(test.test):
 
         """
         self.case = case
-        self.value = value
         self.env = env
         self.username = username
         self.password = password
@@ -80,7 +81,7 @@ class EnterprisePolicyTest(test.test):
         # Start AutoTest DM Server if using local fake server.
         if self.dms_is_fake:
             self.fake_dm_server = enterprise_fake_dmserver.FakeDMServer(
-                    self.srcdir)
+                self.srcdir)
             self.fake_dm_server.start(self.tmpdir, self.debugdir)
         self._initialize_chrome_extra_flags()
         self._web_server = None
@@ -99,7 +100,7 @@ class EnterprisePolicyTest(test.test):
             self.cr.close()
 
     def start_webserver(self, port):
-        """Set up an HTTP Server to serve pages from localhost.
+        """Set up an HTTP Server on |port| to serve pages from localhost.
 
         @param port: Port used by HTTP server.
 
@@ -114,40 +115,23 @@ class EnterprisePolicyTest(test.test):
                 or a combination of parameters have incompatible values.
 
         """
-        # Verify that both |case| and |value| were not given.
-        if self.case is not None and self.value is not None:
-            raise error.TestError('Give only case or value, not both.')
+        # Verify |case| was given. List test case names if not.
+        if self.case is None:
+            raise error.TestError('Must give a test case: %s' %
+                                  ', '.join(self.TEST_CASES))
 
-        # If |value| given as 'None', 'Null', or '', then set it to 'null'.
-        # If |value| was given, then set |case| from it.
-        if self.value is not None:
-            if (self.value.lower() == 'none' or
-                self.value.lower() == 'null' or
-                self.value == ''):
-                self.value = 'null'
-            self.case = self._get_case_by_value(self.value)
+        # Verify |case| is defined in test class.
+        if self.case not in self.TEST_CASES:
+            raise error.TestError('Test case is invalid: %s' % self.case)
 
-        # TODO(scunningham): Remove |is_value_given| from the framework after
-        # it has been removed from all tests (or replaced by |dms_is_fake|).
-        self.is_value_given = False
+        # Verify |env| is a valid environment.
+        if self.env not in FLAGS_DICT:
+            raise error.TestError('Environment is invalid: %s' % self.env)
 
-        # If |case| is set, verify |case| is defined by test class.
-        if self.case is not None and self.case not in self.TEST_CASES:
-            raise error.TestError('Test case is not valid: %s' % self.case)
-
-        # If |env\ is set, verify |env| is a valid environment.
-        if self.env is not None and self.env not in FLAGS_DICT:
-            raise error.TestError('env=%s is invalid.' % self.env)
-
-        # Set |dms_is_fake| flag if fake DM Server will be used.
+        # If the fake DM Server will be used, set |dms_is_fake| true.
         self.dms_is_fake = (self.env == 'dm-fake')
 
-        # If not |dms_is_fake|, then ensure |case| or |value| are set.
-        if not self.dms_is_fake and not (self.case or self.value):
-            raise error.TestError('Must give either case or value when '
-                                  'not using the fake DM Server.')
-
-        # Verify test |dms_name| is given if |env| is 'dm-test'.
+        # Verify test |dms_name| is given iff |env| is 'dm-test'.
         if self.env == 'dm-test' and not self.dms_name:
             raise error.TestError('dms_name must be given when using '
                                   'env=dm-test.')
@@ -158,7 +142,6 @@ class EnterprisePolicyTest(test.test):
         # Log the test context parameters.
         logging.info('Test Context Parameters:')
         logging.info('  Case: %r', self.case)
-        logging.info('  Value: %r', self.value)
         logging.info('  Environment: %r', self.env)
         logging.info('  Username: %r', self.username)
         logging.info('  Password: %r', self.password)
@@ -207,7 +190,7 @@ class EnterprisePolicyTest(test.test):
         """
         if self.dms_is_fake:
             self.fake_dm_server.setup_policy(self._make_json_blob(
-                    policies_dict))
+                policies_dict))
 
         self._launch_chrome_browser()
         tab = self.navigate_to_url('chrome://policy')
@@ -257,7 +240,7 @@ class EnterprisePolicyTest(test.test):
         """Compare |policy_value| to |value_shown| with whitespace removed.
 
         Compare the expected policy value with the value actually shown on the
-        chrome://policies page. Before comparing, convert both values to JSON
+        chrome://policy page. Before comparing, convert both values to JSON
         formatted strings, and remove all whitespace. Whitespace must be
         removed before comparison because Chrome processes some policy values
         to show them in a more human readable format.
@@ -283,7 +266,7 @@ class EnterprisePolicyTest(test.test):
         return trimmed_value == trimmed_shown
 
     def _make_json_blob(self, policies_dict):
-        """Create JSON policy blob from policies dictionary object.
+        """Create JSON policy blob from |policies_dict| object.
 
         @param policies_dict: policies dictionary object.
         @returns: JSON policy blob to send to the fake DM server.
@@ -303,7 +286,7 @@ class EnterprisePolicyTest(test.test):
         return policy_blob
 
     def _move_modeless_to_mandatory(self, policies_dict):
-        """Add the 'mandatory' mode if a policy's mode was omitted.
+        """Add the 'mandatory' mode to each policy where mode was omitted.
 
         The AutoTest fake DM Server requires that every policy be contained
         within either a 'mandatory' or 'recommended' dictionary, to indicate
@@ -339,7 +322,7 @@ class EnterprisePolicyTest(test.test):
         return collated_dict
 
     def _remove_null_policies(self, policies_dict):
-        """Remove policy dict data that is set to None or ''.
+        """Remove policy NVPs whose value is set to None or ''.
 
         For the status of a policy to be shown as "Not set" on the
         chrome://policy page, the policy dictionary must contain no NVP for
@@ -358,12 +341,12 @@ class EnterprisePolicyTest(test.test):
         return policies_dict_copy
 
     def _get_policy_value_shown(self, policy_tab, policy_name):
-        """Get the value shown for the named policy on the Policies page.
+        """Get the value shown for |policy_name| from the |policy_tab| page.
 
-        Takes |policy_name| as a parameter and returns the corresponding
-        policy value shown on the chrome://policy page.
+        Return the policy value for the policy given by |policy_name|, from
+        from the chrome://policy page given by |policy_tab|.
 
-        @param policy_tab: Tab displaying the chrome://policy page.
+        @param policy_tab: Tab displaying the Policies page.
         @param policy_name: The name of the policy.
         @returns: The value shown for the policy on the Policies page.
 
@@ -396,7 +379,7 @@ class EnterprisePolicyTest(test.test):
         return value_shown
 
     def _get_policy_value_from_new_tab(self, policy_name):
-        """Get a given policy value by opening a new tab then closing it.
+        """Get the policy value for |policy_name| from the Policies page.
 
         @param policy_name: string of policy name.
 
@@ -426,13 +409,13 @@ class EnterprisePolicyTest(test.test):
         return elements
 
     def packed_json_string(self, policy_value):
-         """Convert policy value to JSON formatted string with no whitespace.
+        """Convert |policy_value| to JSON format string with no whitespace.
 
-         @param policy_value: object containing a policy value.
-         @returns: string in JSON format, stripped of whitespace.
+        @param policy_value: object containing a policy value.
+        @returns: string in JSON format, stripped of whitespace.
 
-         """
-         return ''.join(json.dumps(policy_value))
+        """
+        return ''.join(json.dumps(policy_value))
 
     def _get_policy_data_for_case(self, case):
         """Get policy value and policies dict data for specified test |case|.
@@ -449,51 +432,20 @@ class EnterprisePolicyTest(test.test):
         """
         policy_value = None
         if self.TEST_CASES[case]:
-             policy_value = ','.join(self.TEST_CASES[case])
+            policy_value = ','.join(self.TEST_CASES[case])
         policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
         policies_dict = self.SUPPORTING_POLICIES.copy()
         policies_dict.update(policy_dict)
         return policy_value, policies_dict
 
-    def _get_case_by_value(self, policy_value):
-        """Get test case for given |policy_value|.
-
-        @param policy_value: expected value of policy given on command line.
-        @returns: string name of test case for the given policy value.
-        @raises: TestError if there is no test case for given policy value.
-
-        """
-        trimmed_value = ''.join(policy_value.split())
-        for test_case, value in self.TEST_CASES.items():
-            if self.packed_json_string(value) == trimmed_value:
-                return test_case
-        raise error.TestError('No test case for value: %r' % trimmed_value)
-
-
-    def _run_test(self, test_case):
-        """Log and call the test case runner in the test class.
-
-        @param test_case: name of the test case to run.
-
-        """
-        logging.info('Running test case: %s', test_case)
-        self.run_test_case(test_case)
-
     def run_once(self):
         """The run_once() method is required by all AutoTest tests.
 
         run_once() is defined herein to automatically determine which test
-        case(s) in the test class to run. The test class must have a public
+        case in the test class to run. The test class must have a public
         run_test_case() method defined. Note: The test class may override
-        run_once if it will determine which test case(s) to run on its own.
+        run_once() if it determines which test case to run.
 
         """
-        # If |case| is not set, then run all cases. This will work only on
-        # the fake DM Server. This Functionality is provided for backward
-        # compatibility with tests running in regression and bvt-perbuild
-        # suites. Remove after crbug.com/629357 is merged.
-        if not self.case:
-           for test_case in sorted(self.TEST_CASES):
-               self._run_test(test_case)
-           return
-        self._run_test(self.case)
+        logging.info('Running test case: %s', self.case)
+        self.run_test_case(self.case)
