@@ -2,7 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, utils
+import logging
+import utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -13,18 +14,18 @@ class policy_ImagesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
     This test verifies the behavior of Chrome OS with a range of valid values
     for the ImagesBlockedForUrls user policies. These values are covered by
-    four test cases, named: NotSet_Allowed, 1Url_Blocked, 2Urls_Allowed,
-    3Urls_Blocked.
+    four test cases, named: NotSet_Allow, 1Url_Block, 2Urls_Allow, and
+    3Urls_Block.
 
-    When the policy value is None (as in case=NotSet_Allowed), then images are
+    When the policy value is None (as in case=NotSet_Allow), then images are
     not blocked on any page. When the value is set to a single domain (such as
-    case=1Url_Blocked), then images are blocked on any page with that domain.
-    When set to multiple domains (as in case=2Urls_Allowed or 3Urls_Blocked),
+    case=1Url_Block), then images are blocked on any page with that domain.
+    When set to multiple domains (as in case=2Urls_Allow or 3Urls_Block),
     then images are blocked on any page with a domain that matches any of the
     listed domains.
 
-    Two test cases (1Url_Blocked, 3Urls_Blocked) are designed to block images
-    on the test page. The other two test cases (NotSet_Allowed, 2Urls_Allowed)
+    Two test cases (1Url_Block, 3Urls_Block) are designed to block images
+    on the test page. The other two test cases (NotSet_Allow, 2Urls_Allow)
     are designed to allow images to be shown on the test page.
 
     Note this test has a dependency on the DefaultImagesSetting policy, which
@@ -77,7 +78,7 @@ class policy_ImagesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
     def _is_image_blocked(self, tab):
         image_width = tab.EvaluateJavaScript(
-            "document.getElementById('kittens_id').width")
+            "document.getElementById('kittens_id').naturalWidth")
         return image_width < self.MINIMUM_IMAGE_WIDTH
 
     def _test_images_blocked_for_urls(self, policy_value, policies_dict):
@@ -101,8 +102,8 @@ class policy_ImagesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         image_is_blocked = self._is_image_blocked(tab)
 
         # String |URL_HOST| shall be found in string |policy_value| for test
-        # cases 1Url_Blocked and 3Urls_Blocked, but not for NotSet_Allowed and
-        # 2Urls_Allowed.
+        # cases 1Url_Block and 3Urls_Block, but not for NotSet_Allow and
+        # 2Urls_Allow.
         if policy_value is not None and self.URL_HOST in policy_value:
             if not image_is_blocked:
                 raise error.TestFail('Image should be blocked.')
