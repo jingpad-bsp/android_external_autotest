@@ -4,7 +4,7 @@ daemon:!:2:root,bin,daemon
 sys:!:3:root,bin,adm
 adm:!:4:root,adm,daemon
 disk:!:6:root,adm
-lp:!:7:lp,cups,chronos
+lp:!:7:lp,lpadmin,cups,chronos
 mem:!:8:
 kmem:!:9:
 wheel:!:10:root
@@ -74,7 +74,7 @@ dlm:!:262:
 buffet:!:264:chronos,buffet,power
 webservd:!:266:buffet,webservd
 dnsmasq:!:268:dnsmasq
-lpadmin:!:269:chronos,cups
+lpadmin:!:269:chronos,cups,lpadmin
 cups:!:277:
 arc-camera:!:603:
 ntfs-3g:!:300:
