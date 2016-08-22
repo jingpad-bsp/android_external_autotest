@@ -10,6 +10,7 @@ import unittest
 
 import common
 from autotest_lib.client.common_lib import hosts
+from autotest_lib.client.common_lib.hosts import repair
 
 
 class _StubHost(object):
@@ -260,6 +261,25 @@ class _DependencyNodeTestCase(unittest.TestCase):
         return repair_action
 
 
+    def _make_expected_failures(self, *verifiers):
+        """
+        Make a set of `_DependencyFailure` objects from `verifiers`.
+
+        Return the set of `_DependencyFailure` objects that we would
+        expect to see in the `failures` attribute of an
+        `AutoservVerifyDependencyError` if all of the given verifiers
+        report failure.
+
+        @param verifiers  A list of `_StubVerifier` objects that are
+                          expected to fail.
+
+        @return A set of `_DependencyFailure` objects.
+        """
+        failures = [repair._DependencyFailure(v.description, v.message)
+                    for v in verifiers]
+        return set(failures)
+
+
     def _check_log_records(self, *record_data):
         """
         Assert that log records occurred as expected.
@@ -416,10 +436,11 @@ class VerifyTests(_DependencyNodeTestCase):
         """
         child = self._make_verifier(1, 'fail', [])
         parent = self._make_verifier(0, 'parent', [child])
+        failures = self._make_expected_failures(child)
         for i in self._generate_reverify(parent):
             with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 parent._verify_host(self._fake_host)
-            self.assertEqual(e.exception.args, (child.description,))
+            self.assertEqual(e.exception.failures, failures)
             self.assertEqual(child.verify_count, i+1)
             self.assertEqual(parent.verify_count, 0)
             self._check_log_records(('fail', 'FAIL'))
@@ -473,12 +494,11 @@ class VerifyTests(_DependencyNodeTestCase):
         left = self._make_verifier(1, 'left', [])
         right = self._make_verifier(1, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
+        failures = self._make_expected_failures(left, right)
         for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
-            self.assertEqual(sorted(e.exception.args),
-                             sorted((left.description,
-                                     right.description)))
+            self.assertEqual(e.exception.failures, failures)
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
@@ -507,10 +527,11 @@ class VerifyTests(_DependencyNodeTestCase):
         left = self._make_verifier(1, 'left', [])
         right = self._make_verifier(0, 'right', [])
         top = self._make_verifier(0, 'top', [left, right])
+        failures = self._make_expected_failures(left)
         for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
-            self.assertEqual(e.exception.args, (left.description,))
+            self.assertEqual(e.exception.failures, failures)
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, i+1)
             self.assertEqual(right.verify_count, i+1)
@@ -584,10 +605,11 @@ class VerifyTests(_DependencyNodeTestCase):
         left = self._make_verifier(0, 'left', [bottom])
         right = self._make_verifier(0, 'right', [bottom])
         top = self._make_verifier(0, 'top', [left, right])
+        failures = self._make_expected_failures(bottom)
         for i in self._generate_reverify(top):
             with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
                 top._verify_host(self._fake_host)
-            self.assertEqual(e.exception.args, (bottom.description,))
+            self.assertEqual(e.exception.failures, failures)
             self.assertEqual(top.verify_count, 0)
             self.assertEqual(left.verify_count, 0)
             self.assertEqual(right.verify_count, 0)
@@ -762,7 +784,8 @@ class RepairActionTests(_DependencyNodeTestCase):
                                           [dep], [trigger])
         with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
             repair._repair_host(self._fake_host)
-        self.assertEqual(e.exception.args, (dep.description,))
+        self.assertEqual(e.exception.failures,
+                         self._make_expected_failures(dep))
         self.assertEqual(dep.verify_count, 1)
         self.assertEqual(trigger.verify_count, 0)
         self.assertEqual(repair.repair_count, 0)
