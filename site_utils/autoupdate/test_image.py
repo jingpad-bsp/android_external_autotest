@@ -79,7 +79,7 @@ def gs_ls(pattern, archive_url, single):
         logging.fatal('crbug.com/639314 Searching for pattern %s from url %s', pattern,
                       archive_url)
         uri_list = gsutil_util.GetGSNamesWithWait(
-                pattern, archive_url, err_str=__name__, timeout=1)
+                pattern, archive_url, err_str=__name__, timeout=300)
         logging.fatal("crbug.com/639314 uri_list={0}".format(uri_list))
         # Convert to the format our clients expect (full archive path).
         if uri_list:
