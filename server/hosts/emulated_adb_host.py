@@ -84,6 +84,7 @@ class EmulatedADBHost(adb_host.ADBHost):
         if not self._emulator.find():
             self._emulator.start()
         self.wait_up()
+        self._reset_adbd_connection()
 
 
     def get_os_type(self):
