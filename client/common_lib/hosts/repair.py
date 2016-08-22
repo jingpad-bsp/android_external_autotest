@@ -22,6 +22,7 @@ meant to test for specific conditions that may cause tests to fail.
 more failures identified by a `Verifier` object.
 """
 
+import collections
 import logging
 
 import common
@@ -38,6 +39,10 @@ class AutoservVerifyError(error.AutoservError):
     pass
 
 
+_DependencyFailure = collections.namedtuple(
+        '_DependencyFailure', ('dependency', 'error'))
+
+
 class AutoservVerifyDependencyError(error.AutoservError):
     """
     Exception raised for failures in dependencies.
@@ -48,13 +53,59 @@ class AutoservVerifyDependencyError(error.AutoservError):
     to signal that the original failure is further down the dependency
     chain.
 
-    Each argument to the constructor for this class should be the string
-    description of one failed dependency.
+    The `failures` argument to the constructor for this class is a set
+    of instances of `_DependencyFailure`, each corresponding to one
+    failed dependency:
+      * The `dependency` attribute of each failure is the description
+        of the failed dependency.
+      * The `error` attribute of each failure is the string value of
+        the exception from the failed dependency.
 
-    `Verifier._verify_host()` recognizes and handles this exception
+    Multiple methods in this module recognize and handle this exception
     specially.
+
+    @property failures  Set of failures passed to the constructor.
+    @property _node     Instance of `_DependencyNode` reporting the
+                        failed dependencies.
     """
-    pass
+    def __init__(self, node, failures):
+        """
+        Constructor for `AutoservVerifyDependencyError`.
+
+        @param node       Instance of _DependencyNode reporting the
+                          failed dependencies.
+        @param failures   List of failure tuples as described above.
+        """
+        super(AutoservVerifyDependencyError, self).__init__(
+                '\n'.join([f.error for f in failures]))
+        self.failures = failures
+        self._node = node
+
+
+    def log_dependencies(self, action, deps):
+        """
+        Log an `AutoservVerifyDependencyError`.
+
+        This writes a short summary of the dependency failures captured
+        in this exception, using standard Python logging.
+
+        The passed in `action` string plus `self._node.description`
+        are logged at INFO level.  The `action` argument should
+        introduce or describe an action relative to `self._node`.
+
+        The passed in `deps` string and the description of each failed
+        dependency in `self` are be logged at DEBUG level.  The `deps`
+        argument is used to introduce the various failed dependencies.
+
+        @param action   A string mentioning the action being logged
+                        relative to `self._node`.
+        @param deps     A string introducing the dependencies that
+                        failed.
+        """
+        logging.info('%s: %s', action, self._node.description)
+        logging.debug('%s:', deps)
+        for failure in self.failures:
+            logging.debug('    %s', failure.dependency)
 
 
 class AutoservRepairError(error.AutoservError):
@@ -86,8 +137,7 @@ class _DependencyNode(object):
         self._tag = tag
 
 
-    @staticmethod
-    def _verify_list(host, verifiers):
+    def _verify_list(self, host, verifiers):
         """
         Test a list of verifiers against a given host.
 
@@ -114,32 +164,11 @@ class _DependencyNode(object):
             try:
                 v._verify_host(host)
             except AutoservVerifyDependencyError as e:
-                failures.update(e.args)
+                failures.update(e.failures)
             except Exception as e:
-                failures.add(v.description)
+                failures.add(_DependencyFailure(v.description, str(e)))
         if failures:
-            raise AutoservVerifyDependencyError(*list(failures))
-
-
-    def _log_dependency_error(self, message, exc):
-        """
-        Log an `AutoservVerifyDependencyError`.
-
-        This writes a short summary of the failures in the exception's
-        arguments, using standard Python logging.  The logging consists
-        of two parts.  The first part is an initial INFO level message.
-        The message should have one `%s` format argument, which will be
-        filled in with `self.description`.  The second part is to write
-        each argument of the exception at DEBUG level, with indentation
-        to make the arguments visible.
-
-        @param message  Message describing the event, to be formatted
-                        with `self.description`.
-        @param exc      An instance of `AutoservVerifyDependencyError`.
-        """
-        logging.info('%s: %s', message, self.description)
-        for description in exc.args:
-            logging.debug('    %s', description)
+            raise AutoservVerifyDependencyError(self, failures)
 
 
     def _verify_dependencies(self, host):
@@ -151,9 +180,9 @@ class _DependencyNode(object):
         try:
             self._verify_list(host, self._dependency_list)
         except AutoservVerifyDependencyError as e:
-            self._log_dependency_error(
-                    'Dependencies failed; '
-                    'skipping this operation', e)
+            e.log_dependencies(
+                    'Skipping this operation',
+                    'The following dependencies failed')
             raise
 
 
@@ -389,7 +418,9 @@ class RepairAction(_DependencyNode):
         try:
             self._verify_list(host, self._trigger_list)
         except AutoservVerifyDependencyError as e:
-            self._log_dependency_error('Repair action triggered', e)
+            e.log_dependencies(
+                    'Attempting this repair action',
+                    'Repair was triggered by these failures')
             host.record('START', None, self._repair_tag)
             try:
                 self.repair(host)
@@ -404,8 +435,9 @@ class RepairAction(_DependencyNode):
                 self._verify_list(host, self._trigger_list)
                 host.record('END GOOD', None, self._repair_tag)
             except AutoservVerifyDependencyError as e:
-                self._log_dependency_error(
-                        'Repair passed but triggers still fail', e)
+                e.log_dependencies(
+                        'This repair action reported success',
+                        'However, these triggers still fail')
                 host.record('END FAIL', None, self._repair_tag)
                 raise AutoservRepairError(
                         'Some verification checks still fail')
