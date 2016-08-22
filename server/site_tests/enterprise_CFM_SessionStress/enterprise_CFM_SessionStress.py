@@ -9,8 +9,8 @@ from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
-LONG_TIMEOUT = 7
-SHORT_TIMEOUT = 2
+LONG_TIMEOUT = 8
+SHORT_TIMEOUT = 5
 
 
 class enterprise_CFM_SessionStress(test.test):
