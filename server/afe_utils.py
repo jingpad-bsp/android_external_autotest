@@ -235,9 +235,9 @@ def machine_install_and_update_labels(host, *args, **dargs):
     else:
         image_name, host_attributes = host.machine_install_by_devserver(
             *args, **dargs)
-    add_version_label(host, image_name)
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
+    add_version_label(host, image_name)
 
 
 def get_os(host):
