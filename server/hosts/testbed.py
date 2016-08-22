@@ -116,6 +116,11 @@ class TestBed(object):
         return self.labels.get_labels(self)
 
 
+    def update_labels(self):
+        """Update the labels on the testbed."""
+        return self.labels.update_labels(self)
+
+
     def get_platform(self):
         """Return the platform of the devices.
 
