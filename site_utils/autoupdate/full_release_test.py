@@ -92,6 +92,8 @@ class TestConfigGenerator(object):
         # version. We rstrip in the case of any trailing /'s.
         # Use archive prefix for any nmo / specific builds.
         self.archive_prefix = self.archive_url.rstrip('/').rpartition('/')[0]
+        logging.fatal("crbug.com/639314 TestConfigGenerator.__init__ self.archive_url={0}, self.archive_prefix={1}"
+            .format(self.archive_url, self.archive_prefix))
 
 
     def _get_source_uri_from_build_version(self, build_version):
@@ -217,6 +219,7 @@ class TestConfigGenerator(object):
         @raise FullReleaseTestError if something went wrong
 
         """
+        logging.fatal("crbug.com/639314 generate_npo_nmo_list():")
         if not (self.test_nmo or self.test_npo):
             return []
 
@@ -226,6 +229,7 @@ class TestConfigGenerator(object):
         test_list = []
         payload_uri_list = test_image.find_payload_uri(
                 self.archive_url, delta=True)
+        logging.fatal("crbug.com/639314 payload_uri_list={0}".format(payload_uri_list))
         for payload_uri in payload_uri_list:
             # Infer the source and target release versions. These versions will
             # be something like 'R43-6831.0.0' for release builds and
@@ -234,6 +238,9 @@ class TestConfigGenerator(object):
             source_version, target_version = (
                     self._parse_delta_filename(file_name))
             _, source_release = self._parse_build_version(source_version)
+
+            logging.fatal("crbug.com/639314 payload_uri={0}, file_name={1}, source_version={2}, target_version={3}"
+                .format(payload_uri, file_name, source_version, target_version))
 
             # The target version should contain the tested release otherwise
             # this is a delta payload to a different version. They are not equal
@@ -250,6 +257,7 @@ class TestConfigGenerator(object):
             # the source is some other build. Note that this function handles
             # both cases.
             source_uri = self._get_source_uri_from_build_version(source_version)
+            logging.fatal("crbug.com/639314 source_uri={0}".format(source_uri))
 
             if not source_uri:
                 logging.warning('cannot find source for %s, %s', self.board,
@@ -258,11 +266,13 @@ class TestConfigGenerator(object):
 
             # Determine delta type, make sure it was not already discovered.
             delta_type = 'npo' if source_version == target_version else 'nmo'
+
+            logging.fatal("crbug.com/639314 delta_type={0}".format(delta_type))
             # Only add test configs we were asked to test.
             if (delta_type == 'npo' and not self.test_npo) or (
                 delta_type == 'nmo' and not self.test_nmo):
                 continue
-
+            logging.fatal("crbug.com/639314 found={0}".format(found))
             if delta_type in found:
                 raise FullReleaseTestError(
                         'more than one %s deltas found (%s, %s)' % (
@@ -273,6 +283,7 @@ class TestConfigGenerator(object):
             # Generate test configuration.
             test_list.append(self.generate_test_image_config(
                     delta_type, True, source_release, payload_uri, source_uri))
+            logging.fatal("crbug.com/639314 test_list.append {0}".format(test_list))
 
         return test_list
 
@@ -335,8 +346,11 @@ def generate_test_list(args):
     """
     # Initialize test list.
     test_list = []
+    logging.fatal("crbug.com/639314 generate_test_list(tested_release={0}, test_nmo={1}, test_npo={2}, archive_url={3}, specific={4})"
+        .format(args.tested_release, args.test_nmo, args.test_npo, args.archive_url, args.specific))
 
     for board in args.tested_board_list:
+        logging.fatal("crbug.com/639314 board={0}".format(board))
         test_list_for_board = []
         generator = TestConfigGenerator(
                 board, args.tested_release, args.test_nmo, args.test_npo,
@@ -352,6 +366,7 @@ def generate_test_list(args):
                     args.specific, test_list_for_board)
 
         test_list += test_list_for_board
+        logging.fatal("crbug.com/639314 test_list={0}".format(test_list))
 
     return test_list
 
