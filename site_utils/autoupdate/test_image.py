@@ -76,21 +76,26 @@ def gs_ls(pattern, archive_url, single):
 
     """
     try:
-        logging.debug('Searching for pattern %s from url %s', pattern,
+        logging.fatal('crbug.com/639314 Searching for pattern %s from url %s', pattern,
                       archive_url)
         uri_list = gsutil_util.GetGSNamesWithWait(
                 pattern, archive_url, err_str=__name__, timeout=1)
+        logging.fatal("crbug.com/639314 uri_list={0}".format(uri_list))
         # Convert to the format our clients expect (full archive path).
         if uri_list:
             if not single or (single and len(uri_list) == 1):
+                logging.fatal("crbug.com/639314 Normal return")
                 return ['/'.join([archive_url, u]) for u in uri_list]
             else:
+                logging.fatal("crbug.com/639314 NotSingleItem()")
                 raise NotSingleItem()
-
+        logging.fatal("crbug.com/639314 return []")
         return []
     except gsutil_util.PatternNotSpecific as e:
+        logging.fatal("crbug.com/639314 gsutil_util.PatternNotSpecific")
         raise TestImageError(str(e))
     except gsutil_util.GSUtilError:
+        logging.fatal("crbug.com/639314 gsutil_util.GSUtilError")
         return []
 
 
@@ -113,10 +118,13 @@ def find_payload_uri(archive_url, delta=False, single=False):
     else:
         pattern = '*_full_*'
 
+    logging.fatal("crbug.com/639314 find_payload_uri(archive_url={0}, delta={1}, single={2}):"
+        .format(archive_url, delta, single))
     payload_uri_list = gs_ls(pattern, archive_url, single)
+    logging.fatal("crbug.com/639314 gs_ls() = {0}".format(payload_uri_list))
     if not payload_uri_list:
         return None if single else []
-
+    logging.fatal("crbug.com/639314 payload_uri_list is not empty")
     return payload_uri_list[0] if single else payload_uri_list
 
 
