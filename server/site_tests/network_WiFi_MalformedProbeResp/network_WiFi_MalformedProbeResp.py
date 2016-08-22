@@ -24,6 +24,9 @@ class network_WiFi_MalformedProbeResp(wifi_cell_test_base.WiFiCellTestBase):
 
     def run_once(self):
         """Sets up a router, connects to it, pings it, and repeats."""
+        if self.context.router.board == "panther":
+            raise error.TestNAError('Panther router does not support manual '
+                                    'beacon frame generation')
         configuration = hostap_config.HostapConfig(
                 channel=self.PROBE_RESPONSE_TEST_CHANNEL,
                 mode=hostap_config.HostapConfig.MODE_11B)
