@@ -936,18 +936,31 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self.check_limit_file_count(is_test_job=False)
 
 
-    def test_is_release_builder(self):
-        """Test _is_release_build"""
+    def test_is_valid_result(self):
+        """Test _is_valid_result."""
         release_build = 'veyron_minnie-cheets-release/R52-8248.0.0'
         pfq_build = 'cyan-cheets-android-pfq/R54-8623.0.0-rc1'
         trybot_build = 'trybot-samus-release/R54-8640.0.0-b5092'
         trybot_2_build = 'trybot-samus-pfq/R54-8640.0.0-b5092'
         release_2_build = 'test-trybot-release/R54-8640.0.0-b5092'
-        self.assertTrue(gs_offloader._is_release_build(release_build))
-        self.assertFalse(gs_offloader._is_release_build(pfq_build))
-        self.assertFalse(gs_offloader._is_release_build(trybot_build))
-        self.assertFalse(gs_offloader._is_release_build(trybot_2_build))
-        self.assertTrue(gs_offloader._is_release_build(release_2_build))
+        self.assertTrue(gs_offloader._is_valid_result(
+            release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertFalse(gs_offloader._is_valid_result(
+            release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-bvt-cq'))
+        self.assertTrue(gs_offloader._is_valid_result(
+            release_build, gs_offloader.GTS_RESULT_PATTERN, 'arc-gts-tot'))
+        self.assertFalse(gs_offloader._is_valid_result(
+            None, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertFalse(gs_offloader._is_valid_result(
+            release_build, gs_offloader.CTS_RESULT_PATTERN, None))
+        self.assertFalse(gs_offloader._is_valid_result(
+            pfq_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertFalse(gs_offloader._is_valid_result(
+            trybot_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertFalse(gs_offloader._is_valid_result(
+            trybot_2_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertTrue(gs_offloader._is_valid_result(
+            release_2_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
 
 
     def create_results_folder(self):
@@ -1022,7 +1035,8 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         for path, pattern in path_pattern_pair:
             models.test.parse_job_keyval(mox.IgnoreArg()).AndReturn({
                 'build': 'veyron_minnie-cheets-release/R52-8248.0.0',
-                'parent_job_id': 'p_id'
+                'parent_job_id': 'p_id',
+                'suite': 'arc-cts'
             })
 
             gs_offloader.get_cmd_list(
