@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 from autotest_lib.client.cros.audio import audio_helper
 from autotest_lib.client.cros.chameleon import audio_widget
+from autotest_lib.client.cros.chameleon import audio_widget_arc
 from autotest_lib.client.cros.chameleon import audio_widget_link
 from autotest_lib.server.cros.bluetooth import bluetooth_device
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
@@ -245,10 +246,12 @@ class AudioWidgetFactory(object):
         self._link_factory = AudioLinkFactory(cros_host)
 
 
-    def create_widget(self, port_id):
+    def create_widget(self, port_id, use_arc=False):
         """Creates a AudioWidget given port id string.
 
         @param port_id: A port id string defined in chameleon_audio_ids.
+        @param use_arc: For Cros widget, select if audio path exercises ARC.
+                        Currently only input widget is supported.
 
         @returns: An AudioWidget that is actually a
                   (Chameleon/Cros/Peripheral)(Input/Output)Widget.
@@ -307,6 +310,9 @@ class AudioWidgetFactory(object):
             if audio_port.role == 'sink':
                 if is_usb:
                     return audio_widget.CrosUSBInputWidgetHandler(
+                            self._audio_facade, plug_handler)
+                elif use_arc:
+                    return audio_widget_arc.CrosInputWidgetARCHandler(
                             self._audio_facade, plug_handler)
                 else:
                     return audio_widget.CrosInputWidgetHandler(
