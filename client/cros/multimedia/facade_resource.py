@@ -211,3 +211,44 @@ class FacadeResource(object):
         del self._tabs[tab_descriptor]
         tab.Close()
         self.clean_unexpected_tabs()
+
+
+    def wait_for_javascript_expression(
+            self, tab_descriptor, expression, timeout):
+        """Waits for the given JavaScript expression to be True on the given tab
+
+        @param tab_descriptor: Indicate on which tab to wait for the expression.
+        @param expression: Indiate for what expression to wait.
+        @param timeout: Indicate the timeout of the expression.
+        """
+        if tab_descriptor not in self._tabs:
+            raise RuntimeError('There is no tab for %s' % tab_descriptor)
+        self._tabs[tab_descriptor].WaitForJavaScriptExpression(
+                expression, timeout)
+
+
+    def execute_javascript(self, tab_descriptor, statement, timeout):
+        """Executes a JavaScript statement on the given tab.
+
+        @param tab_descriptor: Indicate on which tab to execute the statement.
+        @param statement: Indiate what statement to execute.
+        @param timeout: Indicate the timeout of the statement.
+        """
+        if tab_descriptor not in self._tabs:
+            raise RuntimeError('There is no tab for %s' % tab_descriptor)
+        self._tabs[tab_descriptor].ExecuteJavaScript(
+                statement, timeout)
+
+
+    def evaluate_javascript(self, tab_descriptor, expression, timeout):
+        """Evaluates a JavaScript expression on the given tab.
+
+        @param tab_descriptor: Indicate on which tab to evaluate the expression.
+        @param expression: Indiate what expression to evaluate.
+        @param timeout: Indicate the timeout of the expression.
+        @return the JSONized result of the given expression
+        """
+        if tab_descriptor not in self._tabs:
+            raise RuntimeError('There is no tab for %s' % tab_descriptor)
+        return self._tabs[tab_descriptor].EvaluateJavaScript(
+                expression, timeout)
