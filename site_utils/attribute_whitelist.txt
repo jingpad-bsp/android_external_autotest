@@ -148,6 +148,7 @@ suite:wifi_correctness_cros_core
 suite:wifi_endtoend
 suite:wifi_flaky
 suite:wifi_interop
+suite:wifi_interop_wpa2
 suite:wifi_lucidsleep
 suite:wifi_matfunc
 suite:wifi_matfunc_bcm4371
