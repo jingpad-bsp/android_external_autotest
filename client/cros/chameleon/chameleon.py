@@ -550,7 +550,7 @@ class ChameleonVideoInput(ChameleonPort):
         Stops the ongoing video frame capturing.
 
         """
-        self.chameleond_proxy.StopCapturingVideo(self.port_id)
+        self.chameleond_proxy.StopCapturingVideo()
 
 
     def get_captured_frame_count(self):
