@@ -9,7 +9,8 @@ NAME = 'brillo_DiskSizeTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt,suite:brillo-smoke'
+ATTRIBUTES = ('suite:brillo-bvt,suite:brillo-smoke,suite:brillo-presubmit,'
+              'suite:brillo-postsubmit')
 
 DOC = """
 Tests whether a Brillo device has sufficient disk size.
