@@ -11,6 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
+JOB_RETRIES = 2
 
 DOC = """
 This test clears the TPM if necessary, enrolls the device as a remora device
