@@ -49,7 +49,7 @@ class ChaosRunner(object):
         logging.info('DUT time: %s', self._host.run('date').stdout.strip())
 
 
-    def run(self, job, batch_size=7, tries=10, capturer_hostname=None,
+    def run(self, job, batch_size=12, tries=10, capturer_hostname=None,
             conn_worker=None, work_client_hostname=None,
             disabled_sysinfo=False):
         """Executes Chaos test.
