@@ -16,14 +16,20 @@ class CrasUtilsError(Exception):
     pass
 
 
-def playback(*args, **kargs):
+def playback(blocking=True, *args, **kargs):
     """A helper function to execute the playback_cmd.
 
+    @param blocking: Blocks this call until playback finishes.
     @param args: args passed to playback_cmd.
     @param kargs: kargs passed to playback_cmd.
 
+    @returns: The process running the playback command. Note that if the
+              blocking parameter is true, this will return a finished process.
     """
-    cmd_utils.execute(playback_cmd(*args, **kargs))
+    process = cmd_utils.popen(playback_cmd(*args, **kargs))
+    if blocking:
+        cmd_utils.wait_and_check_returncode(process)
+    return process
 
 
 def capture(*args, **kargs):
