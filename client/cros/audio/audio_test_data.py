@@ -5,6 +5,7 @@
 
 """This module provides audio test data."""
 
+import logging
 import os
 
 from autotest_lib.client.cros.audio import audio_data
@@ -74,22 +75,41 @@ class AudioTestData(object):
         @returns: A new AudioTestData object with converted format and new path.
 
         """
-        original_path_without_ext, ext = os.path.splitext(self.path)
+        original_path_without_ext, _ = os.path.splitext(self.path)
+        new_ext = '.' + data_format['file_type']
+        # New path will be the composition of original name, new data format,
+        # and new file type as extension.
         new_path = (original_path_without_ext + '_' +
-                    '_'.join(str(x) for x in data_format.values()) + ext)
+                    '_'.join(str(x) for x in data_format.values()) + new_ext)
+
+        logging.debug('src data_format: %s', self.data_format)
+        logging.debug('dst data_format: %s', data_format)
+
+        # If source file has header, use that header.
+        if self.data_format['file_type'] != 'raw':
+            use_src_header = True
+            channels_src = None
+            rate_src = None
+            bits_src = None
+        else:
+            use_src_header = False
+            channels_src = self.data_format['channel']
+            rate_src = self.data_format['rate']
+            bits_src = audio_data.SAMPLE_FORMATS[
+                    self.data_format['sample_format']]['size_bytes'] * 8
 
         sox_utils.convert_format(
                 path_src=self.path,
-                channels_src=self.data_format['channel'],
-                rate_src=self.data_format['rate'],
-                bits_src=audio_data.SAMPLE_FORMATS[
-                        self.data_format['sample_format']]['size_bytes'] * 8,
+                channels_src=channels_src,
+                rate_src=rate_src,
+                bits_src=bits_src,
                 path_dst=new_path,
                 channels_dst=data_format['channel'],
                 rate_dst=data_format['rate'],
                 bits_dst=audio_data.SAMPLE_FORMATS[
                         data_format['sample_format']]['size_bytes'] * 8,
-                volume_scale=volume_scale)
+                volume_scale=volume_scale,
+                use_src_header=use_src_header)
 
         new_test_data = AudioTestData(path=new_path,
                                       data_format=data_format)
