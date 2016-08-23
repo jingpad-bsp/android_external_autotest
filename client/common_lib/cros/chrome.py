@@ -165,6 +165,12 @@ class Chrome(object):
         for i in range(num_tries):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
+                network_controller = \
+                    browser_to_create.platform.network_controller
+                # TODO(achuith): Remove if condition after catapult:#2584 has
+                # landed and PFQ has rolled. crbug.com/639730.
+                if hasattr(network_controller, 'InitializeIfNeeded'):
+                    network_controller.InitializeIfNeeded()
                 self._browser = browser_to_create.Create(finder_options)
                 if is_arc_available():
                     if not disable_arc_opt_in:
