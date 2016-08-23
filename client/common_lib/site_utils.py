@@ -451,6 +451,14 @@ def get_function_arg_value(func, arg_name, args, kwargs):
                            (arg_name, argspec, args, kwargs))
 
 
+def has_systemd():
+    """Check if the host is running systemd.
+
+    @return: True if the host uses systemd, otherwise returns False.
+    """
+    return os.path.basename(os.readlink('/proc/1/exe')) == 'systemd'
+
+
 def version_match(build_version, release_version, update_url=''):
     """Compare release versino from lsb-release with cros-version label.
 
@@ -566,6 +574,83 @@ def get_real_user():
     if not user:
         user = os.environ.get('USER')
     return user
+
+
+def get_service_pid(service_name):
+    """Return pid of service.
+
+    @param service_name: string name of service.
+
+    @return: pid or 0 if service is not running.
+    """
+    if has_systemd():
+        # systemctl show prints 'MainPID=0' if the service is not running.
+        cmd_result = base_utils.run('systemctl show -p MainPID %s' %
+                                    service_name, ignore_status=True)
+        return int(cmd_result.stdout.split('=')[1])
+    else:
+        cmd_result = base_utils.run('status %s' % service_name,
+                                        ignore_status=True)
+        if 'start/running' in cmd_result.stdout:
+            return int(cmd_result.stdout.split()[3])
+        return 0
+
+
+def control_service(service_name, action='start', ignore_status=True):
+    """Controls a service. It can be used to start, stop or restart
+    a service.
+
+    @param service_name: string service to be restarted.
+
+    @param action: string choice of action to control command.
+
+    @param ignore_status: boolean ignore if system command fails.
+
+    @return: status code of the executed command.
+    """
+    if action not in ('start', 'stop', 'restart'):
+        raise ValueError('Unknown action supplied as parameter.')
+
+    control_cmd = action + ' ' + service_name
+    if has_systemd():
+        control_cmd = 'systemctl ' + control_cmd
+    return base_utils.system(control_cmd, ignore_status=ignore_status)
+
+
+def restart_service(service_name, ignore_status=True):
+    """Restarts a service
+
+    @param service_name: string service to be restarted.
+
+    @param ignore_status: boolean ignore if system command fails.
+
+    @return: status code of the executed command.
+    """
+    return control_service(service_name, action='restart', ignore_status=ignore_status)
+
+
+def start_service(service_name, ignore_status=True):
+    """Starts a service
+
+    @param service_name: string service to be started.
+
+    @param ignore_status: boolean ignore if system command fails.
+
+    @return: status code of the executed command.
+    """
+    return control_service(service_name, action='start', ignore_status=ignore_status)
+
+
+def stop_service(service_name, ignore_status=True):
+    """Stops a service
+
+    @param service_name: string service to be stopped.
+
+    @param ignore_status: boolean ignore if system command fails.
+
+    @return: status code of the executed command.
+    """
+    return control_service(service_name, action='stop', ignore_status=ignore_status)
 
 
 def sudo_require_password():
