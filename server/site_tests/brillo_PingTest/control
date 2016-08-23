@@ -9,7 +9,7 @@ NAME = 'brillo_PingTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
+ATTRIBUTES = 'suite:brillo-bvt,suite:brillo-postsubmit'
 
 DOC = """
 Tests whether a Brillo device can ping the Internet.
