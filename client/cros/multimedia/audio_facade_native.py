@@ -38,10 +38,11 @@ class AudioFacadeNative(object):
     _PLAYBACK_DATA_FORMAT = dict(
             file_type='raw', sample_format='S16_LE', channel=2, rate=48000)
 
-    def __init__(self, resource):
+    def __init__(self, resource, arc_resource=None):
         """Initializes an audio facade.
 
         @param resource: A FacadeResource object.
+        @param arc_resource: An ArcResource object.
 
         """
         self._resource = resource
@@ -49,6 +50,7 @@ class AudioFacadeNative(object):
         self._player = None
         self._counter = None
         self._loaded_extension_handler = None
+        self._arc_resource = arc_resource
 
 
     @property
@@ -306,6 +308,32 @@ class AudioFacadeNative(object):
         """
         cras_dbus_utils.wait_for_unexpected_nodes_changed(timeout_secs)
 
+
+    def start_arc_recording(self):
+        """Starts recording using microphone app in container.
+
+        @raises AudioFacadeNativeError: if there is no ARC resource.
+
+        """
+        if not self._arc_resource:
+            raise AudioFacadeNativeError('There is no ARC resource.')
+        self._arc_resource.microphone.start_microphone_app()
+
+
+    def stop_arc_recording(self):
+        """Checks the recording is stopped and gets the recorded path.
+
+        The recording duration of microphone app is fixed, so this method just
+        copies the recorded result from container to a path on Cros device.
+
+        @raises AudioFacadeNativeError: if there is no ARC resource.
+
+        """
+        if not self._arc_resource:
+            raise AudioFacadeNativeError('There is no ARC resource.')
+        _, file_path = tempfile.mkstemp(prefix='capture_', suffix='.amr-nb')
+        self._arc_resource.microphone.stop_microphone_app(file_path)
+        return file_path
 
 
 class RecorderError(Exception):
