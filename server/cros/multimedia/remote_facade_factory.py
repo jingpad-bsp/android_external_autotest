@@ -157,17 +157,20 @@ class RemoteFacadeFactory(object):
 
     """
 
-    def __init__(self, host, no_chrome=False):
+    def __init__(self, host, no_chrome=False, install_autotest=True):
         """Construct a RemoteFacadeFactory.
 
         @param host: Host object representing a remote host.
         @param no_chrome: Don't start Chrome by default.
+        @param install_autotest: Install autotest on host.
+
         """
         self._client = host
-        # Make sure the client library is on the device so that the proxy code
-        # is there when we try to call it.
-        client_at = autotest.Autotest(self._client)
-        client_at.install()
+        if install_autotest:
+            # Make sure the client library is on the device so that the proxy code
+            # is there when we try to call it.
+            client_at = autotest.Autotest(self._client)
+            client_at.install()
         self._proxy = RemoteFacadeProxy(self._client, no_chrome)
 
 
