@@ -19,7 +19,7 @@ NETWORK_CRITICAL_PROCESSES = [
     'dbus-daemon',
     'netfilter-queue',
     'shill',
-    'udevd',
+    'udevd|systemd-udevd',
     'update_engine',
     'wpa_supplicant',
     ]
