@@ -23,5 +23,5 @@ AP_TEST_TYPE_CLIQUE = 2
 
 # This constant is used by the chaos_runner to determine maximum APs/SSIDs
 # that are up in the lab.
-MAX_SSID_COUNT = 30 
+MAX_SSID_COUNT = 40
 MAX_SCAN_TIMEOUT = 30
