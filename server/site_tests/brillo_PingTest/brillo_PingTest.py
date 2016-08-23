@@ -8,6 +8,7 @@ import common
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import site_utils
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 from autotest_lib.server.brillo import host_utils
@@ -42,12 +43,19 @@ class brillo_PingTest(test.test):
             ssid = site_utils.get_wireless_ssid(host.hostname)
             passphrase = global_config.global_config.get_config_value(
                     'CLIENT', 'wireless_password', default=None)
-        with host_utils.connect_to_ssid(host, ssid, passphrase):
+        host.run('am startservice -n com.google.wifisetup/.WifiSetupService '
+                 '-a WifiSetupService.Connect -e ssid %s -e passphrase %s' %
+                 (ssid, passphrase))
+
+        @retry.retry(error.GenericHostRunError, timeout_min=1.5, delay_sec=3)
+        def ping():
             cmd = 'ping -q -c %s -W %s %s' % (ping_count, ping_timeout,
                                               ping_host)
-            try:
-                host.run(cmd)
-            except error.GenericHostRunError:
-                raise error.TestFail(
-                        'Failed to ping %s in %d seconds on all %d attempts' %
-                        (ping_host, ping_timeout, ping_count))
+            host.run(cmd)
+
+        try:
+            ping()
+        except error.GenericHostRunError:
+            raise error.TestFail(
+                    'Failed to ping %s in %d seconds on all %d attempts' %
+                    (ping_host, ping_timeout, ping_count))

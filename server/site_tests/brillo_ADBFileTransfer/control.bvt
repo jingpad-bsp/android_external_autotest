@@ -7,7 +7,7 @@ NAME = 'brillo_ADBFileTransfer.10iters'
 TIME = 'MEDIUM'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt'
+ATTRIBUTES = 'suite:brillo-bvt, suite:brillo-presubmit, suite:brillo-postsubmit'
 
 DOC = """
 Tests whether ADB can handle large/long file transfers.

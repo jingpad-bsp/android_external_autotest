@@ -7,7 +7,8 @@ NAME = 'brillo_ADBLogcatTest'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:brillo-bvt, suite:brillo-pts'
+ATTRIBUTES = ('suite:brillo-bvt, suite:brillo-pts, suite:brillo-presubmit, '
+              'suite:brillo-postsubmit')
 
 DOC = """
 Tests whether 'adb logcat' and 'adb shell dmesg' work

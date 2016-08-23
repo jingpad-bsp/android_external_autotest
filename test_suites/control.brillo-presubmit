@@ -12,7 +12,9 @@ TEST_CLASS = "suite"
 TEST_TYPE = "Server"
 
 DOC = """
-Suite for kicking off the Brillo presubmit testing.
+Suite for kicking off the Brillo presubmit testing. Runs on emulators and
+physical devices. WiFi, fastboot and other hardware or bootloader related tests
+must not be added to this suite.
 """
 
 import common
