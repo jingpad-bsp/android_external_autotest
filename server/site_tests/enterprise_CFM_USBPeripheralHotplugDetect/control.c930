@@ -12,6 +12,7 @@ TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
 DEPENDENCIES = "servo, c930"
+JOB_RETRIES = 2
 
 DOC = """
 This test clears the TPM if necessary, kicks off a client side test that enrolls
