@@ -27,6 +27,7 @@ from autotest_lib.frontend.afe import rdb_model_extensions as rdb_models
 from autotest_lib.frontend.afe import models as afe_models
 from autotest_lib.scheduler import rdb_requests
 from autotest_lib.scheduler import rdb_utils
+from autotest_lib.site_utils import lab_inventory
 from autotest_lib.site_utils import metadata_reporter
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -177,6 +178,7 @@ class RDBClientHostWrapper(RDBHost):
     """
 
     _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working')
+    _HOST_POOL_METRIC = metrics.String('chromeos/autotest/dut_pool')
 
 
     def __init__(self, **kwargs):
@@ -257,11 +259,16 @@ class RDBClientHostWrapper(RDBHost):
         fields = {
             'dut_host_name': self.hostname,
             'board': self.board or '',
-            'pool': ''
         }
+
+        pool = ''
         if len(self.pools) == 1:
-            fields['pool'] = self.pools[0]
+            pool = self.pools[0]
+        if pool in lab_inventory.MANAGED_POOLS:
+            pool = 'managed:' + pool
+
         self._HOST_WORKING_METRIC.set(working, fields=fields)
+        self._HOST_POOL_METRIC.set(pool, fields=fields)
 
 
     def update_field(self, fieldname, value):
