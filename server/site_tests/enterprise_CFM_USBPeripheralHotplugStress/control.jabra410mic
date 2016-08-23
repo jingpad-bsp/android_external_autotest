@@ -12,6 +12,7 @@ TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
 DEPENDENCIES = "servo, jabra410_hotplug_stress"
+JOB_RETRIES = 2
 
 DOC = """
 This test clears the TPM, enrolls the device into hotrod kiosk mode before
