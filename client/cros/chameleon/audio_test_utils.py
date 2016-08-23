@@ -54,6 +54,16 @@ def check_output_port(audio_facade, port_id):
     check_audio_nodes(audio_facade, ([output_node_type], None))
 
 
+def check_input_port(audio_facade, port_id):
+    """Checks selected input node on Cros device is correct for a port.
+
+    @param port_id: A port id defined in chameleon_audio_ids.CrosIds.
+
+    """
+    input_node_type = cros_port_id_to_cras_node_type(port_id)
+    check_audio_nodes(audio_facade, (None, [input_node_type]))
+
+
 def check_audio_nodes(audio_facade, audio_nodes):
     """Checks the node selected by Cros device is correct.
 
