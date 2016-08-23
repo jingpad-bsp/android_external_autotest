@@ -824,6 +824,52 @@ class CPUPackageStats(AbstractStats):
         return stats
 
 
+class DevFreqStats(AbstractStats):
+    """
+    Devfreq device frequency stats.
+    """
+
+    _DIR = '/sys/class/devfreq'
+
+
+    def __init__(self, f):
+        """Constructs DevFreqStats Object that track frequency stats
+        for the path of the given Devfreq device.
+
+        The frequencies for devfreq devices are listed in Hz.
+
+        Args:
+            path: the path to the devfreq device
+
+        Example:
+            /sys/class/devfreq/dmc
+        """
+        self._path = os.path.join(self._DIR, f)
+        if not os.path.exists(self._path):
+            raise error.TestError('DevFreqStats: devfreq device does not exist')
+
+        fname = os.path.join(self._path, 'available_frequencies')
+        af = utils.read_one_line(fname).strip()
+        self._available_freqs = sorted(af.split(), key=int)
+
+        super(DevFreqStats, self).__init__(name=f)
+
+    def _read_stats(self):
+        stats = dict((freq, 0) for freq in self._available_freqs)
+        fname = os.path.join(self._path, 'trans_stat')
+        freq_iter = iter(self._available_freqs)
+
+        with open(fname) as fd:
+            # The lines that contain the time in each frequency start on the 3rd
+            # line, so skip the first 2 lines. The last line contains the number
+            # of transitions, so skip that line too.
+            # The time in each frequency is at the end of the line.
+            for line in fd.readlines()[2:-1]:
+                stats[freq_iter.next()] += int(line.strip().split()[-1])
+
+        return stats
+
+
 class GPUFreqStats(AbstractStats):
     """GPU Frequency statistics class.
 
@@ -863,6 +909,9 @@ class GPUFreqStats(AbstractStats):
             533000000
             533000000
 
+        For 4.4+:
+            Tracked in DevFreqStats
+
         Returns:
           cur_mhz: string of current GPU clock in mhz
         """
@@ -894,10 +943,15 @@ class GPUFreqStats(AbstractStats):
         self._prev_sample = None
         self._trace = None
 
-        if os.path.exists(self._MALI_DEV):
+        if os.path.exists(self._MALI_DEV) and \
+           not os.path.exists(os.path.join(self._MALI_DEV, "devfreq")):
             self._set_gpu_type('mali')
         elif os.path.exists(self._I915_CLK):
             self._set_gpu_type('i915')
+        else:
+            # We either don't know how to track GPU stats (yet) or the stats are
+            # tracked in DevFreqStats.
+            self._set_gpu_type(None)
 
         logging.debug("gpu_type is %s", self._gpu_type)
 
@@ -1077,6 +1131,9 @@ class StatoMatic(object):
                         GPUFreqStats(incremental=False),
                         CPUIdleStats(),
                         CPUPackageStats()]
+        self._astats.extend([DevFreqStats(f) for f in \
+                             os.listdir(DevFreqStats._DIR)])
+
         self._disk = DiskStateLogger()
         self._disk.start()
 
