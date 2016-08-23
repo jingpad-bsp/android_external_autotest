@@ -6,7 +6,6 @@
 
 import glob
 import logging
-import multiprocessing
 import os
 import tempfile
 
@@ -423,33 +422,13 @@ class Player(object):
         @param blocking: Blocks this call until playback finishes.
 
         """
-        def _playback():
-            """Playback using cras utility."""
-            cras_utils.playback(playback_file=file_path)
-
-        if blocking:
-            _playback()
-        else:
-            self._playback_subprocess = multiprocessing.Process(
-                    target=_playback)
-            self._playback_subprocess.daemon = True
-            self._playback_subprocess.start()
+        self._playback_subprocess = cras_utils.playback(
+                blocking, playback_file=file_path)
 
 
     def stop(self):
         """Stops playback subprocess."""
-        if not self._playback_subprocess:
-            raise PlaybackError(
-                    'Playback process has not started yet')
-        # It is fine if playback process already ended.
-        self._possibly_stop_playback_process()
-
-
-    def _possibly_stop_playback_process(self):
-        """Stops playback process if needed."""
-        if self._playback_subprocess.is_alive():
-            self._playback_subprocess.terminate()
-            self._playback_subprocess.join()
+        cmd_utils.kill_or_log_returncode(self._playback_subprocess)
 
 
     def cleanup(self):
@@ -458,4 +437,4 @@ class Player(object):
         Terminates the playback process if needed.
 
         """
-        self._possibly_stop_playback_process()
+        self.stop()
