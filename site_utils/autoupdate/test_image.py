@@ -75,6 +75,11 @@ def gs_ls(pattern, archive_url, single):
     @return A list of URIs (possibly an empty list).
 
     """
+    # Run outside of try/except, to make sure the exception is propagated in
+    # case of error.
+    logging.fatal('crbug.com/639314 Trying to run gsutil version')
+    gsutil_util.GSUtilRun('gsutil version', "test crbug.com/639314")
+
     try:
         logging.fatal('crbug.com/639314 Searching for pattern %s from url %s', pattern,
                       archive_url)
