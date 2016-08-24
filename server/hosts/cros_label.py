@@ -34,7 +34,7 @@ class BoardLabel(base_label.StringPrefixLabel):
         # crbug.com/624207 records one event of the board label switching
         # unexpectedly on us.
         for label in host._afe_host.labels:
-            if label.startswith(self._NAME):
+            if label.startswith(self._NAME + ':'):
                 return [label.split(':')[-1]]
 
         # TODO(kevcheng): for now this will dup the code in CrosHost and a
