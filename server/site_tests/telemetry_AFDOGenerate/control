@@ -12,8 +12,6 @@ TIME = "LONG"
 TEST_CATEGORY = "Benchmark"
 TEST_CLASS = "telemetry"
 TEST_TYPE = "server"
-# The test uses gsutil to do upload, which is not supported in container.
-REQUIRE_SSP = False
 
 DOC = """
 Run a pre-defined set of benchmarks on the DUT and create a sampled profile
