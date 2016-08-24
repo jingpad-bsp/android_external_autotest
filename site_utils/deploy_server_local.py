@@ -36,6 +36,11 @@ SERVICE_STABILITY_TIMER = 120
 # are both running test_importer, there is a chance to fail as both try to
 # update the same table.
 PRIMARY_ONLY_COMMANDS = ['test_importer']
+# A dict to map update_commands defined in config file to repos or files that
+# decide whether need to update these commands. E.g. if no changes under
+# frontend repo, no need to update afe.
+COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/', 'tko': 'tko/',
+                          'build_externals': 'utils/external_packages.py'}
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
@@ -64,16 +69,16 @@ def strip_terminal_codes(text):
 
 
 def verify_repo_clean():
-    """This function verifies that the current repo is valid, and clean.
+    """This function cleans the current repo then verifies that it is valid.
 
-    @raises DirtyTreeException if the repo is not clean.
+    @raises DirtyTreeException if the repo is still not clean.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
+    subprocess.check_output(['git', 'reset', '--hard'])
     out = subprocess.check_output(['repo', 'status'], stderr=subprocess.STDOUT)
     out = strip_terminal_codes(out).strip()
 
-    CLEAN_STATUS_OUTPUT = 'nothing to commit (working directory clean)'
-    if out != CLEAN_STATUS_OUTPUT:
+    if not 'working directory clean' in out:
         raise DirtyTreeException(out)
 
 
@@ -116,12 +121,38 @@ def repo_versions():
     return project_heads
 
 
-def repo_sync():
+def repo_versions_to_decide_whether_run_cmd_update():
+    """Collect versions of repos/files defined in COMMANDS_TO_REPOS_DICT.
+
+    For the update_commands defined in config files, no need to run the command
+    every time. Only run it when the repos/files related to the commands have
+    been changed.
+
+    @returns A set of tuples: {(cmd, repo_version), ()...}
+    """
+    results = set()
+    for cmd, repo in COMMANDS_TO_REPOS_DICT.iteritems():
+        version = subprocess.check_output(
+                ['git', 'log', '-1', '--pretty=tformat:%h',
+                 '%s/%s' % (common.autotest_dir, repo)])
+        results.add((cmd, version.strip()))
+    return results
+
+
+def repo_sync(update_push_servers=False):
     """Perform a repo sync.
 
+    @param update_push_servers: If True, then update test_push servers to ToT.
+                                Otherwise, update server to prod branch.
     @raises subprocess.CalledProcessError on a repo command failure.
     """
     subprocess.check_output(['repo', 'sync'])
+    if update_push_servers:
+        print('Updating push servers, checkout cros/master')
+        subprocess.check_output(['git', 'checkout', 'cros/master'])
+    else:
+        print('Updating server to prod branch')
+        subprocess.check_output(['git', 'checkout', 'cros/prod'])
 
 
 def discover_update_commands():
@@ -270,9 +301,12 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
         raise UnstableServices(unstable_services)
 
 
-def run_deploy_actions(dryrun=False, skip_service_status=False):
+def run_deploy_actions(cmds_not_run=set(), dryrun=False,
+                       skip_service_status=False):
     """Run arbitrary update commands specified in global.ini.
 
+    @param cmds_not_run: cmds no need to run since the corresponding repo/file
+                         does not change.
     @param dryrun: Don't really restart the service, just print out the command.
     @param skip_service_status: Set to True to skip service status check.
                                 Default is False.
@@ -280,7 +314,8 @@ def run_deploy_actions(dryrun=False, skip_service_status=False):
     @raises subprocess.CalledProcessError on a command failure.
     @raises UnstableServices if any services are unstable after restart.
     """
-    cmds = discover_update_commands()
+    defined_cmds = set(discover_update_commands())
+    cmds = defined_cmds - cmds_not_run
     if cmds:
         print('Running update commands:', ', '.join(cmds))
         for cmd in cmds:
@@ -368,6 +403,9 @@ def parse_arguments(args):
                         help='Don\'t actually run any commands, just log.')
     parser.add_argument('--skip-service-status', action='store_true',
                         help='Skip checking the service status.')
+    parser.add_argument('--update_push_servers', action='store_true',
+                        help='Indicate to update test_push server. If not '
+                             'specify, then update server to production.')
 
     results = parser.parse_args(args)
 
@@ -405,17 +443,22 @@ def main(args):
 
     versions_before = repo_versions()
     versions_after = {}
+    cmd_versions_before = repo_versions_to_decide_whether_run_cmd_update()
+    cmd_versions_after = {}
 
     if behaviors.update:
         print('Updating Repo.')
-        repo_sync()
+        repo_sync(behaviors.update_push_servers)
         versions_after = repo_versions()
+        cmd_versions_after = repo_versions_to_decide_whether_run_cmd_update()
 
     if behaviors.actions:
+        # If the corresponding repo/file not change, no need to run the cmd.
+        cmds_not_run = {t[0] for t in cmd_versions_before & cmd_versions_after}
         try:
             run_deploy_actions(
-                    dryrun=behaviors.dryrun,
-                    skip_service_status=behaviors.skip_service_status)
+                    cmds_not_run, behaviors.dryrun,
+                    behaviors.skip_service_status)
         except UnstableServices as e:
             print('The following services were not stable after '
                   'the update:')
