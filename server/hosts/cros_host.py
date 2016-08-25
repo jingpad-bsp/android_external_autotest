@@ -438,6 +438,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param image: Full path of an OS image to install or a build name.
 
         @return: A url to the autotest server-side package.
+
+        @raise: error.AutoservError if fail to locate the build to test with, or
+                fail to stage server-side package.
         """
         # If enable_drone_in_restricted_subnet is False, do not set hostname
         # in devserver.resolve call, so a devserver in non-restricted subnet
@@ -477,9 +480,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # MIN_VERSION_SUPPORT_SSP, server side packaging is not supported.
         match = re.match('.*/R\d+-(\d+)\.', image_name)
         if match and int(match.group(1)) < self.MIN_VERSION_SUPPORT_SSP:
-            logging.warn('Build %s is older than %s. Server side packaging is '
-                         'disabled.', image_name, self.MIN_VERSION_SUPPORT_SSP)
-            return None
+            raise error.AutoservError(
+                    'Build %s is older than %s. Server side packaging is '
+                    'disabled.' % (image_name, self.MIN_VERSION_SUPPORT_SSP))
 
         ds.stage_artifacts(image_name, ['autotest_server_package'])
         return '%s/static/%s/%s' % (ds.url(), image_name,

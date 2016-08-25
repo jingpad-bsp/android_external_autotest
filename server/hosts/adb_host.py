@@ -1685,9 +1685,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
         @param image: A build name, e.g., git_mnc_dev/shamu-eng/123
 
-        @return: A url to the autotest server-side package. Return None if
-                 server-side package is not supported.
-        @raise: error.AutoservError if fail to locate the build to test with.
+        @return: A url to the autotest server-side package.
+
+        @raise: error.AutoservError if fail to locate the build to test with, or
+                fail to stage server-side package.
         """
         # If enable_drone_in_restricted_subnet is False, do not set hostname
         # in devserver.resolve call, so a devserver in non-restricted subnet
@@ -1726,16 +1727,20 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # For any build older than MIN_VERSION_SUPPORT_SSP, server side
         # packaging is not supported.
         try:
-            if int(build_id) < self.MIN_VERSION_SUPPORT_SSP:
-                logging.warn('Build %s is older than %s. Server side packaging '
-                             'is disabled.', image,
-                             self.MIN_VERSION_SUPPORT_SSP)
-                return None
+            # Some build ids may have special character before the actual
+            # number, skip such characters.
+            actual_build_id = build_id
+            if build_id.startswith('P'):
+                actual_build_id = build_id[1:]
+            if int(actual_build_id) < self.MIN_VERSION_SUPPORT_SSP:
+                raise error.AutoservError(
+                        'Build %s is older than %s. Server side packaging is '
+                        'disabled.' % (image, self.MIN_VERSION_SUPPORT_SSP))
         except ValueError:
-            logging.warn('Failed to compare build id in %s with the minimum '
-                         'version that supports server side packaging. Server '
-                         'side packaging is disabled.', image)
-            return None
+            raise error.AutoservError(
+                    'Failed to compare build id in %s with the minimum '
+                    'version that supports server side packaging. Server '
+                    'side packaging is disabled.' % image)
 
         ds.stage_artifacts(target, build_id, branch,
                            artifacts=['autotest_server_package'])
