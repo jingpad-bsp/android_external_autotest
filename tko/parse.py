@@ -11,6 +11,7 @@ from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import job_overhead
+from autotest_lib.site_utils import sponge_utils
 from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, status_lib
 from autotest_lib.tko.perf_upload import perf_uploader
@@ -318,6 +319,9 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
                          "compiling tko/tko.proto.")
 
     db.commit()
+
+    # Upload job details to Sponge.
+    sponge_utils.upload_results(job)
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop

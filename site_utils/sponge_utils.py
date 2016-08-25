@@ -6,6 +6,7 @@
 """
 
 import logging
+import os
 import socket
 import time
 
@@ -66,6 +67,47 @@ def upload_results_in_test(test, test_pass=True, acts_summary=None):
                 results_dir=results_dir,
                 results_url=results_url,
                 acts_summary=acts_summary,
+                use_prod_server=USE_PROD_SERVER)
+        logging.debug('Test result is uploaded to Sponge: %s', invocation_url)
+        return invocation_url
+    except Exception as e:
+        logging.exception('Failed to upload to Sponge: %s', e)
+
+
+@decorators.test_module_available(sponge)
+def upload_results(job):
+    """Upload test results to Sponge with given job details.
+
+    @param job: A job object created by tko/parsers.
+    """
+    job_id = job_directories.get_job_id_or_task_id(job.dir)
+    results_dir = tko_utils.find_toplevel_job_dir(job.dir)
+    results_url = RESULTS_URL_FMT % (job_id, job.user, job.machine)
+
+    # Try to locate test_run_summary.json file for android_ACTS test.
+    acts_summary = os.path.join(results_dir, 'latest', 'test_run_summary.json')
+    if not os.path.exists(acts_summary):
+        acts_summary = None
+
+    status = 'GOOD'
+    for test in job.tests:
+        if test.status != 'GOOD':
+            status = test.status
+            break
+
+    try:
+        invocation_url = sponge.upload_utils.Upload(
+                job_id=job_id,
+                test_name=job.label,
+                dut=job.machine,
+                drone=job.keyval_dict.get('drone', socket.gethostname()),
+                status=status,
+                start_time=job.keyval_dict['job_started'],
+                end_time=job.keyval_dict['job_finished'],
+                results_dir=results_dir,
+                results_url=results_url,
+                acts_summary=acts_summary,
+                job=job,
                 use_prod_server=USE_PROD_SERVER)
         logging.debug('Test result is uploaded to Sponge: %s', invocation_url)
         return invocation_url
