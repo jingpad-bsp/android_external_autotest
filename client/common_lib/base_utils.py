@@ -189,14 +189,16 @@ class BgJob(object):
                                        stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe,
                                        stdin=stdin,
-                                       env=env)
+                                       env=env,
+                                       close_fds=True)
         else:
             self.sp = subprocess.Popen(command, stdout=stdout_param,
                                        stderr=stderr_param,
                                        preexec_fn=self._reset_sigpipe, shell=True,
                                        executable="/bin/bash",
                                        stdin=stdin,
-                                       env=env)
+                                       env=env,
+                                       close_fds=True)
 
         self._output_prepare_called = False
         self._process_output_warned = False
