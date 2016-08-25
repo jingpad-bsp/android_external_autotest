@@ -16,6 +16,8 @@ class security_StatefulPermissions(test.test):
     """
     version = 1
     _STATEFUL_ROOT = "/mnt/stateful_partition"
+    _AID_SYSTEM = 1000
+    _AID_CACHE = 2001
 
     # Note that chronos permissions in /home are covered in greater detail
     # by 'security_ProfilePermissions'.
@@ -103,6 +105,26 @@ class security_StatefulPermissions(test.test):
         return paths
 
 
+    def generate_prune_arguments_android(self):
+        """Returns a command-line fragment to make 'find' exclude
+        android-data/cache: uid=AID_SYSTEM, gid=AID_CACHE
+        android-data/data:  uid=AID_SYSTEM, gid=AID_SYSTEM
+        Files under these paths are created by various android users.
+        """
+        try:
+            aroot_uid = pwd.getpwnam('android-root').pw_uid
+        except KeyError:
+            # android-root not found, so don't prune anything
+            return ""
+
+        cmd = "-regextype posix-extended -regex STATEFUL_ROOT/home/.shadow/"
+        cmd += "[[:alnum:]]{40}/vault/root/[^/]*/[^/]* "
+        cmd += "-uid {0} \\( -gid {1} -o -gid {2} \\) -prune -o ".format(
+                aroot_uid + self._AID_SYSTEM,
+                aroot_uid + self._AID_SYSTEM, aroot_uid + self._AID_CACHE)
+        return cmd
+
+
     def generate_prune_arguments(self, prunelist):
         """Returns a command-line fragment to make 'find' exclude the entries
         in |prunelist|.
@@ -157,6 +179,7 @@ class security_StatefulPermissions(test.test):
         """Returns the set of file/directory owners present in stateful."""
 
         cmd = "find STATEFUL_ROOT "
+        cmd += self.generate_prune_arguments_android()
         cmd += self.generate_prune_arguments(self.systemwide_exclusions())
         cmd += " -printf '%u\\n' | sort -u"
         return set(self.subst_run(cmd).splitlines())
