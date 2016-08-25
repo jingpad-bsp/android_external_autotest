@@ -11,7 +11,7 @@ TEST_CATEGORY = "Functional"
 TEST_CLASS = "enterprise"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:hotrod"
-JOB_RETRIES = 2
+JOB_RETRIES = 3
 
 DOC = """
 This test clears the TPM and enables the appropriate usb port on the servo
