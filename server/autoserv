@@ -128,16 +128,20 @@ def _stage_ssp(parser):
 
     @param parser: Command line arguments parser passed in the autoserv process.
 
-    @return: url of the staged server-side package. Return None if server-
-             side package is not found for the build.
+    @return: (ssp_url, error_msg), where
+              ssp_url is a url to the autotest server-side package. None if
+              server-side package is not supported.
+              error_msg is a string indicating the failures. None if server-
+              side package is staged successfully.
     """
     machines_list = _get_machines(parser)
     if bool(parser.options.lab):
         machine_dict_list = []
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         for machine in machines_list:
-           afe_host = afe.get_hosts(hostname=machine)[0]
-           machine_dict_list.append({'hostname': machine, 'afe_host': afe_host})
+            afe_host = afe.get_hosts(hostname=machine)[0]
+            machine_dict_list.append({'hostname': machine,
+                                      'afe_host': afe_host})
         machines_list = machine_dict_list
 
     # If test_source_build is not specified, default to use server-side test
@@ -147,7 +151,7 @@ def _stage_ssp(parser):
                            parser.options.image),}
     script_locals = {}
     execfile(STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE, namespace, script_locals)
-    return script_locals['ssp_url']
+    return script_locals['ssp_url'], script_locals['error_msg']
 
 
 def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
@@ -633,7 +637,7 @@ def main():
     ssp_url = None
     ssp_url_warning = False
     if (not parser.options.warn_no_ssp and parser.options.require_ssp):
-        ssp_url = _stage_ssp(parser)
+        ssp_url, ssp_error_msg = _stage_ssp(parser)
         # The build does not have autotest server package. Fall back to not
         # to use server-side package. Logging is postponed until logging being
         # set up.
@@ -645,7 +649,7 @@ def main():
         results = parser.options.results
         if not results:
             results = 'results.' + time.strftime('%Y-%m-%d-%H.%M.%S')
-        results  = os.path.abspath(results)
+        results = os.path.abspath(results)
         resultdir_exists = False
         for filename in ('control.srv', 'status.log', '.autoserv_execute'):
             if os.path.exists(os.path.join(results, filename)):
@@ -688,7 +692,8 @@ def main():
                 '`--image`, host attribute job_repo_url or host OS version '
                 'label. It could be that the build to test is older than the '
                 'minimum version that supports server-side packaging. The test '
-                'will be executed without using erver-side packaging.')
+                'will be executed without using erver-side packaging. '
+                'Following is the detailed error:\n%s', ssp_error_msg)
 
     if results:
         logging.info("Results placed in %s" % results)
