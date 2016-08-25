@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_LoadTest.1hour_wifi_acok"
+NAME = "power_LoadTest.WIRED_1hr_acok"
 ATTRIBUTES = "suite:power_daily"
 PURPOSE = "Measure power draw when system is under load."
 CRITERIA = "This test is a benchmark."
@@ -21,4 +21,5 @@ loop_time = 3600
 loop_count = 1
 
 job.run_test('power_LoadTest', loop_time=loop_time, loop_count=loop_count,
-             test_low_batt_p=6, ac_ok=True)
+             test_low_batt_p=6, ac_ok=True, check_network=False,
+             tag='WIRED_1hr_acok')
