@@ -194,6 +194,7 @@ class enterprise_CFM_USBPeripheralHotplugDetect(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(_WAIT_DELAY)
             self._set_hub_power(True)
 
         usb_list_dir_on = self._get_usb_device_dirs()

@@ -11,7 +11,7 @@ from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 LONG_TIMEOUT = 10
-SHORT_TIMEOUT = 2
+SHORT_TIMEOUT = 5
 FAILED_TEST_LIST = list()
 
 
@@ -139,7 +139,9 @@ class enterprise_CFM_Sanity(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(SHORT_TIMEOUT)
             self.client.servo.set('dut_hub1_rst1', 'off')
+            time.sleep(SHORT_TIMEOUT)
 
         try:
             self.cfm_facade.enroll_device()

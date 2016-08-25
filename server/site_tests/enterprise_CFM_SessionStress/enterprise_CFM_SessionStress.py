@@ -47,7 +47,9 @@ class enterprise_CFM_SessionStress(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(SHORT_TIMEOUT)
             self.client.servo.set('dut_hub1_rst1', 'off')
+            time.sleep(SHORT_TIMEOUT)
 
         try:
             self.cfm_facade.enroll_device()
