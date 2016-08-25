@@ -1,0 +1,26 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+AUTHOR = 'tturney'
+NAME = 'android_ACTS.BluetoothFunhausTest-1'
+TIME = 'MEDIUM'
+TEST_TYPE = 'Server'
+
+DOC = """
+This test runs Bluetooth Audio Quality tests
+against a Bluetooth Funhaus test bed.
+
+"""
+import common
+from autotest_lib.server import utils
+
+
+def run(machine):
+    job.run_test('android_ACTS',
+                 testbed=hosts.create_testbed(machine),
+                 config_file='android1758-funhouse-test-station.config',
+                 test_file='bt_funhaus_test')
+
+
+parallel_simple(run, machines)
