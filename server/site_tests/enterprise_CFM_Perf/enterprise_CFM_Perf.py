@@ -10,6 +10,7 @@ from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
+_SHORT_TIMEOUT = 5
 _MEASUREMENT_DURATION_SECONDS = 10
 _TOTAL_TEST_DURATION_SECONDS = 600
 _PERF_RESULT_FILE = 'perf.csv'
@@ -125,7 +126,9 @@ class enterprise_CFM_Perf(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(_SHORT_TIMEOUT)
             self.client.servo.set('dut_hub1_rst1', 'off')
+            time.sleep(_SHORT_TIMEOUT)
 
         try:
             self.enroll_device_and_start_hangout()

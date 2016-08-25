@@ -10,7 +10,8 @@ from autotest_lib.server import test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-TIMEOUT = 2
+_SHORT_TIMEOUT = 2
+_LONG_TIMEOUT = 5
 
 
 class enterprise_CFM_VolumeChange(test.test):
@@ -48,7 +49,7 @@ class enterprise_CFM_VolumeChange(test.test):
             raise error.TestFail('Is already in hangout session and should not '
                                  'be able to start another session.')
 
-        time.sleep(TIMEOUT)
+        time.sleep(_SHORT_TIMEOUT)
 
         if self.cfm_facade.is_mic_muted():
             self.cfm_facade.unmute_mic()
@@ -82,7 +83,7 @@ class enterprise_CFM_VolumeChange(test.test):
             # TODO: Change range back to 0, 100 once crbug.com/633809 is fixed.
             cfm_volume = str(random.randrange(2, 100, 1))
             self.cfm_facade.set_speaker_volume(cfm_volume)
-            time.sleep(TIMEOUT)
+            time.sleep(_SHORT_TIMEOUT)
 
             cras_volume = self.client.run_output(cmd)
             if cras_volume != cfm_volume:
@@ -108,7 +109,9 @@ class enterprise_CFM_VolumeChange(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(_LONG_TIMEOUT)
             self.client.servo.set('dut_hub1_rst1', 'off')
+            time.sleep(_LONG_TIMEOUT)
 
         try:
             self._enroll_device()

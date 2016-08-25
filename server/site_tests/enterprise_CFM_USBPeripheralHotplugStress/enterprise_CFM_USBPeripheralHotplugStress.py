@@ -115,6 +115,7 @@ class enterprise_CFM_USBPeripheralHotplugStress(test.test):
         if self.client.servo:
             self.client.servo.switch_usbkey('dut')
             self.client.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
+            time.sleep(_SHORT_TIMEOUT)
             self._set_hub_power(True)
 
         try:
