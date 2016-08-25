@@ -107,8 +107,6 @@ class Chrome(object):
 
         finder_options = browser_options.BrowserFinderOptions()
         if is_arc_available() and arc_util.should_start_arc(arc_mode):
-            # TODO(achuith): Fix extra_browser_args, so that appending the
-            # following flags to it is simpler.
             if disable_arc_opt_in:
                 finder_options.browser_options.AppendExtraBrowserArgs(
                         arc_util.get_extra_chrome_flags())
@@ -120,18 +118,6 @@ class Chrome(object):
         if extra_browser_args:
             finder_options.browser_options.AppendExtraBrowserArgs(
                     extra_browser_args)
-
-        # TODO(achuith): Remove this after PFQ revs. crbug.com/603169.
-        if logged_in:
-            try:
-                extensions_to_load = finder_options.extensions_to_load
-                for path in extension_paths:
-                    extension = extension_to_load.ExtensionToLoad(
-                            path, self.browser_type, is_component=is_component)
-                    extensions_to_load.append(extension)
-                self._extensions_to_load = extensions_to_load
-            except AttributeError:
-              pass
 
         # finder options must be set before parse_args(), browser options must
         # be set before Create().
@@ -159,25 +145,18 @@ class Chrome(object):
         self.username = NormalizeEmail(self.username)
         b_options.username = self.username
         b_options.password = self.password
-        # gaia_id will be added to telemetry code in chromium repository later
-        try:
-            self.gaia_id = b_options.gaia_id if gaia_id is None else gaia_id
-            b_options.gaia_id = self.gaia_id
-        except AttributeError:
-            pass
+        self.gaia_id = b_options.gaia_id if gaia_id is None else gaia_id
+        b_options.gaia_id = self.gaia_id
 
         self.arc_mode = arc_mode
 
         if logged_in:
-            try:
-                extensions_to_load = b_options.extensions_to_load
-                for path in extension_paths:
-                    extension = extension_to_load.ExtensionToLoad(
-                            path, self.browser_type, is_component=is_component)
-                    extensions_to_load.append(extension)
-                self._extensions_to_load = extensions_to_load
-            except AttributeError:
-              pass
+            extensions_to_load = b_options.extensions_to_load
+            for path in extension_paths:
+                extension = extension_to_load.ExtensionToLoad(
+                        path, self.browser_type, is_component=is_component)
+                extensions_to_load.append(extension)
+            self._extensions_to_load = extensions_to_load
 
         # Turn on collection of Chrome coredumps via creation of a magic file.
         # (Without this, Chrome coredumps are trashed.)
