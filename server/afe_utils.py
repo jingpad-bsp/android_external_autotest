@@ -230,11 +230,13 @@ def machine_install_and_update_labels(host, *args, **dargs):
     """
     clear_version_labels(host)
     clear_host_attributes_before_provision(host)
-    if not ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE:
-        image_name, host_attributes = host.machine_install(*args, **dargs)
-    else:
+    # If ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE is enabled and the host is a
+    # CrosHost, devserver will be used to trigger auto-update.
+    if host.support_devserver_provision:
         image_name, host_attributes = host.machine_install_by_devserver(
             *args, **dargs)
+    else:
+        image_name, host_attributes = host.machine_install(*args, **dargs)
     for attribute, value in host_attributes.items():
         update_host_attribute(host, attribute, value)
     add_version_label(host, image_name)
