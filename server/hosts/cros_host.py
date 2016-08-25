@@ -187,28 +187,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     @staticmethod
-    def _extract_arguments(args_dict, key_subset):
-        """Extract options from `args_dict` and return a subset result.
-
-        Take the provided dictionary of argument options and return
-        a subset that represent standard arguments needed to construct
-        a test-assistant object (chameleon or servo) for a host. The
-        intent is to provide standard argument processing from
-        CrosHost for tests that require a test-assistant board
-        to operate.
-
-        @param args_dict Dictionary from which to extract the arguments.
-        @param key_subset Tuple of keys to extract from the args_dict, e.g.
-          ('servo_host', 'servo_port').
-        """
-        result = {}
-        for arg in key_subset:
-            if arg in args_dict:
-                result[arg] = args_dict[arg]
-        return result
-
-
-    @staticmethod
     def get_chameleon_arguments(args_dict):
         """Extract chameleon options from `args_dict` and return the result.
 
@@ -222,8 +200,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param args_dict Dictionary from which to extract the chameleon
           arguments.
         """
-        return CrosHost._extract_arguments(
-                args_dict, ('chameleon_host', 'chameleon_port'))
+        return {key: args_dict[key]
+                for key in ('chameleon_host', 'chameleon_port')
+                if key in args_dict}
 
 
     @staticmethod
@@ -240,9 +219,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @param args_dict Dictionary from which to extract the plankton
           arguments.
         """
-        args = CrosHost._extract_arguments(
-                args_dict, ('plankton_host', 'plankton_port'))
-        return args
+        return {key: args_dict[key]
+                for key in ('plankton_host', 'plankton_port')
+                if key in args_dict}
 
 
     @staticmethod
@@ -262,7 +241,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         servo_attrs = (servo_host.SERVO_HOST_ATTR,
                        servo_host.SERVO_PORT_ATTR,
                        servo_host.SERVO_BOARD_ATTR)
-        return CrosHost._extract_arguments(args_dict, servo_attrs)
+        return {key: args_dict[key]
+                for key in servo_attrs
+                if key in args_dict}
 
 
     def _initialize(self, hostname, chameleon_args=None, servo_args=None,
