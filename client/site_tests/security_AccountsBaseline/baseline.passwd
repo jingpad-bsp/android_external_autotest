@@ -39,7 +39,7 @@ nfqueue:!:232:232::/dev/null:/bin/false
 tlsdate-dbus:!:233:233::/dev/null:/bin/false
 tlsdate:!:234:234::/dev/null:/bin/false
 debugd-logs:!:235:235::/dev/null:/bin/false
-debugfs-access:!:236:236::/dev/null:/bin/false
+debugfs-access:!:605:605::/dev/null:/bin/false
 shill-crypto:!:237:237::/dev/null:/bin/false
 avahi:!:238:238::/dev/null:/bin/false
 p2p:!:239:239::/dev/null:/bin/false
