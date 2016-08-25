@@ -9,8 +9,10 @@ User can run this module manually to verify test results can be compiled into
 Sponge XML and uploaded to test server correctly.
 """
 
+import datetime
 import mox
 import os
+import shutil
 import tempfile
 import time
 import unittest
@@ -67,19 +69,29 @@ class SpongeUtilsUnitTests(mox.MoxTestBase):
         self.acts_summary = tempfile.NamedTemporaryFile(delete=False)
         self.acts_summary.write(ACTS_SUMMARY_JSON)
         self.acts_summary.close()
+        self.tmp_dir = tempfile.mkdtemp()
+        self.resultsdir = os.path.join(self.tmp_dir,
+                                       '123-debug_user/host1/dummy_PassServer')
+        os.makedirs(self.resultsdir)
+        with open(os.path.join(self.tmp_dir, '123-debug_user/host1',
+                               '.autoserv_execute'), 'w') as f:
+            f.write('')
+
 
     def tearDown(self):
         """Delete temporary file.
         """
         super(SpongeUtilsUnitTests, self).tearDown()
         os.unlink(self.acts_summary.name)
+        shutil.rmtree(self.tmp_dir)
+
 
     def test_upload_results_in_test(self):
         """Test function upload_results_in_test.
         """
         test = self.mox.CreateMockAnything()
-        test.resultsdir = ('/usr/local/autotest/results/123-debug_user/host1/'
-                           'dummy_PassServer')
+        test.resultsdir = os.path.join(self.tmp_dir,
+                                       '123-debug_user/host1/dummy_PassServer')
         test.tagged_testname = 'dummy_PassServer'
 
         test.job = self.mox.CreateMockAnything()
@@ -95,6 +107,42 @@ class SpongeUtilsUnitTests(mox.MoxTestBase):
 
         invocation_url = sponge_utils.upload_results_in_test(
                 test, test_pass=True, acts_summary=self.acts_summary.name)
+        print 'Invocation URL: %s' % invocation_url
+        self.assertIsNotNone(invocation_url)
+
+
+    def test_upload_results_in_parsing(self):
+        """Test function upload_results.
+        """
+        job = self.mox.CreateMockAnything()
+        job.started_time = datetime.datetime(2016, 8, 15, 0, 0, 0)
+        job.finished_time = datetime.datetime(2016, 8, 15, 1, 0, 0)
+        job.keyval_dict = {'drone': 'server1',
+                           'hostname': 'host1',
+                           'job_finished': 1471284056,
+                           'job_queued': 1471283461,
+                           'job_started': 1471283480,
+                           'label': 'dummy',
+                           'status_version': 1,
+                           'suite': 'dummy',
+                           'parent_job_id': 100,
+                           'user': 'debug_user'}
+
+        job.dir = os.path.join(self.tmp_dir, '123-debug_user/host1')
+        job.label = 'dummy_PassServer'
+
+        job.tests = []
+        test = self.mox.CreateMockAnything()
+        test.attributes = {'host-labels': 'board%3Aveyron'}
+        test.status = 'GOOD'
+        test.started_time = datetime.datetime(2016, 8, 15, 0, 0, 0)
+        test.finished_time = datetime.datetime(2016, 8, 15, 1, 0, 0)
+        test.testname = 'dummy_PassServer'
+        job.tests.append(test)
+        job.user = 'debug_user'
+        job.machine = 'host1'
+
+        invocation_url = sponge_utils.upload_results(job)
         print 'Invocation URL: %s' % invocation_url
         self.assertIsNotNone(invocation_url)
 
