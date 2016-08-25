@@ -55,7 +55,7 @@ def run(machine):
                 "\"Kingston Technology Company Inc.\"",
                 "\"Alcor Micro Corp.\"",
                 "\"Microsoft Corp.|C-Media Electronics, Inc. Audio Adapter\"",
-                "\"Huawei Technologies Co., Ltd. Modem/Networkcard\"",
+                "\"CMOTECH Co., Ltd.|Huawei Technologies Co., Ltd. Modem/Networkcard\"",
                 "\"Realtek Semiconductor Corp.\"",
                 # Commenting out due to crbug.com/488667.
                 #"LG Electronics, Inc.",
