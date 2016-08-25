@@ -1,9 +1,28 @@
-import os, time, logging, shutil
+import logging
+import os
+import pipes
+import shutil
+import time
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
+
+
+def get_file_and_clean(host, src, dst, *args, **kwargs):
+    """Get file from host and remove files even if failed.
+
+    @param host: Instance of Host subclass with get_file().
+    @param src: Path of file on host to copy.
+    @param dst: Path to copy file to.
+    @param *args: Other arguments for get_file().
+    @param *kwrags: Other arguments for get_file().
+    """
+    try:
+        host.get_file(src, dst, *args, **kwargs)
+    finally:
+        host.run('rm -rf %s' % (pipes.quote(src),))
 
 
 # import any site hooks for the crashdump and crashinfo collection
@@ -129,11 +148,12 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False):
         if use_tmp:
             devnull = open('/dev/null', 'w')
             tmpdir = host.run('mktemp -d', stdout_tee=devnull).stdout.strip()
-            host.run('cp -rp %s %s' % (log_path, tmpdir))
+            host.run('cp -rp %s %s' % (pipes.quote(log_path),
+                                       pipes.quote(tmpdir)))
             source_path = os.path.join(tmpdir, os.path.basename(log_path))
-        host.get_file(source_path, dest_path, preserve_perm=False)
+        get_file_and_clean(host, source_path, dest_path, preserve_perm=False)
         if use_tmp:
-            host.run('rm -rf %s' % tmpdir)
+            host.run('rm -rf %s' % (pipes.quote(tmpdir),))
     except Exception, e:
         logging.warning('Collection of %s failed: %s', log_path, e)
 
@@ -172,12 +192,12 @@ def collect_uncollected_logs(host):
             logs = host.job.get_client_logs()
             for hostname, remote_path, local_path in logs:
                 if hostname == host.hostname:
-                    logging.info("Retrieving logs from %s:%s into %s",
+                    logging.info('Retrieving logs from %s:%s into %s',
                                  hostname, remote_path, local_path)
-                    host.get_file(remote_path + "/", local_path + "/")
+                    get_file_and_clean(host, remote_path + '/', local_path + '/')
         except Exception, e:
-            logging.warning("Error while trying to collect stranded "
-                            "Autotest client logs: %s", e)
+            logging.warning('Error while trying to collect stranded '
+                            'Autotest client logs: %s', e)
 
 
 def collect_messages(host):
