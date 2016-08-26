@@ -1,13 +1,45 @@
+import collections
 import logging
 import os
 import pipes
+import random
 import shutil
 import time
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
+
+
+# The amortized max filesize to collect.  For example, if _MAX_FILESIZE is 10
+# then we would collect a file with size 20 half the time, and a file with size
+# 40 a quarter of the time, so that in the long run we are collecting files
+# with this max size.
+_MAX_FILESIZE = 64 * (2 ** 20)  # 64 MiB
+
+
+class _RemoteTempDir(object):
+
+    """Context manager for temporary directory on remote host."""
+
+    def __init__(self, host):
+        self.host = host
+        self.tmpdir = None
+
+    def __repr__(self):
+        return '<{cls} host={this.host!r}, tmpdir={this.tmpdir!r}>'.format(
+            cls=type(self).__name__, this=self)
+
+    def __enter__(self):
+        self.tmpdir = (self.host
+                       .run('mktemp -d', stdout_tee=None)
+                       .stdout.strip())
+        return self.tmpdir
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.host.run('rm -rf %s' % (pipes.quote(self.tmpdir),))
 
 
 def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
@@ -16,6 +48,12 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
     Log files are collected from the remote machine and written into the
     destination path. If dest_path is a directory, the log file will be named
     using the basename of the remote log path.
+
+    Very large files will randomly not be collected, to alleviate network
+    traffic in the case of widespread crashes dumping large core files. Note
+    that this check only applies to the exact file passed as log_path. For
+    example, if this is a directory, the size of the contents will not be
+    checked.
 
     @param host: The RemoteHost to collect logs from
     @param log_path: The remote path to collect the log file from
@@ -27,22 +65,62 @@ def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
 
     """
     logging.info('Collecting %s...', log_path)
-    tmpdir = None
     try:
-        source_path = log_path
-        if use_tmp:
-            tmpdir = host.run('mktemp -d', stdout_tee=None).stdout.strip()
-            host.run('cp -rp %s %s' % (pipes.quote(log_path),
-                                       pipes.quote(tmpdir)))
-            source_path = os.path.join(tmpdir, os.path.basename(log_path))
-        host.get_file(host, source_path, dest_path, preserve_perm=False)
+        file_stats = _get_file_stats(host, log_path)
+        if random.random() > file_stats.collection_probability:
+            logging.warning('Collection of %s skipped:'
+                            'size=%s, collection_probability=%s',
+                            log_path, file_stats.size,
+                            file_stats.collection_probability)
+        elif use_tmp:
+            _collect_log_file_with_tmpdir(host, log_path, dest_path)
+        else:
+            source_path = log_path
+            host.get_file(source_path, dest_path, preserve_perm=False)
     except Exception, e:
         logging.warning('Collection of %s failed: %s', log_path, e)
     finally:
-        if tmpdir is not None:
-            host.run('rm -rf %s' % (pipes.quote(tmpdir),))
         if clean:
             host.run('rm -rf %s' % (pipes.quote(log_path),))
+
+
+_FileStats = collections.namedtuple('_FileStats',
+                                    'size collection_probability')
+
+
+def _collect_log_file_with_tmpdir(host, log_path, dest_path):
+    """Collect log file from host through a temp directory on the host.
+
+    @param host: The RemoteHost to collect logs from.
+    @param log_path: The remote path to collect the log file from.
+    @param dest_path: A path (file or directory) to write the copies logs into.
+
+    """
+    with _RemoteTempDir(host) as tmpdir:
+        host.run('cp -rp %s %s' % (pipes.quote(log_path), pipes.quote(tmpdir)))
+        source_path = os.path.join(tmpdir, os.path.basename(log_path))
+        host.get_file(source_path, dest_path, preserve_perm=False)
+
+
+def _get_file_stats(host, path):
+    """Get the stats of a file from host.
+
+    @param host: Instance of Host subclass with run().
+    @param path: Path of file to check.
+    @returns: _FileStats namedtuple with file size and collection probability.
+    """
+    cmd = 'ls -ld %s | cut -d" " -f5' % (pipes.quote(path),)
+    try:
+        file_size = int(host.run(cmd).stdout)
+    except error.CmdError as e:
+        logging.warning('Getting size of file %r on host %r failed: %s',
+                        path, host, e)
+        file_size = 0
+    if file_size == 0:
+        return _FileStats(0, 1.0)
+    else:
+        collection_probability = _MAX_FILESIZE / float(file_size)
+        return _FileStats(file_size, collection_probability)
 
 
 # import any site hooks for the crashdump and crashinfo collection
