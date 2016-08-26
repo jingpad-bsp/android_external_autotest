@@ -1,5 +1,5 @@
 #pylint: disable-msg=C0111
-"""\
+"""
 Utility functions for rpc_interface.py.  We keep them in a separate file so that
 only RPC interface functions go into that file.
 """
@@ -1275,6 +1275,17 @@ def get_label(name):
     except models.Label.DoesNotExist:
         return None
     return label
+
+
+# TODO: hide the following rpcs under is_moblab
+def moblab_only(func):
+    """Ensure moblab specific functions only run on Moblab devices."""
+    def verify(*args, **kwargs):
+        if not server_utils.is_moblab():
+            raise error.RPCException('RPC: %s can only run on Moblab Systems!',
+                                     func.__name__)
+        return func(*args, **kwargs)
+    return verify
 
 
 def route_rpc_to_master(func):
