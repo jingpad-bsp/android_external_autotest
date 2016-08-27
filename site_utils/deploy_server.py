@@ -12,8 +12,7 @@ import common
 from autotest_lib.server import frontend
 from autotest_lib.site_utils.lib import infra
 
-DEPLOY_PRODUCTION_LOCAL = ('/usr/local/autotest/site_utils/'
-                           'deploy_production_local.py')
+DEPLOY_SERVER_LOCAL = ('/usr/local/autotest/site_utils/deploy_server_local.py')
 POOL_SIZE = 124
 PUSH_ORDER = {'database': 0,
               'database_slave': 0,
@@ -98,24 +97,26 @@ def parse_arguments(args):
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description='Command to update an entire autotest installation.',
             epilog=('Update all servers:\n'
-                    '  deploy_production.py\n'
+                    '  deploy_server.py\n'
                     '\n'
                     'Update one server:\n'
-                    '  deploy_production.py <server>\n'
+                    '  deploy_server.py <server>\n'
                     '\n'
-                    'Send arguments to remote deploy_production_local.py:\n'
-                    '  deploy_production.py -- --dryrun\n'
+                    'Send arguments to remote deploy_server_local.py:\n'
+                    '  deploy_server.py -- --dryrun\n'
                     '\n'
                     'See what arguments would be run on specified servers:\n'
-                    '  deploy_production.py --dryrun <server_a> <server_b> --'
+                    '  deploy_server.py --dryrun <server_a> <server_b> --'
                     ' --skip-update\n'))
 
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
             help='Log all deploy script output.')
     parser.add_argument('--continue', action='store_true', dest='cont',
             help='Continue to the next server on failure.')
-    parser.add_argument('--afe', default='cautotest',
+    parser.add_argument('--afe', required=True,
             help='What is the main server for this installation? (cautotest).')
+    parser.add_argument('--update_push_servers', action='store_true',
+            help='Indicate to update test_push servers.')
     parser.add_argument('--dryrun', action='store_true',
             help='Don\'t actually run remote commands.')
     parser.add_argument('args', nargs=argparse.REMAINDER,
@@ -125,7 +126,7 @@ def parse_arguments(args):
 
     # We take the args list and further split it down. Everything before --
     # is a server name, and everything after it is an argument to pass along
-    # to deploy_production_local.py.
+    # to deploy_server_local.py.
     #
     # This:
     #   server_a, server_b -- --dryrun --skip-report
@@ -158,7 +159,7 @@ def update_server(inputs):
     @return: A tuple of (server, success, output), where:
              server: Name of the server to be updated.
              sucess: True if update succeeds, False otherwise.
-             output: A string of the deploy_production_local script output
+             output: A string of the deploy_server_local script output
                      including any errors.
 
     """
@@ -173,7 +174,7 @@ def update_server(inputs):
         extra_args = []
 
     cmd = ('%s %s' %
-           (DEPLOY_PRODUCTION_LOCAL, ' '.join(options.args + extra_args)))
+           (DEPLOY_SERVER_LOCAL, ' '.join(options.args + extra_args)))
     output = '%s: %s' % (server, cmd)
     success = True
     if not options.dryrun:
