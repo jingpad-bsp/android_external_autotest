@@ -2,7 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, time
+# pylint: disable=module-missing-docstring
+# pylint: disable=docstring-section-name
+# pylint: disable=no-init
+
+import logging
+import time
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import enterprise_policy_base
@@ -19,7 +24,6 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
     When set True or not set, bookmarks can be added, removed, or modified.
     When set False, bookmarks cannot be added, removed, or modified, though
     existing bookmarks (if any) are still available.
-
     """
     version = 1
 
@@ -56,7 +60,6 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         """Check whether add-new-bookmark-command menu item is disabled.
 
         @returns: True if add-new-bookmarks-command is disabled.
-
         """
         tab = self.navigate_to_url('chrome://bookmarks/#1')
 
@@ -87,7 +90,6 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
 
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
-
         """
         logging.info('Running _test_edit_bookmarks_enabled(%s, %s)',
                      policy_value, policies_dict)
@@ -107,7 +109,6 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
-
         """
         policy_value = self.packed_json_string(self.TEST_CASES[case])
         policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
