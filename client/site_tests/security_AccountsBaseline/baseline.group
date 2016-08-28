@@ -53,7 +53,7 @@ nfqueue:!:232:
 tlsdate-dbus:!:233:
 tlsdate:!:234:
 debugd-logs:!:235:
-debugfs-access:!:236:
+debugfs-access:!:605:
 shill-crypto:!:237:
 avahi:!:238:
 p2p:!:239:
