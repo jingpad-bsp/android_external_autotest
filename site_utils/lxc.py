@@ -837,7 +837,8 @@ class ContainerBucket(object):
     @timer.decorate
     @cleanup_if_fail()
     def setup_test(self, name, job_id, server_package_url, result_path,
-                   control=None, skip_cleanup=False, job_folder=None):
+                   control=None, skip_cleanup=False, job_folder=None,
+                   dut_name=None):
         """Setup test container for the test job to run.
 
         The setup includes:
@@ -859,7 +860,8 @@ class ContainerBucket(object):
         @param skip_cleanup: Set to True to skip cleanup, used to troubleshoot
                              container failures.
         @param job_folder: Folder name of the job, e.g., 123-debug_user.
-
+        @param dut_name: Name of the dut to run test, used as the hostname of
+                         the container. Default is None.
         @return: A Container object for the test container.
 
         @raise ContainerError: If container does not exist, or not running.
@@ -885,6 +887,18 @@ class ContainerBucket(object):
 
         # Create test container from the base container.
         container = self.create_from_base(name)
+
+        # Update the hostname of the test container to be `dut_name`.
+        # Some TradeFed tests use hostname in test results, which is used to
+        # group test results in dashboard. The default container name is set to
+        # be the name of the folder, which is unique (as it is composed of job
+        # id and timestamp. For better result view, the container's hostname is
+        # set to be the dut hostname.
+        if dut_name:
+            config_file = os.path.join(container.container_path, name, 'config')
+            lxc_utsname_setting = 'lxc.utsname = %s' % dut_name
+            utils.run(APPEND_CMD_FMT % {'content': lxc_utsname_setting,
+                                        'file': config_file})
 
         # Deploy server side package
         usr_local_path = os.path.join(container.rootfs, 'usr', 'local')
