@@ -23,9 +23,12 @@ class SiteUtilsUnittests(unittest.TestCase):
         release_build = 'lumpy-release/R27-3837.0.0'
         paladin_build = 'lumpy-paladin/R27-3878.0.0-rc7'
         brillo_build = 'git_mnc-brillo-dev/lumpy-eng/1234'
+        chrome_pfq_build = 'lumpy-chrome-pfq/R27-3837.0.0'
+        chromium_pfq_build = 'lumpy-chromium-pfq/R27-3837.0.0'
 
         builds = [trybot_paladin_build, trybot_release_build, release_build,
-                  paladin_build, brillo_build]
+                  paladin_build, brillo_build, chrome_pfq_build,
+                  chromium_pfq_build]
         test_name = 'login_LoginSuccess'
         board = 'lumpy'
         suite = 'bvt'
