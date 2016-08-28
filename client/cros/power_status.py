@@ -1131,8 +1131,9 @@ class StatoMatic(object):
                         GPUFreqStats(incremental=False),
                         CPUIdleStats(),
                         CPUPackageStats()]
-        self._astats.extend([DevFreqStats(f) for f in \
-                             os.listdir(DevFreqStats._DIR)])
+        if os.path.isdir(DevFreqStats._DIR):
+            self._astats.extend([DevFreqStats(f) for f in \
+                                 os.listdir(DevFreqStats._DIR)])
 
         self._disk = DiskStateLogger()
         self._disk.start()
