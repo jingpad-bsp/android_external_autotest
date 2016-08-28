@@ -155,7 +155,7 @@ def _stage_ssp(parser):
 
 
 def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
-                  job_folder):
+                  job_folder, machines):
     """Run the server job with server-side packaging.
 
     @param job: The server job object.
@@ -169,14 +169,17 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
     @param parser: Command line parser that contains the options.
     @param ssp_url: url of the staged server-side package.
     @param job_folder: Name of the job result folder.
+    @param machines: A list of machines to run the test.
     """
     bucket = lxc.ContainerBucket()
     control = (parser.args[0] if len(parser.args) > 0 and parser.args[0] != ''
                else None)
     try:
+        dut_name = machines[0] if len(machines) >= 1 else None
         test_container = bucket.setup_test(container_name, job_id, ssp_url,
                                            results, control=control,
-                                           job_folder=job_folder)
+                                           job_folder=job_folder,
+                                           dut_name=dut_name)
     except Exception as e:
         job.record('FAIL', None, None,
                    'Failed to setup container for test: %s. Check logs in '
@@ -540,7 +543,8 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                 if use_ssp:
                     try:
                         _run_with_ssp(job, container_name, job_or_task_id,
-                                      results, parser, ssp_url, job_folder)
+                                      results, parser, ssp_url, job_folder,
+                                      machines)
                     finally:
                         # Update the ownership of files in result folder.
                         correct_results_folder_permission(results)
