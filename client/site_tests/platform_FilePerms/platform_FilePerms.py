@@ -76,10 +76,10 @@ class platform_FilePerms(test.test):
             'type': 'tmpfs',
             'options': standard_rw_options + ['mode=755']},
         # Special case, we want to track group/mode too.
-        # gid 236 == debugfs-access
+        # gid 605 == debugfs-access
         '/run/debugfs_gpu': {
             'type': 'debugfs',
-            'options': standard_rw_options + ['gid=236', 'mode=750']},
+            'options': standard_rw_options + ['gid=605', 'mode=750']},
         '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
         '/sys/fs/cgroup': {
