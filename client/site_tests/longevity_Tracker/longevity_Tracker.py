@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# pylint: disable=module-missing-docstring
+# pylint: disable=docstring-section-name
+# pylint: disable=no-init
+
 import csv
 import glob
 import httplib
@@ -20,7 +24,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import constants
 
-TEST_DURATION = 72000  # Duration of test (20 hrs) in seconds.
+# TODO(scunningham): Return to 72000 (20 hrs) after server-side stabilizes.
+TEST_DURATION = 10800  # Duration of test (3 hrs) in seconds.
 SAMPLE_INTERVAL = 60  # Length of measurement samples in seconds.
 METRIC_INTERVAL = 3600  # Length between metric calculation in seconds.
 STABILIZATION_DURATION = 60  # Time for test stabilization in seconds.
@@ -57,7 +62,6 @@ class longevity_Tracker(test.test):
         90% of the sample interval.
 
         @returns float of percent active use of CPU.
-
         """
         # Time between measurements is ~90% of the sample interval.
         measurement_time_delta = SAMPLE_INTERVAL * 0.90
@@ -71,7 +75,6 @@ class longevity_Tracker(test.test):
         """Compute percent memory in active use.
 
         @returns float of percent memory in use.
-
         """
         total_memory = site_utils.get_mem_total()
         free_memory = site_utils.get_mem_free()
@@ -81,7 +84,6 @@ class longevity_Tracker(test.test):
         """Get temperature of hottest sensor in Celsius.
 
         @returns float of temperature of hottest sensor.
-
         """
         temperature = utils.get_current_temperature_max()
         if not temperature:
@@ -92,7 +94,6 @@ class longevity_Tracker(test.test):
         """Get hwid of test device, e.g., 'WOLF C4A-B2B-A47'.
 
         @returns string of hwid (Hardware ID) of device under test.
-
         """
         with os.popen('crossystem hwid 2>/dev/null', 'r') as hwid_proc:
             hwid = hwid_proc.read()
@@ -105,7 +106,6 @@ class longevity_Tracker(test.test):
 
         @param mark_time: point in time from which elapsed time is measured.
         @returns time elapsed since the marked time.
-
         """
         return time.time() - mark_time
 
@@ -118,7 +118,6 @@ class longevity_Tracker(test.test):
         @param timer: time on timer, in seconds.
         @param interval: period of time in seconds.
         @returns time elapsed from the start of the current interval.
-
         """
         return timer % int(interval)
 
@@ -131,7 +130,6 @@ class longevity_Tracker(test.test):
         @param timer: time on timer, in seconds.
         @param interval: period of time in seconds.
         @returns time remaining till the end of the current interval.
-
         """
         return interval - (timer % int(interval))
 
@@ -140,7 +138,6 @@ class longevity_Tracker(test.test):
 
         @param perf_values: dict of attribute performance values.
         @param perf_writer: file to write performance measurements.
-
         """
         # Get performance measurements.
         cpu_usage = '%.3f' % self._get_cpu_usage()
@@ -163,7 +160,6 @@ class longevity_Tracker(test.test):
 
         @param perf_values: dict attribute performance values.
         @param perf_metrics: dict attribute 90%-ile performance metrics.
-
         """
         # Calculate 90th percentile for each attribute.
         cpu_values = perf_values['cpu']
@@ -188,7 +184,6 @@ class longevity_Tracker(test.test):
 
         @param metrics: dict of attribute performance metric lists.
         @returns dict of attribute performance metric medians.
-
         """
         if len(metrics['cpu']):
             cpu_metric = sorted(metrics['cpu'])[len(metrics['cpu']) // 2]
@@ -207,7 +202,6 @@ class longevity_Tracker(test.test):
 
         @param ts_file: file handle for performance timestamped file.
         @param ag_file: file handle for performance aggregated file.
-
         """
         next(ts_file)  # Skip fist line (the header) of timestamped file.
         for line in ts_file:
@@ -219,8 +213,7 @@ class longevity_Tracker(test.test):
         Note: The AutoTest results default directory is located at /usr/local/
         autotest/results/default/longevity_Tracker/results
 
-        @param perf_file: Aggregated performance values file path.
-
+        @param aggregated_fpath: file path to Aggregated performance values.
         """
         results_fpath = os.path.join(self.resultsdir, 'perf.csv')
         shutil.copy(aggregated_fpath, results_fpath)
@@ -229,8 +222,7 @@ class longevity_Tracker(test.test):
     def _write_perf_keyvals(self, perf_results):
         """Write perf results to keyval file for AutoTest results.
 
-        @param perf_metrics: dict of attribute performance metrics.
-
+        @param perf_results: dict of attribute performance metrics.
         """
         perf_keyval = {}
         perf_keyval['cpu_usage'] = perf_results['cpu']
@@ -241,8 +233,7 @@ class longevity_Tracker(test.test):
     def _write_perf_results(self, perf_results):
         """Write perf results to results-chart.json file for Perf Dashboard.
 
-        @param perf_metrics: dict of attribute performance metrics.
-
+        @param perf_results: dict of attribute performance metrics.
         """
         cpu_metric = perf_results['cpu']
         mem_metric = perf_results['mem']
@@ -258,7 +249,6 @@ class longevity_Tracker(test.test):
         """Read perf results from results-chart.json file for Perf Dashboard.
 
         @returns dict of perf results, formatted as JSON chart data.
-
         """
         results_file = os.path.join(self.resultsdir, 'results-chart.json')
         with open(results_file, 'r') as fp:
@@ -273,7 +263,6 @@ class longevity_Tracker(test.test):
         @param epoch_minutes: String of minutes since 1970.
 
         @return unique integer ID computed from given version and epoch.
-
         """
         # Number of digits from each part of the Chrome OS version string.
         cros_version_col_widths = [0, 4, 3, 2]
@@ -309,7 +298,6 @@ class longevity_Tracker(test.test):
         @param app_id: string kiosk application identification.
         @returns dict of Kiosk name and version number strings.
         @raises: An error.TestError if single manifest is not found.
-
         """
         kiosk_app_info = {'name': 'none', 'version': 'none'}
         if not app_id:
@@ -337,7 +325,6 @@ class longevity_Tracker(test.test):
         """Collect chart data into an uploadable data JSON object.
 
         @param chart_data: performance results formatted as chart data.
-
         """
         perf_values = {
             'format_version': '1.0',
@@ -369,7 +356,6 @@ class longevity_Tracker(test.test):
         @param data_obj: data object as returned by _format_data_for_upload().
 
         @raises PerfUploadingError if an exception was raised when uploading.
-
         """
         logging.debug('data_obj: %s', data_obj)
         encoded = urllib.urlencode(data_obj)
@@ -397,7 +383,6 @@ class longevity_Tracker(test.test):
             (the "W" from "W.X.Y.Z").  If the version number cannot be parsed
             in the "W.X.Y.Z" format, the "chrome_ver" will be the full output
             of "chrome --version" and the milestone will be the empty string.
-
         """
         chrome_version = utils.system_output(constants.CHROME_VERSION_COMMAND,
                                              ignore_status=True)
@@ -412,7 +397,6 @@ class longevity_Tracker(test.test):
 
         @param file_path: file path for perf file.
         @returns file object for the perf file.
-
         """
         # If file exists, open it for appending. Do not write header.
         if os.path.isfile(file_path):
@@ -456,7 +440,6 @@ class longevity_Tracker(test.test):
         dashboard with a unique point_id.
 
         @returns list of median performance metrics.
-
         """
         # Allow system to stabilize before start taking measurements.
         test_start_time = time.time()
@@ -533,8 +516,8 @@ class longevity_Tracker(test.test):
 
     def run_once(self, kiosk_app_attributes=None):
         if kiosk_app_attributes:
-            app_name, app_id, ext_page = \
-                    kiosk_app_attributes.rstrip().split(':')
+            app_name, app_id, ext_page = (
+                kiosk_app_attributes.rstrip().split(':'))
         self.subtest_name = app_name
         self.board_name = utils.get_board()
         self.hw_id = self._get_hwid()
