@@ -96,8 +96,9 @@ def ParseBuildName(name):
                       Will be None for relative build names.
 
     """
-    match = re.match(r'(trybot-)?(?P<board>[\w-]+)-(?P<type>\w+)/'
-                     r'(R(?P<milestone>\d+)-(?P<manifest>[\d.ab-]+)|LATEST)',
+    match = re.match(r'(trybot-)?(?P<board>[\w-]+?)(?:-chrome)?(?:-chromium)?'
+                     r'-(?P<type>\w+)/(R(?P<milestone>\d+)-'
+                     r'(?P<manifest>[\d.ab-]+)|LATEST)',
                      name)
     if match and len(match.groups()) >= 5:
         return (match.group('board'), match.group('type'),
