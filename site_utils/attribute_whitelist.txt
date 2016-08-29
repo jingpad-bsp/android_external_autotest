@@ -27,6 +27,7 @@ suite:bvt-cq
 suite:bvt-inline
 suite:bvt-perbuild
 suite:cell_emulator
+suite:cellular_endtoend
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
 suite:camera_perbuild
