@@ -22,6 +22,7 @@ from autotest_lib.client.cros.chameleon import usb_controller
 
 CHAMELEON_PORT = 9992
 CHAMELEOND_LOG_REMOTE_PATH = '/var/log/chameleond'
+CHAMELEON_READY_TEST = 'GetSupportedPorts'
 
 
 class ChameleonConnectionError(error.TestError):
@@ -32,32 +33,111 @@ class ChameleonConnectionError(error.TestError):
     pass
 
 
+class _Method(object):
+    """Class to save the name of the RPC method instead of the real object.
+
+    It keeps the name of the RPC method locally first such that the RPC method
+    can be evaluated to a real object while it is called. Its purpose is to
+    refer to the latest RPC proxy as the original previous-saved RPC proxy may
+    be lost due to reboot.
+
+    The call_server is the method which does refer to the latest RPC proxy.
+
+    This class and the re-connection mechanism in ChameleonConnection is
+    copied from third_party/autotest/files/server/cros/faft/rpc_proxy.py
+
+    """
+    def __init__(self, call_server, name):
+        """Constructs a _Method.
+
+        @param call_server: the call_server method
+        @param name: the method name or instance name provided by the
+                     remote server
+
+        """
+        self.__call_server = call_server
+        self._name = name
+
+
+    def __getattr__(self, name):
+        """Support a nested method.
+
+        For example, proxy.system.listMethods() would need to use this method
+        to get system and then to get listMethods.
+
+        @param name: the method name or instance name provided by the
+                     remote server
+
+        @return: a callable _Method object.
+
+        """
+        return _Method(self.__call_server, "%s.%s" % (self._name, name))
+
+
+    def __call__(self, *args, **dargs):
+        """The call method of the object.
+
+        @param args: arguments for the remote method.
+        @param kwargs: keyword arguments for the remote method.
+
+        @return: the result returned by the remote method.
+
+        """
+        return self.__call_server(self._name, *args, **dargs)
+
+
 class ChameleonConnection(object):
     """ChameleonConnection abstracts the network connection to the board.
+
+    When a chameleon board is rebooted, a xmlrpc call would incur a
+    socket error. To fix the error, a client has to reconnect to the server.
+    ChameleonConnection is a wrapper of chameleond proxy created by
+    xmlrpclib.ServerProxy(). ChameleonConnection has the capability to
+    automatically reconnect to the server when such socket error occurs.
+    The nice feature is that the auto re-connection is performed inside this
+    wrapper and is transparent to the caller.
+
+    Note:
+    1. When running chameleon autotests in lab machines, it is
+       ChameleonConnection._create_server_proxy() that is invoked.
+    2. When running chameleon autotests in local chroot, it is
+       rpc_server_tracker.xmlrpc_connect() in server/hosts/chameleon_host.py
+       that is invoked.
 
     ChameleonBoard and ChameleonPort use it for accessing Chameleon RPC.
 
     """
 
-    def __init__(self, hostname, port=CHAMELEON_PORT, proxy=None):
+    def __init__(self, hostname, port=CHAMELEON_PORT, proxy_generator=None,
+                 ready_test_name=CHAMELEON_READY_TEST):
         """Constructs a ChameleonConnection.
 
         @param hostname: Hostname the chameleond process is running.
         @param port: Port number the chameleond process is listening on.
-        @param proxy: if the proxy is passed, we use it as chameleond_proxy,
-        or we create a server proxy using hostname and port.
+        @param proxy_generator: a function to generate server proxy.
+        @param ready_test_name: run this method on the remote server ot test
+                if the server is connected correctly.
 
         @raise ChameleonConnectionError if connection failed.
         """
-        if proxy is not None:
-            self.chameleond_proxy = proxy
-        else:
-            self.chameleond_proxy = ChameleonConnection._create_server_proxy(
-                hostname, port)
+        self._hostname = hostname
+        self._port = port
+
+        # Note: it is difficult to put the lambda function as the default
+        # value of the proxy_generator argument. In that case, the binding
+        # of arguments (hostname and port) would be delayed until run time
+        # which requires to pass an instance as an argument to labmda.
+        # That becomes cumbersome since server/hosts/chameleon_host.py
+        # would also pass a lambda without argument to instantiate this object.
+        # Use the labmda function as follows would bind the needed arguments
+        # immediately which is much simpler.
+        self._proxy_generator = proxy_generator or self._create_server_proxy
+
+        self._ready_test_name = ready_test_name
+        self.chameleond_proxy = None
 
 
-    @staticmethod
-    def _create_server_proxy(hostname, port):
+    def _create_server_proxy(self):
         """Creates the chameleond server proxy.
 
         @param hostname: Hostname the chameleond process is running.
@@ -66,17 +146,56 @@ class ChameleonConnection(object):
         @return ServerProxy object to chameleond.
 
         @raise ChameleonConnectionError if connection failed.
+
         """
-        remote = 'http://%s:%s' % (hostname, port)
+        remote = 'http://%s:%s' % (self._hostname, self._port)
         chameleond_proxy = xmlrpclib.ServerProxy(remote, allow_none=True)
+        logging.info('ChameleonConnection._create_server_proxy() called')
         # Call a RPC to test.
         try:
-            chameleond_proxy.GetSupportedPorts()
+            getattr(chameleond_proxy, self._ready_test_name)()
         except (socket.error,
                 xmlrpclib.ProtocolError,
                 httplib.BadStatusLine) as e:
             raise ChameleonConnectionError(e)
         return chameleond_proxy
+
+
+    def _reconnect(self):
+        """Reconnect to chameleond."""
+        self.chameleond_proxy = self._proxy_generator()
+
+
+    def __call_server(self, name, *args, **kwargs):
+        """Bind the name to the chameleond proxy and execute the method.
+
+        @param name: the method name or instance name provided by the
+                     remote server.
+        @param args: arguments for the remote method.
+        @param kwargs: keyword arguments for the remote method.
+
+        @return: the result returned by the remote method.
+
+        """
+        try:
+            return getattr(self.chameleond_proxy, name)(*args, **kwargs)
+        except (AttributeError, socket.error):
+            # Reconnect and invoke the method again.
+            logging.info('Reconnecting chameleond proxy: %s', name)
+            self._reconnect()
+            return getattr(self.chameleond_proxy, name)(*args, **kwargs)
+
+
+    def __getattr__(self, name):
+        """Get the callable _Method object.
+
+        @param name: the method name or instance name provided by the
+                     remote server
+
+        @return: a callable _Method object.
+
+        """
+        return _Method(self.__call_server, name)
 
 
 class ChameleonBoard(object):
@@ -100,7 +219,7 @@ class ChameleonBoard(object):
         """
         self.host = chameleon_host
         self._output_log_file = None
-        self._chameleond_proxy = chameleon_connection.chameleond_proxy
+        self._chameleond_proxy = chameleon_connection
         self._usb_ctrl = usb_controller.USBController(chameleon_connection)
         if self._chameleond_proxy.HasAudioBoard():
             self._audio_board = audio_board.AudioBoard(chameleon_connection)
