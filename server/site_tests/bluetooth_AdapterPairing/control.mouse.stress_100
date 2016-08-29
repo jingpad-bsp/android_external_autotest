@@ -5,11 +5,12 @@
 from autotest_lib.server import utils
 
 AUTHOR = 'chromeos-chameleon'
-NAME = 'bluetooth_AdapterPairing.mouse'
-PURPOSE = 'Test bluetooth adapter pairing and connecting to a bluetooth device.'
+NAME = 'bluetooth_AdapterPairing.mouse.stress_100'
+PURPOSE = ('Stree test for 100 iterations on bluetooth adapter pairing '
+           'and connection.')
 CRITERIA = 'Adapter should work in correct states.'
 ATTRIBUTES = 'suite:bluetooth'
-TIME = 'SHORT'    # This test takes about 2 minutes.
+TIME = 'MEDIUM'   # This test takes about 1 hour 45 minutes.
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
 TEST_TYPE = 'server'
@@ -41,6 +42,6 @@ chameleon_args = hosts.CrosHost.get_chameleon_arguments(args_dict)
 def run(machine):
     host = hosts.create_host(machine, chameleon_args=chameleon_args)
     job.run_test('bluetooth_AdapterPairing', host=host, device_type='MOUSE',
-                 num_iterations=1, min_pass_count=1)
+                 num_iterations=100, min_pass_count=100)
 
 parallel_simple(run, machines)
