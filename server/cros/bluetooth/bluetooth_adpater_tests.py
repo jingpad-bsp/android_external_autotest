@@ -680,7 +680,9 @@ class BluetoothAdapterTests(test.test):
         properties = self.bluetooth_hid_facade.get_device_properties(
                 device_address)
         device_class = properties.get('Class')
-        discovered_class_of_service = device_class & self.CLASS_OF_SERVICE_MASK
+        discovered_class_of_service = (device_class & self.CLASS_OF_SERVICE_MASK
+                                       if device_class else None)
+
         self.results = {
                 'device_class': device_class,
                 'expected_class_of_service': expected_class_of_service,
@@ -703,7 +705,9 @@ class BluetoothAdapterTests(test.test):
         properties = self.bluetooth_hid_facade.get_device_properties(
                 device_address)
         device_class = properties.get('Class')
-        discovered_class_of_device = device_class & self.CLASS_OF_DEVICE_MASK
+        discovered_class_of_device = (device_class & self.CLASS_OF_DEVICE_MASK
+                                      if device_class else None)
+
         self.results = {
                 'device_class': device_class,
                 'expected_class_of_device': expected_class_of_device,
