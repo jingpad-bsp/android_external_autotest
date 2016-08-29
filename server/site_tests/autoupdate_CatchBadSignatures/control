@@ -32,12 +32,13 @@ To run locally, you must set up the file
 with the following content
 
   [CROS]
-  devserver_dir = <full repo path>/src/platform/dev
+  devserver_dir = <full chroot path>/src/platform/dev
   dev_server = http://<hostname>:8080
 
-and then start devserver.py outside the chroot:
+and then start devserver inside the chroot:
 
-  $ src/platform/dev/devserver.py
+  $ cd ~/trunk/src/scripts
+  $ ./start_devserver
 
 With this in place, you can now run the test:
 
