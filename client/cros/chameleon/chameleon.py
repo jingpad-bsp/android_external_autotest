@@ -531,11 +531,27 @@ class ChameleonVideoInput(ChameleonPort):
         return self.chameleond_proxy.IsVideoInputEncrypted(self.port_id)
 
 
+    def start_monitoring_audio_video_capturing_delay(self):
+        """Starts an audio/video synchronization utility."""
+        self.chameleond_proxy.StartMonitoringAudioVideoCapturingDelay()
+
+
+    def get_audio_video_capturing_delay(self):
+        """Gets the time interval between the first audio/video cpatured data.
+
+        @return: A floating points indicating the time interval between the
+                 first audio/video data captured. If the result is negative,
+                 then the first video data is earlier, otherwise the first
+                 audio data is earlier.
+        """
+        return self.chameleond_proxy.GetAudioVideoCapturingDelay()
+
+
     def start_capturing_video(self, box=None):
         """
         Captures video frames. Asynchronous, returns immediately.
 
-        @param box: int tuple, left, upper, right, lower pixel coordinates.
+        @param box: int tuple, (x, y, width, height) pixel coordinates.
                     Defines the rectangular boundary within which to capture.
         """
 
