@@ -34,8 +34,6 @@ class ChameleonHost(ssh_host.SSHHost):
 
     # Chameleond process name.
     CHAMELEOND_PROCESS = 'chameleond'
-    # Ready test function
-    CHAMELEON_READY_METHOD = 'GetSupportedPorts'
 
 
     # TODO(waihong): Add verify and repair logic which are required while
@@ -70,12 +68,17 @@ class ChameleonHost(ssh_host.SSHHost):
                 self._chameleon_connection = chameleon.ChameleonConnection(
                         self.hostname, chameleon_port)
             else:
-                chameleon_proxy = self.rpc_server_tracker.xmlrpc_connect(
-                        None, chameleon_port,
-                        ready_test_name=self.CHAMELEON_READY_METHOD,
-                        timeout_seconds=60)
+                # A proxy generator is passed as an argument so that a proxy
+                # could be re-created on demand in ChameleonConnection
+                # whenever needed, e.g., after a reboot.
+                proxy_generator = (
+                        lambda: self.rpc_server_tracker.xmlrpc_connect(
+                                None, chameleon_port,
+                                ready_test_name=chameleon.CHAMELEON_READY_TEST,
+                                timeout_seconds=60))
                 self._chameleon_connection = chameleon.ChameleonConnection(
-                        None, proxy=chameleon_proxy)
+                        None, proxy_generator=proxy_generator)
+
         except Exception as e:
             raise ChameleonHostError('Can not connect to Chameleon: %s(%s)',
                                      e.__class__, e)
