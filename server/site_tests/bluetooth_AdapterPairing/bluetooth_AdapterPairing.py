@@ -32,13 +32,16 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
     # TODO(josephsih): Reduce the sleep intervals to speed up the tests.
     TEST_SLEEP_SECS = 5
 
-    def run_once(self, host, device_type, num_iterations=1, min_pass_count=1):
+    def run_once(self, host, device_type, num_iterations=1, min_pass_count=1,
+                 pairing_twice=False):
         """Running Bluetooth adapter tests about pairing to a device.
 
         @param host: the DUT, usually a chromebook
         @param device_type : the bluetooth HID device type, e.g., 'MOUSE'
         @param num_iterations: the number of rounds to execute the test
         @param min_pass_count: the minimal pass count to pass this test
+        @param pairing_twice: True if the host tries to pair the device
+                again after the paired device is removed.
 
         """
         factory = remote_facade_factory.RemoteFacadeFactory(host)
@@ -104,18 +107,20 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
             # Verify that the adapter could remove the paired device.
             self.test_remove_pairing(device.address)
 
-            # Test if the adapter could discover the target device again.
-            time.sleep(self.TEST_SLEEP_SECS)
-            self.test_discover_device(device.address)
+            # Check if the device could be re-paired after being forgotten.
+            if pairing_twice:
+                # Test if the adapter could discover the target device again.
+                time.sleep(self.TEST_SLEEP_SECS)
+                self.test_discover_device(device.address)
 
-            # Verify that the adapter could pair with the device again.
-            # Also set the device trusted when pairing is done.
-            time.sleep(self.TEST_SLEEP_SECS)
-            self.test_pairing(device.address, device.pin, trusted=True)
+                # Verify that the adapter could pair with the device again.
+                # Also set the device trusted when pairing is done.
+                time.sleep(self.TEST_SLEEP_SECS)
+                self.test_pairing(device.address, device.pin, trusted=True)
 
-            # Verify that the adapter could remove the paired device again.
-            time.sleep(self.TEST_SLEEP_SECS)
-            self.test_remove_pairing(device.address)
+                # Verify that the adapter could remove the paired device again.
+                time.sleep(self.TEST_SLEEP_SECS)
+                self.test_remove_pairing(device.address)
 
             if bool(self.fails):
                 self.total_fails['Round %d' % iteration] = self.fails
