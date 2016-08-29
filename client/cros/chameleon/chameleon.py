@@ -135,6 +135,11 @@ class ChameleonBoard(object):
         self.reset()
 
 
+    def reboot(self):
+        """Reboots Chameleon board."""
+        self._chameleond_proxy.Reboot()
+
+
     def _get_log(self):
         """Get log from chameleon. It will be registered by atexit.
 
