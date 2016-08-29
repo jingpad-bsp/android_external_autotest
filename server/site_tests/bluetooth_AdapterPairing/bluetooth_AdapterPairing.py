@@ -66,10 +66,6 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
             time.sleep(self.TEST_SLEEP_SECS)
             self.test_stop_discovery()
 
-            # Test if the discovered device name is correct.
-            time.sleep(self.TEST_SLEEP_SECS)
-            self.test_device_name(device.address, device.name)
-
             # Test if the discovered device class of service is correct.
             self.test_device_class_of_service(device.address,
                                               device.class_of_service)
@@ -86,6 +82,14 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
             # Verify that the adapter could connect to the device.
             time.sleep(self.TEST_SLEEP_SECS)
             self.test_connection_by_adapter(device.address)
+
+            # Test if the discovered device name is correct.
+            # Sometimes, it takes quite a long time after discovering
+            # the device (more than 60 seconds) to resolve the device name.
+            # Hence, it is safer to test the device name after pairing and
+            # connection is done.
+            time.sleep(self.TEST_SLEEP_SECS)
+            self.test_device_name(device.address, device.name)
 
             # Verify that the adapter could disconnect the device.
             self.test_disconnection_by_adapter(device.address)
