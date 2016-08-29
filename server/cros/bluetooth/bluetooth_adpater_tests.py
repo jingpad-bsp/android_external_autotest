@@ -93,6 +93,7 @@ class BluetoothAdapterTests(test.test):
     ADAPTER_PAIRING_POLLING_SLEEP_SECS = 3
     ADAPTER_DISCOVER_TIMEOUT_SECS = 60          # 30 seconds too short sometimes
     ADAPTER_DISCOVER_POLLING_SLEEP_SECS = 1
+    ADAPTER_DISCOVER_NAME_TIMEOUT_SECS = 30
 
     # hci0 is the default hci device if there is no external bluetooth dongle.
     EXPECTED_HCI = 'hci0'
@@ -624,6 +625,18 @@ class BluetoothAdapterTests(test.test):
         return all(self.results.values())
 
 
+    def _get_device_name(self, device_address):
+        """Get the device name.
+
+        @returns: True if the device name is derived. None otherwise.
+
+        """
+        properties = self.bluetooth_hid_facade.get_device_properties(
+                device_address)
+        self.discovered_device_name = properties.get('Name')
+        return bool(self.discovered_device_name)
+
+
     @_TestLog
     def test_device_name(self, device_address, expected_device_name):
         """Test that the device name discovered by the adapter is correct.
@@ -635,13 +648,21 @@ class BluetoothAdapterTests(test.test):
                   False otherwise.
 
         """
-        properties = self.bluetooth_hid_facade.get_device_properties(
-                device_address)
-        discovered_device_name = properties.get('Name')
+        try:
+            utils.poll_for_condition(
+                    condition=lambda: self._get_device_name(device_address),
+                    timeout=self.ADAPTER_DISCOVER_NAME_TIMEOUT_SECS,
+                    sleep_interval=self.ADAPTER_DISCOVER_POLLING_SLEEP_SECS,
+                    desc='Waiting for device name of %s' % device_address)
+        except utils.TimeoutError as e:
+            logging.error('test_device_name: %s', e)
+        except:
+            logging.error('test_device_name: unexpected error')
+
         self.results = {
                 'expected_device_name': expected_device_name,
-                'discovered_device_name': discovered_device_name}
-        return discovered_device_name == expected_device_name
+                'discovered_device_name': self.discovered_device_name}
+        return self.discovered_device_name == expected_device_name
 
 
     @_TestLog
