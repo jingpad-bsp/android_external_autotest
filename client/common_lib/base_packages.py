@@ -1,4 +1,4 @@
-#pylint: disable-msg=C0111
+#pylint: disable=C0111
 
 """
 This module defines the BasePackageManager Class which provides an
@@ -138,6 +138,25 @@ class HttpFetcher(RepositoryFetcher):
         self.run_command = package_manager._run_command
         self.url = repository_url
 
+    def exists(self, destpath, target='file'):
+        """Check if a file or directory exists using `test`.
+
+        This is a wrapper for run_command.
+
+        Args:
+          target: Optional string that should either be 'file' or 'dir'
+                  indicating what should exist.
+        """
+        if target == 'dir':
+            test_cmd = 'test -d %s'
+        else:
+            test_cmd = 'test -e %s'
+
+        try:
+            self.run_command(test_cmd % destpath)
+            return True
+        except (error.CmdError, error.AutoservRunError):
+            return False
 
     def _quick_http_test(self):
         """ Run a simple 30 second wget on the repository to see if it is
@@ -173,15 +192,12 @@ class HttpFetcher(RepositoryFetcher):
             result = self.run_command(cmd,
                                       _run_command_dargs={'timeout': 1200})
 
-            file_exists = self.run_command(
-                'ls %s' % dest_path,
-                _run_command_dargs={'ignore_status': True}).exit_status == 0
-            if not file_exists:
+            if not self.exists(dest_path):
                 logging.error('wget failed: %s', result)
                 raise error.CmdError(cmd, result)
 
-            logging.debug('Successfully fetched %s from %s', filename,
-                          package_url)
+            logging.info('Successfully fetched %s from %s', filename,
+                         package_url)
         except error.CmdError as e:
             # remove whatever junk was retrieved when the get failed
             self.run_command('rm -f %s' % dest_path)
@@ -284,6 +300,25 @@ class BasePackageManager(object):
         else:
             raise TypeError("repo must be RepositoryFetcher or url string")
 
+    def exists(self, destpath, target='file'):
+        """Check if a file or directory exists using `test`.
+
+        This is a wrapper for _run_command.
+
+        Args:
+          target: Optional string that should either be 'file' or 'dir'
+                  indicating what should exist.
+        """
+        if target == 'dir':
+            test_cmd = 'test -d %s'
+        else:
+            test_cmd = 'test -e %s'
+
+        try:
+            self._run_command(test_cmd % destpath)
+            return True
+        except (error.CmdError, error.AutoservRunError):
+            return False
 
     def get_fetcher(self, url):
         if url.startswith('http://'):
@@ -373,14 +408,7 @@ class BasePackageManager(object):
 
                 # check to see if the install_dir exists and if it does
                 # then check to see if the .checksum file is the latest
-                install_dir_exists = False
-                try:
-                    self._run_command("ls %s" % install_dir)
-                    install_dir_exists = True
-                except (error.CmdError, error.AutoservRunError):
-                    pass
-
-                if (install_dir_exists and
+                if (self.exists(install_dir, target='dir') and
                     not self.untar_required(fetch_path, install_dir)):
                     return
 
@@ -418,22 +446,15 @@ class BasePackageManager(object):
                        packaging system. It should be ignored by externals
                        callers of this method who use it fetch custom packages.
         '''
-
-        try:
-            self._run_command("ls %s" % os.path.dirname(dest_path))
-        except (error.CmdError, error.AutoservRunError):
+        # Check if the destination dir exists.
+        if not self.exists(os.path.dirname(dest_path), target='dir'):
             raise error.PackageFetchError("Please provide a valid "
                                           "destination: %s " % dest_path)
 
         # See if the package was already fetched earlier, if so
         # the checksums need to be compared and the package is now
         # fetched only if they differ.
-        pkg_exists = False
-        try:
-            self._run_command("ls %s" % dest_path)
-            pkg_exists = True
-        except (error.CmdError, error.AutoservRunError):
-            pass
+        pkg_exists = self.exists(dest_path)
 
         # if a repository location is explicitly provided, fetch the package
         # from there and return
@@ -668,9 +689,7 @@ class BasePackageManager(object):
         if not self._checksum_dict:
             # Fetch the checksum file
             try:
-                try:
-                    self._run_command("ls %s" % checksum_path)
-                except (error.CmdError, error.AutoservRunError):
+                if not self.exists(checksum_path):
                     # The packages checksum file does not exist locally.
                     # See if it is present in the repositories.
                     self.fetch_pkg(CHECKSUM_FILE, checksum_path)
