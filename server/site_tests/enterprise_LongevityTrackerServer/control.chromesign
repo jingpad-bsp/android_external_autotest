@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = "scunningham"
-NAME = "enterprise_LongevityTrackerServer.chrome_sign_builder"
+NAME = "enterprise_LongevityTrackerServer.chromesign"
 PURPOSE = "Tracks Chrome OS performance over long periods."
 TIME = "LONG"
 TEST_CATEGORY = "Performance"
 TEST_CLASS = "performance"
 TEST_TYPE = "server"
 ATTRIBUTES = "suite:longevity"
-DEPENDENCIES = "chrome_sign_builder"
+DEPENDENCIES = "chromesign"
 
 DOC = """
 This test enrolls ChromeOS device into kiosk mode and captures device resource
@@ -23,10 +23,10 @@ def run_test(machine):
     host = hosts.create_host(machine)
     # Kiosk app attributes include app name, extension id and extension page
     kiosk_app_attributes = \
-            'chrome_sign_builder:odjaaghiehpobimgdjjfofmablbaleem:index.html'
+            'chromesign:odjaaghiehpobimgdjjfofmablbaleem:index.html'
     job.run_test('enterprise_LongevityTrackerServer', host=host,
             kiosk_app_attributes=kiosk_app_attributes,
-            tag='chrome_sign_builder')
+            tag='chromesign')
 
 
 parallel_simple(run_test, machines)
