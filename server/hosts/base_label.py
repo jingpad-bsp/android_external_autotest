@@ -9,7 +9,33 @@ import logging
 
 import common
 
+from autotest_lib.server import afe_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+
+
+def forever_exists_decorate(exists):
+    """
+    Decorator for labels that should exist forever once applied.
+
+    We'll check if the label already exists on the host and return True if so.
+    Otherwise we'll check if the label should exist on the host.
+
+    @param exists: The exists method on the label class.
+    """
+    def exists_wrapper(self, host):
+        """
+        Wrapper around the label exists method.
+
+        @param self: The label object.
+        @param host: The host object to run methods on.
+
+        @returns True if the label already exists on the host, otherwise run
+            the exists method.
+        """
+        if self._NAME in afe_utils.get_labels(host):
+            return True
+        return exists(self, host)
+    return exists_wrapper
 
 
 class BaseLabel(object):
