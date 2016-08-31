@@ -33,9 +33,9 @@ def parse_options():
     parser.add_option('-p', '--password', default=DEFAULT_PASSWD,
                       help='Password to login to the Autotest DB. Default is '
                            'the one defined in config file.')
-    parser.add_option('-t', '--timeout', type=int, default=1800,
+    parser.add_option('-t', '--timeout', type=int, default=300,
                       help='Timeout boundry of the slow database query. '
-                           'Default is 1800s')
+                           'Default is 300s')
     parser.add_option('-m', '--mail', default=DEFAULT_MAIL,
                       help='Mail address to send the summary to. Default is '
                            'ChromeOS infra Deputy')
