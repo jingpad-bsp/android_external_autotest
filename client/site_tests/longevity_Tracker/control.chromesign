@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = 'scunningham'
-NAME = 'longevity_Tracker.chrome_sign_builder'
+NAME = 'longevity_Tracker.chromesign'
 PURPOSE = 'Tracks Chrome OS performance over long periods.'
 TIME = 'LONG'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'performance'
 TEST_TYPE = 'client'
 ATTRIBUTES = 'suite:longevity'
-DEPENDENCIES = 'chrome_sign_builder'
+DEPENDENCIES = 'chromesign'
 
 DOC = '''
 This script tracks performance of Chrome OS running the specified Kiosk App.
@@ -24,8 +24,8 @@ a longevity_terminate flag file is seen in the /tmp/ directory.
 '''
 
 kiosk_app_attributes = (
-    'chrome_sign_builder:odjaaghiehpobimgdjjfofmablbaleem:index.html')
+    'chromesign:odjaaghiehpobimgdjjfofmablbaleem:index.html')
 
 job.run_test('longevity_Tracker',
              kiosk_app_attributes=kiosk_app_attributes,
-             tag='chrome_sign_builder')
+             tag='chromesign')
