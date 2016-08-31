@@ -22,6 +22,31 @@ from autotest_lib.site_utils import hwid_lib
 
 # pylint: disable=missing-docstring
 
+class BoardLabel(base_label.StringPrefixLabel):
+    """Determine the correct board label for the device."""
+
+    _NAME = ds_constants.BOARD_PREFIX.rstrip(':')
+
+    def generate_labels(self, host):
+        # We only want to apply the board labels once, which is when they get
+        # added to the AFE.  That way we don't have to worry about the board
+        # label switching on us if the wrong builds get put on the devices.
+        # crbug.com/624207 records one event of the board label switching
+        # unexpectedly on us.
+        for label in host._afe_host.labels:
+            if label.startswith(self._NAME + ':'):
+                return [label.split(':')[-1]]
+
+        # TODO(kevcheng): for now this will dup the code in CrosHost and a
+        # separate cl will refactor the get_board in CrosHost to just return the
+        # board without the BOARD_PREFIX and all the other callers will be
+        # updated to not need to clear it out and this code will be replaced to
+        # just call the host's get_board() method.
+        release_info = utils.parse_cmd_output('cat /etc/lsb-release',
+                                              run_method=host.run)
+        return [release_info['CHROMEOS_RELEASE_BOARD']]
+
+
 class LightSensorLabel(base_label.BaseLabel):
     """Label indicating if a light sensor is detected."""
 
@@ -451,6 +476,7 @@ CROS_LABELS = [
     ArcLabel(),
     AudioLoopbackDongleLabel(),
     BluetoothLabel(),
+    BoardLabel(),
     ChameleonConnectionLabel(),
     ChameleonLabel(),
     common_label.OSLabel(),
