@@ -44,6 +44,7 @@ TEST_LOG = 'test.log'
 TEST_SCRIPT = 'test.py'
 # Test script to run in container to verify autotest code setup.
 TEST_SCRIPT_CONTENT = """
+import socket
 import sys
 
 # Test import
@@ -54,6 +55,10 @@ from autotest_lib.site_utils import lxc
 
 with open(sys.argv[1], 'w') as f:
     f.write('test')
+
+# Confirm hostname starts with `test_`
+if not socket.gethostname().startswith('test_'):
+    raise Exception('The container\\\'s hostname must start with `test_`.')
 
 # Test installing packages
 lxc.install_packages(['atop', 'libxslt-dev'], ['selenium', 'numpy'])
@@ -123,7 +128,8 @@ def setup_test(bucket, name, skip_cleanup):
     os.makedirs(RESULT_PATH)
     container = bucket.setup_test(name, TEST_JOB_ID, AUTOTEST_SERVER_PKG,
                                   RESULT_PATH, skip_cleanup=skip_cleanup,
-                                  job_folder=TEST_JOB_FOLDER)
+                                  job_folder=TEST_JOB_FOLDER,
+                                  dut_name='192.168.0.3')
 
     # Inject "AUTOSERV/testing_mode: True" in shadow config to test autoserv.
     container.attach_run('echo $\'[AUTOSERV]\ntesting_mode: True\' >>'
