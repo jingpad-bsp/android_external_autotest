@@ -420,7 +420,7 @@ class RepairAction(_DependencyNode):
         except AutoservVerifyDependencyError as e:
             e.log_dependencies(
                     'Attempting this repair action',
-                    'Repair was triggered by these failures')
+                    'Repairing because these triggers failed')
             host.record('START', None, self._repair_tag)
             try:
                 self.repair(host)
