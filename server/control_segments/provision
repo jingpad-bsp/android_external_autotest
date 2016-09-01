@@ -39,9 +39,8 @@ def provision_machine(machine):
     Run the appropriate provisioning tests to make the machine's labels match
     those given in job_labels.
     """
-    host = hosts.create_target_machine(machine, try_lab_servo=True)
-
     job.record('START', None, 'provision')
+    host = hosts.create_target_machine(machine, try_lab_servo=True)
     try:
         job.sysinfo.add_logdir(constants.AUTOUPDATE_PRESERVE_LOG)
         provision.run_special_task_actions(job, host, labels_list,
