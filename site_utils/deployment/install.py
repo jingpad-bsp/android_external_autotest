@@ -68,6 +68,7 @@ from autotest_lib.server import frontend
 from autotest_lib.server import hosts
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.server.cros.dynamic_suite.constants import VERSION_PREFIX
+from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.deployment import commandline
 from autotest_lib.site_utils.suite_scheduler.constants import Labels
 
@@ -179,57 +180,8 @@ def _create_host(hostname, afe_host):
     @param afe_host  AFE Host object for the DUT.
     """
     machine_dict = {'hostname': hostname, 'afe_host': afe_host}
-    host = hosts.create_host(machine_dict, try_lab_servo=True)
-    return host
-
-
-def _check_servo(host):
-    """Check that servo for the given host is working.
-
-    Perform these steps:
-      * Confirm that the servo host is reachable via SSH.
-      * Make sure that the servo host software is up-to-date.
-      * Stop `servod` on the servo host if it's running, and restart
-        it with the host's designated board.  We deliberately ignore
-        any prior configuration.
-      * Re-verify that the servo service on the servo host is
-        working correctly.
-      * Re-initialize the DUT host object with the correct servo
-        object, since this won't have been done in the case that
-        `servod` was down.
-      * Re-initialize the servo settings, since restarting `servod`
-        can change the actual settings from the expected defaults.
-        (In particular, restarting `servod` leaves the USB stick
-        plugged in to the servo host.)
-
-    @param host  CrosHost object with the servo to be initialized.
-    """
-    servo_host = host._servo_host
-    if not servo_host:
-        raise Exception('No answer to ping from Servo host')
-    if not servo_host.is_up():
-        raise Exception('No answer to ssh from Servo host')
-    # Force an update now.  The update needs to be first up, in case the
-    # latest image is required to support our chosen board.
-    try:
-        servo_host.update_image(wait_for_update=True)
-    except error.AutoservHostError:
-        logging.exception('Could not verify servo update')
-    # Stop servod, then restart with the proper board.  It's OK if
-    # servod wasn't running (e.g. no board configured), so ignore
-    # failures.
-    servo_host.run('stop servod || :')
-    servo_host.run('start servod BOARD=%s' % servo_host.servo_board)
-    # There's a lag between when `start servod` completes above and when
-    # servod is actually up and serving.  The call to time.sleep() below
-    # gives time to make sure that the verify() call won't fail.
-    time.sleep(20)
-    logging.debug('Starting servo host verification')
-    servo_host.verify()
-    host.servo = servo_host.get_servo()
-    host.servo.initialize_dut()
-    if not host.servo.probe_host_usb_dev():
-        raise Exception('No USB stick detected on Servo host')
+    servo_args = hosts.CrosHost.get_servo_arguments({})
+    return hosts.create_host(machine_dict, servo_args=servo_args)
 
 
 def _configure_install_logging(log_name):
@@ -329,7 +281,7 @@ def _get_afe_host(afe, hostname, arguments):
                                    locked=True,
                                    lock_reason=_LOCK_REASON_NEW_HOST)
         servo_hostname = servo_host.make_servo_hostname(hostname)
-        servo_port = str(servo_host.DEFAULT_PORT)
+        servo_port = str(servo_host.ServoHost.DEFAULT_PORT)
         afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
                                servo_hostname,
                                hostname=hostname)
@@ -394,7 +346,8 @@ def _install_test_image(host, arguments):
     @param host       Host instance for the DUT being installed.
     @param arguments  Command line arguments with options.
     """
-    _check_servo(host)
+    if not host.servo.probe_host_usb_dev():
+        raise Exception('No USB stick detected on Servo host')
     try:
         if not arguments.noinstall:
             if not arguments.nostage:
