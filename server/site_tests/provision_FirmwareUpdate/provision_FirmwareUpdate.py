@@ -50,7 +50,7 @@ class provision_FirmwareUpdate(test.test):
                 the USB stick connected to the servo. Default is False.
         """
         try:
-            host.confirm_servo()
+            host.repair_servo()
 
             # Stage the current CrOS image to servo USB stick.
             if stage_image_to_usb:
