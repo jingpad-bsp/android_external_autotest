@@ -363,6 +363,7 @@ class ArcLabel(base_label.BaseLabel):
 
     _NAME = 'arc'
 
+    @base_label.forever_exists_decorate
     def exists(self, host):
         return 0 == host.run('grep CHROMEOS_ARC_VERSION /etc/lsb-release',
                              ignore_status=True).exit_status
