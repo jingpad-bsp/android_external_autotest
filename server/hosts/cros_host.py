@@ -248,6 +248,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def _initialize(self, hostname, chameleon_args=None, servo_args=None,
                     plankton_args=None, try_lab_servo=False,
+                    try_servo_repair=False,
                     ssh_verbosity_flag='', ssh_options='',
                     *args, **dargs):
         """Initialize superclasses, |self.chameleon|, and |self.servo|.
@@ -262,8 +263,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                a ChameleonHost. See chameleon_host for details.
         @param servo_args: A dictionary that contains args for creating
                            a ServoHost object. See servo_host for details.
-        @param try_lab_servo: Boolean, False indicates that ServoHost should
-                              not be created for a device in Cros test lab.
+        @param try_lab_servo: When true, indicates that an attempt should
+                              be made to create a ServoHost for a DUT in
+                              the test lab, even if not required by
+                              `servo_args`. See servo_host for details.
+        @param try_servo_repair: If a servo host is created, check it
+                              with `repair()` rather than `verify()`.
                               See servo_host for details.
         @param ssh_verbosity_flag: String, to pass to the ssh command to control
                                    verbosity.
@@ -286,7 +291,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         # crbug.com/298432
         self._servo_host =  servo_host.create_servo_host(
                 dut=self, servo_args=servo_args,
-                try_lab_servo=try_lab_servo)
+                try_lab_servo=try_lab_servo,
+                try_servo_repair=try_servo_repair)
         if self._servo_host is not None:
             self.servo = self._servo_host.get_servo()
         else:
@@ -1097,25 +1103,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       self.BOOT_TIMEOUT)
 
 
-    def _setup_servo(self):
-        """Try to force to create servo object if it's not set up yet.
-        """
-        if self.servo:
-            return
-
-        try:
-            # Setting servo_args to {} will force it to create the servo_host
-            # object if possible.
-            self._servo_host = servo_host.create_servo_host(
-                    dut=self, servo_args={})
-            if self._servo_host:
-                self.servo = self._servo_host.get_servo()
-            else:
-                logging.error('Failed to create servo_host object.')
-        except Exception as e:
-            logging.error('Failed to create servo object: %s', e)
-
-
     def _is_firmware_repair_supported(self):
         """Check if the firmware repair is supported.
 
@@ -1135,21 +1122,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 set(pools).intersection(set(pools_support_firmware_repair)))
 
 
-    def confirm_servo(self):
-        """Confirm servo is initialized and verified.
-
-        @raise AutoservError: If servo is not initialized and verified.
+    def repair_servo(self):
         """
-        if self.servo and self._servo_host.required_by_test:
-            return
+        Confirm that servo is initialized and verified.
 
-        # Force to re-create the servo object to make sure servo is verified.
-        logging.debug('Rebuilding the servo object.')
-        self.servo = None
-        self._servo_host = None
-        self._setup_servo()
-        if not self.servo:
-            raise error.AutoservError('Failed to create servo object.')
+        If the servo object is missing, attempt to repair the servo
+        host.  Repair failures are passed back to the caller.
+
+        @raise AutoservError: If there is no servo host for this CrOS
+                              host.
+        """
+        if self.servo:
+            return
+        if not self._servo_host:
+            raise error.AutoservError('No servo host for %s.' %
+                                      self.hostname)
+        self._servo_host.repair()
+        self.servo = self._servo_host.get_servo()
 
 
     def repair(self):
@@ -1159,33 +1148,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         not call back to the parent class, but instead relies on
         `self._repair_strategy` to coordinate the verification and
         repair steps needed to get the DUT working.
-
-        TODO(jrbarnette) Prior to invoking the repair strategy's
-        `repair()` method, repair checks our servo, and if necessary,
-        tries to repair it.  This flow should instead be integrated
-        into the main repair strategy.
         """
-        # For a DUT connected to a moblab, the servo host creation flow
-        # may not have created the servo object.  Try again now that we
-        # know we want the servo.
-        if utils.is_moblab():
-            self._setup_servo()
-
-        # If _servo_host is not initialized, it's possible that servo is off.
-        # Try to create a servo host object without checking if it's up, so it
-        # can be repaired by PoE.
-        if not self._servo_host:
-            self._servo_host =  servo_host.create_servo_host(
-                    dut=self, servo_args=None, try_lab_servo=True,
-                    skip_host_up_check=True)
-
-        if self._servo_host and not self.servo:
-            try:
-                self._servo_host.repair()
-            except Exception as e:
-                logging.error('Could not create a healthy servo: %s', e)
-            self.servo = self._servo_host.get_servo()
-
         self._repair_strategy.repair(self)
 
 
