@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 
 AUTHOR = 'tturney'
-NAME = 'android_ACTS.BluetoothFunhausTest-1'
+NAME = 'android_ACTS.BluetoothFunhausTest'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
 
 DOC = """
 This test runs Bluetooth Audio Quality tests
-against a Bluetooth Funhaus test bed.
+against a Bluetooth Funhaus test beds.
 
 """
 import common
