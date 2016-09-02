@@ -163,8 +163,30 @@ class ChameleonConnectionLabel(base_label.StringPrefixLabel):
     def exists(self, host):
         return host._chameleon_host is not None
 
+
     def generate_labels(self, host):
         return [host.chameleon.get_label()]
+
+
+class ChameleonPeripheralsLabel(base_label.StringPrefixLabel):
+    """Return the Chameleon peripherals labels.
+
+    The 'chameleon:bt_hid' label is applied if the bluetooth
+    classic hid device, i.e, RN-42 emulation kit, is detected.
+
+    Any peripherals plugged into the chameleon board would be
+    detected and applied proper labels in this class.
+    """
+
+    _NAME = 'chameleon'
+
+    def exists(self, host):
+        return host._chameleon_host is not None
+
+
+    def generate_labels(self, host):
+        bt_hid_device = host.chameleon.get_bluetooh_hid_mouse()
+        return ['bt_hid'] if bt_hid_device.CheckSerialConnection() else []
 
 
 class AudioLoopbackDongleLabel(base_label.BaseLabel):
@@ -480,6 +502,7 @@ CROS_LABELS = [
     BoardLabel(),
     ChameleonConnectionLabel(),
     ChameleonLabel(),
+    ChameleonPeripheralsLabel(),
     common_label.OSLabel(),
     CTSArchLabel(),
     ECLabel(),
