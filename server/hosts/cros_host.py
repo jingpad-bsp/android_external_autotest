@@ -44,6 +44,9 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 
 
 CONFIG = global_config.global_config
+ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = CONFIG.get_config_value(
+        'CROS', 'enable_devserver_trigger_auto_update', type=bool,
+        default=False)
 
 LUCID_SLEEP_BOARDS = ['samus', 'lulu']
 
@@ -60,6 +63,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     _parser = autoserv_parser.autoserv_parser
     _AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+    support_devserver_provision = ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE
 
     # Timeout values (in seconds) associated with various Chrome OS
     # state changes.
@@ -652,7 +656,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return tools.factory_image_url_pattern() % (devserver.url(), image_name)
 
 
-    def machine_install_by_devserver(self, build=None, force_update=False,
+    def machine_install_by_devserver(self, update_url=None, force_update=False,
                     local_devserver=False, repair=False,
                     force_full_update=False):
         """Ultiize devserver to install the DUT.
@@ -661,7 +665,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         with those in function machine_install. The merge will be done later,
         not in the same CL.
 
-        @param build: The build name to be updated on the host.
+        @param update_url: The update_url or build for the host to update.
         @param force_update: Force an update even if the version installed
                 is the same. Default:False
         @param local_devserver: Used by test_that to allow people to
@@ -684,25 +688,27 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         devserver = None
         logging.debug('Resolving a devserver for auto-update')
         if repair:
-            build = self.get_repair_image_name()
+            update_url = self.get_repair_image_name()
             force_update = True
 
-        if not build and not self._parser.options.image:
+        if not update_url and not self._parser.options.image:
             raise error.AutoservError(
                     'There is no update URL, nor a method to get one.')
 
-        if not build and self._parser.options.image:
-            build = self._parser.options.image
+        if not update_url and self._parser.options.image:
+            update_url = self._parser.options.image
 
-        logging.info('Staging build for AU: %s', build)
+        logging.info('Staging build for AU: %s', update_url)
 
         # Get build from parameter or AFE.
         # If the build is not a URL, let devserver to stage it first.
         # Otherwise, choose a devserver to trigger auto-update.
-        if build.startswith('http://'):
-            build = autoupdater.url_to_image_name(build)
+        build = None
+        if update_url.startswith('http://'):
+            build = autoupdater.url_to_image_name(update_url)
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
         else:
+            build = update_url
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
             devserver.trigger_download(build, synchronous=False)
 
@@ -711,6 +717,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         server_name = server_name.replace('.', '_')
         autotest_stats.Counter('cros_host_provision.' + server_name).increment()
         autotest_stats.Counter('cros_host_provision.total').increment()
+        logging.debug('Resolved devserver for auto-update: %s', devserver.url())
 
         devserver.auto_update(self.hostname, build,
                               log_dir=self.job.sysinfo.sysinfodir,
