@@ -560,8 +560,14 @@ class DevServer(object):
                 logging.error('Failed to get IP address of %s. Will pick a '
                               'devserver without subnet constraint.', hostname)
 
+        # If host_ip is not set, return all available devservers if
+        # enable_ssh_connection_for_devserver is set to True. Otherwise, only
+        # return servers in unrestricted subnet.
+        all_possible_servers = (
+                cls.servers() if ENABLE_SSH_CONNECTION_FOR_DEVSERVER
+                else cls.get_unrestricted_devservers(restricted_subnets))
         if not host_ip:
-            return cls.get_unrestricted_devservers(restricted_subnets), False
+            return all_possible_servers, False
 
         # Go through all restricted subnet settings and check if the DUT is
         # inside a restricted subnet. If so, only return the devservers in the
@@ -585,7 +591,7 @@ class DevServer(object):
             return (cls.get_devservers_in_same_subnet(
                     host_ip, DEFAULT_SUBNET_MASKBIT, True), True)
 
-        return cls.get_unrestricted_devservers(restricted_subnets), False
+        return all_possible_servers, False
 
 
     @classmethod
