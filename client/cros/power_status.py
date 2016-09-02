@@ -617,25 +617,31 @@ class CPUFreqStats(AbstractStats):
     CPU Frequency statistics
     """
 
-    def __init__(self):
+    def __init__(self, start_cpu=-1, end_cpu=-1):
         cpufreq_stats_path = '/sys/devices/system/cpu/cpu*/cpufreq/stats/' + \
                              'time_in_state'
         intel_pstate_stats_path = '/sys/devices/system/cpu/intel_pstate/' + \
                              'aperf_mperf'
         self._file_paths = glob.glob(cpufreq_stats_path)
+        num_cpus = len(self._file_paths)
         self._intel_pstate_file_paths = glob.glob(intel_pstate_stats_path)
         self._running_intel_pstate = False
         self._initial_perf = None
         self._current_perf = None
         self._max_freq = 0
-
+        name = 'cpufreq'
         if not self._file_paths:
             logging.debug('time_in_state file not found')
             if self._intel_pstate_file_paths:
                 logging.debug('intel_pstate frequency stats file found')
                 self._running_intel_pstate = True
+        else:
+            if (start_cpu >= 0 and end_cpu >= 0
+                    and not (start_cpu == 0 and end_cpu == num_cpus - 1)):
+                self._file_paths = self._file_paths[start_cpu : end_cpu]
+                name += '_' + str(start_cpu) + '_' + str(end_cpu)
 
-        super(CPUFreqStats, self).__init__(name='cpufreq')
+        super(CPUFreqStats, self).__init__(name=name)
 
 
     def _read_stats(self):
@@ -705,17 +711,22 @@ class CPUIdleStats(AbstractStats):
     # as ac <-> battery transitions.
     # TODO (snanda): Handle non-S0 states. Time spent in suspend states is
     # currently not factored out.
-    def __init__(self):
-        super(CPUIdleStats, self).__init__(name='cpuidle')
+    def __init__(self, start_cpu=-1, end_cpu=-1):
+        cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
+        self._cpus = glob.glob(cpuidle_path)
+        num_cpus = len(self._cpus)
+        name = 'cpuidle'
+        if (start_cpu >= 0 and end_cpu >= 0
+                and not (start_cpu == 0 and end_cpu == num_cpus - 1)):
+            self._cpus = self._cpus[start_cpu : end_cpu]
+            name = name + '_' + str(start_cpu) + '_' + str(end_cpu)
+        super(CPUIdleStats, self).__init__(name=name)
 
 
     def _read_stats(self):
         cpuidle_stats = collections.defaultdict(int)
-        cpuidle_path = '/sys/devices/system/cpu/cpu*/cpuidle'
         epoch_usecs = int(time.time() * 1000 * 1000)
-        cpus = glob.glob(cpuidle_path)
-
-        for cpu in cpus:
+        for cpu in self._cpus:
             state_path = os.path.join(cpu, 'state*')
             states = glob.glob(state_path)
             cpuidle_stats['C0'] += epoch_usecs
@@ -1122,15 +1133,46 @@ class USBSuspendStats(AbstractStats):
         return usb_stats
 
 
+def get_cpu_sibling_groups():
+    """
+    Get CPU core groups in HMP systems.
+
+    In systems with both small core and big core,
+    returns groups of small and big sibling groups.
+    """
+    siblings_paths = '/sys/devices/system/cpu/cpu*/topology/' + \
+                    'core_siblings_list'
+    sibling_groups = []
+    sibling_file_paths = glob.glob(siblings_paths)
+    if not len(sibling_file_paths) > 0:
+        return sibling_groups;
+    total_cpus = len(sibling_file_paths)
+    i = 0
+    sibling_list_pattern = re.compile('(\d+)-(\d+)')
+    while (i <  total_cpus):
+        siblings_data = utils.read_file(sibling_file_paths[i])
+        sibling_match = sibling_list_pattern.match(siblings_data)
+        sibling_start, sibling_end = (int(x) for x in sibling_match.groups())
+        sibling_groups.append((sibling_start, sibling_end))
+        i = sibling_end + 1
+    return sibling_groups
+
+
+
 class StatoMatic(object):
     """Class to aggregate and monitor a bunch of power related statistics."""
     def __init__(self):
         self._start_uptime_secs = kernel_trace.KernelTrace.uptime_secs()
         self._astats = [USBSuspendStats(),
-                        CPUFreqStats(),
                         GPUFreqStats(incremental=False),
-                        CPUIdleStats(),
                         CPUPackageStats()]
+        cpu_sibling_groups = get_cpu_sibling_groups()
+        if not len(cpu_sibling_groups):
+            self._astats.append(CPUFreqStats())
+            self._astats.append(CPUIdleStats())
+        for cpu_start, cpu_end in cpu_sibling_groups:
+            self._astats.append(CPUFreqStats(cpu_start, cpu_end))
+            self._astats.append(CPUIdleStats(cpu_start, cpu_end))
         if os.path.isdir(DevFreqStats._DIR):
             self._astats.extend([DevFreqStats(f) for f in \
                                  os.listdir(DevFreqStats._DIR)])
