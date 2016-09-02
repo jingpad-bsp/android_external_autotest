@@ -51,7 +51,7 @@ from autotest_lib.server import frontend
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import tools
-from autotest_lib.site_utils import status_history
+from autotest_lib.server.lib import status_history
 
 
 _timer = autotest_stats.Timer('rpc_interface')
