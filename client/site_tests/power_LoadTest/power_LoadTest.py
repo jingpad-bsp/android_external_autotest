@@ -400,9 +400,12 @@ class power_LoadTest(test.test):
             keyvals = dict(map(lambda (key, value):
                                ('INVALID_' + str(key), value), keyvals.items()))
         else:
-            self.output_perf_value(description='percent_cpuidle_C0_time',
-                                   value=keyvals['percent_cpuidle_C0_time'],
-                                   units='percent')
+            for key, value in keyvals.iteritems():
+                if key.startswith('percent_cpuidle') and \
+                   key.endswith('C0_time'):
+                    self.output_perf_value(description=key,
+                                       value=value,
+                                        units='percent')
 
         self.write_perf_keyval(keyvals)
         self._plog.save_results(self.resultsdir)
