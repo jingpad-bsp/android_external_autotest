@@ -19,6 +19,7 @@ The script uses latest gandof canary build as test build by default.
 """
 
 import argparse
+import ast
 import getpass
 import multiprocessing
 import os
@@ -57,6 +58,7 @@ DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_canary'
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
+DEFAULT_NUM_DUTS = "{'board:gandof': 4, 'board:quawks': 2}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -110,6 +112,28 @@ run_suite_output = []
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
     pass
+
+
+def check_dut_inventory(required_num_duts):
+    """Check DUT inventory for each board.
+
+    @param required_num_duts: a dict specified the number of DUT each board
+                              requires in order to finish push tests.
+    @raise TestPushException: if number of DUTs are less than the requirement.
+    """
+    hosts = AFE.run('get_hosts', status='Ready', locked=False)
+    boards = [[l for l in host['labels'] if l.startswith('board:')][0]
+              for host in hosts]
+    current_inventory = {b:boards.count(b) for b in boards}
+    error_msg = ''
+    for board, req_num in required_num_duts.items():
+        curr_num = current_inventory.get(board, 0)
+        if curr_num < req_num:
+            error_msg += ('\nRequire %d %s DUTs, only %d are Ready now' %
+                          (req_num, board, curr_num))
+    if error_msg:
+        raise TestPushException('Not enough DUTs to run push tests. %s' %
+                                error_msg)
 
 
 def powerwash_dut(hostname):
@@ -173,6 +197,10 @@ def parse_arguments():
                         help='Time in mins to wait before abort the jobs we '
                              'are waiting on. Only for the asynchronous suites '
                              'triggered by create_and_return flag.')
+    parser.add_argument('-ud', '--num_duts', dest='num_duts',
+                        default=DEFAULT_NUM_DUTS,
+                        help="String of dict that indicates the required number"
+                             " of DUTs for each board. E.g {'gandof':4}")
 
     arguments = parser.parse_args(sys.argv[1:])
 
@@ -181,6 +209,8 @@ def parse_arguments():
         arguments.build = get_default_build(arguments.board)
     if not arguments.shard_build:
         arguments.shard_build = get_default_build(arguments.shard_board)
+
+    arguments.num_duts = ast.literal_eval(arguments.num_duts)
 
     return arguments
 
@@ -422,6 +452,7 @@ def main():
     arguments = parse_arguments()
 
     try:
+        check_dut_inventory(arguments.num_duts)
         queue = multiprocessing.Queue()
 
         push_to_prod_suite = multiprocessing.Process(
@@ -471,7 +502,7 @@ def main():
                     arguments.email,
                     'Test for pushing to prod failed. Do NOT push!',
                     ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
-                     'run_suite output:\n\n%s' % '\n'.join(run_suite_output)))
+                     '\n'.join(run_suite_output)))
         raise
 
     message = ('\nAll tests are completed successfully, prod branch is ready to'
