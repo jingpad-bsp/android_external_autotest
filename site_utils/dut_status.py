@@ -110,7 +110,7 @@ import time
 import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import frontend
-from autotest_lib.site_utils import status_history
+from autotest_lib.server.lib import status_history
 
 
 # The fully qualified name makes for lines that are too long, so

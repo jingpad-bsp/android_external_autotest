@@ -14,7 +14,7 @@ from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
-from autotest_lib.site_utils import status_history
+from autotest_lib.server.lib import status_history
 
 
 class BoardNotAvailableError(utils.TestLabException):
