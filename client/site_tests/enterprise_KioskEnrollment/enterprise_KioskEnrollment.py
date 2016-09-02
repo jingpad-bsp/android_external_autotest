@@ -2,11 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, time
+import logging
+import os
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib.cros import chrome, enrollment, cfm_util
+from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import enrollment
+from autotest_lib.client.common_lib.cros import cfm_util
+from autotest_lib.client.common_lib.cros import kiosk_utils
 
 TIMEOUT = 20
 
@@ -33,7 +38,7 @@ class enterprise_KioskEnrollment(test.test):
                     % (expected_urls, ext_urls))
 
 
-    def run_once(self, kiosk_app_attributes=None):
+    def run_once(self, kiosk_app_attributes=None, app_config_id=None):
         if kiosk_app_attributes:
             self.APP_NAME, self.EXT_ID, self.EXT_PAGE = \
                     kiosk_app_attributes.rstrip().split(':')
@@ -50,9 +55,13 @@ class enterprise_KioskEnrollment(test.test):
 
         # This is a workaround fix for crbug.com/495847. A more permanent fix
         # should be to get the kiosk app to auto launch after enrollment.
-        with chrome.Chrome(clear_enterprise_policy=False,
+        cr = chrome.Chrome(clear_enterprise_policy=False,
                            dont_override_profile=True,
                            disable_gaia_services=False,
                            disable_default_apps=False,
-                           auto_login=False) as cr:
-            self._CheckKioskExtensionContexts(cr.browser)
+                           auto_login=False)
+        self._CheckKioskExtensionContexts(cr.browser)
+
+        if self.APP_NAME == 'riseplayer':
+            kiosk_utils.config_riseplayer(
+                    cr.browser, self.EXT_ID, app_config_id)
