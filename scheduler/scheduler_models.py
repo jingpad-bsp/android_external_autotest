@@ -23,7 +23,6 @@ import itertools
 import logging
 import os
 import re
-import sys
 import time
 import weakref
 
@@ -39,6 +38,7 @@ from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import rdb_lib
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import scheduler_lib
+from autotest_lib.server import afe_urls
 from autotest_lib.server.cros import provision
 
 
@@ -68,14 +68,7 @@ def initialize():
     if config_base_url:
         _base_url = config_base_url
     else:
-        # For the common case of everything running on a single server you
-        # can just set the hostname in a single place in the config file.
-        server_name = global_config.global_config.get_config_value(
-                'SERVER', 'hostname')
-        if not server_name:
-            logging.critical('[SERVER] hostname missing from the config file.')
-            sys.exit(1)
-        _base_url = 'http://%s/afe/' % server_name
+        _base_url = afe_urls.ROOT_URL
 
     initialize_globals()
 

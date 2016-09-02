@@ -56,6 +56,7 @@ from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
@@ -268,7 +269,7 @@ def change_options_for_suite_attr(options):
 
     If specify 'use_suite_attr' from the cmd line, it indicates to run the
     new style suite control file, suite_attr_wrapper. Then, change the
-    options.suite_name to 'suite_attr_wrapper', change the options.suite_args to
+    options.name to 'suite_attr_wrapper', change the options.suite_args to
     include the arguments needed by suite_attr_wrapper.
 
     @param options: The verified options.
@@ -1560,10 +1561,16 @@ def main_without_exception_handling(options):
                                               options.skip_duts_check)
             job_id = create_suite(afe, options)
             job_created_on = time.time()
-        except diagnosis_utils.NotEnoughDutsError:
-            logging.info(GetBuildbotStepLink(
-                    'Pool Health Bug', LogLink.get_bug_link(rpc_helper.bug)))
-            raise
+        except diagnosis_utils.NotEnoughDutsError as e:
+            e.add_suite_name(options.name)
+            e.add_build(options.test_source_build)
+            pool_health_bug = reporting.PoolHealthBug(e)
+            bug_id = reporting.Reporter().report(pool_health_bug).bug_id
+            if bug_id is not None:
+                logging.info(GetBuildbotStepLink(
+                        'Pool Health Bug', LogLink.get_bug_link(bug_id)))
+                e.add_bug_id(bug_id)
+            raise e
         except (error.CrosDynamicSuiteException,
                 error.RPCException, proxy.JSONRPCException) as e:
             logging.exception('Error Message: %s', e)
