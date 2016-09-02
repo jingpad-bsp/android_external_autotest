@@ -9,8 +9,8 @@ import os
 import unittest
 
 import common
+from autotest_lib.server.lib import status_history
 from autotest_lib.site_utils import lab_inventory
-from autotest_lib.site_utils import status_history
 
 
 class _FakeHost(object):
