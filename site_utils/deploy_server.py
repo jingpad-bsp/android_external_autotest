@@ -195,12 +195,10 @@ def update_server(inputs):
 def update_in_parallel(servers, options):
     """Update a group of servers in parallel.
 
-    Exit the process with error if any server failed to be updated and
-    options.cont is not set.
-
     @param servers: A list of tuple of (server_name, server_status, roles).
     @param options: Options for the push.
 
+    @returns A list of servers that failed to update.
     """
     args = []
     for server, status, _ in servers:
@@ -226,20 +224,17 @@ def update_in_parallel(servers, options):
                      (server, output))
             print(error)
             failed_servers.append(server)
-    if failed_servers and not options.cont:
-        print('Error! Failed to update following servers: %s' %
-              failed_servers)
-        sys.exit(1)
 
+    return failed_servers
 
 def main(args):
     """Main routine that drives all the real work.
 
-    @param args: The command line arguments to parse. (usually sys.argv[1:])
+    @param args: The command line arguments to parse. (usually sys.argv)
 
     @returns The system exit code.
     """
-    options = parse_arguments(args)
+    options = parse_arguments(args[1:])
 
     print('Retrieving server status...')
     sorted_servers = discover_servers(options.afe, set(options.servers or []))
@@ -254,9 +249,22 @@ def main(args):
         i += 1
     print()
 
+    failed = []
+    skipped = []
     for servers in sorted_servers:
-        update_in_parallel(servers, options)
+        if not failed or options.cont:
+            failed += update_in_parallel(servers, options)
+        else:
+            skipped.extend(servers)
+
+    if failed:
+        print('Errors updating:')
+        for server in failed:
+            print('  %s' % server)
+        print()
+        print('To retry:')
+        print('  %s <options> %s', (args[0], ' '.join(failed + skipped)))
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv))
