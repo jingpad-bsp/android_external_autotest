@@ -18,6 +18,7 @@ from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.audio import audio_analysis
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import audio_helper
+from autotest_lib.client.cros.audio import audio_quality_measurement
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 
 CHAMELEON_AUDIO_IDS_TO_CRAS_NODE_TYPES = {
@@ -264,6 +265,12 @@ _SPEAKER_SECOND_PEAK_RATIO = 0.1
 # Tolerate more noise for internal microphone.
 _INTERNAL_MIC_SECOND_PEAK_RATIO = 0.2
 
+# maximum tolerant noise level
+DEFAULT_TOLERANT_NOISE_LEVEL = 0.01
+
+# If relative error of two durations is less than 0.2,
+# they will be considered equivalent.
+DEFAULT_EQUIVALENT_THRESHOLD = 0.2
 
 def get_second_peak_ratio(source_id, recorder_id, is_hsp=False):
     """Gets the second peak ratio suitable for use case.
@@ -292,7 +299,9 @@ def check_recorded_frequency(
         golden_file, recorder,
         second_peak_ratio=_DEFAULT_SECOND_PEAK_RATIO,
         frequency_diff_threshold=DEFAULT_FREQUENCY_DIFF_THRESHOLD,
-        ignore_frequencies=None, check_anomaly=False):
+        ignore_frequencies=None, check_anomaly=False, check_artifacts=False,
+        mute_durations=None, volume_changes=None,
+        tolerant_noise_level=DEFAULT_TOLERANT_NOISE_LEVEL):
     """Checks if the recorded data contains sine tone of golden frequency.
 
     @param golden_file: An AudioTestData object that serves as golden data.
@@ -311,6 +320,11 @@ def check_recorded_frequency(
                                ignored. The comparison of frequencies uses
                                frequency_diff_threshold as well.
     @param check_anomaly: True to check anomaly in the signal.
+    @param check_artifacts: True to check artifacts in the signal.
+    @param mute_durations: Each duration of mute in seconds in the signal.
+    @param volume_changes: A list containing alternative -1 for decreasing
+                           volume and +1 for increasing volume.
+    @param tolerant_noise_level: The maximum noise level can be tolerated
 
     @returns: A list containing tuples of (dominant_frequency, coefficient) for
               valid channels. Coefficient can be a measure of signal magnitude
@@ -386,6 +400,91 @@ def check_recorded_frequency(
                         'Channel %d: Quality is good as there is no anomaly',
                         test_channel)
 
+        if check_artifacts or mute_durations or volume_changes:
+            result = audio_quality_measurement.quality_measurement(
+                                        normalized_signal,
+                                        data_format['rate'],
+                                        dominant_frequency=dominant_frequency)
+            if check_artifacts:
+                if len(result['artifacts']['noise_before_playback']) > 0:
+                    errors.append(
+                        'Channel %d: Detects artifacts before playing near'
+                        ' these time and duration: %s' %
+                        (test_channel,
+                         str(result['artifacts']['noise_before_playback'])))
+
+                if len(result['artifacts']['noise_after_playback']) > 0:
+                    errors.append(
+                        'Channel %d: Detects artifacts after playing near'
+                        ' these time and duration: %s' %
+                        (test_channel,
+                         str(result['artifacts']['noise_after_playback'])))
+
+            if mute_durations:
+                delays = result['artifacts']['delay_during_playback']
+                delay_durations = []
+                for x in delays:
+                    delay_durations.append(x[1])
+                mute_matched, delay_matched = longest_common_subsequence(
+                        mute_durations,
+                        delay_durations,
+                        DEFAULT_EQUIVALENT_THRESHOLD)
+
+                # updated delay list
+                new_delays = [delays[i]
+                                for i in delay_matched if not delay_matched[i]]
+
+                result['artifacts']['delay_during_playback'] = new_delays
+
+                unmatched_mutes = [mute_durations[i]
+                                for i in mute_matched if not mute_matched[i]]
+
+                if len(unmatched_mutes) > 0:
+                    errors.append(
+                        'Channel %d: Unmatched mute duration: %s' %
+                        (test_channel, unmatched_mutes))
+
+            if check_artifacts:
+                if len(result['artifacts']['delay_during_playback']) > 0:
+                    errors.append(
+                        'Channel %d: Detects delay during playing near'
+                        ' these time and duration: %s' %
+                        (test_channel,
+                         result['artifacts']['delay_during_playback']))
+
+                if len(result['artifacts']['burst_during_playback']) > 0:
+                    errors.append(
+                        'Channel %d: Detects burst/pop near these time: %s' %
+                        (test_channel,
+                         result['artifacts']['burst_during_playback']))
+
+                if result['equivalent_noise_level'] > tolerant_noise_level:
+                    errors.append(
+                        'Channel %d: noise level is higher than tolerant'
+                        ' noise level: %f > %f' %
+                        (test_channel,
+                         result['equivalent_noise_level'],
+                         tolerant_noise_level))
+
+            if volume_changes:
+                matched = True
+                volume_changing = result['volume_changes']
+                if len(volume_changing) != len(volume_changes):
+                    matched = False
+                else:
+                    for i in xrange(len(volume_changing)):
+                        if volume_changing[i][1] != volume_changes[i]:
+                            matched = False
+                            break
+                if not matched:
+                    errors.append(
+                        'Channel %d: volume changing is not as expected, '
+                        'found changing time and events are: %s while '
+                        'expected changing events are %s'%
+                        (test_channel,
+                         volume_changing,
+                         volume_changes))
+
         # Filter out the harmonics resulted from imperfect sin wave.
         # This list is different for different channels.
         harmonics = [dominant_frequency * n for n in xrange(2, 10)]
@@ -421,6 +520,59 @@ def check_recorded_frequency(
         raise error.TestFail(', '.join(errors))
 
     return dominant_spectrals
+
+
+def longest_common_subsequence(list1, list2, equivalent_threshold):
+    """Finds longest common subsequence of list1 and list2
+
+    Such as list1: [0.3, 0.4],
+            list2: [0.001, 0.299, 0.002, 0.401, 0.001]
+            equivalent_threshold: 0.001
+    it will return matched1: [True, True],
+                   matched2: [False, True, False, True, False]
+
+    @param list1: a list of integer or float value
+    @param list2: a list of integer or float value
+    @param equivalent_threshold: two values are considered equivalent if their
+                                 relative error is less than
+                                 equivalent_threshold.
+
+    @returns: a tuple of list (matched_1, matched_2) indicating each item
+              of list1 and list2 are matched or not.
+
+    """
+    length1, length2 = len(list1), len(list2)
+    matching = [[0] * (length2 + 1)] * (length1 + 1)
+    # matching[i][j] is the maximum number of matched pairs for first i items
+    # in list1 and first j items in list2.
+    for i in xrange(length1):
+        for j in xrange(length2):
+            # Maximum matched pairs may be obtained without
+            # i-th item in list1 or without j-th item in list2
+            matching[i + 1][j + 1] = max(matching[i + 1][j],
+                                         matching[i][j + 1])
+            diff = abs(list1[i] - list2[j])
+            relative_error = diff / list1[i]
+            # If i-th item in list1 can be matched to j-th item in list2
+            if relative_error < equivalent_threshold:
+                matching[i + 1][j + 1] = matching[i][j] + 1
+
+    # Backtracking which item in list1 and list2 are matched
+    matched1 = [False] * length1
+    matched2 = [False] * length2
+    i, j = length1, length2
+    while i > 0 and j > 0:
+        # Maximum number is obtained by matching i-th item in list1
+        # and j-th one in list2.
+        if matching[i][j] == matching[i - 1][j - 1] + 1:
+            matched1[i - 1] = True
+            matched2[j - 1] = True
+            i, j = i - 1, j - 1
+        elif matching[i][j] == matching[i - 1][j]:
+            i -= 1
+        else:
+            j -= 1
+    return (matched1, matched2)
 
 
 def switch_to_hsp(audio_facade):
