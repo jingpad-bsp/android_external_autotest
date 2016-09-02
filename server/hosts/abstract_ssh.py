@@ -481,7 +481,7 @@ class AbstractSSHHost(remote.RemoteHost):
         return True
 
 
-    def ssh_ping(self, timeout=60, base_cmd='true'):
+    def ssh_ping(self, timeout=60, connect_timeout=None, base_cmd='true'):
         """
         Pings remote host via ssh.
 
@@ -494,8 +494,9 @@ class AbstractSSHHost(remote.RemoteHost):
                                                  permissions.
         @raise AutoservSshPingHostError: For other AutoservRunErrors.
         """
+        ctimeout = min(timeout, connect_timeout or timeout)
         try:
-            self.run(base_cmd, timeout=timeout, connect_timeout=timeout)
+            self.run(base_cmd, timeout=timeout, connect_timeout=ctimeout)
         except error.AutoservSSHTimeout:
             msg = "Host (ssh) verify timed out (timeout = %d)" % timeout
             raise error.AutoservSSHTimeout(msg)
@@ -509,7 +510,7 @@ class AbstractSSHHost(remote.RemoteHost):
                                                  repr(e.result_obj))
 
 
-    def is_up(self, timeout=60, base_cmd='true'):
+    def is_up(self, timeout=60, connect_timeout=None, base_cmd='true'):
         """
         Check if the remote host is up by ssh-ing and running a base command.
 
@@ -519,7 +520,9 @@ class AbstractSSHHost(remote.RemoteHost):
                  False otherwise.
         """
         try:
-            self.ssh_ping(timeout=timeout, base_cmd=base_cmd)
+            self.ssh_ping(timeout=timeout,
+                          connect_timeout=connect_timeout,
+                          base_cmd=base_cmd)
         except error.AutoservError:
             return False
         else:
@@ -543,14 +546,20 @@ class AbstractSSHHost(remote.RemoteHost):
             current_time = int(time.time())
             end_time = current_time + timeout
 
+        autoserv_error_logged = False
         while not timeout or current_time < end_time:
-            if self.is_up(timeout=end_time - current_time):
+            if self.is_up(timeout=end_time - current_time,
+                          connect_timeout=20):
                 try:
                     if self.are_wait_up_processes_up():
                         logging.debug('Host %s is now up', self.hostname)
                         return True
-                except error.AutoservError:
-                    pass
+                except error.AutoservError as e:
+                    if not autoserv_error_logged:
+                        logging.debug('Ignoring failure to reach %s: %s %s',
+                                      self.hostname, e,
+                                      '(and further similar failures)')
+                        autoserv_error_logged = True
             time.sleep(1)
             current_time = int(time.time())
 
