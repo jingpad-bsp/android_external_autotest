@@ -29,7 +29,7 @@ syslog:!:202:
 sshd:!:204:
 polkituser:!:206:
 tss:!:207:root,attestation,chaps,tpm_manager,trunks
-pkcs11:!:208:root,ipsec,chronos,chaps,wpa
+pkcs11:!:208:root,ipsec,chronos,chaps,wpa,attestation
 qdlservice:!:209:
 cromo:!:210:
 ipsec:!:212:
