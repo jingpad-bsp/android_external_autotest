@@ -62,7 +62,8 @@ def run(machine):
         }
 
     vendor_id_dict_control_file = {'045e': 'Microsoft Headphone',
-                                   '12d1': 'Huawei 3G modem/dongle',
+                                   #Commenting out due to crbug.com/616158
+                                   #'12d1': 'Huawei 3G modem/dongle',
                                    #commenting out due to crbug.com/488667
                                    #'1004': 'LG Android phone',
                                    '058f': 'Webcam',
