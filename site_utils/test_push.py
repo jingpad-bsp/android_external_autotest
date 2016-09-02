@@ -44,19 +44,19 @@ from autotest_lib.server.hosts import factory
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
+AUTOTEST_DIR='/usr/local/autotest'
 CONFIG = global_config.global_config
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
 
 MAIL_FROM = 'chromeos-test@google.com'
-DEVSERVERS = CONFIG.get_config_value('CROS', 'dev_server', type=list,
-                                     default=[])
-BUILD_REGEX = '^R[\d]+-[\d]+\.[\d]+\.[\d]+$'
+BUILD_REGEX = 'R[\d]+-[\d]+\.[\d]+\.[\d]+'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_canary'
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
+IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -124,28 +124,23 @@ def powerwash_dut(hostname):
     host.close()
 
 
-def get_default_build(devserver=None, board='gandof'):
+def get_default_build(board='gandof'):
     """Get the default build to be used for test.
 
-    @param devserver: devserver used to look for latest staged build. If value
-                      is None, all devservers in config will be tried.
     @param board: Name of board to be tested, default is gandof.
     @return: Build to be tested, e.g., gandof-release/R36-5881.0.0
     """
-    LATEST_BUILD_URL_PATTERN = '%s/latestbuild?target=%s-release'
     build = None
-    if not devserver:
-        for server in DEVSERVERS:
-            url = LATEST_BUILD_URL_PATTERN % (server, board)
-            build = urllib2.urlopen(url).read()
-            if build and re.match(BUILD_REGEX, build):
-                return '%s-release/%s' % (board, build)
+    cmd = ('%s/cli/atest stable_version list --board=%s -w cautotest' %
+           (AUTOTEST_DIR, board))
+    result = subprocess.check_output(cmd, shell=True).strip()
+    build = re.search(BUILD_REGEX, result)
+    if build:
+        return '%s-release/%s' % (board, build.group(0))
 
-    # If no devserver has any build staged for the given board, use the stable
-    # build in config.
+    # If fail to get stable version from cautotest, use that defined in config
     build = CONFIG.get_config_value('CROS', 'stable_cros_version')
     return '%s-release/%s' % (board, build)
-
 
 def parse_arguments():
     """Parse arguments for test_push tool.
@@ -173,9 +168,6 @@ def parse_arguments():
     parser.add_argument('-e', '--email', dest='email', default=None,
                         help='Email address for the notification to be sent to '
                              'after the script finished running.')
-    parser.add_argument('-d', '--devserver', dest='devserver',
-                        default=None,
-                        help='devserver to find what\'s the latest build.')
     parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
                         default=DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB,
                         help='Time in mins to wait before abort the jobs we '
@@ -186,11 +178,9 @@ def parse_arguments():
 
     # Get latest canary build as default build.
     if not arguments.build:
-        arguments.build = get_default_build(arguments.devserver,
-                                            arguments.board)
+        arguments.build = get_default_build(arguments.board)
     if not arguments.shard_build:
-        arguments.shard_build = get_default_build(arguments.devserver,
-                                                  arguments.shard_board)
+        arguments.shard_build = get_default_build(arguments.shard_board)
 
     return arguments
 
