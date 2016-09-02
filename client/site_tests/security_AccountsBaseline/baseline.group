@@ -61,6 +61,7 @@ brltty:!:240:chronos
 modem:!:241:
 radvd:!:243:radvd
 attestation:!:247:attestation
+preserve:!:253:root,attestation,tpm_manager
 goofy:!:248:goofy
 easy-unlock:!:249:
 trunks:!:251:trunks
