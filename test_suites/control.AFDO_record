@@ -46,7 +46,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['bjanakiraman@chromium.org']
+    'cc': ['laszio@chromium.org']
 }
 
 args_dict['job'] = job
