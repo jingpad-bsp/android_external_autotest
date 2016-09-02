@@ -49,6 +49,7 @@ class Host(hosts.Host):
     """
 
     bootloader = None
+    support_devserver_provision = False
 
 
     def __init__(self, *args, **dargs):
