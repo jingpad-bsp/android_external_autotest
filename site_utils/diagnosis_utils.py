@@ -10,11 +10,14 @@ from datetime import datetime
 
 import common
 
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.server import utils
-from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 from autotest_lib.server.lib import status_history
+
+CONFIG = global_config.global_config
 
 
 class BoardNotAvailableError(utils.TestLabException):
@@ -23,6 +26,87 @@ class BoardNotAvailableError(utils.TestLabException):
 
 class NotEnoughDutsError(utils.TestLabException):
     """Rasied when the lab doesn't have the minimum number of duts."""
+
+    _BUG_URL_PREFIX = CONFIG.get_config_value('BUG_REPORTING',
+                                              'tracker_url')
+
+    def __init__(self, board, pool, num_available, num_required, hosts):
+        """Initialize instance.
+
+        Please pass arguments by keyword.
+
+        @param board: Name of board.
+        @param pool: Name of pool.
+        @param num_available: Number of available hosts.
+        @param num_required: Number of hosts required.
+        @param hosts: Sequence of Host instances for given board and pool.
+        """
+        self.board = board
+        self.pool = pool
+        self.num_available = num_available
+        self.num_required = num_required
+        self.hosts = hosts
+        self.bug_id = None
+        self.suite_name = None
+        self.build = None
+
+
+    def __repr__(self):
+        return (
+            '<{cls} at 0x{id:x} with'
+            ' board={this.board!r},'
+            ' pool={this.pool!r},'
+            ' num_available={this.num_available!r},'
+            ' num_required={this.num_required!r},'
+            ' bug_id={this.bug_id!r},'
+            ' suite_name={this.suite_name!r},'
+            ' build={this.build!r}>'
+            .format(cls=type(self).__name__, id=id(self), this=self)
+        )
+
+
+    def __str__(self):
+        msg_parts = [
+            'Not enough DUTs for board: {this.board}, pool: {this.pool};'
+            ' required: {this.num_required}, found: {this.num_available}'
+        ]
+        if self.bug_id is not None:
+            msg_parts.append(
+                'bug: {this._BUG_URL_PREFIX}{this.bug_id!s}'
+            )
+        if self.suite_name is not None:
+            msg_parts.append(
+                'suite: {this.suite_name}'
+            )
+        if self.build is not None:
+            msg_parts.append(
+                'build: {this.build}'
+            )
+        return ', '.join(msg_parts).format(this=self)
+
+
+    def add_bug_id(self, bug_id):
+        """Add crbug id associated with this exception.
+
+        @param bug_id  crbug id whose str() value is used in a crbug URL.
+        """
+        self.bug_id = bug_id
+
+
+    def add_suite_name(self, suite_name):
+        """Add name of test suite that needed the DUTs.
+
+        @param suite_name  Name of test suite.
+        """
+        self.suite_name = suite_name
+
+
+    def add_build(self, build):
+        """Add name of build of job that needed the DUTs.
+
+        @param build  Name of build.
+        """
+        self.build = build
 
 
 class SimpleTimer(object):
@@ -142,9 +226,6 @@ class RPCHelper(object):
         @param rpc_interface: An rpc object, eg: A RetryingAFE instance.
         """
         self.rpc_interface = rpc_interface
-        # Any bug filed during diagnosis. Generally these bugs are critical so
-        # there should only be one.
-        self.bug = ''
 
 
     def diagnose_pool(self, board, pool, time_delta_hours, limit=10):
@@ -198,6 +279,15 @@ class RPCHelper(object):
                           job_info)
 
 
+    def _is_host_available(self, host):
+        """Check whether DUT host is available.
+
+        @param host: The Host instance for the DUT.
+        @return: bool
+        """
+        return not (host.locked or host.status in host_states.UNAVAILABLE_STATES)
+
+
     def check_dut_availability(self, board, pool, minimum_duts=0, skip_duts_check=False):
         """Check if DUT availability for a given board and pool is less than
         minimum.
@@ -216,6 +306,8 @@ class RPCHelper(object):
         if minimum_duts == 0:
             return
 
+        # TODO(ayatane): Replace label prefixes with constants in
+        # site_utils.suite_scheduler.constants
         hosts = self.rpc_interface.get_hosts(
                 invalid=False,
                 multiple_labels=('pool:%s' % pool, 'board:%s' % board))
@@ -232,39 +324,23 @@ class RPCHelper(object):
 
         if len(hosts) < minimum_duts:
             logging.debug('The total number of DUTs for %s in pool:%s is %d, '
-                          'which is no more than the required minimum number of'
-                          ' available DUTS of %d.', board, pool, len(hosts),
+                          'which is less than %d, the required minimum number of'
+                          ' available DUTS', board, pool, len(hosts),
                           minimum_duts)
 
-            # skip_duts_check is off, enfore checking dut availability
-            raise NotEnoughDutsError('skip_duts_check option is on and total number DUTs '
-                                     'in the pool is less than the required '
-                                     'minimum avaialble DUTs.')
-
-        # TODO(dshi): Replace the hard coded string with enum value,
-        # models.Host.Status.REPAIRING and REPAIR_FAILED
-        # setup_django_environment can't be imported now as paygen server does
-        # not have django package.
-        bad_statuses = ('Repair Failed', 'Repairing', 'Verifying')
-        unusable_hosts = []
-        available_hosts = []
+        available_hosts = 0
         for host in hosts:
-            if host.status in bad_statuses or host.locked:
-                unusable_hosts.append(host.hostname)
-            else:
-                available_hosts.append(host)
+            if self._is_host_available(host):
+                available_hosts += 1
         logging.debug('%d of %d DUTs are available for board %s pool %s.',
-                      len(available_hosts), len(hosts), board, pool)
-        if len(available_hosts) < minimum_duts:
-            if unusable_hosts:
-                pool_health_bug = reporting.PoolHealthBug(
-                        pool, board, unusable_hosts)
-                self.bug = reporting.Reporter().report(pool_health_bug)[0]
+                      available_hosts, len(hosts), board, pool)
+        if available_hosts < minimum_duts:
             raise NotEnoughDutsError(
-                    'Number of available DUTs for board %s pool %s is %d, which'
-                    ' is less than the minimum value %d. '
-                    'Filed https://crbug.com/%s' %
-                    (board, pool, len(available_hosts), minimum_duts, self.bug))
+                board=board,
+                pool=pool,
+                num_available=available_hosts,
+                num_required=minimum_duts,
+                hosts=hosts)
 
 
     def diagnose_job(self, job_id, instance_server):

@@ -178,6 +178,7 @@ def get_build_from_afe(hostname, afe):
     return None
 
 
+# TODO(fdeng): fix get_sheriffs crbug.com/483254
 def get_sheriffs(lab_only=False):
     """
     Polls the javascript file that holds the identity of the sheriff and
