@@ -300,9 +300,7 @@ class AudioWidgetFactory(object):
             else:
                 jack_plugger = None
 
-            if is_usb:
-                plug_handler = audio_widget.USBPlugHandler(self._usb_facade)
-            elif jack_plugger:
+            if jack_plugger:
                 plug_handler = audio_widget.JackPluggerPlugHandler(jack_plugger)
             else:
                 plug_handler = audio_widget.DummyPlugHandler()
