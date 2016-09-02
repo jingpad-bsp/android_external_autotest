@@ -62,9 +62,9 @@ class TestPushUnittests(mox.MoxTestBase):
         urllib2.urlopen(mox.IgnoreArg()).AndReturn(response)
 
         self.mox.StubOutWithMock(test_push, 'get_default_build')
-        test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+        test_push.get_default_build(mox.IgnoreArg()).AndReturn(
                 'stumpy-release/R36-5881-0.0')
-        test_push.get_default_build(mox.IgnoreArg(), mox.IgnoreArg()).AndReturn(
+        test_push.get_default_build(mox.IgnoreArg()).AndReturn(
                 'quawks-release/R36-5881-0.0')
 
         self.mox.StubOutWithMock(test_push, 'check_dut_image')
