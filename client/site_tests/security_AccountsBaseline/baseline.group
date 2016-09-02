@@ -87,3 +87,4 @@ devbroker-access:!:403:chronos
 i2c:!:404:power
 netdev:!:408:
 android-root:!:655360:android-root
+arc-sensor:!:604:
