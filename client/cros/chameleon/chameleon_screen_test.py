@@ -127,11 +127,17 @@ class ChameleonScreenTest(object):
                     old_value=None)
         error = None
         if test_image_size != expected_resolution:
-            error = ('Image size %s is not as '
-                     'expected %s!' % (str(test_image_size),
-                                       str(expected_resolution)))
-            error_list.append(error)
-        elif chameleon_supported:
+            error = ('Screen size %s is not as expected %s!'
+                     % (str(test_image_size), str(expected_resolution)))
+            if test_mirrored:
+                # For the case of mirroring, depending on hardware vs
+                # software mirroring, screen size can be different.
+                logging.info('Warning: %s', error)
+                error = None
+            else:
+                error_list.append(error)
+
+        if chameleon_supported:
             error = self._resolution_comparer.compare(expected_resolution)
             if not error:
                 while retry_count:
