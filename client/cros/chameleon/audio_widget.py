@@ -681,35 +681,6 @@ class JackPluggerPlugHandler(PlugHandler):
         self._jack_plugger.unplug()
 
 
-class USBPlugHandler(PlugHandler):
-    """This class abstracts plug/unplug action for USB widgets on Cros device.
-
-    Properties:
-        _usb_facade: An USBFacadeRemoteAdapter to access Cros device USB-
-                     specific functionality.
-
-    """
-
-    def __init__(self, usb_facade):
-        """Initializes a USBPlugHandler.
-
-        @param usb_facade: A USBFacadeRemoteAdapter to access Cros device USB-
-                           specific funtionality.
-
-        """
-        self._usb_facade = usb_facade
-
-
-    def plug(self):
-        """plugs in the usb audio widget to the cros device."""
-        self._usb_facade.plug()
-
-
-    def unplug(self):
-        """Unplugs the usb audio widget from the cros device."""
-        self._usb_facade.unplug()
-
-
 class CrosInputWidgetHandlerError(Exception):
     """Error in CrosInputWidgetHandler."""
 

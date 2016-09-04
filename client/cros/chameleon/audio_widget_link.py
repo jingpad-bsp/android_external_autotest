@@ -335,7 +335,8 @@ class USBWidgetLink(WidgetLink):
 
     # This is the default channel map for 2-channel data
     _DEFAULT_CHANNEL_MAP = [0, 1]
-    _DELAY_BEFORE_PLUGGING_CROS_SECONDS = 3
+    # Wait some time for Cros device to detect USB has been plugged.
+    _DELAY_AFTER_PLUGGING_SECS = 0.5
 
     def __init__(self, usb_ctrl):
         """Initializes a USBWidgetLink.
@@ -355,40 +356,24 @@ class USBWidgetLink(WidgetLink):
     def connect(self, source, sink):
         """Connects source widget to sink widget.
 
-        This method first identifies the Chameleon widget and plug it first so
-        that it is visible to the Cros host for it to plug in the Cros widget.
-
         @param source: An AudioWidget object.
         @param sink: An AudioWidget object.
 
         """
-        if source.audio_port.host == 'Chameleon':
-            source.handler.plug()
-            time.sleep(self._DELAY_BEFORE_PLUGGING_CROS_SECONDS)
-            sink.handler.plug()
-        else:
-            sink.handler.plug()
-            time.sleep(self._DELAY_BEFORE_PLUGGING_CROS_SECONDS)
-            source.handler.plug()
+        source.handler.plug()
+        sink.handler.plug()
+        time.sleep(self._DELAY_AFTER_PLUGGING_SECS)
 
 
     def disconnect(self, source, sink):
         """Disconnects source widget from sink widget.
 
-        This method first identifies the Cros widget and unplugs it first while
-        the Chameleon widget is still visible for the Cros host to know which
-        USB port to unplug Cros widget from.
-
         @param source: An AudioWidget object.
         @param sink: An AudioWidget object.
 
         """
-        if source.audio_port.host == 'Cros':
-            source.handler.unplug()
-            sink.handler.unplug()
-        else:
-            sink.handler.unplug()
-            source.handler.unplug()
+        source.handler.unplug()
+        sink.handler.unplug()
 
 
 class USBToCrosWidgetLink(USBWidgetLink):
