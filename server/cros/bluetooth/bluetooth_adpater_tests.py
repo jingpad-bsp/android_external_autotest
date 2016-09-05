@@ -10,8 +10,13 @@ import re
 import time
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.bin.input import input_event_recorder as recorder
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
+from autotest_lib.client.bin.input.linux_input import (
+        BTN_LEFT, BTN_RIGHT, EV_KEY, EV_REL, REL_X, REL_Y, REL_WHEEL)
+
+Event = recorder.Event
 
 
 # Delay binding the methods since host is only available at run time.
@@ -371,6 +376,8 @@ class BluetoothAdapterTests(test.test):
     ADAPTER_DISCOVER_POLLING_SLEEP_SECS = 1
     ADAPTER_DISCOVER_NAME_TIMEOUT_SECS = 30
 
+    HID_REPORT_SLEEP_SECS = 1
+
     # hci0 is the default hci device if there is no external bluetooth dongle.
     EXPECTED_HCI = 'hci0'
 
@@ -411,6 +418,11 @@ class BluetoothAdapterTests(test.test):
             self.devices[device_type] = get_bluetooth_emulated_device(
                     self.host, device_type)
         return self.devices[device_type]
+
+
+    # -------------------------------------------------------------------
+    # Adater standalone tests
+    # -------------------------------------------------------------------
 
 
     @_test_retry_and_log
@@ -621,6 +633,11 @@ class BluetoothAdapterTests(test.test):
                 'set_nonpairable': set_nonpairable,
                 'is_nonpairable': is_nonpairable}
         return all(self.results.values())
+
+
+    # -------------------------------------------------------------------
+    # Tests about general discovering, pairing, and connection
+    # -------------------------------------------------------------------
 
 
     @_test_retry_and_log
@@ -1602,6 +1619,260 @@ class BluetoothAdapterTests(test.test):
                 'advertising_disabled': advertising_disabled,
         }
         return all(self.results.values())
+
+
+    # -------------------------------------------------------------------
+    # Bluetooth mouse related tests
+    # -------------------------------------------------------------------
+
+
+    def _record_input_events(self, device, gesture):
+        """Record the input events.
+
+        @param device: the bluetooth HID device.
+        @param gesture: the gesture method to perform.
+
+        @returns: the input events received on the DUT.
+
+        """
+        self.input_facade.initialize_input_recorder(device.name)
+        self.input_facade.start_input_recorder()
+        time.sleep(self.HID_REPORT_SLEEP_SECS)
+        gesture()
+        time.sleep(self.HID_REPORT_SLEEP_SECS)
+        self.input_facade.stop_input_recorder()
+        time.sleep(self.HID_REPORT_SLEEP_SECS)
+        event_values = self.input_facade.get_input_events()
+        events = [Event(*ev) for ev in event_values]
+        return events
+
+
+    def _test_mouse_click(self, device, button):
+        """Test that the mouse click events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param button: which button to test, 'LEFT' or 'RIGHT'
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        if button == 'LEFT':
+            gesture = device.LeftClick
+        elif button == 'RIGHT':
+            gesture = device.RightClick
+        else:
+            raise error.TestError('Button (%s) is not valid.' % button)
+
+        actual_events = self._record_input_events(device, gesture)
+
+        linux_input_button = {'LEFT': BTN_LEFT, 'RIGHT': BTN_RIGHT}
+        expected_events = [
+                # Button down
+                recorder.MSC_SCAN_BTN_EVENT[button],
+                Event(EV_KEY, linux_input_button[button], 1),
+                recorder.SYN_EVENT,
+                # Button up
+                recorder.MSC_SCAN_BTN_EVENT[button],
+                Event(EV_KEY, linux_input_button[button], 0),
+                recorder.SYN_EVENT]
+
+        self.results = {
+                'actual_events': map(str, actual_events),
+                'expected_events': map(str, expected_events)}
+        return actual_events == expected_events
+
+
+    @_test_retry_and_log
+    def test_mouse_left_click(self, device):
+        """Test that the mouse left click events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        return self._test_mouse_click(device, 'LEFT')
+
+
+    @_test_retry_and_log
+    def test_mouse_right_click(self, device):
+        """Test that the mouse right click events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        return self._test_mouse_click(device, 'RIGHT')
+
+
+    def _test_mouse_move(self, device, delta_x=0, delta_y=0):
+        """Test that the mouse move events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_x: the distance to move cursor in x axis
+        @param delta_y: the distance to move cursor in y axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        gesture = lambda: device.Move(delta_x, delta_y)
+        actual_events = self._record_input_events(device, gesture)
+
+        events_x = [Event(EV_REL, REL_X, delta_x)] if delta_x else []
+        events_y = [Event(EV_REL, REL_Y, delta_y)] if delta_y else []
+        expected_events = events_x + events_y + [recorder.SYN_EVENT]
+
+        self.results = {
+                'actual_events': map(str, actual_events),
+                'expected_events': map(str, expected_events)}
+        return actual_events == expected_events
+
+
+    @_test_retry_and_log
+    def test_mouse_move_in_x(self, device, delta_x):
+        """Test that the mouse move events in x could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_x: the distance to move cursor in x axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        return self._test_mouse_move(device, delta_x=delta_x)
+
+
+    @_test_retry_and_log
+    def test_mouse_move_in_y(self, device, delta_y):
+        """Test that the mouse move events in y could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_y: the distance to move cursor in y axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        return self._test_mouse_move(device, delta_y=delta_y)
+
+
+    @_test_retry_and_log
+    def test_mouse_move_in_xy(self, device, delta_x, delta_y):
+        """Test that the mouse move events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_x: the distance to move cursor in x axis
+        @param delta_y: the distance to move cursor in y axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        return self._test_mouse_move(device, delta_x=delta_x, delta_y=delta_y)
+
+
+    def _test_mouse_scroll(self, device, units):
+        """Test that the mouse wheel events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param units: the units to scroll in y axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        gesture = lambda: device.Scroll(units)
+        actual_events = self._record_input_events(device, gesture)
+        expected_events = [Event(EV_REL, REL_WHEEL, units), recorder.SYN_EVENT]
+        self.results = {
+                'actual_events': map(str, actual_events),
+                'expected_events': map(str, expected_events)}
+        return actual_events == expected_events
+
+
+    @_test_retry_and_log
+    def test_mouse_scroll_down(self, device, delta_y):
+        """Test that the mouse wheel events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_y: the units to scroll down in y axis;
+                        should be a postive value
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        if delta_y > 0:
+            return self._test_mouse_scroll(device, delta_y)
+        else:
+            raise error.TestError('delta_y (%d) should be a positive value',
+                                  delta_y)
+
+
+    @_test_retry_and_log
+    def test_mouse_scroll_up(self, device, delta_y):
+        """Test that the mouse wheel events could be received correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_y: the units to scroll up in y axis;
+                        should be a postive value
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        if delta_y > 0:
+            return self._test_mouse_scroll(device, -delta_y)
+        else:
+            raise error.TestError('delta_y (%d) should be a positive value',
+                                  delta_y)
+
+
+    @_test_retry_and_log
+    def test_mouse_click_and_drag(self, device, delta_x, delta_y):
+        """Test that the mouse click-and-drag events could be received
+        correctly.
+
+        @param device: the meta device containing a bluetooth HID device
+        @param delta_x: the distance to drag in x axis
+        @param delta_y: the distance to drag in y axis
+
+        @returns: True if the report received by the host matches the
+                  expected one. False otherwise.
+
+        """
+        gesture = lambda: device.ClickAndDrag(delta_x, delta_y)
+        actual_events = self._record_input_events(device, gesture)
+
+        button = 'LEFT'
+        expected_events = (
+                [# Button down
+                 recorder.MSC_SCAN_BTN_EVENT[button],
+                 Event(EV_KEY, BTN_LEFT, 1),
+                 recorder.SYN_EVENT] +
+                # cursor movement in x and y
+                ([Event(EV_REL, REL_X, delta_x)] if delta_x else []) +
+                ([Event(EV_REL, REL_Y, delta_y)] if delta_y else []) +
+                [recorder.SYN_EVENT] +
+                # Button up
+                [recorder.MSC_SCAN_BTN_EVENT[button],
+                 Event(EV_KEY, BTN_LEFT, 0),
+                 recorder.SYN_EVENT])
+
+        self.results = {
+                'actual_events': map(str, actual_events),
+                'expected_events': map(str, expected_events)}
+        return actual_events == expected_events
+
+
+    # -------------------------------------------------------------------
+    # Autotest methods
+    # -------------------------------------------------------------------
 
 
     def initialize(self):
