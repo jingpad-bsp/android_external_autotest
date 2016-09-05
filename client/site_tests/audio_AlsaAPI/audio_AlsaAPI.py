@@ -15,6 +15,10 @@ class audio_AlsaAPI(test.test):
     version = 2
     _SND_DEV_DIR = '/dev/snd/'
     _PLAYBACK_DEVICE_NAME = '^pcmC(\d+)D(\d+)p$'
+    # A dict of list of (card, device) to be skipped on some boards.
+    # Chell's HDMI device hw:0,4 can not be used without being plugged.
+    # Also, its HDMI device hw:0,5 and hw:0,6 are dummy devices.
+    _DEVICES_TO_BE_SKIPPED = {'chell': [(0, 4), (0, 5), (0, 6)]}
 
     def run_once(self, to_test):
         """Run alsa_api_test binary and verify its result.
@@ -36,6 +40,18 @@ class audio_AlsaAPI(test.test):
             method(device)
 
 
+    def _skip_device(self, card_device):
+        """Skips devices on some boards.
+
+        @param card_device: A tuple of (card index, device index).
+
+        @returns: True if the device should be skipped. False otherwise.
+
+        """
+        return card_device in self._DEVICES_TO_BE_SKIPPED.get(
+                utils.get_board().lower(), [])
+
+
     def _find_sound_devices(self):
         """Finds playback devices in sound device directory.
 
@@ -45,7 +61,9 @@ class audio_AlsaAPI(test.test):
         for filename in filenames:
             search = re.match(self._PLAYBACK_DEVICE_NAME, filename)
             if search:
-                self._devices.append((search.group(1), search.group(2)))
+                card_device = (int(search.group(1)), int(search.group(2)))
+                if not self._skip_device(card_device):
+                    self._devices.append(card_device)
         if not self._devices:
             raise error.TestError('There is no playback device')
 
