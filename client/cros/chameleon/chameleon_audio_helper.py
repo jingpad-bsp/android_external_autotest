@@ -316,6 +316,9 @@ class AudioWidgetFactory(object):
                     return audio_widget.CrosInputWidgetHandler(
                             self._audio_facade, plug_handler)
             else:
+                if use_arc:
+                    return audio_widget_arc.CrosOutputWidgetARCHandler(
+                            self._audio_facade, plug_handler)
                 return audio_widget.CrosOutputWidgetHandler(self._audio_facade,
                                                             plug_handler)
 
