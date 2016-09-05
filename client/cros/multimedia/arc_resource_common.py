@@ -13,3 +13,10 @@ class MicrophoneProps(object):
     RECORD_FUZZ_SECS  = 5
     # The recording duration is fixed in microphone app.
     RECORD_SECS = 10
+
+
+class PlayMusicProps(object):
+    """Properties of Play Music app that both server and client should know."""
+    TEST_NAME = 'cheets_PlayMusicApp'
+    READY_TAG_FILE = '/tmp/.cheets_PlayMusicApp.ready'
+    EXIT_TAG_FILE = '/tmp/.cheets_PlayMusicApp.exit'
