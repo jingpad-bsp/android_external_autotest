@@ -53,7 +53,7 @@ _BUG_TEMPLATE = {
     'ccs': []
 }
 
-args_dict['max_runtime_mins'] = 20
+args_dict['max_runtime_mins'] = 30
 args_dict['file_bugs'] = True
 args_dict['name'] = 'push_to_prod'
 args_dict['job'] = job
