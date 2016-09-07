@@ -656,18 +656,6 @@ class DjangoPackage(ExternalPackage):
             return '0.9.6'
 
 
-class MockPackage(ExternalPackage):
-    """mock package, for unit tests."""
-    version = '2.0.0'
-    local_filename = 'mock-%s.tar.gz' % version
-    urls = ('http://pypi.python.org/packages/source/m/mock/%s' % (
-        local_filename),)
-    hex_sum = '397ed52eb2d8d4b326bc3fa6b38adda5f0b090d3'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-            ExternalPackage._build_and_install_current_dir_setup_py)
-
 
 class NumpyPackage(ExternalPackage):
     """numpy package, required by matploglib."""
