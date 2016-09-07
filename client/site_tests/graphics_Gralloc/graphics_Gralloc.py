@@ -47,7 +47,7 @@ class graphics_Gralloc(arc.ArcTest):
         success = True
         test_names = ['alloc_varying_sizes', 'alloc_usage', 'api',
                       'gralloc_order', 'uninitialized_handle', 'freed_handle',
-                      'mapping', 'ycbcr', 'async']
+                      'mapping', 'perform', 'ycbcr', 'async']
 
         # Run the tests and capture stdout.
         for test_name in test_names:

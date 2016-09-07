@@ -28,6 +28,13 @@
 	}\
 } while(0)
 
+/* Private API enumeration -- see <gralloc_drm.h> */
+enum {
+	GRALLOC_DRM_GET_STRIDE,
+	GRALLOC_DRM_GET_FORMAT,
+	GRALLOC_DRM_GET_DIMENSIONS,
+};
+
 /* See <system/graphics.h> for definitions. */
 static const uint32_t format_list[] = {
 	HAL_PIXEL_FORMAT_BGRA_8888,
@@ -57,11 +64,11 @@ static const uint32_t format_list[] = {
 /* See <hardware/gralloc.h> for descriptions. */
 static const uint32_t usage_list[] = {
 	GRALLOC_USAGE_CURSOR,
-	GRALLOC_USAGE_EXTERNAL_DISP,
 	GRALLOC_USAGE_HW_RENDER,
 	GRALLOC_USAGE_HW_TEXTURE,
 	GRALLOC_USAGE_SW_READ_OFTEN,
 	GRALLOC_USAGE_SW_WRITE_OFTEN,
+	GRALLOC_USAGE_SW_READ_RARELY,
 	GRALLOC_USAGE_SW_WRITE_RARELY,
 };
 
@@ -73,6 +80,7 @@ struct gralloctest {
 	int usage;                    /* bitfield indicating usage */
 	int fence_fd;                 /* fence file descriptor */
 	void *vaddr;                  /* buffer virtual memory address */
+	int stride;                   /* stride in pixels */
 	struct android_ycbcr ycbcr;   /* sw access for yuv buffers */
 };
 
@@ -89,6 +97,7 @@ void gralloctest_init(struct gralloctest* test, int w, int h, int format,
 	test->ycbcr.y = NULL;
 	test->ycbcr.cb = NULL;
 	test->ycbcr.cr = NULL;
+	test->stride = 0;
 }
 
 static native_handle_t *duplicate_buffer_handle(buffer_handle_t handle)
@@ -122,16 +131,16 @@ static native_handle_t *duplicate_buffer_handle(buffer_handle_t handle)
 
 static int allocate(struct alloc_device_t* device, struct gralloctest* test)
 {
-	int ret, stride;
+	int ret;
 
 	ret = device->alloc(device, test->w, test->h, test->format, test->usage,
-			    &test->handle, &stride);
+			    &test->handle, &test->stride);
 
 	CHECK_NO_MSG(ret == 0);
 	CHECK_NO_MSG(test->handle->version > 0);
 	CHECK_NO_MSG(test->handle->numInts >= 0);
 	CHECK_NO_MSG(test->handle->numFds >= 0);
-	CHECK_NO_MSG(stride >= 0);
+	CHECK_NO_MSG(test->stride >= 0);
 
 	return 1;
 }
@@ -320,26 +329,26 @@ static int test_api(struct gralloc_module_t* module)
 	CHECK(module->unlock);
 
 	switch (module->common.module_api_version) {
-		case GRALLOC_MODULE_API_VERSION_0_3:
-			CHECK(module->lock_ycbcr);
-			CHECK(module->lockAsync);
-			CHECK(module->unlockAsync);
-			CHECK(module->lockAsync_ycbcr);
-			break;
-		case GRALLOC_MODULE_API_VERSION_0_2:
-			CHECK(module->lock_ycbcr);
-			CHECK(module->lockAsync == NULL);
-			CHECK(module->unlockAsync == NULL);
-			CHECK(module->lockAsync_ycbcr == NULL);
-			 break;
-		case GRALLOC_MODULE_API_VERSION_0_1:
-			CHECK(module->lockAsync == NULL);
-			CHECK(module->unlockAsync == NULL);
-			CHECK(module->lockAsync_ycbcr == NULL);
-			CHECK(module->lock_ycbcr == NULL);
-			break;
-		default:
-			return 0;
+	case GRALLOC_MODULE_API_VERSION_0_3:
+		CHECK(module->lock_ycbcr);
+		CHECK(module->lockAsync);
+		CHECK(module->unlockAsync);
+		CHECK(module->lockAsync_ycbcr);
+		break;
+	case GRALLOC_MODULE_API_VERSION_0_2:
+		CHECK(module->lock_ycbcr);
+		CHECK(module->lockAsync == NULL);
+		CHECK(module->unlockAsync == NULL);
+		CHECK(module->lockAsync_ycbcr == NULL);
+		 break;
+	case GRALLOC_MODULE_API_VERSION_0_1:
+		CHECK(module->lockAsync == NULL);
+		CHECK(module->unlockAsync == NULL);
+		CHECK(module->lockAsync_ycbcr == NULL);
+		CHECK(module->lock_ycbcr == NULL);
+		break;
+	default:
+		return 0;
 	}
 
 	return 1;
@@ -468,6 +477,37 @@ static int test_mapping(struct gralloc_module_t* module,
 	return 1;
 }
 
+/* This function tests the private API we use in ARC++ -- not part of official gralloc. */
+static int test_perform(struct gralloc_module_t* module,
+			struct alloc_device_t* device)
+{
+	struct gralloctest test;
+	uint32_t stride, width, height;
+	int32_t format;
+
+	gralloctest_init(&test, 650, 408, HAL_PIXEL_FORMAT_BGRA_8888,
+		GRALLOC_USAGE_SW_READ_OFTEN);
+
+	CHECK(allocate(device, &test));
+
+	CHECK(module->perform(module, GRALLOC_DRM_GET_STRIDE, test.handle,
+			      &stride) == 0);
+	CHECK(stride == test.stride);
+
+	CHECK(module->perform(module, GRALLOC_DRM_GET_FORMAT, test.handle,
+			      &format) == 0);
+	CHECK(format == test.format);
+
+	CHECK(module->perform(module, GRALLOC_DRM_GET_DIMENSIONS, test.handle,
+			      &width, &height)== 0);
+	CHECK(width == test.w);
+	CHECK(height == test.h);
+
+	CHECK(deallocate(device, &test));
+
+	return 1;
+}
+
 /* This function tests that only YUV buffers work with *lock_ycbcr. */
 static int test_ycbcr(struct gralloc_module_t* module,
                      struct alloc_device_t* device)
@@ -568,7 +608,8 @@ static void print_help(const char* argv0)
 	printf("usage: %s <test_name>\n\n", argv0);
 	printf("A valid test is one the following:\n");
 	printf("alloc_varying_sizes\nalloc_usage\napi\ngralloc_order\n");
-	printf("uninitialized_handle\nfreed_handle\nmapping\nycbcr\nasync\n");
+	printf("uninitialized_handle\nfreed_handle\nmapping\nperform\n");
+	printf("ycbcr\nasync\n");
 }
 
 int main(int argc, char *argv[])
@@ -586,12 +627,14 @@ int main(int argc, char *argv[])
 			goto fail;
 
 		switch (module->common.module_api_version) {
-			case GRALLOC_MODULE_API_VERSION_0_3:
-				api = 3;
-			case GRALLOC_MODULE_API_VERSION_0_2:
-				api = 2;
-			default:
-				api = 1;
+		case GRALLOC_MODULE_API_VERSION_0_3:
+			api = 3;
+			break;
+		case GRALLOC_MODULE_API_VERSION_0_2:
+			api = 2;
+			break;
+		default:
+			api = 1;
 		}
 
 		printf("[ RUN      ] gralloctest.%s\n", name);
@@ -616,6 +659,9 @@ int main(int argc, char *argv[])
 				goto fail;
 		} else if (strcmp(name, "mapping") == 0) {
 			if (!test_mapping(module, device))
+				goto fail;
+		} else if (strcmp(name, "perform") == 0) {
+			if (!test_perform(module, device))
 				goto fail;
 		} else if (strcmp(name, "ycbcr") == 0) {
 			if (api >= 2 && !test_ycbcr(module, device))
