@@ -14,7 +14,7 @@ TIME = 'LONG'     # This test takes about 8 hours 45 minutes.
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
 TEST_TYPE = 'server'
-DEPENDENCIES = 'chameleon, bluetooth'
+DEPENDENCIES = 'bluetooth, chameleon:bt_hid'
 
 DOC = """
 Verify that the bluetooth adapter of the DUT could pair and connect
