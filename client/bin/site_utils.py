@@ -985,10 +985,13 @@ def get_gpu_family():
 
     return pciid_to_intel_architecture[device_id]
 
-
+# TODO(ihf): Consider using /etc/lsb-release DEVICETYPE != CHROMEBOOK/CHROMEBASE
+# for sanity check, but usage seems a bit inconsistent. See
+# src/third_party/chromiumos-overlay/eclass/appid.eclass
 _BOARDS_WITHOUT_MONITOR = [
     'anglar', 'mccloud', 'monroe', 'ninja', 'rikku', 'guado', 'jecht', 'tidus',
-    'veyron_brian', 'beltino', 'panther', 'stumpy', 'panther', 'tricky', 'zako'
+    'veyron_brian', 'beltino', 'panther', 'stumpy', 'panther', 'tricky', 'zako',
+    'veyron_rialto'
 ]
 
 
