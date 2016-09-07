@@ -1,5 +1,6 @@
 suite:AFDO_page_replay
 suite:AFDO_record
+suite:android_bluetooth
 suite:android_wifi_interop
 suite:android_wifi_connect
 suite:another_suite

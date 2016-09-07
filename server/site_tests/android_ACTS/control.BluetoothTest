@@ -6,6 +6,8 @@ AUTHOR = 'angli, sbasi'
 NAME = 'android_ACTS.BluetoothTest'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_bluetooth'
+DEPENDENCIES = 'bluetoothcell'
 
 DOC = """
 This test runs BluetoothTest against a Bluetooth test bed.
