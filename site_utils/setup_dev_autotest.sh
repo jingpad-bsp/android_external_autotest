@@ -27,7 +27,7 @@ function get_y_or_n_interactive {
             * ) echo "Please enter y or n.";;
         esac
     done
-    eval $1="'$ret'"
+    eval "$1=\$ret"
 }
 
 function get_y_or_n {
@@ -36,7 +36,7 @@ function get_y_or_n {
     get_y_or_n_interactive sub "$2"
     ret=$sub
   fi
-  eval $1="'$ret'"
+  eval "$1=\$ret"
 }
 
 AUTOTEST_DIR=
@@ -131,7 +131,7 @@ if [ -z "${AUTOTEST_DIR}" ]; then
 fi
 
 if [ ! -d "${AUTOTEST_DIR}" ]; then
-  echo "Directory " ${AUTOTEST_DIR} " does not exist. Aborting script."
+  echo "Directory $AUTOTEST_DIR does not exist. Aborting script."
   exit 1
 fi
 
@@ -150,7 +150,7 @@ if [ -f ${SHADOW_CONFIG_PATH} ]; then
   fi
 fi
 
-CROS_CHECKOUT=$(readlink -f ${AUTOTEST_DIR}/../../../..)
+CROS_CHECKOUT=$(readlink -f "$AUTOTEST_DIR/../../../..")
 
 # Create clean shadow config if we're replacing it/creating a new one.
 if [ $CLOBBER -eq 0 ]; then
@@ -170,6 +170,12 @@ drones: localhost
 
 [CROS]
 source_tree: ${CROS_CHECKOUT}
+# Edit the following line as needed.
+#dev_server: http://10.10.10.10:8080
+enable_ssh_tunnel_for_servo: True
+enable_ssh_tunnel_for_chameleon: True
+enable_ssh_connection_for_devserver: True
+enable_ssh_tunnel_for_moblab: True
 EOF
   echo -e "Done!\n"
 fi
@@ -240,21 +246,17 @@ if [ ! -d /etc/apache2/run ]; then
 fi
 sudo ln -sf "${AT_DIR}"/apache/apache-conf \
   /etc/apache2/sites-available/autotest-server.conf
+
 # Disable currently active default
 sudo a2dissite 000-default default || true
-# Enable autotest server
 sudo a2ensite autotest-server.conf
-# Enable rewrite module
+
 sudo a2enmod rewrite
-# Enable wsgi
 sudo a2enmod wsgi
-# Enable version
-# built-in on trusty
-sudo a2enmod version || true
-# Enable headers
+sudo a2enmod version || true  # built-in on trusty
 sudo a2enmod headers
-# Enable cgid
 sudo a2enmod cgid
+
 # Setup permissions so that Apache web user can read the proper files.
 chmod -R o+r "${AT_DIR}"
 find "${AT_DIR}"/ -type d -print0 | xargs --null chmod o+x
@@ -265,6 +267,27 @@ sudo /etc/init.d/apache2 restart
 # Setup lxc and base container for server-side packaging support.
 sudo apt-get install lxc -y
 sudo python "${AT_DIR}"/site_utils/lxc.py -s
+
+# Set up keys for www-data/apache user.
+APACHE_USER=www-data
+APACHE_HOME=/var/www
+APACHE_SSH_DIR="$APACHE_HOME/.ssh"
+SSH_KEYS_PATH=src/third_party/chromiumos-overlay/chromeos-base/chromeos-ssh-testkeys/files
+sudo mkdir -p "$APACHE_SSH_DIR"
+sudo bash <<EOF
+cd "${APACHE_SSH_DIR:-/dev/null}" || exit 1
+sudo cp "$CROS_CHECKOUT/$SSH_KEYS_PATH/"* .
+sudo tee config >/dev/null <<EOF2
+Host *
+User root
+IdentityFile ~/.ssh/testing_rsa
+EOF2
+sudo chown -R "$APACHE_USER:" .
+sudo chmod -R go-rwx .
+EOF
+if [ $? -ne 0 ]; then
+  echo "apache user SSH setup failed."
+fi
 
 echo "Browse to http://localhost to see if Autotest is working."
 echo "For further necessary set up steps, see https://sites.google.com/a/chromium.org/dev/chromium-os/testing/autotest-developer-faq/setup-autotest-server?pli=1"
