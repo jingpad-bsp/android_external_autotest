@@ -2,6 +2,8 @@
 
 import logging, os, shutil, sys, tempfile, time, urllib2
 import subprocess, re
+from distutils.version import LooseVersion
+
 from autotest_lib.client.common_lib import autotemp, revision_control, utils
 
 _READ_SIZE = 64*1024
@@ -155,12 +157,17 @@ class ExternalPackage(object):
                          install_dir)
             return True
         self.installed_version = self._get_installed_version_from_module(module)
+        if not self.installed_version:
+            return True
+
         logging.info('imported %s version %s.', self.module_name,
                      self.installed_version)
         if hasattr(self, 'minimum_version'):
-            return self.minimum_version > self.installed_version
+            return LooseVersion(self.minimum_version) > LooseVersion(
+                    self.installed_version)
         else:
-            return self.version > self.installed_version
+            return LooseVersion(self.version) > LooseVersion(
+                    self.installed_version)
 
 
     def _get_installed_version_from_module(self, module):
@@ -1031,6 +1038,14 @@ class ElasticSearchPackage(ExternalPackage):
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
             ExternalPackage._build_and_install_current_dir_setup_py)
+
+    def _get_installed_version_from_module(self, module):
+        # Elastic's version format is like tuple (1, 6, 0), which needs to be
+        # transferred to 1.6.0.
+        try:
+            return '.'.join(str(i) for i in module.__version__)
+        except:
+            return self.version
 
 
 class Urllib3Package(ExternalPackage):
