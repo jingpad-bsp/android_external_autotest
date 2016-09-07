@@ -946,17 +946,22 @@ def set_dirty_writeback_centisecs(time=60000):
 
 def wflinfo_cmd():
     """
-    Return a wflinfo command appropriate to the current graphics platform/api.
+    Returns a wflinfo command appropriate to the current graphics platform/api.
     """
     return 'wflinfo -p %s -a %s' % (graphics_platform(), graphics_api())
 
 
+def has_mali():
+    """ @return: True if system has a Mali GPU enabled."""
+    return os.path.exists('/dev/mali0')
+
+
 def get_gpu_family():
-    """Return the GPU family name"""
+    """Returns the GPU family name."""
     global pciid_to_intel_architecture
 
     cpuarch = base_utils.get_cpu_soc_family()
-    if cpuarch == 'exynos5' or cpuarch == 'rockchip':
+    if cpuarch == 'exynos5' or cpuarch == 'rockchip' or has_mali():
         cmd = wflinfo_cmd()
         wflinfo = utils.system_output(cmd,
                                       retain_output=True,
@@ -996,7 +1001,7 @@ _BOARDS_WITHOUT_MONITOR = [
 
 
 def has_no_monitor():
-    """Return whether a machine doesn't have a built-in monitor"""
+    """Returns whether a machine doesn't have a built-in monitor."""
     board_name = get_board()
     if board_name in _BOARDS_WITHOUT_MONITOR:
         return True
