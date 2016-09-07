@@ -1,9 +1,48 @@
-import os, time, logging, shutil
+import logging
+import os
+import pipes
+import shutil
+import time
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server import utils
+
+
+def collect_log_file(host, log_path, dest_path, use_tmp=False, clean=False):
+    """Collects a log file from the remote machine.
+
+    Log files are collected from the remote machine and written into the
+    destination path. If dest_path is a directory, the log file will be named
+    using the basename of the remote log path.
+
+    @param host: The RemoteHost to collect logs from
+    @param log_path: The remote path to collect the log file from
+    @param dest_path: A path (file or directory) to write the copies logs into
+    @param use_tmp: If True, will first copy the logs to a temporary directory
+                    on the host and download logs from there.
+    @param clean: If True, remove dest_path after upload attempt even if it
+                  failed.
+
+    """
+    logging.info('Collecting %s...', log_path)
+    tmpdir = None
+    try:
+        source_path = log_path
+        if use_tmp:
+            tmpdir = host.run('mktemp -d', stdout_tee=None).stdout.strip()
+            host.run('cp -rp %s %s' % (pipes.quote(log_path),
+                                       pipes.quote(tmpdir)))
+            source_path = os.path.join(tmpdir, os.path.basename(log_path))
+        host.get_file(host, source_path, dest_path, preserve_perm=False)
+    except Exception, e:
+        logging.warning('Collection of %s failed: %s', log_path, e)
+    finally:
+        if tmpdir is not None:
+            host.run('rm -rf %s' % (pipes.quote(tmpdir),))
+        if clean:
+            host.run('rm -rf %s' % (pipes.quote(log_path),))
 
 
 # import any site hooks for the crashdump and crashinfo collection
@@ -50,7 +89,8 @@ def get_crashinfo(host, test_start_time):
         # Collect console-ramoops
         log_path = os.path.join(
                 crashinfo_dir, os.path.basename(constants.LOG_CONSOLE_RAMOOPS))
-        collect_log_file(host, constants.LOG_CONSOLE_RAMOOPS, log_path)
+        collect_log_file(host, constants.LOG_CONSOLE_RAMOOPS, log_path,
+                         clean=True)
         # Collect i915_error_state, only available on intel systems.
         # i915 contains the Intel graphics state. It might contain useful data
         # when a DUT hangs, times out or crashes.
@@ -109,35 +149,6 @@ def get_crashinfo_dir(host, dir_prefix):
     return infodir
 
 
-def collect_log_file(host, log_path, dest_path, use_tmp=False):
-    """Collects a log file from the remote machine.
-
-    Log files are collected from the remote machine and written into the
-    destination path. If dest_path is a directory, the log file will be named
-    using the basename of the remote log path.
-
-    @param host: The RemoteHost to collect logs from
-    @param log_path: The remote path to collect the log file from
-    @param dest_path: A path (file or directory) to write the copies logs into
-    @param use_tmp: If True, will first copy the logs to a temporary directory
-                    on the host and download logs from there.
-
-    """
-    logging.info('Collecting %s...', log_path)
-    try:
-        source_path = log_path
-        if use_tmp:
-            devnull = open('/dev/null', 'w')
-            tmpdir = host.run('mktemp -d', stdout_tee=devnull).stdout.strip()
-            host.run('cp -rp %s %s' % (log_path, tmpdir))
-            source_path = os.path.join(tmpdir, os.path.basename(log_path))
-        host.get_file(source_path, dest_path, preserve_perm=False)
-        if use_tmp:
-            host.run('rm -rf %s' % tmpdir)
-    except Exception, e:
-        logging.warning('Collection of %s failed: %s', log_path, e)
-
-
 def collect_command(host, command, dest_path):
     """Collects the result of a command on the remote machine.
 
@@ -151,15 +162,11 @@ def collect_command(host, command, dest_path):
     @param dest_path: A file path to write the results of the log into
     """
     logging.info("Collecting '%s' ...", command)
-    devnull = open("/dev/null", "w")
     try:
-        try:
-            result = host.run(command, stdout_tee=devnull).stdout
-            utils.open_write_close(dest_path, result)
-        except Exception, e:
-            logging.warning("Collection of '%s' failed:\n%s", command, e)
-    finally:
-        devnull.close()
+        result = host.run(command, stdout_tee=None).stdout
+        utils.open_write_close(dest_path, result)
+    except Exception, e:
+        logging.warning("Collection of '%s' failed:\n%s", command, e)
 
 
 def collect_uncollected_logs(host):
@@ -172,12 +179,12 @@ def collect_uncollected_logs(host):
             logs = host.job.get_client_logs()
             for hostname, remote_path, local_path in logs:
                 if hostname == host.hostname:
-                    logging.info("Retrieving logs from %s:%s into %s",
+                    logging.info('Retrieving logs from %s:%s into %s',
                                  hostname, remote_path, local_path)
-                    host.get_file(remote_path + "/", local_path + "/")
+                    collect_log_file(host, remote_path + '/', local_path + '/')
         except Exception, e:
-            logging.warning("Error while trying to collect stranded "
-                            "Autotest client logs: %s", e)
+            logging.warning('Error while trying to collect stranded '
+                            'Autotest client logs: %s', e)
 
 
 def collect_messages(host):
