@@ -10,6 +10,11 @@ TIME = 'MEDIUM'
 TEST_CATEGORY = 'System'
 TEST_CLASS = 'provision'
 TEST_TYPE = 'Server'
+# Note: This test can occasionally take more than 20 minutes to complete. Be
+# sure the suite max_runtime_mins is set to a large enough value. If the test
+# is terminated early, you will see a line in status.log "Job aborted by
+# autotest_system". You can double-check the "Max runtime" for the job in the
+# Autotest web frontend.
 ATTRIBUTES = "suite:bvt-inline, suite:push_to_prod"
 # This test is expensive, just retry once
 JOB_RETRIES = 2
