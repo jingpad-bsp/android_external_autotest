@@ -16,7 +16,6 @@ TEST_TYPE = 'Server'
 # autotest_system". You can double-check the "Max runtime" for the job in the
 # Autotest web frontend.
 ATTRIBUTES = "suite:bvt-inline, suite:push_to_prod"
-# This test is expensive, just retry once
 JOB_RETRIES = 2
 
 DOC = """
