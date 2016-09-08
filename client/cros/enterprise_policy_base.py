@@ -193,17 +193,15 @@ class EnterprisePolicyTest(test.test):
                 policies_dict))
 
         self._launch_chrome_browser()
-        tab = self.navigate_to_url('chrome://policy')
         if not cryptohome.is_vault_mounted(user=self.username,
                                            allow_fail=True):
             raise error.TestError('Expected to find a mounted vault for %s.'
                                   % self.username)
-        value_shown = self._get_policy_value_shown(tab, policy_name)
+        value_shown = self._get_policy_value_from_new_tab(policy_name)
         if not self._policy_value_matches_shown(policy_value, value_shown):
             raise error.TestFail('Policy value shown is not correct: %s '
                                  '(expected: %s)' %
                                  (value_shown, policy_value))
-        tab.Close()
 
     def _launch_chrome_browser(self):
         """Launch Chrome browser and sign in."""
@@ -352,7 +350,8 @@ class EnterprisePolicyTest(test.test):
 
         """
         row_values = policy_tab.EvaluateJavaScript('''
-            var section = document.getElementsByClassName("policy-table-section")[0];
+            var section = document.getElementsByClassName(
+                    "policy-table-section")[0];
             var table = section.getElementsByTagName('table')[0];
             rowValues = '';
             for (var i = 1, row; row = table.rows[i]; i++) {
@@ -362,7 +361,8 @@ class EnterprisePolicyTest(test.test):
                   if (name === '%s') {
                      var value_span = row.getElementsByClassName('value')[0];
                      var value = value_span.textContent;
-                     var status_div = row.getElementsByClassName('status elide')[0];
+                     var status_div = row.getElementsByClassName(
+                            'status elide')[0];
                      var status = status_div.textContent;
                      rowValues = [name, value, status];
                      break;
@@ -386,11 +386,25 @@ class EnterprisePolicyTest(test.test):
         @returns: (string) value of the policy as shown on chrome://policy.
 
         """
+        values = self._get_policy_values_from_new_tab([policy_name])
+        return values[policy_name]
+
+    def _get_policy_values_from_new_tab(self, policy_names):
+        """Get a given policy value by opening a new tab then closing it.
+
+        @param policy_names: list of strings of policy names.
+
+        @returns: dict of policy name mapped to (string) value of the policy as
+                  shown on chrome://policy.
+
+        """
+        values = {}
         tab = self.navigate_to_url('chrome://policy')
-        value = self._get_policy_value_shown(tab, policy_name)
+        for policy_name in policy_names:
+          values[policy_name] = self._get_policy_value_shown(tab, policy_name)
         tab.Close()
 
-        return value
+        return values
 
     def get_elements_from_page(self, tab, cmd):
         """Get collection of page elements that match the |cmd| filter.
