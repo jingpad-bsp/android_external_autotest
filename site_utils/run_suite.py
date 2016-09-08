@@ -39,6 +39,7 @@ This script exits with one of the following codes:
 """
 
 
+from collections import namedtuple
 import datetime as datetime_base
 import ast, getpass, json, logging, optparse, os, re, sys, time
 from datetime import datetime
@@ -1507,6 +1508,9 @@ def create_suite(afe, options):
                    delay_minutes=options.delay_minutes)
 
 
+SuiteResult = namedtuple('SuiteResult', ['return_code', 'output_dict'])
+
+
 def main_without_exception_handling(options):
     """
     run_suite script without exception handling.
@@ -1593,109 +1597,138 @@ def main_without_exception_handling(options):
         logging.info(msg)
         return (RETURN_CODES.OK, {'return_message':msg})
 
+    wait = options.no_wait == 'False'
+    if wait:
+        return _handle_job_wait(afe, job_id, options, job_timer, is_real_time)
+    else:
+        return _handle_job_nowait(job_id, options, instance_server)
+
+
+def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
+    """Handle suite job synchronously.
+
+    @param afe              AFE instance.
+    @param job_id           Suite job id.
+    @param options          Parsed options.
+    @param job_timer        JobTimer for suite job.
+    @param is_real_time     Whether or not to handle job timeout.
+
+    @return SuiteResult of suite job.
+    """
+    code = RETURN_CODES.OK
+    output_dict = {}
+    rpc_helper = diagnosis_utils.RPCHelper(afe)
+    instance_server = afe.server
+    while not afe.get_jobs(id=job_id, finished=True):
+        # Note that this call logs output, preventing buildbot's
+        # 9000 second silent timeout from kicking in. Let there be no
+        # doubt, this is a hack. The timeout is from upstream buildbot and
+        # this is the easiest work around.
+        if job_timer.first_past_halftime():
+            rpc_helper.diagnose_job(job_id, instance_server)
+        if job_timer.debug_output_timer.poll():
+            logging.info('The suite job has another %s till timeout.',
+                            job_timer.timeout_hours - job_timer.elapsed_time())
+        time.sleep(10)
+    # For most cases, ResultCollector should be able to determine whether
+    # a suite has timed out by checking information in the test view.
+    # However, occationally tko parser may fail on parsing the
+    # job_finished time from the job's keyval file. So we add another
+    # layer of timeout check in run_suite. We do the check right after
+    # the suite finishes to make it as accurate as possible.
+    # There is a minor race condition here where we might have aborted
+    # for some reason other than a timeout, and the job_timer thinks
+    # it's a timeout because of the jitter in waiting for results.
+    # The consequence would be that run_suite exits with code
+    # SUITE_TIMEOUT while it should  have returned INFRA_FAILURE
+    # instead, which should happen very rarely.
+    # Note the timeout will have no sense when using -m option.
+    is_suite_timeout = job_timer.is_suite_timeout()
+
+    # Extract the original suite name to record timing.
+    original_suite_name = get_original_suite_name(options.name,
+                                                    options.suite_args)
+    # Start collecting test results.
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
-    code = RETURN_CODES.OK
-    wait = options.no_wait == 'False'
-    output_dict = {}
-    if wait:
-        while not afe.get_jobs(id=job_id, finished=True):
-            # Note that this call logs output, preventing buildbot's
-            # 9000 second silent timeout from kicking in. Let there be no
-            # doubt, this is a hack. The timeout is from upstream buildbot and
-            # this is the easiest work around.
-            if job_timer.first_past_halftime():
-                rpc_helper.diagnose_job(job_id, instance_server)
-            if job_timer.debug_output_timer.poll():
-                logging.info('The suite job has another %s till timeout.',
-                             job_timer.timeout_hours - job_timer.elapsed_time())
-            time.sleep(10)
-        # For most cases, ResultCollector should be able to determine whether
-        # a suite has timed out by checking information in the test view.
-        # However, occationally tko parser may fail on parsing the
-        # job_finished time from the job's keyval file. So we add another
-        # layer of timeout check in run_suite. We do the check right after
-        # the suite finishes to make it as accurate as possible.
-        # There is a minor race condition here where we might have aborted
-        # for some reason other than a timeout, and the job_timer thinks
-        # it's a timeout because of the jitter in waiting for results.
-        # The consequence would be that run_suite exits with code
-        # SUITE_TIMEOUT while it should  have returned INFRA_FAILURE
-        # instead, which should happen very rarely.
-        # Note the timeout will have no sense when using -m option.
-        is_suite_timeout = job_timer.is_suite_timeout()
+    collector = ResultCollector(instance_server=instance_server,
+                                afe=afe, tko=TKO, build=options.build,
+                                board=options.board,
+                                suite_name=options.name,
+                                suite_job_id=job_id,
+                                original_suite_name=original_suite_name)
+    collector.run()
+    # Dump test outputs into json.
+    output_dict = collector.get_results_dict()
+    output_dict['autotest_instance'] = instance_server
+    if not options.json_dump:
+        collector.output_results()
+    code = collector.return_code
+    return_message = collector.return_message
+    if is_real_time:
+        # Do not record stats if the suite was aborted (either by a user
+        # or through the golo rpc).
+        # Also do not record stats if is_aborted is None, indicating
+        # aborting status is unknown yet.
+        if collector.is_aborted == False:
+            collector.gather_timing_stats()
 
-        # Extract the original suite name to record timing.
-        original_suite_name = get_original_suite_name(options.name,
-                                                      options.suite_args)
-        # Start collecting test results.
-        collector = ResultCollector(instance_server=instance_server,
-                                    afe=afe, tko=TKO, build=options.build,
-                                    board=options.board,
-                                    suite_name=options.name,
-                                    suite_job_id=job_id,
-                                    original_suite_name=original_suite_name)
-        collector.run()
-        # Dump test outputs into json.
-        output_dict = collector.get_results_dict()
-        output_dict['autotest_instance'] = instance_server
-        if not options.json_dump:
-          collector.output_results()
-        code = collector.return_code
-        return_message = collector.return_message
-        if is_real_time:
-            # Do not record stats if the suite was aborted (either by a user
-            # or through the golo rpc).
-            # Also do not record stats if is_aborted is None, indicating
-            # aborting status is unknown yet.
-            if collector.is_aborted == False:
-                collector.gather_timing_stats()
+        if collector.is_aborted == True and is_suite_timeout:
+            # There are two possible cases when a suite times out.
+            # 1. the suite job was aborted due to timing out
+            # 2. the suite job succeeded, but some child jobs
+            #    were already aborted before the suite job exited.
+            # The case 2 was handled by ResultCollector,
+            # here we handle case 1.
+            old_code = code
+            code = get_worse_code(
+                    code, RETURN_CODES.SUITE_TIMEOUT)
+            if old_code != code:
+                return_message = 'Suite job timed out.'
+                logging.info('Upgrade return code from %s to %s '
+                                'because suite job has timed out.',
+                                RETURN_CODES.get_string(old_code),
+                                RETURN_CODES.get_string(code))
 
-            if collector.is_aborted == True and is_suite_timeout:
-                # There are two possible cases when a suite times out.
-                # 1. the suite job was aborted due to timing out
-                # 2. the suite job succeeded, but some child jobs
-                #    were already aborted before the suite job exited.
-                # The case 2 was handled by ResultCollector,
-                # here we handle case 1.
-                old_code = code
-                code = get_worse_code(
-                        code, RETURN_CODES.SUITE_TIMEOUT)
-                if old_code != code:
-                    return_message = 'Suite job timed out.'
-                    logging.info('Upgrade return code from %s to %s '
-                                 'because suite job has timed out.',
-                                 RETURN_CODES.get_string(old_code),
-                                 RETURN_CODES.get_string(code))
+        logging.info('\nAttempting to display pool info: %s', options.pool)
+        try:
+            # Add some jitter to make up for any latency in
+            # aborting the suite or checking for results.
+            cutoff = (job_timer.timeout_hours +
+                        datetime_base.timedelta(hours=0.3))
+            rpc_helper.diagnose_pool(
+                    options.board, options.pool, cutoff)
+        except proxy.JSONRPCException as e:
+            logging.warning('Unable to display pool info.')
 
-            logging.info('\nAttempting to display pool info: %s', options.pool)
-            try:
-                # Add some jitter to make up for any latency in
-                # aborting the suite or checking for results.
-                cutoff = (job_timer.timeout_hours +
-                          datetime_base.timedelta(hours=0.3))
-                rpc_helper.diagnose_pool(
-                        options.board, options.pool, cutoff)
-            except proxy.JSONRPCException as e:
-                logging.warning('Unable to display pool info.')
+    # And output return message.
+    if return_message:
+        logging.info('Reason: %s', return_message)
+        output_dict['return_message'] = return_message
 
-        # And output return message.
-        if return_message:
-            logging.info('Reason: %s', return_message)
-            output_dict['return_message'] = return_message
+    logging.info('\nOutput below this line is for buildbot consumption:')
+    collector.output_buildbot_links()
+    return SuiteResult(code, output_dict)
 
-        logging.info('\nOutput below this line is for buildbot consumption:')
-        collector.output_buildbot_links()
-    else:
-        logging.info('Created suite job: %r', job_id)
-        link = LogLink(options.name, instance_server,
-                       '%s-%s' % (job_id, getpass.getuser()))
-        for generate_link in link.GenerateBuildbotLinks():
-            logging.info(generate_link)
-        output_dict['return_message'] = '--no_wait specified; Exiting.'
-        logging.info('--no_wait specified; Exiting.')
-    return (code, output_dict)
+
+def _handle_job_nowait(job_id, options, instance_server):
+    """Handle suite job asynchronously.
+
+    @param job_id           Suite job id.
+    @param options          Parsed options.
+    @param instance_server  Autotest instance hostname.
+
+    @return SuiteResult of suite job.
+    """
+    logging.info('Created suite job: %r', job_id)
+    link = LogLink(options.name, instance_server,
+                    '%s-%s' % (job_id, getpass.getuser()))
+    for generate_link in link.GenerateBuildbotLinks():
+        logging.info(generate_link)
+    logging.info('--no_wait specified; Exiting.')
+    return SuiteResult(RETURN_CODES.OK,
+                        {'return_message': '--no_wait specified; Exiting.'})
 
 
 def main():
