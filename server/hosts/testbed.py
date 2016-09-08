@@ -38,6 +38,7 @@ class TestBed(object):
 
     _parser = autoserv_parser.autoserv_parser
     VERSION_PREFIX = provision.TESTBED_BUILD_VERSION_PREFIX
+    support_devserver_provision = False
 
     def __init__(self, hostname='localhost', afe_host=None, adb_serials=None,
                  **dargs):
