@@ -1,11 +1,10 @@
-import collections
 import heapq
 import os
-import Queue
 import time
-import threading
 import traceback
 import logging
+
+from chromite.lib import metrics
 
 import common
 from autotest_lib.client.common_lib import error, global_config, utils
@@ -159,6 +158,9 @@ class BaseDroneManager(object):
     NOTIFY_INTERVAL = 60 * 60 * 24 # one day
     _STATS_KEY = 'drone_manager'
     _timer = autotest_stats.Timer(_STATS_KEY)
+
+    _ACTIVE_PROCESS_GAUGE = metrics.Gauge(
+        'chromeos/autotest/drone/active_processes')
 
 
     def __init__(self):
@@ -429,6 +431,9 @@ class BaseDroneManager(object):
         autotest_stats.Gauge(self._STATS_KEY).send(
                 '%s.%s' % (drone.hostname.replace('.', '_'),
                            'active_processes'), drone.active_processes)
+        self._ACTIVE_PROCESS_GAUGE.set(
+                drone.active_processes,
+                fields={'drone_hostname': drone.hostname})
 
 
     def _check_drone_process_limit(self, drone):
