@@ -40,6 +40,14 @@ class network_WlanDriver(test.test):
                     '3.4': 'wireless/ath/ath9k_btcoex/ath9k_btcoex.ko',
                     '3.8': 'wireless-3.4/ath/ath9k_btcoex/ath9k_btcoex.ko'
             },
+            'Qualcomm Atheros QCA6174': {
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_core.ko',
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko'
+            },
+            'Qualcomm Atheros NFA344A/QCA6174': {
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_core.ko',
+                    '3.18': 'wireless/ar10k/ath/ath10k/ath10k_pci.ko'
+            },
             'Marvell 88W8797 SDIO': {
                     '3.4': 'wireless/mwifiex/mwifiex_sdio.ko',
                     '3.8': 'wireless-3.4/mwifiex/mwifiex_sdio.ko'
