@@ -10,11 +10,32 @@ from autotest_lib.client.cros.audio import cmd_utils
 SOX_PATH = 'sox'
 
 def _raw_format_args(channels, bits, rate):
+    """Gets raw format args used in sox.
+
+    @param channels: Number of channels.
+    @param bits: Bit length for a sample.
+    @param rate: Sampling rate.
+
+    @returns: A list of args.
+
+    """
     args = ['-t', 'raw', '-e', 'signed']
-    args += ['-c', str(channels)]
-    args += ['-b', str(bits)]
-    args += ['-r', str(rate)]
+    args += _format_args(channels, bits, rate)
     return args
+
+
+def _format_args(channels, bits, rate):
+    """Gets format args used in sox.
+
+    @param channels: Number of channels.
+    @param bits: Bit length for a sample.
+    @param rate: Sampling rate.
+
+    @returns: A list of args.
+
+    """
+    return ['-c', str(channels), '-b', str(bits), '-r', str(rate)]
+
 
 def generate_sine_tone_cmd(
         filename, channels=2, bits=16, rate=48000, duration=None, frequence=440,
@@ -207,7 +228,7 @@ def convert_raw_file(path_src, channels_src, bits_src, rate_src,
 
 def convert_format(path_src, channels_src, bits_src, rate_src,
                    path_dst, channels_dst, bits_dst, rate_dst,
-                   volume_scale, use_src_header=False):
+                   volume_scale, use_src_header=False, use_dst_header=False):
     """Converts a raw file to a new format.
 
     @param path_src: The path to the source file.
@@ -224,15 +245,23 @@ def convert_format(path_src, channels_src, bits_src, rate_src,
     @param use_src_header: True to use header from source file and skip
                            specifying channel, sample format, and rate for
                            source. False otherwise.
+    @param use_dst_header: True to use header for dst file. False to treat
+                           dst file as a raw file.
 
     """
     sox_cmd = [SOX_PATH]
+
     if not use_src_header:
         sox_cmd += _raw_format_args(channels_src, bits_src, rate_src)
     sox_cmd += ['-v', '%f' % volume_scale]
     sox_cmd += [path_src]
-    sox_cmd += _raw_format_args(channels_dst, bits_dst, rate_dst)
+
+    if not use_dst_header:
+        sox_cmd += _raw_format_args(channels_dst, bits_dst, rate_dst)
+    else:
+        sox_cmd += _format_args(channels_dst, bits_dst, rate_dst)
     sox_cmd += [path_dst]
+
     cmd_utils.execute(sox_cmd)
 
 
