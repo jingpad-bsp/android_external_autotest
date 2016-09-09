@@ -146,12 +146,20 @@ class FlashromProgrammer(_BaseProgrammer):
             servo_version = self._servo.get_servo_version()
             servo_v2_programmer = 'ft2232_spi:type=servo-v2'
             servo_v3_programmer = 'linux_spi'
+            servo_v4_programmer = 'raiden_spi'
             if servo_version == 'servo_v2':
                 programmer = servo_v2_programmer
                 if self._servo.servo_serial:
                     programmer += ',serial=%s' % self._servo.servo_serial
             elif servo_version == 'servo_v3':
                 programmer = servo_v3_programmer
+            elif servo_version == 'servo_v4':
+                programmer = servo_v4_programmer
+                # Get the serial of the servo micro if it exists.
+                servo_serials = self._servo._server.get_servo_serials()
+                servo_micro_serial = servo_serials.get('servo_micro')
+                if servo_micro_serial:
+                    programmer += ':serial=%s' % servo_micro_serial
             else:
                 raise Exception('Servo version %s is not supported.' %
                                 servo_version)
@@ -229,9 +237,9 @@ class FlashECProgrammer(_BaseProgrammer):
 
         @param image: string with the location of the image file
         """
-        # TODO: need to not have port be hardcoded
-        self._program_cmd = ('flash_ec --chip=%s --image=%s --port=%s' %
-                             (self._servo.get('ec_chip'), image, '9999'))
+        port = self._servo._servo_host.servo_port
+        self._program_cmd = ('flash_ec --chip=%s --image=%s --port=%d' %
+                             (self._servo.get('ec_chip'), image, port))
 
 
 class ProgrammerV2(object):
@@ -435,7 +443,7 @@ class ProgrammerV3(object):
         self._ec_programmer.program()
 
 
-class ProgrammerV3RwOnly(object):
+class ProgrammerV3RwOnly(ProgrammerV3):
     """Main programmer class which provides programmer for only updating the RW
     portion of BIOS with servo V3.
 
@@ -448,16 +456,6 @@ class ProgrammerV3RwOnly(object):
     def __init__(self, servo):
         self._servo = servo
         self._bios_programmer = FlashromProgrammer(servo, keep_ro=True)
-
-
-    def program_bios(self, image):
-        """Programs the DUT with provide bios image.
-
-        @param image: (required) location of bios image file.
-
-        """
-        self._bios_programmer.prepare_programmer(image)
-        self._bios_programmer.program()
 
 
     def program_ec(self, image):
