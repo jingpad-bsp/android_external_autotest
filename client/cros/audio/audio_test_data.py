@@ -98,6 +98,10 @@ class AudioTestData(object):
             bits_src = audio_data.SAMPLE_FORMATS[
                     self.data_format['sample_format']]['size_bytes'] * 8
 
+        # If dst file type is not raw, write file format into header of dst
+        # file.
+        use_dst_header = data_format['file_type'] != 'raw'
+
         sox_utils.convert_format(
                 path_src=self.path,
                 channels_src=channels_src,
@@ -109,7 +113,8 @@ class AudioTestData(object):
                 bits_dst=audio_data.SAMPLE_FORMATS[
                         data_format['sample_format']]['size_bytes'] * 8,
                 volume_scale=volume_scale,
-                use_src_header=use_src_header)
+                use_src_header=use_src_header,
+                use_dst_header=use_dst_header)
 
         new_test_data = AudioTestData(path=new_path,
                                       data_format=data_format)
