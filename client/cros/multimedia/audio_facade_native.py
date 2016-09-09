@@ -4,6 +4,7 @@
 
 """Facade to access the audio-related functionality."""
 
+import functools
 import glob
 import logging
 import os
@@ -20,6 +21,23 @@ from autotest_lib.client.cros.multimedia import audio_extension_handler
 class AudioFacadeNativeError(Exception):
     """Error in AudioFacadeNative."""
     pass
+
+
+def check_arc_resource(func):
+    """Decorator function for ARC related functions in AudioFacadeNative."""
+    @functools.wraps(func)
+    def wrapper(instance, *args, **kwargs):
+        """Wrapper for the methods to check _arc_resource.
+
+        @param instance: Object instance.
+
+        @raises: AudioFacadeNativeError if there is no ARC resource.
+
+        """
+        if not instance._arc_resource:
+            raise AudioFacadeNativeError('There is no ARC resource.')
+        return func(instance, *args, **kwargs)
+    return wrapper
 
 
 class AudioFacadeNative(object):
@@ -136,6 +154,9 @@ class AudioFacadeNative(object):
             self._recorder.cleanup()
         if self._player:
             self._player.cleanup()
+
+        if self._arc_resource:
+            self._arc_resource.cleanup()
 
 
     def playback(self, file_path, data_format, blocking=False):
@@ -308,31 +329,57 @@ class AudioFacadeNative(object):
         cras_dbus_utils.wait_for_unexpected_nodes_changed(timeout_secs)
 
 
+    @check_arc_resource
     def start_arc_recording(self):
-        """Starts recording using microphone app in container.
-
-        @raises AudioFacadeNativeError: if there is no ARC resource.
-
-        """
-        if not self._arc_resource:
-            raise AudioFacadeNativeError('There is no ARC resource.')
+        """Starts recording using microphone app in container."""
         self._arc_resource.microphone.start_microphone_app()
 
 
+    @check_arc_resource
     def stop_arc_recording(self):
         """Checks the recording is stopped and gets the recorded path.
 
         The recording duration of microphone app is fixed, so this method just
         copies the recorded result from container to a path on Cros device.
 
-        @raises AudioFacadeNativeError: if there is no ARC resource.
-
         """
-        if not self._arc_resource:
-            raise AudioFacadeNativeError('There is no ARC resource.')
         _, file_path = tempfile.mkstemp(prefix='capture_', suffix='.amr-nb')
         self._arc_resource.microphone.stop_microphone_app(file_path)
         return file_path
+
+
+    @check_arc_resource
+    def set_arc_playback_file(self, file_path):
+        """Copies the audio file to be played into container.
+
+        User should call this method to put the file into container before
+        calling start_arc_playback.
+
+        @param file_path: Path to the file to be played on Cros host.
+
+        @returns: Path to the file in container.
+
+        """
+        return self._arc_resource.play_music.set_playback_file(file_path)
+
+
+    @check_arc_resource
+    def start_arc_playback(self, path):
+        """Start playback through Play Music app.
+
+        Before calling this method, user should call set_arc_playback_file to
+        put the file into container.
+
+        @param path: Path to the file in container.
+
+        """
+        self._arc_resource.play_music.start_playback(path)
+
+
+    @check_arc_resource
+    def stop_arc_playback(self):
+        """Stop playback through Play Music app."""
+        self._arc_resource.play_music.stop_playback()
 
 
 class RecorderError(Exception):
