@@ -5,7 +5,6 @@
 """This is a server side ARC audio recording test using the Chameleon board."""
 
 import logging
-import multiprocessing
 import os
 import time
 
@@ -39,7 +38,7 @@ class audio_AudioARCRecord(audio_test.AudioTest):
         @param source_id: An ID defined in chameleon_audio_ids for source.
         @param sink_id: An ID defined in chameleon_audio_ids for sink if needed.
                         Currently this is only used on bluetooth.
-        @param recorder: An ID defined in chameleon_audio_ids for recording.
+        @param recorder_id: An ID defined in chameleon_audio_ids for recording.
         @param golden_file: A test file defined in audio_test_data.
         @param switch_hsp: Run a recording process on Cros device. This is
                            to trigger Cros switching from A2DP to HSP.
@@ -119,7 +118,7 @@ class audio_AudioARCRecord(audio_test.AudioTest):
             time.sleep(wait_rec_secs)
 
             recorder.stop_recording()
-            logging.info('Stopped recording from Chameleon.')
+            logging.info('Stopped recording from Cros device.')
 
             audio_test_utils.dump_cros_audio_logs(
                     host, audio_facade, self.resultsdir,
