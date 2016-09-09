@@ -4,6 +4,7 @@
 
 """This module provides the audio widgets related to ARC used in audio tests."""
 
+import copy
 import tempfile
 
 from autotest_lib.client.cros.audio import audio_test_data
@@ -88,3 +89,49 @@ class CrosInputWidgetARCHandler(audio_widget.CrosInputWidgetHandler):
                 return converted_test_data.get_binary()
             finally:
                 converted_test_data.delete()
+
+
+class CrosOutputWidgetARCHandlerError(Exception):
+    """Error in CrosOutputWidgetARCHandler."""
+    pass
+
+
+class CrosOutputWidgetARCHandler(audio_widget.CrosInputWidgetHandler):
+    """This class abstracts a Cros device audio output widget ARC handler."""
+    _SUPPORTED_FILE_TYPES = ['wav', 'mp3']
+    _DEFAULT_FILE_TYPE = 'wav'
+
+    def set_playback_data(self, test_data):
+        """Sets data to play.
+
+        @param test_data: An AudioTestData object.
+
+        @returns: Path to the file in container on Cros host.
+
+        """
+        # Handle the format conversion because ARC does not recognize raw file.
+        if test_data.data_format['file_type'] not in self._SUPPORTED_FILE_TYPES:
+            new_data_format = copy.deepcopy(test_data.data_format)
+            new_data_format['file_type'] = self._DEFAULT_FILE_TYPE
+            test_data = test_data.convert(new_data_format, 1.0)
+        return self._audio_facade.set_arc_playback_file(test_data.path)
+
+
+    def start_playback(self, path, blocking=False):
+        """Starts playing audio.
+
+        @param path: Path to the file to play in container on Cros host.
+        @param blocking: Blocks this call until playback finishes.
+
+        @raises: NotImplementedError if blocking is True.
+
+        """
+        if blocking:
+            raise NotImplementedError(
+                    'Blocking playback on ARC is not supported.')
+        self._audio_facade.start_arc_playback(path)
+
+
+    def stop_playback(self):
+        """Stops playing audio."""
+        self._audio_facade.stop_arc_playback()
