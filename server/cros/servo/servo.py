@@ -275,7 +275,10 @@ class Servo(object):
         time.sleep(Servo.SLEEP_DELAY)
 
     def volume_up(self, timeout=300):
-        """Simulate pushing the volume down button"""
+        """Simulate pushing the volume down button.
+
+        @param timeout: Timeout for setting the volume.
+        """
         self.set_get_all(['volume_up:yes',
                           'sleep:%.4f' % self.SERVO_KEY_PRESS_DELAY,
                           'volume_up:no'])
@@ -290,7 +293,10 @@ class Servo(object):
         raise error.TestFail("Failed setting volume_up to no")
 
     def volume_down(self, timeout=300):
-        """Simulate pushing the volume down button"""
+        """Simulate pushing the volume down button.
+
+        @param timeout: Timeout for setting the volume.
+        """
         self.set_get_all(['volume_down:yes',
                           'sleep:%.4f' % self.SERVO_KEY_PRESS_DELAY,
                           'volume_down:no'])
