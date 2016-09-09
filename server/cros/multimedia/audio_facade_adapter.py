@@ -262,3 +262,29 @@ class AudioFacadeRemoteAdapter(object):
 
         """
         return self._audio_proxy.stop_arc_recording()
+
+
+    def set_arc_playback_file(self, path):
+        """Copies the file from server to Cros host and into container.
+
+        @param path: Path to the file on server.
+
+        @returns: Path to the file in container on Cros host.
+
+        """
+        client_file_path = self.set_playback_file(path)
+        return self._audio_proxy.set_arc_playback_file(client_file_path)
+
+
+    def start_arc_playback(self, path):
+        """Starts playback through ARC on Cros host.
+
+        @param path: Path to the file in container on Cros host.
+
+        """
+        self._audio_proxy.start_arc_playback(path)
+
+
+    def stop_arc_playback(self):
+        """Stops playback through ARC on Cros host."""
+        self._audio_proxy.stop_arc_playback()
