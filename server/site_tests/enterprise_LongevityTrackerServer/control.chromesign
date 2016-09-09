@@ -23,7 +23,7 @@ def run_test(machine):
     host = hosts.create_host(machine)
     # Kiosk app attributes include app name, extension id and extension page
     kiosk_app_attributes = \
-            'chromesign:odjaaghiehpobimgdjjfofmablbaleem:index.html'
+            'chromesign:odjaaghiehpobimgdjjfofmablbaleem:viewer.html'
     job.run_test('enterprise_LongevityTrackerServer', host=host,
             kiosk_app_attributes=kiosk_app_attributes,
             tag='chromesign')
