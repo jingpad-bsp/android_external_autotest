@@ -306,11 +306,11 @@ class AudioWidgetFactory(object):
                 plug_handler = audio_widget.DummyPlugHandler()
 
             if audio_port.role == 'sink':
-                if is_usb:
-                    return audio_widget.CrosUSBInputWidgetHandler(
-                            self._audio_facade, plug_handler)
-                elif use_arc:
+                if use_arc:
                     return audio_widget_arc.CrosInputWidgetARCHandler(
+                            self._audio_facade, plug_handler)
+                elif is_usb:
+                    return audio_widget.CrosUSBInputWidgetHandler(
                             self._audio_facade, plug_handler)
                 else:
                     return audio_widget.CrosInputWidgetHandler(
