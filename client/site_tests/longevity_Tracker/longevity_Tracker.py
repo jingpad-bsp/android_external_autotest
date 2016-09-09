@@ -4,7 +4,6 @@
 
 # pylint: disable=module-missing-docstring
 # pylint: disable=docstring-section-name
-# pylint: disable=no-init
 
 import csv
 import glob

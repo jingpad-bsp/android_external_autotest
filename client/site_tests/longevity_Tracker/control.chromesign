@@ -24,7 +24,7 @@ a longevity_terminate flag file is seen in the /tmp/ directory.
 '''
 
 kiosk_app_attributes = (
-    'chromesign:odjaaghiehpobimgdjjfofmablbaleem:index.html')
+    'chromesign:odjaaghiehpobimgdjjfofmablbaleem:viewer.html')
 
 job.run_test('longevity_Tracker',
              kiosk_app_attributes=kiosk_app_attributes,
