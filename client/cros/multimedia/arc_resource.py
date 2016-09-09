@@ -159,6 +159,105 @@ class ArcMicrophoneResource(object):
         arc.adb_shell('rm %s' % pipes.quote(self._MICROPHONE_RECORD_PATH))
 
 
+class ArcPlayMusicResourceException(Exception):
+    """Exceptions in ArcPlayMusicResource."""
+    pass
+
+
+class ArcPlayMusicResource(object):
+    """Class to manage Play Music app in container."""
+    _PLAYMUSIC_PACKAGE = 'com.google.android.music'
+    _PLAYMUSIC_FILE_FOLDER = '/storage/emulated/0/'
+    _PLAYMUSIC_PERMISSIONS = ['WRITE_EXTERNAL_STORAGE', 'READ_EXTERNAL_STORAGE']
+    _KEYCODE_MEDIA_STOP = 86
+
+    def __init__(self):
+        """Initializes an ArcPlayMusicResource."""
+        self._paths_in_container = []
+
+
+    def set_playback_file(self, file_path):
+        """Copies file into container.
+
+        @param file_path: Path to the file to play on Cros host.
+
+        @returns: Path to the file in container.
+
+        """
+        file_name = os.path.basename(file_path)
+        dest_path = os.path.join(self._PLAYMUSIC_FILE_FOLDER, file_name)
+
+        # pipes.quote is deprecated in 2.7 (but still available).
+        # It should be replaced by shlex.quote in python 3.3.
+        arc.adb_cmd('push %s %s' % (pipes.quote(file_path),
+                                    pipes.quote(dest_path)))
+
+        self._paths_in_container.append(dest_path)
+
+        return dest_path
+
+
+    def start_playback(self, dest_path):
+        """Starts Play Music app to play an audio file.
+
+        @param dest_path: The file path in container.
+
+        @raises ArcMicrophoneResourceException: Play Music app is not ready or
+                                                playback file is not set yet.
+
+        """
+        if not tag_exists(arc_resource_common.PlayMusicProps.READY_TAG_FILE):
+            raise ArcPlayMusicResourceException(
+                    'Play Music app is not ready yet.')
+
+        if dest_path not in self._paths_in_container:
+            raise ArcPlayMusicResourceException(
+                    'Playback file is not set yet')
+
+        # In case the permissions are cleared, set the permission again before
+        # each start of the app.
+        self._set_permission()
+        self._start_app(dest_path)
+
+
+    def _set_permission(self):
+        """Grants permissions to Play Music app."""
+        for permission in self._PLAYMUSIC_PERMISSIONS:
+            arc.adb_shell('pm grant %s android.permission.%s' % (
+                    pipes.quote(self._PLAYMUSIC_PACKAGE),
+                    pipes.quote(permission)))
+
+
+    def _start_app(self, dest_path):
+        """Starts Play Music app playing an audio file.
+
+        @param dest_path: Path to the file to play in container.
+
+        """
+        ext = os.path.splitext(dest_path)[1]
+        arc.adb_shell(
+                'am start -a android.intent.action.VIEW'
+                ' -d "file://%s" -t "audio/%s"' % (
+                        pipes.quote(dest_path), pipes.quote(ext)))
+
+
+    def stop_playback(self):
+        """Stops Play Music app.
+
+        Stops the Play Music app by media key event.
+
+        """
+        arc.adb_shell(
+                'input keyevent %s' % pipes.quote(self._KEYCODE_MEDIA_STOP))
+
+
+    def cleanup(self):
+        """Removes the files to play in container."""
+        for path in self._paths_in_container:
+            arc.adb_shell('rm %s' % pipes.quote(path))
+        self._paths_in_container = []
+
+
 class ArcResource(object):
     """Class to manage multimedia resource in container.
 
@@ -168,3 +267,8 @@ class ArcResource(object):
     """
     def __init__(self):
         self.microphone = ArcMicrophoneResource()
+        self.play_music = ArcPlayMusicResource()
+
+    def cleanup(self):
+        """Clean up the resources."""
+        self.play_music.cleanup()
