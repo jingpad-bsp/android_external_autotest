@@ -31,6 +31,8 @@ NAME_MARVELL_88W8997_PCIE = 'Marvell 88W8997 PCIE'
 NAME_ATHEROS_AR9280 = 'Atheros AR9280'
 NAME_ATHEROS_AR9382 = 'Atheros AR9382'
 NAME_ATHEROS_AR9462 = 'Atheros AR9462'
+NAME_QUALCOMM_ATHEROS_QCA6174 = 'Qualcomm Atheros QCA6174'
+NAME_QUALCOMM_ATHEROS_NFA344A = 'Qualcomm Atheros NFA344A/QCA6174'
 NAME_INTEL_7260 = 'Intel 7260'
 NAME_INTEL_7265 = 'Intel 7265'
 NAME_BROADCOM_BCM4354_SDIO = 'Broadcom BCM4354 SDIO'
@@ -49,6 +51,8 @@ DEVICE_NAME_LOOKUP = {
     DeviceInfo('0x168c', '0x002a'): NAME_ATHEROS_AR9280,
     DeviceInfo('0x168c', '0x0030'): NAME_ATHEROS_AR9382,
     DeviceInfo('0x168c', '0x0034'): NAME_ATHEROS_AR9462,
+    DeviceInfo('0x168c', '0x003e'): NAME_QUALCOMM_ATHEROS_QCA6174,
+    DeviceInfo('0x105b', '0xe09d'): NAME_QUALCOMM_ATHEROS_NFA344A,
     DeviceInfo('0x8086', '0x08b1'): NAME_INTEL_7260,
     # TODO(wiley): Why is this number slightly different on some platforms?
     #              Is it just a different part source?
