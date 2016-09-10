@@ -8,6 +8,7 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
+from autotest_lib.server.hosts import testbed
 
 
 _CONFIG = global_config.global_config
@@ -86,12 +87,17 @@ class provision_AndroidUpdate(test.test):
             if not value:
                 raise error.TestFail('No stable version assigned for board: '
                                      '%s' % board)
-        url, _ = host.stage_build_for_install(value, os_type=os_type)
 
-        logging.debug('Installing image from: %s', url)
+        if not isinstance(host, testbed.TestBed):
+            url, _ = host.stage_build_for_install(value, os_type=os_type)
+            logging.debug('Installing image from: %s', url)
+            args = {'build_url': url, 'os_type': os_type}
+        else:
+            logging.debug('Installing image: %s', value)
+            args = {'image': value}
         try:
             afe_utils.machine_install_and_update_labels(
-                    host, build_url=url, os_type=os_type)
+                    host, **args)
         except error.InstallError as e:
             logging.error(e)
             raise error.TestFail(str(e))
