@@ -21,7 +21,8 @@ def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-row1-bluetooth.config',
-                 test_file='bt_and_ble_sanity')
+                 test_file='bt_and_ble_sanity',
+                 acts_timeout=14400)
 
 
 parallel_simple(run, machines)
