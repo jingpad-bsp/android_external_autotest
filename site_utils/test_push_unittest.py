@@ -72,9 +72,9 @@ class TestPushUnittests(mox.MoxTestBase):
                 None)
 
         self.mox.StubOutWithMock(test_push, 'do_run_suite')
-        test_push.do_run_suite(test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg(),
-                               mox.IgnoreArg(), mox.IgnoreArg()
-                               ).AndReturn((1))
+        test_push.do_run_suite(
+                test_push.PUSH_TO_PROD_SUITE, mox.IgnoreArg(), mox.IgnoreArg(),
+                mox.IgnoreArg(), mox.IgnoreArg()).AndReturn((1))
 
         self.mox.StubOutWithMock(site_utils, 'get_test_views_from_tko')
         self.mox.StubOutWithMock(frontend_wrappers, 'RetryingTKO')
