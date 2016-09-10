@@ -4,7 +4,7 @@
 
 AUTHOR = "chromeos-power"
 NAME = "power_SuspendStress.bareDaily"
-ATTRIBUTES = "suite:kernel_daily_regression"
+ATTRIBUTES = "suite:power_daily"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
