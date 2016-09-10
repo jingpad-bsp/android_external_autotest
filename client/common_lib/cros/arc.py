@@ -90,6 +90,18 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
                              timeout)
 
 
+def grant_permissions(package, permissions):
+    """Grants permissions to a package.
+
+    @param package: Package name.
+    @param permissions: A list of permissions.
+
+    """
+    for permission in permissions:
+        adb_shell('pm grant %s android.permission.%s' % (
+                  pipes.quote(package), pipes.quote(permission)))
+
+
 def adb_cmd(cmd, **kwargs):
     """Executed cmd using adb. Must wait for adb ready."""
     wait_for_adb_ready()
