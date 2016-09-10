@@ -56,6 +56,7 @@ RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_canary'
+TESTBED_SUITE = 'testbed_push'
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_NUM_DUTS = "{'board:gandof': 4, 'board:quawks': 2}"
@@ -91,6 +92,9 @@ EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
          'autoupdate_EndToEndTest.paygen_au_canary_delta.*': 'GOOD',
          'autoupdate_EndToEndTest.paygen_au_canary_full.*':  'GOOD',
          }
+
+EXPECTED_TEST_RESULTS_TESTBED = {'^SERVER_JOB$':      'GOOD',
+                                 'testbed_DummyTest': 'GOOD',}
 
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
@@ -186,6 +190,10 @@ def parse_arguments():
                         help='Default is the latest canary build of given '
                              'board. Must be a canary build, otherwise AU test '
                              'will fail.')
+    parser.add_argument('-ab', '--android_board', dest='android_board',
+                        help='Android board to test.')
+    parser.add_argument('-ai', '--android_build', dest='android_build',
+                        help='Android build to test.')
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
     parser.add_argument('-u', '--num', dest='num', type=int, default=3,
                         help='Run on at most NUM machines.')
@@ -216,7 +224,7 @@ def parse_arguments():
 
 
 def do_run_suite(suite_name, arguments, use_shard=False,
-                 create_and_return=False):
+                 create_and_return=False, testbed_test=False):
     """Call run_suite to run a suite job, and return the suite job id.
 
     The script waits the suite job to finish before returning the suite job id.
@@ -227,23 +235,30 @@ def do_run_suite(suite_name, arguments, use_shard=False,
     @param use_shard: If true, suite is scheduled for shard board.
     @param create_and_return: If True, run_suite just creates the suite, print
                               the job id, then finish immediately.
+    @param testbed_test: True to run testbed test. Default is False.
 
     @return: Suite job ID.
 
     """
-    if not use_shard:
-        board = arguments.board
-        build = arguments.build
-    else:
+    if use_shard and not testbed_test:
         board = arguments.shard_board
         build = arguments.shard_build
+    elif testbed_test:
+        board = arguments.android_board
+        build = arguments.android_build
+    else:
+        board = arguments.board
+        build = arguments.build
 
     # Remove cros-version label to force provision.
     hosts = AFE.get_hosts(label=constants.Labels.BOARD_PREFIX+board)
     for host in hosts:
-        for label in [l for l in host.labels
-                      if l.startswith(provision.CROS_VERSION_PREFIX)]:
-            AFE.run('host_remove_labels', id=host.id, labels=[label])
+        labels_to_remove = [
+                l for l in host.labels
+                if (l.startswith(provision.CROS_VERSION_PREFIX) or
+                    l.startswith(provision.TESTBED_BUILD_VERSION_PREFIX))]
+        if labels_to_remove:
+            AFE.run('host_remove_labels', id=host.id, labels=labels_to_remove)
 
         if use_shard and not create_and_return:
             # Let's verify the repair flow and powerwash the duts.  We can
@@ -266,6 +281,8 @@ def do_run_suite(suite_name, arguments, use_shard=False,
            '-u', str(arguments.num)]
     if create_and_return:
         cmd += ['-c']
+    if testbed_test:
+        cmd += ['--run_prod_code']
 
     suite_job_id = None
 
@@ -328,7 +345,7 @@ def check_dut_image(build, suite_job_id):
 
 
 def test_suite(suite_name, expected_results, arguments, use_shard=False,
-               create_and_return=False):
+               create_and_return=False, testbed_test=False):
     """Call run_suite to start a suite job and verify results.
 
     @param suite_name: Name of a suite, e.g., dummy
@@ -337,15 +354,18 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
     @param use_shard: If true, suite is scheduled for shard board.
     @param create_and_return: If True, run_suite just creates the suite, print
                               the job id, then finish immediately.
+    @param testbed_test: True to run testbed test. Default is False.
     """
     suite_job_id = do_run_suite(suite_name, arguments, use_shard,
-                                create_and_return)
+                                create_and_return, testbed_test)
 
     # Confirm all DUTs used for the suite are imaged to expected build.
     # hqe.host_id for jobs running in shard is not synced back to master db,
     # therefore, skip verifying dut build for jobs running in shard.
-    if suite_name != AU_SUITE and not use_shard:
-        check_dut_image(arguments.build, suite_job_id)
+    build_expected = (arguments.android_build if testbed_test
+                      else arguments.build)
+    if suite_name != AU_SUITE and not use_shard and not testbed_test:
+        check_dut_image(build_expected, suite_job_id)
 
     # Find all tests and their status
     print 'Comparing test results...'
@@ -412,7 +432,8 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
 
 
 def test_suite_wrapper(queue, suite_name, expected_results, arguments,
-                       use_shard=False, create_and_return=False):
+                       use_shard=False, create_and_return=False,
+                       testbed_test=False):
     """Wrapper to call test_suite. Handle exception and pipe it to parent
     process.
 
@@ -423,10 +444,11 @@ def test_suite_wrapper(queue, suite_name, expected_results, arguments,
     @param use_shard: If true, suite is scheduled for shard board.
     @param create_and_return: If True, run_suite just creates the suite, print
                               the job id, then finish immediately.
+    @param testbed_test: True to run testbed test. Default is False.
     """
     try:
         test_suite(suite_name, expected_results, arguments, use_shard,
-                   create_and_return)
+                   create_and_return, testbed_test)
     except:
         # Store the whole exc_info leads to a PicklingError.
         except_type, except_value, tb = sys.exc_info()
@@ -482,8 +504,16 @@ def main():
                       arguments, True, True))
         asynchronous_suite.start()
 
+        # Test suite for testbed
+        testbed_suite = multiprocessing.Process(
+                target=test_suite_wrapper,
+                args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
+                      arguments, False, False, True))
+        testbed_suite.start()
+
         while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
-               shard_suite.is_alive() or asynchronous_suite.is_alive()):
+               shard_suite.is_alive() or asynchronous_suite.is_alive() or
+               testbed_suite.is_alive()):
             check_queue(queue)
             time.sleep(5)
 
@@ -493,6 +523,7 @@ def main():
         au_suite.join()
         shard_suite.join()
         asynchronous_suite.join()
+        testbed_suite.join()
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
