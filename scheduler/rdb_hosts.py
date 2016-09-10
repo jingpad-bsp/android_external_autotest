@@ -177,8 +177,10 @@ class RDBClientHostWrapper(RDBHost):
     to the host.
     """
 
-    _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working')
-    _HOST_POOL_METRIC = metrics.String('chromeos/autotest/dut_pool')
+    _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working',
+                                           reset_after=True)
+    _HOST_POOL_METRIC = metrics.String('chromeos/autotest/dut_pool',
+                                       reset_after=True)
 
 
     def __init__(self, **kwargs):
