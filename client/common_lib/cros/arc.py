@@ -67,7 +67,10 @@ def is_adb_connected():
 
 
 def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
-    """Wait for the ADB client to connect to the ARC container."""
+    """Wait for the ADB client to connect to the ARC container.
+
+    @param timeout: Timeout in seconds.
+    """
     setup_adb_host()
     if is_adb_connected():
       return
@@ -103,13 +106,19 @@ def grant_permissions(package, permissions):
 
 
 def adb_cmd(cmd, **kwargs):
-    """Executed cmd using adb. Must wait for adb ready."""
+    """Executed cmd using adb. Must wait for adb ready.
+
+    @param cmd: Command to run.
+    """
     wait_for_adb_ready()
     return utils.system_output('adb %s' % cmd, **kwargs)
 
 
 def adb_shell(cmd, **kwargs):
-    """Executed shell command with adb."""
+    """Executed shell command with adb.
+
+    @param cmd: Command to run.
+    """
     output = adb_cmd('shell %s' % pipes.quote(cmd), **kwargs)
     # Some android commands include a trailing CRLF in their output.
     if kwargs.pop('strip_trailing_whitespace', True):
@@ -118,12 +127,18 @@ def adb_shell(cmd, **kwargs):
 
 
 def adb_install(apk):
-    """Install an apk into container. You must connect first."""
+    """Install an apk into container. You must connect first.
+
+    @param apk: Package to install.
+    """
     return adb_cmd('install -r %s' % apk)
 
 
 def adb_uninstall(apk):
-    """Remove an apk from container. You must connect first."""
+    """Remove an apk from container. You must connect first.
+
+    @param apk: Package to uninstall.
+    """
     return adb_cmd('uninstall %s' % apk)
 
 
@@ -205,14 +220,20 @@ def is_android_booted():
 
 
 def is_android_process_running(process_name):
-    """Return whether Android has completed booting."""
+    """Return whether Android has completed booting.
+
+    @param process_name: Process name.
+    """
     output = adb_shell('ps %s' % pipes.quote(process_name))
     # ps always prints the header.
     return len(output.splitlines()) == 2
 
 
 def read_android_file(filename):
-    """Reads a file in Android filesystem."""
+    """Reads a file in Android filesystem.
+
+    @param filename: File to read.
+    """
     with tempfile.NamedTemporaryFile() as tmpfile:
         adb_cmd('pull %s %s' % (pipes.quote(filename), pipes.quote(tmpfile.name)))
         with open(tmpfile.name) as f:
@@ -222,7 +243,11 @@ def read_android_file(filename):
 
 
 def write_android_file(filename, data):
-    """Writes to a file in Android filesystem."""
+    """Writes to a file in Android filesystem.
+
+    @param filename: File to write.
+    @param data: Data to write.
+    """
     with tempfile.NamedTemporaryFile() as tmpfile:
         tmpfile.write(data)
         tmpfile.flush()
@@ -242,18 +267,28 @@ def _write_android_file(filename, data):
 
 
 def remove_android_file(filename):
-    """Removes a file in Android filesystem."""
+    """Removes a file in Android filesystem.
+
+    @param filename: File to remove.
+    """
     adb_shell('rm -f %s' % pipes.quote(filename))
 
 
 def wait_for_android_boot(timeout=None):
-    """Sleep until Android has completed booting or timeout occurs."""
+    """Sleep until Android has completed booting or timeout occurs.
+
+    @param timeout: Timeout in seconds.
+    """
     arc_common.wait_for_android_boot(timeout)
 
 
 def wait_for_android_process(process_name,
                              timeout=_WAIT_FOR_ANDROID_PROCESS_SECONDS):
-    """Sleep until an Android process is running or timeout occurs."""
+    """Sleep until an Android process is running or timeout occurs.
+
+    @param process_name: Process name.
+    @param timeout: Timeout in seconds.
+    """
     condition = lambda: is_android_process_running(process_name)
     utils.poll_for_condition(condition=condition,
                              desc='%s is running' % process_name,
@@ -281,7 +316,10 @@ def is_android_container_alive():
 
 
 def is_package_installed(package):
-    """Check if a package is installed. adb must be ready."""
+    """Check if a package is installed. adb must be ready.
+
+    @param package: Package in request.
+    """
     packages = adb_shell('pm list packages').splitlines()
     package_entry = 'package:{}'.format(package)
     return package_entry in packages
@@ -331,15 +369,15 @@ class ArcTest(test.test):
     This class could be used as super class of an ARC test for saving
     redundant codes for container bringup, autotest-dep package(s) including
     uiautomator setup if required, and apks install/remove during
-    setup/teardown, respectively. If none of dependent package and uiautomator
-    is required in a test, setup() could be called w/o parameters or just
-    not overwrite it in test itself. For example, a simple ArcHelloWorldTest
-    can be just implemented with print 'HelloWorld' in its run_once() and no
-    other functions are required. We could expect ArcHelloWorldTest
-    would bring up browser and  wait for container up, then
-    print 'Hello World', and shutdown browser after. As a precaution, if you
-    overwrite initialize(), setup(), or cleanup() function(s) in ARC test,
-    remember to call the corresponding function(s) in this base class as well.
+    arc_setup/arc_teardown, respectively. By default arc_setup() is called in
+    initialize() after Android have been brought up. It could also be overridden
+    to perform non-default tasks. For example, a simple ArcHelloWorldTest can be
+    just implemented with print 'HelloWorld' in its run_once() and no other
+    functions are required. We could expect ArcHelloWorldTest would bring up
+    browser and  wait for container up, then print 'Hello World', and shutdown
+    browser after. As a precaution, if you overwrite initialize(), arc_setup(),
+    or cleanup() function(s) in ARC test, remember to call the corresponding
+    function(s) in this base class as well.
 
     """
     version = 1
@@ -355,6 +393,12 @@ class ArcTest(test.test):
         # a screenshot in /var/log for debugging.
         self.run_once_finished = False
         self.logcat_proc = None
+        self.dep_package = None
+        self.apks = None
+        self.full_pkg_names = []
+        self.uiautomator = False
+        self.email_id = None
+        self.password = None
         if os.path.exists(_SCREENSHOT_DIR_PATH):
             shutil.rmtree(_SCREENSHOT_DIR_PATH)
         self.register_before_iteration_hook(_before_iteration_hook)
@@ -378,40 +422,6 @@ class ArcTest(test.test):
         # With ARC enabled, Chrome will wait until container to boot up
         # before returning here, see chrome.py.
         self.initialized = True
-
-    def setup(self, dep_package=None, apks=None, full_pkg_names=[],
-              uiautomator=False, email_id=None, password=None):
-        """Setup dependencies and install apks.
-
-        @param dep_package: Package name of autotest_deps APK package.
-        @param apks: Array of APK names to be installed in dep_package.
-        @param full_pkg_names: Array of full package names to be removed
-                               in teardown.
-        @param uiautomator: uiautomator python package is required or not.
-
-        @param email_id: email id to be attached to the android. Only used
-                         when  account_util is set to true.
-        @param password: password related to the email_id.
-        """
-        if not self.initialized:
-            logging.info('Skipping ARC setup: not initialized')
-            return
-        logging.info('Starting ARC setup')
-        self.dep_package = dep_package
-        self.apks = apks
-        self.full_pkg_names = full_pkg_names
-        self.uiautomator = uiautomator
-        self.email_id = email_id
-        self.password = password
-        # Setup dependent packages if required
-        packages = []
-        if dep_package:
-            packages.append(dep_package)
-        if self.uiautomator:
-            packages.append(self._PKG_UIAUTOMATOR)
-        if packages:
-            logging.info('Setting up dependent package(s) %s' % packages)
-            self.job.setup_dep(packages)
         try:
             if is_android_container_alive():
                 self.arc_setup()
@@ -448,14 +458,43 @@ class ArcTest(test.test):
             finally:
                 self._chrome.close()
 
-    def arc_setup(self):
-        """ARC test setup.
+    def arc_setup(self, dep_package=None, apks=None, full_pkg_names=[],
+                  uiautomator=False, email_id=None, password=None):
+        """ARC test setup: Setup dependencies and install apks.
 
         This function disables package verification and enables non-market
         APK installation. Then, it installs specified APK(s) and uiautomator
         package and path if required in a test.
 
+        @param dep_package: Package name of autotest_deps APK package.
+        @param apks: Array of APK names to be installed in dep_package.
+        @param full_pkg_names: Array of full package names to be removed
+                               in teardown.
+        @param uiautomator: uiautomator python package is required or not.
+
+        @param email_id: email id to be attached to the android. Only used
+                         when  account_util is set to true.
+        @param password: password related to the email_id.
         """
+        if not self.initialized:
+            logging.info('Skipping ARC setup: not initialized')
+            return
+        logging.info('Starting ARC setup')
+        self.dep_package = dep_package
+        self.apks = apks
+        self.uiautomator = uiautomator
+        self.email_id = email_id
+        self.password = password
+        # Setup dependent packages if required
+        packages = []
+        if dep_package:
+            packages.append(dep_package)
+        if self.uiautomator:
+            packages.append(self._PKG_UIAUTOMATOR)
+        if packages:
+            logging.info('Setting up dependent package(s) %s', packages)
+            self.job.setup_dep(packages)
+
         # TODO(b/29341443): Run logcat on non ArcTest test cases too.
         with open(_VAR_LOGCAT_PATH, 'w') as f:
             self.logcat_proc = subprocess.Popen(
@@ -480,15 +519,18 @@ class ArcTest(test.test):
             apk_path = os.path.join(self.autodir, 'deps', self.dep_package)
             if self.apks:
                 for apk in self.apks:
-                    logging.info('Installing %s' % apk)
+                    logging.info('Installing %s', apk)
                     adb_install('%s/%s' % (apk_path, apk))
                 # Verify if package(s) are installed correctly
-                if not self.full_pkg_names:
+                if not full_pkg_names:
                     raise error.TestError('Package names of apks expected')
-                for pkg in self.full_pkg_names:
-                    logging.info('Check if %s is installed' % pkg)
+                for pkg in full_pkg_names:
+                    logging.info('Check if %s is installed', pkg)
                     if not is_package_installed(pkg):
                         raise error.TestError('Package %s not found' % pkg)
+                    # Make sure full_pkg_names contains installed packages only
+                    # so arc_teardown() knows what packages to uninstall.
+                    self.full_pkg_names.append(pkg)
 
         if self.uiautomator:
             path = os.path.join(self.autodir, 'deps', self._PKG_UIAUTOMATOR)
@@ -527,12 +569,12 @@ class ArcTest(test.test):
         """
         if self.full_pkg_names:
             for pkg in self.full_pkg_names:
-                logging.info('Uninstalling %s' % pkg)
+                logging.info('Uninstalling %s', pkg)
                 if not is_package_installed(pkg):
                     raise error.TestError('Package %s was not installed' % pkg)
                 adb_uninstall(pkg)
         if self.uiautomator:
-            logging.info('Uninstalling %s' % self._FULL_PKG_NAME_UIAUTOMATOR)
+            logging.info('Uninstalling %s', self._FULL_PKG_NAME_UIAUTOMATOR)
             adb_uninstall(self._FULL_PKG_NAME_UIAUTOMATOR)
         adb_shell('settings put secure install_non_market_apps 0')
         adb_shell('settings put global package_verifier_enable 1')
