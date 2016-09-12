@@ -8,10 +8,7 @@ import re
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
-try:
-    from autotest_lib.client.common_lib.cros import arc
-except ImportError:
-    from autotest_lib.client.common_lib.cros import arc_new as arc
+from autotest_lib.client.common_lib.cros import arc
 
 _SDCARD_EXEC ='/sdcard/gralloctest'
 _EXEC_DIRECTORY = '/data/executables/'
