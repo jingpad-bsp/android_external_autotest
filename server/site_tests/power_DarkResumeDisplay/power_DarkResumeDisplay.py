@@ -36,7 +36,7 @@ class power_DarkResumeDisplay(test.test):
 
         client_attr = FAFTConfig(platform)
         if client_attr.dark_resume_capable == False:
-            raise error.TestError('platform is not capable of dark resume')
+            raise error.TestNAError('platform is not capable of dark resume')
 
         cmd = host.run('test -r %s' % ERROR_FILE, ignore_status=True)
         logging.info("node_exists=%s", str(cmd.exit_status))
