@@ -8,10 +8,7 @@ import os
 import pipes
 import time
 
-try:
-    from autotest_lib.client.common_lib.cros import arc
-except ImportError:
-    from autotest_lib.client.common_lib.cros import arc_new as arc
+from autotest_lib.client.common_lib.cros import arc
 from autotest_lib.client.cros.multimedia import arc_resource_common
 
 
