@@ -713,6 +713,7 @@ class Servo(object):
         servo_version = self.get_servo_version()
         if servo_version.startswith('servo_v2'):
             self._programmer = firmware_programmer.ProgrammerV2(self)
+            self._programmer_rw = firmware_programmer.ProgrammerV2RwOnly(self)
         elif servo_version.startswith('servo_v3'):
             self._programmer = firmware_programmer.ProgrammerV3(self)
             self._programmer_rw = firmware_programmer.ProgrammerV3RwOnly(self)
