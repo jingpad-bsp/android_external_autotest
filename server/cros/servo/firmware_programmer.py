@@ -298,6 +298,16 @@ class ProgrammerV2(object):
         return result
 
 
+    def _get_flashrom_programmer(self, servo):
+        """Gets a proper flashrom programmer.
+
+        @param servo: A servo object.
+
+        @return A programmer for flashrom.
+        """
+        return FlashromProgrammer(servo)
+
+
     def _factory_bios(self, servo):
         """Instantiates and returns (bios, ec) programmers for the board.
 
@@ -309,16 +319,9 @@ class ProgrammerV2(object):
         _bios_prog = None
         _board = servo.get_board()
 
-        servo_prog_state = [
-            'spi2_buf_en:on',
-            'spi2_buf_on_flex_en:on',
-            'spi_hold:off',
-            'cold_reset:on',
-            ]
-
         logging.debug('Setting up BIOS programmer for board: %s', _board)
         if _board in self._valid_boards:
-            _bios_prog = FlashromProgrammer(servo)
+            _bios_prog = self._get_flashrom_programmer(servo)
         else:
             logging.warning('No BIOS programmer found for board: %s', _board)
 
@@ -363,6 +366,36 @@ class ProgrammerV2(object):
         """
         self._ec_programmer.prepare_programmer(image)
         self._ec_programmer.program()
+
+
+class ProgrammerV2RwOnly(ProgrammerV2):
+    """Main programmer class which provides programmer for only updating the RW
+    portion of BIOS with servo V2.
+
+    It does nothing on EC, as EC software sync on the next boot will
+    automatically overwrite the EC RW portion, using the EC RW image inside
+    the BIOS RW image.
+
+    """
+
+    def _get_flashrom_programmer(self, servo):
+        """Gets a proper flashrom programmer.
+
+        @param servo: A servo object.
+
+        @return A programmer for flashrom.
+        """
+        return FlashromProgrammer(servo, keep_ro=True)
+
+
+    def program_ec(self, image):
+        """Programs the DUT with provide ec image.
+
+        @param image: (required) location of ec image file.
+
+        """
+        # Do nothing. EC software sync will update the EC RW.
+        pass
 
 
 class ProgrammerV3(object):
