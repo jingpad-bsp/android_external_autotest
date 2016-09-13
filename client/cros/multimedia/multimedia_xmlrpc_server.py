@@ -20,6 +20,7 @@ from autotest_lib.client.cros.multimedia import audio_facade_native
 from autotest_lib.client.cros.multimedia import browser_facade_native
 from autotest_lib.client.cros.multimedia import cfm_facade_native
 from autotest_lib.client.cros.multimedia import display_facade_native
+from autotest_lib.client.cros.multimedia import kiosk_facade_native
 from autotest_lib.client.cros.multimedia import system_facade_native
 from autotest_lib.client.cros.multimedia import usb_facade_native
 from autotest_lib.client.cros.multimedia import facade_resource
@@ -48,6 +49,7 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
             'usb': usb_facade_native.USBFacadeNative(),
             'browser': browser_facade_native.BrowserFacadeNative(resource),
             'cfm': cfm_facade_native.CFMFacadeNative(resource),
+            'kiosk': kiosk_facade_native.KioskFacadeNative(resource)
         }
 
 
