@@ -17,6 +17,6 @@ def run(machine):
                  config_file='android1758-telephony-test-station.config',
                  test_file='telephony_tmo_basic',
                  additional_configs=['simcard_list.json'],
-                 acts_timeout=18000)
+                 acts_timeout=25200)
 
 parallel_simple(run, machines)
