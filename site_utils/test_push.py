@@ -34,14 +34,16 @@ import common
 try:
     from autotest_lib.frontend import setup_django_environment
     from autotest_lib.frontend.afe import models
+    from autotest_lib.frontend.afe import rpc_utils
 except ImportError:
     # Unittest may not have Django database configured and will fail to import.
     pass
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import site_utils
+from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.hosts import factory
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
@@ -49,6 +51,7 @@ AUTOTEST_DIR='/usr/local/autotest'
 CONFIG = global_config.global_config
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
+TKO = frontend_wrappers.RetryingTKO(timeout_min=0.1, delay_sec=10)
 
 MAIL_FROM = 'chromeos-test@google.com'
 BUILD_REGEX = 'R[\d]+-[\d]+\.[\d]+\.[\d]+'
@@ -96,6 +99,9 @@ EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
 EXPECTED_TEST_RESULTS_TESTBED = {'^SERVER_JOB$':      'GOOD',
                                  'testbed_DummyTest': 'GOOD',}
 
+EXPECTED_TEST_RESULTS_POWERWASH = {'platform_Powerwash': 'GOOD',
+                                   'SERVER_JOB':         'GOOD'}
+
 URL_HOST = CONFIG.get_config_value('SERVER', 'hostname', type=str)
 URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
@@ -140,16 +146,28 @@ def check_dut_inventory(required_num_duts):
                                 error_msg)
 
 
-def powerwash_dut(hostname):
-    """Powerwash the dut with the given hostname.
+def powerwash_dut_to_test_repair(hostname, timeout):
+    """Powerwash dut to test repair workflow.
 
     @param hostname: hostname of the dut.
+    @param timeout: seconds of the powerwash test to hit timeout.
+    @raise TestPushException: if DUT fail to run the test.
     """
-    host = factory.create_host(hostname)
-    host.run('echo "fast safe" > '
-             '/mnt/stateful_partition/factory_install_reset')
-    host.run('reboot')
-    host.close()
+    t = models.Test.objects.get(name='platform_Powerwash')
+    c = utils.read_file(os.path.join(common.autotest_dir, t.path))
+    job_id = rpc_utils.create_job_common(
+             'powerwash', priority=priorities.Priority.SUPER,
+             control_type='Server', control_file=c, hosts=[hostname])
+
+    start = time.time()
+    while not TKO.get_job_test_statuses_from_db(job_id):
+        if time.time() - start >= timeout:
+            raise TestPushException(
+                'Powerwash test on %s timeout after %d' % (hostname, timeout))
+        time.sleep(10)
+    verify_test_results(job_id, EXPECTED_TEST_RESULTS_POWERWASH)
+    # Kick off verify, verify will fail and a repair should be triggered.
+    AFE.reverify_hosts(hostnames=[hostname])
 
 
 def get_default_build(board='gandof'):
@@ -260,17 +278,9 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         if labels_to_remove:
             AFE.run('host_remove_labels', id=host.id, labels=labels_to_remove)
 
+        # Test repair work flow on shards
         if use_shard and not create_and_return:
-            # Let's verify the repair flow and powerwash the duts.  We can
-            # assume they're all cros hosts (valid assumption?) so powerwash
-            # will work.
-            try:
-                powerwash_dut(host.hostname)
-            except Exception as e:
-                raise TestPushException('Failed to powerwash dut %s. Make '
-                                        'sure the dut is working first. '
-                                        'Error: %s' % (host.hostname, e))
-            AFE.reverify_hosts(hostnames=[host.hostname])
+            powerwash_dut_to_test_repair(host.hostname, timeout=300)
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
     cmd = [os.path.join(current_dir, RUN_SUITE_COMMAND),
@@ -367,16 +377,25 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
     if suite_name != AU_SUITE and not use_shard and not testbed_test:
         check_dut_image(build_expected, suite_job_id)
 
-    # Find all tests and their status
+    # Verify test results are the expected results.
+    verify_test_results(suite_job_id, expected_results)
+
+
+def verify_test_results(job_id, expected_results):
+    """Verify the test results with the expected results.
+
+    @param job_id: id of the running jobs. For suite job, it is suite_job_id.
+    @param expected_results: A dictionary of test name to test result.
+    @raise TestPushException: If verify fails.
+    """
     print 'Comparing test results...'
-    TKO = frontend_wrappers.RetryingTKO(timeout_min=0.1, delay_sec=10)
-    test_views = site_utils.get_test_views_from_tko(suite_job_id, TKO)
+    test_views = site_utils.get_test_views_from_tko(job_id, TKO)
 
     mismatch_errors = []
     extra_test_errors = []
 
     found_keys = set()
-    for test_name,test_status in test_views.items():
+    for test_name, test_status in test_views.items():
         print "%s%s" % (test_name.ljust(30), test_status)
         # platform_InstallTestImage test may exist in old builds.
         if re.search('platform_InstallTestImage_SERVER_JOB$', test_name):
@@ -420,7 +439,7 @@ def test_suite(suite_name, expected_results, arguments, use_shard=False,
         summary.append('\n')
 
     # Test link to log can be loaded.
-    job_name = '%s-%s' % (suite_job_id, getpass.getuser())
+    job_name = '%s-%s' % (job_id, getpass.getuser())
     log_link = URL_PATTERN % (URL_HOST, job_name)
     try:
         urllib2.urlopen(log_link).read()
