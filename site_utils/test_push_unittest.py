@@ -11,7 +11,6 @@ import urllib2
 import common
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
-from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.cros.dynamic_suite import reporting
 # Mock the retry.retry used in the test_push before import it.
 def mock_retry(ExceptionToCheck, timeout_min, exception_to_raise=None):
@@ -48,6 +47,7 @@ class TestPushUnittests(mox.MoxTestBase):
             '.*control.dependency$':         'TEST_NA',
             '.*dummy_Fail.RetryFail$':       'FAIL',
             }
+        test_push.TKO = None
 
 
     def stub_out_methods(self, test_views):
@@ -77,9 +77,6 @@ class TestPushUnittests(mox.MoxTestBase):
                 mox.IgnoreArg(), mox.IgnoreArg()).AndReturn((1))
 
         self.mox.StubOutWithMock(site_utils, 'get_test_views_from_tko')
-        self.mox.StubOutWithMock(frontend_wrappers, 'RetryingTKO')
-        frontend_wrappers.RetryingTKO(timeout_min=0.1,
-                                      delay_sec=10).AndReturn(None)
         site_utils.get_test_views_from_tko(1, None).AndReturn(test_views)
 
 
