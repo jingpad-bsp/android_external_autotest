@@ -56,9 +56,11 @@ PASSWORD = 'fakepassword'
 class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
 
+
     def setup(self):
         os.chdir(self.srcdir)
         utils.make()
+
 
     def initialize(self, case=None, env='dm-fake', dms_name=None,
                    username=USERNAME, password=PASSWORD):
@@ -86,6 +88,7 @@ class EnterprisePolicyTest(test.test):
         self._initialize_chrome_extra_flags()
         self._web_server = None
 
+
     def cleanup(self):
         # Clean up AutoTest DM Server if using local fake server.
         if self.dms_is_fake:
@@ -99,6 +102,7 @@ class EnterprisePolicyTest(test.test):
         if self.cr:
             self.cr.close()
 
+
     def start_webserver(self, port):
         """Set up an HTTP Server on |port| to serve pages from localhost.
 
@@ -107,6 +111,7 @@ class EnterprisePolicyTest(test.test):
         """
         self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
         self._web_server.run()
+
 
     def _initialize_context(self):
         """Initialize class-level test context parameters.
@@ -147,25 +152,6 @@ class EnterprisePolicyTest(test.test):
         logging.info('  Password: %r', self.password)
         logging.info('  Test DMS Name: %r', self.dms_name)
 
-    def _initialize_chrome_extra_flags(self):
-        """Initialize flags used to create Chrome instance."""
-        # Construct DM Server URL flags if not using production server.
-        env_flag_list = []
-        if self.env != 'prod':
-            if self.dms_is_fake:
-                # Use URL provided by the fake AutoTest DM server.
-                dmserver_str = (DMSERVER % self.fake_dm_server.server_url)
-            else:
-                # Use URL defined in the DMS URL dictionary.
-                dmserver_str = (DMSERVER % (DMS_URL_DICT[self.env]))
-                if self.env == 'dm-test':
-                    dmserver_str = (dmserver_str % self.dms_name)
-
-            # Merge with other flags needed by non-prod enviornment.
-            env_flag_list = ([dmserver_str] + FLAGS_DICT[self.env])
-
-        self.extra_flags = env_flag_list
-        self.cr = None
 
     def setup_case(self, policy_name, policy_value, policies_dict):
         """Set up and confirm the preconditions of a test case.
@@ -203,65 +189,6 @@ class EnterprisePolicyTest(test.test):
                                  '(expected: %s)' %
                                  (value_shown, policy_value))
 
-    def _launch_chrome_browser(self):
-        """Launch Chrome browser and sign in."""
-        logging.info('Chrome Browser Arguments:')
-        logging.info('  extra_browser_args: %s', self.extra_flags)
-        logging.info('  username: %s', self.username)
-        logging.info('  password: %s', self.password)
-        logging.info('  gaia_login: %s', not self.dms_is_fake)
-
-        self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
-                                username=self.username,
-                                password=self.password,
-                                gaia_login=not self.dms_is_fake,
-                                disable_gaia_services=False,
-                                autotest_ext=True)
-
-    def navigate_to_url(self, url, tab=None):
-        """Navigate tab to the specified |url|. Create new tab if none given.
-
-        @param url: URL of web page to load.
-        @param tab: browser tab to load (if any).
-        @returns: browser tab loaded with web page.
-
-        """
-        logging.info('Navigating to URL: %r', url)
-        if not tab:
-            tab = self.cr.browser.tabs.New()
-            tab.Activate()
-        tab.Navigate(url, timeout=5)
-        tab.WaitForDocumentReadyStateToBeComplete()
-        return tab
-
-    def _policy_value_matches_shown(self, policy_value, value_shown):
-        """Compare |policy_value| to |value_shown| with whitespace removed.
-
-        Compare the expected policy value with the value actually shown on the
-        chrome://policy page. Before comparing, convert both values to JSON
-        formatted strings, and remove all whitespace. Whitespace must be
-        removed before comparison because Chrome processes some policy values
-        to show them in a more human readable format.
-
-        @param policy_value: Expected value to appear on chrome://policy page.
-        @param value_shown: Value as it appears on chrome://policy page.
-        @param policies_dict: Policy dictionary data for the fake DM server.
-
-        @returns: True if the strings match after removing all whitespace.
-
-        """
-        # Convert Python None or '' to JSON formatted 'null' string.
-        if value_shown is None or value_shown == '':
-            value_shown = 'null'
-        if policy_value is None or policy_value == '':
-            policy_value = 'null'
-
-        # Remove whitespace.
-        trimmed_value = ''.join(policy_value.split())
-        trimmed_shown = ''.join(value_shown.split())
-        logging.info('Trimmed policy value shown: %r (expected: %r)',
-                     trimmed_shown, trimmed_value)
-        return trimmed_value == trimmed_shown
 
     def _make_json_blob(self, policies_dict):
         """Create JSON policy blob from |policies_dict| object.
@@ -282,6 +209,7 @@ class EnterprisePolicyTest(test.test):
             "invalidation_name": "test_policy"
         }""" % (json.dumps(policies_dict), self.username)
         return policy_blob
+
 
     def _move_modeless_to_mandatory(self, policies_dict):
         """Add the 'mandatory' mode to each policy where mode was omitted.
@@ -319,6 +247,7 @@ class EnterprisePolicyTest(test.test):
 
         return collated_dict
 
+
     def _remove_null_policies(self, policies_dict):
         """Remove policy NVPs whose value is set to None or ''.
 
@@ -337,6 +266,39 @@ class EnterprisePolicyTest(test.test):
                 if policy_data[1] is None or policy_data[1] == '':
                     policies.pop(policy_data[0])
         return policies_dict_copy
+
+
+    def packed_json_string(self, policy_value):
+        """Convert |policy_value| to JSON format string with no whitespace.
+
+        @param policy_value: object containing a policy value.
+        @returns: string in JSON format, stripped of whitespace.
+
+        """
+        return ''.join(json.dumps(policy_value))
+
+
+    def _get_policy_data_for_case(self, case):
+        """Get policy value and policies dict data for specified test |case|.
+
+        Set expected |policy_value| string and |policies_dict| data to the
+        values defined for the specified test |case|. If the value specified
+        for the |case| is None, then set |policy_value| to None. Note that
+        |policy_value| will be correct only for those policies where
+        |policy_dict| contains a list of things (strings, dictionaries, etc).
+
+        @param case: Name of the test case to run.
+        @returns: policy_value string and policies_dict data.
+
+        """
+        policy_value = None
+        if self.TEST_CASES[case]:
+            policy_value = ','.join(self.TEST_CASES[case])
+        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
+        policies_dict = self.SUPPORTING_POLICIES.copy()
+        policies_dict.update(policy_dict)
+        return policy_value, policies_dict
+
 
     def _get_policy_value_shown(self, policy_tab, policy_name):
         """Get the value shown for |policy_name| from the |policy_tab| page.
@@ -378,6 +340,7 @@ class EnterprisePolicyTest(test.test):
             return None
         return value_shown
 
+
     def _get_policy_value_from_new_tab(self, policy_name):
         """Get the policy value for |policy_name| from the Policies page.
 
@@ -388,6 +351,7 @@ class EnterprisePolicyTest(test.test):
         """
         values = self._get_policy_values_from_new_tab([policy_name])
         return values[policy_name]
+
 
     def _get_policy_values_from_new_tab(self, policy_names):
         """Get a given policy value by opening a new tab then closing it.
@@ -406,6 +370,91 @@ class EnterprisePolicyTest(test.test):
 
         return values
 
+
+    def _policy_value_matches_shown(self, policy_value, value_shown):
+        """Compare |policy_value| to |value_shown| with whitespace removed.
+
+        Compare the expected policy value with the value actually shown on the
+        chrome://policy page. Before comparing, convert both values to JSON
+        formatted strings, and remove all whitespace. Whitespace must be
+        removed before comparison because Chrome processes some policy values
+        to show them in a more human readable format.
+
+        @param policy_value: Expected value to appear on chrome://policy page.
+        @param value_shown: Value as it appears on chrome://policy page.
+        @param policies_dict: Policy dictionary data for the fake DM server.
+
+        @returns: True if the strings match after removing all whitespace.
+
+        """
+        # Convert Python None or '' to JSON formatted 'null' string.
+        if value_shown is None or value_shown == '':
+            value_shown = 'null'
+        if policy_value is None or policy_value == '':
+            policy_value = 'null'
+
+        # Remove whitespace.
+        trimmed_value = ''.join(policy_value.split())
+        trimmed_shown = ''.join(value_shown.split())
+        logging.info('Trimmed policy value shown: %r (expected: %r)',
+                     trimmed_shown, trimmed_value)
+        return trimmed_value == trimmed_shown
+
+
+    def _initialize_chrome_extra_flags(self):
+        """Initialize flags used to create Chrome instance."""
+        # Construct DM Server URL flags if not using production server.
+        env_flag_list = []
+        if self.env != 'prod':
+            if self.dms_is_fake:
+                # Use URL provided by the fake AutoTest DM server.
+                dmserver_str = (DMSERVER % self.fake_dm_server.server_url)
+            else:
+                # Use URL defined in the DMS URL dictionary.
+                dmserver_str = (DMSERVER % (DMS_URL_DICT[self.env]))
+                if self.env == 'dm-test':
+                    dmserver_str = (dmserver_str % self.dms_name)
+
+            # Merge with other flags needed by non-prod enviornment.
+            env_flag_list = ([dmserver_str] + FLAGS_DICT[self.env])
+
+        self.extra_flags = env_flag_list
+        self.cr = None
+
+
+    def _launch_chrome_browser(self):
+        """Launch Chrome browser and sign in."""
+        logging.info('Chrome Browser Arguments:')
+        logging.info('  extra_browser_args: %s', self.extra_flags)
+        logging.info('  username: %s', self.username)
+        logging.info('  password: %s', self.password)
+        logging.info('  gaia_login: %s', not self.dms_is_fake)
+
+        self.cr = chrome.Chrome(extra_browser_args=self.extra_flags,
+                                username=self.username,
+                                password=self.password,
+                                gaia_login=not self.dms_is_fake,
+                                disable_gaia_services=False,
+                                autotest_ext=True)
+
+
+    def navigate_to_url(self, url, tab=None):
+        """Navigate tab to the specified |url|. Create new tab if none given.
+
+        @param url: URL of web page to load.
+        @param tab: browser tab to load (if any).
+        @returns: browser tab loaded with web page.
+
+        """
+        logging.info('Navigating to URL: %r', url)
+        if not tab:
+            tab = self.cr.browser.tabs.New()
+            tab.Activate()
+        tab.Navigate(url, timeout=5)
+        tab.WaitForDocumentReadyStateToBeComplete()
+        return tab
+
+
     def get_elements_from_page(self, tab, cmd):
         """Get collection of page elements that match the |cmd| filter.
 
@@ -422,35 +471,6 @@ class EnterprisePolicyTest(test.test):
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
 
-    def packed_json_string(self, policy_value):
-        """Convert |policy_value| to JSON format string with no whitespace.
-
-        @param policy_value: object containing a policy value.
-        @returns: string in JSON format, stripped of whitespace.
-
-        """
-        return ''.join(json.dumps(policy_value))
-
-    def _get_policy_data_for_case(self, case):
-        """Get policy value and policies dict data for specified test |case|.
-
-        Set expected |policy_value| string and |policies_dict| data to the
-        values defined for the specified test |case|. If the value specified
-        for the |case| is None, then set |policy_value| to None. Note that
-        |policy_value| will be correct only for those policies where
-        |policy_dict| contains a list of things (strings, dictionaries, etc).
-
-        @param case: Name of the test case to run.
-        @returns: policy_value string and policies_dict data.
-
-        """
-        policy_value = None
-        if self.TEST_CASES[case]:
-            policy_value = ','.join(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        return policy_value, policies_dict
 
     def run_once(self):
         """The run_once() method is required by all AutoTest tests.
