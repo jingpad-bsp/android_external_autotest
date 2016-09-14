@@ -545,7 +545,7 @@ class LogLinkUnittests(unittest.TestCase):
                                       retry_count=1,
                                       testname='mock_testname')
         # Generate a bug link and a log link when bug_info is present
-        self.assertTrue(len(log_link_a.GenerateBuildbotLinks()) == 2)
+        self.assertTrue(len(list(log_link_a.GenerateBuildbotLinks())) == 2)
 
         log_link_b = run_suite.LogLink('mock_anchor', 'mock_server',
                                       'mock_job_string_b',
@@ -553,7 +553,7 @@ class LogLinkUnittests(unittest.TestCase):
                                       retry_count=1,
                                       testname='mock_testname')
         # Generate a log link when there is no bug_info
-        self.assertTrue(len(log_link_b.GenerateBuildbotLinks()) == 1)
+        self.assertTrue(len(list(log_link_b.GenerateBuildbotLinks())) == 1)
 
 
 class SimpleTimerUnittests(unittest.TestCase):
