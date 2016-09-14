@@ -39,7 +39,7 @@ var tasks = [
     start: seconds(1),
     duration: minutes(36),
     delay: seconds(60), // A minute on each page
-    timeout: seconds(10),
+    timeout: seconds(30),
     focus: true,
     urls: URLS,
   },
@@ -50,7 +50,7 @@ var tasks = [
     start: minutes(36) + seconds(1),
     duration: minutes(12) - seconds(1),
     delay: minutes(5), // 5 minutes between full gmail refresh
-    timeout: seconds(10),
+    timeout: seconds(30),
     focus: true,
     urls: [
        'http://gmail.com',
@@ -65,7 +65,7 @@ var tasks = [
     start: minutes(36),
     duration: minutes(12),
     delay: minutes(12),
-    timeout: seconds(10),
+    timeout: seconds(30),
     focus: false,
     // Google Play Music requires MP3 decoder for playing music.
     // Fall back to BBC if the browser does not have MP3 decoder bundle.
@@ -79,7 +79,7 @@ var tasks = [
     start: minutes(48),
     duration: minutes(6),
     delay: minutes(1), // A minute on each page
-    timeout: seconds(10),
+    timeout: seconds(30),
     focus: true,
     urls: [
        ViewGDoc + '1CIvneyASuIHvxxN0WV22zikb08Us1nc93mkU0c5Azr4/edit',
