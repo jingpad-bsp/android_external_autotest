@@ -178,7 +178,7 @@ class FileSystemGetter(CacheingAndFilteringControlFileGetter):
             except OSError:
                 # Some directories under results/ like the Chrome Crash
                 # Reports will cause issues when attempted to be searched.
-                logging.error('Unable to search directory %d for control '
+                logging.error('Unable to search directory %s for control '
                               'files.', directory)
                 pass
         if not self._files:
