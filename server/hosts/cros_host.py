@@ -42,7 +42,12 @@ from autotest_lib.server.hosts import plankton_host
 from autotest_lib.server.hosts import servo_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
-from chromite.lib import metrics
+# In case cros_host is being ran via SSP on an older Moblab version with an
+# older chromite version.
+try:
+    from chromite.lib import metrics
+except:
+    metrics = None
 
 CONFIG = global_config.global_config
 ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = CONFIG.get_config_value(
@@ -167,12 +172,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
     # be removed.  Thus, if this file exists, it indicates that we've
     # tried and failed in a previous attempt to update.
     PROVISION_FAILED = '/var/tmp/provision_failed'
-
-
-    _REBOOT_COUNT_METRIC = metrics.Counter(
-                'chromeos/autotest/autoserv/reboot_count')
-    _REBOOT_DURATION_METRIC = metrics.SecondsDistribution(
-                'chromeos/autotest/autoserv/reboot_duration')
 
 
     @staticmethod
@@ -1441,8 +1440,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise
         finally:
             duration = int(time.time() - t0)
-            self._REBOOT_COUNT_METRIC.increment(fields=metric_fields)
-            self._REBOOT_DURATION_METRIC.add(duration, fields=metric_fields)
+            if metrics:
+                metrics.Counter(
+                        'chromeos/autotest/autoserv/reboot_count').increment(
+                        fields=metric_fields)
+                metrics.SecondsDistribution(
+                        'chromeos/autotest/autoserv/reboot_duration').add(
+                        duration, fields=metric_fields)
 
 
     def suspend(self, **dargs):
