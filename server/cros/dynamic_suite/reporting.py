@@ -292,6 +292,8 @@ class PoolHealthBug(Bug):
 
     _POOL_HEALTH_LABELS = global_config.global_config.get_config_value(
             'BUG_REPORTING', 'pool_health_labels', type=list, default=[])
+    _POOL_HEALTH_COMPONENTS = global_config.global_config.get_config_value(
+            'BUG_REPORTING', 'pool_health_components', type=list, default=[])
     _CC_ADDRESS = global_config.global_config.get_config_value(
             'BUG_REPORTING', 'pool_health_cc', type=list, default=[])
     _SUMMARY_TEMPLATE = textwrap.dedent("""\
@@ -331,7 +333,7 @@ class PoolHealthBug(Bug):
         self.owner = ''
         self.cc = self._CC_ADDRESS
         self.labels = self._POOL_HEALTH_LABELS
-        self.components = []
+        self.components = self._POOL_HEALTH_COMPONENTS
 
 
     def title(self):
