@@ -556,32 +556,12 @@ class Servo(object):
     def probe_host_usb_dev(self):
         """Probe the USB disk device plugged-in the servo from the host side.
 
-        It tries to switch the USB mux to make the host unable to see the
-        USB disk and compares the result difference.
+        It uses servod to discover if there is a usb device attached to it.
 
         Returns:
           A string of USB disk path, like '/dev/sdb', or None if not existed.
         """
-        cmd = 'ls /dev/sd[a-z]'
-        original_value = self.get_usbkey_direction()
-
-        # Make the host unable to see the USB disk.
-        self.switch_usbkey('off')
-        no_usb_set = set(self.system_output(cmd, ignore_status=True).split())
-
-        # Make the host able to see the USB disk.
-        self.switch_usbkey('host')
-        has_usb_set = set(self.system_output(cmd, ignore_status=True).split())
-
-        # Back to its original value.
-        if original_value != self.get_usbkey_direction():
-            self.switch_usbkey(original_value)
-
-        diff_set = has_usb_set - no_usb_set
-        if len(diff_set) == 1:
-            return diff_set.pop()
-        else:
-            return None
+        return self._server.probe_host_usb_dev() or None
 
 
     def image_to_servo_usb(self, image_path=None,
