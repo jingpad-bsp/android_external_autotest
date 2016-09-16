@@ -1936,7 +1936,7 @@ class AndroidBuildServer(ImageServerBase):
 
 
     def trigger_download(self, target, build_id, branch, artifacts=None,
-                         os='android', synchronous=True):
+                         files='', os='android', synchronous=True):
         """Tell the devserver to download and stage an Android build.
 
         Tells the devserver to fetch an Android build from the image storage
@@ -1954,6 +1954,7 @@ class AndroidBuildServer(ImageServerBase):
         @param branch: Branch of the android build to stage.
         @param artifacts: A string of artifacts separated by comma. If None,
                use the default artifacts for Android or Brillo build.
+        @param files: String of file seperated by commas.
         @param os: OS artifacts to download (android/brillo).
         @param synchronous: if True, waits until all components of the image are
                staged before returning.
@@ -1970,7 +1971,7 @@ class AndroidBuildServer(ImageServerBase):
             artifacts = (
                 android_utils.AndroidArtifacts.get_artifacts_for_reimage(
                         board, os))
-        self._trigger_download(build, artifacts, files='',
+        self._trigger_download(build, artifacts, files=files,
                                synchronous=synchronous, **android_build_info)
 
 
