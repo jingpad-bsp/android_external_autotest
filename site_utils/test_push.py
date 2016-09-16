@@ -160,11 +160,13 @@ def powerwash_dut_to_test_repair(hostname, timeout):
              'powerwash', priority=priorities.Priority.SUPER,
              control_type='Server', control_file=c, hosts=[hostname])
 
-    start = time.time()
+    end = time.time() + timeout
     while not TKO.get_job_test_statuses_from_db(job_id):
-        if time.time() - start >= timeout:
+        if time.time() >= end:
+            AFE.run('abort_host_queue_entries', job=job_id)
             raise TestPushException(
-                'Powerwash test on %s timeout after %d' % (hostname, timeout))
+                'Powerwash test on %s timeout after %ds, abort it.' %
+                (hostname, timeout))
         time.sleep(10)
     verify_test_results(job_id, EXPECTED_TEST_RESULTS_POWERWASH)
     # Kick off verify, verify will fail and a repair should be triggered.
