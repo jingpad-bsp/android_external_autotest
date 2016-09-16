@@ -116,8 +116,8 @@ class DedupingScheduler(object):
             start_time = str(datetime.datetime.now() -
                              datetime.timedelta(days=SEARCH_JOB_MAX_DAYS))
             return not self._afe.get_jobs(
-                    name__startswith=test_source_build,
-                    name__endswith='control.'+suite,
+                    name__istartswith=test_source_build,
+                    name__iendswith='control.'+suite,
                     created_on__gte=start_time,
                     min_rpc_timeout=_MIN_RPC_TIMEOUT)
         except Exception as e:
