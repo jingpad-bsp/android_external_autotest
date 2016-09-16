@@ -117,7 +117,8 @@ IGNORE_MISSING_TESTS = [
     'login_LoginSuccess']
 
 # Save all run_suite command output.
-run_suite_output = []
+manager = multiprocessing.Manager()
+run_suite_output = manager.list()
 
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
