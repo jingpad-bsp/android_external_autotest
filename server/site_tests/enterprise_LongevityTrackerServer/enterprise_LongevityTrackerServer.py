@@ -2,20 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=invalid-name
-# pylint: disable=missing-docstring
-# pylint: disable=module-missing-docstring
-# pylint: disable=docstring-section-name
-# pylint: disable=no-init
-
 import os
 import shutil
 
 from autotest_lib.client.common_lib.cros import tpm_utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import afe_utils
 from autotest_lib.server import autotest
 from autotest_lib.server import site_utils
 from autotest_lib.server import test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 class enterprise_LongevityTrackerServer(test.test):
@@ -39,20 +35,33 @@ class enterprise_LongevityTrackerServer(test.test):
             if os.path.isfile(full_file_name):
                 shutil.copy(full_file_name, self.resultsdir)
 
+
     def run_once(self, host=None, kiosk_app_attributes=None):
         self.client = host
+        app_name = None
+        ext_id = None
         app_config_id = None
-        tpm_utils.ClearTPMOwnerRequest(self.client)
 
         app_config_id = site_utils.get_label_from_afe(
                 self.client.hostname, 'app_config_id', afe_utils.AFE)
         if app_config_id and app_config_id.startswith(':'):
             app_config_id = app_config_id[1:]
+
+        if kiosk_app_attributes:
+            app_name, ext_id = kiosk_app_attributes.rstrip().split(':')[:2]
+
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, no_chrome=True)
+        self.kiosk_facade = factory.create_kiosk_facade()
+
+        tpm_utils.ClearTPMOwnerRequest(self.client)
+
         autotest.Autotest(self.client).run_test(
                 'enterprise_KioskEnrollment',
                 kiosk_app_attributes=kiosk_app_attributes,
-                app_config_id=app_config_id,
                 check_client_result=True)
+        if app_name == 'riseplayer':
+            self.kiosk_facade.config_rise_player(ext_id, app_config_id)
 
         for cycle in range(5):
             autotest.Autotest(self.client).run_test(
