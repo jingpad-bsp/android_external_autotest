@@ -17,6 +17,7 @@ from autotest_lib.server.cros.multimedia import bluetooth_hid_facade_adapter
 from autotest_lib.server.cros.multimedia import browser_facade_adapter
 from autotest_lib.server.cros.multimedia import cfm_facade_adapter
 from autotest_lib.server.cros.multimedia import display_facade_adapter
+from autotest_lib.server.cros.multimedia import kiosk_facade_adapter
 from autotest_lib.server.cros.multimedia import system_facade_adapter
 from autotest_lib.server.cros.multimedia import usb_facade_adapter
 
@@ -31,13 +32,16 @@ class _Method:
 
     The call_method is the method which does refer to the latest RPC proxy.
     """
+
     def __init__(self, call_method, name):
         self.__call_method = call_method
         self.__name = name
 
+
     def __getattr__(self, name):
         # Support a nested method.
         return _Method(self.__call_method, "%s.%s" % (self.__name, name))
+
 
     def __call__(self, *args, **dargs):
         return self.__call_method(self.__name, *args, **dargs)
@@ -84,7 +88,8 @@ class RemoteFacadeProxy(object):
         @return: The return value of the RPC method.
         """
         try:
-            # TODO(ihf): This logs all traffic from server to client. Make the spew optional.
+            # TODO(ihf): This logs all traffic from server to client. Make
+            # the spew optional.
             rpc = (
                 '%s(%s, %s)' %
                 (pprint.pformat(name), pprint.pformat(args),
@@ -167,8 +172,8 @@ class RemoteFacadeFactory(object):
         """
         self._client = host
         if install_autotest:
-            # Make sure the client library is on the device so that the proxy code
-            # is there when we try to call it.
+            # Make sure the client library is on the device so that
+            # the proxy code is there when we try to call it.
             client_at = autotest.Autotest(self._client)
             client_at.install()
         self._proxy = RemoteFacadeProxy(self._client, no_chrome)
@@ -216,4 +221,10 @@ class RemoteFacadeFactory(object):
     def create_cfm_facade(self):
         """"Creates a cfm facade object."""
         return cfm_facade_adapter.CFMFacadeRemoteAdapter(
+                self._client, self._proxy)
+
+
+    def create_kiosk_facade(self):
+         """"Creates a kiosk facade object."""
+         return kiosk_facade_adapter.KioskFacadeRemoteAdapter(
                 self._client, self._proxy)
