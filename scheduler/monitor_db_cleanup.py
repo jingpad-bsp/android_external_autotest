@@ -165,10 +165,10 @@ class UserCleanup(PeriodicCleanup):
         # treats all IN subqueries as dependent, so this optimizes much
         # better
         self._db.execute("""
-            DELETE ihq FROM afe_ineligible_host_queues ihq
-            LEFT JOIN (SELECT DISTINCT job_id FROM afe_host_queue_entries
-                       WHERE NOT complete) hqe
-            USING (job_id) WHERE hqe.job_id IS NULL""")
+                DELETE ihq FROM afe_ineligible_host_queues ihq
+                WHERE NOT EXISTS
+                    (SELECT job_id FROM afe_host_queue_entries hqe
+                     WHERE NOT hqe.complete AND hqe.job_id = ihq.job_id)""")
 
 
     def _should_reverify_hosts_now(self):
