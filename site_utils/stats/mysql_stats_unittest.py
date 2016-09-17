@@ -14,7 +14,7 @@ class MysqlStatsTest(unittest.TestCase):
     def testQueryAndEmit(self):
         """Test for QueryAndEmit."""
         cursor = mock.Mock()
-        cursor.execute = mock.Mock(return_value=0)
+        cursor.fetchone.return_value = ('Column-name', 0)
 
         # This shouldn't raise an exception.
         mysql_stats.QueryAndEmit(cursor)

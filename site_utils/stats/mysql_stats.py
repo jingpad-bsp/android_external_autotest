@@ -39,11 +39,11 @@ EMITTED_STATUSES = [
 
 def main():
     """Sets up ts_mon and repeatedly queries MySQL stats"""
-    ts_mon_config.SetupTsMonGlobalState('mysql_stats', indirect=True)
-
     db = MySQLdb.connect('localhost', DEFAULT_USER, DEFAULT_PASSWD)
     cursor = db.cursor()
-    QueryLoop(cursor)
+
+    with ts_mon_config.SetupTsMonGlobalState('mysql_stats', indirect=True):
+      QueryLoop(cursor)
 
 
 def QueryLoop(cursor):
@@ -70,7 +70,8 @@ def QueryAndEmit(cursor):
         @param s: Name of the status variable.
         @returns The mysql query result.
         """
-        return cursor.execute('SHOW GLOBAL STATUS LIKE "%s";' % s)
+        cursor.execute('SHOW GLOBAL STATUS LIKE "%s";' % s)
+        return cursor.fetchone()[1]
 
     for status in EMITTED_STATUSES:
         metrics.Counter('chromeos/autotest/afe_db/%s' % status.lower()).set(
