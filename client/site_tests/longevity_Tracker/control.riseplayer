@@ -9,7 +9,6 @@ TIME = 'LONG'
 TEST_CATEGORY = 'Performance'
 TEST_CLASS = 'performance'
 TEST_TYPE = 'client'
-ATTRIBUTES = 'suite:longevity'
 DEPENDENCIES = 'riseplayer'
 
 DOC = '''
