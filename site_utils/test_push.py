@@ -119,6 +119,7 @@ IGNORE_MISSING_TESTS = [
 # Save all run_suite command output.
 manager = multiprocessing.Manager()
 run_suite_output = manager.list()
+all_suite_ids = manager.list()
 
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
@@ -315,6 +316,7 @@ def do_run_suite(suite_name, arguments, use_shard=False,
             m = re.match(SUITE_JOB_START_INFO_REGEX, line)
             if m and m.group(1):
                 suite_job_id = int(m.group(1))
+                all_suite_ids.append(suite_job_id)
 
     if not suite_job_id:
         raise TestPushException('Failed to retrieve suite job ID.')
@@ -503,6 +505,7 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
                       arguments))
+        push_to_prod_suite.daemon = True
         push_to_prod_suite.start()
 
         # TODO(dshi): Remove following line after crbug.com/267644 is fixed.
@@ -511,12 +514,14 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, AU_SUITE, EXPECTED_TEST_RESULTS_AU,
                       arguments))
+        au_suite.daemon = True
         au_suite.start()
 
         shard_suite = multiprocessing.Process(
                 target=test_suite_wrapper,
                 args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
                       arguments, True))
+        shard_suite.daemon = True
         shard_suite.start()
 
         # suite test with --create_and_return flag
@@ -524,6 +529,7 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
                       arguments, True, True))
+        asynchronous_suite.daemon = True
         asynchronous_suite.start()
 
         # Test suite for testbed
@@ -531,6 +537,7 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
                       arguments, False, False, True))
+        testbed_suite.daemon = True
         testbed_suite.start()
 
         while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
@@ -549,6 +556,10 @@ def main():
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
+        # Abort all running jobs.
+        for suite_id in all_suite_ids:
+            if AFE.get_jobs(id=suite_id, finished=False):
+                AFE.run('abort_host_queue_entries', job=suite_id)
         # Send out email about the test failure.
         if arguments.email:
             gmail_lib.send_email(
