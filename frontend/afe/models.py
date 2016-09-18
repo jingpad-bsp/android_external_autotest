@@ -1263,12 +1263,9 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
         '  (t1.id = t2.job_id AND t2.complete != 1 AND t2.active != 1 '
         '   %(check_known_jobs)s) '
         'LEFT OUTER JOIN afe_jobs_dependency_labels t3 ON (t1.id = t3.job_id) '
-        'WHERE (t3.label_id IN  '
-        '  (SELECT label_id FROM afe_shards_labels '
-        '   WHERE shard_id = %(shard_id)s) '
-        '  OR t2.meta_host IN '
-        '  (SELECT label_id FROM afe_shards_labels '
-        '   WHERE shard_id = %(shard_id)s))'
+        'JOIN afe_shards_labels t4 '
+        '  ON (t4.label_id = t3.label_id OR t4.label_id = t2.meta_host) '
+        'WHERE t4.shard_id = %(shard_id)s'
         )
 
     # Jobs can be created with assigned hosts and have no dependency
