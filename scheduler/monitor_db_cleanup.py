@@ -88,12 +88,11 @@ class UserCleanup(PeriodicCleanup):
         """
         logging.info('Aborting all jobs that have passed maximum runtime')
         rows = self._db.execute("""
-            SELECT hqe.id
-            FROM afe_host_queue_entries AS hqe
-            INNER JOIN afe_jobs ON (hqe.job_id = afe_jobs.id)
-            WHERE NOT hqe.complete AND NOT hqe.aborted AND
-            hqe.started_on + INTERVAL afe_jobs.max_runtime_mins MINUTE <
-            NOW()""")
+            SELECT hqe.id FROM afe_host_queue_entries AS hqe
+            WHERE NOT hqe.complete AND NOT hqe.aborted AND EXISTS
+            (select * from afe_jobs where hqe.job_id=afe_jobs.id and
+             hqe.started_on + INTERVAL afe_jobs.max_runtime_mins MINUTE < NOW())
+            """)
         query = models.HostQueueEntry.objects.filter(
             id__in=[row[0] for row in rows])
         for queue_entry in query.distinct():
