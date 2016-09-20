@@ -268,6 +268,16 @@ class power_LoadTest(test.test):
             # the power test extension will report its status here
             latch = self._testServer.add_wait_url('/status')
 
+            # this starts a thread in the server that listens to log
+            # information from the script
+            script_logging = self._testServer.add_wait_url(url='/log')
+
+            # dump any log entry that comes from the script into
+            # the debug log
+            self._testServer.add_url_handler(url='/log',\
+                handler_func=(lambda handler, forms, loop_counter=i:\
+                    _extension_log_handler(handler, forms, loop_counter)))
+
             # reset backlight level since powerd might've modified it
             # based on ambient light
             self._set_backlight_level()
@@ -280,6 +290,7 @@ class power_LoadTest(test.test):
             low_battery = self._do_wait(self._verbose, self._loop_time,
                                         latch)
 
+            script_logging.set();
             self._plog.checkpoint('loop%d' % (i), start_time)
             self._tlog.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
@@ -289,6 +300,7 @@ class power_LoadTest(test.test):
                 logging.info('Exiting due to low battery')
                 break
 
+        # done with logging from the script, so we can collect that thread
         t1 = time.time()
         psr.refresh()
         self._tmp_keyvals['minutes_battery_life_tested'] = (t1 - t0) / 60
@@ -479,7 +491,6 @@ class power_LoadTest(test.test):
 
         return low_battery
 
-
     def _set_backlight_level(self):
         self._backlight.set_default()
         # record brightness level
@@ -654,3 +665,21 @@ class power_LoadTest(test.test):
         self._keyboard_backlight.set_level(level_to_set)
         self._tmp_keyvals['percent_kbd_backlight'] = \
             self._keyboard_backlight.get_percent()
+
+def _extension_log_handler(handler, form, loop_number):
+    """
+    We use the httpd library to allow us to log whatever we
+    want from the extension JS script into the log files.
+
+    This method is provided to the server as a handler for
+    all requests that come for the log url in the testServer
+
+    unused parameter, because httpd passes the server itself
+    into the handler.
+    """
+    if form:
+        for field in form.keys():
+            logging.debug("[extension] @ loop_%d %s", loop_number, form[field].value)
+            # we don't want to add url information to our keyvals.
+            # httpd adds them automatically so we remove them again
+            del handler.server._form_entries[field]
