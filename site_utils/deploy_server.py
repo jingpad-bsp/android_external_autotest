@@ -117,6 +117,8 @@ def parse_arguments(args):
             help='What is the main server for this installation? (cautotest).')
     parser.add_argument('--update_push_servers', action='store_true',
             help='Indicate to update test_push servers.')
+    parser.add_argument('--force_update', action='store_true',
+            help='Force to run update commands for afe, tko, build_externals')
     parser.add_argument('--dryrun', action='store_true',
             help='Don\'t actually run remote commands.')
     parser.add_argument('args', nargs=argparse.REMAINDER,
