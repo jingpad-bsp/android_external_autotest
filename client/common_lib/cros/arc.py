@@ -55,13 +55,14 @@ def adb_connect():
     wait_for_adb_ready() instead."""
     if not is_android_booted():
         return False
-    utils.system_output('adb connect localhost:22')
+    if utils.system('adb connect localhost:22', ignore_status=True) != 0:
+        return False
     return is_adb_connected()
 
 
 def is_adb_connected():
     """Return true if adb is connected to the container."""
-    output = utils.system_output('adb get-state')
+    output = utils.system_output('adb get-state', ignore_status=True)
     logging.debug('adb get-state: %s', output)
     return output.strip() == 'device'
 
@@ -85,7 +86,7 @@ def wait_for_adb_ready(timeout=_WAIT_FOR_ADB_READY):
     _android_shell('setprop sys.usb.config mtp,adb')
 
     # Kill existing adb server to ensure that a full reconnect is performed.
-    utils.system_output('adb kill-server')
+    utils.system('adb kill-server', ignore_status=True)
 
     exception = error.TestFail('adb is not ready in %d seconds.' % timeout)
     utils.poll_for_condition(adb_connect,
