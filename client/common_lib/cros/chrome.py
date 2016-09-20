@@ -165,19 +165,19 @@ class Chrome(object):
         for i in range(num_tries):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
-                network_controller = \
+                self.network_controller = \
                     browser_to_create.platform.network_controller
                 # TODO(achuith): Remove if condition after catapult:#2584 has
                 # landed and PFQ has rolled. crbug.com/639730.
-                if hasattr(network_controller, 'InitializeIfNeeded'):
-                    network_controller.InitializeIfNeeded()
+                if hasattr(self.network_controller, 'InitializeIfNeeded'):
+                    self.network_controller.InitializeIfNeeded()
                 self._browser = browser_to_create.Create(finder_options)
                 if is_arc_available():
                     if not disable_arc_opt_in:
                         arc_util.opt_in(self.browser)
                     arc_util.post_processing_after_browser(self)
                 break
-            except (exceptions.LoginException) as e:
+            except exceptions.LoginException as e:
                 logging.error('Timed out logging in, tries=%d, error=%s',
                               i, repr(e))
                 if i == num_tries-1:
@@ -264,7 +264,7 @@ class Chrome(object):
         """
         try:
             func()
-        except (Error):
+        except Error:
             return True
         return False
 
@@ -301,6 +301,13 @@ class Chrome(object):
 
 
     def close(self):
+        try:
+            if hasattr(self.network_controller, 'Close'):
+                self.network_controller.Close()
+                logging.info('Network controller is closed')
+        except Error as e:
+            logging.error('Failed to close network controller, error=%s', e)
+
         """Closes the browser."""
         try:
             if is_arc_available():
