@@ -93,8 +93,16 @@ class ProjectHostingApiClient():
         if not oauth_credentials:
             raise ProjectHostingApiException('No oauth_credentials is provided.')
 
-        storage = oauth_client_fileio.Storage(oauth_credentials)
-        credentials = storage.get()
+        # TODO(akeshet): This try-except is due to incompatibility of phapi_lib
+        # with oauth2client > 2. Until this is fixed, this is expected to fail
+        # and bug filing will be effectively disabled. crbug.com/648489
+        try:
+          storage = oauth_client_fileio.Storage(oauth_credentials)
+          credentials = storage.get()
+        except Exception as e:
+          raise ProjectHostingApiException('Incompaible credentials format, '
+                                           'or other exception. Will not file '
+                                           'bugs.')
         if credentials is None or credentials.invalid:
             raise ProjectHostingApiException('Invalid credentials for Project '
                                              'Hosting api. Cannot file bugs.')
