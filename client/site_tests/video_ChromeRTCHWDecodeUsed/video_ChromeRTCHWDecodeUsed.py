@@ -2,12 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from contextlib import closing
-import logging
 import os
 
 from autotest_lib.client.bin import test
-from autotest_lib.client.common_lib import file_utils, utils
+from autotest_lib.client.common_lib import error, file_utils, utils
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.video import histogram_verifier
 
@@ -26,6 +24,28 @@ class video_ChromeRTCHWDecodeUsed(test.test):
     version = 1
 
 
+    def is_skipping_test(self):
+        """Determine whether this test should skip."""
+        blacklist = [
+                # (board, milestone); None if don't care.
+
+                # kevin did support hw decode, but not ready in M54.
+                ('kevin', 54),
+
+                # temporarily disabled
+                ('peach_pit', None),
+        ]
+
+        entry = (utils.get_current_board(), utils.get_chrome_milestone())
+        for black_entry in blacklist:
+            for i, to_match in enumerate(black_entry):
+                if to_match and str(to_match) != entry[i]:
+                    break
+            else:
+                return True
+
+        return False
+
     def start_loopback(self, cr):
         """
         Opens WebRTC loopback page.
@@ -40,11 +60,8 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
     def run_once(self, video_name, histogram_name, histogram_bucket_val,
                  arc_mode=None):
-        boards_to_skip = ['peach_pit']
-        dut_board = utils.get_current_board()
-        if dut_board in boards_to_skip:
-            logging.info("Skipping test run on this board.")
-            return
+        if self.is_skipping_test():
+            raise error.TestNAError('Skipping test run on this board.')
 
         # Download test video.
         url = DOWNLOAD_BASE + video_name
