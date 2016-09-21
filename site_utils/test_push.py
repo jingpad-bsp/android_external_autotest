@@ -14,7 +14,7 @@ To verify if prod branch can be pushed to lab, run following command in
 chromeos-autotest.cbf server:
 /usr/local/autotest/site_utils/test_push.py -e someone@company.com
 
-The script uses latest gandof canary build as test build by default.
+The script uses latest gandof stable build as test build by default.
 
 """
 
@@ -58,7 +58,7 @@ BUILD_REGEX = 'R[\d]+-[\d]+\.[\d]+\.[\d]+'
 RUN_SUITE_COMMAND = 'run_suite.py'
 PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
-AU_SUITE = 'paygen_au_canary'
+AU_SUITE = 'paygen_au_beta'
 TESTBED_SUITE = 'testbed_push'
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
@@ -92,8 +92,8 @@ EXPECTED_TEST_RESULTS_DUMMY = {'^SERVER_JOB$':       'GOOD',
                                'dummy_Fail.NAError': 'TEST_NA',}
 
 EXPECTED_TEST_RESULTS_AU = {'SERVER_JOB$':                        'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_canary_delta.*': 'GOOD',
-         'autoupdate_EndToEndTest.paygen_au_canary_full.*':  'GOOD',
+         'autoupdate_EndToEndTest.paygen_au_beta_delta.*': 'GOOD',
+         'autoupdate_EndToEndTest.paygen_au_beta_full.*':  'GOOD',
          }
 
 EXPECTED_TEST_RESULTS_TESTBED = {'^SERVER_JOB$':      'GOOD',
@@ -205,12 +205,12 @@ def parse_arguments():
                         default='quawks',
                         help='Default is quawks.')
     parser.add_argument('-i', '--build', dest='build', default=None,
-                        help='Default is the latest canary build of given '
-                             'board. Must be a canary build, otherwise AU test '
-                             'will fail. (ex: gandolf-release/R53-8397.0.0)')
+                        help='Default is the latest stale build of given '
+                             'board. Must be a stable build, otherwise AU test '
+                             'will fail. (ex: gandolf-release/R54-8743.25.0)')
     parser.add_argument('-si', '--shard_build', dest='shard_build', default=None,
-                        help='Default is the latest canary build of given '
-                             'board. Must be a canary build, otherwise AU test '
+                        help='Default is the latest stable build of given '
+                             'board. Must be a stable build, otherwise AU test '
                              'will fail.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
                         help='Android board to test.')
@@ -234,7 +234,7 @@ def parse_arguments():
 
     arguments = parser.parse_args(sys.argv[1:])
 
-    # Get latest canary build as default build.
+    # Get latest stable build as default build.
     if not arguments.build:
         arguments.build = get_default_build(arguments.board)
     if not arguments.shard_build:
