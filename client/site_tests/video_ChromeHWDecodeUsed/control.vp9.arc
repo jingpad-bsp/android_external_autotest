@@ -25,5 +25,5 @@ DOC = """
 This test verifies VP9 video decode acceleration works.
 """
 
-job.run_test('video_ChromeHWDecodeUsed', is_mse=0, video_file='720.webm',
-             arc_mode=ARC_MODE)
+job.run_test('video_ChromeHWDecodeUsed', codec='vp9', is_mse=0,
+             video_file='720.webm', arc_mode=ARC_MODE)
