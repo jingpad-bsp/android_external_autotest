@@ -2,6 +2,7 @@
 
 import common
 
+import collections
 import mock
 import unittest
 
@@ -17,7 +18,7 @@ class MysqlStatsTest(unittest.TestCase):
         cursor.fetchone.return_value = ('Column-name', 0)
 
         # This shouldn't raise an exception.
-        mysql_stats.QueryAndEmit(cursor)
+        mysql_stats.QueryAndEmit(collections.defaultdict(lambda: 0), cursor)
 
 
 if __name__ == '__main__':
