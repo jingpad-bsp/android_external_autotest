@@ -38,11 +38,18 @@ This script exits with one of the following codes:
 6- INVALID_OPTIONS: If options are not valid.
 """
 
-
+import argparse
+import ast
 from collections import namedtuple
-import datetime as datetime_base
-import ast, getpass, json, logging, optparse, os, re, sys, time
 from datetime import datetime
+from datetime import timedelta
+import getpass
+import json
+import logging
+import os
+import re
+import sys
+import time
 
 import common
 from autotest_lib.client.common_lib import control_data
@@ -98,131 +105,146 @@ def get_worse_code(code1, code2):
     return code1 if SEVERITY[code1] >= SEVERITY[code2] else code2
 
 
-def parse_options():
-    #pylint: disable-msg=C0111
-    usage = "usage: %prog [options]"
-    parser = optparse.OptionParser(usage=usage)
-    parser.add_option("-b", "--board", dest="board")
-    parser.add_option("-i", "--build", dest="build")
-    parser.add_option("-w", "--web", dest="web", default=None,
-                      help="Address of a webserver to receive suite requests.")
-    parser.add_option('--firmware_rw_build', dest='firmware_rw_build',
-                      default=None,
-                      help='Firmware build to be installed in dut RW firmware.')
-    parser.add_option('--firmware_ro_build', dest='firmware_ro_build',
-                      default=None,
-                      help='Firmware build to be installed in dut RO firmware.')
-    parser.add_option('--test_source_build', dest='test_source_build',
-                      default=None,
-                      help=('Build that contains the test code, '
-                            'e.g., it can be the value of `--build`, '
-                            '`--firmware_rw_build` or `--firmware_ro_build` '
-                            'arguments. Default is None, that is, use the test '
-                            'code from `--build` (CrOS image)'))
+def bool_str(x):
+    """Boolean string type for option arguments.
+
+    @param x: string representation of boolean value.
+
+    """
+    if x == 'True':
+        return True
+    elif x == 'False':
+        return False
+    else:
+        raise argparse.ArgumentTypeError(
+            '%s is not one of True or False' % (x,))
+
+
+def make_parser():
+    """Make ArgumentParser instance for run_suite.py."""
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [options]")
+    parser.add_argument("-b", "--board", dest="board")
+    parser.add_argument("-i", "--build", dest="build")
+    parser.add_argument(
+        "-w", "--web", dest="web", default=None,
+        help="Address of a webserver to receive suite requests.")
+    parser.add_argument(
+        '--firmware_rw_build', dest='firmware_rw_build', default=None,
+        help='Firmware build to be installed in dut RW firmware.')
+    parser.add_argument(
+        '--firmware_ro_build', dest='firmware_ro_build', default=None,
+        help='Firmware build to be installed in dut RO firmware.')
+    parser.add_argument(
+        '--test_source_build', dest='test_source_build', default=None,
+        help=('Build that contains the test code, '
+              'e.g., it can be the value of `--build`, '
+              '`--firmware_rw_build` or `--firmware_ro_build` '
+              'arguments. Default is None, that is, use the test '
+              'code from `--build` (CrOS image)'))
     #  This should just be a boolean flag, but the autotest "proxy" code
     #  can't handle flags that don't take arguments.
-    parser.add_option("-n", "--no_wait", dest="no_wait", default="False",
-                      help='Must pass "True" or "False" if used.')
+    parser.add_argument(
+        "-n", "--no_wait", dest="no_wait", default=False, type=bool_str,
+        help='Must pass "True" or "False" if used.')
     # If you really want no pool, --pool="" will do it. USE WITH CARE.
-    parser.add_option("-p", "--pool", dest="pool", default="suites")
-    parser.add_option("-s", "--suite_name", dest="name")
-    parser.add_option("-a", "--afe_timeout_mins", type="int",
-                      dest="afe_timeout_mins", default=30)
-    parser.add_option("-t", "--timeout_mins", type="int",
-                      dest="timeout_mins", default=1440)
-    parser.add_option("-x", "--max_runtime_mins", type="int",
-                      dest="max_runtime_mins", default=1440)
-    parser.add_option("-d", "--delay_sec", type="int",
-                      dest="delay_sec", default=10)
-    parser.add_option("-m", "--mock_job_id", dest="mock_job_id",
-                      help="Attach to existing job id for already running "
-                           "suite, and creates report.")
+    parser.add_argument("-p", "--pool", dest="pool", default="suites")
+    parser.add_argument("-s", "--suite_name", dest="name")
+    parser.add_argument("-a", "--afe_timeout_mins", type=int,
+                        dest="afe_timeout_mins", default=30)
+    parser.add_argument("-t", "--timeout_mins", type=int,
+                        dest="timeout_mins", default=1440)
+    parser.add_argument("-x", "--max_runtime_mins", type=int,
+                        dest="max_runtime_mins", default=1440)
+    parser.add_argument("-d", "--delay_sec", type=int,
+                        dest="delay_sec", default=10)
+    parser.add_argument("-m", "--mock_job_id", dest="mock_job_id",
+                        help="Attach to existing job id for already running "
+                        "suite, and creates report.")
     # NOTE(akeshet): This looks similar to --no_wait, but behaves differently.
     # --no_wait is passed in to the suite rpc itself and affects the suite,
     # while this does not.
-    parser.add_option("-c", "--create_and_return", dest="create_and_return",
-                      action="store_true",
-                      help="Create the suite and print the job id, then "
-                           "finish immediately.")
-    parser.add_option("-u", "--num", dest="num", type="int", default=None,
-                      help="Run on at most NUM machines.")
+    parser.add_argument("-c", "--create_and_return", dest="create_and_return",
+                        action="store_true",
+                        help="Create the suite and print the job id, then "
+                        "finish immediately.")
+    parser.add_argument("-u", "--num", dest="num", type=int, default=None,
+                        help="Run on at most NUM machines.")
     #  Same boolean flag issue applies here.
-    parser.add_option("-f", "--file_bugs", dest="file_bugs", default='False',
-                      help='File bugs on test failures. Must pass "True" or '
-                           '"False" if used.')
-    parser.add_option("-l", "--bypass_labstatus", dest="bypass_labstatus",
-                      action="store_true", help='Bypass lab status check.')
+    parser.add_argument(
+        "-f", "--file_bugs", dest="file_bugs", default=False, type=bool_str,
+        help=('File bugs on test failures. Must pass "True" or '
+              '"False" if used.'))
+    parser.add_argument("-l", "--bypass_labstatus", dest="bypass_labstatus",
+                        action="store_true", help='Bypass lab status check.')
     # We allow either a number or a string for the priority.  This way, if you
     # know what you're doing, one can specify a custom priority level between
     # other levels.
-    parser.add_option("-r", "--priority", dest="priority",
-                      default=priorities.Priority.DEFAULT,
-                      action="store",
-                      help="Priority of suite. Either numerical value, or "
-                      "one of (" + ", ".join(priorities.Priority.names)
-                      + ").")
-    parser.add_option('--retry', dest='retry', default='False',
-                      action='store', help='Enable test retry. '
-                      'Must pass "True" or "False" if used.')
-    parser.add_option('--max_retries', dest='max_retries', default=None,
-                      type='int', action='store', help='Maximum retries'
-                      'allowed at suite level. No limit if not specified.')
-    parser.add_option('--minimum_duts', dest='minimum_duts', type=int,
-                      default=0, action='store',
-                      help='Check that the pool has at least such many '
-                           'healthy machines, otherwise suite will not run. '
-                           'Default to 0.')
-    parser.add_option('--suite_min_duts', dest='suite_min_duts', type=int,
-                      default=0, action='store',
-                      help='Preferred minimum number of machines. Scheduler '
-                           'will prioritize on getting such many machines for '
-                           'the suite when it is competing with another suite '
-                           'that has a higher priority but already got minimum '
-                           'machines it needs. Default to 0.')
-    parser.add_option("--suite_args", dest="suite_args",
-                      default=None, action="store",
-                      help="Argument string for suite control file.")
-    parser.add_option('--offload_failures_only', dest='offload_failures_only',
-                      action='store', default='False',
-                      help='Only enable gs_offloading for failed tests. '
-                           'Successful tests will be deleted. Must pass "True"'
-                           ' or "False" if used.')
-    parser.add_option('--use_suite_attr', dest='use_suite_attr',
-                      action='store_true', default=False,
-                      help='Advanced. Run the suite based on ATTRIBUTES of '
-                      'control files, rather than SUITE.')
-    parser.add_option('--json_dump', dest='json_dump', action='store_true',
-                      default=False,
-                      help='Dump the output of run_suite to stdout.')
-    parser.add_option('--run_prod_code', dest='run_prod_code',
-                      action='store_true', default=False,
-                      help='Run the test code that lives in prod aka the test '
-                           'code currently on the lab servers.')
-    parser.add_option('--delay_minutes', type=int, default=0,
-                       help=('Delay the creation of test jobs for a given '
-                             'number of minutes. This argument can be used to '
-                             'force provision jobs being delayed, which helps '
-                             'to distribute loads across devservers.'))
-    parser.add_option('--skip_duts_check', dest='skip_duts_check', action='store_true',
-                      default=False,
-                      help='If True, skip minimum available DUTs check')
-    options, args = parser.parse_args()
-    return parser, options, args
+    parser.add_argument("-r", "--priority", dest="priority",
+                        default=priorities.Priority.DEFAULT,
+                        action="store",
+                        help="Priority of suite. Either numerical value, or "
+                        "one of (" + ", ".join(priorities.Priority.names)
+                        + ").")
+    parser.add_argument(
+        '--retry', dest='retry', default=False, type=bool_str, action='store',
+        help='Enable test retry.  Must pass "True" or "False" if used.')
+    parser.add_argument('--max_retries', dest='max_retries', default=None,
+                        type=int, action='store', help='Maximum retries'
+                        'allowed at suite level. No limit if not specified.')
+    parser.add_argument('--minimum_duts', dest='minimum_duts', type=int,
+                        default=0, action='store',
+                        help='Check that the pool has at least such many '
+                        'healthy machines, otherwise suite will not run. '
+                        'Default to 0.')
+    parser.add_argument('--suite_min_duts', dest='suite_min_duts', type=int,
+                        default=0, action='store',
+                        help='Preferred minimum number of machines. Scheduler '
+                        'will prioritize on getting such many machines for '
+                        'the suite when it is competing with another suite '
+                        'that has a higher priority but already got minimum '
+                        'machines it needs. Default to 0.')
+    parser.add_argument("--suite_args", dest="suite_args",
+                        default=None, action="store",
+                        help="Argument string for suite control file.")
+    parser.add_argument('--offload_failures_only',
+                        dest='offload_failures_only',
+                        action='store', default='False',
+                        help='Only enable gs_offloading for failed tests. '
+                        'Successful tests will be deleted. Must pass "True"'
+                        ' or "False" if used.')
+    parser.add_argument('--use_suite_attr', dest='use_suite_attr',
+                        action='store_true', default=False,
+                        help='Advanced. Run the suite based on ATTRIBUTES of '
+                        'control files, rather than SUITE.')
+    parser.add_argument('--json_dump', dest='json_dump', action='store_true',
+                        default=False,
+                        help='Dump the output of run_suite to stdout.')
+    parser.add_argument(
+        '--run_prod_code', dest='run_prod_code',
+        action='store_true', default=False,
+        help='Run the test code that lives in prod aka the test '
+        'code currently on the lab servers.')
+    parser.add_argument(
+        '--delay_minutes', type=int, default=0,
+        help=('Delay the creation of test jobs for a given '
+              'number of minutes. This argument can be used to '
+              'force provision jobs being delayed, which helps '
+              'to distribute loads across devservers.'))
+    parser.add_argument(
+        '--skip_duts_check', dest='skip_duts_check', action='store_true',
+        default=False, help='If True, skip minimum available DUTs check')
+    return parser
 
 
-def verify_options_and_args(options, args):
-    """Verify the validity of options and args.
+def verify_options(options):
+    """Verify the validity of options.
 
     @param options: The parsed options to verify.
-    @param args: The parsed args to verify.
 
     @returns: True if verification passes, False otherwise.
 
     """
-    if args:
-        print 'Unknown arguments: ' + str(args)
-        return False
-
     if options.mock_job_id and (
             not options.build or not options.name or not options.board):
         print ('When using -m, need to specify build, board and suite '
@@ -241,23 +263,14 @@ def verify_options_and_args(options, args):
     if options.num is not None and options.num < 1:
         print 'Number of machines must be more than 0, if specified.'
         return False
-    if options.no_wait != 'True' and options.no_wait != 'False':
-        print 'Please specify "True" or "False" for --no_wait.'
-        return False
-    if options.file_bugs != 'True' and options.file_bugs != 'False':
-        print 'Please specify "True" or "False" for --file_bugs.'
-        return False
-    if options.retry != 'True' and options.retry != 'False':
-        print 'Please specify "True" or "False" for --retry'
-        return False
-    if options.retry == 'False' and options.max_retries is not None:
+    if not options.retry and options.max_retries is not None:
         print 'max_retries can only be used with --retry=True'
         return False
     if options.use_suite_attr and options.suite_args is not None:
         print ('The new suite control file cannot parse the suite_args: %s.'
                'Please not specify any suite_args here.' % options.suite_args)
         return False
-    if options.no_wait == 'True' and options.retry == 'True':
+    if options.no_wait and options.retry:
         print 'Test retry is not available when using --no_wait=True'
     # Default to use the test code in CrOS build.
     if not options.test_source_build and options.build:
@@ -1474,9 +1487,9 @@ def create_suite(afe, options):
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
-    wait = options.no_wait == 'False'
-    file_bugs = options.file_bugs == 'True'
-    retry = options.retry == 'True'
+    wait = not options.no_wait
+    file_bugs = options.file_bugs
+    retry = options.retry
     offload_failures_only = options.offload_failures_only == 'True'
     try:
         priority = int(options.priority)
@@ -1597,11 +1610,10 @@ def main_without_exception_handling(options):
         logging.info(msg)
         return (RETURN_CODES.OK, {'return_message':msg})
 
-    wait = options.no_wait == 'False'
-    if wait:
-        return _handle_job_wait(afe, job_id, options, job_timer, is_real_time)
-    else:
+    if options.no_wait:
         return _handle_job_nowait(job_id, options, instance_server)
+    else:
+        return _handle_job_wait(afe, job_id, options, job_timer, is_real_time)
 
 
 def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
@@ -1696,7 +1708,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
             # Add some jitter to make up for any latency in
             # aborting the suite or checking for results.
             cutoff = (job_timer.timeout_hours +
-                        datetime_base.timedelta(hours=0.3))
+                      timedelta(hours=0.3))
             rpc_helper.diagnose_pool(
                     options.board, options.pool, cutoff)
         except proxy.JSONRPCException as e:
@@ -1737,13 +1749,14 @@ def main():
     code = RETURN_CODES.OK
     output_dict = {}
 
+    parser = make_parser()
+    options = parser.parse_args()
     try:
-        parser, options, args = parse_options()
         # Silence the log when dumping outputs into json
         if options.json_dump:
             logging.disable(logging.CRITICAL)
 
-        if not verify_options_and_args(options, args):
+        if not verify_options(options):
             parser.print_help()
             code = RETURN_CODES.INVALID_OPTIONS
         else:
