@@ -25,5 +25,5 @@ DOC = """
 This test verifies H.264 video decode acceleration works.
 """
 
-job.run_test('video_ChromeHWDecodeUsed', is_mse=0, video_file='720.mp4',
-             arc_mode=ARC_MODE)
+job.run_test('video_ChromeHWDecodeUsed', codec='h264', is_mse=0,
+             video_file='720.mp4', arc_mode=ARC_MODE)
