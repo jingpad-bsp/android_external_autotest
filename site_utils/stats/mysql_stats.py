@@ -28,14 +28,14 @@ DEFAULT_USER = global_config.global_config.get_config_value(
 DEFAULT_PASSWD = global_config.global_config.get_config_value(
         'CROS', 'db_backup_password', type=str, default='')
 LOOP_INTERVAL = 60
-EMITTED_STATUSES = [
+EMITTED_STATUSES_COUNTERS = [
     'questions',
     'slow_queries',
-    'threads_running',
-    'threads_connected',
     'Innodb_buffer_pool_read_requests',
     'Innodb_buffer_pool_reads',
 ]
+
+EMITTED_STATUS_GAUGES = ['threads_running', 'threads_connected']
 
 def main():
     """Sets up ts_mon and repeatedly queries MySQL stats"""
@@ -51,34 +51,50 @@ def QueryLoop(cursor):
 
     @param cursor: The mysql command line.
     """
+    # Get the baselines for cumulative metrics. Otherwise the windowed rate at
+    # the very beginning will be extremely high as it shoots up from 0 to its
+    # current value.
+    baselines = dict((s, GetStatus(cursor, s))
+                     for s in EMITTED_STATUSES_COUNTERS)
+
     while True:
         now = time.time()
-        QueryAndEmit(cursor)
+        QueryAndEmit(baselines, cursor)
         time_spent = time.time() - now
         sleep_duration = LOOP_INTERVAL - time_spent
         time.sleep(max(0, sleep_duration))
 
 
-def QueryAndEmit(cursor):
+def GetStatus(cursor, s):
+    """Get the status variable from database.
+
+    @param cursor: MySQLdb cursor to query with.
+    @param s: Name of the status variable.
+    @returns The mysql query result.
+    """
+    cursor.execute('SHOW GLOBAL STATUS LIKE "%s";' % s)
+    return int(cursor.fetchone()[1])
+
+
+def QueryAndEmit(baselines, cursor):
     """Queries MySQL for important stats and emits Monarch metrics
 
+    @param baselines: A dict containing the initial values for the cumulative
+                      metrics.
     @param cursor: The mysql command line.
     """
-    def GetStatus(s):
-        """Get the status variable from database.
 
-        @param s: Name of the status variable.
-        @returns The mysql query result.
-        """
-        cursor.execute('SHOW GLOBAL STATUS LIKE "%s";' % s)
-        return cursor.fetchone()[1]
+    for status in EMITTED_STATUSES_COUNTERS:
+        delta = GetStatus(cursor, status) - baselines[status]
+        metric_name = 'chromeos/autotest/afe_db/%s' % status.lower()
+        metrics.Counter(metric_name).set(delta)
 
-    for status in EMITTED_STATUSES:
-        metrics.Counter('chromeos/autotest/afe_db/%s' % status.lower()).set(
-            GetStatus(status))
+    for status in EMITTED_STATUS_GAUGES:
+        metric_name = 'chromeos/autotest/afe_db/%s' % status.lower()
+        metrics.Gauge(metric_name).set(GetStatus(cursor, status))
 
-    pages_free = GetStatus('Innodb_buffer_pool_pages_free')
-    pages_total = GetStatus('Innodb_buffer_pool_pages_total')
+    pages_free = GetStatus(cursor, 'Innodb_buffer_pool_pages_free')
+    pages_total = GetStatus(cursor, 'Innodb_buffer_pool_pages_total')
 
     metrics.Gauge('chromeos/autotest/afe_db/buffer_pool_pages').set(
         pages_free, fields={'used': False})
