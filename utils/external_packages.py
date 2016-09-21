@@ -68,6 +68,8 @@ class ExternalPackage(object):
       @attribute module_name - The installed python module name to be used for
               for a version check.  Defaults to the lower case class name with
               the word Package stripped off.
+      @attribute extracted_package_path - The path to package directory after
+              extracting.
       @attribute version - The desired minimum package version.
       @attribute os_requirements - A dictionary mapping pathname tuples on the
               the OS distribution to a likely name of a package the user
@@ -107,6 +109,17 @@ class ExternalPackage(object):
         if not self.dist_name and self.local_filename:
             self.dist_name = self.local_filename[:self.local_filename.rindex('-')]
         self.installed_version = ''
+
+
+    @property
+    def extracted_package_path(self):
+        """Return the package path after extracting.
+
+        If the package has assigned its own extracted_package_path, use it.
+        Or use part of its local_filename as the extracting path.
+        """
+        return self.local_filename[:-len(self._get_extension(
+                self.local_filename))]
 
 
     @property
@@ -243,6 +256,22 @@ class ExternalPackage(object):
         return self._install_using_setup_py_and_rsync(install_dir)
 
 
+    def _get_extension(self, package):
+        """Get extension of package."""
+        valid_package_extensions = ['.tar.gz', '.tar.bz2', '.zip']
+        extension = None
+
+        for ext in valid_package_extensions:
+            if package.endswith(ext):
+                extension = ext
+                break
+
+        if not extension:
+            raise Error('Unexpected package file extension on %s' % package)
+
+        return extension
+
+
     def _build_and_install_from_package(self, install_dir):
         """
         This method may be used as a _build_and_install() implementation
@@ -260,17 +289,9 @@ class ExternalPackage(object):
         @raises OSError If the expected extraction directory does not exist.
         """
         self._extract_compressed_package()
-        if self.verified_package.endswith('.tar.gz'):
-            extension = '.tar.gz'
-        elif self.verified_package.endswith('.tar.bz2'):
-            extension = '.tar.bz2'
-        elif self.verified_package.endswith('.zip'):
-            extension = '.zip'
-        else:
-            raise Error('Unexpected package file extension on %s' %
-                        self.verified_package)
+        extension = self._get_extension(self.verified_package)
         os.chdir(os.path.dirname(self.verified_package))
-        os.chdir(self.local_filename[:-len(extension)])
+        os.chdir(self.extracted_package_path)
         extracted_dir = os.getcwd()
         try:
             return self._build_and_install_current_dir(install_dir)
@@ -703,8 +724,12 @@ class AtForkPackage(ExternalPackage):
     """atfork package"""
     version = '0.1.2'
     local_filename = 'atfork-%s.zip' % version
-    urls = ('http://python-atfork.googlecode.com/files/' + local_filename,)
-    hex_sum = '5baa64c73e966b57fa797040585c760c502dc70b'
+    # Since the url doesn't include version anymore, there exists a small
+    # chance that the url and hex_sum remain the same but a package with new
+    # version is linked by this url.
+    urls = ('https://github.com/google/python-atfork/archive/master.zip',)
+    hex_sum = '868dace98201cf8a920287c6186f135c1ec70cb0'
+    extracted_package_path = 'python-atfork-master'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -773,7 +798,10 @@ class Httplib2Package(ExternalPackage):
     """httplib2 package"""
     version = '0.6.0'
     local_filename = 'httplib2-%s.tar.gz' % version
-    urls = ('http://httplib2.googlecode.com/files/' + local_filename,)
+    # Cannot use the newest httplib2 package 0.9.2 since it cannot be installed
+    # directly in a temp folder. So keep it as 0.6.0.
+    urls = ('https://launchpad.net/ubuntu/+archive/primary/+files/'
+            'python-httplib2_' + version + '.orig.tar.gz',)
     hex_sum = '995344b2704826cc0d61a266e995b328d92445a5'
 
     def _get_installed_version_from_module(self, module):
@@ -790,7 +818,8 @@ class GwtPackage(ExternalPackage):
 
     version = '2.3.0'
     local_filename = 'gwt-%s.zip' % version
-    urls = ('http://google-web-toolkit.googlecode.com/files/' + local_filename,)
+    urls = ('https://storage.googleapis.com/google-code-archive-downloads/'
+            'v2/code.google.com/google-web-toolkit/' + local_filename,)
     hex_sum = 'd51fce9166e6b31349659ffca89baf93e39bc84b'
     name = 'gwt'
     about_filename = 'about.txt'
@@ -832,12 +861,12 @@ class GwtPackage(ExternalPackage):
 class GVizAPIPackage(ExternalPackage):
     """gviz package"""
     module_name = 'gviz_api'
-    version = '1.7.0'
-    url_filename = 'gviz_api_py-%s.tar.gz' % version
-    local_filename = 'google-visualization-python.tar.gz'
-    urls = ('http://google-visualization-python.googlecode.com/files/%s' % (
-        url_filename),)
-    hex_sum = 'cd9a0fb4ca5c4f86c0d85756f501fd54ccf492d2'
+    version = '1.8.2'
+    local_filename = 'google-visualization-python.zip'
+    urls = ('https://github.com/google/google-visualization-python/'
+            'archive/master.zip',)
+    hex_sum = 'ec70fb8b874eae21e331332065415318f6fe4882'
+    extracted_package_path = 'google-visualization-python-master'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -866,13 +895,12 @@ class GdataPackage(ExternalPackage):
     """
     Pulls the GData library, giving us an API to query tracker.
     """
-
-    version = '2.0.14'
-    url_filename = 'gdata-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('http://gdata-python-client.googlecode.com/files/%s' % (
-        url_filename),)
-    hex_sum = '5eed0e01ab931e3f706ec544fc8f06ecac384e91'
+    version = '2.0.18'
+    local_filename = 'gdata-%s.zip' % version
+    urls = ('https://github.com/google/gdata-python-client/' +
+            'archive/master.zip',)
+    hex_sum = '893f9c9f627ef92afe8f3f066311d9b3748f1732'
+    extracted_package_path = 'gdata-python-client-master'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
@@ -888,17 +916,15 @@ class GFlagsPackage(ExternalPackage):
     Gets the Python GFlags client library.
     """
     # gflags doesn't contain a proper version
-    version = '2.0'
-    url_filename = 'python-gflags-%s.tar.gz' % version
-    local_filename = url_filename
-    urls = ('https://python-gflags.googlecode.com/files/%s' % (
-        url_filename),)
-    hex_sum = 'db309e6964b102ff36de319ce551db512a78281e'
+    version = '3.0.7'
+    local_filename = 'python-gflags-%s.zip' % version
+    urls = ('https://github.com/google/python-gflags/archive/master.zip',)
+    hex_sum = '66019a836dc700c8c6410fdc887cedb9ea5e1bee'
+    extracted_package_path = 'python-gflags-master'
 
     _build_and_install = ExternalPackage._build_and_install_from_package
     _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_setup_py)
-
+                        ExternalPackage._build_and_install_current_dir_noegg)
 
     def _get_installed_version_from_module(self, module):
         return self.version
