@@ -294,13 +294,20 @@ class AudioWidgetFactory(object):
             """
             is_usb = audio_port.port_id in [ids.CrosIds.USBIN,
                                             ids.CrosIds.USBOUT]
+            is_audio_jack = audio_port.port_id in [ids.CrosIds.HEADPHONE,
+                                                   ids.CrosIds.EXTERNAL_MIC]
+
+            # Determines the plug handler to be used.
+            # By default, the plug handler is DummyPlugHandler.
+            # If the port uses audio jack, and there is jack plugger available
+            # through audio board, then JackPluggerPlugHandler should be used.
             audio_board = self._chameleon_board.get_audio_board()
             if audio_board:
                 jack_plugger = audio_board.get_jack_plugger()
             else:
                 jack_plugger = None
 
-            if jack_plugger:
+            if jack_plugger and is_audio_jack:
                 plug_handler = audio_widget.JackPluggerPlugHandler(jack_plugger)
             else:
                 plug_handler = audio_widget.DummyPlugHandler()
