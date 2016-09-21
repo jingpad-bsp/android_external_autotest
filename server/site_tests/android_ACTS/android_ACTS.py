@@ -15,10 +15,16 @@ from autotest_lib.server import adb_utils
 from autotest_lib.server import afe_utils
 from autotest_lib.server import constants
 from autotest_lib.server import test
+from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.site_utils import sponge_utils
 
 CONFIG_FOLDER_LOCATION = global_config.global_config.get_config_value(
         'ACTS', 'acts_config_folder', default='')
+
+TEST_CONFIG_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
+        'autotest_config')
+TEST_CAMPAIGN_FILE_FOLDER = os.path.join(CONFIG_FOLDER_LOCATION,
+        'autotest_campaign')
 
 DEFAULT_TEST_RELATIVE_LOG_PATH = 'results/logs'
 
@@ -56,6 +62,8 @@ class android_ACTS(test.test):
 
         @returns: The full path on the test station.
         """
+        logging.debug('Starting push for %s.', filename)
+
         if not input_path:
             input_path = os.path.dirname(os.path.abspath(filename))
 
@@ -65,10 +73,10 @@ class android_ACTS(test.test):
         # Find the path on the source machine
         full_input_path = os.path.abspath(input_path)
         if not os.path.exists(full_input_path):
-            raise error.TestFail('Invalid input path given %s' % input_path)
+            raise error.TestError('Invalid input path given %s' % input_path)
         full_src_file = os.path.join(full_input_path, filename)
         if not os.path.exists(full_src_file):
-            raise error.TestFail(
+            raise error.TestError(
                     'Invalid filename, no full path %s exists' % full_src_file)
 
         # Find the directory part of the file
@@ -76,6 +84,8 @@ class android_ACTS(test.test):
 
         # Find the path on the test station
         dst_dir = os.path.join(output_path, file_dir)
+
+        logging.info('Pushing file %s to %s.', full_src_file, dst_dir)
 
         self.test_station.send_file(full_src_file, dst_dir)
         return os.path.join(output_path, filename)
@@ -115,7 +125,7 @@ class android_ACTS(test.test):
         if not job_repo_url:
             raise error.TestError('No job repo url defined for this DUT.')
 
-        logging.info('Pulling acts from artifact.')
+        logging.info('Pulling acts from artifact, url: %s.', job_repo_url)
 
         devserver_url = dev_server.AndroidBuildServer.get_server_url(
                 job_repo_url)
@@ -131,9 +141,12 @@ class android_ACTS(test.test):
 
         temp_dir = download_locaiton
 
-        logging.info('Downloading from dev server %s', job_repo_url)
-
         download_dir = '%s/acts' % temp_dir
+
+        logging.info('Downloading from dev server %s to %s',
+                     job_repo_url,
+                     download_dir)
+
         host.download_file(
                 build_url=job_repo_url,
                 file='acts.zip',
@@ -173,7 +186,7 @@ class android_ACTS(test.test):
                  uploaded. The first element is always the main config.
         """
         if not configs_local_location:
-            configs_local_location = CONFIG_FOLDER_LOCATION
+            configs_local_location = TEST_CONFIG_FILE_FOLDER
 
         if not configs_remote_location:
             configs_remote_location = os.path.join(
@@ -202,6 +215,39 @@ class android_ACTS(test.test):
 
         return remote_configs
 
+    def setup_campaign(self,
+                       campaign_file,
+                       campaign_local_location=None,
+                       campagin_remote_location = None):
+        """Sets up campaign files on a test station.
+
+        Will take a local campaign file and upload it to the test station.
+
+        @param campaign_file: The name of the campaign file.
+        @param campaign_local_location: The local directory the campaign file
+                                        is in.
+        @param campagin_remote_location: The remote directory to place the
+                                         campaign file in.
+
+        @returns The remote path to the campaign file.
+        """
+        if not campaign_local_location:
+            campaign_local_location = TEST_CAMPAIGN_FILE_FOLDER
+
+        if not campagin_remote_location:
+            campagin_remote_location = os.path.join(self.ts_tempfolder,
+                                                    'campaigns')
+
+        logging.info('Pulling campaign from %s.', campaign_local_location)
+
+        remote_campaign_file = self.push_file_to_teststation(
+                campaign_file,
+                input_path=campaign_local_location,
+                output_path=campagin_remote_location)
+
+        return remote_campaign_file
+
+
     def build_environment(self, base_acts_dir=None, log_path=None):
         """Builds the environment variables for a run.
 
@@ -223,13 +269,9 @@ class android_ACTS(test.test):
         framework_dir = os.path.join(base_acts_dir, 'framework')
         base_test_dir = os.path.join(base_acts_dir, 'tests')
 
-        walk_iterator = os.walk(base_test_dir, followlinks=True)
-        all_sud_dirs = []
-        for _, child_dirs, _ in walk_iterator:
-            for child_dir in child_dirs:
-                all_sud_dirs.append(child_dir)
-
-        test_search_dirs = all_sud_dirs + [base_test_dir]
+        get_test_paths_result = self.test_station.run(
+                'find %s -type d' % base_test_dir)
+        test_search_dirs = get_test_paths_result.stdout.splitlines()
 
         get_path_result = self.test_station.run('echo $PYTHONPATH')
         remote_path = get_path_result.stdout
@@ -238,6 +280,8 @@ class android_ACTS(test.test):
         env = {'ACTS_TESTPATHS': ':'.join(test_search_dirs),
                'ACTS_LOGPATH': log_path,
                'PYTHONPATH': new_python_path}
+
+        logging.info('Enviroment set to: %s', str(env))
 
         return env
 
@@ -289,7 +333,8 @@ class android_ACTS(test.test):
         elif test_case:
             act_cmd = '%s -tc %s' % (act_base_cmd, test_case)
         elif test_file:
-            act_cmd = '%s -tf %s' % (act_base_cmd, test_file)
+            full_test_file = self.setup_campaign(test_file)
+            act_cmd = '%s -tf %s' % (act_base_cmd, full_test_file)
         else:
             raise error.TestFail('No tests was specified!')
 
@@ -313,14 +358,17 @@ class android_ACTS(test.test):
 
         @param log_path: The path to where the log output.
         """
+        logging.info('Running cleanup.')
         if not log_path:
             log_path = os.path.join(
                     self.ts_tempfolder,
                     DEFAULT_TEST_RELATIVE_LOG_PATH)
 
+        testbed_log_path = os.path.join(log_path, self.testbed_name, 'latest')
+
         # Following call may fail if logs are not generated by act_cmd yet.
         # Anyhow, the test must have failed already in that case.
-        self.test_station.get_file(log_path, self.resultsdir)
+        self.test_station.get_file(testbed_log_path, self.resultsdir)
         # Load summary json file.
         summary_path = os.path.join(
                 self.resultsdir, 'latest', 'test_run_summary.json')
@@ -366,20 +414,28 @@ class android_ACTS(test.test):
                                    in the TEST_CONFIG_FILE_FOLDER.
         @param acts_timeout: A timeout for the specific ACTS test.
         """
+        # setup properties
+        self.testbed = testbed
+        if not testbed_name:
+            hostname = testbed.hostname
+            if dnsname_mangler.is_ip_address(hostname):
+                self.testbed_name = hostname
+            else:
+                self.testbed_name = hostname.split('.')[0]
+        else:
+            self.testbed_name = testbed_name
+        self.test_station = testbed.teststation
+        self.ts_tempfolder = self.test_station.get_tmp_dir()
+
+        # install all needed tools
+        self.install_sl4a_apk()
+        self.acts_download_dir = self.download_acts()
+        remote_config_file = self.setup_configs(
+                config_file, additional_configs)
+        env = self.build_environment()
+
+        exception = None
         try:
-            # setup properties
-            self.testbed = testbed
-            self.testbed_name = testbed_name or testbed.hostname.split('.')[0]
-            self.test_station = testbed.teststation
-            self.ts_tempfolder = self.test_station.get_tmp_dir()
-
-            # install all needed tools
-            self.install_sl4a_apk()
-            self.acts_download_dir = self.download_acts()
-            remote_config_file = self.setup_configs(
-                    config_file, additional_configs)
-            env = self.build_environment()
-
             # launch acts
             self.run_acts(
                     remote_config_file[0],
@@ -387,6 +443,12 @@ class android_ACTS(test.test):
                     test_case=test_case,
                     env=env,
                     timeout=acts_timeout)
-        finally:
-            # cleanup
-            self.post_act_cmd(test_case=test_case, test_file=test_file)
+        except Exception, e:
+            logging.error('Unexpected error: %s', sys.exc_info())
+            exception = e
+
+        # cleanup
+        self.post_act_cmd(test_case=test_case, test_file=test_file)
+
+        if exception:
+            raise exception
