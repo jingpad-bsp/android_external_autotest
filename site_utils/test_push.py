@@ -231,6 +231,9 @@ def parse_arguments():
                         default=DEFAULT_NUM_DUTS,
                         help="String of dict that indicates the required number"
                              " of DUTs for each board. E.g {'gandof':4}")
+    parser.add_argument('-c', '--continue_on_failure', action='store_true',
+                        dest='continue_on_failure',
+                        help='All tests continue to run when there is failure')
 
     arguments = parser.parse_args(sys.argv[1:])
 
@@ -498,6 +501,8 @@ def main():
     arguments = parse_arguments()
 
     try:
+        # Use daemon flag will kill child processes when parent process fails.
+        use_daemon = not arguments.continue_on_failure
         check_dut_inventory(arguments.num_duts)
         queue = multiprocessing.Queue()
 
@@ -505,7 +510,7 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, PUSH_TO_PROD_SUITE, EXPECTED_TEST_RESULTS,
                       arguments))
-        push_to_prod_suite.daemon = True
+        push_to_prod_suite.daemon = use_daemon
         push_to_prod_suite.start()
 
         # TODO(dshi): Remove following line after crbug.com/267644 is fixed.
@@ -514,14 +519,14 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, AU_SUITE, EXPECTED_TEST_RESULTS_AU,
                       arguments))
-        au_suite.daemon = True
+        au_suite.daemon = use_daemon
         au_suite.start()
 
         shard_suite = multiprocessing.Process(
                 target=test_suite_wrapper,
                 args=(queue, DUMMY_SUITE, EXPECTED_TEST_RESULTS_DUMMY,
                       arguments, True))
-        shard_suite.daemon = True
+        shard_suite.daemon = use_daemon
         shard_suite.start()
 
         # suite test with --create_and_return flag
@@ -537,7 +542,7 @@ def main():
                 target=test_suite_wrapper,
                 args=(queue, TESTBED_SUITE, EXPECTED_TEST_RESULTS_TESTBED,
                       arguments, False, False, True))
-        testbed_suite.daemon = True
+        testbed_suite.daemon = use_daemon
         testbed_suite.start()
 
         while (push_to_prod_suite.is_alive() or au_suite.is_alive() or
@@ -556,10 +561,11 @@ def main():
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
-        # Abort all running jobs.
-        for suite_id in all_suite_ids:
-            if AFE.get_jobs(id=suite_id, finished=False):
-                AFE.run('abort_host_queue_entries', job=suite_id)
+        # Abort running jobs when choose not to continue when there is failure.
+        if not arguments.continue_on_failure:
+            for suite_id in all_suite_ids:
+                if AFE.get_jobs(id=suite_id, finished=False):
+                    AFE.run('abort_host_queue_entries', job=suite_id)
         # Send out email about the test failure.
         if arguments.email:
             gmail_lib.send_email(
