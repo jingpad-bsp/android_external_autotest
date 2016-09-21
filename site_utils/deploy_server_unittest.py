@@ -22,7 +22,7 @@ class TestDeployServer(unittest.TestCase):
         self.assertEqual(
                 {'afe': 'foo', 'servers': [], 'args': [],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                 'update_push_servers': False},
+                 'force_update': False, 'update_push_servers': False},
                 vars(results))
 
         # Dryrun, continue
@@ -31,7 +31,7 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': [], 'args': [],
                  'cont': True, 'dryrun': True, 'verbose': False,
-                 'update_push_servers': False},
+                 'force_update': False, 'update_push_servers': False},
                 vars(results))
 
         # List some servers
@@ -40,7 +40,7 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': ['dummy', 'bar'], 'args': [],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                 'update_push_servers': False},
+                 'force_update': False, 'update_push_servers': False},
                 vars(results))
 
         # List some local args
@@ -49,17 +49,18 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': [], 'args': ['dummy', 'bar'],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                'update_push_servers': False},
+                 'force_update': False, 'update_push_servers': False},
                  vars(results))
 
         # List everything.
         results = deploy_server.parse_arguments(
                 ['--continue', '--afe', 'foo', '--dryrun', 'dummy', 'bar',
-                 '--', '--actions-only', '--dryrun', '--update_push_servers'])
+                 '--', '--actions-only', '--dryrun', '--update_push_servers',
+                 '--force_update'])
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': ['dummy', 'bar'],
                  'args': ['--actions-only', '--dryrun',
-                          '--update_push_servers'],
+                          '--update_push_servers', '--force_update'],
                  'cont': True, 'dryrun': True, 'verbose': False},
                 vars(results))
 
