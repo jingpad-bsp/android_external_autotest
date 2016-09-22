@@ -40,6 +40,7 @@ from autotest_lib.site_utils.rpm_control_system import rpm_client
 SERVO_HOST_ATTR = 'servo_host'
 SERVO_PORT_ATTR = 'servo_port'
 SERVO_BOARD_ATTR = 'servo_board'
+SERVO_SERIAL_ATTR = 'servo_serial'
 
 _CONFIG = global_config.global_config
 ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
@@ -62,7 +63,7 @@ class ServoHost(ssh_host.SSHHost):
 
     def _initialize(self, servo_host='localhost',
                     servo_port=DEFAULT_PORT, servo_board=None,
-                    is_in_lab=None, *args, **dargs):
+                    servo_serial=None, is_in_lab=None, *args, **dargs):
         """Initialize a ServoHost instance.
 
         A ServoHost instance represents a host that controls a servo.
@@ -79,6 +80,7 @@ class ServoHost(ssh_host.SSHHost):
                                            *args, **dargs)
         self.servo_port = servo_port
         self.servo_board = servo_board
+        self.servo_serial = servo_serial
         self._servo = None
         self._repair_strategy = (
                 servo_repair.create_servo_repair_strategy())
@@ -112,7 +114,7 @@ class ServoHost(ssh_host.SSHHost):
         target servo are reset to default values, and the USB stick is
         set to the neutral (off) position.
         """
-        servo_obj = servo.Servo(servo_host=self)
+        servo_obj = servo.Servo(servo_host=self, servo_serial=self.servo_serial)
         timeout, _ = retry.timeout(
                 servo_obj.initialize_dut,
                 timeout_sec=self.INITIALIZE_SERVO_TIMEOUT_SECS)
@@ -615,6 +617,8 @@ def _get_standard_servo_args(dut_host):
                 # Let's set the servo args to None since we're not creating
                 # the ServoHost object with the proper port now.
                 servo_args = None
+        if SERVO_SERIAL_ATTR in attrs:
+            servo_args[SERVO_SERIAL_ATTR] = attrs[SERVO_SERIAL_ATTR]
         is_in_lab = (not is_moblab
                      and utils.host_is_in_lab_zone(servo_host))
 
