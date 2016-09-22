@@ -27,56 +27,120 @@ class _UpdateVerifier(hosts.Verifier):
         return 'servo host software is up-to-date'
 
 
-class _BoardConfigVerifier(hosts.Verifier):
+class _ConfigVerifier(hosts.Verifier):
+    """
+    Base verifier for the servo config file verifiers.
+    """
+
+    CONFIG_FILE = '/var/lib/servod/config'
+    ATTR = ''
+
+    @staticmethod
+    def _get_config_val(host, config_file, attr):
+        """
+        Get the `attr` for `host` from `config_file`.
+
+        @param host         Host to be checked for `config_file`.
+        @param config_file  Path to the config file to be tested.
+        @param attr         Attribute to get from config file.
+
+        @return The attr val as set in the config file, or `None` if
+                the file was absent.
+        """
+        getboard = ('CONFIG=%s ; [ -f $CONFIG ] && '
+                    '. $CONFIG && echo $%s' % (config_file, attr))
+        attr_val = host.run(getboard, ignore_status=True).stdout
+        return attr_val.strip('\n') if attr_val else None
+
+    @staticmethod
+    def _validate_attr(host, val, expected_val, attr, config_file):
+        """
+        Check that the attr setting is valid for the host.
+
+        This presupposes that a valid config file was found.  Raise an
+        execption if:
+          * There was no attr setting from the file (i.e. the setting
+            is an empty string), or
+          * The attr setting is valid, the attr is known,
+            and the setting doesn't match the DUT.
+
+        @param host         Host to be checked for `config_file`.
+        @param val          Value to be tested.
+        @param expected_val Expected value.
+        @param attr         Attribute we're validating.
+        @param config_file  Path to the config file to be tested.
+        """
+        if not val:
+            raise hosts.AutoservVerifyError(
+                    'config file %s exists, but %s '
+                    'is not set' % (attr, config_file))
+        if expected_val is not None and val != expected_val:
+            raise hosts.AutoservVerifyError(
+                    '%s is %s; it should be %s' % (attr, val, expected_val))
+
+
+    def _get_configs(self, host):
+        """
+        Return all the config files to check.
+
+        @param host     Host object.
+
+        @return The list of config files to check.
+        """
+        # TODO(jrbarnette):  Testing `CONFIG_FILE` without a port number
+        # is a legacy.  Ideally, we would force all servos in the lab to
+        # update, and then remove this case.
+        config_list = ['%s_%d' % (self.CONFIG_FILE, host.servo_port)]
+        if host.servo_port == host.DEFAULT_PORT:
+            config_list.append(self.CONFIG_FILE)
+        return config_list
+
+    @property
+    def description(self):
+        return 'servo %s setting is correct' % self.ATTR
+
+
+class _SerialConfigVerifier(_ConfigVerifier):
+    """
+    Verifier for the servo SERIAL configuration.
+    """
+
+    ATTR = 'SERIAL'
+
+    def verify(self, host):
+        """
+        Test whether the `host` has a `SERIAL` setting configured.
+
+        This tests the config file names used by the `servod` upstart
+        job for a valid setting of the `SERIAL` variable.  The following
+        conditions raise errors:
+          * The SERIAL setting doesn't match the DUT's entry in the AFE
+            database.
+          * There is no config file.
+        """
+        if not host.is_cros_host():
+            return
+        # Not all servo hosts will have a servo serial so don't verify if it's
+        # not set.
+        if host.servo_serial is None:
+            return
+        for config in self._get_configs(host):
+            serialval = self._get_config_val(host, config, self.ATTR)
+            if serialval is not None:
+                self._validate_attr(host, serialval, host.servo_serial,
+                                    self.ATTR, config)
+                return
+        msg = 'Servo serial is unconfigured; should be %s' % host.servo_serial
+        raise hosts.AutoservVerifyError(msg)
+
+
+
+class _BoardConfigVerifier(_ConfigVerifier):
     """
     Verifier for the servo BOARD configuration.
     """
 
-    CONFIG_FILE = '/var/lib/servod/config'
-
-    @staticmethod
-    def _get_board(host, config_file):
-        """
-        Get the board for `host` from `config_file`.
-
-        @param host         Host to be checked for `config_file`.
-        @param config_file  Path to the config file to be tested.
-        @return The board name as set in the config file, or `None` if
-                the file was absent.
-        """
-        getboard = ('CONFIG=%s ; [ -f $CONFIG ] && '
-                    '. $CONFIG && echo $BOARD' % config_file)
-        boardval = host.run(getboard, ignore_status=True).stdout
-        return boardval.strip('\n') if boardval else None
-
-    @staticmethod
-    def _validate_board(host, boardval, config_file):
-        """
-        Check that the BOARD setting is valid for the host.
-
-        This presupposes that a valid config file was found.  Raise an
-        execption if:
-          * There was no BOARD setting from the file (i.e. the setting
-            is an empty string), or
-          * The board setting is valid, the DUT's board is known,
-            and the setting doesn't match the DUT.
-
-        If there's a valid board setting, but the DUT's board is
-        unknown, ignore it.
-
-        @param host         Host to be checked for `config_file`.
-        @param boardval     Board value to be tested.
-        @param config_file  Path to the config file to be tested.
-        """
-        if not boardval:
-            raise hosts.AutoservVerifyError(
-                    'config file %s exists, but BOARD '
-                    'is not set' % config_file)
-        if (host.servo_board is not None and
-                boardval != host.servo_board):
-            raise hosts.AutoservVerifyError(
-                    'servo board is %s; it should be %s' %
-                    (boardval, host.servo_board))
+    ATTR = 'BOARD'
 
     def verify(self, host):
         """
@@ -93,25 +157,16 @@ class _BoardConfigVerifier(hosts.Verifier):
         """
         if not host.is_cros_host():
             return
-        # TODO(jrbarnette):  Testing `CONFIG_FILE` without a port number
-        # is a legacy.  Ideally, we would force all servos in the lab to
-        # update, and then remove this case.
-        config_list = ['%s_%d' % (self.CONFIG_FILE, host.servo_port)]
-        if host.servo_port == host.DEFAULT_PORT:
-            config_list.append(self.CONFIG_FILE)
-        for config in config_list:
-            boardval = self._get_board(host, config)
+        for config in self._get_configs(host):
+            boardval = self._get_config_val(host, config, self.ATTR)
             if boardval is not None:
-                self._validate_board(host, boardval, config)
+                self._validate_attr(host, boardval, host.servo_board, self.ATTR,
+                                    config)
                 return
         msg = 'Servo board is unconfigured'
         if host.servo_board is not None:
             msg += '; should be %s' % host.servo_board
         raise hosts.AutoservVerifyError(msg)
-
-    @property
-    def description(self):
-        return 'servo BOARD setting is correct'
 
 
 class _ServodJobVerifier(hosts.Verifier):
@@ -200,16 +255,17 @@ class _RestartServod(hosts.RepairAction):
                     'Can\'t restart servod: not running '
                     'embedded Chrome OS.')
         host.run('stop servod || true')
+        serial = 'SERIAL=%s' % host.servo_serial if host.servo_serial else ''
         if host.servo_board:
-            host.run('start servod BOARD=%s PORT=%d' %
-                     (host.servo_board, host.servo_port))
+            host.run('start servod BOARD=%s PORT=%d %s' %
+                     (host.servo_board, host.servo_port, serial))
         else:
             # TODO(jrbarnette):  It remains to be seen whether
             # this action is the right thing to do...
             logging.warning('Board for DUT is unknown; starting '
                             'servod assuming a pre-configured '
                             'board.')
-            host.run('start servod PORT=%d' % host.servo_port)
+            host.run('start servod PORT=%d %s' % (host.servo_port, serial))
         # There's a lag between when `start servod` completes and when
         # the _ServodConnectionVerifier trigger can actually succeed.
         # The call to time.sleep() below gives time to make sure that
@@ -226,7 +282,7 @@ class _RestartServod(hosts.RepairAction):
 
     @property
     def description(self):
-        return 'Start servod with the proper BOARD setting.'
+        return 'Start servod with the proper config settings.'
 
 
 class _ServoRebootRepair(repair.RebootRepair):
@@ -255,11 +311,13 @@ def create_servo_repair_strategy():
     """
     Return a `RepairStrategy` for a `ServoHost`.
     """
+    config = ['brd_config', 'ser_config']
     verify_dag = [
         (repair.SshVerifier,         'ssh',         []),
         (_UpdateVerifier,            'update',      ['ssh']),
-        (_BoardConfigVerifier,       'config',      ['ssh']),
-        (_ServodJobVerifier,         'job',         ['config']),
+        (_BoardConfigVerifier,       'brd_config',  ['ssh']),
+        (_SerialConfigVerifier,      'ser_config',  ['ssh']),
+        (_ServodJobVerifier,         'job',         config),
         (_ServodConnectionVerifier,  'servod',      ['job']),
         (_PowerButtonVerifier,       'pwr_button',  ['servod']),
         (_LidVerifier,               'lid_open',    ['servod']),
@@ -276,7 +334,7 @@ def create_servo_repair_strategy():
     servod_deps = ['job', 'servod', 'pwr_button', 'lid_open']
     repair_actions = [
         (repair.RPMCycleRepair, 'rpm', [], ['ssh']),
-        (_RestartServod, 'restart', ['ssh'], ['config'] + servod_deps),
+        (_RestartServod, 'restart', ['ssh'], config + servod_deps),
         (_ServoRebootRepair, 'reboot', ['ssh'], servod_deps),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
