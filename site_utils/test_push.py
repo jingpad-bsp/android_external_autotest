@@ -60,8 +60,11 @@ PUSH_TO_PROD_SUITE = 'push_to_prod'
 DUMMY_SUITE = 'dummy'
 AU_SUITE = 'paygen_au_beta'
 TESTBED_SUITE = 'testbed_push'
+# TODO(shuqianz): Dynamically get android build after crbug.com/646068 fixed
 DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
+DEFAULT_EMAIL = CONFIG.get_config_value(
+        'SCHEDULER', 'notify_email', type=str, default='')
 DEFAULT_NUM_DUTS = "{'board:gandof': 4, 'board:quawks': 2}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
@@ -223,13 +226,13 @@ def parse_arguments():
                              'board. Must be a stable build, otherwise AU test '
                              'will fail.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
-                        help='Android board to test.')
+                        default='shamu-2', help='Android board to test.')
     parser.add_argument('-ai', '--android_build', dest='android_build',
                         help='Android build to test.')
     parser.add_argument('-p', '--pool', dest='pool', default='bvt')
     parser.add_argument('-u', '--num', dest='num', type=int, default=3,
                         help='Run on at most NUM machines.')
-    parser.add_argument('-e', '--email', dest='email', default=None,
+    parser.add_argument('-e', '--email', dest='email', default=DEFAULT_EMAIL,
                         help='Email address for the notification to be sent to '
                              'after the script finished running.')
     parser.add_argument('-t', '--timeout_min', dest='timeout_min', type=int,
