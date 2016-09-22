@@ -21,7 +21,7 @@ from autotest_lib.server import afe_utils
 
 
 def install_apk_from_build(host, apk, build_artifact, package_name=None,
-                           force_reinstall=False, build_name=None):
+                           force_reinstall=False):
     """Install the specific apk from given build artifact.
 
     @param host: An ADBHost object to install apk.
@@ -35,20 +35,14 @@ def install_apk_from_build(host, apk, build_artifact, package_name=None,
             trying to install it, unless force_reinstall is set to True.
     @param force_reinstall: True to reinstall the apk even if it's already
             installed. Default is set to False.
-    @param build_name: None unless DUT is CrOS with ARC++ container. build_name
-            points to ARC++ build artifacts.
     """
     # Check if apk is already installed.
     if package_name and not force_reinstall:
         if host.is_apk_installed(package_name):
             logging.info('Package %s is already installed.', package_name)
             return
-    if not build_name:
-        job_repo_url = dev_server.AndroidBuildServer.resolve(build_name,
-                            host.hostname).url() + build_name
-    else:
-        job_repo_url = afe_utils.get_host_attribute(
-                host, host.job_repo_url_attribute)
+    job_repo_url = afe_utils.get_host_attribute(
+            host, host.job_repo_url_attribute)
     if not job_repo_url:
         raise error.AutoservError(
                 'The host %s has no attribute %s. `install_apk_from_build` '
