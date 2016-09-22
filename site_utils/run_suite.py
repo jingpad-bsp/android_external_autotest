@@ -307,22 +307,43 @@ def change_options_for_suite_attr(options):
     return options
 
 
-def get_pretty_status(status):
-    """
-    Converts a status string into a pretty-for-printing string.
+class TestResult(object):
 
-    @param status: Status to convert.
+    """Represents the result of a TestView."""
 
-    @return: Returns pretty string.
-             GOOD    -> [ PASSED ]
-             TEST_NA -> [ INFO ]
-             other   -> [ FAILED ]
-    """
-    if status == 'GOOD':
-        return '[ PASSED ]'
-    elif status == 'TEST_NA':
-        return '[  INFO  ]'
-    return '[ FAILED ]'
+    def __init__(self, test_view, retry_count=0):
+        """Initialize instance.
+
+        @param test_view: TestView instance.
+        @param retry_count: Retry count for test.  Optional.
+        """
+        self.name = test_view.get_testname()
+        self.status = test_view['status']
+        self.reason = test_view['reason']
+        self.retry_count = retry_count
+
+    _PRETTY_STATUS_MAP = {
+        'GOOD':    '[ PASSED ]',
+        'TEST_NA': '[  INFO  ]',
+    }
+
+    @property
+    def _pretty_status(self):
+        """Pretty status string."""
+        return self._PRETTY_STATUS_MAP.get(self.status, '[ FAILED ]')
+
+    def log_using(self, log_function, name_column_width):
+        """Log the test result using the given log function.
+
+        @param log_function: Log function to use.  Example: logging.info
+        @param name_column_width: Width of name column for formatting.
+        """
+        padded_name = self.name.ljust(name_column_width)
+        log_function('%s%s', padded_name, self._pretty_status)
+        if self.status != 'GOOD':
+            log_function('%s  %s: %s', padded_name, self.status, self.reason)
+        if self.retry_count > 0:
+            log_function('%s  retry_count: %s', padded_name, self.retry_count)
 
 
 def get_original_suite_name(suite_name, suite_args):
@@ -1067,7 +1088,6 @@ class ResultCollector(object):
                       from _suite_views and _child_views.
     @var _web_links: A list of web links pointing to the results of jobs.
     @var _buildbot_links: A list of buildbot links for non-passing tests.
-    @var _max_testname_width: Max width of all test names.
     @var _solo_test_run: True if this is a single test run.
     @var return_code: The exit code that should be returned by run_suite.
     @var return_message: Any message that should be displayed to explain
@@ -1096,7 +1116,6 @@ class ResultCollector(object):
         self._retry_counts = {}
         self._web_links = []
         self._buildbot_links = []
-        self._max_testname_width = 0
         self._num_child_jobs = 0
         self.return_code = None
         self.return_message = ''
@@ -1217,8 +1236,7 @@ class ResultCollector(object):
             bug_info = v.get_bug_info(suite_job_keyvals)
             job_id_owner = v.get_job_id_owner_str()
             link = LogLink(
-                    anchor=v.get_testname().ljust(
-                            self._max_testname_width),
+                    anchor=v.get_testname(),
                     server=self._instance_server,
                     job_string=job_id_owner,
                     bug_info=bug_info, retry_count=retry_count,
@@ -1316,20 +1334,28 @@ class ResultCollector(object):
                 code, tests_passed_after_retry)
 
 
+    def _make_test_results(self):
+        """Make TestResults for collected tests.
+
+        @returns: List of TestResult instances.
+        """
+        test_results = []
+        for test_view in self._test_views:
+            test_result = TestResult(
+                test_view=test_view,
+                retry_count=self._retry_counts.get(test_view['test_idx'], 0))
+            test_results.append(test_result)
+        return test_results
+
+
     def output_results(self):
         """Output test results, timings and web links."""
         # Output test results
-        for v in self._test_views:
-            display_name = v.get_testname().ljust(self._max_testname_width)
-            logging.info('%s%s', display_name,
-                         get_pretty_status(v['status']))
-            if v['status'] != 'GOOD':
-                logging.info('%s  %s: %s', display_name, v['status'],
-                             v['reason'])
-            if v.is_retry():
-                retry_count = self._retry_counts.get(v['test_idx'], 0)
-                logging.info('%s  retry_count: %s',
-                             display_name, retry_count)
+        test_results = self._make_test_results()
+        max_name_length = max(len(test_result.name)
+                              for test_result in test_results)
+        for test_result in test_results:
+            test_result.log_using(logging.info, max_name_length + 3)
         # Output suite timings
         logging.info(self.timings)
         # Output links to test logs
@@ -1440,8 +1466,6 @@ class ResultCollector(object):
             return
         self.is_aborted = any([view['job_keyvals'].get('aborted_by')
                                for view in self._suite_views])
-        self._max_testname_width = max(
-                [len(v.get_testname()) for v in self._test_views]) + 3
         self._generate_web_and_buildbot_links()
         self._record_timings()
         self._compute_return_code()
