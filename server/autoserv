@@ -206,13 +206,12 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
                 lxc.CONTROL_TEMP_PATH, os.path.basename(control))
         paths_to_replace[control] = container_control_filename
     # Update result directory with the one in container.
+    container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
     if parser.options.results:
-        container_result_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
         paths_to_replace[parser.options.results] = container_result_dir
     # Update parse_job directory with the one in container. The assumption is
     # that the result folder to be parsed is always the same as the results_dir.
     if parser.options.parse_job:
-        container_parse_dir = os.path.join(lxc.RESULT_DIR_FMT % job_folder)
         paths_to_replace[parser.options.parse_job] = container_result_dir
 
     args = [paths_to_replace.get(arg, arg) for arg in args]
@@ -400,10 +399,10 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
                     logging.debug('Container %s is not found.', container_name)
             except:
                 metadata['success'] = False
-                metadata['error'] = 'Exception: %s' % sys.exc_info()
+                metadata['error'] = 'Exception: %s' % str(sys.exc_info())
                 # Handle any exception so the autoserv process can be aborted.
-                logging.error('Failed to destroy container %s. Error: %s',
-                              container_name, sys.exc_info())
+                logging.exception('Failed to destroy container %s.',
+                                  container_name)
             autotest_es.post(use_http=True,
                              type_str=lxc.CONTAINER_RUN_TEST_METADB_TYPE,
                              metadata=metadata)
