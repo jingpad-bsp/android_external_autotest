@@ -11,17 +11,41 @@ This is the core infrastructure. Derived from the client side job.py
 Copyright Martin J. Bligh, Andy Whitcroft 2007
 """
 
-import getpass, os, sys, re, tempfile, time, select, platform
-import traceback, shutil, warnings, fcntl, pickle, logging, itertools, errno
+import errno
+import fcntl
+import getpass
+import itertools
+import logging
+import os
+import pickle
+import platform
+import re
+import select
+import shutil
+import sys
+import tempfile
+import time
+import traceback
+import warnings
+
 from autotest_lib.client.bin import sysinfo
-from autotest_lib.client.common_lib import base_job, global_config
-from autotest_lib.client.common_lib import error, utils, packages
+from autotest_lib.client.common_lib import base_job
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
-from autotest_lib.server import test, subcommand, profilers
+from autotest_lib.client.common_lib import packages
+from autotest_lib.client.common_lib import utils
+from autotest_lib.server import profilers
+from autotest_lib.server import subcommand
+from autotest_lib.server import test
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
-from autotest_lib.server.hosts import abstract_ssh, factory as host_factory
-from autotest_lib.tko import db as tko_db, status_lib, utils as tko_utils
+from autotest_lib.server.hosts import abstract_ssh
+from autotest_lib.server.hosts import factory as host_factory
+from autotest_lib.tko import db as tko_db
+from autotest_lib.tko import models as tko_models
+from autotest_lib.tko import status_lib
+from autotest_lib.tko import utils as tko_utils
 
 
 INCREMENTAL_TKO_PARSING = global_config.global_config.get_config_value(
@@ -598,6 +622,70 @@ class base_server_job(base_job.base_job):
         return success_machines
 
 
+    def _has_failed_tests(self):
+        """Parse status log for failed tests.
+
+        This checks the current working directory and is intended only for use
+        by the run() method.
+
+        @return boolean
+        """
+        path = os.getcwd()
+
+        # TODO(ayatane): Copied from tko/parse.py.  Needs extensive refactor to
+        # make code reuse plausible.
+        job_keyval = tko_models.job.read_keyval(path)
+        status_version = job_keyval.get("status_version", 0)
+
+        # parse out the job
+        parser = status_lib.parser(status_version)
+        job = parser.make_job(path)
+        status_log = os.path.join(path, "status.log")
+        if not os.path.exists(status_log):
+            status_log = os.path.join(path, "status")
+        if not os.path.exists(status_log):
+            logging.warning("! Unable to parse job, no status file")
+            return True
+
+        # parse the status logs
+        status_lines = open(status_log).readlines()
+        parser.start(job)
+        tests = parser.end(status_lines)
+
+        # parser.end can return the same object multiple times, so filter out
+        # dups
+        job.tests = []
+        already_added = set()
+        for test in tests:
+            if test not in already_added:
+                already_added.add(test)
+                job.tests.append(test)
+
+        failed = False
+        for test in job.tests:
+            # The current job is still running and shouldn't count as failed.
+            # The parser will fail to parse the exit status of the job since it
+            # hasn't exited yet (this running right now is the job).
+            failed = failed or (test.status != 'GOOD'
+                                and not _is_current_server_job(test))
+        return failed
+
+
+    def _collect_crashes(self, namespace, collect_crashinfo):
+        """Collect crashes.
+
+        @param namespace: namespace dict.
+        @param collect_crashinfo: whether to collect crashinfo in addition to
+                dumps
+        """
+        if collect_crashinfo:
+            # includes crashdumps
+            crash_control_file = CRASHINFO_CONTROL_FILE
+        else:
+            crash_control_file = CRASHDUMPS_CONTROL_FILE
+        self._execute_code(crash_control_file, namespace)
+
+
     _USE_TEMP_DIR = object()
     def run(self, install_before=False, install_after=False,
             collect_crashdumps=True, namespace={}, control=None,
@@ -715,15 +803,16 @@ class base_server_job(base_job.base_job):
                                  temp_control_file_dir, e)
 
             if machines and (collect_crashdumps or collect_crashinfo):
-                namespace['test_start_time'] = test_start_time
                 if skip_crash_collection:
                     logging.info('Skipping crash dump/info collection '
                                  'as requested.')
-                elif collect_crashinfo:
-                    # includes crashdumps
-                    self._execute_code(CRASHINFO_CONTROL_FILE, namespace)
                 else:
-                    self._execute_code(CRASHDUMPS_CONTROL_FILE, namespace)
+                    namespace['test_start_time'] = test_start_time
+                    # Remove crash files for passing tests.
+                    # TODO(ayatane): Tests that create crash files should be
+                    # reported.
+                    namespace['has_failed_tests'] = self._has_failed_tests()
+                    self._collect_crashes(namespace, collect_crashinfo)
             self.disable_external_logging()
             if self._uncollected_log_file and created_uncollected_logs:
                 os.remove(self._uncollected_log_file)
@@ -1306,6 +1395,14 @@ class warning_manager(object):
         intervals = self.disabled_warnings.get(warning_type, [])
         if intervals and intervals[-1][1] is None:
             intervals[-1] = (intervals[-1][0], int(current_time_func()))
+
+
+def _is_current_server_job(test):
+    """Return True if parsed test is the currently running job.
+
+    @param test: test instance from tko parser.
+    """
+    return test.testname == 'SERVER_JOB'
 
 
 # load up site-specific code for generating site-specific job data
