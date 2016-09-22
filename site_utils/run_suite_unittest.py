@@ -230,7 +230,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         # expected_web_links is list of (anchor, url) tuples we
         # are expecting.
         expected_web_links = [
-                 (v.get_testname().ljust(collector._max_testname_width),
+                 (v.get_testname(),
                   URL_PATTERN % ('fake_server',
                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views]
@@ -241,7 +241,7 @@ class ResultCollectorUnittest(unittest.TestCase):
             self.assertEqual(collector._web_links[i].url, expect[1])
 
         expected_buildbot_links = [
-                 (v.get_testname().ljust(collector._max_testname_width),
+                 (v.get_testname(),
                   URL_PATTERN % ('fake_server',
                                 '%s-%s' % (v['afe_job_id'], 'chromeos-test')))
                  for v in collector._test_views if v['status'] != 'GOOD']
