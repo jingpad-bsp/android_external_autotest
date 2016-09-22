@@ -179,6 +179,8 @@ class RDBClientHostWrapper(RDBHost):
 
     _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working',
                                            reset_after=True)
+    _HOST_STATUS_METRIC = metrics.Boolean('chromeos/autotest/dut_status',
+                                          reset_after=True)
     _HOST_POOL_METRIC = metrics.String('chromeos/autotest/dut_pool',
                                        reset_after=True)
 
@@ -240,13 +242,51 @@ class RDBClientHostWrapper(RDBHost):
         metadata_reporter.queue(metadata)
 
 
+    def get_metric_fields(self):
+        """Generate default set of fields to include for Monarch.
+
+        @return: Dictionary of default fields.
+        """
+        fields = {
+            'dut_host_name': self.hostname,
+            'board': self.board or '',
+        }
+
+        return fields
+
+
+    def record_pool(self, fields):
+        """Report to Monarch current pool of dut.
+
+        @param fields   Dictionary of fields to include.
+        """
+        pool = ''
+        if len(self.pools) == 1:
+            pool = self.pools[0]
+        if pool in lab_inventory.MANAGED_POOLS:
+            pool = 'managed:' + pool
+
+        self._HOST_POOL_METRIC.set(pool, fields=fields)
+
+
     def set_status(self, status):
         """Proxy for setting the status of a host via the rdb.
 
         @param status: The new status.
         """
+        # Update elasticsearch db.
         self._update({'status': status})
         self.record_state('host_history', 'status', status)
+
+        # Update Monarch.
+        fields = self.get_metric_fields()
+        self.record_pool(fields)
+        # As each device switches state, indicate that it is not in any
+        # other state.  This allows Monarch queries to avoid double counting
+        # when additional points are added by the Window Align operation.
+        for s in rdb_models.AbstractHostModel.Status.names:
+            fields['status'] = s
+            self._HOST_STATUS_METRIC.set(s == status, fields=fields)
 
 
     def record_working_state(self, working, timestamp):
@@ -258,19 +298,9 @@ class RDBClientHostWrapper(RDBHost):
                           manual intervention.
         @param timestamp  Time that the status was recorded.
         """
-        fields = {
-            'dut_host_name': self.hostname,
-            'board': self.board or '',
-        }
-
-        pool = ''
-        if len(self.pools) == 1:
-            pool = self.pools[0]
-        if pool in lab_inventory.MANAGED_POOLS:
-            pool = 'managed:' + pool
-
+        fields = self.get_metric_fields()
         self._HOST_WORKING_METRIC.set(working, fields=fields)
-        self._HOST_POOL_METRIC.set(pool, fields=fields)
+        self.record_pool(fields)
 
 
     def update_field(self, fieldname, value):
