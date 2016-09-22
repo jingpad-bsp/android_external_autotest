@@ -174,6 +174,16 @@ def powerwash_dut_to_test_repair(hostname, timeout):
     AFE.reverify_hosts(hostnames=[hostname])
 
 
+def reverify_all_push_duts(pool):
+    """Reverify all the push DUTs.
+
+    @param pool: Name of the pool used by test_push.
+    """
+    pool_label = constants.Labels.POOL_PREFIX + pool
+    hosts = [h.hostname for h in AFE.get_hosts(label=pool_label)]
+    AFE.reverify_hosts(hostnames=hosts)
+
+
 def get_default_build(board='gandof'):
     """Get the default build to be used for test.
 
@@ -574,6 +584,9 @@ def main():
                     ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
                      '\n'.join(run_suite_output)))
         raise
+    finally:
+        # Reverify all the hosts
+        reverify_all_push_duts(arguments.pool)
 
     message = ('\nAll tests are completed successfully, prod branch is ready to'
                ' be pushed.')
