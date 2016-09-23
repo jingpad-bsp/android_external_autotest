@@ -125,31 +125,75 @@ def find_and_generate_minidump_stacktraces(host_resultdir):
              been symbolized.
     """
     minidumps = []
-    for dir, subdirs, files in os.walk(host_resultdir):
-        for file in files:
-            if not file.endswith('.dmp'):
-                continue
-            minidump = os.path.join(dir, file)
-            generate_stacktrace_for_file(minidump, host_resultdir)
-            minidumps.append(minidump)
-
+    for file in _find_crashdumps(host_resultdir):
+        generate_stacktrace_for_file(file, host_resultdir)
+        minidumps.append(file)
     return minidumps
 
 
-def fetch_orphaned_crashdumps(host, host_resultdir):
+def _find_crashdumps(host_resultdir):
+    """Find crashdumps.
+
+    @param host_resultdir The result directory for this host for this test run.
+    """
+    for dir, subdirs, files in os.walk(host_resultdir):
+        for file in files:
+            if file.endswith('.dmp'):
+                yield os.path.join(dir, file)
+
+
+def _find_orphaned_crashdumps(host):
+    """Return file paths of crashdumps on host.
+
+    @param host A host object of the device.
+    """
+    return host.list_files_glob(os.path.join(constants.CRASH_DIR, '*'))
+
+
+def report_crashdumps(host):
+    """Report on crashdumps for host.
+
+    This is run when no tests failed.  We don't process crashdumps in this
+    case because of devserver load, but they should still be reported.
+
+    @param host A host object of the device we're to pull crashes from.
+    """
+    for crashfile in _find_orphaned_crashdumps(host):
+        logging.warning('Host crashdump exists: %s', crashfile)
+        host.job.record('INFO', None, None,
+                        'Host crashdump exists: %s' % (crashfile,))
+
+    host_resultdir = _get_host_resultdir(host)
+    for crashfile in _find_crashdumps(host_resultdir):
+        logging.warning('Local crashdump exists: %s', crashfile)
+        host.job.record('INFO', None, None,
+                        'Local crashdump exists: %s' % (crashfile,))
+
+
+def fetch_orphaned_crashdumps(host, infodir):
     """
     Copy all of the crashes in the crash directory over to the results folder.
 
     @param host A host object of the device we're to pull crashes from.
-    @param host_resultdir The result directory for this host for this test run.
+    @param infodir The directory to fetch crashdumps into.
     @return The list of minidumps that we pulled back from the host.
     """
-    minidumps = []
-    for file in host.list_files_glob(os.path.join(constants.CRASH_DIR, '*')):
-        logging.info('Collecting %s...', file)
-        collect_log_file(host, file, host_resultdir, clean=True)
-        minidumps.append(file)
-    return minidumps
+    if not os.path.exists(infodir):
+        os.mkdir(infodir)
+    orphans = []
+    try:
+        for file in _find_orphaned_crashdumps(host):
+            logging.info('Collecting %s...', file)
+            collect_log_file(host, file, infodir, clean=True)
+            orphans.append(file)
+    except Exception as e:
+        logging.warning('Collection of orphaned crash dumps failed %s', e)
+    finally:
+        # Delete infodir if we have no orphans
+        if not orphans:
+            logging.info('There are no orphaned crashes; deleting %s', infodir)
+            os.rmdir(infodir)
+    return orphans
 
 
 def _copy_to_debug_dir(host_resultdir, filename):
@@ -170,6 +214,23 @@ def _copy_to_debug_dir(host_resultdir, filename):
         logging.warning('Failed to copy %s to %s', src, dst)
 
 
+def _get_host_resultdir(host):
+    """Get resultdir for host.
+
+    @param host A host object of the device we're to pull crashes from.
+    """
+    return getattr(getattr(host, 'job', None), 'resultdir', None)
+
+
+def get_host_infodir(host):
+    """Get infodir for host.
+
+    @param host A host object of the device we're to pull crashes from.
+    """
+    host_resultdir = _get_host_resultdir(host)
+    return os.path.join(host_resultdir, 'crashinfo.%s' % host.hostname)
+
+
 def get_site_crashdumps(host, test_start_time):
     """
     Copy all of the crashdumps from a host to the results directory.
@@ -178,24 +239,10 @@ def get_site_crashdumps(host, test_start_time):
     @param test_start_time When the test we just ran started.
     @return A list of all the minidumps
     """
-    host_resultdir = getattr(getattr(host, 'job', None), 'resultdir', None)
-    infodir = os.path.join(host_resultdir, 'crashinfo.%s' % host.hostname)
-    if not os.path.exists(infodir):
-        os.mkdir(infodir)
+    host_resultdir = _get_host_resultdir(host)
+    infodir = get_host_infodir(host)
 
-    # TODO(milleral): handle orphans differently. crosbug.com/38202
-    try:
-        orphans = fetch_orphaned_crashdumps(host, infodir)
-
-        # Delete infodir if we have no orphans
-        if not orphans:
-            logging.info('There are no orphaned crashes; deleting %s', infodir)
-            os.rmdir(infodir)
-
-    except Exception as e:
-        orphans = []
-        logging.warning('Collection of orphaned crash dumps failed %s', e)
-
+    orphans = fetch_orphaned_crashdumps(host, infodir)
     minidumps = find_and_generate_minidump_stacktraces(host_resultdir)
 
     # Record all crashdumps in status.log of the job:

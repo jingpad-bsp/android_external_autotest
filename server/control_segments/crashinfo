@@ -8,7 +8,11 @@ def crashinfo(machine):
         return
 
     host = hosts.create_host(machine)
-    crashcollect.get_crashinfo(host, test_start_time)
-
+    if has_failed_tests:
+        crashcollect.get_crashinfo(host, test_start_time)
+    else:
+        crashcollect.report_crashdumps(host)
+        crashcollect.fetch_orphaned_crashdumps(
+                host, crashcollect.get_host_infodir(host))
 
 job.parallel_simple(crashinfo, machines, log=False)
