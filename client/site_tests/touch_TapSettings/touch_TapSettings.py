@@ -18,7 +18,7 @@ class touch_TapSettings(touch_playback_test_base.touch_playback_test_base):
 
     _TEST_TIMEOUT = 1  # Number of seconds the test will wait for a click.
     _MOUSE_DESCRIPTION = 'apple_mouse.prop'
-    _CLICK_NAME = 'tap-click'
+    _CLICK_NAME = 'tap'
     _DRAG_NAME = 'tap-drag-right'
 
 
