@@ -325,6 +325,11 @@ class network_EthernetStressPlug(test.test):
             { 'Speed': '<speed>', 'Duplex': '<duplex>' }
         """
         parameters = []
+
+        # QCA ESS EDMA driver doesn't report "Supported link modes:"
+        if 'Not reported' in line:
+            return parameters
+
         for speed_to_parse in line.split():
             speed_duplex = speed_to_parse.split('/')
             parameters.append(
@@ -398,6 +403,10 @@ class network_EthernetStressPlug(test.test):
         if 'No data available' in ethtool_out:
             return parameters
 
+        # bridged interfaces only have two lines of ethtool output.
+        if len(ethtool_out) < 3:
+            return parameters
+
         # For multiline entries, keep track of the key they belong to.
         current_key = ''
         for line in ethtool_out:
@@ -452,7 +461,8 @@ class network_EthernetStressPlug(test.test):
 
         # Ethtool output is ordered in terms of speed so this obtains the
         # fastest speed supported by dongle.
-        max_link = ethtool_dict['Supported link modes'][-1]
+        # QCA ESS EDMA driver doesn't report "Supported link modes".
+        max_link = ethtool_dict['Advertised link modes'][-1]
 
         return EthernetDongle(expect_speed=max_link['Speed'],
                               expect_duplex=max_link['Duplex'])
