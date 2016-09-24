@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -41,6 +41,7 @@ class network_EthernetStressPlug(test.test):
     def initialize(self, interface=None):
         """ Determines and defines the bus information and interface info. """
 
+        self.link_speed_failures = 0
         sysnet = os.path.join('/', 'sys', 'class', 'net')
 
         def get_ethernet_interface(interface):
@@ -282,6 +283,18 @@ class network_EthernetStressPlug(test.test):
         while time.time() < end_time:
             status = self.GetEthernetStatus()
 
+
+            # If GetEthernetStatus() detects the wrong link rate, "bouncing"
+            # the link _should_ recover. Keep count of how many times this
+            # happens. Test should fail if happens "frequently".
+            if power and not status and 'speed' in self.test_status['reason']:
+                self._PowerEthernet(0)
+                time.sleep(1)
+                self._PowerEthernet(power)
+                self.link_speed_failures += 1
+                logging.warning('Link Renegotiated ' +
+                    self.test_status['reason'])
+
             # If ethernet is enabled  and has an IP, OR
             # if ethernet is disabled and does not have an IP,
             # then we are in the desired state.
@@ -315,7 +328,6 @@ class network_EthernetStressPlug(test.test):
 
     def _ParseEthTool_LinkModes(self, line):
         """ Parses Ethtool Link Mode Entries.
-
         Inputs:
             line: Space separated string of link modes that have the format
                   (\d+)baseT/(Half|Full) (eg. 100baseT/Full).
@@ -500,6 +512,12 @@ class network_EthernetStressPlug(test.test):
                                          (self.warning_threshold*100,
                                           num_iterations,
                                           self.secs_before_warning))
+
+            # Link speed failures are secondary.
+            # Report after all iterations complete.
+            if self.link_speed_failures > 1:
+                raise error.TestFail('ERROR: %s : Link Renegotiated %d times'
+                                % (self.interface, self.link_speed_failures))
 
         except Exception as e:
             exc_info = sys.exc_info()
