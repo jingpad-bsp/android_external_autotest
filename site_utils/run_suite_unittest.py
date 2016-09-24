@@ -226,7 +226,7 @@ class ResultCollectorUnittest(unittest.TestCase):
         collector._max_testname_width = max(
                 [len(v.get_testname()) for v in collector._test_views]) + 3
         collector._generate_web_and_buildbot_links()
-        URL_PATTERN = run_suite.LogLink._URL_PATTERN
+        URL_PATTERN = run_suite._URL_PATTERN
         # expected_web_links is list of (anchor, url) tuples we
         # are expecting.
         expected_web_links = [
