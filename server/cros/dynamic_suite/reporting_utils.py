@@ -66,6 +66,9 @@ _buildbot_builders = global_config.global_config.get_config_value(
 _build_prefix = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'build_prefix', default='')
 
+_CRBUG_URL = global_config.global_config.get_config_value(
+    BUG_CONFIG_SECTION, 'crbug_url')
+
 
 WMATRIX_RETRY_URL = global_config.global_config.get_config_value(
     BUG_CONFIG_SECTION, 'wmatrix_retry_url')
@@ -347,3 +350,11 @@ def link_test_history(test_name):
   """
   return WMATRIX_TEST_HISTORY_URL % test_name
 
+
+def link_crbug(bug_id):
+    """Generate a bug link for the given bug_id.
+
+    @param bug_id: The id of the bug.
+    @return: A link, eg: https://crbug.com/<bug_id>.
+    """
+    return _CRBUG_URL % (bug_id,)
