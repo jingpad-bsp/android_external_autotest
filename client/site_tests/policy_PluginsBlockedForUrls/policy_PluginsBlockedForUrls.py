@@ -10,50 +10,50 @@ from autotest_lib.client.cros import enterprise_policy_base
 from autotest_lib.client.cros.audio import audio_helper
 
 
-class policy_PluginsAllowedForUrls(
+class policy_PluginsBlockedForUrls(
         enterprise_policy_base.EnterprisePolicyTest):
-    """Test PluginsAllowedForUrls policy effect on CrOS behavior.
+    """Test PluginsBlockedForUrls policy effect on CrOS behavior.
 
     This test verifies the behavior of Chrome OS with a set of valid values
-    for the PluginsAllowedForUrls user policy, when DefaultPluginsSetting=2
-    (i.e., block running of plugins by default, except on sites listed in
-    PluginsAllowedForUrls). These valid values are covered by 3 test cases:
-    SiteAllowed_Run, SiteNotAllowed_Block, NotSet_Block.
+    for the PluginsBlockedForUrls user policy, when DefaultPluginsSetting=1
+    (i.e., allow running of plugins by default, except on sites listed in
+    PluginsBlockedForUrls). These valid values are covered by 3 test cases:
+    SiteBlocked_Block, SiteNotBlocked_Run, and NotSet_Run.
 
     This test is also configured with DisablePluginFinder=True and
     AllowOutdatedPlugins=False.
 
-    When the policy value is None (as in case NotSet_Block), then running of
-    plugins is blocked on every site. When the value is set to one or more
-    URLs (as in SiteAllowed_Run and SiteNotAllowed_Block), plugins are blocked
+    When the policy value is None (as in case NotSet_Run), then running of
+    plugins is allowed on every site. When the value is set to one or more
+    URLs (as in SiteBlocked_Block and SiteNotBlocked_Run), plugins are run
     on every site except for those sites whose domain matches any of the
     listed URLs.
 
-    A related test, policy_PluginsBlockedForUrls, has DefaultPluginsSetting=1
-    (i.e., allow running of plugins by default, except on sites in domains
-    listed in PluginsBlockedForUrls).
+    A related test, policy_PluginsBlockedForUrls, has DefaultPluginsSetting=2
+    (i.e., block running of plugins by default, except on sites in domains
+    listed in PluginsAllowedForUrls).
     """
     version = 1
 
-    POLICY_NAME = 'PluginsAllowedForUrls'
+    POLICY_NAME = 'PluginsBlockedForUrls'
     URL_HOST = 'http://localhost'
     URL_PORT = 8080
     URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
     URL_PAGE = '/plugin_status.html'
     TEST_URL = URL_BASE + URL_PAGE
 
-    INCLUDES_ALLOWED_URL = ['http://www.bing.com', URL_BASE,
+    INCLUDES_BLOCKED_URL = ['http://www.bing.com', URL_BASE,
                             'https://www.yahoo.com']
-    EXCLUDES_ALLOWED_URL = ['http://www.bing.com', 'https://www.irs.gov/',
+    EXCLUDES_BLOCKED_URL = ['http://www.bing.com', 'https://www.irs.gov/',
                             'https://www.yahoo.com']
     TEST_CASES = {
-        'SiteAllowed_Run': INCLUDES_ALLOWED_URL,
-        'SiteNotAllowed_Block': EXCLUDES_ALLOWED_URL,
-        'NotSet_Block': None
+        'SiteBlocked_Block': INCLUDES_BLOCKED_URL,
+        'SiteNotBlocked_Run': EXCLUDES_BLOCKED_URL,
+        'NotSet_Run': None
     }
     STARTUP_URLS = ['chrome://policy', 'chrome://settings']
     SUPPORTING_POLICIES = {
-        'DefaultPluginsSetting': 2,
+        'DefaultPluginsSetting': 1,
         'DisablePluginFinder': True,
         'AllowOutdatedPlugins': False,
         'AlwaysAuthorizePlugins': False,
@@ -64,7 +64,7 @@ class policy_PluginsAllowedForUrls(
     }
 
     def initialize(self, **kwargs):
-        super(policy_PluginsAllowedForUrls, self).initialize(**kwargs)
+        super(policy_PluginsBlockedForUrls, self).initialize(**kwargs)
         self.start_webserver(self.URL_PORT, self.cros_policy_dir())
 
 
@@ -109,19 +109,19 @@ class policy_PluginsAllowedForUrls(
         return flash_pids != []
 
 
-    def _test_plugins_allowed_for_urls(self, policy_value, policies_dict):
-        """Verify CrOS enforces the PluginsAllowedForUrls policy.
+    def _test_plugins_blocked_for_urls(self, policy_value, policies_dict):
+        """Verify CrOS enforces the PluginsBlockedForUrls policy.
 
-        When PluginsAllowedForUrls is undefined, plugins shall be blocked on
-        all pages. When PluginsAllowedForUrls contains one or more URLs,
-        plugins shall be allowed only on the pages whose domain matches any of
-        the listed URLs.
+        When PluginsBlockedForUrls is undefined, plugins shall be run on
+        all pages. When PluginsBlockedForUrls contains one or more URLs,
+        plugins shall be run on all pages except those whose domain matches
+        any of the listed URLs.
 
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
         """
         self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-        logging.info('Running _test_plugins_allowed_for_urls(%s, %s)',
+        logging.info('Running _test_plugins_blocked_for_urls(%s, %s)',
                      policy_value, policies_dict)
 
         # Set a low audio volume to avoid annoying people during tests.
@@ -141,11 +141,11 @@ class policy_PluginsAllowedForUrls(
         # String |URL_HOST| will be found in string |policy_value| for
         # cases that expect the plugin to be run.
         if policy_value is not None and self.URL_HOST in policy_value:
-            if not plugin_is_running:
-                raise error.TestFail('Plugins should run.')
-        else:
             if plugin_is_running:
                 raise error.TestFail('Plugins should not run.')
+        else:
+            if not plugin_is_running:
+                raise error.TestFail('Plugins should run.')
         tab.Close()
 
 
@@ -155,4 +155,4 @@ class policy_PluginsAllowedForUrls(
         @param case: Name of the test case to run.
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_plugins_allowed_for_urls(policy_value, policies_dict)
+        self._test_plugins_blocked_for_urls(policy_value, policies_dict)
