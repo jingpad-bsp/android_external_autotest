@@ -69,7 +69,7 @@ class touch_playback_test_base(test.test):
 
 
     def _find_test_files(self, input_type, gestures):
-        """Determine where the test files are.
+        """Determine where the playback gesture files for this test are.
 
         Expected file format is: <boardname>_<input type>_<hwid>_<gesture name>
             e.g. samus_touchpad_164.17_scroll_down
@@ -97,16 +97,12 @@ class touch_playback_test_base(test.test):
             filename_fmt = '%s_%s' % (device_name, input_type)
 
         filepaths = {}
-        gesture_dir = os.path.join(self.bindir, 'gestures')
         for gesture in gestures:
             filename = '%s_%s' % (filename_fmt, gesture)
-            filepath = os.path.join(gesture_dir, filename)
-            if not os.path.exists(filepath):
-                logging.info('Did not find %s!', filepath)
-
-                filepath = self._download_remote_test_file(filename, input_type)
-                if not filepath:
-                    return None
+            filepath = self._download_remote_test_file(filename, input_type)
+            if not filepath:
+                logging.info('Did not find files for this device!')
+                return None
 
             filepaths[gesture] = filepath
 
@@ -114,7 +110,7 @@ class touch_playback_test_base(test.test):
 
 
     def _find_test_files_from_directions(self, input_type, fmt_str, directions):
-        """Find test files given a list of directions and gesture name format.
+        """Find gesture files given a list of directions and name format.
 
         @param input_type: device type, e.g. 'touchpad'
         @param fmt_str: format string for filename, e.g. 'scroll-%s'
