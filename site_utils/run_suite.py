@@ -73,8 +73,9 @@ from autotest_lib.site_utils import job_overhead
 
 CONFIG = global_config.global_config
 
-WMATRIX_RETRY_URL = CONFIG.get_config_value('BUG_REPORTING',
-                                            'wmatrix_retry_url')
+_DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
+        'SERVER', 'hostname', type=str)
+_URL_PATTERN = CONFIG.get_config_value('CROS', 'log_url_pattern', type=str)
 
 # Return code that will be sent back to autotest_rpc_server.py
 RETURN_CODES = enum.Enum(
@@ -387,11 +388,6 @@ class LogLink(object):
     @var bug_id  Id of a bug to link to, or None.
     """
 
-    _BUG_URL_PREFIX = CONFIG.get_config_value('BUG_REPORTING',
-                                              'tracker_url')
-    _URL_PATTERN = CONFIG.get_config_value('CROS',
-                                           'log_url_pattern', type=str)
-
     # A list of tests that don't get retried so skip the dashboard.
     _SKIP_RETRY_DASHBOARD = ['provision']
 
@@ -406,7 +402,7 @@ class LogLink(object):
         @param bug_id: The id of the bug.
         @return: A link, eg: https://crbug.com/<bug_id>.
         """
-        return '%s%s' % (cls._BUG_URL_PREFIX, bug_id)
+        return reporting_utils.link_crbug(bug_id)
 
 
     def __init__(self, anchor, server, job_string, bug_info=None, reason=None,
@@ -422,7 +418,7 @@ class LogLink(object):
         @param testname    Optional Arg that supplies the testname.
         """
         self.anchor = anchor
-        self.url = self._URL_PATTERN % (server, job_string)
+        self.url = _URL_PATTERN % (server, job_string)
         self.reason = reason
         self.retry_count = retry_count
         self.testname = testname
@@ -517,8 +513,9 @@ class LogLink(object):
         if self.testname in self._SKIP_RETRY_DASHBOARD:
             return None
 
-        return GetBuildbotStepLink('[Flake-Dashboard]: %s' % self.testname,
-                                   WMATRIX_RETRY_URL % self.testname)
+        return GetBuildbotStepLink(
+            '[Flake-Dashboard]: %s' % self.testname,
+            reporting_utils.link_retry_url(self.testname))
 
 
 class Timings(object):
@@ -681,9 +678,6 @@ class Timings(object):
                         (self.tests_end_time -
                          self.tests_start_time).total_seconds())
 
-
-_DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
-        'SERVER', 'hostname', type=str)
 
 
 def instance_for_pool(pool_name):
@@ -1040,6 +1034,20 @@ class TestView(object):
         return attributes
 
 
+def log_buildbot_links(log_func, links):
+    """Output buildbot links to log.
+
+    @param log_func: Logging function to use.
+    @param links: Iterable of LogLink instances.
+    """
+    for link in links:
+        for generated_link in link.GenerateBuildbotLinks():
+            log_func(generated_link)
+        wmatrix_link = link.GenerateWmatrixRetryLink()
+        if wmatrix_link:
+            log_func(wmatrix_link)
+
+
 class ResultCollector(object):
     """Collect test results of a suite or a single test run.
 
@@ -1060,7 +1068,7 @@ class ResultCollector(object):
 
     2) Collect the child jobs' results from tko_test_view_2.
     For child jobs, we pull all the test views associated with them.
-    (Note 'SERVER_JOB'/'CLIENT_JOB' are handled speically)
+    (Note 'SERVER_JOB'/'CLIENT_JOB' are handled specially)
 
     3) Generate web and buildbot links.
     4) Compute timings of the suite run.
@@ -1125,11 +1133,17 @@ class ResultCollector(object):
         self._solo_test_run = solo_test_run
 
 
+    @property
+    def buildbot_links(self):
+        """Provide public access to buildbot links."""
+        return self._buildbot_links
+
+
     def _fetch_relevant_test_views_of_suite(self):
         """Fetch relevant test views of the suite job.
 
         For the suite job, there will be a test view for SERVER_JOB, and views
-        for results of its child jobs. For example, assume we've ceated
+        for results of its child jobs. For example, assume we've created
         a suite job (afe_job_id: 40) that runs dummy_Pass, dummy_Fail,
         dummy_Pass.bluetooth. Assume dummy_Pass was aborted before running while
         dummy_Path.bluetooth got TEST_NA as no duts have bluetooth.
@@ -1402,7 +1416,8 @@ class ResultCollector(object):
             test_info['link_to_logs'] = link.url
             # Write the wmatrix link into the dict.
             if link in self._buildbot_links and link.testname:
-              test_info['wmatrix_link'] = WMATRIX_RETRY_URL % link.testname
+              test_info['wmatrix_link'] \
+                  = reporting_utils.link_retry_url(link.testname)
             # Write the bug url into the dict.
             if link.bug_id:
               test_info['bug_url'] = link.get_bug_link(link.bug_id)
@@ -1423,16 +1438,6 @@ class ResultCollector(object):
         output_dict['suite_job_id'] = self._suite_job_id
 
         return output_dict
-
-
-    def output_buildbot_links(self):
-        """Output buildbot links."""
-        for link in self._buildbot_links:
-            for generate_link in link.GenerateBuildbotLinks():
-                logging.info(generate_link)
-            wmatrix_link = link.GenerateWmatrixRetryLink()
-            if wmatrix_link:
-                logging.info(wmatrix_link)
 
 
     def run(self):
@@ -1744,7 +1749,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
         output_dict['return_message'] = return_message
 
     logging.info('\nOutput below this line is for buildbot consumption:')
-    collector.output_buildbot_links()
+    log_buildbot_links(logging.info, collector._buildbot_links)
     return SuiteResult(code, output_dict)
 
 
@@ -1770,8 +1775,6 @@ def _handle_job_nowait(job_id, options, instance_server):
 def main():
     """Entry point."""
     utils.verify_not_root_user()
-    code = RETURN_CODES.OK
-    output_dict = {}
 
     parser = make_parser()
     options = parser.parse_args()
@@ -1783,25 +1786,28 @@ def main():
         if not verify_options(options):
             parser.print_help()
             code = RETURN_CODES.INVALID_OPTIONS
+            output_dict = {'return_code': RETURN_CODES.INVALID_OPTIONS}
         else:
-            (code, output_dict) = main_without_exception_handling(options)
+            code, output_dict = main_without_exception_handling(options)
     except diagnosis_utils.BoardNotAvailableError as e:
-        output_dict['return_message'] = 'Skipping testing: %s' % e.message
+        output_dict = {'return_message': 'Skipping testing: %s' % e.message}
         code = RETURN_CODES.BOARD_NOT_AVAILABLE
         logging.info(output_dict['return_message'])
     except utils.TestLabException as e:
-        output_dict['return_message'] = 'TestLabException: %s' % e
+        output_dict = {'return_message': 'TestLabException: %s' % e}
         code = RETURN_CODES.INFRA_FAILURE
         logging.exception(output_dict['return_message'])
     except Exception as e:
-        output_dict['return_message'] = 'Unhandled run_suite exception: %s' % e
+        output_dict = {
+            'return_message': 'Unhandled run_suite exception: %s' % e
+        }
         code = RETURN_CODES.INFRA_FAILURE
         logging.exception(output_dict['return_message'])
 
     # Dump test outputs into json.
     output_dict['return_code'] = code
-    output_json = json.dumps(output_dict, sort_keys=True)
     if options.json_dump:
+        output_json = json.dumps(output_dict, sort_keys=True)
         output_json_marked = '#JSON_START#%s#JSON_END#' % output_json.strip()
         sys.stdout.write(output_json_marked)
 

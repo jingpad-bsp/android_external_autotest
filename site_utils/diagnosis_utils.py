@@ -27,9 +27,6 @@ class BoardNotAvailableError(utils.TestLabException):
 class NotEnoughDutsError(utils.TestLabException):
     """Rasied when the lab doesn't have the minimum number of duts."""
 
-    _BUG_URL_PREFIX = CONFIG.get_config_value('BUG_REPORTING',
-                                              'tracker_url')
-
     def __init__(self, board, pool, num_available, num_required, hosts):
         """Initialize instance.
 
@@ -70,19 +67,15 @@ class NotEnoughDutsError(utils.TestLabException):
             'Not enough DUTs for board: {this.board}, pool: {this.pool};'
             ' required: {this.num_required}, found: {this.num_available}'
         ]
+        format_dict = {'this': self}
         if self.bug_id is not None:
-            msg_parts.append(
-                'bug: {this._BUG_URL_PREFIX}{this.bug_id!s}'
-            )
+            msg_parts.append('bug: {bug_url}')
+            format_dict['bug_url'] = reporting_utils.link_crbug(self.bug_id)
         if self.suite_name is not None:
-            msg_parts.append(
-                'suite: {this.suite_name}'
-            )
+            msg_parts.append('suite: {this.suite_name}')
         if self.build is not None:
-            msg_parts.append(
-                'build: {this.build}'
-            )
-        return ', '.join(msg_parts).format(this=self)
+            msg_parts.append('build: {this.build}')
+        return ', '.join(msg_parts).format(**format_dict)
 
 
     def add_bug_id(self, bug_id):
