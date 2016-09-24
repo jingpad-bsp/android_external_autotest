@@ -11,8 +11,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import httpd
 from autotest_lib.client.cros import enterprise_fake_dmserver
+from autotest_lib.client.cros import httpd
 
 CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
@@ -56,7 +56,6 @@ PASSWORD = 'fakepassword'
 class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
 
-
     def setup(self):
         os.chdir(self.srcdir)
         utils.make()
@@ -71,7 +70,6 @@ class EnterprisePolicyTest(test.test):
         @param username: String user name login credential.
         @param password: String password login credential.
         @param dms_name: String name of test DM Server.
-
         """
         self.case = case
         self.env = env
@@ -103,13 +101,21 @@ class EnterprisePolicyTest(test.test):
             self.cr.close()
 
 
-    def start_webserver(self, port):
-        """Set up an HTTP Server on |port| to serve pages from localhost.
+    def cros_policy_dir(self):
+        """Return path to cros/policy/ resources."""
+        client_dir = os.path.dirname(os.path.dirname(self.bindir))
+        return os.path.join(client_dir, 'cros/policy')
+
+
+    def start_webserver(self, port=8080, docroot=None):
+        """Set up an HTTP Server on |port| to serve docs from localhost.
 
         @param port: Port used by HTTP server.
-
+        @param docroot: Root dir of documents to serve.
         """
-        self._web_server = httpd.HTTPListener(port, docroot=self.bindir)
+        if docroot is None:
+            docroot = self.bindir
+        self._web_server = httpd.HTTPListener(port, docroot=docroot)
         self._web_server.run()
 
 
@@ -118,7 +124,6 @@ class EnterprisePolicyTest(test.test):
 
         @raises error.TestError if context parameter has an invalid value,
                 or a combination of parameters have incompatible values.
-
         """
         # Verify |case| was given. List test case names if not.
         if self.case is None:
@@ -172,7 +177,6 @@ class EnterprisePolicyTest(test.test):
         @raises error.TestError if cryptohome vault is not mounted for user.
         @raises error.TestFail if |policy_name| and |policy_value| are not
                 shown on the Policies page.
-
         """
         if self.dms_is_fake:
             self.fake_dm_server.setup_policy(self._make_json_blob(
@@ -195,7 +199,6 @@ class EnterprisePolicyTest(test.test):
 
         @param policies_dict: policies dictionary object.
         @returns: JSON policy blob to send to the fake DM server.
-
         """
         policies_dict = self._move_modeless_to_mandatory(policies_dict)
         policies_dict = self._remove_null_policies(policies_dict)
@@ -221,7 +224,6 @@ class EnterprisePolicyTest(test.test):
 
         @param policies_dict: policy dictionary data.
         @returns: dict of policies grouped by mode keys.
-
         """
         mandatory_policies = {}
         recommended_policies = {}
@@ -258,7 +260,6 @@ class EnterprisePolicyTest(test.test):
 
         @param policies_dict: policy dictionary data.
         @returns: policy dictionary data with all 'Not set' policies removed.
-
         """
         policies_dict_copy = policies_dict.copy()
         for policies in policies_dict_copy.values():
@@ -273,7 +274,6 @@ class EnterprisePolicyTest(test.test):
 
         @param policy_value: object containing a policy value.
         @returns: string in JSON format, stripped of whitespace.
-
         """
         return ''.join(json.dumps(policy_value))
 
@@ -289,7 +289,6 @@ class EnterprisePolicyTest(test.test):
 
         @param case: Name of the test case to run.
         @returns: policy_value string and policies_dict data.
-
         """
         policy_value = None
         if self.TEST_CASES[case]:
@@ -309,7 +308,6 @@ class EnterprisePolicyTest(test.test):
         @param policy_tab: Tab displaying the Policies page.
         @param policy_name: The name of the policy.
         @returns: The value shown for the policy on the Policies page.
-
         """
         row_values = policy_tab.EvaluateJavaScript('''
             var section = document.getElementsByClassName(
@@ -347,7 +345,6 @@ class EnterprisePolicyTest(test.test):
         @param policy_name: string of policy name.
 
         @returns: (string) value of the policy as shown on chrome://policy.
-
         """
         values = self._get_policy_values_from_new_tab([policy_name])
         return values[policy_name]
@@ -360,7 +357,6 @@ class EnterprisePolicyTest(test.test):
 
         @returns: dict of policy name mapped to (string) value of the policy as
                   shown on chrome://policy.
-
         """
         values = {}
         tab = self.navigate_to_url('chrome://policy')
@@ -385,7 +381,6 @@ class EnterprisePolicyTest(test.test):
         @param policies_dict: Policy dictionary data for the fake DM server.
 
         @returns: True if the strings match after removing all whitespace.
-
         """
         # Convert Python None or '' to JSON formatted 'null' string.
         if value_shown is None or value_shown == '':
@@ -444,7 +439,6 @@ class EnterprisePolicyTest(test.test):
         @param url: URL of web page to load.
         @param tab: browser tab to load (if any).
         @returns: browser tab loaded with web page.
-
         """
         logging.info('Navigating to URL: %r', url)
         if not tab:
@@ -462,7 +456,6 @@ class EnterprisePolicyTest(test.test):
         @param cmd: JavaScript command to evaluate on the page.
         @returns object containing elements on page that match the cmd.
         @raises: TestFail if matching elements are not found on the page.
-
         """
         try:
             elements = tab.EvaluateJavaScript(cmd)
@@ -479,7 +472,6 @@ class EnterprisePolicyTest(test.test):
         case in the test class to run. The test class must have a public
         run_test_case() method defined. Note: The test class may override
         run_once() if it determines which test case to run.
-
         """
         logging.info('Running test case: %s', self.case)
         self.run_test_case(self.case)
