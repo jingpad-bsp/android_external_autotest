@@ -128,10 +128,6 @@ class _JetstreamBypasser(_BaseFwBypasser):
 
     def bypass_dev_boot_usb(self):
         """Bypass the dev mode firmware logic to boot USB."""
-        # TODO: Confirm if it is a proper way to trigger dev boot USB.
-        # We can't verify it this time due to a bug that always boots into
-        # USB on dev mode.
-        self.servo.enable_development_mode()
         self.servo.switch_usbkey('dut')
         time.sleep(self.faft_config.firmware_screen)
         self.servo.toggle_development_switch()
