@@ -1727,3 +1727,18 @@ def get_static_data():
 
 def get_server_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+def get_hosts_by_attribute(attribute, value):
+    """
+    Get the list of valid hosts that share the same host attribute value.
+
+    @param attribute: String of the host attribute to check.
+    @param value: String of the value that is shared between hosts.
+
+    @returns List of hostnames that all have the same host attribute and
+             value.
+    """
+    hosts = models.HostAttribute.query_objects({'attribute': attribute,
+                                                'value': value})
+    return [row.host.hostname for row in hosts if row.host.invalid == 0]
