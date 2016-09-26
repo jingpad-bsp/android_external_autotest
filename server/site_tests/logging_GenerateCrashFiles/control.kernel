@@ -18,10 +18,11 @@ Crash process and confirm log files are generated.
 def run(machine):
     host = hosts.create_host(machine)
     crash_cmd = "echo BUG > /sys/kernel/debug/provoke-crash/DIRECT"
-    crash_files = [".*kernel.*kcrash", ".*kernel.*meta"]
-
+    crash_files = ["kcrash", "meta"]
+    prefix = "kernel"
     job.run_test("logging_GenerateCrashFiles", host=host,
-                 crash_cmd=crash_cmd, crash_files=crash_files, tag="KERNEL")
+                 crash_cmd=crash_cmd, crash_files=crash_files,
+                 prefix=prefix, tag="KERNEL")
 
 parallel_simple(run, machines)
 
