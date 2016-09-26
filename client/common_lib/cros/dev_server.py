@@ -599,7 +599,10 @@ class DevServer(object):
 
         @raise DevServerException: If no devserver is available.
         """
+        tried_devservers = set()
         devservers, can_retry = cls.get_available_devservers(hostname)
+        if devservers:
+            tried_devservers |= set(devservers)
 
         devserver = cls.get_healthy_devserver(build, devservers)
 
@@ -607,10 +610,14 @@ class DevServer(object):
             # Find available devservers without dut location constrain.
             devservers, _ = cls.get_available_devservers()
             devserver = cls.get_healthy_devserver(build, devservers)
+            if devservers:
+                tried_devservers |= set(devservers)
         if devserver:
             return devserver
         else:
-            error_msg = 'All devservers are currently down: %s' % devservers
+            error_msg = ('All devservers are currently down: %s. '
+                         'dut hostname: %s' %
+                         (tried_devservers, hostname))
             logging.error(error_msg)
             raise DevServerException(error_msg)
 
