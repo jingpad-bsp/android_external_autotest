@@ -18,11 +18,11 @@ Crash process and confirm log files are generated.
 def run(machine):
     host = hosts.create_host(machine)
     crash_cmd = "killall -w -s SEGV /usr/bin/powerd"
-    crash_files = [".*powerd.*core", ".*powerd.*dmp",
-                   ".*powerd.*meta", ".*powerd.*log"]
-
+    crash_files = ["core", "dmp", "meta", "log"]
+    prefix = "powerd"
     job.run_test("logging_GenerateCrashFiles", host=host,
-                 crash_cmd=crash_cmd, crash_files=crash_files, tag="PROCESS")
+                 crash_cmd=crash_cmd, crash_files=crash_files,
+                 prefix=prefix, tag="PROCESS")
 
 parallel_simple(run, machines)
 
