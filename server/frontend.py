@@ -361,6 +361,60 @@ class AFE(RpcClient):
             self.run('abort_host_queue_entries', job_id=job)
 
 
+    def get_hosts_by_attribute(self, attribute, value):
+        """
+        Get the list of hosts that share the same host attribute value.
+
+        @param attribute: String of the host attribute to check.
+        @param value: String of the value that is shared between hosts.
+
+        @returns List of hostnames that all have the same host attribute and
+                 value.
+        """
+        return self.run('get_hosts_by_attribute',
+                        attribute=attribute, value=value)
+
+
+    def lock_host(self, host, lock_reason, fail_if_locked=False):
+        """
+        Lock the given host with the given lock reason.
+
+        Locking a host that's already locked using the 'modify_hosts' rpc
+        will raise an exception. That's why fail_if_locked exists so the
+        caller can determine if the lock succeeded or failed.  This will
+        save every caller from wrapping lock_host in a try-except.
+
+        @param host: hostname of host to lock.
+        @param lock_reason: Reason for locking host.
+        @param fail_if_locked: Return False if host is already locked.
+
+        @returns Boolean, True if lock was successful, False otherwise.
+        """
+        try:
+            self.run('modify_hosts',
+                     host_filter_data={'hostname': host},
+                     update_data={'locked': True,
+                                  'lock_reason': lock_reason})
+        except Exception:
+            return not fail_if_locked
+        return True
+
+
+    def unlock_hosts(self, locked_hosts):
+        """
+        Unlock the hosts.
+
+        Unlocking a host that's already unlocked will do nothing so we don't
+        need any special try-except clause here.
+
+        @param locked_hosts: List of hostnames of hosts to unlock.
+        """
+        self.run('modify_hosts',
+                 host_filter_data={'hostname__in': locked_hosts},
+                 update_data={'locked': False,
+                              'lock_reason': ''})
+
+
 class TestResults(object):
     """
     Container class used to hold the results of the tests for a job
