@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "mussa, rohit"
-NAME = "camera_perbuild"
+AUTHOR = "vsuley"
+NAME = "av_webcam"
 PURPOSE = "To run webrtc camera tests on devices with sufficient lighting."
 
 TIME = "SHORT"
