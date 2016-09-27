@@ -18,6 +18,7 @@ suite:arc-nightly
 suite:arc-weekly
 suite:au
 suite:audio
+suite:av_webcam
 suite:bluetooth
 suite:bluetooth_qualification
 suite:bluetooth_sanity
@@ -32,7 +33,6 @@ suite:cell_emulator
 suite:cellular_endtoend
 suite:cellular_mbim_compliance
 suite:cellular_modem_repair
-suite:camera_perbuild
 suite:chameleon_audio
 suite:chameleon_audio_nightly
 suite:chameleon_audio_perbuild
