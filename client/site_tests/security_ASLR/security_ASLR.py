@@ -103,8 +103,10 @@ class SystemdProcess(Process):
 
     def restart(self):
         """Restarts the process via systemctl."""
+        # Reset the restart rate counter each time before process restart to
+        # avoid systemd restart rate limiting.
+        utils.system('systemctl reset-failed %s' % self._service_name)
         utils.system('systemctl restart %s' % self._service_name)
-
 
 class Mapping(object):
     """Holds information about a process's address mapping.
