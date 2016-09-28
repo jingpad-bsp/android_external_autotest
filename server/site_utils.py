@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 
+import contextlib
 import grp
 import httplib
 import json
@@ -24,11 +25,13 @@ from autotest_lib.server.cros.dynamic_suite import job_status
 
 try:
     from chromite.lib import cros_build_lib
+    from chromite.lib import ts_mon_config
 except ImportError:
-    logging.warn('Unable to import chromite.')
+    logging.warn('Unable to import chromite. Monarch is disabled.')
     # Init the module variable to None. Access to this module can check if it
     # is not None before making calls.
     cros_build_lib = None
+    ts_mon_config = None
 
 
 CONFIG = global_config.global_config
@@ -738,3 +741,21 @@ def machine_is_testbed(machine):
     """
     _, afe_host = get_host_info_from_machine(machine)
     return len(afe_host.attributes.get('serials', '').split(',')) > 1
+
+
+def SetupTsMonGlobalState(*args, **kwargs):
+    """Import-safe wrap around chromite.lib.ts_mon_config's setup function.
+
+    @param *args: Args to pass through.
+    @param **kwargs: Kwargs to pass through.
+    """
+    if ts_mon_config:
+        return ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
+    else:
+        return TrivialContextManager
+
+
+@contextlib.contextmanager
+def TrivialContextManager():
+    """Context manager that does nothing."""
+    yield
