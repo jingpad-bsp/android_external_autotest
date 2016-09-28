@@ -252,7 +252,7 @@ def _try_unlock_host(afe_host):
     return True
 
 
-def _get_afe_host(afe, hostname, arguments):
+def _get_afe_host(afe, hostname, arguments, host_attr_dict):
     """Get an AFE Host object for the given host.
 
     If the host is found in the database, return the object
@@ -261,9 +261,10 @@ def _get_afe_host(afe, hostname, arguments):
     If no host is found, create one with appropriate servo
     attributes and the given board label.
 
-    @param afe        AFE from which to get the host.
-    @param hostname   Name of the host to look up or create.
-    @param arguments  Command line arguments with options.
+    @param afe             AFE from which to get the host.
+    @param hostname        Name of the host to look up or create.
+    @param arguments       Command line arguments with options.
+    @param host_attr_dict  Dict of host attributes to store in the AFE.
 
     @return A tuple of the afe_host, plus a flag. The flag indicates
             whether the Host should be unlocked if subsequent operations
@@ -283,17 +284,36 @@ def _get_afe_host(afe, hostname, arguments):
                 raise Exception('Host is in use, and failed to unlock it')
             raise Exception('Host is in use by Autotest')
     else:
+        # Let's grab the servo hostname/port/serial from host_attr_dict
+        # if possible.
+        host_attr_servo_host = None
+        host_attr_servo_port = None
+        host_attr_servo_serial = None
+        if hostname in host_attr_dict:
+            host_attr_servo_host = host_attr_dict[hostname].get(
+                    servo_host.SERVO_HOST_ATTR)
+            host_attr_servo_port = host_attr_dict[hostname].get(
+                    servo_host.SERVO_PORT_ATTR)
+            host_attr_servo_serial = host_attr_dict[hostname].get(
+                    servo_host.SERVO_SERIAL_ATTR)
         afe_host = afe.create_host(hostname,
                                    locked=True,
                                    lock_reason=_LOCK_REASON_NEW_HOST)
-        servo_hostname = servo_host.make_servo_hostname(hostname)
-        servo_port = str(servo_host.ServoHost.DEFAULT_PORT)
+        servo_hostname = (host_attr_servo_host or
+                          servo_host.make_servo_hostname(hostname))
+        servo_port = (host_attr_servo_port or
+                      str(servo_host.ServoHost.DEFAULT_PORT))
         afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
                                servo_hostname,
                                hostname=hostname)
         afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
                                servo_port,
                                hostname=hostname)
+        if host_attr_servo_serial:
+            afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
+                                   host_attr_servo_serial,
+                                   hostname=hostname)
+
         afe_host.add_labels([Labels.BOARD_PREFIX + arguments.board])
         afe_host = afe.get_hosts([hostname])[0]
     return afe_host, unlock_on_failure
@@ -369,7 +389,7 @@ def _install_test_image(host, arguments):
         host.close()
 
 
-def _install_and_update_afe(afe, hostname, arguments):
+def _install_and_update_afe(afe, hostname, arguments, host_attr_dict):
     """Perform all installation and AFE updates.
 
     First, lock the host if it exists and is unlocked.  Then,
@@ -380,12 +400,13 @@ def _install_and_update_afe(afe, hostname, arguments):
     If installation succeeds, make sure the DUT is in the AFE,
     and make sure that it has basic labels.
 
-    @param afe          AFE object for RPC calls.
-    @param hostname     Host name of the DUT.
-    @param arguments    Command line arguments with options.
+    @param afe               AFE object for RPC calls.
+    @param hostname          Host name of the DUT.
+    @param arguments         Command line arguments with options.
+    @param host_attr_dict    Dict of host attributes to store in the AFE.
     """
-    afe_host, unlock_on_failure = _get_afe_host(afe, hostname, arguments)
-
+    afe_host, unlock_on_failure = _get_afe_host(afe, hostname, arguments,
+                                                host_attr_dict)
     try:
         host = _create_host(hostname, afe_host)
         _install_test_image(host, arguments)
@@ -411,15 +432,16 @@ def _install_and_update_afe(afe, hostname, arguments):
         raise Exception('Install succeeded, but failed to unlock the DUT.')
 
 
-def _install_dut(arguments, hostname):
+def _install_dut(arguments, host_attr_dict, hostname):
     """Deploy or repair a single DUT.
 
     Implementation note: This function is expected to run in a
     subprocess created by a multiprocessing Pool object.  As such,
     it can't (shouldn't) write to shared files like `sys.stdout`.
 
-    @param hostname   Host name of the DUT to install on.
-    @param arguments  Command line arguments with options.
+    @param hostname        Host name of the DUT to install on.
+    @param arguments       Command line arguments with options.
+    @param host_attr_dict  Dict of host attributes to store in the AFE.
 
     @return On success, return `None`.  On failure, return a string
             with an error message.
@@ -439,7 +461,7 @@ def _install_dut(arguments, hostname):
 
     afe = frontend.AFE(server=arguments.web)
     try:
-        _install_and_update_afe(afe, hostname, arguments)
+        _install_and_update_afe(afe, hostname, arguments, host_attr_dict)
     except Exception as e:
         logging.exception('Original exception: %s', e)
         return str(e)
@@ -534,6 +556,92 @@ def _configure_logging_to_file(logfile):
     root_logger.addHandler(handler)
 
 
+def _get_used_servo_ports(servo_hostname, afe):
+    """
+    Return a list of used servo ports for the given servo host.
+
+    @param servo_hostname:  Hostname of the servo host to check for.
+    @param afe:             AFE instance.
+
+    @returns a list of used ports for the given servo host.
+    """
+    used_ports = []
+    host_list = afe.get_hosts_by_attribute(
+            attribute=servo_host.SERVO_HOST_ATTR, value=servo_hostname)
+    for host in host_list:
+        afe_host = afe.get_hosts(hostname=host)
+        if afe_host:
+            servo_port = afe_host[0].attributes.get(servo_host.SERVO_PORT_ATTR)
+            if servo_port:
+                used_ports.append(int(servo_port))
+    return used_ports
+
+
+def _get_free_servo_port(servo_hostname, used_servo_ports, afe):
+    """
+    Get a free servo port for the servo_host.
+
+    @param servo_hostname:    Hostname of the servo host.
+    @param used_servo_ports:  Dict of dicts that contain the list of used ports
+                              for the given servo host.
+    @param afe:               AFE instance.
+
+    @returns a free servo port if servo_hostname is non-empty, otherwise an
+        empty string.
+    """
+    used_ports = []
+    servo_port = servo_host.ServoHost.DEFAULT_PORT
+    # If no servo hostname was specified we can assume we're dealing with a
+    # servo v3 or older deployment since the servo hostname can be
+    # inferred from the dut hostname (by appending '-servo' to it).  We only
+    # need to find a free port if we're using a servo v4 since we can use the
+    # default port for v3 and older.
+    if not servo_hostname:
+        return ''
+    # If we haven't checked this servo host yet, check the AFE if other duts
+    # used this servo host and grab the ports specified for them.
+    elif servo_hostname not in used_servo_ports:
+        used_ports = _get_used_servo_ports(servo_hostname, afe)
+    else:
+        used_ports = used_servo_ports[servo_hostname]
+    used_ports.sort()
+    if used_ports:
+        # Range is taken from servod.py in hdctools.
+        start_port = servo_host.ServoHost.DEFAULT_PORT
+        end_port = start_port - 99
+        # We'll choose first port available in descending order.
+        for port in xrange(start_port, end_port - 1, -1):
+            if port not in used_ports:
+              servo_port = port
+              break
+    used_ports.append(servo_port)
+    used_servo_ports[servo_hostname] = used_ports
+    return servo_port
+
+
+def _get_host_attributes(host_info_list, afe):
+    """
+    Get host attributes if a hostname_file was supplied.
+
+    @param host_info_list   List of HostInfo tuples (hostname, host_attr_dict).
+
+    @returns Dict of attributes from host_info_list.
+    """
+    host_attributes = {}
+    # We need to choose servo ports for these hosts but we need to make sure
+    # we don't choose ports already used. We'll store all used ports in a
+    # dict of lists where the key is the servo_host and the val is a list of
+    # ports used.
+    used_servo_ports = {}
+    for host_info in host_info_list:
+        host_attr_dict = host_info.host_attr_dict
+        host_attr_dict[servo_host.SERVO_PORT_ATTR] = _get_free_servo_port(
+                host_attr_dict[servo_host.SERVO_HOST_ATTR],used_servo_ports,
+                afe)
+        host_attributes[host_info.hostname] = host_attr_dict
+    return host_attributes
+
+
 def install_duts(argv, full_deploy):
     """Install a test image on DUTs, and deploy them.
 
@@ -577,10 +685,11 @@ def install_duts(argv, full_deploy):
         report_log.write(_DIVIDER)
         report_log.write('Repair version for board %s is now %s.\n' %
                          (arguments.board, current_build))
+        host_attr_dict = _get_host_attributes(arguments.host_info_list, afe)
         install_pool = multiprocessing.Pool(len(arguments.hostnames))
-        install_function = functools.partial(_install_dut, arguments)
-        results_list = install_pool.map(install_function,
-                                        arguments.hostnames)
+        install_function = functools.partial(_install_dut, arguments,
+                                             host_attr_dict)
+        results_list = install_pool.map(install_function, arguments.hostnames)
         _report_results(afe, report_log, arguments.hostnames, results_list)
 
         gspath = _get_upload_log_path(arguments)
