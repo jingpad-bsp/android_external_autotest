@@ -22,6 +22,8 @@ are omitted from the command line.
 """
 
 import argparse
+import collections
+import csv
 import datetime
 import os
 import re
@@ -30,6 +32,8 @@ import sys
 
 import dateutil.tz
 
+import common
+from autotest_lib.server.hosts import servo_host
 
 # _BUILD_URI_FORMAT
 # A format template for a Google storage URI that designates
@@ -69,6 +73,15 @@ _BUILD_PATTERNS = [
 _VALID_HOSTNAME_PATTERNS = [
     re.compile(r'chromeos\d+-row\d+-rack\d+-host\d+')
 ]
+
+
+# _EXPECTED_NUMBER_OF_HOST_INFO
+# The number of items per line when parsing the hostname_file csv file.
+_EXPECTED_NUMBER_OF_HOST_INFO = 5
+
+# HostInfo
+# Namedtuple to store host info for processing when creating host in the afe.
+HostInfo = collections.namedtuple('HostInfo', ['hostname', 'host_attr_dict'])
 
 
 def _build_path_exists(board, buildpath):
@@ -221,6 +234,20 @@ def _validate_hostname(hostname):
     return False
 
 
+def _is_hostname_file_valid(hostname_file):
+    """Check that the hostname file is valid.
+
+    The hostname file is deemed valid if:
+     - the file exists.
+     - the file is non-empty.
+
+    @param hostname_file  Filename of the hostname file to check.
+
+    @return `True` if the hostname file is valid, False otherse.
+    """
+    return os.path.exists(hostname_file) and os.path.getsize(hostname_file) > 0
+
+
 def _validate_arguments(arguments):
     """Check command line arguments, and account for defaults.
 
@@ -236,7 +263,18 @@ def _validate_arguments(arguments):
     @return Return `True` if there are no errors to report, or
             `False` if there are.
     """
-    if (not arguments.hostnames and
+    # If both hostnames and hostname_file are specified, complain about that.
+    if arguments.hostnames and arguments.hostname_file:
+        sys.stderr.write(
+                'DUT hostnames and hostname file both specified, only '
+                'specify one or the other.\n')
+        return False
+    if (arguments.hostname_file and
+        not _is_hostname_file_valid(arguments.hostname_file)):
+        sys.stderr.write(
+                'Specified hostname file must exist and be non-empty.\n')
+        return False
+    if (not arguments.hostnames and not arguments.hostname_file and
             (arguments.board or arguments.build)):
         sys.stderr.write(
                 'DUT hostnames are required with board or build.\n')
@@ -437,6 +475,9 @@ def _make_common_parser(command_name):
     parser.add_argument('-t', '--nostable', action='store_true',
                         help='skip changing stable test image '
                              '(for script testing)')
+    parser.add_argument('-f', '--hostname_file',
+                        help='CSV file that contains a list of hostnames and '
+                             'their details to install with.')
     parser.add_argument('board', nargs='?', metavar='BOARD',
                         help='board for DUTs to be installed')
     parser.add_argument('hostnames', nargs='*', metavar='HOSTNAME',
@@ -454,6 +495,50 @@ def _add_upload_argument_pair(parser, default):
                              default=default,
                              help='upload logs to GS bucket',)
 
+
+def _parse_hostname_file_line(hostname_file_row):
+    """
+    Parse a line from the hostname_file and return a dict of the info.
+
+    @param hostname_file_row: List of strings from each line in the hostname
+                              file.
+
+    @returns a NamedTuple of (hostname, host_attr_dict).  host_attr_dict is a
+             dict of host attributes for the host.
+    """
+    if len(hostname_file_row) != _EXPECTED_NUMBER_OF_HOST_INFO:
+        raise Exception('hostname_file line has unexpected number of items '
+                        '%d (expect %d): %s' %
+                        (len(hostname_file_row), _EXPECTED_NUMBER_OF_HOST_INFO,
+                         hostname_file_row))
+    # The file will have the info in the following format:
+    # board, dut hostname, dut mac address, servo host hostname, servo serial.
+    return HostInfo(
+            hostname=hostname_file_row[1],
+            host_attr_dict={servo_host.SERVO_HOST_ATTR: hostname_file_row[3],
+                            servo_host.SERVO_SERIAL_ATTR: hostname_file_row[4]})
+
+
+def parse_hostname_file(hostname_file):
+    """
+    Parse the hostname_file and return a list of dicts for each line.
+
+    @param hostname_file:  CSV file that contains all the goodies.
+
+    @returns a list of dicts where each line is broken down into a dict.
+    """
+    host_info_list = []
+    # First line will be the header, no need to parse that.
+    first_line_skipped = False
+    with open(hostname_file) as f:
+        hostname_file_reader = csv.reader(f)
+        for row in hostname_file_reader:
+            if not first_line_skipped:
+                first_line_skipped = True
+                continue
+            host_info_list.append(_parse_hostname_file_line(row))
+
+    return host_info_list
 
 def parse_command(argv, full_deploy):
     """Get arguments for install from `argv` or the user.
@@ -492,4 +577,13 @@ def parse_command(argv, full_deploy):
         os.makedirs(arguments.logdir)
     elif not os.path.isdir(arguments.logdir):
         os.mkdir(arguments.logdir)
+
+    if arguments.hostname_file:
+        # Populate arguments.hostnames with the hostnames from the file.
+        hostname_file_info_list = parse_hostname_file(arguments.hostname_file)
+        arguments.hostnames = [host_info.hostname
+                               for host_info in hostname_file_info_list]
+        arguments.host_info_list = hostname_file_info_list
+    else:
+        arguments.host_info_list = []
     return arguments
