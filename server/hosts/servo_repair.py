@@ -7,6 +7,7 @@ import time
 
 import common
 from autotest_lib.client.common_lib import hosts
+from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import repair
 
 
@@ -300,7 +301,12 @@ class _ServoRebootRepair(repair.RebootRepair):
             raise hosts.AutoservRepairError(
                 'Target servo is not a test lab servo')
         host.update_image(wait_for_update=True)
-        super(_ServoRebootRepair, self).repair(host)
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        dut_list = host.get_attached_duts(afe)
+        if dut_list > 1:
+            host.schedule_synchronized_reboot(dut_list, afe)
+        else:
+            super(_ServoRebootRepair, self).repair(host)
 
     @property
     def description(self):
