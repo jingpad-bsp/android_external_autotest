@@ -237,7 +237,6 @@ class _BaseModeSwitcher(object):
         if to_mode == 'rec':
             self._enable_rec_mode_and_reboot(usb_state='dut')
             if wait_for_dut_up:
-                self.bypass_rec_mode()
                 self.wait_for_client()
 
         elif to_mode == 'dev':
