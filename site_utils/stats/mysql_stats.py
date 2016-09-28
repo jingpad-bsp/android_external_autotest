@@ -29,13 +29,18 @@ DEFAULT_PASSWD = global_config.global_config.get_config_value(
         'CROS', 'db_backup_password', type=str, default='')
 LOOP_INTERVAL = 60
 EMITTED_STATUSES_COUNTERS = [
-    'questions',
-    'slow_queries',
+    'bytes_received',
+    'bytes_sent',
+    'connections'
     'Innodb_buffer_pool_read_requests',
     'Innodb_buffer_pool_reads',
+    'questions',
+    'slow_queries',
+    'threads_created',
 ]
 
 EMITTED_STATUS_GAUGES = ['threads_running', 'threads_connected']
+
 
 def main():
     """Sets up ts_mon and repeatedly queries MySQL stats"""
