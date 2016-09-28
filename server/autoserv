@@ -6,8 +6,8 @@
 Run a control file through the server side engine
 """
 
-import ast
 import datetime
+import contextlib
 import getpass
 import logging
 import os
@@ -20,7 +20,6 @@ import time
 import urllib2
 
 import common
-
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -62,6 +61,7 @@ from autotest_lib.server import frontend
 from autotest_lib.server import server_logging_config
 from autotest_lib.server import server_job, utils, autoserv_parser, autotest
 from autotest_lib.server import utils as server_utils
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import job_overhead
@@ -69,6 +69,7 @@ from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils import lxc_utils
 from autotest_lib.client.common_lib import pidfile, logging_manager
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+
 
 # Control segment to stage server-side package.
 STAGE_SERVER_SIDE_PACKAGE_CONTROL_FILE = server_job._control_segment_path(
@@ -522,53 +523,55 @@ def run_autoserv(pid_file_manager, results, parser, ssp_url, use_ssp):
     exit_code = 0
     auto_start_servod = _CONFIG.get_config_value(
             'AUTOSERV', 'auto_start_servod', type=bool, default=False)
+
     try:
-        try:
-            if repair:
-                if auto_start_servod and len(machines) == 1:
-                    _start_servod(machines[0])
-                job.repair(job_labels)
-            elif verify:
-                job.verify(job_labels)
-            elif provision:
-                job.provision(job_labels)
-            elif reset:
-                job.reset(job_labels)
-            elif cleanup:
-                job.cleanup(job_labels)
-            else:
-                if auto_start_servod and len(machines) == 1:
-                    _start_servod(machines[0])
-                if use_ssp:
-                    try:
-                        _run_with_ssp(job, container_name, job_or_task_id,
-                                      results, parser, ssp_url, job_folder,
-                                      machines)
-                    finally:
-                        # Update the ownership of files in result folder.
-                        correct_results_folder_permission(results)
+        with site_utils.SetupTsMonGlobalState('autoserv', indirect=True, short_lived=True):
+            try:
+                if repair:
+                    if auto_start_servod and len(machines) == 1:
+                        _start_servod(machines[0])
+                    job.repair(job_labels)
+                elif verify:
+                    job.verify(job_labels)
+                elif provision:
+                    job.provision(job_labels)
+                elif reset:
+                    job.reset(job_labels)
+                elif cleanup:
+                    job.cleanup(job_labels)
                 else:
-                    if collect_crashinfo:
-                        # Update the ownership of files in result folder. If the
-                        # job to collect crashinfo was running inside container
-                        # (SSP) and crashed before correcting folder permission,
-                        # the result folder might have wrong permission setting.
+                    if auto_start_servod and len(machines) == 1:
+                        _start_servod(machines[0])
+                    if use_ssp:
                         try:
+                            _run_with_ssp(job, container_name, job_or_task_id,
+                                          results, parser, ssp_url, job_folder,
+                                          machines)
+                        finally:
+                            # Update the ownership of files in result folder.
                             correct_results_folder_permission(results)
-                        except:
-                            # Ignore any error as the user may not have root
-                            # permission to run sudo command.
-                            pass
-                    job.run(install_before, install_after,
-                            verify_job_repo_url=verify_job_repo_url,
-                            only_collect_crashinfo=collect_crashinfo,
-                            skip_crash_collection=skip_crash_collection,
-                            job_labels=job_labels,
-                            use_packaging=(not no_use_packaging))
-        finally:
-            while job.hosts:
-                host = job.hosts.pop()
-                host.close()
+                    else:
+                        if collect_crashinfo:
+                            # Update the ownership of files in result folder. If the
+                            # job to collect crashinfo was running inside container
+                            # (SSP) and crashed before correcting folder permission,
+                            # the result folder might have wrong permission setting.
+                            try:
+                                correct_results_folder_permission(results)
+                            except:
+                                # Ignore any error as the user may not have root
+                                # permission to run sudo command.
+                                pass
+                        job.run(install_before, install_after,
+                                verify_job_repo_url=verify_job_repo_url,
+                                only_collect_crashinfo=collect_crashinfo,
+                                skip_crash_collection=skip_crash_collection,
+                                job_labels=job_labels,
+                                use_packaging=(not no_use_packaging))
+            finally:
+                while job.hosts:
+                    host = job.hosts.pop()
+                    host.close()
     except:
         exit_code = 1
         traceback.print_exc()
