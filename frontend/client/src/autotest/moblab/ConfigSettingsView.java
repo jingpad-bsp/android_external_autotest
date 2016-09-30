@@ -108,7 +108,7 @@ public class ConfigSettingsView extends TabView {
         });
 
         submitConfirmPanel = getAlertPanel(
-                "Saving settings requires rebooting the MobLab. Are you sure?",
+                "Saving settings requires restarting services on Moblab. Are you sure?",
                 submitConfirmButton);
 
         submitButton = new Button("Submit", new ClickHandler() {
