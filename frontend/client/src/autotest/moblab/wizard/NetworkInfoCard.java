@@ -29,7 +29,7 @@ public class NetworkInfoCard extends FlexWizardCard {
     btnValidate.addClickHandler(new ClickHandler() {
       @Override
       public void onClick(ClickEvent event) {
-        validateNewtorkInfo(true);
+        validateNetworkInfo(true);
       }
     });
   }
@@ -59,11 +59,11 @@ public class NetworkInfoCard extends FlexWizardCard {
         layoutTable.setWidget(row, 0, btnValidate);
       }
     } else {
-      validateNewtorkInfo(false);
+      validateNetworkInfo(false);
     }
   }
 
-  protected void validateNewtorkInfo(final boolean notify) {
+  protected void validateNetworkInfo(final boolean notify) {
     MoblabRpcHelper.fetchNetworkInfo(new MoblabRpcCallbacks.FetchNetworkInfoRpcCallback() {
       @Override
       public void onNetworkInfoFetched(NetworkInfo info) {
