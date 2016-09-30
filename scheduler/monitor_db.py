@@ -172,37 +172,36 @@ def main_without_exception_handling():
     # Start the thread to report metadata.
     metadata_reporter.start()
 
-    with ts_mon_config.SetupTsMonGlobalState('autotest_scheduler',
-                                             indirect=True):
+    ts_mon_config.SetupTsMonGlobalState('autotest_scheduler')
 
-        try:
-            initialize()
-            dispatcher = Dispatcher()
-            dispatcher.initialize(recover_hosts=options.recover_hosts)
-            minimum_tick_sec = global_config.global_config.get_config_value(
-                    scheduler_config.CONFIG_SECTION, 'minimum_tick_sec', type=float)
+    try:
+        initialize()
+        dispatcher = Dispatcher()
+        dispatcher.initialize(recover_hosts=options.recover_hosts)
+        minimum_tick_sec = global_config.global_config.get_config_value(
+                scheduler_config.CONFIG_SECTION, 'minimum_tick_sec', type=float)
 
-            while not _shutdown and not server._shutdown_scheduler:
-                start = time.time()
-                dispatcher.tick()
-                curr_tick_sec = time.time() - start
-                if (minimum_tick_sec > curr_tick_sec):
-                    time.sleep(minimum_tick_sec - curr_tick_sec)
-                else:
-                    time.sleep(0.0001)
-        except server_manager_utils.ServerActionError as e:
-            # This error is expected when the server is not in primary status
-            # for scheduler role. Thus do not send email for it.
-            logging.exception(e)
-        except Exception:
-            email_manager.manager.log_stacktrace(
-                "Uncaught exception; terminating monitor_db")
+        while not _shutdown and not server._shutdown_scheduler:
+            start = time.time()
+            dispatcher.tick()
+            curr_tick_sec = time.time() - start
+            if (minimum_tick_sec > curr_tick_sec):
+                time.sleep(minimum_tick_sec - curr_tick_sec)
+            else:
+                time.sleep(0.0001)
+    except server_manager_utils.ServerActionError as e:
+        # This error is expected when the server is not in primary status
+        # for scheduler role. Thus do not send email for it.
+        logging.exception(e)
+    except Exception:
+        email_manager.manager.log_stacktrace(
+            "Uncaught exception; terminating monitor_db")
 
-        metadata_reporter.abort()
-        email_manager.manager.send_queued_emails()
-        server.shutdown()
-        _drone_manager.shutdown()
-        _db_manager.disconnect()
+    metadata_reporter.abort()
+    email_manager.manager.send_queued_emails()
+    server.shutdown()
+    _drone_manager.shutdown()
+    _db_manager.disconnect()
 
 
 def handle_signal(signum, frame):

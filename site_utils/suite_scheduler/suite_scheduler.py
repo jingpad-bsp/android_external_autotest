@@ -256,36 +256,35 @@ def main():
 
     afe = frontend_wrappers.RetryingAFE(
             server=afe_server, timeout_min=10, delay_sec=5, debug=False)
-    logging.info('Connecting to: %s', afe.server)
+    logging.info('Connecting to: %s' , afe.server)
     enumerator = board_enumerator.BoardEnumerator(afe)
     scheduler = deduping_scheduler.DedupingScheduler(afe, options.file_bug)
     mv = manifest_versions.ManifestVersions(options.tmp_repo_dir)
     d = driver.Driver(scheduler, enumerator)
     d.SetUpEventsAndTasks(config, mv)
 
-    # Set up metrics upload for Monarch. Use indirect=True to have a separate
-    # flushing process which supports metrics which are sent exactly once.
-    with ts_mon_config.SetupTsMonGlobalState('autotest_suite_scheduler',
-                                             indirect=True):
-        try:
-            if options.events:
-                # Act as though listed events have just happened.
-                keywords = re.split(r'\s*,\s*', options.events)
-                if not options.tmp_repo_dir:
-                    logging.warn('To run a list of events, you may need to use '
-                                 '--repo_dir to specify a folder that already has '
-                                 'manifest repo set up. This is needed for suites '
-                                 'requiring firmware update.')
-                logging.info('Forcing events: %r', keywords)
-                d.ForceEventsOnceForBuild(keywords, options.build, options.os_type)
-            else:
-                if not options.tmp_repo_dir:
-                    mv.Initialize()
-                d.RunForever(config, mv)
-        except Exception as e:
-            logging.error('Fatal exception in suite_scheduler: %r\n%s', e,
-                          traceback.format_exc())
-            return 1
+    # Set up metrics upload for Monarch.
+    ts_mon_config.SetupTsMonGlobalState('autotest_suite_scheduler')
+
+    try:
+        if options.events:
+            # Act as though listed events have just happened.
+            keywords = re.split('\s*,\s*', options.events)
+            if not options.tmp_repo_dir:
+                logging.warn('To run a list of events, you may need to use '
+                             '--repo_dir to specify a folder that already has '
+                             'manifest repo set up. This is needed for suites '
+                             'requiring firmware update.')
+            logging.info('Forcing events: %r', keywords)
+            d.ForceEventsOnceForBuild(keywords, options.build, options.os_type)
+        else:
+            if not options.tmp_repo_dir:
+                mv.Initialize()
+            d.RunForever(config, mv)
+    except Exception as e:
+        logging.error('Fatal exception in suite_scheduler: %r\n%s', e,
+                      traceback.format_exc())
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())
