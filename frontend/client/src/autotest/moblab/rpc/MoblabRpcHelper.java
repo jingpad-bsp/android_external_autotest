@@ -135,4 +135,20 @@ public class MoblabRpcHelper {
       }
     });
   }
+
+  /**
+   * Fetches the version information.
+   */
+  public static void fetchMoblabBuildVersionInfo(
+      final MoblabRpcCallbacks.FetchVersionInfoCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("get_version_info", null, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        VersionInfo info = new VersionInfo();
+        info.fromJson(result.isObject());
+        callback.onVersionInfoFetched(info);
+      }
+    });
+  }
 }
