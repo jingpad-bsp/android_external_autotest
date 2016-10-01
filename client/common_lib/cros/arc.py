@@ -230,6 +230,15 @@ def is_android_process_running(process_name):
     return len(output.splitlines()) == 2
 
 
+def check_android_file_exists(filename):
+    """Checks whether the given file exists in the Android filesystem
+
+    @param filename: File to check.
+    """
+    return adb_shell('test -e {} && echo FileExists'.format(
+            pipes.quote(filename))).find("FileExists") >= 0
+
+
 def read_android_file(filename):
     """Reads a file in Android filesystem.
 
@@ -364,6 +373,14 @@ def _after_iteration_hook(obj):
             logging.warning('Too many failures, no screenshot taken')
 
 
+def send_keycode(keycode):
+    """Sends the given keycode to the container
+
+    @param keycode: keycode to send.
+    """
+    adb_shell('input keyevent {}'.format(keycode))
+
+
 class ArcTest(test.test):
     """ Base class of ARC Test.
 
@@ -400,6 +417,7 @@ class ArcTest(test.test):
         self.uiautomator = False
         self.email_id = None
         self.password = None
+        self._chrome = None
         if os.path.exists(_SCREENSHOT_DIR_PATH):
             shutil.rmtree(_SCREENSHOT_DIR_PATH)
         self.register_before_iteration_hook(_before_iteration_hook)
@@ -457,7 +475,8 @@ class ArcTest(test.test):
             try:
                 self._stop_logcat()
             finally:
-                self._chrome.close()
+                if self._chrome is not None:
+                    self._chrome.close()
 
     def arc_setup(self, dep_package=None, apks=None, full_pkg_names=[],
                   uiautomator=False, email_id=None, password=None):
