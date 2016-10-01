@@ -15,10 +15,13 @@ import socket
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -29,6 +32,7 @@ from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils as server_site_utils
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.servo import servo
 from autotest_lib.server.hosts import servo_repair
 from autotest_lib.server.hosts import ssh_host
@@ -46,6 +50,11 @@ _CONFIG = global_config.global_config
 ENABLE_SSH_TUNNEL_FOR_SERVO = _CONFIG.get_config_value(
         'CROS', 'enable_ssh_tunnel_for_servo', type=bool, default=False)
 
+AUTOTEST_BASE = _CONFIG.get_config_value(
+        'SCHEDULER', 'drone_installation_directory',
+        default='/usr/local/autotest')
+
+_SERVO_HOST_REBOOT_TEST_NAME = 'servohost_Reboot'
 
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
@@ -60,6 +69,8 @@ class ServoHost(ssh_host.SSHHost):
 
     _timer = autotest_stats.Timer('servo_host')
 
+    REBOOT_CMD = 'sleep 1; reboot & sleep 10; reboot -f'
+
 
     def _initialize(self, servo_host='localhost',
                     servo_port=DEFAULT_PORT, servo_board=None,
@@ -71,6 +82,7 @@ class ServoHost(ssh_host.SSHHost):
         @param servo_host: Name of the host where the servod process
                            is running.
         @param servo_port: Port the servod process is listening on.
+        @param servo_board: Board that the servo is connected to.
         @param is_in_lab: True if the servo host is in Cros Lab. Default is set
                           to None, for which utils.host_is_in_lab_zone will be
                           called to check if the servo host is in Cros lab.
@@ -103,8 +115,7 @@ class ServoHost(ssh_host.SSHHost):
 
 
     def connect_servo(self):
-        """
-        Establish a connection to the servod server on this host.
+        """Establish a connection to the servod server on this host.
 
         Initializes `self._servo` and then verifies that all network
         connections are working.  This will create an ssh tunnel if
@@ -125,8 +136,7 @@ class ServoHost(ssh_host.SSHHost):
 
 
     def disconnect_servo(self):
-        """
-        Disconnect our servo if it exists.
+        """Disconnect our servo if it exists.
 
         If we've previously successfully connected to our servo,
         disconnect any established ssh tunnel, and set `self._servo`
@@ -159,8 +169,7 @@ class ServoHost(ssh_host.SSHHost):
 
 
     def get_servod_server_proxy(self):
-        """
-        Return a proxy that can be used to communicate with servod server.
+        """Return a proxy that can be used to communicate with servod server.
 
         @returns: An xmlrpclib.ServerProxy that is connected to the servod
                   server on the host.
@@ -313,9 +322,107 @@ class ServoHost(ssh_host.SSHHost):
                     lsb_release_content=lsb_release_content)
 
 
-    def _check_for_reboot(self, updater):
+    def get_attached_duts(self, afe):
+        """Gather a list of duts that use this servo host.
+
+        @param afe: afe instance.
+
+        @returns list of duts.
         """
-        Reboot this servo host if an upgrade is waiting.
+        return afe.get_hosts_by_attribute(
+                attribute=SERVO_HOST_ATTR, value=self.hostname)
+
+
+    def get_board(self):
+        """Determine the board for this servo host.
+
+        @returns a string representing this servo host's board.
+        """
+        return lsbrelease_utils.get_current_board(
+                lsb_release_content=self.run('cat /etc/lsb-release').stdout)
+
+
+    def _choose_dut_for_synchronized_reboot(self, dut_list, afe):
+        """Choose which dut to schedule servo host reboot job.
+
+        We'll want a semi-deterministic way of selecting which host should be
+        scheduled for the servo host reboot job.  For now we'll sort the
+        list with the expectation the dut list will stay consistent.
+        From there we'll grab the first dut that is available so we
+        don't schedule a job on a dut that will never run.
+
+        @param dut_list:  List of the dut hostnames to choose from.
+        @param afe:       Instance of the AFE.
+
+        @return hostname of dut to schedule job on.
+        """
+        afe_hosts = afe.get_hosts(dut_list)
+        afe_hosts.sort()
+        for afe_host in afe_hosts:
+            if afe_host.status not in host_states.UNAVAILABLE_STATES:
+                return afe_host.hostname
+        # If they're all unavailable, just return the first sorted dut.
+        dut_list.sort()
+        return dut_list[0]
+
+
+    def _sync_job_scheduled_for_duts(self, dut_list, afe):
+        """Checks if a synchronized reboot has been scheduled for these duts.
+
+        Grab all the host queue entries that aren't completed for the duts and
+        see if any of them have the expected job name.
+
+        @param dut_list:  List of duts to check on.
+        @param afe:       Instance of the AFE.
+
+        @returns True if the job is scheduled, False otherwise.
+        """
+        afe_hosts = afe.get_hosts(dut_list)
+        for afe_host in afe_hosts:
+            hqes = afe.get_host_queue_entries(host=afe_host.id, complete=0)
+            for hqe in hqes:
+                job = afe.get_jobs(id=hqe.job.id)
+                if job and job[0].name == _SERVO_HOST_REBOOT_TEST_NAME:
+                    return True
+        return False
+
+
+    def schedule_synchronized_reboot(self, dut_list, afe):
+        """Schedule a job to reboot the servo host.
+
+        When we schedule a job, it will create a ServoHost object which will
+        go through this entire flow of checking if a reboot is needed and
+        trying to schedule it.  There is probably a better approach to setting
+        up a synchronized reboot but I'm coming up short on better ideas so I
+        apologize for this circus show.
+
+        @param dut_list:  List of duts that need to be locked.
+        @param afe:       Instance of afe.
+        """
+        # If we've already scheduled job on a dut, we're done here.
+        if self._sync_job_scheduled_for_duts(dut_list, afe):
+            return
+
+        # Looks like we haven't scheduled a job yet.
+        dut = self._choose_dut_for_synchronized_reboot(dut_list, afe)
+        getter = control_file_getter.FileSystemGetter([AUTOTEST_BASE])
+        control_file = getter.get_control_file_contents_by_name(
+                _SERVO_HOST_REBOOT_TEST_NAME)
+        control_type = control_data.CONTROL_TYPE_NAMES.SERVER
+        priority = priorities.Priority.SUPER
+        afe.create_job(control_file=control_file,
+                       name=_SERVO_HOST_REBOOT_TEST_NAME,
+                       control_type=control_type, hosts=[dut])
+
+
+    def reboot(self, *args, **dargs):
+        """Reboot using special servo host reboot command."""
+        super(ServoHost, self).reboot(reboot_cmd=self.REBOOT_CMD,
+                                      *args, **dargs)
+
+
+    def _check_for_reboot(self, updater):
+        """Reboot this servo host if an upgrade is waiting.
 
         If the host has successfully downloaded and finalized a new
         build, reboot.
@@ -329,7 +436,17 @@ class ServoHost(ssh_host.SSHHost):
         current_build_number = self._get_release_version()
         status = updater.check_update_status()
         if status == autoupdater.UPDATER_NEED_REBOOT:
-            logging.info('Rebooting beaglebone host %s from build %s',
+            # Check if we need to schedule an organized reboot.
+            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+            dut_list = self.get_attached_duts(afe)
+            logging.info('servo host has the following duts: %s', dut_list)
+            if len(dut_list) > 1:
+                logging.info('servo host has multiple duts, scheduling '
+                             'synchronized reboot')
+                self.schedule_synchronized_reboot(dut_list, afe)
+                return status, current_build_number
+
+            logging.info('Rebooting servo host %s from build %s',
                          self.hostname, current_build_number)
             # Tell the reboot() call not to wait for completion.
             # Otherwise, the call will log reboot failure if servo does
@@ -337,8 +454,7 @@ class ServoHost(ssh_host.SSHHost):
             # test job failure.  If the test does not require servo, we
             # don't want servo failure to fail the test with error:
             # `Host did not return from reboot` in status.log.
-            reboot_cmd = 'sleep 1 ; reboot & sleep 10; reboot -f',
-            self.reboot(reboot_cmd=reboot_cmd, fastsync=True, wait=False)
+            self.reboot(fastsync=True, wait=False)
 
             # We told the reboot() call not to wait, but we need to wait
             # for the reboot before we continue.  Alas.  The code from
@@ -353,8 +469,8 @@ class ServoHost(ssh_host.SSHHost):
                                   warning_timer=self.WAIT_DOWN_REBOOT_WARNING,
                                   old_boot_id=old_boot_id):
                 raise error.AutoservHostError(
-                            'servo host %s failed to shut down.' %
-                           self.hostname)
+                        'servo host %s failed to shut down.' %
+                        self.hostname)
             if self.wait_up(timeout=120):
                 current_build_number = self._get_release_version()
                 status = updater.check_update_status()
@@ -362,9 +478,22 @@ class ServoHost(ssh_host.SSHHost):
                              self.hostname, current_build_number)
             else:
                 raise error.AutoservHostError(
-                            'servo host %s failed to come back from reboot.' %
-                           self.hostname)
+                        'servo host %s failed to come back from reboot.' %
+                        self.hostname)
         return status, current_build_number
+
+
+    def get_stable_servo_build(self):
+        """Get the stable servo build for this servo host type.
+
+        @returns servo build target.
+        """
+        board = self.get_board()
+        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+        target_version = afe.run('get_stable_version', board=board)
+        build_pattern = _CONFIG.get_config_value(
+                'CROS', 'stable_build_pattern')
+        return build_pattern % (board, target_version)
 
 
     @_timer.decorate
@@ -405,12 +534,7 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
 
-        board = _CONFIG.get_config_value('CROS', 'servo_board')
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        target_version = afe.run('get_stable_version', board=board)
-        build_pattern = _CONFIG.get_config_value(
-                'CROS', 'stable_build_pattern')
-        target_build = build_pattern % (board, target_version)
+        target_build = self.get_stable_servo_build()
         target_build_number = server_site_utils.ParseBuildName(
                 target_build)[3]
         ds = dev_server.ImageServer.resolve(self.hostname)
@@ -534,8 +658,7 @@ def make_servo_hostname(dut_hostname):
 
 
 def servo_host_is_up(servo_hostname):
-    """
-    Given a servo host name, return if it's up or not.
+    """Given a servo host name, return if it's up or not.
 
     @param servo_hostname: hostname of the servo host.
 
@@ -579,8 +702,7 @@ def _map_afe_board_to_servo_board(afe_board):
 
 
 def _get_standard_servo_args(dut_host):
-    """
-    Return servo data associated with a given DUT.
+    """Return servo data associated with a given DUT.
 
     This checks for the presence of servo host and port attached to the
     given `dut_host`.  This data should be stored in the
@@ -641,8 +763,7 @@ def _get_standard_servo_args(dut_host):
 
 def create_servo_host(dut, servo_args, try_lab_servo=False,
                       try_servo_repair=False):
-    """
-    Create a ServoHost object for a given DUT, if appropriate.
+    """Create a ServoHost object for a given DUT, if appropriate.
 
     This function attempts to create and verify or repair a `ServoHost`
     object for a servo connected to the given `dut`, subject to various
@@ -710,7 +831,7 @@ def create_servo_host(dut, servo_args, try_lab_servo=False,
                 newhost.repair()
             else:
                 newhost.verify()
-        except Exception as e:
+        except Exception:
             operation = 'repair' if try_servo_repair else 'verification'
             logging.exception('Servo %s failed for %s',
                               operation, newhost.hostname)
