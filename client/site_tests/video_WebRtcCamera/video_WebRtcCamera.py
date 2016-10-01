@@ -16,12 +16,9 @@ EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream']
 # Statistics from the loopback.html page.
 TEST_PROGRESS = 'testProgress'
 
-# Polling timeout
+# Polling timeout.
 TIMEOUT = 240
 
-# max number of allowed blackframes or frozen frames
-BLACK_FRAMES_THRESHOLD = 10
-FROZEN_FRAMES_THRESHOLD = 10
 
 class video_WebRtcCamera(test.test):
     """Local Peer connection test with webcam at 720p."""
@@ -98,52 +95,46 @@ class video_WebRtcCamera(test.test):
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
-            err = self.check_loopback_result()
-            if err:
-                raise error.TestFail(err)
+            self.print_perf_results()
 
 
-    def check_loopback_result(self):
-        """Get the WebRTC Camera results."""
-        err = ''
+    def print_perf_results(self):
+        """Prints the perf results unless there was an error.
+
+        @returns the empty string if perf results were printed, otherwise
+                 a description of the error that occured.
+        """
         if not self.is_test_completed():
-            err = 'loopback.html did not complete'
-            logging.error(err)
-            return err
+            raise error.TestFail('loopback.html did not complete')
         try:
             results = self.tab.EvaluateJavaScript('getResults()')
-        except:
-            err = 'Cannot retrieve results from loopback.html page'
-            logging.error(err)
-            return err
+        except Exception as e:
+            raise error.TestFail('Failed to get loopback.html results', e)
         logging.info('Results: %s', results)
-        for resolution in results:
-            item = results[resolution]
-            if (item['cameraErrors'] and resolution == '1280,720'
+
+        errors = []
+        for width_height, data in results.iteritems():
+            resolution = re.sub(',', 'x', width_height)
+            if (data['cameraErrors'] and resolution == '1280x720'
                     and self.webcam_supports_720p()):
-                err = 'Camera error: %s' % item['cameraErrors']
-                logging.error(err)
-                return err
-            if not item['frameStats']:
-                output_resolution = re.sub(',', 'x', resolution)
-                err = 'Frame Stats is empty for resolution: %s' % output_resolution
-                logging.error(err)
-                return err
-
-            if item['frameStats']['numBlackFrames'] > BLACK_FRAMES_THRESHOLD:
-                err = ('BlackFrames threshold overreach: got %s > %s allowed' %
-                              (item['frameStats']['numBlackFrames'],
-                              BLACK_FRAMES_THRESHOLD))
-                logging.error(err)
-                return err
-            if item['frameStats']['numFrozenFrames'] > FROZEN_FRAMES_THRESHOLD:
-                err = ('FrozenFrames threshold overreach: got %s > %s allowed' %
-                              (item['frameStats']['numFrozenFrames'],
-                              FROZEN_FRAMES_THRESHOLD))
-                logging.error(err)
-                return err
-            if item['frameStats']['numFrames'] == 0:
-                err = '%s Frames were found' % item['frameStats']['numFrames']
-                return err
-
-        return err
+                errors.append('Camera error: %s for resolution '
+                              '%s.' % (data['cameraErrors'], resolution))
+                continue
+            if not data['frameStats']:
+                errors.append('Frame Stats is empty '
+                              'for resolution: %s' % resolution)
+                continue
+            self.output_perf_value(
+                    description='black_frames_%s' % resolution,
+                    value=data['frameStats']['numBlackFrames'],
+                    units='frames', higher_is_better=False)
+            self.output_perf_value(
+                    description='frozen_frames_%s' % resolution,
+                    value=data['frameStats']['numFrozenFrames'],
+                    units='frames', higher_is_better=False)
+            self.output_perf_value(
+                    description='total_num_frames_%s' % resolution,
+                    value=data['frameStats']['numFrames'],
+                    units='frames', higher_is_better=True)
+        if errors:
+            raise error.TestFail('Found errors: %s' % ', '.join(errors))
