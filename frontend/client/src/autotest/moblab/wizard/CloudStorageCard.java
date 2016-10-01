@@ -62,6 +62,7 @@ public class CloudStorageCard extends FlexWizardCard {
             }
           }
         });
+
       }
 
       // Row for boto key id.
@@ -124,23 +125,40 @@ public class CloudStorageCard extends FlexWizardCard {
           .setBotoKey(getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_BOTO_KEY_ID));
       cloudStorageInfo
           .setBotoSecret(getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_BOTO_SECRET_KEY));
+    }
+    cloudStorageInfo.setImageStorageServer(
+          getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_IMAGE_STORAGE_URL));
+    cloudStorageInfo.setResultStorageServer(
+          getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL));
+    if (!chkUseExisting.getValue()) {
+      // Boto key and secret are required.
       if (cloudStorageInfo.getBotoKey() == null || cloudStorageInfo.getBotoSecret() == null) {
         callback.onValidationStatus(
             new OperationStatus(false, "The boto key fields could not be empty"));
         return;
       }
+      // Image bucket and result bucket can not be empty.
+      if (cloudStorageInfo.getImageStorageServer() == null) {
+        callback.onValidationStatus(
+            new OperationStatus(false, "The image bucket URL fields could not be empty"));
+        return;
+      }
     }
-
-    cloudStorageInfo.setImageStorageServer(
-        getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_IMAGE_STORAGE_URL));
-    cloudStorageInfo.setResultStorageServer(
-        getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL));
-    // Image bucket and result bucket can not be empty.
-    if (cloudStorageInfo.getImageStorageServer() == null) {
+    // Image bucket and result bucket must end in /.
+    if (cloudStorageInfo.getImageStorageServer().substring(
+      cloudStorageInfo.getImageStorageServer().length() - 1) != "/") {
       callback.onValidationStatus(
-          new OperationStatus(false, "The image bucket URL fields could not be empty"));
+        new OperationStatus(false, "The image bucket URL must end in /"));
       return;
     }
+    // Image bucket and results bucket can not be empty.
+    if (cloudStorageInfo.getResultStorageServer().substring(
+      cloudStorageInfo.getResultStorageServer().length() - 1) != "/") {
+      callback.onValidationStatus(
+        new OperationStatus(false, "The results bucket URL must end in /"));
+      return;
+    }
+
 
     // Sends validation request to server to validate the boto key and bucket urls.
     MoblabRpcHelper.validateCloudStorageInfo(cloudStorageInfo,

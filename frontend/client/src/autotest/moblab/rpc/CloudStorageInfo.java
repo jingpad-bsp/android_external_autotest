@@ -53,19 +53,19 @@ public class CloudStorageInfo extends JsonRpcEntity {
   }
 
   public void setBotoKey(String botoKey) {
-    this.botoKey = botoKey;
+    this.botoKey = botoKey.trim();
   }
 
   public void setBotoSecret(String botoSecret) {
-    this.botoSecret = botoSecret;
+    this.botoSecret = botoSecret.trim();
   }
 
   public void setImageStorageServer(String imageStorageServer) {
-    this.imageStorageServer = imageStorageServer;
+    this.imageStorageServer = imageStorageServer.trim();
   }
 
   public void setResultStorageServer(String resultStorageServer) {
-    this.resultStorageServer = resultStorageServer;
+    this.resultStorageServer = resultStorageServer.trim();
   }
 
   public boolean isUseExistingBotoFile() {
