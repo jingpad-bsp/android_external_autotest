@@ -138,6 +138,10 @@ class _JetstreamBypasser(_BaseFwBypasser):
         self.servo.switch_usbkey('host')
         time.sleep(self.faft_config.usb_plug)
         self.servo.switch_usbkey('dut')
+        if not self.client_host.ping_wait_up(
+                timeout=self.faft_config.delay_reboot_to_ping):
+            psc = self.servo.get_power_state_controller()
+            psc.power_on(psc.REC_ON)
 
 
     def trigger_dev_to_rec(self):
