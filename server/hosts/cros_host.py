@@ -713,6 +713,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if update_url.startswith('http://'):
             build = autoupdater.url_to_image_name(update_url)
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
+            # Make sure devserver for Auto-Update has staged the build.
+            server_name = dev_server.ImageServer.get_server_name(devserver.url())
+            if server_name not in update_url:
+              logging.debug('Devserver that stages artifacts is not healthy, '
+                            'switch to use devserver %s, will re-stage.',
+                            server_name)
+              devserver.trigger_download(build, synchronous=False)
         else:
             build = update_url
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
