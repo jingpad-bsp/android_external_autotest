@@ -8,7 +8,7 @@ PURPOSE = "Check that a series of gUM calls at different resolutions"
 CRITERIA = "This test will fail if WebRTC gUM fails mandatory resolutions"
 ATTRIBUTES = "suite:bvt-perbuild, suite:av_webcam"
 TIME = "MEDIUM"
-TEST_CATEGORY = "General"
+TEST_CATEGORY = "Performance"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
 DEPENDENCIES = "webcam"
@@ -20,8 +20,8 @@ BUG_TEMPLATE = {
 DOC = """
 This test starts a  WebRTC GetUserMedia call with one video tag.
 This test will iterate through a set of resolutions and check if the gUM call
-could set the requested resolutions. This also checks that we don't have black
-frames, frozen frames or no frames at all.
+could set the requested resolutions. This also logs the number of black
+frames and frozen frames to perf (there should not be many such frames).
 """
 
 job.run_test("video_WebRtcCamera")
