@@ -2,11 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from autotest_lib.client.cros.chameleon import chameleon_measurer
+from autotest_lib.client.cros.chameleon import chameleon_measurer_base
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
-class RemoteChameleonMeasurer(chameleon_measurer._BaseChameleonMeasurer):
+class RemoteChameleonMeasurer(chameleon_measurer_base._BaseChameleonMeasurer):
     """A simple tool to measure using Chameleon for a server test.
 
     This class can only be used in a server test. For a client test, use the
