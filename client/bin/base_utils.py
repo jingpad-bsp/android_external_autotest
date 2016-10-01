@@ -297,8 +297,30 @@ def get_cpu_arch():
         return 'i386'
 
 
+def get_arm_soc_family_from_devicetree():
+    """
+    Work out which ARM SoC we're running on based on the 'compatible' property
+    of the base node of devicetree, if it exists.
+    """
+    devicetree_compatible = '/sys/firmware/devicetree/base/compatible'
+    if not os.path.isfile(devicetree_compatible):
+        return None
+    f = open(devicetree_compatible, 'r')
+    compatible = f.readlines()
+    f.close()
+    if list_grep(compatible, 'rk3399'):
+        return 'rockchip'
+    elif list_grep(compatible, 'mt8173'):
+        return 'mediatek'
+    return None
+
+
 def get_arm_soc_family():
     """Work out which ARM SoC we're running on"""
+    family = get_arm_soc_family_from_devicetree()
+    if family is not None:
+        return family
+
     f = open('/proc/cpuinfo', 'r')
     cpuinfo = f.readlines()
     f.close()
