@@ -19,6 +19,7 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_queue_entry_states
+from autotest_lib.client.common_lib import host_states
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
@@ -47,6 +48,9 @@ LAB_GOOD_STATES = ('open', 'throttled')
 ENABLE_DRONE_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
         'CROS', 'enable_drone_in_restricted_subnet', type=bool,
         default=False)
+
+# Wait at most 10 mins for duts to go idle.
+IDLE_DUT_WAIT_TIMEOUT = 600
 
 class TestLabException(Exception):
     """Exception raised when the Test Lab blocks a test or suite."""
@@ -763,3 +767,64 @@ def SetupTsMonGlobalState(*args, **kwargs):
 def TrivialContextManager():
     """Context manager that does nothing."""
     yield
+
+
+def wait_for_idle_duts(duts, afe, max_wait=IDLE_DUT_WAIT_TIMEOUT):
+    """Wait for the hosts to all go idle.
+
+    @param duts: List of duts to check for idle state.
+    @param afe: afe instance.
+    @param max_wait: Max wait time in seconds.
+
+    @returns Boolean True if all hosts are idle or False if any hosts did not
+            go idle within max_wait.
+    """
+    start_time = time.time()
+    # We make a shallow copy since we're going to be modifying active_dut_list.
+    active_dut_list = duts[:]
+    while active_dut_list:
+        # Let's rate-limit how often we hit the AFE.
+        time.sleep(1)
+
+        # Check if we've waited too long.
+        if (time.time() - start_time) > max_wait:
+            return False
+
+        idle_duts = []
+        # Get the status for the duts and see if they're in the idle state.
+        afe_hosts = afe.get_hosts(active_dut_list)
+        idle_duts = [afe_host.hostname for afe_host in afe_hosts
+                     if afe_host.status in host_states.IDLE_STATES]
+
+        # Take out idle duts so we don't needlessly check them
+        # next time around.
+        for idle_dut in idle_duts:
+            active_dut_list.remove(idle_dut)
+
+        logging.info('still waiting for following duts to go idle: %s',
+                     active_dut_list)
+    return True
+
+
+@contextlib.contextmanager
+def lock_duts_and_wait(duts, afe, lock_msg='default lock message',
+                       max_wait=IDLE_DUT_WAIT_TIMEOUT):
+    """Context manager to lock the duts and wait for them to go idle.
+
+    @param duts: List of duts to lock.
+    @param afe: afe instance.
+
+    @returns Boolean lock_success where True if all duts locked successfully or
+             False if we timed out waiting too long for hosts to go idle.
+    """
+    try:
+        locked_duts = []
+        duts.sort()
+        for dut in duts:
+            if afe.lock_host(dut, lock_msg, fail_if_locked=True):
+                locked_duts.append(dut)
+            else:
+                logging.info('%s already locked', dut)
+        yield wait_for_idle_duts(locked_duts, afe, max_wait)
+    finally:
+        afe.unlock_hosts(locked_duts)
