@@ -96,7 +96,7 @@ class CrosOutputWidgetARCHandlerError(Exception):
     pass
 
 
-class CrosOutputWidgetARCHandler(audio_widget.CrosInputWidgetHandler):
+class CrosOutputWidgetARCHandler(audio_widget.CrosOutputWidgetHandler):
     """This class abstracts a Cros device audio output widget ARC handler."""
     _SUPPORTED_FILE_TYPES = ['wav', 'mp3']
     _DEFAULT_FILE_TYPE = 'wav'
