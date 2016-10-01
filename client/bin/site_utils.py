@@ -1051,6 +1051,31 @@ def get_free_root_partition(root_part=None):
     return root_part[:-1] + spare_root_map[root_part[-1]]
 
 
+def get_kernel_partition(root_part=None):
+    """
+    Return current kernel partition
+    Example: return /dev/sda2 for falco booted from usb
+
+    @param root_part: current root partition
+    """
+    if not root_part:
+         root_part = get_root_partition()
+    current_kernel_map = {'3': '2', '5': '4'}
+    return root_part[:-1] + current_kernel_map[root_part[-1]]
+
+
+def get_free_kernel_partition(root_part=None):
+    """
+    return currently unused kernel partition
+    Example: return /dev/sda4 for falco booted from usb
+
+    @param root_part: current root partition
+    """
+    kernel_part = get_kernel_partition(root_part)
+    spare_kernel_map = {'2': '4', '4': '2'}
+    return kernel_part[:-1] + spare_kernel_map[kernel_part[-1]]
+
+
 def is_booted_from_internal_disk():
     """Return True if boot from internal disk. False, otherwise."""
     return get_root_device() == get_fixed_dst_drive()
