@@ -450,3 +450,14 @@ def submit_wizard_config_info(cloud_storage_info):
 
     return _create_operation_status_response(True, None)
 
+
+@rpc_utils.moblab_only
+def get_version_info():
+    """ RPC handler to get informaiton about the version of the moblab.
+    @return: A serialized JSON RPC object.
+    """
+    lines = open('/etc/lsb-release').readlines()
+    lines.remove('')
+    version_response = {x.split('=')[0]: x.split('=')[1] for x in lines}
+    return rpc_utils.prepare_for_serialization(version_response)
+

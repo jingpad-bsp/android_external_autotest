@@ -1,12 +1,16 @@
 package autotest.moblab.wizard;
 
+import autotest.moblab.rpc.MoblabRpcCallbacks;
+import autotest.moblab.rpc.VersionInfo;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.json.client.JSONValue;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.Composite;
+import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.FlowPanel;
+import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.SimplePanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.Widget;
@@ -29,6 +33,9 @@ public class ConfigWizard extends Composite {
 
   // The wizard header widget
   private Widget headerContainer;
+
+  // The wizard footer widget
+  private Widget footerContainer;
 
   // The container panel for wizard content widget.
   private SimplePanel contentContainer;
@@ -55,6 +62,9 @@ public class ConfigWizard extends Composite {
     contentContainer = new SimplePanel();
     contentContainer.setStyleName("wizard-panel");
     pnlWizard.add(contentContainer);
+
+    footerContainer = createWizardFooter();
+    pnlWizard.add(footerContainer);
 
     initWidget(pnlWizard);
 
@@ -98,6 +108,28 @@ public class ConfigWizard extends Composite {
       }
     });
     return headerPanel;
+  }
+
+  /**
+   * Creates the wizard header widget.
+   */
+  protected Widget createWizardFooter() {
+    final FlexTable layoutTable = new FlexTable();
+    MoblabRpcHelper.fetchMoblabBuildVersionInfo(new MoblabRpcCallbacks.FetchVersionInfoCallback() {
+      @Override
+      public void onVersionInfoFetched(VersionInfo info) {
+        int row = 0;
+        layoutTable.setWidget(row, 0, new Label("Version"));
+        layoutTable.setWidget(row, 1, new Label(info.getVersion()));
+        row++;
+        layoutTable.setWidget(row, 0, new Label("Track"));
+        layoutTable.setWidget(row, 1, new Label(info.getReleaseTrack()));
+        row++;
+        layoutTable.setWidget(row, 0, new Label("Description"));
+        layoutTable.setWidget(row, 1, new Label(info.getReleaseDescription()));
+      }
+    });
+    return layoutTable;
   }
 
   public WizardCard[] getCards() {
@@ -144,6 +176,7 @@ public class ConfigWizard extends Composite {
   private void setMode(Mode mode) {
     this.mode = mode;
     headerContainer.setVisible(Mode.View == mode);
+    footerContainer.setVisible(Mode.View == mode);
     updateModeUI();
   }
 

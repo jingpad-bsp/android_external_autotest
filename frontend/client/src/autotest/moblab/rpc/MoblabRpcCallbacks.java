@@ -33,4 +33,12 @@ public class MoblabRpcCallbacks {
   public interface SubmitWizardConfigInfoCallback {
     public void onWizardConfigInfoSubmitted(OperationStatus status);
   }
+
+  /**
+   * Callback for network info fetch.
+   */
+  public interface FetchVersionInfoCallback {
+    public void onVersionInfoFetched(VersionInfo info);
+  }
+
 }
