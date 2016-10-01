@@ -7,6 +7,7 @@ import os, sys, optparse, fcntl, errno, traceback, socket
 import common
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -267,35 +268,44 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
             message_lines.append(format_failure_message(
                 jobname, test.kernel.base, test.subdir,
                 test.status, test.reason))
+    try:
+        message = "\n".join(message_lines)
 
-    message = "\n".join(message_lines)
+        # send out a email report of failure
+        if len(message) > 2 and mail_on_failure:
+            tko_utils.dprint("Sending email report of failure on %s to %s"
+                             % (jobname, job.user))
+            mailfailure(jobname, job, message)
 
-    # send out a email report of failure
-    if len(message) > 2 and mail_on_failure:
-        tko_utils.dprint("Sending email report of failure on %s to %s"
-                         % (jobname, job.user))
-        mailfailure(jobname, job, message)
+        # write the job into the database.
+        db.insert_job(jobname, job,
+                      parent_job_id=job_keyval.get(constants.PARENT_JOB_ID,
+                                                   None))
 
-    # write the job into the database.
-    db.insert_job(jobname, job,
-                  parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
+        # Upload perf values to the perf dashboard, if applicable.
+        for test in job.tests:
+            perf_uploader.upload_test(job, test, jobname)
 
-    # Upload perf values to the perf dashboard, if applicable.
-    for test in job.tests:
-        perf_uploader.upload_test(job, test, jobname)
+        # Although the cursor has autocommit, we still need to force it to
+        # commit existing changes before we can use django models, otherwise it
+        # will go into deadlock when django models try to start a new
+        # trasaction while the current one has not finished yet.
+        db.commit()
 
-    # Although the cursor has autocommit, we still need to force it to commit
-    # existing changes before we can use django models, otherwise it
-    # will go into deadlock when django models try to start a new trasaction
-    # while the current one has not finished yet.
-    db.commit()
-
-    # Handle retry job.
-    orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID, None)
-    if orig_afe_job_id:
-        orig_job_idx = tko_models.Job.objects.get(
-                afe_job_id=orig_afe_job_id).job_idx
-        _invalidate_original_tests(orig_job_idx, job.index)
+        # Handle retry job.
+        orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID, None)
+        if orig_afe_job_id:
+            orig_job_idx = tko_models.Job.objects.get(
+                    afe_job_id=orig_afe_job_id).job_idx
+            _invalidate_original_tests(orig_job_idx, job.index)
+    except Exception as e:
+        metadata = {'path': path, 'error': str(e),
+                    'details': traceback.format_exc()}
+        tko_utils.dprint("Hit exception while uploading to tko db:\n%s" %
+                         traceback.format_exc())
+        autotest_es.post(use_http=True, type_str='parse_failure',
+                         metadata=metadata)
+        raise e
 
     # Serializing job into a binary file
     try:
