@@ -750,9 +750,13 @@ def SetupTsMonGlobalState(*args, **kwargs):
     @param **kwargs: Kwargs to pass through.
     """
     if ts_mon_config:
-        return ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
+        context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
+        if hasattr(context, '__exit__'):
+            return context
+        else:
+            return TrivialContextManager()
     else:
-        return TrivialContextManager
+        return TrivialContextManager()
 
 
 @contextlib.contextmanager
