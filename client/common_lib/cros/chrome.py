@@ -162,15 +162,14 @@ class Chrome(object):
         # (Without this, Chrome coredumps are trashed.)
         open(constants.CHROME_CORE_MAGIC_FILE, 'w').close()
 
+        self._network_controller = None
         for i in range(num_tries):
             try:
                 browser_to_create = browser_finder.FindBrowser(finder_options)
-                self.network_controller = \
-                    browser_to_create.platform.network_controller
-                # TODO(achuith): Remove if condition after catapult:#2584 has
-                # landed and PFQ has rolled. crbug.com/639730.
-                if hasattr(self.network_controller, 'InitializeIfNeeded'):
-                    self.network_controller.InitializeIfNeeded()
+                if not gaia_login:
+                    self._network_controller = \
+                        browser_to_create.platform.network_controller
+                    self._network_controller.InitializeIfNeeded()
                 self._browser = browser_to_create.Create(finder_options)
                 if is_arc_available():
                     if not disable_arc_opt_in:
@@ -301,14 +300,15 @@ class Chrome(object):
 
 
     def close(self):
+        """Closes the browser.
+        """
         try:
-            if hasattr(self.network_controller, 'Close'):
-                self.network_controller.Close()
-                logging.info('Network controller is closed')
+            if self._network_controller:
+                self._network_controller.Close()
+                logging.debug('Network controller is closed')
         except Error as e:
             logging.error('Failed to close network controller, error=%s', e)
 
-        """Closes the browser."""
         try:
             if is_arc_available():
                 arc_util.pre_processing_before_close(self)
