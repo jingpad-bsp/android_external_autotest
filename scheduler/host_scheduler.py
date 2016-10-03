@@ -483,22 +483,19 @@ def main():
         # Start the thread to report metadata.
         metadata_reporter.start()
 
-        # Set up metrics upload for Monarch. Use indirect=True to have a separate
-        # flushing process which supports metrics which are sent exactly once.
-        with ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler',
-                                                 indirect=True):
+        ts_mon_config.SetupTsMonGlobalState('autotest_host_scheduler')
 
-            host_scheduler = HostScheduler()
-            minimum_tick_sec = global_config.global_config.get_config_value(
-                    'SCHEDULER', 'minimum_tick_sec', type=float)
-            while not _shutdown:
-                start = time.time()
-                host_scheduler.tick()
-                curr_tick_sec = time.time() - start
-                if (minimum_tick_sec > curr_tick_sec):
-                    time.sleep(minimum_tick_sec - curr_tick_sec)
-                else:
-                    time.sleep(0.0001)
+        host_scheduler = HostScheduler()
+        minimum_tick_sec = global_config.global_config.get_config_value(
+                'SCHEDULER', 'minimum_tick_sec', type=float)
+        while not _shutdown:
+            start = time.time()
+            host_scheduler.tick()
+            curr_tick_sec = time.time() - start
+            if (minimum_tick_sec > curr_tick_sec):
+                time.sleep(minimum_tick_sec - curr_tick_sec)
+            else:
+                time.sleep(0.0001)
     except server_manager_utils.ServerActionError as e:
         # This error is expected when the server is not in primary status
         # for host-scheduler role. Thus do not send email for it.
