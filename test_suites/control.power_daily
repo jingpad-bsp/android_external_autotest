@@ -32,7 +32,7 @@ _BUG_TEMPLATE = {
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['dbasehore@chromium.org', 'msheets@chromium.org',
+    'cc': ['dbasehore@chromium.org', 'hennessywill@chromium.org',
            'tbroch@chromium.org']
 }
 
