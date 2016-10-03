@@ -39,8 +39,8 @@ PRIMARY_ONLY_COMMANDS = ['test_importer']
 # A dict to map update_commands defined in config file to repos or files that
 # decide whether need to update these commands. E.g. if no changes under
 # frontend repo, no need to update afe.
-COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/', 'tko': 'tko/',
-                          'build_externals': 'utils/external_packages.py'}
+COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
+                          'tko': 'tko/'}
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
