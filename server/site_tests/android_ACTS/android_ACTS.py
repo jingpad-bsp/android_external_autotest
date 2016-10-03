@@ -162,6 +162,27 @@ class android_ACTS(test.test):
 
         return base_acts_dir
 
+    def setup_system(self,
+                     acts_download_location=None,
+                     acts_setup_file='framework/setup.py'):
+        """Setup the system to be in a safe state to use acts.
+
+        Uninstalls any previously installed versions of acts and installs all
+        needed acts dependencies.
+
+        @param acts_download_location: Where acts was downloaded to.
+        @param acts_setup_file: Where setup.py is relative to the downloaded
+                                location.
+        """
+        if not acts_download_location:
+            acts_download_location = self.acts_download_dir
+
+        install_file_full_path = os.path.join(acts_download_location,
+                                              acts_setup_file)
+
+        self.test_station.run('python %s uninstall' % install_file_full_path)
+        self.test_station.run('python %s install_deps' % install_file_full_path)
+
     def setup_configs(self,
                       config_file,
                       additional_configs=[],
@@ -426,6 +447,7 @@ class android_ACTS(test.test):
         # install all needed tools
         self.install_sl4a_apk()
         self.acts_download_dir = self.download_acts()
+        self.setup_system()
         remote_config_file = self.setup_configs(
                 config_file, additional_configs)
         env = self.build_environment()
