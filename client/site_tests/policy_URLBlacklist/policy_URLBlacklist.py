@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
@@ -28,36 +28,38 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
     """
     version = 1
 
-    POLICY_NAME = 'URLBlacklist'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d/%s' % (URL_HOST, URL_PORT, 'test_data')
-    ALL_URLS_LIST = [URL_BASE + website for website in
-                      ['/website1.html',
-                       '/website2.html',
-                       '/website3.html']]
-    SINGLE_BLACKLISTED_FILE_DATA = ALL_URLS_LIST[:1]
-    MULTIPLE_BLACKLISTED_FILES_DATA = ALL_URLS_LIST[:2]
-    BLOCKED_USER_MESSAGE = 'Webpage Blocked'
-    BLOCKED_ERROR_MESSAGE = 'ERR_BLOCKED_BY_ADMINISTRATOR'
-
-    TEST_CASES = {
-        'NotSet_Allowed': None,
-        'SinglePage_Blocked': SINGLE_BLACKLISTED_FILE_DATA,
-        'MultiplePages_Blocked': MULTIPLE_BLACKLISTED_FILES_DATA,
-    }
-    SUPPORTING_POLICIES = {'URLWhitelist': None}
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_URLBlacklist, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'URLBlacklist'
+        self.URL_BASE = '%s/%s' % (self.WEB_HOST, 'website')
+        self.ALL_URLS_LIST = [self.URL_BASE + website for website in
+                              ['/website1.html',
+                               '/website2.html',
+                               '/website3.html']]
+        self.SINGLE_BLACKLISTED_FILE = self.ALL_URLS_LIST[:1]
+        self.MULTIPLE_BLACKLISTED_FILES = self.ALL_URLS_LIST[:2]
+        self.BLOCKED_USER_MESSAGE = 'Webpage Blocked'
+        self.BLOCKED_ERROR_MESSAGE = 'ERR_BLOCKED_BY_ADMINISTRATOR'
+
+        self.TEST_CASES = {
+            'NotSet_Allowed': None,
+            'SinglePage_Blocked': self.SINGLE_BLACKLISTED_FILE,
+            'MultiplePages_Blocked': self.MULTIPLE_BLACKLISTED_FILES,
+        }
+        self.SUPPORTING_POLICIES = {'URLWhitelist': None}
+
 
     def _scrape_text_from_webpage(self, tab):
         """Return a list of filtered text on the web page.
 
         @param tab: tab containing the website to be parsed.
         @raises: TestFail if the expected text was not found on the page.
-
         """
         parsed_message_string = ''
         parsed_message_list = []
@@ -73,11 +75,11 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
                                parsed_message_string.split('\n') if word]
         return parsed_message_list
 
+
     def _is_url_blocked(self, url):
         """Return True if the URL is blocked else returns False.
 
         @param url: The URL to be checked whether it is blocked.
-
         """
         parsed_message_list = []
         tab = self.navigate_to_url(url)
@@ -99,6 +101,7 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
                             self.BLOCKED_ERROR_MESSAGE)
         return True
 
+
     def _test_url_blacklist(self, policy_value, policies_dict):
         """Verify CrOS enforces URLBlacklist policy value.
 
@@ -111,7 +114,6 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
         @param policies_dict: policy dict data to send to the fake DM server.
         @raises: TestFail if url is blocked/not blocked based on the
                  corresponding policy values.
-
         """
         logging.info('Running _test_url_blacklist(%s, %s)',
                      policy_value, policies_dict)
@@ -125,7 +127,8 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
                                          ' by policy, but was allowed.' % url)
             elif url_is_blocked:
                 raise error.TestFail('The URL %s should have been allowed'
-                                      'by policy, but was blocked.' % url)
+                                     'by policy, but was blocked.' % url)
+
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
@@ -134,7 +137,6 @@ class policy_URLBlacklist(enterprise_policy_base.EnterprisePolicyTest):
         the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
-
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
         self._test_url_blacklist(policy_value, policies_dict)

@@ -11,8 +11,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cryptohome
-from autotest_lib.client.cros import enterprise_fake_dmserver
 from autotest_lib.client.cros import httpd
+from autotest_lib.client.cros.enterprise import enterprise_fake_dmserver
 
 CROSQA_FLAGS = [
     '--gaia-url=https://gaiastaging.corp.google.com',
@@ -47,7 +47,7 @@ DMS_URL_DICT = {
     'dm-fake': 'http://127.0.0.1:%d/'
 }
 DMSERVER = '--device-management-url=%s'
-# Username and password for the fake dm server can be anything
+# Username and password for the fake dm server can be anything, since
 # they are not used to authenticate against GAIA.
 USERNAME = 'fake-user@managedchrome.com'
 PASSWORD = 'fakepassword'
@@ -55,6 +55,9 @@ PASSWORD = 'fakepassword'
 
 class EnterprisePolicyTest(test.test):
     """Base class for Enterprise Policy Tests."""
+
+    WEB_PORT = 8080
+    WEB_HOST = 'http://localhost:%d' % WEB_PORT
 
     def setup(self):
         os.chdir(self.srcdir)
@@ -86,6 +89,10 @@ class EnterprisePolicyTest(test.test):
         self._initialize_chrome_extra_flags()
         self._web_server = None
 
+        # Get enterprise directory of shared resources.
+        client_dir = os.path.dirname(os.path.dirname(self.bindir))
+        self.enterprise_dir = os.path.join(client_dir, 'cros/enterprise')
+
 
     def cleanup(self):
         # Clean up AutoTest DM Server if using local fake server.
@@ -101,21 +108,10 @@ class EnterprisePolicyTest(test.test):
             self.cr.close()
 
 
-    def cros_policy_dir(self):
-        """Return path to cros/policy/ resources."""
-        client_dir = os.path.dirname(os.path.dirname(self.bindir))
-        return os.path.join(client_dir, 'cros/policy')
-
-
-    def start_webserver(self, port=8080, docroot=None):
-        """Set up an HTTP Server on |port| to serve docs from localhost.
-
-        @param port: Port used by HTTP server.
-        @param docroot: Root dir of documents to serve.
-        """
-        if docroot is None:
-            docroot = self.bindir
-        self._web_server = httpd.HTTPListener(port, docroot=docroot)
+    def start_webserver(self):
+        """Set up HTTP Server to serve pages from enterprise directory."""
+        self._web_server = httpd.HTTPListener(
+                self.WEB_PORT, docroot=self.enterprise_dir)
         self._web_server.run()
 
 
@@ -444,7 +440,7 @@ class EnterprisePolicyTest(test.test):
         if not tab:
             tab = self.cr.browser.tabs.New()
             tab.Activate()
-        tab.Navigate(url, timeout=5)
+        tab.Navigate(url, timeout=8)
         tab.WaitForDocumentReadyStateToBeComplete()
         return tab
 
@@ -463,6 +459,34 @@ class EnterprisePolicyTest(test.test):
             raise error.TestFail('Unable to find matching elements on '
                                  'the test page: %s\n %r' %(tab.url, err))
         return elements
+
+
+    def _get_settings_checkbox_properties(self, pref):
+        """Get properties of the |pref| check box on the settings page.
+
+        @param pref: pref attribute value of the check box setting.
+        @returns: element properties of the check box setting.
+        """
+        js_cmd_get_props = ('''
+        settings = document.getElementsByClassName(
+                'checkbox controlled-setting-with-label');
+        settingValues = '';
+        for (var i = 0, setting; setting = settings[i]; i++) {
+           var setting_label = setting.getElementsByTagName("label")[0];
+           var label_input = setting_label.getElementsByTagName("input")[0];
+           var input_pref = label_input.getAttribute("pref");
+           if (input_pref == '%s') {
+              settingValues = [setting_label.innerText.trim(),
+                               label_input.checked, label_input.disabled];
+              break;
+           }
+        }
+        settingValues;
+        ''' % pref)
+        tab = self.navigate_to_url(self.CHROME_SETTINGS_PAGE)
+        checkbox_props = self.get_elements_from_page(tab, js_cmd_get_props)
+        tab.Close()
+        return checkbox_props
 
 
     def run_once(self):

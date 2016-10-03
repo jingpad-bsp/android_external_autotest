@@ -6,7 +6,7 @@ import logging
 import utils
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_NotificationsAllowedForUrls(
@@ -32,43 +32,41 @@ class policy_NotificationsAllowedForUrls(
     """
     version = 1
 
-    POLICY_NAME = 'NotificationsAllowedForUrls'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
-    URL_PAGE = '/notification_test_page.html'
-    TEST_URL = URL_BASE + URL_PAGE
-
-    INCLUDES_ALLOWED_URL = ['http://www.bing.com', URL_BASE,
-                            'https://www.yahoo.com']
-    EXCLUDES_ALLOWED_URL = ['http://www.bing.com', 'https://www.irs.gov/',
-                            'https://www.yahoo.com']
-    TEST_CASES = {
-        'SiteAllowed_Show': INCLUDES_ALLOWED_URL,
-        'SiteNotAllowed_Block': EXCLUDES_ALLOWED_URL,
-        'NotSet_Block': None
-    }
-    STARTUP_URLS = ['chrome://policy', 'chrome://settings']
-    SUPPORTING_POLICIES = {
-        'DefaultNotificationsSetting': 2,
-        'BookmarkBarEnabled': True,
-        'EditBookmarkEnabled': True,
-        'RestoreOnStartupURLs': STARTUP_URLS,
-        'RestoreOnStartup': 4
-    }
-
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_NotificationsAllowedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT, self.cros_policy_dir())
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'NotificationsAllowedForUrls'
+        self.TEST_FILE = 'notification_test_page.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+        self.INCLUDES_ALLOWED_URL = ['http://www.bing.com', self.WEB_HOST,
+                                     'https://www.yahoo.com']
+        self.EXCLUDES_ALLOWED_URL = ['http://www.bing.com',
+                                     'https://www.irs.gov/',
+                                     'https://www.yahoo.com']
+        self.TEST_CASES = {
+            'SiteAllowed_Show': self.INCLUDES_ALLOWED_URL,
+            'SiteNotAllowed_Block': self.EXCLUDES_ALLOWED_URL,
+            'NotSet_Block': None
+        }
+        self.STARTUP_URLS = ['chrome://policy', 'chrome://settings']
+        self.SUPPORTING_POLICIES = {
+            'DefaultNotificationsSetting': 2,
+            'BookmarkBarEnabled': True,
+            'EditBookmarkEnabled': True,
+            'RestoreOnStartupURLs': self.STARTUP_URLS,
+            'RestoreOnStartup': 4
+        }
 
 
     def _wait_for_page_ready(self, tab):
-        """
-        Wait for JavaScript on page in |tab| to set the pageReady flag.
+        """Wait for JavaScript on page in |tab| to set the pageReady flag.
 
         @param tab: browser tab with page to load.
-
         """
         utils.poll_for_condition(
             lambda: tab.EvaluateJavaScript('pageReady'),
@@ -76,15 +74,12 @@ class policy_NotificationsAllowedForUrls(
 
 
     def _are_notifications_allowed(self, tab):
-        """
-        Check if Notifications are allowed.
+        """Check if Notifications are allowed.
 
         @param: chrome tab which has test page loaded.
-
         @returns True if Notifications are allowed, else returns False.
-
         """
-        notification_permission  = None
+        notification_permission = None
         notification_permission = tab.EvaluateJavaScript(
                 'Notification.permission')
         if notification_permission not in ['granted', 'denied', 'default']:
@@ -113,9 +108,9 @@ class policy_NotificationsAllowedForUrls(
         notifications_allowed = self._are_notifications_allowed(tab)
         logging.info('Notifications are allowed: %r', notifications_allowed)
 
-        # String |URL_HOST| will be found in string |policy_value| for
+        # String |WEB_HOST| will be found in string |policy_value| for
         # cases that expect the Notifications to be displayed.
-        if policy_value is not None and self.URL_HOST in policy_value:
+        if policy_value is not None and self.WEB_HOST in policy_value:
             if not notifications_allowed:
                 raise error.TestFail('Notifications should be shown.')
         else:

@@ -5,7 +5,7 @@
 import logging, time, utils
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_JavaScriptAllowedForUrls(
@@ -41,40 +41,40 @@ class policy_JavaScriptAllowedForUrls(
     """
     version = 1
 
-    POLICY_NAME = 'JavaScriptAllowedForUrls'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
-    URL_PAGE = '/js_test.html'
-    TEST_URL = URL_BASE + URL_PAGE
-
-    TEST_CASES = {
-        'NotSet_Block': None,
-        'SingleUrl_Allow': [URL_BASE],
-        'MultipleUrls_Block': ['http://www.bing.com',
-                               'https://www.yahoo.com'],
-        'MultipleUrls_Allow': ['http://www.bing.com',
-                               TEST_URL,
-                               'https://www.yahoo.com']
-    }
-
-    STARTUP_URLS = ['chrome://policy', 'chrome://settings']
-    SUPPORTING_POLICIES = {
-        'DefaultJavaScriptSetting': 2,
-        'BookmarkBarEnabled': False,
-        'RestoreOnStartupURLs': STARTUP_URLS,
-        'RestoreOnStartup': 4
-    }
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_JavaScriptAllowedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'JavaScriptAllowedForUrls'
+        self.TEST_FILE = 'js_test.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+        self.TEST_CASES = {
+            'NotSet_Block': None,
+            'SingleUrl_Allow': [self.WEB_HOST],
+            'MultipleUrls_Block': ['http://www.bing.com',
+                                   'https://www.yahoo.com'],
+            'MultipleUrls_Allow': ['http://www.bing.com',
+                                   self.TEST_URL,
+                                   'https://www.yahoo.com']
+        }
+
+        self.STARTUP_URLS = ['chrome://policy', 'chrome://settings']
+        self.SUPPORTING_POLICIES = {
+            'DefaultJavaScriptSetting': 2,
+            'BookmarkBarEnabled': False,
+            'RestoreOnStartupURLs': self.STARTUP_URLS,
+            'RestoreOnStartup': 4
+        }
+
 
     def _can_execute_javascript(self, tab):
         """Determine whether JavaScript is allowed to run on the given page.
 
         @param tab: browser tab containing JavaScript to run.
-
         """
         try:
             utils.poll_for_condition(
@@ -84,6 +84,7 @@ class policy_JavaScriptAllowedForUrls(
         except:
             return False
 
+
     def _test_javascript_allowed_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the JavaScriptAllowedForUrls policy.
 
@@ -92,9 +93,11 @@ class policy_JavaScriptAllowedForUrls(
         more URL patterns, JavaScript execution shall be allowed only on the
         pages whose URL matches any of the listed patterns.
 
+        Note: This test does not use self.navigate_to_url(), because it can
+        not depend on methods that evaluate or execute JavaScript.
+
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
-
         """
         logging.info('Running _test_javascript_allowed_for_urls(%s, %s)',
                      policy_value, policies_dict)
@@ -106,12 +109,12 @@ class policy_JavaScriptAllowedForUrls(
         time.sleep(1)
 
         utils.poll_for_condition(
-            lambda: (tab.url == self.TEST_URL),
+            lambda: tab.url == self.TEST_URL,
             exception=error.TestError('Test page is not ready.'))
         javascript_is_allowed = self._can_execute_javascript(tab)
 
-        if policy_value is not None and self.URL_HOST in policy_value:
-            # If |URL_HOST| is in |policy_value|, then JavaScript execution
+        if policy_value is not None and self.WEB_HOST in policy_value:
+            # If |WEB_HOST| is in |policy_value|, then JavaScript execution
             # should be allowed. If execution is blocked, raise an error.
             if not javascript_is_allowed:
                 raise error.TestFail('JavaScript should be allowed.')
@@ -119,6 +122,7 @@ class policy_JavaScriptAllowedForUrls(
             if javascript_is_allowed:
                 raise error.TestFail('JavaScript should be blocked.')
         tab.Close()
+
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
