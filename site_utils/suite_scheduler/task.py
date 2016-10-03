@@ -32,6 +32,10 @@ OS_TYPES_LAUNCH_CONTROL = {OS_TYPE_BRILLO, OS_TYPE_ANDROID}
 _WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
              'Sunday']
 
+# regex to parse the dut count from board label. Note that the regex makes sure
+# there is only one board specified in `boards`
+TESTBED_DUT_COUNT_REGEX = '[^,]*-(\d+)'
+
 class MalformedConfigEntry(Exception):
     """Raised to indicate a failure to parse a Task out of a config."""
     pass
@@ -164,6 +168,7 @@ class Task(object):
                   builds.
         targets: dragonboard-eng # comma separated string of build targets.
                  Required and only applicable for android/brillo builds.
+        testbed_dut_count: Number of duts to test when using a testbed.
 
         By default, Tasks run on all release branches, not factory or firmware.
 
@@ -232,6 +237,11 @@ class Task(object):
                     '`hour` is the trigger time that can only apply to nightly '
                     'event.')
 
+        testbed_dut_count = None
+        match = re.match(TESTBED_DUT_COUNT_REGEX, boards)
+        if match:
+            testbed_dut_count = int(match.group(1))
+
         try:
             day = config.getint(section, 'day')
         except ValueError as e:
@@ -265,11 +275,16 @@ class Task(object):
             raise MalformedConfigEntry(
                     '`branches` and `targets` must be specified for Launch '
                     'Control builds.')
-        if os_type in OS_TYPES_LAUNCH_CONTROL and boards:
+        if (os_type in OS_TYPES_LAUNCH_CONTROL and boards and
+            not testbed_dut_count):
             raise MalformedConfigEntry(
                     '`boards` for Launch Control builds are retrieved from '
                     '`targets` setting, it should not be set for Launch '
                     'Control builds.')
+        if os_type == OS_TYPE_CROS and testbed_dut_count:
+            raise MalformedConfigEntry(
+                    'testbed_dut_count is only supported for Launch Control '
+                    'builds testing with testbed.')
 
         # Extract boards from targets list.
         if os_type in OS_TYPES_LAUNCH_CONTROL:
@@ -289,7 +304,8 @@ class Task(object):
                              test_source=test_source, job_retry=job_retry,
                              hour=hour, day=day, os_type=os_type,
                              launch_control_branches=lc_branches,
-                             launch_control_targets=lc_targets)
+                             launch_control_targets=lc_targets,
+                             testbed_dut_count=testbed_dut_count)
 
 
     @staticmethod
@@ -324,7 +340,8 @@ class Task(object):
                  cros_build_spec=None, firmware_rw_build_spec=None,
                  firmware_ro_build_spec=None, test_source=None, job_retry=False,
                  hour=None, day=None, os_type=OS_TYPE_CROS,
-                 launch_control_branches=None, launch_control_targets=None):
+                 launch_control_branches=None, launch_control_targets=None,
+                 testbed_dut_count=None):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -412,6 +429,7 @@ class Task(object):
         @param launch_control_targets: Comma separated string of build targets
                 for Launch Control builds. The argument is required and only
                 applicable for android/brillo builds.
+        @param testbed_dut_count: Number of duts to test when using a testbed.
         """
         self._name = name
         self._suite = suite
@@ -435,6 +453,7 @@ class Task(object):
         self._launch_control_targets = (
                 [t.strip() for t in launch_control_targets.split(',')]
                 if launch_control_targets else [])
+        self._testbed_dut_count = testbed_dut_count
 
         if ((self._firmware_rw_build_spec or self._firmware_ro_build_spec or
              cros_build_spec) and
@@ -456,6 +475,11 @@ class Task(object):
             raise MalformedConfigEntry(
                     'firmware_rw_build_spec can only be empty, firmware or '
                     'cros. It does not support other build type yet.')
+
+        if os_type not in OS_TYPES_LAUNCH_CONTROL and self._testbed_dut_count:
+            raise MalformedConfigEntry(
+                    'testbed_dut_count is only applicable to testbed to run '
+                    'test with builds from Launch Control.')
 
         self._bare_branches = []
         self._version_equal_constraint = False
@@ -513,12 +537,16 @@ class Task(object):
                          (self.__class__.__name__, suite, branch_specs, pool,
                           boardsStr, self._file_bugs, numStr, time_str))
         else:
+            testbed_dut_count_str = '.'
+            if self._testbed_dut_count:
+                testbed_dut_count_str = (', each with %d duts.' %
+                                         self._testbed_dut_count)
             self._str = ('%s: %s on branches %s and targets %s with pool %s, '
-                         'boards [%s], file_bugs = %s across %s machines.%s' %
+                         'boards [%s], file_bugs = %s across %s machines%s%s' %
                          (self.__class__.__name__, suite,
                           launch_control_branches, launch_control_targets,
-                          pool, boardsStr, self._file_bugs, numStr, time_str))
-
+                          pool, boardsStr, self._file_bugs, numStr,
+                          testbed_dut_count_str, time_str))
 
 
     def _FitsSpec(self, branch):
@@ -838,6 +866,13 @@ class Task(object):
         firmware_ro_build_msg = (
                 ' Firmware RO build is %s.' % firmware_ro_build
                 if firmware_ro_build else '')
+        # If testbed_dut_count is set, the suite is for testbed. Update build
+        # and board with the dut count.
+        if self._testbed_dut_count:
+            launch_control_build = '%s#%d' % (launch_control_build,
+                                              self._testbed_dut_count)
+            test_source_build = launch_control_build
+            board = '%s-%d' % (board, self._testbed_dut_count)
         build_string = cros_build or launch_control_build
         logging.debug('Schedule %s for build %s.%s%s%s',
                       self._suite, build_string, test_source_build_msg,
@@ -852,7 +887,8 @@ class Task(object):
                 test_source_build=test_source_build,
                 job_retry=self._job_retry,
                 launch_control_build=launch_control_build,
-                run_prod_code=run_prod_code):
+                run_prod_code=run_prod_code,
+                testbed_dut_count=self._testbed_dut_count):
             logging.info('Skipping scheduling %s on %s for %s',
                          self._suite, build_string, board)
 
