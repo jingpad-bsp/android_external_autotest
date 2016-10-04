@@ -16,6 +16,7 @@ class RemoteChameleonMeasurer(chameleon_measurer_base._BaseChameleonMeasurer):
 
     def __init__(self, cros_host, outputdir=None, no_chrome=False):
         """Initializes the object."""
+        self.host = cros_host
         factory = remote_facade_factory.RemoteFacadeFactory(
                 cros_host, no_chrome)
         self.display_facade = factory.create_display_facade()

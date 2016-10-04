@@ -17,6 +17,7 @@ class LocalChameleonMeasurer(chameleon_measurer_base._BaseChameleonMeasurer):
 
     def __init__(self, cros_host, args, chrome, outputdir=None):
         """Initializes the object."""
+        self.host = cros_host
         factory = local_facade_factory.LocalFacadeFactory(chrome)
         self.display_facade = factory.create_display_facade()
 
