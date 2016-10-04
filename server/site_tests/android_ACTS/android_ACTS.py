@@ -273,13 +273,9 @@ class android_ACTS(test.test):
                 'find %s -type d' % base_test_dir)
         test_search_dirs = get_test_paths_result.stdout.splitlines()
 
-        get_path_result = self.test_station.run('echo $PYTHONPATH')
-        remote_path = get_path_result.stdout
-        new_python_path = '%s:%s' % (remote_path, framework_dir)
-
         env = {'ACTS_TESTPATHS': ':'.join(test_search_dirs),
                'ACTS_LOGPATH': log_path,
-               'PYTHONPATH': new_python_path}
+               'PYTHONPATH': '%s:$PYTHONPATH' % framework_dir}
 
         logging.info('Enviroment set to: %s', str(env))
 
