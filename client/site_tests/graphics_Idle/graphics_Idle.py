@@ -232,6 +232,49 @@ class graphics_Idle(test.test):
                               lowest_freq)
                 return self.handle_error('Did not see the min DVFS clock. ',
                                          clock_path)
+        elif self._gpu_type == 'rogue':
+            if self._cpu_type == 'mediatek':
+                rogue_dvfs_path = '/sys/devices/soc/13000000.mfgsys-gpu/devfreq/13000000.mfgsys-gpu'
+            else:
+                logging.error('Error: Unknown SoC for rogue GPU.')
+                return self.handle_error('Unknown SoC for rogue GPU.')
+
+            governor_path = utils.locate_file('governor', rogue_dvfs_path)
+            max_freq_path = utils.locate_file('max_freq', rogue_dvfs_path)
+            min_freq_path = utils.locate_file('min_freq', rogue_dvfs_path)
+            cur_freq_path = utils.locate_file('cur_freq', rogue_dvfs_path)
+
+            governor = utils.read_one_line(governor_path)
+            max_freq = int(utils.read_one_line(max_freq_path))
+            min_freq = int(utils.read_one_line(min_freq_path))
+
+            logging.info('DVFS governor = %s', governor)
+            if not governor == 'simple_ondemand':
+                logging.error('Error: DVFS governor is not simple_ondemand.')
+                return self.handle_error('Governor is wrong.')
+
+            logging.info('DVFS freq min = %u, max = %u', min_freq, max_freq)
+            if min_freq >= max_freq:
+                logging.error('Error: DVFS freq min >= max')
+                return self.handle_error('Frequency settings are wrong.')
+
+            logging.info('Expecting idle DVFS freq = %u', min_freq)
+            tries = 0
+            found = False
+            while not found and tries < 80:
+                time.sleep(0.25)
+                cur_freq = int(utils.read_one_line(cur_freq_path))
+                if cur_freq <= min_freq:
+                    logging.info('Found idle DVFS freq = %u', cur_freq)
+                    found = True
+                    break
+
+                tries += 1
+            if not found:
+                logging.error('Error: DVFS freq cur (%u) > min (%u)', cur_freq,
+                              min_freq)
+                return self.handle_error('Did not see the min DVFS freq. ',
+                                         cur_freq_path)
         return ''
 
     def verify_graphics_fbc(self):
