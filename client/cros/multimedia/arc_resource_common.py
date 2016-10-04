@@ -20,3 +20,10 @@ class PlayMusicProps(object):
     TEST_NAME = 'cheets_PlayMusicApp'
     READY_TAG_FILE = '/tmp/.cheets_PlayMusicApp.ready'
     EXIT_TAG_FILE = '/tmp/.cheets_PlayMusicApp.exit'
+
+
+class PlayVideoProps(object):
+    """Properties of Play Video app that both server and client should know."""
+    TEST_NAME = 'cheets_PlayVideoApp'
+    READY_TAG_FILE = '/tmp/.cheets_PlayVideoApp.ready'
+    EXIT_TAG_FILE = '/tmp/.cheets_PlayVideoApp.exit'
