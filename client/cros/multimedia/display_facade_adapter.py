@@ -250,9 +250,11 @@ class DisplayFacadeLocalAdapter(object):
     def get_internal_resolution(self):
         """Gets the resolution of the internal screen.
 
-        @return The resolution tuple (width, height)
+        @return The resolution tuple (width, height) or None if no internal
+                display.
         """
-        return tuple(self._display_component.get_internal_resolution())
+        resolution = self._display_component.get_internal_resolution()
+        return tuple(resolution) if resolution else None
 
 
     def set_resolution(self, display_index, width, height):
