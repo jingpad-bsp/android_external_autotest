@@ -1814,6 +1814,15 @@ class ImageServer(ImageServerBase):
             finally:
                 if not is_au_success and au_attempt < AU_RETRY_LIMIT - 1:
                     time.sleep(CROS_AU_RETRY_INTERVAL)
+                    # TODO(kevcheng): Remove this once crbug.com/651974 is
+                    # fixed.
+                    # DNS is broken in the cassandra lab, so use the IP of the
+                    # hostname instead if it fails.
+                    host_name = socket.gethostbyname(host_name)
+                    kwargs['host_name'] = host_name
+                    logging.debug(
+                            'AU failed, trying IP instead of hostname: %s',
+                            host_name)
 
         if not is_au_success:
             raise DevServerException(
