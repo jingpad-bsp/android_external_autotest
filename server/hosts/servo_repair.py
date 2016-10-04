@@ -219,8 +219,13 @@ class _PowerButtonVerifier(hosts.Verifier):
     released.  When `pwr_button` is stuck at `press`, it commonly
     indicates that the ribbon cable is disconnected.
     """
+    # TODO (crbug.com/646593) - Remove list below once servo has been updated
+    # with a dummy pwr_button signal.
+    _BOARDS_WO_PWR_BUTTON = ['arkham', 'storm', 'whirlwind', 'gale']
 
     def verify(self, host):
+        if host.servo_board in self._BOARDS_WO_PWR_BUTTON:
+            return
         button = host.get_servo().get('pwr_button')
         if button != 'release':
             raise hosts.AutoservVerifyError(
