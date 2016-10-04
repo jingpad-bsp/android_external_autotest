@@ -8,8 +8,11 @@ import os
 import pipes
 import time
 
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import arc
 from autotest_lib.client.cros.multimedia import arc_resource_common
+from autotest_lib.client.cros.input_playback import input_playback
 
 
 def set_tag(tag):
@@ -79,7 +82,7 @@ class ArcMicrophoneResource(object):
         Copies the recorded file from container to Cros device.
         Deletes the recorded file in container.
 
-        @dest_path: Destination path of the recorded file on Cros device.
+        @param dest_path: Destination path of the recorded file on Cros device.
 
         @raises: ArcMicrophoneResourceException if microphone app is not started
                  yet or is still recording.
@@ -170,7 +173,7 @@ class ArcPlayMusicResource(object):
 
     def __init__(self):
         """Initializes an ArcPlayMusicResource."""
-        self._paths_in_container = []
+        self._files_pushed = []
 
 
     def set_playback_file(self, file_path):
@@ -189,7 +192,7 @@ class ArcPlayMusicResource(object):
         arc.adb_cmd('push %s %s' % (pipes.quote(file_path),
                                     pipes.quote(dest_path)))
 
-        self._paths_in_container.append(dest_path)
+        self._files_pushed.append(dest_path)
 
         return dest_path
 
@@ -199,15 +202,15 @@ class ArcPlayMusicResource(object):
 
         @param dest_path: The file path in container.
 
-        @raises ArcMicrophoneResourceException: Play Music app is not ready or
-                                                playback file is not set yet.
+        @raises ArcPlayMusicResourceException: Play Music app is not ready or
+                                               playback file is not set yet.
 
         """
         if not tag_exists(arc_resource_common.PlayMusicProps.READY_TAG_FILE):
             raise ArcPlayMusicResourceException(
                     'Play Music app is not ready yet.')
 
-        if dest_path not in self._paths_in_container:
+        if dest_path not in self._files_pushed:
             raise ArcPlayMusicResourceException(
                     'Playback file is not set yet')
 
@@ -244,15 +247,132 @@ class ArcPlayMusicResource(object):
         Stops the Play Music app by media key event.
 
         """
-        arc.adb_shell(
-                'input keyevent %s' % pipes.quote(self._KEYCODE_MEDIA_STOP))
+        arc.send_keycode(self._KEYCODE_MEDIA_STOP)
 
 
     def cleanup(self):
         """Removes the files to play in container."""
-        for path in self._paths_in_container:
+        for path in self._files_pushed:
             arc.adb_shell('rm %s' % pipes.quote(path))
-        self._paths_in_container = []
+        self._files_pushed = []
+
+
+class ArcPlayVideoResourceException(Exception):
+    """Exceptions in ArcPlayVideoResource."""
+    pass
+
+
+class ArcPlayVideoResource(object):
+    """Class to manage Play Video app in container."""
+    _PLAYVIDEO_PACKAGE = 'org.chromium.arc.testapp.video'
+    _PLAYVIDEO_ACTIVITY = 'org.chromium.arc.testapp.video/.MainActivity'
+    _PLAYVIDEO_EXIT_TAG = "/mnt/sdcard/ArcVideoTest.tag"
+    _PLAYVIDEO_FILE_FOLDER = '/storage/emulated/0/'
+    _PLAYVIDEO_PERMISSIONS = ['WRITE_EXTERNAL_STORAGE', 'READ_EXTERNAL_STORAGE']
+    _KEYCODE_MEDIA_PLAY = 126
+    _KEYCODE_MEDIA_PAUSE = 127
+    _KEYCODE_MEDIA_STOP = 86
+
+    def __init__(self):
+        """Initializes an ArcPlayVideoResource."""
+        self._files_pushed = []
+
+
+    def prepare_playback(self, file_path, fullscreen=True):
+        """Copies file into the container and starts the video player app.
+
+        @param file_path: Path to the file to play on Cros host.
+        @param fullscreen: Plays the video in fullscreen.
+
+        """
+        if not tag_exists(arc_resource_common.PlayVideoProps.READY_TAG_FILE):
+            raise ArcPlayVideoResourceException(
+                    'Play Video app is not ready yet.')
+        file_name = os.path.basename(file_path)
+        dest_path = os.path.join(self._PLAYVIDEO_FILE_FOLDER, file_name)
+
+        # pipes.quote is deprecated in 2.7 (but still available).
+        # It should be replaced by shlex.quote in python 3.3.
+        arc.adb_cmd('push %s %s' % (pipes.quote(file_path),
+                                    pipes.quote(dest_path)))
+
+        # In case the permissions are cleared, set the permission again before
+        # each start of the app.
+        self._set_permission()
+        self._start_app(dest_path)
+        if fullscreen:
+            self.set_fullscreen()
+
+
+    def set_fullscreen(self):
+        """Sends F4 keyevent to set fullscreen."""
+        input_player = input_playback.InputPlayback()
+        input_player.emulate(input_type='keyboard')
+        input_player.find_connected_inputs()
+        input_player.blocking_playback_of_default_file(
+                input_type='keyboard', filename='keyboard_f4')
+
+
+    def start_playback(self, blocking_secs=None):
+        """Starts Play Video app to play a video file.
+
+        @param blocking_secs: A positive number indicates the timeout to wait
+                              for the playback is finished. Set None to make
+                              it non-blocking.
+
+        @raises ArcPlayVideoResourceException: Play Video app is not ready or
+                                               playback file is not set yet.
+
+        """
+        arc.send_keycode(self._KEYCODE_MEDIA_PLAY)
+
+        if blocking_secs:
+            tag = lambda : arc.check_android_file_exists(
+                    self._PLAYVIDEO_EXIT_TAG)
+            exception = error.TestFail('video playback timeout')
+            utils.poll_for_condition(tag, exception, blocking_secs)
+
+
+    def _set_permission(self):
+        """Grants permissions to Play Video app."""
+        arc.grant_permissions(
+                self._PLAYVIDEO_PACKAGE, self._PLAYVIDEO_PERMISSIONS)
+
+
+    def _start_app(self, dest_path):
+        """Starts Play Video app playing a video file.
+
+        @param dest_path: Path to the file to play in container.
+
+        """
+        arc.adb_shell('am start --activity-clear-top '
+                      '--es PATH {} {}'.format(
+                      pipes.quote(dest_path), self._PLAYVIDEO_ACTIVITY))
+
+
+    def pause_playback(self):
+        """Pauses Play Video app.
+
+        Pauses the Play Video app by media key event.
+
+        """
+        arc.send_keycode(self._KEYCODE_MEDIA_PAUSE)
+
+
+    def stop_playback(self):
+        """Stops Play Video app.
+
+        Stops the Play Video app by media key event.
+
+        """
+        arc.send_keycode(self._KEYCODE_MEDIA_STOP)
+
+
+    def cleanup(self):
+        """Removes the files to play in container."""
+        for path in self._files_pushed:
+            arc.adb_shell('rm %s' % pipes.quote(path))
+        self._files_pushed = []
 
 
 class ArcResource(object):
@@ -260,12 +380,17 @@ class ArcResource(object):
 
     @properties:
         microphone: The instance of ArcMicrophoneResource for microphone app.
+        play_music: The instance of ArcPlayMusicResource for music app.
+        play_video: The instance of ArcPlayVideoResource for video app.
 
     """
     def __init__(self):
         self.microphone = ArcMicrophoneResource()
         self.play_music = ArcPlayMusicResource()
+        self.play_video = ArcPlayVideoResource()
+
 
     def cleanup(self):
         """Clean up the resources."""
         self.play_music.cleanup()
+        self.play_video.cleanup()

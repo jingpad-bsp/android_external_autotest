@@ -127,3 +127,34 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
         """
         self.tab.ExecuteJavaScript('setControls()')
+
+
+    def dropped_frame_count(self):
+        """
+        Gets the number of dropped frames.
+
+        @returns: An integer indicates the number of dropped frame.
+
+        """
+        cmd = "%s.webkitDroppedFrameCount" % self.video_id
+        return self.tab.EvaluateJavaScript(cmd)
+
+
+    def duration(self):
+        """
+        Gets the duration of the video.
+
+        @returns: An number indicates the duration of the video.
+
+        """
+        cmd = "%s.duration" % self.video_id
+        return self.tab.EvaluateJavaScript(cmd)
+
+
+    def wait_video_ended(self):
+        """
+        Waits until the video playback is ended.
+
+        """
+        cmd = "%s.ended" % self.video_id
+        self.tab.WaitForJavaScriptExpression(cmd, self.duration() * 2)

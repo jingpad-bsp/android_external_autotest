@@ -20,6 +20,7 @@ from autotest_lib.server.cros.multimedia import display_facade_adapter
 from autotest_lib.server.cros.multimedia import kiosk_facade_adapter
 from autotest_lib.server.cros.multimedia import system_facade_adapter
 from autotest_lib.server.cros.multimedia import usb_facade_adapter
+from autotest_lib.server.cros.multimedia import video_facade_adapter
 
 
 class _Method:
@@ -187,6 +188,12 @@ class RemoteFacadeFactory(object):
     def create_audio_facade(self):
         """Creates an audio facade object."""
         return audio_facade_adapter.AudioFacadeRemoteAdapter(
+                self._client, self._proxy)
+
+
+    def create_video_facade(self):
+        """Creates a video facade object."""
+        return video_facade_adapter.VideoFacadeRemoteAdapter(
                 self._client, self._proxy)
 
 

@@ -23,6 +23,7 @@ from autotest_lib.client.cros.multimedia import display_facade_native
 from autotest_lib.client.cros.multimedia import kiosk_facade_native
 from autotest_lib.client.cros.multimedia import system_facade_native
 from autotest_lib.client.cros.multimedia import usb_facade_native
+from autotest_lib.client.cros.multimedia import video_facade_native
 from autotest_lib.client.cros.multimedia import facade_resource
 
 
@@ -43,6 +44,8 @@ class MultimediaXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         self._facades = {
             'audio': audio_facade_native.AudioFacadeNative(
+                    resource, arc_resource=arc_res),
+            'video': video_facade_native.VideoFacadeNative(
                     resource, arc_resource=arc_res),
             'display': display_facade_native.DisplayFacadeNative(resource),
             'system': system_facade_native.SystemFacadeNative(),
