@@ -303,10 +303,36 @@ class DisplayFacadeRemoteAdapter(object):
     def get_available_resolutions(self, display_index):
         """Gets the resolutions from the specified display.
 
+        @param display_index: index of the display to get modes from.
+
         @return a list of (width, height) tuples.
         """
         return [tuple(r) for r in
                 self._display_proxy.get_available_resolutions(display_index)]
+
+
+    def get_display_rotation(self, display_index):
+        """Gets the display rotation for the specified display.
+
+        @param display_index: index of the display to get modes from.
+
+        @return: Degree of rotation.
+        """
+        return self._display_proxy.get_display_rotation(display_index)
+
+
+    def set_display_rotation(self, display_index, rotation,
+                             delay_before_rotation=0, delay_after_rotation=0):
+        """Sets the display rotation for the specified display.
+
+        @param display_index: index of the display to get modes from.
+        @param rotation: degree of rotation
+        @param delay_before_rotation: time in second for delay before rotation
+        @param delay_after_rotation: time in second for delay after rotation
+        """
+        self._display_proxy.set_display_rotation(
+                display_index, rotation, delay_before_rotation,
+                delay_after_rotation)
 
 
     def get_first_external_display_index(self):
