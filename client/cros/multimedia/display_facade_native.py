@@ -125,15 +125,16 @@ class DisplayFacadeNative(object):
                 % {'index': display_index}, timeout)
 
 
-    def get_display_modes(self, display_index):
-        """Gets all the display modes for the specified display.
+    def _evaluate_display_expression(self, expression, display_index):
+        """Evaluate an expression on Chrome display settings page.
 
-        The modes are obtained from chrome://settings-frame/display via
-        telemetry.
+        The result of the expression is obtained from
+        chrome://settings-frame/display via telemetry.
 
+        @param expression: Javascript expression.
         @param display_index: index of the display to get modes from.
 
-        @return: A list of DisplayMode dicts.
+        @return: A object of the result.
 
         @raise TimeoutException when the operation is timed out.
         """
@@ -141,10 +142,64 @@ class DisplayFacadeNative(object):
             tab_descriptor = self.load_url('chrome://settings-frame/display')
             tab = self._resource.get_tab_by_descriptor(tab_descriptor)
             self._wait_for_display_options_to_appear(tab, display_index)
-            return tab.EvaluateJavaScript(
-                    "options.DisplayOptions.instance_"
-                    "         .displays_[%(index)d].resolutions"
-                    % {'index': display_index})
+            return tab.EvaluateJavaScript(expression % {'index': display_index})
+        finally:
+            self.close_tab(tab_descriptor)
+
+
+    def get_display_modes(self, display_index):
+        """Gets all the display modes for the specified display.
+
+        @param display_index: index of the display to get modes from.
+
+        @return: A list of DisplayMode dicts.
+        """
+        return self._evaluate_display_expression(
+                "options.DisplayOptions.instance_"
+                "         .displays_[%(index)d].resolutions",
+                display_index)
+
+
+    def get_display_rotation(self, display_index):
+        """Gets the display rotation for the specified display.
+
+        @param display_index: index of the display to get modes from.
+
+        @return: Degree of rotation.
+        """
+        return self._evaluate_display_expression(
+                "options.DisplayOptions.instance_"
+                "         .displays_[%(index)d].rotation",
+                display_index)
+
+
+    def set_display_rotation(self, display_index, rotation,
+                             delay_before_rotation=0, delay_after_rotation=0):
+        """Sets the display rotation for the specified display.
+
+        @param display_index: index of the display to get modes from.
+        @param rotation: degree of rotation
+        @param delay_before_rotation: time in second for delay before rotation
+        @param delay_after_rotation: time in second for delay after rotation
+        """
+        try:
+            tab_descriptor = self.load_url('chrome://settings-frame/display')
+            tab = self._resource.get_tab_by_descriptor(tab_descriptor)
+            self._wait_for_display_options_to_appear(tab, display_index)
+
+            # Hide the typing cursor to reduce interference.
+            self.hide_typing_cursor()
+
+            time.sleep(delay_before_rotation)
+            tab.ExecuteJavaScript(
+                    """
+                    var display = options.DisplayOptions.instance_
+                            .displays_[%(index)d];
+                    chrome.send('setRotation', [display.id, %(rotation)d]);
+                    """
+                    % {'index': display_index, 'rotation': rotation}
+            )
+            time.sleep(delay_after_rotation)
         finally:
             self.close_tab(tab_descriptor)
 
