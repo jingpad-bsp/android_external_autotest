@@ -499,7 +499,7 @@ class LogLink(object):
 
         @return A link formatted for human readability.
         """
-        return '%s%s' % (self.anchor, self.url)
+        return '%s %s' % (self.anchor, self.url)
 
 
     def GenerateWmatrixRetryLink(self):
