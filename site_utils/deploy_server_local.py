@@ -41,6 +41,8 @@ PRIMARY_ONLY_COMMANDS = ['test_importer']
 # frontend repo, no need to update afe.
 COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
                           'tko': 'tko/'}
+# Services present on all hosts.
+UNIVERSAL_SERVICES = ['sysmon']
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
@@ -177,13 +179,15 @@ def discover_restart_services():
 
     @returns List of service names in string format.
     """
+    services = list(UNIVERSAL_SERVICES)
     try:
-        # From shadow_config.ini, lookup which services to restart.
-        return global_config.global_config.get_config_value(
+        # Look up services from shadow_config.ini.
+        extra_services = global_config.global_config.get_config_value(
                 'UPDATE', 'services', type=list)
-
+        services.extend(extra_services)
     except (ConfigParser.NoSectionError, global_config.ConfigError):
-        return []
+        pass
+    return services
 
 
 def update_command(cmd_tag, dryrun=False):
