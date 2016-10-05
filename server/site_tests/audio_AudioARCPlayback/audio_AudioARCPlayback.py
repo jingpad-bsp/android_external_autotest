@@ -15,6 +15,7 @@ from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.client.cros.multimedia import arc_resource_common
 from autotest_lib.server import autotest
 from autotest_lib.server.cros.audio import audio_test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 class audio_AudioARCPlayback(audio_test.AudioTest):
@@ -56,8 +57,9 @@ class audio_AudioARCPlayback(audio_test.AudioTest):
 
         # Do not start Chrome because client side test had started it.
         # Do not install autotest because client side test had installed it.
-        factory = self.create_remote_facade_factory(
-                host, no_chrome=True, install_autotest=False)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, no_chrome=True, install_autotest=False,
+                results_dir=self.resultsdir)
 
         # Setup Chameleon and create widgets.
         host.chameleon.setup_and_reset(self.outputdir)
