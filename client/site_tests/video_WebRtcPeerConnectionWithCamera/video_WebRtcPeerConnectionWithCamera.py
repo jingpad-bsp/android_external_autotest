@@ -16,15 +16,12 @@ EXTRA_BROWSER_ARGS = ['--use-fake-ui-for-media-stream']
 # Statistics from the loopback.html page.
 TEST_PROGRESS = 'testProgress'
 
-# Polling timeout
+# Polling timeout.
 TIMEOUT = 90
 
 RES_720P = [1280, 720]
 RES_VGA = [640, 480]
 
-# max number of allowed blackframes or frozen frames
-BLACK_FRAMES_THRESHOLD = 10
-FROZEN_FRAMES_THRESHOLD = 10
 
 class video_WebRtcPeerConnectionWithCamera(test.test):
     """Local Peer connection test with webcam at 720p."""
@@ -101,14 +98,14 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         # Check webcamera resolution capabilities.
         # Some laptops have low resolution capture.
         if self.webcam_supports_720p():
-          self.chosen_resolution = RES_720P
+            self.chosen_resolution = RES_720P
         else:
-          self.chosen_resolution =  RES_VGA
+            self.chosen_resolution = RES_VGA
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
             # Open WebRTC loopback page and start the loopback.
             self.start_loopback(cr)
-            passed, message = self.check_loopback_result()
-            if not passed:
+            ok, message = self.print_loopback_result()
+            if not ok:
                 logging.error(message)
                 raise error.TestFail(
                         'Failed at resolution %s because %s' %
@@ -116,8 +113,16 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
                 )
 
 
-    def check_loopback_result(self):
-        """Get the WebRTC Peerconnection loopback results."""
+    def print_loopback_result(self):
+        """Prints loopback results (unless we failed to retreieve them).
+
+        This method prints the same perf descriptions regardless of which
+        resolution the test was running in (which depends on device
+        capabilities).
+
+        Returns: a tuple (ok, message) where ok is false if we failed to
+                 retrieve any of the stats.
+        """
         if not self.is_test_completed():
             return False, 'loopback.html did not complete'
 
@@ -133,23 +138,31 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
 
         if results['cameraErrors']:
             return False, 'of camera error: %s' % results['cameraErrors']
-        if not results['peerConnectionStats']:
+
+        pc_stats = results.get('peerConnectionStats')
+        if not pc_stats:
             return False, 'Peer Connection Stats is empty'
-        if results['peerConnectionStats'][1] == 0:
-            return False, 'Max Input FPS is zero'
-        if results['peerConnectionStats'][4] == 0:
-            return False, 'Max Sent FPS is zero'
-        if not results['frameStats']:
+        self.output_perf_value(
+                description='max_input_fps', value=pc_stats[1], units='fps',
+                higher_is_better=True)
+        self.output_perf_value(
+                description='max_sent_fps', value=pc_stats[4], units='fps',
+                higher_is_better=True)
+
+        frame_stats = results.get('frameStats')
+        if not frame_stats:
             return False, 'Frame Stats is empty'
-        if results['frameStats']['numBlackFrames'] > BLACK_FRAMES_THRESHOLD:
-            return (False,
-                    'Black frames threshold was exceeded. Black frames: %s, Threshold: %s' %
-                    (results['frameStats']['numBlackFrames'], BLACK_FRAMES_THRESHOLD))
-        if results['frameStats']['numFrozenFrames'] > FROZEN_FRAMES_THRESHOLD:
-            return (False,
-                    'Frozen frames threshold was exceeded. Frozen frames: %s, Threshold: %s' %
-                    (results['frameStats']['numFrozenFrames'], FROZEN_FRAMES_THRESHOLD))
-        if results['frameStats']['numFrames'] == 0:
-            return False, 'No frames were found'
+        self.output_perf_value(
+                description='black_frames',
+                value=frame_stats['numBlackFrames'],
+                units='frames', higher_is_better=False)
+        self.output_perf_value(
+                description='frozen_frames',
+                value=frame_stats['numFrozenFrames'],
+                units='frames', higher_is_better=False)
+        self.output_perf_value(
+                description='total_num_frames',
+                value=frame_stats['numFrames'],
+                units='frames', higher_is_better=True)
 
         return True, "All good"
