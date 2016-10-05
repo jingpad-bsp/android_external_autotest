@@ -8,6 +8,9 @@ var time_ratio = 3600 * 1000 / test_time_ms; // default test time is 1 hour
 var preexisting_windows = [];
 var log_lines = [];
 var error_codes = {}; //for each active tabId
+var page_load_times = [];
+var page_load_time_counter = {};
+var unique_url_salt = 1;
 
 function setupTest() {
   //adding these listeners to track request failure codes
@@ -37,10 +40,15 @@ function get_active_url(cycle) {
 }
 
 function testListener(request, sender, sendResponse) {
+  end = Date.now()
   if (sender.tab.id in cycle_tabs) {
     cycle = cycle_tabs[sender.tab.id];
     cycle.successful_loads++;
-    record_log_entry(dateToString(new Date()) + " [load success] " + get_active_url(cycle));
+    url = get_active_url(cycle);
+   var page_load_time = end - page_load_time_counter[cycle.id]
+   page_load_times.push({'url': (unique_url_salt++) + url, 'time': page_load_time});
+   console.log(JSON.stringify(page_load_times));
+    record_log_entry(dateToString(new Date()) + " [load success] " + url);
     if (request.action == "should_scroll" && cycle.focus) {
       sendResponse({"should_scroll": should_scroll,
                     "should_scroll_up": should_scroll_up,
@@ -77,6 +85,8 @@ function cycle_navigate(cycle) {
   // information about the subsequent url
   error_codes[cycle.id] = [];
   record_log_entry(dateToString(new Date()) + " [load start] " + url)
+  var start = Date.now();
+  page_load_time_counter[cycle.id] = start;
   chrome.tabs.update(cycle.id, {'url': url, 'selected': true});
   cycle.idx = (cycle.idx + 1) % cycle.urls.length;
   if (cycle.timeout < cycle.delay / time_ratio && cycle.timeout > 0) {
@@ -194,8 +204,24 @@ function send_keyvals() {
   console.log(post.join("&"));
 }
 
+function send_raw_page_load_time_info() {
+  var post = [];
+  page_load_times.forEach(function (item, index, array) {
+    var key = encodeURIComponent(item.url);
+    post.push(key + "=" + item.time);
+  })
+
+  var pagelt_info_url = 'http://localhost:8001/pagelt'
+  var req = new XMLHttpRequest();
+  req.open('POST', pagelt_info_url, true);
+  req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  req.send(post.join("&"));
+  console.log(post.join("&"));
+}
+
 function send_summary() {
   send_log_entries();
+  send_raw_page_load_time_info();
   send_keyvals();
 }
 
