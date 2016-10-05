@@ -28,7 +28,6 @@ params_dict = {
     'tasks': '_tasks',
 }
 
-
 class power_LoadTest(test.test):
     """test class"""
     version = 2
@@ -278,6 +277,12 @@ class power_LoadTest(test.test):
                 handler_func=(lambda handler, forms, loop_counter=i:\
                     _extension_log_handler(handler, forms, loop_counter)))
 
+            pagelt_tracking = self._testServer.add_wait_url(url='/pagelt')
+
+            self._testServer.add_url_handler(url='/pagelt',\
+                handler_func=(lambda handler, forms, tracker=self, loop_counter=i:\
+                    _extension_page_load_info_handler(handler, forms, loop_counter, self)))
+
             # reset backlight level since powerd might've modified it
             # based on ambient light
             self._set_backlight_level()
@@ -291,6 +296,7 @@ class power_LoadTest(test.test):
                                         latch)
 
             script_logging.set();
+            pagelt_tracking.set();
             self._plog.checkpoint('loop%d' % (i), start_time)
             self._tlog.checkpoint('loop%d' % (i), start_time)
             if self._verbose:
@@ -679,7 +685,53 @@ def _extension_log_handler(handler, form, loop_number):
     """
     if form:
         for field in form.keys():
-            logging.debug("[extension] @ loop_%d %s", loop_number, form[field].value)
+            logging.debug("[extension] @ loop_%d %s", loop_number,
+            form[field].value)
             # we don't want to add url information to our keyvals.
             # httpd adds them automatically so we remove them again
             del handler.server._form_entries[field]
+
+def _extension_page_load_info_handler(handler, form, loop_number, tracker):
+    stats_ids = ['mean', 'min', 'max', 'std']
+    time_measurements = []
+    sorted_pagelt = []
+    #show up to this number of slow page-loads
+    num_slow_page_loads = 5;
+
+    if not form:
+        logging.debug("no page load information returned")
+        return;
+
+    for field in form.keys():
+        url = field[str.find(field, "http"):]
+        load_time = int(form[field].value)
+
+        time_measurements.append(load_time)
+        sorted_pagelt.append((url, load_time))
+
+        logging.debug("[extension] @ loop_%d url: %s load time: %s ms",
+            loop_number, url, load_time)
+        # we don't want to add url information to our keyvals.
+        # httpd adds them automatically so we remove them again
+        del handler.server._form_entries[field]
+
+    time_measurements = numpy.array(time_measurements)
+    stats_vals = [time_measurements.mean(), time_measurements.min(),
+    time_measurements.max(),time_measurements.std()]
+
+    key_base = 'ext_ms_page_load_time_'
+    for i in range(len(stats_ids)):
+        key = key_base + stats_ids[i]
+        if key in tracker._tmp_keyvals:
+            tracker._tmp_keyvals[key] += "_%s" % stats_vals[i]
+        else:
+            tracker._tmp_keyvals[key] = stats_vals[i]
+
+
+    sorted_pagelt.sort(key=lambda item: item[1], reverse=True)
+
+    message = "The %d slowest page-load-times are:\n" % (num_slow_page_loads)
+    for url, msecs in sorted_pagelt[:num_slow_page_loads]:
+        message += "\t%s w/ %d ms" % (url, msecs)
+
+    logging.debug("%s\n", message)
