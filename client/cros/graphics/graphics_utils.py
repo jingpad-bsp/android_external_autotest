@@ -905,12 +905,13 @@ class GraphicsKernelMemory(object):
     # present.
     # e.g. ".../memory" vs ".../gpu_memory" -- if the system has either one of
     # these, the test will read from that path.
-
+    arm_fields = {}
     exynos_fields = {
         'gem_objects': ['/sys/kernel/debug/dri/?/exynos_gem_objects'],
         'memory': ['/sys/class/misc/mali0/device/memory',
                    '/sys/class/misc/mali0/device/gpu_memory'],
     }
+    mediatek_fields = {}  # TODO(crosbug.com/p/58189) add nodes
     # TODO Add memory nodes once the GPU patches landed.
     rockchip_fields = {}
     tegra_fields = {
@@ -920,14 +921,15 @@ class GraphicsKernelMemory(object):
         'gem_objects': ['/sys/kernel/debug/dri/0/i915_gem_objects'],
         'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
-    arm_fields = {}
+
     arch_fields = {
-        'exynos5': exynos_fields,
-        'tegra': tegra_fields,
-        'rockchip': rockchip_fields,
-        'i386': x86_fields,
-        'x86_64': x86_fields,
         'arm': arm_fields,
+        'exynos5': exynos_fields,
+        'i386': x86_fields,
+        'mediatek': mediatek_fields,
+        'rockchip': rockchip_fields,
+        'tegra': tegra_fields,
+        'x86_64': x86_fields,
     }
 
     num_errors = 0
