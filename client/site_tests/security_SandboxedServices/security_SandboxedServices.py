@@ -71,7 +71,9 @@ class security_SandboxedServices(test.test):
 
         usermax = utils.system_output("cut -d: -f1 /etc/passwd | wc -L",
                                       ignore_status=True)
-        usermax = max(int(usermax), 8)
+        # Even if the names are all short, make sure we have enough space
+        # to hold numeric 32-bit ids too (can come up with userns).
+        usermax = max(int(usermax), 10)
         ps_cmd = ('ps --no-headers -ww -eo ' +
                   (','.join(PS_FIELDS) % (usermax, usermax)))
         ps_fields_len = len(PS_FIELDS)
