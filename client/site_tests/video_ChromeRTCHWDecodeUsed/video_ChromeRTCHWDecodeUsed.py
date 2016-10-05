@@ -31,9 +31,6 @@ class video_ChromeRTCHWDecodeUsed(test.test):
 
                 # kevin did support hw decode, but not ready in M54.
                 ('kevin', 54),
-
-                # temporarily disabled
-                ('peach_pit', None),
         ]
 
         entry = (utils.get_current_board(), utils.get_chrome_milestone())
