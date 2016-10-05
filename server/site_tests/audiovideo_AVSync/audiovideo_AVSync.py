@@ -15,11 +15,10 @@ from autotest_lib.client.common_lib.cros import arc_common
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
-from autotest_lib.client.cros.chameleon import edid as edid_lib
 from autotest_lib.client.cros.multimedia import arc_resource_common
 from autotest_lib.server import autotest
 from autotest_lib.server import test
-from autotest_lib.server.cros.audio import audio_test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 class audiovideo_AVSync(test.test):
@@ -88,7 +87,7 @@ class audiovideo_AVSync(test.test):
         @param dropped_frame_count: Number of dropped frames.
         """
         log_path = os.path.join(self.resultsdir, 'result.json')
-        diff = map(lambda x : x[0] - x[1], zip(key_audio, key_video))
+        diff = map(lambda x: x[0] - x[1], zip(key_audio, key_video))
         diff_range = max(diff) - min(diff)
         result = dict(
             key_audio=key_audio,
@@ -131,8 +130,8 @@ class audiovideo_AVSync(test.test):
         """
         self.host = host
 
-        factory = audio_test.create_remote_facade_factory(
-                host, self.resultsdir, no_chrome=True)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, results_dir=self.resultsdir, no_chrome=True)
 
         chrome_args = {
             'extension_paths': [constants.MULTIMEDIA_TEST_EXTENSION],
@@ -145,7 +144,7 @@ class audiovideo_AVSync(test.test):
             chrome_args['extra_browser_args'].append(
                     '--disable-accelerated-video-decode')
         if arc:
-            chrome_args['arc_mode'] = arc_common.ARC_MODE_ENABLED;
+            chrome_args['arc_mode'] = arc_common.ARC_MODE_ENABLED
         browser_facade = factory.create_browser_facade()
         browser_facade.start_custom_chrome(chrome_args)
         logging.info("created chrome")

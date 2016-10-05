@@ -15,6 +15,7 @@ from autotest_lib.client.cros.chameleon import chameleon_port_finder
 
 from autotest_lib.client.cros.chameleon import edid as edid_lib
 from autotest_lib.server.cros.audio import audio_test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 
 
 
@@ -88,7 +89,8 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
         self.host = host
         chameleon_board = host.chameleon
         audio_board = chameleon_board.get_audio_board()
-        factory = self.create_remote_facade_factory(host)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, results_dir=self.resultsdir)
 
         chameleon_board.setup_and_reset(self.outputdir)
         self.audio_facade = factory.create_audio_facade()
