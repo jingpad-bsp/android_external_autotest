@@ -4,6 +4,7 @@
 
 import httplib
 import logging
+import os
 import socket
 import xmlrpclib
 import pprint
@@ -163,12 +164,15 @@ class RemoteFacadeFactory(object):
 
     """
 
-    def __init__(self, host, no_chrome=False, install_autotest=True):
+    def __init__(self, host, no_chrome=False, install_autotest=True,
+                 results_dir=None):
         """Construct a RemoteFacadeFactory.
 
         @param host: Host object representing a remote host.
         @param no_chrome: Don't start Chrome by default.
         @param install_autotest: Install autotest on host.
+        @param results_dir: A directory to store multimedia server init log.
+        If it is not None, we will get multimedia init log to the results_dir.
 
         """
         self._client = host
@@ -177,7 +181,13 @@ class RemoteFacadeFactory(object):
             # the proxy code is there when we try to call it.
             client_at = autotest.Autotest(self._client)
             client_at.install()
-        self._proxy = RemoteFacadeProxy(self._client, no_chrome)
+        try:
+            self._proxy = RemoteFacadeProxy(self._client, no_chrome)
+        finally:
+            if results_dir:
+                host.get_file(constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
+                              os.path.join(results_dir,
+                                           'multimedia_xmlrpc_server.log.init'))
 
 
     def ready(self):

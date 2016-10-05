@@ -11,6 +11,7 @@ from autotest_lib.client.common_lib.cros.network import xmlrpc_datatypes
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
 from autotest_lib.server.cros.audio import audio_test
+from autotest_lib.server.cros.multimedia import remote_facade_factory
 from autotest_lib.server.cros.network import netperf_runner
 from autotest_lib.server.cros.network import netperf_session
 from autotest_lib.server.cros.network import wifi_cell_test_base
@@ -114,7 +115,8 @@ class network_WiFi_BluetoothStreamPerf(wifi_cell_test_base.WiFiCellTestBase):
 
         # Setup Bluetooth widgets and their binder, but do not yet connect.
         audio_test.audio_test_requirement()
-        factory = audio_test.create_remote_facade_factory(host, self.resultsdir)
+        factory = remote_facade_factory.RemoteFacadeFactory(
+                host, results_dir=self.resultsdir)
         chameleon_board = host.chameleon
         chameleon_board.setup_and_reset(self.outputdir)
         widget_factory = chameleon_audio_helper.AudioWidgetFactory(
