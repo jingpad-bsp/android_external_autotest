@@ -12,6 +12,10 @@ import logging, re, time, xmlrpclib
 from autotest_lib.client.common_lib import error
 from autotest_lib.server.cros.servo import firmware_programmer
 
+# Time to wait when probing for a usb device, it takes on avg 17 seconds
+# to do a full probe.
+_USB_PROBE_TIMEOUT = 40
+
 
 class _PowerStateController(object):
 
@@ -553,15 +557,16 @@ class Servo(object):
     # the USB device.
     # TODO(sbasi) Remove this code from autoserv once firmware tests have been
     # updated.
-    def probe_host_usb_dev(self):
+    def probe_host_usb_dev(self, timeout=_USB_PROBE_TIMEOUT):
         """Probe the USB disk device plugged-in the servo from the host side.
 
         It uses servod to discover if there is a usb device attached to it.
 
-        Returns:
-          A string of USB disk path, like '/dev/sdb', or None if not existed.
+        @param timeout The timeout period when probing for the usb host device.
+
+        @return: String of USB disk path (e.g. '/dev/sdb') or None.
         """
-        return self._server.probe_host_usb_dev() or None
+        return self._server.probe_host_usb_dev(timeout) or None
 
 
     def image_to_servo_usb(self, image_path=None,
@@ -745,7 +750,7 @@ class Servo(object):
                                 for |USB_DETECTION_DELAY| after switching
                                 the power on.
         """
-        self.set('prtctl4_pwren', power_state)
+        self._server.safe_switch_usbkey_power(power_state)
         if power_state == 'off':
             time.sleep(self.USB_POWEROFF_DELAY)
         elif detection_delay:
@@ -786,7 +791,7 @@ class Servo(object):
             raise error.TestError('Unknown USB state request: %s' % usb_state)
 
         self._switch_usbkey_power('off')
-        self.set('usb_mux_sel1', mux_direction)
+        self._server.safe_switch_usbkey(mux_direction)
         time.sleep(self.USB_POWEROFF_DELAY)
         self._switch_usbkey_power('on', usb_state == 'host')
         self._usb_state = usb_state
