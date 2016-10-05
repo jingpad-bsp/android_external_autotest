@@ -385,7 +385,7 @@ def create_cros_repair_strategy():
         # battery, we need to reattach AC power before we reset via servo.
         (repair.RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
         (ServoSysRqRepair, 'sysrq', [], ['ssh']),
-        (ServoResetRepair, 'reset', [], ['ssh']),
+        (ServoResetRepair, 'servoreset', [], ['ssh']),
 
         # TODO(jrbarnette):  the real dependency for firmware isn't
         # 'cros', but rather a to-be-created verifier that replaces
