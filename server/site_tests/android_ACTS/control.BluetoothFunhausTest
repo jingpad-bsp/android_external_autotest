@@ -21,7 +21,8 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-funhouse-test-station.config',
                  test_file='bt_funhaus_test',
-                 acts_timeout=86400
+                 acts_timeout=86400,
+                 additional_configs=['bt_config_funhaus.json', 'bt_configs', 'bt_music']
                  )
 
 
