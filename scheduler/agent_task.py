@@ -580,10 +580,8 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
     TASK_TYPE = None
     host = None
     queue_entry = None
-    _SPECIAL_TASK_COUNT_METRIC = metrics.Counter(
-        'chromeos/autotest/scheduler/special_task_count')
-    _SPECIAL_TASK_DURATION_METRIC = metrics.SecondsDistribution(
-        'chromeos/autotest/scheduler/special_task_durations')
+    _SPECIAL_TASK_COUNT_METRIC = 'chromeos/autotest/scheduler/special_task_count'
+    _SPECIAL_TASK_DURATION_METRIC = 'chromeos/autotest/scheduler/special_task_durations'
 
 
     def __init__(self, task, extra_command_args):
@@ -679,11 +677,13 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         fields = {'type': self.TASK_TYPE,
                   'success': bool(self.success),
                   'board': str(self.host.board)}
-        self._SPECIAL_TASK_COUNT_METRIC.increment(fields=fields)
+        metrics.Counter(self._SPECIAL_TASK_COUNT_METRIC).increment(
+            fields=fields)
         if (self.task.time_finished and self.task.time_started):
             duration = (self.task.time_finished -
                         self.task.time_started).total_seconds()
-            self._SPECIAL_TASK_DURATION_METRIC.add(duration, fields=fields)
+            metrics.SecondsDistribution(self._SPECIAL_TASK_DURATION_METRIC).add(
+                duration, fields=fields)
 
 
     # TODO(milleral): http://crbug.com/268607
