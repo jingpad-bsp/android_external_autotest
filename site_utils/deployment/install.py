@@ -372,10 +372,7 @@ def _install_test_image(host, arguments):
     @param host       Host instance for the DUT being installed.
     @param arguments  Command line arguments with options.
     """
-    # Don't timeout probing for the host usb device, there could be a bunch of
-    # servos probing at the same time on the same servo host.  And since we
-    # can't pass None through the xml rpcs, use 0 to indicate None.
-    if not host.servo.probe_host_usb_dev(timeout=0):
+    if not host.servo.probe_host_usb_dev():
         raise Exception('No USB stick detected on Servo host')
     try:
         if not arguments.noinstall:
