@@ -370,18 +370,34 @@ def _bgrx24(i):
     return r, g, b
 
 
-def _screenshot(image, fb):
-    fb.map()
-    m = fb._map
-    lineLength = fb.width * fb.bpp // 8
+def _copyImageBlocklinear(image, fb, m, unformat):
+    gobPitch = 64
+    gobHeight = 128
+    while gobHeight > 8 and gobHeight >= 2 * fb.height:
+        gobHeight //= 2
+    gobSize = gobPitch * gobHeight
+    gobWidth = gobPitch // (fb.bpp // 8)
+    offset = 0
+    for gobY in range((fb.height + gobHeight - 1) // gobHeight):
+        gobTop = gobY * gobHeight
+        for gobX in range((fb.width + gobWidth - 1) // gobWidth):
+            m.seek(offset)
+            gob = m.read(gobSize)
+            iterGob = iter(gob)
+            gobLeft = gobX * gobWidth
+            for y in range(gobHeight):
+                if gobTop + y >= fb.height:
+                    break
+                for x in range(gobWidth):
+                    rgb = unformat(iterGob)
+                    if gobLeft + x < fb.width:
+                        image.putpixel((gobLeft + x, gobTop + y), rgb)
+            offset += gobSize
+
+
+def _copyImageLinear(image, fb, m, unformat):
     pitch = fb.pitch
-    pixels = []
-
-    if fb.depth == 24:
-        unformat = _bgrx24
-    else:
-        raise RuntimeError("Couldn't unformat FB: %r" % fb)
-
+    lineLength = fb.width * fb.bpp // 8
     for y in range(fb.height):
         offset = y * pitch
         m.seek(offset)
@@ -390,6 +406,22 @@ def _screenshot(image, fb):
         for x in range(fb.width):
             rgb = unformat(ichannels)
             image.putpixel((x, y), rgb)
+
+
+def _screenshot(drm, image, fb):
+    fb.map()
+    m = fb._map
+    pixels = []
+
+    if fb.depth == 24:
+        unformat = _bgrx24
+    else:
+        raise RuntimeError("Couldn't unformat FB: %r" % fb)
+
+    if drm.version().name == "tegra":
+        _copyImageBlocklinear(image, fb, m, unformat)
+    else:
+        _copyImageLinear(image, fb, m, unformat)
 
     fb.unmap()
 
@@ -420,7 +452,7 @@ def crtcScreenshot(crtc_id=None):
         if crtc is not None:
             framebuffer = crtc.fb()
             image = Image.new("RGB", (framebuffer.width, framebuffer.height))
-            pixels = _screenshot(image, framebuffer)
+            pixels = _screenshot(_drm, image, framebuffer)
             return image
 
     raise RuntimeError(
