@@ -2,6 +2,7 @@
     <inherits name='com.google.gwt.user.User'/>
     <inherits name='com.google.gwt.json.JSON'/>
     <inherits name='com.google.gwt.http.HTTP'/>
+    <inherits name="com.google.gwt.user.theme.chrome.Chrome"/>
 
     <source path="moblab"/>
     <source path="common"/>
@@ -10,4 +11,5 @@
     <stylesheet src='common.css'/>
     <stylesheet src='afeclient.css'/>
     <stylesheet src='standard.css'/>
+    <stylesheet src='moblabsetup.css'/>
 </module>
