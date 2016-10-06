@@ -329,42 +329,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.plankton = None
 
 
-    def get_repair_image_name(self, image_type='cros'):
-        """Generate a image_name from variables in the global config.
-
-        image_type is used to differentiate different images. Default is CrOS,
-        in which case, repair image's name follows the naming convention defined
-        in global setting CROS/stable_build_pattern.
-        If the image_type is not `cros`, the repair image will be looked up
-        using key `board_name/image_type`, e.g., daisy_spring/firmware.
-
-        @param image_type: Type of the image. Default is `cros`.
-
-        @returns a str of $board-version/$BUILD. Returns None if stable version
-                for the board and the default are both not set, e.g., stable
-                firmware version for a new board.
-
-        """
-        board = self._get_board_from_afe()
-        if board is None:
-            raise error.AutoservError('DUT has no board attribute, '
-                                      'cannot be repaired.')
-        if image_type != 'cros':
-            board = '%s/%s' % (board, image_type)
-        stable_version = afe_utils.get_stable_version(board=board)
-        if image_type == 'cros':
-            build_pattern = CONFIG.get_config_value(
-                    'CROS', 'stable_build_pattern')
-            stable_version = build_pattern % (board, stable_version)
-        elif image_type == 'firmware':
-            # If firmware stable version is not specified, `stable_version`
-            # from the RPC is the default stable version for CrOS image.
-            # firmware stable version must be from firmware branch, thus its
-            # value must be like board-firmware/R31-1234.0.0. Check if
-            # firmware exists in the stable version, if not, return None.
-            if 'firmware' not in stable_version:
-                return None
-        return stable_version
+    def _get_cros_repair_image_name(self):
+        return afe_utils.get_stable_cros_version(self._get_board_from_afe())
 
 
     def lookup_job_repo_url(self):
@@ -604,8 +570,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             and the devserver instance.
         """
         if not image_name:
-            image_name = self.get_repair_image_name()
-
+            image_name = self._get_cros_repair_image_name()
         logging.info('Staging build for AU: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.trigger_download(image_name, synchronous=False)
@@ -621,7 +586,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             http://172.22.50.205:8082/update/lumpy-release/R27-3837.0.0
         """
         if not image_name:
-            image_name = self.get_repair_image_name()
+            image_name = self._get_cros_repair_image_name()
         logging.info('Staging build for servo install: %s', image_name)
         devserver = dev_server.ImageServer.resolve(image_name, self.hostname)
         devserver.stage_artifacts(image_name, ['test_image'])
@@ -694,7 +659,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         devserver = None
         logging.debug('Resolving a devserver for auto-update')
         if repair:
-            update_url = self.get_repair_image_name()
+            update_url = self._get_cros_repair_image_name()
             force_update = True
 
         if not update_url and not self._parser.options.image:
@@ -973,7 +938,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
-            build = self.get_repair_image_name(image_type='firmware')
+            build = afe_utils.get_stable_faft_version(board)
             if not build:
                 raise error.TestError(
                         'Failed to find stable firmware build for %s.',
@@ -1032,7 +997,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         @returns board from label, or `None`.
         """
-        return afe_utils.get_board(self)
+        board = afe_utils.get_board(self)
+        if board is None:
+            raise error.AutoservError('DUT cannot be repaired, '
+                                      'there is no board attribute.')
+        return board
 
 
     def get_build(self):

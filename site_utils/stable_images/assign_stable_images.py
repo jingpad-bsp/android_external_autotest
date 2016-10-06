@@ -162,14 +162,14 @@ def _get_upgrade_versions(afe_versions, omaha_versions, boards):
             max(version_counts.items(), key=lambda x: x[1])[0])
 
 
-def _set_stable_version(afe, mode, board, version):
+def _set_stable_version(version_map, mode, board, version):
     """Call the AFE to change a stable version mapping.
 
     Setting the mapping for the distinguished board name
     `_DEFAULT_BOARD` will change the default mapping for any board
     that doesn't have its own mapping.
 
-    @param afe          AFE object for RPC calls.
+    @param version_map  Object for stable version RPC calls.
     @param mode         Mode indicating whether to print a shell
                         command, call an RPC, or do nothing.
     @param board        Update the mapping for this board.
@@ -178,16 +178,16 @@ def _set_stable_version(afe, mode, board, version):
     if mode == _SHELL_MODE:
         print _SET_VERSION % (board, version)
     elif mode == _NORMAL_MODE:
-        afe.run('set_stable_version', board=board, version=version)
+        version_map.set_stable_version(board, version)
 
 
-def _delete_stable_version(afe, mode, board):
+def _delete_stable_version(version_map, mode, board):
     """Call the AFE to delete a stable version mapping.
 
     Deleting a mapping causes the board to revert to the current default
     mapping in the AFE.
 
-    @param afe          AFE object for RPC calls.
+    @param version_map  Object for stable version RPC calls.
     @param mode         Mode indicating whether to print a shell
                         command, call an RPC, or do nothing.
     @param board        Delete the mapping for this board.
@@ -196,10 +196,10 @@ def _delete_stable_version(afe, mode, board):
     if mode == _SHELL_MODE:
         print _DELETE_VERSION % board
     elif mode == _NORMAL_MODE:
-        afe.run('delete_stable_version', board=board)
+        version_map.delete_stable_version(board)
 
 
-def _apply_upgrades(afe, mode, afe_versions,
+def _apply_upgrades(version_map, mode, afe_versions,
                     upgrade_versions, new_default):
     """Change stable version mappings in the AFE.
 
@@ -208,15 +208,15 @@ def _apply_upgrades(afe, mode, afe_versions,
     the changes so that at any moment, every board is mapped either
     according to the old or the new mapping.
 
-    @param afe                  AFE object for RPC calls.
-    @param mode                 Mode indicating whether the action is to
-                                print shell commands, do nothing, or
-                                actually make RPC calls for changes.
-    @param afe_versions         The current board->version mappings in
-                                the AFE.
-    @param upgrade_versions     The current board->version mappings from
-                                Omaha for the Beta channel.
-    @param new_default          The new default build for the AFE.
+    @param version_map        Object for stable version RPC calls.
+    @param mode               Mode indicating whether the action is to
+                              print shell commands, do nothing, or
+                              actually make RPC calls for changes.
+    @param afe_versions       The current board->version mappings in the
+                              AFE.
+    @param upgrade_versions   The current board->version mappings from
+                              Omaha for the Beta channel.
+    @param new_default        The new default build for the AFE.
     """
     old_default = afe_versions[_DEFAULT_BOARD]
     if mode != _SHELL_MODE and new_default != old_default:
@@ -238,18 +238,18 @@ def _apply_upgrades(afe, mode, afe_versions,
             if mode != _SHELL_MODE:
                 old_build = afe_versions.get(board, '(default)')
                 print '    %-22s %s -> %s' % (board, old_build, build)
-            _set_stable_version(afe, mode, board, build)
+            _set_stable_version(version_map, mode, board, build)
     # At this point, all non-default mappings have been installed.
     # If there's a new default mapping, make that change now, and delete
     # any non-default mappings made obsolete by the update.
     if new_default != old_default:
-        _set_stable_version(afe, mode, _DEFAULT_BOARD, new_default)
+        _set_stable_version(version_map, mode, _DEFAULT_BOARD, new_default)
     for board, build in upgrade_versions.items():
         if board in afe_versions and build == new_default:
             if mode != _SHELL_MODE:
                 print ('    %-22s %s -> (default)' %
                        (board, afe_versions[board]))
-            _delete_stable_version(afe, mode, board)
+            _delete_stable_version(version_map, mode, board)
 
 
 def _parse_command_line(argv):
@@ -293,17 +293,18 @@ def main(argv):
     if arguments.mode == _DRY_RUN:
         print 'Dry run; no changes will be made.'
     afe = frontend_wrappers.RetryingAFE(server=None)
+    version_map = afe.get_stable_version_map(afe.CROS_IMAGE_TYPE)
     boards = (set(arguments.extra_boards) |
               lab_inventory.get_managed_boards(afe))
     # The 'get_all_stable_versions' RPC returns a dictionary mapping
     # `_DEFAULT_BOARD` to the current default version, plus a set of
     # non-default board -> version mappings.
-    afe_versions = afe.run('get_all_stable_versions')
+    afe_versions = version_map.get_all_versions()
     omaha_versions = _make_omaha_versions(
             _read_gs_json_data(_OMAHA_STATUS))
     upgrade_versions, new_default = (
         _get_upgrade_versions(afe_versions, omaha_versions, boards))
-    _apply_upgrades(afe, arguments.mode, afe_versions,
+    _apply_upgrades(version_map, arguments.mode, afe_versions,
                     upgrade_versions, new_default)
 
 

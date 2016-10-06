@@ -179,8 +179,8 @@ def _update_build(afe, report_log, arguments):
 
     @return Returns the version selected.
     """
-    afe_version = afe.run('get_stable_version',
-                          board=arguments.board)
+    version_map = afe.get_stable_version_map(afe.CROS_IMAGE_TYPE)
+    afe_version = version_map.get_version(arguments.board)
     omaha_version = _get_omaha_build(arguments.board)
     report_log.write('AFE   version is %s.\n' % afe_version)
     report_log.write('Omaha version is %s.\n' % omaha_version)
@@ -196,9 +196,7 @@ def _update_build(afe, report_log, arguments):
             report_log.write('Selected version %s is too old.\n' %
                              (arguments.build,))
     if version != afe_version and not arguments.nostable:
-        afe.run('set_stable_version',
-                version=version,
-                board=arguments.board)
+        version_map.set_version(arguments.board, version)
     return version
 
 

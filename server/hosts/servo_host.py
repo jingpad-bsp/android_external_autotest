@@ -483,19 +483,6 @@ class ServoHost(ssh_host.SSHHost):
         return status, current_build_number
 
 
-    def get_stable_servo_build(self):
-        """Get the stable servo build for this servo host type.
-
-        @returns servo build target.
-        """
-        board = self.get_board()
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        target_version = afe.run('get_stable_version', board=board)
-        build_pattern = _CONFIG.get_config_value(
-                'CROS', 'stable_build_pattern')
-        return build_pattern % (board, target_version)
-
-
     @_timer.decorate
     def update_image(self, wait_for_update=False):
         """Update the image on the servo host, if needed.
@@ -534,7 +521,7 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
 
-        target_build = self.get_stable_servo_build()
+        target_build = afe_utils.get_stable_cros_version(self.get_board())
         target_build_number = server_site_utils.ParseBuildName(
                 target_build)[3]
         ds = dev_server.ImageServer.resolve(self.hostname)
