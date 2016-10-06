@@ -910,6 +910,7 @@ class ImageServerBase(DevServer):
         call = self.build_call(call_name, async=True, **kwargs)
         try:
             response = self.run_call(call)
+            logging.debug('response for RPC: %r', response)
         except httplib.BadStatusLine as e:
             logging.error(e)
             raise DevServerException('Received Bad Status line, Devserver %s '
@@ -980,7 +981,7 @@ class ImageServerBase(DevServer):
                          'files': files_arg}
             if kwargs:
                 arguments.update(kwargs)
-            self.call_and_wait(call_name='stage',error_message=error_message,
+            self.call_and_wait(call_name='stage', error_message=error_message,
                                **arguments)
             if artifacts:
                 timer.stop()
