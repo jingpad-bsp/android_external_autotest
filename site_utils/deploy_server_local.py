@@ -429,6 +429,31 @@ def parse_arguments(args):
     return results
 
 
+class ChangeDir(object):
+
+    """Context manager for changing to a directory temporarily."""
+
+    def __init__(self, dir):
+        self.new_dir = dir
+        self.old_dir = None
+
+    def __enter__(self):
+        self.old_dir = os.getcwd()
+        os.chdir(self.new_dir)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.chdir(self.old_dir)
+
+
+def update_chromeos_chromite():
+    """Update /usr/local/google/chromeos/chromite repo."""
+    print('Updating /usr/local/google/chromeos/chromite.')
+    with ChangeDir('/usr/local/google/chromeos/chromite'):
+        ret = subprocess.call(['repo', 'sync', '.'])
+    if ret != 0:
+        print('Update failed, exited with status: %d' % ret)
+
+
 def main(args):
     """Main method."""
     os.chdir(common.autotest_dir)
@@ -458,6 +483,8 @@ def main(args):
         repo_sync(behaviors.update_push_servers)
         versions_after = repo_versions()
         cmd_versions_after = repo_versions_to_decide_whether_run_cmd_update()
+
+        update_chromeos_chromite()
 
     if behaviors.actions:
         # If the corresponding repo/file not change, no need to run the cmd.
