@@ -308,7 +308,7 @@ class _ServoRebootRepair(repair.RebootRepair):
         host.update_image(wait_for_update=True)
         afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
         dut_list = host.get_attached_duts(afe)
-        if dut_list > 1:
+        if len(dut_list) > 1:
             host.schedule_synchronized_reboot(dut_list, afe)
         else:
             super(_ServoRebootRepair, self).repair(host)
