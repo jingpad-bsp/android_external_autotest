@@ -153,19 +153,6 @@ class security_SandboxedServices(test.test):
             csv_file.writerow(row)
 
 
-    def log_process_list(self, logger, title, list):
-        report = "%s: %s" % (title, ', '.join(list))
-        logger(report)
-
-
-    def log_process_list_warn(self, title, list):
-        self.log_process_list(logging.warn, title, list)
-
-
-    def log_process_list_error(self, title, list):
-        self.log_process_list(logging.error, title, list)
-
-
     def run_once(self):
         """Inspects the process list, looking for root and sandboxed processes
         (with some exclusions). If we have a baseline entry for a given process,
@@ -238,11 +225,11 @@ class security_SandboxedServices(test.test):
         self.dump_services(running_services.values(), minijail_processes)
 
         if len(stale_baselines) > 0:
-            self.log_process_list_warn("Stale baselines", stale_baselines)
+            logging.warn('Stale baselines: %r', stale_baselines)
 
         if len(new_services) > 0:
-            self.log_process_list_warn("New services", new_services)
+            logging.warn('New services: %r', new_services)
 
         if len(sandbox_delta) > 0:
-            self.log_process_list_error("Failed sandboxing", sandbox_delta)
+            logging.error('Failed sandboxing: %r', sandbox_delta)
             raise error.TestFail("One or more processes failed sandboxing")
