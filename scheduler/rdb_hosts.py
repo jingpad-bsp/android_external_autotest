@@ -177,12 +177,9 @@ class RDBClientHostWrapper(RDBHost):
     to the host.
     """
 
-    _HOST_WORKING_METRIC = metrics.Boolean('chromeos/autotest/dut_working',
-                                           reset_after=True)
-    _HOST_STATUS_METRIC = metrics.Boolean('chromeos/autotest/dut_status',
-                                          reset_after=True)
-    _HOST_POOL_METRIC = metrics.String('chromeos/autotest/dut_pool',
-                                       reset_after=True)
+    _HOST_WORKING_METRIC = 'chromeos/autotest/dut_working'
+    _HOST_STATUS_METRIC = 'chromeos/autotest/dut_status'
+    _HOST_POOL_METRIC = 'chromeos/autotest/dut_pool'
 
 
     def __init__(self, **kwargs):
@@ -266,7 +263,8 @@ class RDBClientHostWrapper(RDBHost):
         if pool in lab_inventory.MANAGED_POOLS:
             pool = 'managed:' + pool
 
-        self._HOST_POOL_METRIC.set(pool, fields=fields)
+        metrics.String(self._HOST_POOL_METRIC,
+                       reset_after=True).set(pool, fields=fields)
 
 
     def set_status(self, status):
@@ -284,9 +282,11 @@ class RDBClientHostWrapper(RDBHost):
         # As each device switches state, indicate that it is not in any
         # other state.  This allows Monarch queries to avoid double counting
         # when additional points are added by the Window Align operation.
+        host_status_metric = metrics.Boolean(
+                self._HOST_STATUS_METRIC, reset_after=True)
         for s in rdb_models.AbstractHostModel.Status.names:
             fields['status'] = s
-            self._HOST_STATUS_METRIC.set(s == status, fields=fields)
+            host_status_metric.set(s == status, fields=fields)
 
 
     def record_working_state(self, working, timestamp):
@@ -299,7 +299,9 @@ class RDBClientHostWrapper(RDBHost):
         @param timestamp  Time that the status was recorded.
         """
         fields = self.get_metric_fields()
-        self._HOST_WORKING_METRIC.set(working, fields=fields)
+        metrics.Boolean(
+                self._HOST_WORKING_METRIC, reset_after=True).set(
+                        working, fields=fields)
         self.record_pool(fields)
 
 
@@ -418,5 +420,3 @@ def return_rdb_host(func):
         hosts = func(*args, **kwargs)
         return [RDBServerHostWrapper(host) for host in hosts]
     return get_rdb_host
-
-
