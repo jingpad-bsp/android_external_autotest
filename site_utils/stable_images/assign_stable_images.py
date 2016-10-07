@@ -1,4 +1,7 @@
 #!/usr/bin/python
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
 """Automatically update the afe_stable_versions table.
 
@@ -21,8 +24,9 @@ how changes will be handled:
     update the state according to the rules.
   * With the `--shell-mode` option, the command will print a series
     of `atest` commands that will accomplish the changes.
-  * With the `--dry-run` option, the command will perform all normal
-    printing, but will skip actual RPC calls to change the database.
+  * With the `--dry-run` option, the command will compute and report
+    what would be done, but will skip actual RPC calls to change the
+    database.
 
 The `--shell-mode` and `--dry-run` options are mutually exclusive.
 """
@@ -78,47 +82,44 @@ _DRY_RUN = 1
 _SHELL_MODE = 2
 
 
-def _get_omaha_board(json_entry):
-    """Get the board name from an 'omaha_data' entry.
+def _read_gs_json_data(gs_uri):
+    """Read and parse a JSON file from googlestorage.
 
-    @param json_entry   Deserialized JSON object for one entry of the
-                        'omaha_data' array.
-    @return Returns a version number in the form R##-####.#.#.
+    A wrapper around `gsutil cat` for the specified URI.  `stdout` of
+    the command is parsed as JSON, and the resulting object returned.
+
+    @return A JSON object parsed from `gs_uri`.
     """
-    return json_entry['board']['public_codename']
+    sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
+                          stdout=subprocess.PIPE)
+    json_object = json.load(sp.stdout)
+    sp.stdout.close()
+    sp.wait()
+    return json_object
 
 
-def _get_omaha_version(json_entry):
-    """Get a Chrome OS version string from an 'omaha_data' entry.
-
-    @param json_entry   Deserialized JSON object for one entry of the
-                        'omaha_data' array.
-    @return Returns a version number in the form R##-####.#.#.
-    """
-    milestone = json_entry['chrome_version'].split('.')[0]
-    build = json_entry['chrome_os_version']
-    return 'R%s-%s' % (milestone, build)
-
-
-def _get_omaha_versions():
-    """Get the current Beta versions serving on Omaha.
+def _make_omaha_versions(omaha_status):
+    """Convert parsed omaha versions data to a versions mapping.
 
     Returns a dictionary mapping board names to the currently preferred
-    version for the Beta channel as served by Omaha.  The board names
-    are the names as known to Omaha:  If the board name in the AFE has a
-    '_', the corresponding Omaha name uses a '-' instead.  The boards
-    mapped may include boards not in the list of managed boards in the
-    lab.
+    version for the Beta channel as served by Omaha.  The mappings are
+    provided by settings in the JSON object `omaha_status`.
 
-    The beta channel versions are found by searching the `_OMAHA_STATUS`
-    file.  That file is calculated by GoldenEye from Omaha.  It's
-    accurate, but could be out-of-date for a small time window.
+    The board names are the names as known to Omaha:  If the board name
+    in the AFE contains '_', the corresponding Omaha name uses '-'
+    instead.  The boards mapped may include boards not in the list of
+    managed boards in the lab.
 
     @return A dictionary mapping Omaha boards to Beta versions.
     """
-    sp = subprocess.Popen(['gsutil', 'cat', _OMAHA_STATUS],
-                          stdout=subprocess.PIPE)
-    omaha_status = json.load(sp.stdout)
+    def _get_omaha_board(json_entry):
+        return json_entry['board']['public_codename']
+
+    def _get_omaha_version(json_entry):
+        milestone = json_entry['chrome_version'].split('.')[0]
+        build = json_entry['chrome_os_version']
+        return 'R%s-%s' % (milestone, build)
+
     return {_get_omaha_board(e): _get_omaha_version(e)
                 for e in omaha_status['omaha_data']
                 if e['channel'] == 'beta'}
@@ -298,10 +299,10 @@ def main(argv):
     # `_DEFAULT_BOARD` to the current default version, plus a set of
     # non-default board -> version mappings.
     afe_versions = afe.run('get_all_stable_versions')
+    omaha_versions = _make_omaha_versions(
+            _read_gs_json_data(_OMAHA_STATUS))
     upgrade_versions, new_default = (
-        _get_upgrade_versions(afe_versions,
-                              _get_omaha_versions(),
-                              boards))
+        _get_upgrade_versions(afe_versions, omaha_versions, boards))
     _apply_upgrades(afe, arguments.mode, afe_versions,
                     upgrade_versions, new_default)
 
