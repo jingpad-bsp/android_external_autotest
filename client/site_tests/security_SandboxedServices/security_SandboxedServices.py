@@ -15,10 +15,16 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 
 
-PS_FIELDS = "pid,ppid,comm:32,euser:%d,ruser:%d,args"
+PS_FIELDS = (
+    'pid',
+    'ppid',
+    'comm:32',
+    'euser:%d',
+    'ruser:%d',
+    'args',
+)
 PsOutput = namedtuple("PsOutput",
-                      ' '.join([field.split(':')[0]
-                                for field in PS_FIELDS.split(',')]))
+                      ' '.join([field.split(':')[0] for field in PS_FIELDS]))
 
 MINIJAIL_OPTS = { "mj_uid": "-u",
                   "mj_gid": "-g",
@@ -66,8 +72,9 @@ class security_SandboxedServices(test.test):
         usermax = utils.system_output("cut -d: -f1 /etc/passwd | wc -L",
                                       ignore_status=True)
         usermax = max(int(usermax), 8)
-        ps_cmd = "ps --no-headers -ww -eo " + (PS_FIELDS % (usermax, usermax))
-        ps_fields_len = len(PS_FIELDS.split(','))
+        ps_cmd = ('ps --no-headers -ww -eo ' +
+                  (','.join(PS_FIELDS) % (usermax, usermax)))
+        ps_fields_len = len(PS_FIELDS)
 
         output = utils.system_output(ps_cmd)
         # crbug.com/422700: Filter out zombie processes.
