@@ -17,7 +17,7 @@ from autotest_lib.client.common_lib import control_data
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
-SUITES_NEED_RETRY = set(['bvt-cq', 'bvt-inline'])
+SUITES_NEED_RETRY = set(['bvt-cq', 'bvt-inline', 'arc-bvt-cq'])
 
 
 class ControlFileCheckerError(Exception):
@@ -170,8 +170,8 @@ def CheckRetry(ctrl_data, test_name):
         if ctrl_data.job_retries < 2 and SUITES_NEED_RETRY.intersection(suites):
             raise ControlFileCheckerError(
                 'Setting JOB_RETRIES to 2 or greater for test in '
-                'bvt-cq or bvt-inline is recommended. Please '
-                'set it in the control file for %s.' % test_name)
+                '%s is recommended. Please set it in the control '
+                'file for %s.' % (' or '.join(SUITES_NEED_RETRY), test_name))
 
 
 def main():
