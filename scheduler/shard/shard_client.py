@@ -15,6 +15,9 @@ import time
 import urllib2
 
 import common
+
+from chromite.lib import metrics
+
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -298,6 +301,7 @@ class ShardClient(object):
         packet = self._heartbeat_packet()
         autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.request_size', len(str(packet)))
+        metrics.Counter('chromeos/autotest/scheduler/heartbeat').increment()
 
         try:
             response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
