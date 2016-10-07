@@ -445,11 +445,11 @@ class ChangeDir(object):
         os.chdir(self.old_dir)
 
 
-def update_chromeos_chromite():
-    """Update /usr/local/google/chromeos/chromite repo."""
-    print('Updating /usr/local/google/chromeos/chromite.')
-    with ChangeDir('/usr/local/google/chromeos/chromite'):
-        ret = subprocess.call(['repo', 'sync', '.'])
+def update_chromeos():
+    """Update /usr/local/google/chromeos repo."""
+    print('Updating /usr/local/google/chromeos')
+    with ChangeDir('/usr/local/google/chromeos'):
+        ret = subprocess.call(['repo', 'sync'])
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
 
@@ -484,7 +484,7 @@ def main(args):
         versions_after = repo_versions()
         cmd_versions_after = repo_versions_to_decide_whether_run_cmd_update()
 
-        update_chromeos_chromite()
+        update_chromeos()
 
     if behaviors.actions:
         # If the corresponding repo/file not change, no need to run the cmd.
