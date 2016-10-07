@@ -265,7 +265,8 @@ def main(args):
             print('  %s' % server)
         print()
         print('To retry:')
-        print('  %s <options> %s' % (args[0], ' '.join(failed + skipped)))
+        print('  %s <options> %s' %
+              (str(args[0]), str(' '.join(failed + skipped))))
 
 
 if __name__ == '__main__':
