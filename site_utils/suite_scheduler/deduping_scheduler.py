@@ -128,7 +128,7 @@ class DedupingScheduler(object):
                   file_bugs=False, firmware_rw_build=None,
                   firmware_ro_build=None, test_source_build=None,
                   job_retry=False, launch_control_build=None,
-                  run_prod_code=False):
+                  run_prod_code=False, testbed_dut_count=None):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -160,6 +160,7 @@ class DedupingScheduler(object):
                               lab servers. If False, the control files and test
                               code for this suite run will be retrieved from the
                               build artifacts. Default is False.
+        @param testbed_dut_count: Number of duts to test when using a testbed.
 
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
@@ -173,8 +174,12 @@ class DedupingScheduler(object):
             if firmware_ro_build:
                 builds[provision.FW_RO_VERSION_PREFIX] = firmware_ro_build
             if launch_control_build:
-                builds = {provision.ANDROID_BUILD_VERSION_PREFIX:
-                          launch_control_build}
+                if testbed_dut_count is None:
+                    builds = {provision.ANDROID_BUILD_VERSION_PREFIX:
+                              launch_control_build}
+                else:
+                    builds = {provision.TESTBED_BUILD_VERSION_PREFIX:
+                              launch_control_build}
 
             # Suite scheduler handles all boards in parallel, to guarantee each
             # call of `create_suite_job` use different value of delay_minutes,
@@ -259,7 +264,7 @@ class DedupingScheduler(object):
                       force=False, file_bugs=False, firmware_rw_build=None,
                       firmware_ro_build=None, test_source_build=None,
                       job_retry=False, launch_control_build=None,
-                      run_prod_code=False):
+                      run_prod_code=False, testbed_dut_count=None):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -292,6 +297,7 @@ class DedupingScheduler(object):
                               lab servers. If False, the control files and test
                               code for this suite run will be retrieved from the
                               build artifacts. Default is False.
+        @param testbed_dut_count: Number of duts to test when using a testbed.
 
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
@@ -308,7 +314,8 @@ class DedupingScheduler(object):
                                   test_source_build=test_source_build,
                                   job_retry=job_retry,
                                   launch_control_build=launch_control_build,
-                                  run_prod_code=run_prod_code)
+                                  run_prod_code=run_prod_code,
+                                  testbed_dut_count=testbed_dut_count)
         return False
 
 
