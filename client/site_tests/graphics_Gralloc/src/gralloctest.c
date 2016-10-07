@@ -411,7 +411,7 @@ static int test_gralloc_order(struct gralloc_module_t* module,
 static int test_uninitialized_handle(struct gralloc_module_t* module)
 {
 	struct gralloctest test;
-	buffer_handle_t handle;
+	buffer_handle_t handle = (buffer_handle_t)(intptr_t)0xdeadbeef;
 
 	gralloctest_init(&test, 512, 512, HAL_PIXEL_FORMAT_BGRA_8888,
 		GRALLOC_USAGE_SW_READ_OFTEN);
