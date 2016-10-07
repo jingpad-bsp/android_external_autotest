@@ -110,9 +110,9 @@ class Driver(object):
             if not base_event.HonoredSection(section):
                 try:
                     keyword, new_task = task.Task.CreateFromConfigSection(
-                        config, section)
+                            config, section)
                 except task.MalformedConfigEntry as e:
-                    logging.warning('%s is malformed: %s', section, e)
+                    logging.warning('%s is malformed: %s', section, str(e))
                     continue
                 tasks.setdefault(keyword, []).append(new_task)
         return tasks
