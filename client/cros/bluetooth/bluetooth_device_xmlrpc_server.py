@@ -20,6 +20,8 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib.cros.bluetooth import bluetooth_socket
 from autotest_lib.client.cros import constants
 from autotest_lib.client.cros import xmlrpc_server
+from autotest_lib.client.cros.bluetooth import advertisement
+from autotest_lib.client.cros.bluetooth import output_recorder
 
 
 class PairingAgent(dbus.service.Object):
@@ -83,6 +85,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     BLUEZ_MANAGER_IFACE = 'org.freedesktop.DBus.ObjectManager'
     BLUEZ_ADAPTER_IFACE = 'org.bluez.Adapter1'
     BLUEZ_DEVICE_IFACE = 'org.bluez.Device1'
+    BLUEZ_LE_ADVERTISING_MANAGER_IFACE = 'org.bluez.LEAdvertisingManager1'
     BLUEZ_AGENT_MANAGER_PATH = '/org/bluez'
     BLUEZ_AGENT_MANAGER_IFACE = 'org.bluez.AgentManager1'
     BLUEZ_PROFILE_MANAGER_PATH = '/org/bluez'
@@ -92,6 +95,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
     AGENT_PATH = '/test/agent'
 
     BLUETOOTH_LIBDIR = '/var/lib/bluetooth'
+    BTMON_STOP_DELAY_SECS = 3
 
     # Timeout for how long we'll wait for BlueZ and the Adapter to show up
     # after reset.
@@ -130,16 +134,21 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         # Set up the connection to the D-Bus System Bus, get the object for
         # the Bluetooth Userspace Daemon (BlueZ) and that daemon's object for
-        # the Bluetooth Adapter.
+        # the Bluetooth Adapter, and the advertising manager.
         self._system_bus = dbus.SystemBus()
         self._update_bluez()
         self._update_adapter()
+        self._update_advertising()
 
         # The agent to handle pin code request, which will be
         # created when user calls pair_legacy_device method.
         self._pairing_agent = None
         # The default capability of the agent.
         self._capability = 'KeyboardDisplay'
+
+        # Initailize a btmon object to record bluetoothd's activity.
+        self.btmon = output_recorder.OutputRecorder(
+                'btmon', stop_delay_secs=self.BTMON_STOP_DELAY_SECS)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -184,6 +193,17 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                     timeout=self.ADAPTER_TIMEOUT)
         except Exception as e:
             logging.error('timeout: error starting adapter: %s', e)
+            return False
+
+        # Waiting for the self._advertising interface object.
+        logging.debug('waiting for bluez to obtain interface manager.')
+        try:
+            utils.poll_for_condition(
+                    condition=self._update_advertising,
+                    desc='Bluetooth Daemon has advertising interface.',
+                    timeout=self.ADAPTER_TIMEOUT)
+        except utils.TimeoutError:
+            logging.error('timeout: error getting advertising interface')
             return False
 
         return True
@@ -303,6 +323,31 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self._adapter = self._get_adapter()
         return bool(self._adapter)
 
+    def _update_advertising(self):
+        """Store a D-Bus proxy for the local advertising interface manager.
+
+        This may be called repeatedly in a loop until True is returned;
+        otherwise we wait for bluetoothd to start. After bluetoothd starts, we
+        check the existence of a local adapter and proceed to get the
+        advertisement interface manager.
+
+        Since not all devices will have adapters, this will also return True
+        in the case where there is no adapter.
+
+        @return True on success, including if there is no local adapter,
+                False otherwise.
+
+        """
+        self._advertising = None
+        if self._bluez is None:
+            logging.warning('Bluez not found!')
+            return False
+        if not self._has_adapter:
+            logging.debug('Device has no adapter; returning')
+            return True
+        self._advertising = self._get_advertising()
+        return bool(self._advertising)
+
 
     @xmlrpc_server.dbus_safe(False)
     def _get_adapter(self):
@@ -324,6 +369,17 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         else:
             logging.warning('No adapter found in interface!')
             return None
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def _get_advertising(self):
+        """Get the D-Bus proxy for the local advertising interface.
+
+        @return the advertising interface object.
+
+        """
+        return dbus.Interface(self._adapter,
+                              self.BLUEZ_LE_ADVERTISING_MANAGER_IFACE)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -986,6 +1042,138 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
           return True
         device.Disconnect()
         return not self._is_connected(device)
+
+
+    def btmon_start(self):
+        """Start btmon monitoring."""
+        self.btmon.start()
+
+
+    def btmon_stop(self):
+        """Stop btmon monitoring."""
+        self.btmon.stop()
+
+
+    def btmon_get(self):
+        """Get btmon output contents.
+
+        @returns: the recorded btmon output.
+
+        """
+        return self.btmon.get_contents()
+
+
+    def btmon_find(self, pattern_str):
+        """Find if a pattern string exists in btmon output.
+
+        @param pattern_str: the pattern string to find.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self.btmon.find(pattern_str)
+
+
+    @xmlrpc_server.dbus_safe(False)
+    def advertising_async_method(self, dbus_method,
+                                 reply_handler, error_handler, *args):
+        """Run an async dbus method.
+
+        @param dbus_method: the dbus async method to invoke.
+        @param reply_handler: the reply handler for the dbus method.
+        @param error_handler: the error handler for the dbus method.
+        @param *args: additional arguments for the dbus method.
+
+        @returns: True on success. False otherwise.
+
+        """
+
+        def successful_cb():
+            """Called when the dbus_method completed successfully."""
+            reply_handler()
+            mainloop.quit()
+
+
+        def error_cb(error):
+            """Called when the dbus_method failed."""
+            error_handler(error)
+            mainloop.quit()
+
+
+        if not self._advertising:
+            return False
+
+        mainloop = gobject.MainLoop()
+
+        # Call the RegisterAdvertisement dbus method.
+        dbus_method(*args, reply_handler=successful_cb, error_handler=error_cb)
+
+        mainloop.run()
+
+        return True
+
+
+    def register_advertisement(self, advertisement_data):
+        """Register an advertisement.
+
+        Note that rpc supports only conformable types. Hence, a
+        dict about the advertisement is passed as a parameter such
+        that the advertisement object could be constructed on the host.
+
+        @param advertisement_data: a dict of the advertisement to register.
+
+        @returns: True on success. False otherwise.
+
+        """
+        adv = advertisement.Advertisement(self._system_bus, advertisement_data)
+        return self.advertising_async_method(
+                self._advertising.RegisterAdvertisement,
+                # reply handler
+                lambda: logging.info('register_advertisement: succeeded.'),
+                # error handler
+                lambda error: logging.error(
+                    'register_advertisement: failed: %s', str(error)),
+                # other arguments
+                adv.get_path(), {})
+
+
+    def set_advertising_intervals(self, min_adv_interval_ms,
+                                  max_adv_interval_ms):
+        """Set advertising intervals.
+
+        @param min_adv_interval_ms: the min advertising interval in ms.
+        @param max_adv_interval_ms: the max advertising interval in ms.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self.advertising_async_method(
+                self._advertising.SetAdvertisingIntervals,
+                # reply handler
+                lambda: logging.info('set_advertising_intervals: succeeded.'),
+                # error handler
+                lambda error: logging.error(
+                    'set_advertising_intervals: failed: %s', str(error)),
+                # other arguments
+                min_adv_interval_ms, max_adv_interval_ms)
+
+
+    def reset_advertising(self):
+        """Reset advertising.
+
+        This includes un-registering all advertisements, reset advertising
+        intervals, and disable advertising.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self.advertising_async_method(
+                self._advertising.ResetAdvertising,
+                # reply handler
+                lambda: logging.info('reset_advertising: succeeded.'),
+                # error handler
+                lambda error: logging.error(
+                    'reset_advertising: failed: %s', str(error)))
 
 
 if __name__ == '__main__':
