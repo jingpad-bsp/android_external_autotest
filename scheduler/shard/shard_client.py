@@ -16,8 +16,6 @@ import urllib2
 
 import common
 
-from chromite.lib import metrics
-
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
@@ -27,6 +25,8 @@ from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_lib
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server import utils as server_utils
+from chromite.lib import metrics
+from chromite.lib import ts_mon_config
 from chromite.lib import timeout_util
 from django.db import transaction
 
@@ -130,6 +130,9 @@ class ShardClient(object):
                 except Exception as e:
                     logging.error('Deserializing a %s fails: %s, Error: %s',
                                   message, serialized, e)
+                    metrics.Counter(
+                        'chromeos/autotest/shard_client/deserialization_failed'
+                        ).increment()
                     autotest_stats.Counter(STATS_KEY).increment(
                             'deserialization_failures')
 
@@ -155,6 +158,13 @@ class ShardClient(object):
                 'jobs_received', len(jobs_serialized))
         autotest_stats.Gauge(STATS_KEY).send(
                 'suite_keyvals_received', len(suite_keyvals_serialized))
+
+        metrics.Gauge('chromeos/autotest/shard_client/hosts_received'
+                      ).set(len(hosts_serialized))
+        metrics.Gauge('chromeos/autotest/shard_client/jobs_received'
+                      ).set(len(jobs_serialized))
+        metrics.Gauge('chromeos/autotest/shard_client/suite_keyvals_received'
+                      ).set(len(suite_keyvals_serialized))
 
         self._deserialize_many(hosts_serialized, models.Host, 'host')
         self._deserialize_many(jobs_serialized, models.Job, 'job')
@@ -287,6 +297,8 @@ class ShardClient(object):
     def _heartbeat_failure(self, log_message):
         logging.error("Heartbeat failed. %s", log_message)
         autotest_stats.Counter(STATS_KEY).increment('heartbeat_failures')
+        metrics.Counter('chromeos/autotest/shard_client/heartbeat_failure'
+                        ).increment()
 
 
     @timer.decorate
@@ -299,9 +311,11 @@ class ShardClient(object):
         """
         logging.info("Performing heartbeat.")
         packet = self._heartbeat_packet()
+        # TODO(akeshet) consider adding a ts_mon counter to track this. Not sure
+        # if counter or Gauge is more appropriate. Same applies to response_size
+        # below.
         autotest_stats.Gauge(STATS_KEY).send(
                 'heartbeat.request_size', len(str(packet)))
-        metrics.Counter('chromeos/autotest/scheduler/heartbeat').increment()
 
         try:
             response = self.afe.run(HEARTBEAT_AFE_ENDPOINT, **packet)
@@ -328,6 +342,7 @@ class ShardClient(object):
     def tick(self):
         """Performs all tasks the shard clients needs to do periodically."""
         self.do_heartbeat()
+        metrics.Counter('chromeos/autotest/shard_client/tick').increment()
 
 
     def loop(self):
@@ -385,8 +400,11 @@ def get_shard_client():
 
 
 def main():
+    ts_mon_config.SetupTsMonGlobalState('shard_client')
+
     try:
         autotest_stats.Counter(STATS_KEY).increment('starts')
+        metrics.Counter('chromeos/autotest/shard_client/start').increment()
         main_without_exception_handling()
     except Exception as e:
         message = 'Uncaught exception. Terminating shard_client.'
