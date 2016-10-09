@@ -755,17 +755,25 @@ def SetupTsMonGlobalState(*args, **kwargs):
     """
     if ts_mon_config:
         context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
-        if hasattr(context, '__exit__'):
-            return context
-        else:
-            return TrivialContextManager()
+        try:
+            context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
+            if hasattr(context, '__exit__'):
+                return context
+        except Exception as e:
+            logging.warning('Caught an exception trying to setup ts_mon, '
+                            'monitoring is disabled: %s', e, exc_info=True)
+        return TrivialContextManager()
     else:
         return TrivialContextManager()
 
 
 @contextlib.contextmanager
-def TrivialContextManager():
-    """Context manager that does nothing."""
+def TrivialContextManager(*args, **kwargs):
+    """Context manager that does nothing.
+
+    @param *args: Ignored args
+    @param **kwargs: Ignored kwargs.
+    """
     yield
 
 
