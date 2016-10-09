@@ -184,65 +184,49 @@ class graphics_Idle(test.test):
         clock frequency; idle before doing so, and retry every second for 20
         seconds."""
         logging.info('Running verify_graphics_dvfs')
-        if self._gpu_type.startswith('mali'):
-            if self._cpu_type == 'exynos5':
-                node = '/sys/devices/11800000.mali/'
+
+        exynos_node = '/sys/devices/11800000.mali/'
+        rk3288_node = '/sys/devices/ffa30000.gpu/'
+        rk3399_node = '/sys/devices/platform/ff9a0000.gpu/devfreq/ff9a0000.gpu/'
+        mt8173_node = ('/sys/devices/soc/13000000.mfgsys-gpu/devfreq/'
+                       '13000000.mfgsys-gpu/')
+
+        if self._cpu_type == 'exynos5':
+            if os.path.isdir(exynos_node):
+                node = exynos_node
+                use_devfreq = False
                 enable_node = 'dvfs'
                 enable_value = 'on'
-            elif self._cpu_type.startswith('rockchip'):
-                node = '/sys/devices/ffa30000.gpu/'
+            else:
+                logging.error('Error: unknown exynos SoC.')
+                return self.handle_error('Unknown exynos SoC.')
+        elif self._cpu_type.startswith('rockchip'):
+            if os.path.isdir(rk3288_node):
+                node = rk3288_node
+                use_devfreq = False
                 enable_node = 'dvfs_enable'
                 enable_value = '1'
+            elif os.path.isdir(rk3399_node):
+                node = rk3399_node
+                use_devfreq = True
             else:
-                logging.error('Error: Unknown CPU type (%s) for mali GPU.',
-                              self._cpu_type)
-                return 'Unknown CPU type for mali GPU. '
-
-            clock_path = utils.locate_file('clock', node)
-            enable_path = utils.locate_file(enable_node, node)
-            freqs_path = utils.locate_file('available_frequencies', node)
-
-            enable = utils.read_one_line(enable_path)
-            logging.info('DVFS enable = %s', enable)
-            if not enable == enable_value:
-                return self.handle_errror('DVFS is not enabled. ')
-
-            # available_frequencies are always sorted in ascending order
-            lowest_freq = int(utils.read_one_line(freqs_path))
-
-            # daisy_* (exynos5250) boards set idle frequency to 266000000
-            # See: crbug.com/467401 and crosbug.com/p/19710
-            if self._board.startswith('daisy'):
-                lowest_freq = 266000000
-
-            logging.info('Expecting idle DVFS clock = %u', lowest_freq)
-            tries = 0
-            found = False
-            while not found and tries < 80:
-                time.sleep(0.25)
-                clock = int(utils.read_one_line(clock_path))
-                if clock <= lowest_freq:
-                    logging.info('Found idle DVFS clock = %u', clock)
-                    found = True
-                    break
-
-                tries += 1
-            if not found:
-                logging.error('Error: DVFS clock (%u) > min (%u)', clock,
-                              lowest_freq)
-                return self.handle_error('Did not see the min DVFS clock. ',
-                                         clock_path)
-        elif self._gpu_type == 'rogue':
-            if self._cpu_type == 'mediatek':
-                rogue_dvfs_path = '/sys/devices/soc/13000000.mfgsys-gpu/devfreq/13000000.mfgsys-gpu'
+                logging.error('Error: unknown rockchip SoC.')
+                return self.handle_error('Unknown rockchip SoC.')
+        elif self._cpu_type == 'mediatek':
+            if os.path.isdir(mt8173_node):
+                node = mt8173_node
+                use_devfreq = True
             else:
-                logging.error('Error: Unknown SoC for rogue GPU.')
-                return self.handle_error('Unknown SoC for rogue GPU.')
+                logging.error('Error: unknown mediatek SoC.')
+                return self.handle_error('Unknown mediatek SoC.')
+        else:
+            return ''
 
-            governor_path = utils.locate_file('governor', rogue_dvfs_path)
-            max_freq_path = utils.locate_file('max_freq', rogue_dvfs_path)
-            min_freq_path = utils.locate_file('min_freq', rogue_dvfs_path)
-            cur_freq_path = utils.locate_file('cur_freq', rogue_dvfs_path)
+        if use_devfreq:
+            governor_path = utils.locate_file('governor', node)
+            max_freq_path = utils.locate_file('max_freq', node)
+            min_freq_path = utils.locate_file('min_freq', node)
+            clock_path = utils.locate_file('cur_freq', node)
 
             governor = utils.read_one_line(governor_path)
             max_freq = int(utils.read_one_line(max_freq_path))
@@ -257,24 +241,40 @@ class graphics_Idle(test.test):
             if min_freq >= max_freq:
                 logging.error('Error: DVFS freq min >= max')
                 return self.handle_error('Frequency settings are wrong.')
+        else:
+            clock_path = utils.locate_file('clock', node)
+            enable_path = utils.locate_file(enable_node, node)
+            freqs_path = utils.locate_file('available_frequencies', node)
 
-            logging.info('Expecting idle DVFS freq = %u', min_freq)
-            tries = 0
-            found = False
-            while not found and tries < 80:
-                time.sleep(0.25)
-                cur_freq = int(utils.read_one_line(cur_freq_path))
-                if cur_freq <= min_freq:
-                    logging.info('Found idle DVFS freq = %u', cur_freq)
-                    found = True
-                    break
+            enable = utils.read_one_line(enable_path)
+            logging.info('DVFS enable = %s', enable)
+            if not enable == enable_value:
+                return self.handle_error('DVFS is not enabled. ')
 
-                tries += 1
-            if not found:
-                logging.error('Error: DVFS freq cur (%u) > min (%u)', cur_freq,
-                              min_freq)
-                return self.handle_error('Did not see the min DVFS freq. ',
-                                         cur_freq_path)
+            # available_frequencies are always sorted in ascending order
+            min_freq = int(utils.read_one_line(freqs_path))
+
+            # daisy_* (exynos5250) boards set idle frequency to 266000000
+            # See: crbug.com/467401 and crosbug.com/p/19710
+            if self._board.startswith('daisy'):
+                min_freq = 266000000
+
+        logging.info('Expecting idle DVFS clock = %u', min_freq)
+        tries = 0
+        found = False
+        while not found and tries < 80:
+            time.sleep(0.25)
+            clock = int(utils.read_one_line(clock_path))
+            if clock <= min_freq:
+                logging.info('Found idle DVFS clock = %u', clock)
+                found = True
+                break
+
+            tries += 1
+        if not found:
+            logging.error('Error: DVFS clock (%u) > min (%u)', clock, min_freq)
+            return self.handle_error('Did not see the min DVFS clock. ',
+                                     clock_path)
         return ''
 
     def verify_graphics_fbc(self):
