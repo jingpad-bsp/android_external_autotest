@@ -256,34 +256,68 @@ def retry(test_method, instance, *args, **kwargs):
                                       instance, *args, **kwargs))
 
 
-def _test_retry_and_log(test_method):
-    """A decorator that logs test results, collects error messages, and retries.
+def _test_retry_and_log(test_method_or_retry_flag):
+    """A decorator that logs test results, collects error messages, and retries
+       on request.
 
-    @param test_method: the test method to conduct and retry
+    @param test_method_or_retry_flag: either the test_method or a retry_flag.
+        There are some possibilities of this argument:
+        1. the test_method to conduct and retry: should retry the test_method.
+            This occurs with
+            @_test_retry_and_log
+        2. the retry flag is True. Should retry the test_method.
+            This occurs with
+            @_test_retry_and_log(True)
+        3. the retry flag is False. Do not retry the test_method.
+            This occurs with
+            @_test_retry_and_log(False)
 
-    @returns: a wrapper of the test_method with test log and retry mechanism
+    @returns: a wrapper of the test_method with test log. The retry mechanism
+        would depend on the retry flag.
 
     """
-    @functools.wraps(test_method)
-    def wrapper(instance, *args, **kwargs):
-        """A wrapper of the decorated method.
 
-        @param instance: an BluetoothAdapterTests instance
+    def decorator(test_method):
+        """A decorator wrapper of the decorated test_method.
 
-        @returns the result of the test method
+        @param test_method: the test method being decorated.
+
+        @returns the wrapper of the test method.
 
         """
-        instance.results = None
-        test_result = retry(test_method, instance, *args, **kwargs)
-        if test_result:
-            logging.info('[*** passed: %s]', test_method.__name__)
-        else:
-            fail_msg = '[--- failed: %s (%s)]' % (test_method.__name__,
-                                                  str(instance.results))
-            logging.error(fail_msg)
-            instance.fails.append(fail_msg)
-        return test_result
-    return wrapper
+        @functools.wraps(test_method)
+        def wrapper(instance, *args, **kwargs):
+            """A wrapper of the decorated method.
+
+            @param instance: an BluetoothAdapterTests instance
+
+            @returns the result of the test method
+
+            """
+            instance.results = None
+            if callable(test_method_or_retry_flag) or test_method_or_retry_flag:
+                test_result = retry(test_method, instance, *args, **kwargs)
+            else:
+                test_result = test_method(instance, *args, **kwargs)
+
+            if test_result:
+                logging.info('[*** passed: %s]', test_method.__name__)
+            else:
+                fail_msg = '[--- failed: %s (%s)]' % (test_method.__name__,
+                                                      str(instance.results))
+                logging.error(fail_msg)
+                instance.fails.append(fail_msg)
+            return test_result
+        return wrapper
+
+    if callable(test_method_or_retry_flag):
+        # If the decorator function comes with no argument like
+        # @_test_retry_and_log
+        return decorator(test_method_or_retry_flag)
+    else:
+        # If the decorator function comes with an argument like
+        # @_test_retry_and_log(False)
+        return decorator
 
 
 class BluetoothAdapterTests(test.test):
@@ -312,6 +346,11 @@ class BluetoothAdapterTests(test.test):
 
     CLASS_OF_SERVICE_MASK = 0xFFE000
     CLASS_OF_DEVICE_MASK = 0x001FFF
+
+    # Constants about advertising.
+    DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS = 1280
+    DAFAULT_MAX_ADVERTISEMENT_INTERVAL_MS = 1280
+    ADVERTISING_ITERVAL_UNIT = 0.625
 
     # Supported profiles by chrome os.
     SUPPORTED_UUIDS = {
@@ -939,6 +978,169 @@ class BluetoothAdapterTests(test.test):
                 'expected_class_of_device': expected_class_of_device,
                 'discovered_class_of_device': discovered_class_of_device}
         return discovered_class_of_device == expected_class_of_device
+
+
+    def _get_btmon_log(self, method, *args, **kwargs):
+        """Capture the btmon log when executing the specified method.
+
+        @param method: the method to capture log.
+
+        """
+        self.bluetooth_le_facade.btmon_start()
+        time.sleep(1)
+        method(*args, **kwargs)
+        time.sleep(1)
+        self.bluetooth_le_facade.btmon_stop()
+
+
+    def _verify_advertising_intervals(self, min_adv_interval_ms,
+                                      max_adv_interval_ms):
+        """Verify min and max advertising intervals.
+
+        Advertising intervals look like
+            Min advertising interval: 1280.000 msec (0x0800)
+            Max advertising interval: 1280.000 msec (0x0800)
+
+        @param min_adv_interval_ms: the min advertising interval
+            in milli-second.
+        @param max_adv_interval_ms: the max advertising interval
+            in milli-second.
+
+        @returns: a tuple of (True, True) if both min and max advertising
+            intervals could be found. Otherwise, the corresponding element
+            in the tuple if False.
+
+        """
+        min_str = ('Min advertising interval: %.3f msec (0x%04x)' %
+                   (min_adv_interval_ms,
+                    min_adv_interval_ms / self.ADVERTISING_ITERVAL_UNIT))
+        logging.info('min_adv_interval_ms: %s', min_str)
+        min_adv_interval_ms_found = self.bluetooth_le_facade.btmon_find(min_str)
+
+        max_str = ('Max advertising interval: %.3f msec (0x%04x)' %
+                   (max_adv_interval_ms,
+                    max_adv_interval_ms / self.ADVERTISING_ITERVAL_UNIT))
+        logging.info('max_adv_interval_ms: %s', max_str)
+        max_adv_interval_ms_found = self.bluetooth_le_facade.btmon_find(max_str)
+
+        return min_adv_interval_ms_found, max_adv_interval_ms_found
+
+
+    @_test_retry_and_log(False)
+    def test_register_advertisement(self, advertisement_data):
+        """Test that an advertisement could be registered correctly.
+
+        @param advertisement_data: the data of an advertisement to register.
+
+        @returns: True if the advertisement is registered correctly.
+                  False otherwise.
+
+        """
+        self._get_btmon_log(self.bluetooth_le_facade.register_advertisement,
+                            advertisement_data)
+
+        # Verify that a new advertisement is added.
+        advertisement_added = self.bluetooth_le_facade.btmon_find(
+                'Advertising Added')
+
+        # Verify that all service UUIDs could be found.
+        service_uuids_found = True
+        for uuid in advertisement_data.get('ServiceUUIDs', []):
+            # Service UUIDs looks like ['0x180D', '0x180F']
+            #   Heart Rate (0x180D)
+            #   Battery Service (0x180F)
+            if not self.bluetooth_le_facade.btmon_find('0x%s' % uuid):
+                service_uuids_found = False
+                break
+
+        # Verify service data.
+        service_data_found = True
+        for uuid, data in advertisement_data.get('ServiceData', {}).items():
+            # A service data looks like
+            #   Service Data (UUID 0x9999): 0001020304
+            # while uuid is '9999' and data is [0x00, 0x01, 0x02, 0x03, 0x04]
+            data_str = ''.join(map(lambda n: '%02x' % n, data))
+            if not self.bluetooth_le_facade.btmon_find(
+                    'Service Data (UUID 0x%s): %s' % (uuid, data_str)):
+                service_data_found = False
+                break
+
+        # Verify that the advertising intervals are default values.
+        min_adv_interval_ms_found, max_adv_interval_ms_found = (
+                self._verify_advertising_intervals(
+                self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS,
+                self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS))
+
+        # Verify advertising is enabled.
+        advertising_enabled = self.bluetooth_le_facade.btmon_find(
+                'Advertising: Enabled (0x01)')
+
+        self.results = {
+                'advertisement_added': advertisement_added,
+                'service_uuids_found': service_uuids_found,
+                'service_data_found': service_data_found,
+                'min_adv_interval_ms_found': min_adv_interval_ms_found,
+                'max_adv_interval_ms_found': max_adv_interval_ms_found,
+                'advertising_enabled': advertising_enabled,
+        }
+        return all(self.results.values())
+
+
+    @_test_retry_and_log(False)
+    def test_set_advertising_intervals(self, min_adv_interval_ms,
+                                       max_adv_interval_ms):
+        """Test that new advertising intervals could be set correctly.
+
+        @param min_adv_interval_ms: the min advertising interval in ms.
+        @param max_adv_interval_ms: the max advertising interval in ms.
+
+        @returns: True if the new advertising intervals are correct.
+                  False otherwise.
+
+        """
+        self._get_btmon_log(self.bluetooth_le_facade.set_advertising_intervals,
+                            min_adv_interval_ms, max_adv_interval_ms)
+
+        # Verify the new advertising intervals.
+        min_adv_interval_ms_found, max_adv_interval_ms_found = (
+                self._verify_advertising_intervals(min_adv_interval_ms,
+                                                   max_adv_interval_ms))
+
+        self.results = {
+                'min_adv_interval_ms_found': min_adv_interval_ms_found,
+                'max_adv_interval_ms_found': max_adv_interval_ms_found,
+        }
+        return all(self.results.values())
+
+
+    @_test_retry_and_log(False)
+    def test_reset_advertising(self):
+        """Test that advertising is reset correctly.
+
+        @returns: True if advertising is reset correctly.
+                  False otherwise.
+
+        """
+        self._get_btmon_log(self.bluetooth_le_facade.reset_advertising)
+
+        # Verify that a new advertisement is added.
+        # The log looks like
+        #   @ Advertising Removed: 1
+        advertisement_removed = self.bluetooth_le_facade.btmon_find(
+                'Advertising Removed')
+
+        # Verify the advertising intervals are set to default.
+        min_adv_interval_ms_found, max_adv_interval_ms_found = (
+                self._verify_advertising_intervals(
+                self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS,
+                self.DAFAULT_MIN_ADVERTISEMENT_INTERVAL_MS))
+
+        self.results = {
+                'advertisement_removed': advertisement_removed,
+                'min_adv_interval_ms_found': min_adv_interval_ms_found,
+                'max_adv_interval_ms_found': max_adv_interval_ms_found,
+        }
+        return all(self.results.values())
 
 
     def initialize(self):
