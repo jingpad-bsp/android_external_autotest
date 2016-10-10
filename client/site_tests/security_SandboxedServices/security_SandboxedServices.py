@@ -19,8 +19,10 @@ PS_FIELDS = (
     'pid',
     'ppid',
     'comm:32',
-    'euser:%d',
-    'ruser:%d',
+    'euser:%(usermax)d',
+    'ruser:%(usermax)d',
+    'egroup:%(groupmax)d',
+    'rgroup:%(groupmax)d',
     'args',
 )
 PsOutput = namedtuple("PsOutput",
@@ -71,11 +73,18 @@ class security_SandboxedServices(test.test):
 
         usermax = utils.system_output("cut -d: -f1 /etc/passwd | wc -L",
                                       ignore_status=True)
+        groupmax = utils.system_output('cut -d: -f1 /etc/group | wc -L',
+                                       ignore_status=True)
         # Even if the names are all short, make sure we have enough space
         # to hold numeric 32-bit ids too (can come up with userns).
         usermax = max(int(usermax), 10)
+        groupmax = max(int(groupmax), 10)
+        fields = {
+            'usermax': usermax,
+            'groupmax': groupmax,
+        }
         ps_cmd = ('ps --no-headers -ww -eo ' +
-                  (','.join(PS_FIELDS) % (usermax, usermax)))
+                  (','.join(PS_FIELDS) % fields))
         ps_fields_len = len(PS_FIELDS)
 
         output = utils.system_output(ps_cmd)
@@ -215,6 +224,11 @@ class security_SandboxedServices(test.test):
 
             # If the process is not running as the correct user
             if process.euser != baseline[exe]["euser"]:
+                sandbox_delta.append(exe)
+                continue
+
+            # If the process is not running as the correct group
+            if process.egroup != baseline[exe]['egroup']:
                 sandbox_delta.append(exe)
                 continue
 
