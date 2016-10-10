@@ -11,6 +11,7 @@ import __builtin__
 import httplib
 import json
 import mox
+import os
 import StringIO
 import time
 import unittest
@@ -225,6 +226,7 @@ class DevServerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(dev_server.ImageServerBase, 'run_call')
         self.mox.StubOutWithMock(urllib2, 'urlopen')
         self.mox.StubOutWithMock(utils, 'run')
+        self.mox.StubOutWithMock(os.path, 'exists')
         # Hide local restricted_subnets setting.
         dev_server.RESTRICTED_SUBNETS = []
 
@@ -466,6 +468,7 @@ class DevServerTest(mox.MoxTestBase):
                         raised_error)
             else:
                 dev_server.ImageServerBase.run_call(argument4).AndReturn('log')
+                os.path.exists(mox.IgnoreArg()).AndReturn(True)
                 self._mockWriteFile()
 
         if 'kill_au_proc_error' in kwargs:
