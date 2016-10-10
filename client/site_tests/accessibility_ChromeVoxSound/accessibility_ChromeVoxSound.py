@@ -110,8 +110,7 @@ class accessibility_ChromeVoxSound(a11y_test_base.a11y_test_base):
         self._loopback_file = os.path.join(self.bindir, 'cras_loopback.wav')
         extension_path = self._get_extension_path()
 
-        with chrome.Chrome(extension_paths=[extension_path],
-                           is_component=False) as cr:
+        with chrome.Chrome(extension_paths=[extension_path]) as cr:
             self._extension = cr.get_extension(extension_path)
             cr.browser.tabs[0].WaitForDocumentReadyStateToBeComplete()
             self._confirm_chromevox_state(False)
