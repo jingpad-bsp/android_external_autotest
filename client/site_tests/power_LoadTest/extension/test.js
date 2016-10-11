@@ -22,6 +22,8 @@ function setupTest() {
     }
     var end = 3600 * 1000 / time_ratio;
     log_lines = [];
+    page_load_times = [];
+    page_load_time_counter = {};
     record_log_entry(dateToString(new Date()) + " Loop started");
     setTimeout(send_summary, end);
   });
