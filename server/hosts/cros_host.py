@@ -733,7 +733,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Resolved devserver for auto-update: %s', devserver.url())
 
         devserver.auto_update(self.hostname, build,
-                              log_dir=self.job.sysinfo.sysinfodir,
+                              log_dir=self.job.resultdir,
                               force_update=force_update,
                               full_update=force_full_update)
 
