@@ -13,6 +13,74 @@ class SpectralAnalysisTest(unittest.TestCase):
         numpy.random.seed(0)
 
 
+    def dummy_peak_detection(self, array, window_size):
+        """Detects peaks in an array in simple way.
+
+        A point (i, array[i]) is a peak if array[i] is the maximum among
+        array[i - half_window_size] to array[i + half_window_size].
+        If array[i - half_window_size] to array[i + half_window_size] are all
+        equal, then there is no peak in this window.
+
+        @param window_size: The window to detect peaks.
+
+        @returns: A list of tuples:
+                  [(peak_index_1, peak_value_1), (peak_index_2, peak_value_2),
+                   ...]
+                  where the tuples are sorted by peak values.
+
+        """
+        half_window_size = window_size / 2
+        length = len(array)
+
+        def mid_is_peak(array, mid, left, right):
+            """Checks if value at mid is the largest among left to right.
+
+            @param array: A list of numbers.
+            @param mid: The mid index.
+            @param left: The left index.
+            @param rigth: The right index.
+
+            @returns: True if array[index] is the maximum among numbers in array
+                      between index [left, right] inclusively.
+
+            """
+            value_mid = array[mid]
+            for index in xrange(left, right + 1):
+                if index == mid:
+                    continue
+                if array[index] >= value_mid:
+                    return False
+            return True
+
+        results = []
+        for mid in xrange(length):
+            left = max(0, mid - half_window_size)
+            right = min(length - 1, mid + half_window_size)
+            if mid_is_peak(array, mid, left, right):
+                results.append((mid, array[mid]))
+
+        # Sort the peaks by values.
+        return sorted(results, key=lambda x: x[1], reverse=True)
+
+
+    def testPeakDetection(self):
+        array = [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 5, 3, 2, 1, 1, 1, 1, 1]
+        result = audio_analysis.peak_detection(array, 4)
+        golden_answer = [(12, 5), (4, 4)]
+        self.assertEqual(result, golden_answer)
+
+
+    def testPeakDetectionLarge(self):
+        array = numpy.random.uniform(0, 1, 1000000)
+        window_size = 100
+        logging.debug('Test large array using dummy peak detection')
+        dummy_answer = self.dummy_peak_detection(array, window_size)
+        logging.debug('Test large array using improved peak detection')
+        improved_answer = audio_analysis.peak_detection(array, window_size)
+        logging.debug('Compare the result')
+        self.assertEqual(dummy_answer, improved_answer)
+
+
     def testSpectralAnalysis(self):
         rate = 48000
         length_in_secs = 0.5
@@ -281,5 +349,5 @@ class AnomalyTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     unittest.main()
