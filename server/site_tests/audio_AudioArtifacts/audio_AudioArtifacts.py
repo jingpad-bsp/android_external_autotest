@@ -31,7 +31,8 @@ class audio_AudioArtifacts(audio_test.AudioTest):
     def run_once(self, host, source_id, sink_id, recorder_id,
                  golden_file, switch_hsp=False,
                  mute_duration_in_secs=None,
-                 volume_changes=None):
+                 volume_changes=None,
+                 record_secs=None):
         """Running audio volume test.
 
         mute_duration_in_secs and volume_changes couldn't be both not None.
@@ -53,6 +54,10 @@ class audio_AudioArtifacts(audio_test.AudioTest):
                            decreasing volume, +1 denoting increasing volume.
                            Between each changes, the volume will be kept for
                            KEEP_VOLUME_SECONDS secs.
+        @param record_secs: The duration of recording in seconds. If it is not
+                            set, duration of the test data will be used. If
+                            duration of test data is not set either, default
+                            RECORD_SECONDS will be used.
 
         """
         if (source_id == chameleon_audio_ids.CrosIds.SPEAKER and
@@ -85,6 +90,16 @@ class audio_AudioArtifacts(audio_test.AudioTest):
 
         start_volume, low_volume, high_volume = 75, 50, 100
 
+        if not record_secs:
+            if golden_file.duration_secs:
+                record_secs = golden_file.duration_secs
+            else:
+                record_secs = self.RECORD_SECONDS
+        logging.debug('Record duration: %f seconds', record_secs)
+
+        # Checks if the file is local or is served on web.
+        file_url = getattr(golden_file, 'url', None)
+
         with chameleon_audio_helper.bind_widgets(binder):
             # Checks the node selected by cras is correct.
             time.sleep(self.DELAY_AFTER_BINDING)
@@ -100,15 +115,22 @@ class audio_AudioArtifacts(audio_test.AudioTest):
             if switch_hsp:
                 audio_test_utils.switch_to_hsp(audio_facade)
 
-            logging.info('Setting playback data on Cros device')
-            source.set_playback_data(golden_file)
+            if not file_url:
+                logging.info('Setting playback data on Cros device')
+                source.set_playback_data(golden_file)
 
             logging.info('Start recording from Chameleon.')
             recorder.start_recording()
 
-            logging.info('Start playing %s on Cros device',
-                         golden_file.path)
-            source.start_playback()
+            if not file_url:
+                logging.info('Start playing %s on Cros device',
+                             golden_file.path)
+                source.start_playback()
+            else:
+                logging.info('Start playing %s on Cros device using browser',
+                             file_url)
+                browser_facade = factory.create_browser_facade()
+                tab_descriptor = browser_facade.new_tab(file_url)
 
             if volume_changes:
                 time.sleep(self.START_PLAYBACK_SECONDS)
@@ -120,7 +142,7 @@ class audio_AudioArtifacts(audio_test.AudioTest):
                     time.sleep(self.KEEP_VOLUME_SECONDS)
                 passed_time_secs = self.START_PLAYBACK_SECONDS
                 passed_time_secs += len(volume_changes) * self.KEEP_VOLUME_SECONDS
-                rest = max(0, self.RECORD_SECONDS - passed_time_secs)
+                rest = max(0, record_secs - passed_time_secs)
                 time.sleep(rest)
             elif mute_duration_in_secs:
                 time.sleep(self.START_PLAYBACK_SECONDS)
@@ -131,10 +153,10 @@ class audio_AudioArtifacts(audio_test.AudioTest):
                     audio_facade.set_chrome_active_volume(start_volume)
                     time.sleep(self.KEEP_VOLUME_SECONDS)
                     passed_time_seconds += mute_secs + self.KEEP_VOLUME_SECONDS
-                rest = max(0, self.RECORD_SECONDS - passed_time_seconds)
+                rest = max(0, record_secs - passed_time_seconds)
                 time.sleep(rest)
             else:
-                time.sleep(self.RECORD_SECONDS)
+                time.sleep(record_secs)
 
             recorder.stop_recording()
             logging.info('Stopped recording from Chameleon.')
@@ -143,7 +165,10 @@ class audio_AudioArtifacts(audio_test.AudioTest):
                     host, audio_facade, self.resultsdir,
                     'after_recording')
 
-            source.stop_playback()
+            if file_url:
+                browser_facade.close_tab(tab_descriptor)
+            else:
+                source.stop_playback()
 
             recorder.read_recorded_binary()
             logging.info('Read recorded binary from Chameleon.')
