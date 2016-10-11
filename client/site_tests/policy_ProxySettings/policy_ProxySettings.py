@@ -5,7 +5,7 @@
 import logging, threading
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 from SocketServer import ThreadingTCPServer, StreamRequestHandler
 
 
@@ -96,48 +96,52 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
     value is not set. This induces the default behavior, equivalent to what is
     seen by an un-managed user.
 
-    When ProxySettings is None (undefined), or ProxyMode=direct, then no proxy
-    server should be used. When ProxyMode=fixed_servers or ProxyMode=pac_script,
-    then the proxy server address specified by the ProxyServer or ProxyPacUrl
+    When ProxySettings is None (undefined) or ProxyMode=direct, then no proxy
+    server should be used. When ProxyMode=fixed_servers or pac_script, then
+    the proxy server address specified by the ProxyServer or ProxyPacUrl
     entry should be used.
     """
     version = 1
 
-    POLICY_NAME = 'ProxySettings'
-    PROXY_HOST = 'localhost'
-    PROXY_PORT = 3128
-    WEB_PORT = 8080
-    PAC_FILE_URL = 'http://localhost:%d/test_data/test_proxy.pac' % WEB_PORT
-    FIXED_PROXY = '''{
-      "ProxyBypassList": "www.google.com,www.googleapis.com",
-      "ProxyMode": "fixed_servers",
-      "ProxyServer": "localhost:%s"
-    }''' % PROXY_PORT
-    DIRECT_PROXY = '''{
-      "ProxyMode": "direct"
-    }'''
-    PAC_PROXY = '''{
-      "ProxyMode": "pac_script",
-      "ProxyPacUrl": "%s"
-    }''' % PAC_FILE_URL
-    TEST_URL = 'http://www.wired.com/'
-
-    TEST_CASES = {
-        'FixedProxy_UseFixedProxy': FIXED_PROXY,
-        'PacProxy_UsePacFile': PAC_PROXY,
-        'DirectProxy_UseNoProxy': DIRECT_PROXY,
-        'NotSet_UseNoProxy': None
-    }
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_ProxySettings, self).initialize(**kwargs)
         self._proxy_server = ProxyListener(('', self.PROXY_PORT))
         self._proxy_server.run()
-        self.start_webserver(self.WEB_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'ProxySettings'
+        self.PROXY_PORT = 3128
+        self.PAC_FILE = 'proxy_test.pac'
+        self.PAC_FILE_URL = '%s/%s' % (self.WEB_HOST, self.PAC_FILE)
+        self.FIXED_PROXY = '''{
+          "ProxyBypassList": "www.google.com,www.googleapis.com",
+          "ProxyMode": "fixed_servers",
+          "ProxyServer": "localhost:%s"
+        }''' % self.PROXY_PORT
+        self.DIRECT_PROXY = '''{
+          "ProxyMode": "direct"
+        }'''
+        self.PAC_PROXY = '''{
+          "ProxyMode": "pac_script",
+          "ProxyPacUrl": "%s"
+        }''' % self.PAC_FILE_URL
+        self.TEST_URL = 'http://www.wired.com/'
+        self.TEST_CASES = {
+            'FixedProxy_UseFixedProxy': self.FIXED_PROXY,
+            'PacProxy_UsePacFile': self.PAC_PROXY,
+            'DirectProxy_UseNoProxy': self.DIRECT_PROXY,
+            'NotSet_UseNoProxy': None
+        }
+
 
     def cleanup(self):
         self._proxy_server.stop()
         super(policy_ProxySettings, self).cleanup()
+
 
     def _test_proxy_configuration(self, policy_value, policies_dict):
         """Verify CrOS enforces the specified ProxySettings configuration.
@@ -173,6 +177,7 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         else:
             raise error.TestFail('Unrecognized Policy Value %s', policy_value)
 
+
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
@@ -180,7 +185,6 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         test |case|.
 
         @param case: Name of the test case to run.
-
         """
         policy_value = self.TEST_CASES[case]
         policies_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
