@@ -5,7 +5,7 @@
 import logging, utils
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
@@ -27,43 +27,44 @@ class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
     set to 2. A related test, policy_PopupsBlockedForUrls, requires the value
     to be set to 1. That value allows popups on all pages except those with
     domains listed in PopupsBlockedForUrls.
-
     """
     version = 1
 
-    POLICY_NAME = 'PopupsAllowedForUrls'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
-    URL_PAGE = '/popup_status.html'
-    TEST_URL = URL_BASE + URL_PAGE
-
-    URL1_DATA = [URL_HOST]
-    URL2_DATA = ['http://www.bing.com', 'https://www.yahoo.com']
-    URL3_DATA = ['http://www.bing.com', URL_BASE,
-                 'https://www.yahoo.com']
-    TEST_CASES = {
-        'NotSet_Block': None,
-        '1Url_Allow': URL1_DATA,
-        '2Urls_Block': URL2_DATA,
-        '3Urls_Allow': URL3_DATA
-    }
-    STARTUP_URLS = ['chrome://policy', 'chrome://settings']
-    SUPPORTING_POLICIES = {
-        'DefaultPopupsSetting': 2,
-        'BookmarkBarEnabled': False,
-        'RestoreOnStartupURLs': STARTUP_URLS,
-        'RestoreOnStartup': 4
-    }
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_PopupsAllowedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'PopupsAllowedForUrls'
+        self.TEST_FILE = 'popup_status.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+
+        self.URL1_DATA = [self.WEB_HOST]
+        self.URL2_DATA = ['http://www.bing.com', 'https://www.yahoo.com']
+        self.URL3_DATA = ['http://www.bing.com', self.WEB_HOST,
+                          'https://www.yahoo.com']
+        self.TEST_CASES = {
+            'NotSet_Block': None,
+            '1Url_Allow': self.URL1_DATA,
+            '2Urls_Block': self.URL2_DATA,
+            '3Urls_Allow': self.URL3_DATA
+        }
+        self.STARTUP_URLS = ['chrome://policy', 'chrome://settings']
+        self.SUPPORTING_POLICIES = {
+            'DefaultPopupsSetting': 2,
+            'BookmarkBarEnabled': False,
+            'RestoreOnStartupURLs': self.STARTUP_URLS,
+            'RestoreOnStartup': 4
+        }
 
     def _wait_for_page_ready(self, tab):
         utils.poll_for_condition(
             lambda: tab.EvaluateJavaScript('pageReady'),
             exception=error.TestError('Test page is not ready.'))
+
 
     def _test_popups_allowed_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the PopupsAllowedForUrls policy.
@@ -75,7 +76,6 @@ class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
         @param policy_value: policy value expected on chrome://policy page.
         @param policies_dict: policy dict data to send to the fake DM server.
-
         """
         self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
         logging.info('Running _test_popups_allowed_for_urls(%s, %s)',
@@ -85,16 +85,17 @@ class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         self._wait_for_page_ready(tab)
         is_blocked = tab.EvaluateJavaScript('isPopupBlocked();')
 
-        # String |URL_HOST| will be found in string |policy_value| for
+        # String |WEB_HOST| will be found in string |policy_value| for
         # test cases 1Url_Allowed and 3Urls_Allowed, but not for cases
         # NotSet_Blocked and 2Urls_Blocked.
-        if policy_value is not None and self.URL_HOST in policy_value:
+        if policy_value is not None and self.WEB_HOST in policy_value:
             if is_blocked:
                 raise error.TestFail('Popups should not be blocked.')
         else:
             if not is_blocked:
                 raise error.TestFail('Popups should be blocked.')
         tab.Close()
+
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
@@ -103,9 +104,6 @@ class policy_PopupsAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
-
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
-
-        # Run test using the values configured for the test case.
         self._test_popups_allowed_for_urls(policy_value, policies_dict)

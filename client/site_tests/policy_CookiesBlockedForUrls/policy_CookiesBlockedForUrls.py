@@ -9,7 +9,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_CookiesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
@@ -33,42 +33,43 @@ class policy_CookiesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
     """
     version = 1
 
-    POLICY_NAME = 'CookiesBlockedForUrls'
-    URL_BASE = 'http://localhost'
-    URL_PORT = 8080
-    URL_HOST = '%s:%d'%(URL_BASE, URL_PORT)
-    URL_RESOURCE = '/test_data/testWebsite1.html'
-    TEST_URL = URL_HOST + URL_RESOURCE
-    COOKIE_NAME = 'cookie1'
-    COOKIE_BLOCKED_SINGLE_FILE_DATA = [URL_HOST]
-    COOKIE_BLOCKED_MULTIPLE_FILES_DATA = ['http://google.com', URL_HOST,
-                                          'http://doesnotmatter.com']
-    COOKIE_ALLOWED_MULTIPLE_FILES_DATA = ['https://testingwebsite.html'
-                                          'https://somewebsite.com',
-                                          'http://doesnotmatter.com']
-
-    TEST_CASES = {
-        'NotSet_Allow': None,
-        'SingleUrl_Block': COOKIE_BLOCKED_SINGLE_FILE_DATA,
-        'MultipleUrls_Block': COOKIE_BLOCKED_MULTIPLE_FILES_DATA,
-        'MultipleUrls_Allow' : COOKIE_ALLOWED_MULTIPLE_FILES_DATA
-    }
-
-    SUPPORTING_POLICIES = {'DefaultCookiesSetting': 1}
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_CookiesBlockedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'CookiesBlockedForUrls'
+        self.COOKIE_NAME = 'cookie1'
+        self.TEST_FILE = 'cookie_status.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+        self.COOKIE_BLOCKED_SINGLE_FILE = [self.WEB_HOST]
+        self.COOKIE_BLOCKED_MULTIPLE_FILES = ['http://google.com',
+                                              self.WEB_HOST,
+                                              'http://doesnotmatter.com']
+        self.COOKIE_ALLOWED_MULTIPLE_FILES = ['https://testingwebsite.html',
+                                              'https://somewebsite.com',
+                                              'http://doesnotmatter.com']
+        self.TEST_CASES = {
+            'NotSet_Allow': None,
+            'SingleUrl_Block': self.COOKIE_BLOCKED_SINGLE_FILE,
+            'MultipleUrls_Block': self.COOKIE_BLOCKED_MULTIPLE_FILES,
+            'MultipleUrls_Allow': self.COOKIE_ALLOWED_MULTIPLE_FILES
+        }
+        self.SUPPORTING_POLICIES = {'DefaultCookiesSetting': 1}
+
 
     def _is_cookie_blocked(self, url):
-        """Return True if the cookie is blocked for the URL else returns False.
+        """Return True if cookie is blocked for the URL else return False.
 
         @param url: Url of the page which is loaded to check whether it's
                     cookie is blocked or stored.
-
         """
-        tab =  self.navigate_to_url(url)
+        tab = self.navigate_to_url(url)
         return tab.GetCookieByName(self.COOKIE_NAME) is None
+
 
     def _test_cookies_blocked_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces CookiesBlockedForUrls policy value.
@@ -82,7 +83,6 @@ class policy_CookiesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         @param policies_dict: policy dict data to send to the fake DM server.
         @raises: TestFail if cookies are blocked/not blocked based on the
                  corresponding policy values.
-
         """
         logging.info('Running _test_cookies_blocked_for_urls(%s, %s)',
                      policy_value, policies_dict)
@@ -90,25 +90,21 @@ class policy_CookiesBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
         cookie_is_blocked = self._is_cookie_blocked(self.TEST_URL)
 
-        if policy_value and self.URL_HOST in policy_value:
+        if policy_value and self.WEB_HOST in policy_value:
             if not cookie_is_blocked:
                 raise error.TestFail('Cookies should be blocked.')
         else:
             if cookie_is_blocked:
                 raise error.TestFail('Cookies should be allowed.')
 
+
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
         Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test. If the user specified an
-        expected |value| in the command line args, then it will be used to set
-        the |policy_value|.
+        the specified test |case|, and run the test.
 
         @param case: Name of the test case to run.
-
         """
         policy_value, policies_dict = self._get_policy_data_for_case(case)
-
-        # Run test using the values configured for the test case.
         self._test_cookies_blocked_for_urls(policy_value, policies_dict)

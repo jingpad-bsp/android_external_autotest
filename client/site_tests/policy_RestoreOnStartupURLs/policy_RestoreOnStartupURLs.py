@@ -5,7 +5,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_RestoreOnStartupURLs(enterprise_policy_base.EnterprisePolicyTest):
