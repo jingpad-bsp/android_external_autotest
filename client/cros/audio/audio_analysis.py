@@ -76,6 +76,8 @@ def spectral_analysis(signal, rate, min_peak_ratio=DEFAULT_MIN_PEAK_RATIO,
         raise RMSTooSmallError(
                 'RMS %s is too small to be meaningful' % signal_rms)
 
+    logging.debug('Doing spectral analysis ...')
+
     # First, pass signal through a window function to mitigate spectral leakage.
     y_conv_w = signal * numpy.hanning(len(signal))
 
