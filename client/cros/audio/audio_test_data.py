@@ -19,7 +19,8 @@ class AudioTestDataException(Exception):
 
 class AudioTestData(object):
     """Class to represent audio test data."""
-    def __init__(self, data_format=None, path=None, frequencies=None):
+    def __init__(self, data_format=None, path=None, frequencies=None,
+                 duration_secs=None):
         """
         Initializes an audio test file.
 
@@ -33,6 +34,7 @@ class AudioTestData(object):
         @param path: The path to the file.
         @param frequencies: A list containing the frequency of each channel in
                             this file. Only applicable to data of sine tone.
+        @param duration_secs: Duration of test file in seconds.
 
         @raises: AudioTestDataException if the path does not exist.
 
@@ -42,6 +44,7 @@ class AudioTestData(object):
             raise AudioTestDataException('Can not find path %s' % path)
         self.path = path
         self.frequencies = frequencies
+        self.duration_secs = duration_secs
 
 
     def get_binary(self):
@@ -128,7 +131,7 @@ class AudioTestData(object):
 
 
 class FakeTestData(object):
-    def __init__(self, frequencies):
+    def __init__(self, frequencies, url=None, duration_secs=None):
         """A fake test data which contains properties but no real data.
 
         This is useful when we need to pass an AudioTestData object into a test
@@ -136,9 +139,13 @@ class FakeTestData(object):
 
         @param frequencies: A list containing the frequency of each channel in
                             this file. Only applicable to data of sine tone.
+        @param url: The URL to the test file.
+        @param duration_secs: The duration of the file in seconds.
 
         """
         self.frequencies = frequencies
+        self.url = url
+        self.duration_secs = duration_secs
 
 
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
@@ -215,3 +222,13 @@ MEDIA_HEADPHONE_TEST_FILE = FakeTestData(frequencies=[256, 256])
 Media test verification for 512Hz frequency (onboard speakers).
 """
 MEDIA_SPEAKER_TEST_FILE = FakeTestData(frequencies=[512, 512])
+
+"""
+Test file for 10 min playback for headphone. Left frequency is 1350Hz, right
+frequency is 870 Hz, and amplitude is 0.85.
+"""
+HEADPHONE_10MIN_TEST_FILE = FakeTestData(
+        frequencies=[1350, 870],
+        url=('http://commondatastorage.googleapis.com/chromiumos-test-assets-'
+             'public/audio_test/chameleon/Headphone/L1350_R870_A085_10min.wav'),
+        duration_secs=600)
