@@ -10,7 +10,7 @@
 import logging
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
@@ -46,35 +46,6 @@ class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
     INPUT_DISABLED = 2
 
 
-    def _get_checkbox_properties(self, pref):
-        """Get Search Suggest setting properties from the settings page.
-
-        @param pref: pref attribute value for the setting check box.
-        @returns: element properties of the setting check box.
-        """
-        js_get_checkbox_props = ('''
-        settings = document.getElementsByClassName(
-                'checkbox controlled-setting-with-label');
-        settingValues = '';
-        for (var i = 0, setting; setting = settings[i]; i++) {
-           var setting_label = setting.getElementsByTagName("label")[0];
-           var label_input = setting_label.getElementsByTagName("input")[0];
-           var input_pref = label_input.getAttribute("pref");
-           if (input_pref == '%s') {
-              settingValues = [setting_label.innerText.trim(),
-                               label_input.checked, label_input.disabled];
-              break;
-           }
-        }
-        settingValues;
-        ''' % pref)
-
-        settings_tab = self.navigate_to_url(self.CHROME_SETTINGS_PAGE)
-        checkbox_props = settings_tab.EvaluateJavaScript(js_get_checkbox_props)
-        settings_tab.Close()
-        return checkbox_props
-
-
     def _test_search_suggest_enabled(self, policy_value, policies_dict):
         """Verify CrOS enforces SearchSuggestEnabled policy.
 
@@ -86,10 +57,10 @@ class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
         self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
 
         setting_pref = 'search.suggest_enabled'
-        setting_properties = self._get_checkbox_properties(setting_pref)
-        setting_label = setting_properties[self.LABEL_TEXT]
-        setting_is_checked = setting_properties[self.INPUT_CHECKED]
-        setting_is_disabled = setting_properties[self.INPUT_DISABLED]
+        properties = self._get_settings_checkbox_properties(setting_pref)
+        setting_label = properties[self.LABEL_TEXT]
+        setting_is_checked = properties[self.INPUT_CHECKED]
+        setting_is_disabled = properties[self.INPUT_DISABLED]
         logging.info("Check box '%s' status: checked=%s, disabled=%s",
                      setting_label, setting_is_checked, setting_is_disabled)
 

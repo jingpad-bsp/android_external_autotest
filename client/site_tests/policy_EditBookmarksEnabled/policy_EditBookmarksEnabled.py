@@ -10,7 +10,7 @@ import logging
 import time
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
