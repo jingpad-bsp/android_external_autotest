@@ -754,7 +754,6 @@ def SetupTsMonGlobalState(*args, **kwargs):
     @param **kwargs: Kwargs to pass through.
     """
     if ts_mon_config:
-        context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
         try:
             context = ts_mon_config.SetupTsMonGlobalState(*args, **kwargs)
             if hasattr(context, '__exit__'):
