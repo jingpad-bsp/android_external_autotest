@@ -45,7 +45,7 @@ def run(machine):
 
     repeat = int(args_dict.get("repeat", 1))
 
-    default_actions = str("unplug,plug")
+    default_actions = str("reboot,login")
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
