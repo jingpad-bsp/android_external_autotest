@@ -87,6 +87,9 @@ ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'enable_ssh_connection_for_devserver', type=bool,
         default=False)
 
+# Directory to save auto-update logs
+AUTO_UPDATE_LOG_DIR = 'autoupdate_logs'
+
 DEFAULT_SUBNET_MASKBIT = 19
 
 _timer = autotest_stats.Timer('devserver')
@@ -1581,6 +1584,8 @@ class ImageServer(ImageServerBase):
         """
         call = self.build_call('collect_cros_au_log', **kwargs)
         response = self.run_call(call)
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
         write_file = os.path.join(
                 log_dir, 'CrOS_update_%s_%s.log' % (
                         kwargs['host_name'], kwargs['pid']))
@@ -1604,11 +1609,6 @@ class ImageServer(ImageServerBase):
         @return: True if auto-update log is successfully collected, False
           otherwise.
         """
-        # No log_dir means no need to collect auto-update logs, thus return
-        # True.
-        if not log_dir:
-            return True
-
         if not pid:
             return False
 
@@ -1770,6 +1770,9 @@ class ImageServer(ImageServerBase):
         error_msg = 'CrOS auto-update failed for host %s: %s'
         error_msg_attempt = 'Exception raised on auto_update attempt #%s: %s'
         is_au_success = False
+        au_log_dir = os.path.join(log_dir,
+                                  AUTO_UPDATE_LOG_DIR) if log_dir else None
+
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
@@ -1789,8 +1792,11 @@ class ImageServer(ImageServerBase):
                 is_clean_success = self.clean_track_log(host_name, pid)
                 # Error happens in _collect_au_log won't be raised. Auto-update
                 # process will be retried.
-                is_collect_success = self.collect_au_log(host_name, pid,
-                                                         log_dir)
+                if au_log_dir:
+                    is_collect_success = self.collect_au_log(
+                            host_name, pid, au_log_dir)
+                else:
+                    is_collect_success = True
                 # If any error is raised previously, log it and retry
                 # auto-update. Otherwise, claim a success CrOS auto-update.
                 if not raised_error and is_clean_success and is_collect_success:
