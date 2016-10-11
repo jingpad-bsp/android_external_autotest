@@ -6,7 +6,7 @@ import logging
 import utils
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
 
 class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
@@ -39,47 +39,49 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
     """
     version = 1
 
-    POLICY_NAME = 'ImagesAllowedForUrls'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
-    URL_PAGE = '/kittens.html'
-    TEST_URL = URL_BASE + URL_PAGE
-    MINIMUM_IMAGE_WIDTH = 640
-
-    URL1_DATA = [URL_HOST]
-    URL2_DATA = ['http://www.bing.com', 'https://www.yahoo.com']
-    URL3_DATA = ['http://www.bing.com', URL_BASE,
-                 'https://www.yahoo.com']
-
-    TEST_CASES = {
-        'NotSet_Block': None,
-        '1Url_Allow': URL1_DATA,
-        '2Urls_Block': URL2_DATA,
-        '3Urls_Allow': URL3_DATA
-    }
-
-    STARTUP_URLS = ['chrome://policy', 'chrome://settings']
-    SUPPORTING_POLICIES = {
-        'DefaultImagesSetting': 2,
-        'BookmarkBarEnabled': False,
-        'RestoreOnStartupURLs': STARTUP_URLS,
-        'RestoreOnStartup': 4
-    }
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_ImagesAllowedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT)
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'ImagesAllowedForUrls'
+        self.TEST_FILE = 'kittens.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+        self.MINIMUM_IMAGE_WIDTH = 640
+
+        self.URL1_DATA = [self.WEB_HOST]
+        self.URL2_DATA = ['http://www.bing.com', 'https://www.yahoo.com']
+        self.URL3_DATA = ['http://www.bing.com', self.WEB_HOST,
+                          'https://www.yahoo.com']
+        self.TEST_CASES = {
+            'NotSet_Block': None,
+            '1Url_Allow': self.URL1_DATA,
+            '2Urls_Block': self.URL2_DATA,
+            '3Urls_Allow': self.URL3_DATA
+        }
+        self.STARTUP_URLS = ['chrome://policy', 'chrome://settings']
+        self.SUPPORTING_POLICIES = {
+            'DefaultImagesSetting': 2,
+            'BookmarkBarEnabled': False,
+            'RestoreOnStartupURLs': self.STARTUP_URLS,
+            'RestoreOnStartup': 4
+        }
+
 
     def _wait_for_page_ready(self, tab):
         utils.poll_for_condition(
             lambda: tab.EvaluateJavaScript('pageReady'),
             exception=error.TestError('Test page is not ready.'))
 
+
     def _is_image_blocked(self, tab):
         image_width = tab.EvaluateJavaScript(
             "document.getElementById('kittens_id').naturalWidth")
         return image_width < self.MINIMUM_IMAGE_WIDTH
+
 
     def _test_images_allowed_for_urls(self, policy_value, policies_dict):
         """Verify CrOS enforces the ImagesAllowedForUrls policy.
@@ -101,16 +103,17 @@ class policy_ImagesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         self._wait_for_page_ready(tab)
         image_is_blocked = self._is_image_blocked(tab)
 
-        # String |URL_HOST| shall be found in string |policy_value| for test
+        # String |WEB_HOST| shall be found in string |policy_value| for test
         # cases 1Url_Allow and 3Urls_Allow, but not for NotSet_Block and
         # 2Urls_Block.
-        if policy_value is not None and self.URL_HOST in policy_value:
+        if policy_value is not None and self.WEB_HOST in policy_value:
             if image_is_blocked:
                 raise error.TestFail('Image should not be blocked.')
         else:
             if not image_is_blocked:
                 raise error.TestFail('Image should be blocked.')
         tab.Close()
+
 
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.

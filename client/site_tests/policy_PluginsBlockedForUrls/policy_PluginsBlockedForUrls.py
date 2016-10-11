@@ -6,7 +6,7 @@ import logging
 import utils
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.cros import enterprise_policy_base
+from autotest_lib.client.cros.enterprise import enterprise_policy_base
 from autotest_lib.client.cros.audio import audio_helper
 
 
@@ -35,37 +35,38 @@ class policy_PluginsBlockedForUrls(
     """
     version = 1
 
-    POLICY_NAME = 'PluginsBlockedForUrls'
-    URL_HOST = 'http://localhost'
-    URL_PORT = 8080
-    URL_BASE = '%s:%d' % (URL_HOST, URL_PORT)
-    URL_PAGE = '/plugin_status.html'
-    TEST_URL = URL_BASE + URL_PAGE
-
-    INCLUDES_BLOCKED_URL = ['http://www.bing.com', URL_BASE,
-                            'https://www.yahoo.com']
-    EXCLUDES_BLOCKED_URL = ['http://www.bing.com', 'https://www.irs.gov/',
-                            'https://www.yahoo.com']
-    TEST_CASES = {
-        'SiteBlocked_Block': INCLUDES_BLOCKED_URL,
-        'SiteNotBlocked_Run': EXCLUDES_BLOCKED_URL,
-        'NotSet_Run': None
-    }
-    STARTUP_URLS = ['chrome://policy', 'chrome://settings']
-    SUPPORTING_POLICIES = {
-        'DefaultPluginsSetting': 1,
-        'DisablePluginFinder': True,
-        'AllowOutdatedPlugins': False,
-        'AlwaysAuthorizePlugins': False,
-        'BookmarkBarEnabled': True,
-        'EditBookmarkEnabled': True,
-        'RestoreOnStartupURLs': STARTUP_URLS,
-        'RestoreOnStartup': 4
-    }
-
     def initialize(self, **kwargs):
+        self._initialize_test_constants()
         super(policy_PluginsBlockedForUrls, self).initialize(**kwargs)
-        self.start_webserver(self.URL_PORT, self.cros_policy_dir())
+        self.start_webserver()
+
+
+    def _initialize_test_constants(self):
+        """Initialize test-specific constants, some from class constants."""
+        self.POLICY_NAME = 'PluginsBlockedForUrls'
+        self.TEST_FILE = 'plugin_status.html'
+        self.TEST_URL = '%s/%s' % (self.WEB_HOST, self.TEST_FILE)
+        self.INCLUDES_BLOCKED_URL = ['http://www.bing.com', self.WEB_HOST,
+                                     'https://www.yahoo.com']
+        self.EXCLUDES_BLOCKED_URL = ['http://www.bing.com',
+                                     'https://www.irs.gov/',
+                                     'https://www.yahoo.com']
+        self.TEST_CASES = {
+            'SiteBlocked_Block': self.INCLUDES_BLOCKED_URL,
+            'SiteNotBlocked_Run': self.EXCLUDES_BLOCKED_URL,
+            'NotSet_Run': None
+        }
+        self.STARTUP_URLS = ['chrome://policy', 'chrome://settings']
+        self.SUPPORTING_POLICIES = {
+            'DefaultPluginsSetting': 1,
+            'DisablePluginFinder': True,
+            'AllowOutdatedPlugins': False,
+            'AlwaysAuthorizePlugins': False,
+            'BookmarkBarEnabled': True,
+            'EditBookmarkEnabled': True,
+            'RestoreOnStartupURLs': self.STARTUP_URLS,
+            'RestoreOnStartup': 4
+        }
 
 
     def _wait_for_page_ready(self, tab):
@@ -138,9 +139,9 @@ class policy_PluginsBlockedForUrls(
         plugin_is_running = self._is_flash_running()
         logging.info('plugin_is_running: %r', plugin_is_running)
 
-        # String |URL_HOST| will be found in string |policy_value| for
+        # String |WEB_HOST| will be found in string |policy_value| for
         # cases that expect the plugin to be run.
-        if policy_value is not None and self.URL_HOST in policy_value:
+        if policy_value is not None and self.WEB_HOST in policy_value:
             if plugin_is_running:
                 raise error.TestFail('Plugins should not run.')
         else:
