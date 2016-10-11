@@ -3,10 +3,8 @@
 # found in the LICENSE file.
 
 import csv
-import getopt
 import logging
 import os
-import re
 
 from collections import namedtuple
 
@@ -23,16 +21,39 @@ PS_FIELDS = (
     'ruser:%(usermax)d',
     'egroup:%(groupmax)d',
     'rgroup:%(groupmax)d',
+    'ipcns',
+    'mntns',
+    'netns',
+    'pidns',
+    'userns',
+    'utsns',
     'args',
 )
+# These fields aren't available via ps, so we have to get them indirectly.
+# Note: Case is significant as the fields match the /proc/PID/status file.
+# Note: Order is significant as it matches order in the /proc/PID/status file.
+STATUS_FIELDS = (
+    'CapInh',
+    'CapPrm',
+    'CapEff',
+    'CapBnd',
+    'Seccomp',
+)
 PsOutput = namedtuple("PsOutput",
-                      ' '.join([field.split(':')[0] for field in PS_FIELDS]))
+                      ' '.join([field.split(':')[0].lower()
+                                for field in PS_FIELDS + STATUS_FIELDS]))
 
-MINIJAIL_OPTS = { "mj_uid": "-u",
-                  "mj_gid": "-g",
-                  "mj_pidns": "-p",
-                  "mj_caps": "-c",
-                  "mj_filter": "-S" }
+# Constants that match the values in /proc/PID/status Seccomp field.
+# See `man 5 proc` for more details.
+SECCOMP_MODE_DISABLED = '0'
+SECCOMP_MODE_STRICT = '1'
+SECCOMP_MODE_FILTER = '2'
+# For human readable strings.
+SECCOMP_MAP = {
+    SECCOMP_MODE_DISABLED: 'disabled',
+    SECCOMP_MODE_STRICT: 'strict',
+    SECCOMP_MODE_FILTER: 'filter',
+}
 
 
 class security_SandboxedServices(test.test):
@@ -41,31 +62,6 @@ class security_SandboxedServices(test.test):
     """
 
     version = 1
-
-
-    def get_minijail_opts(self):
-        """Parses Minijail's help and generates a getopt string.
-        """
-
-        help = utils.system_output("minijail0 -h", ignore_status=True)
-        help_lines = help.splitlines()[1:]
-
-        opt_list = []
-
-        for line in help_lines:
-            # Example lines:
-            #     '  -c <caps>:  restrict caps to <caps>'
-            #     '  -s:         use seccomp'
-            m = re.search("-(\w)( <.+>)?:", line)
-
-            if m:
-                opt_list.append(m.groups()[0])
-
-                if m.groups()[1]:
-                    # The option takes an argument
-                    opt_list.append(':')
-
-        return ''.join(opt_list)
 
 
     def get_running_processes(self):
@@ -88,10 +84,33 @@ class security_SandboxedServices(test.test):
         ps_fields_len = len(PS_FIELDS)
 
         output = utils.system_output(ps_cmd)
-        # crbug.com/422700: Filter out zombie processes.
-        running_processes = [PsOutput(*line.split(None, ps_fields_len - 1))
-                             for line in output.splitlines()
-                             if "<defunct>" not in line]
+
+        # Fill in fields that `ps` doesn't support but are in /proc/PID/status.
+        cmd = (
+            "awk '$1 ~ \"^(Pid|%s):\" "
+            "{printf \"%%s \", $NF; if ($1 == \"%s:\") printf \"\\n\"}'"
+            " /proc/[1-9]*/status"
+        ) % ('|'.join(STATUS_FIELDS), STATUS_FIELDS[-1])
+        status_output = utils.system_output(cmd)
+        status_data = dict(line.split(None, 1)
+                           for line in status_output.splitlines())
+
+        # Now merge the two sets of process data.
+        missing_status_fields = [None] * len(STATUS_FIELDS)
+        running_processes = []
+        for line in output.splitlines():
+            # crbug.com/422700: Filter out zombie processes.
+            if '<defunct>' in line:
+                continue
+
+            fields = line.split(None, ps_fields_len - 1)
+            pid = fields[0]
+            if pid in status_data:
+                status_fields = status_data[pid].split()
+            else:
+                status_fields = missing_status_fields
+            running_processes.append(PsOutput(*fields + status_fields))
+
         return running_processes
 
 
@@ -112,40 +131,6 @@ class security_SandboxedServices(test.test):
 
         exclusions_path = os.path.join(self.bindir, 'exclude')
         return set([line.strip() for line in open(exclusions_path)])
-
-
-    def minijail_ok(self, launcher, expected):
-        """Checks whether the Minijail invocation
-        has the correct command-line options.
-
-        @param launcher: Minijail command line for the process.
-        @param expected: Sandboxing restrictions expected.
-        """
-
-        opts, args = getopt.getopt(launcher.args.split()[1:],
-                                   self.get_minijail_opts())
-        optset = set([opt[0] for opt in opts])
-
-        missing_opts = []
-        new_opts = []
-
-        for check, opt in MINIJAIL_OPTS.iteritems():
-            if expected[check] == "Yes":
-                if opt not in optset:
-                    missing_opts.append(check)
-            elif expected[check] == "No":
-                if opt in optset:
-                    new_opts.append(check)
-
-        if len(new_opts) > 0:
-            logging.error("New Minijail opts for '%s': %s",
-                          expected["exe"], ', '.join(new_opts))
-
-        if len(missing_opts) > 0:
-            logging.error("Missing Minijail options for '%s': %s",
-                          expected["exe"], ', '.join(missing_opts))
-
-        return (len(new_opts) + len(missing_opts)) == 0
 
 
     def dump_services(self, running_services, minijail_processes):
@@ -185,6 +170,7 @@ class security_SandboxedServices(test.test):
 
         kthreadd_pid = -1
 
+        init_process = None
         running_services = {}
         minijail_processes = {}
 
@@ -194,6 +180,9 @@ class security_SandboxedServices(test.test):
 
             if exe == "kthreadd":
                 kthreadd_pid = process.pid
+                continue
+            elif exe == 'init':
+                init_process = process
                 continue
 
             # Don't worry about kernel threads
@@ -224,25 +213,34 @@ class security_SandboxedServices(test.test):
 
             # If the process is not running as the correct user
             if process.euser != baseline[exe]["euser"]:
+                logging.error('%s: bad user: wanted "%s" but got "%s"',
+                              exe, baseline[exe]['euser'], process.euser)
                 sandbox_delta.append(exe)
                 continue
 
             # If the process is not running as the correct group
             if process.egroup != baseline[exe]['egroup']:
+                logging.error('%s: bad group: wanted "%s" but got "%s"',
+                              exe, baseline[exe]['egroup'], process.egroup)
                 sandbox_delta.append(exe)
                 continue
 
-            # If this process is supposed to be sandboxed
-            if baseline[exe]["mj_uid"] == "Yes":
-                # If it's not being launched from Minijail,
-                # it's not sandboxed wrt the baseline.
-                if process.ppid not in minijail_processes:
-                    sandbox_delta.append(exe)
-                else:
-                    launcher = minijail_processes[process.ppid]
-                    expected = baseline[exe]
-                    if not self.minijail_ok(launcher, expected):
-                        sandbox_delta.append(exe)
+            # Check the various sandbox settings.
+            if (baseline[exe]['pidns'] == 'Yes' and
+                    process.pidns == init_process.pidns):
+                logging.error('%s: missing pid ns usage', exe)
+                sandbox_delta.append(exe)
+            elif (baseline[exe]['caps'] == 'Yes' and
+                  process.capeff == init_process.capeff):
+                logging.error('%s: missing caps usage', exe)
+                sandbox_delta.append(exe)
+            elif (baseline[exe]['filter'] == 'Yes' and
+                  process.seccomp != SECCOMP_MODE_FILTER):
+                logging.error('%s: missing seccomp usage: wanted %s (%s) but '
+                              'got %s (%s)', exe, SECCOMP_MODE_FILTER,
+                              SECCOMP_MAP[SECCOMP_MODE_FILTER], process.seccomp,
+                              SECCOMP_MAP.get(process.seccomp, '???'))
+                sandbox_delta.append(exe)
 
         # Save current run to results dir
         self.dump_services(running_services.values(), minijail_processes)
