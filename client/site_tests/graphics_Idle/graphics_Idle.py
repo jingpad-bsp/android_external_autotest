@@ -224,40 +224,32 @@ class graphics_Idle(test.test):
 
         if use_devfreq:
             governor_path = utils.locate_file('governor', node)
-            max_freq_path = utils.locate_file('max_freq', node)
-            min_freq_path = utils.locate_file('min_freq', node)
             clock_path = utils.locate_file('cur_freq', node)
 
             governor = utils.read_one_line(governor_path)
-            max_freq = int(utils.read_one_line(max_freq_path))
-            min_freq = int(utils.read_one_line(min_freq_path))
-
             logging.info('DVFS governor = %s', governor)
             if not governor == 'simple_ondemand':
                 logging.error('Error: DVFS governor is not simple_ondemand.')
                 return self.handle_error('Governor is wrong.')
-
-            logging.info('DVFS freq min = %u, max = %u', min_freq, max_freq)
-            if min_freq >= max_freq:
-                logging.error('Error: DVFS freq min >= max')
-                return self.handle_error('Frequency settings are wrong.')
         else:
             clock_path = utils.locate_file('clock', node)
             enable_path = utils.locate_file(enable_node, node)
-            freqs_path = utils.locate_file('available_frequencies', node)
 
             enable = utils.read_one_line(enable_path)
             logging.info('DVFS enable = %s', enable)
             if not enable == enable_value:
                 return self.handle_error('DVFS is not enabled. ')
 
-            # available_frequencies are always sorted in ascending order
-            min_freq = int(utils.read_one_line(freqs_path))
+        freqs_path = utils.locate_file('available_frequencies', node)
 
-            # daisy_* (exynos5250) boards set idle frequency to 266000000
-            # See: crbug.com/467401 and crosbug.com/p/19710
-            if self._board.startswith('daisy'):
-                min_freq = 266000000
+        # available_frequencies are always sorted in ascending order
+        # each line may contain one or multiple integers separated by spaces
+        min_freq = int(utils.read_one_line(freqs_path).split()[0])
+
+        # daisy_* (exynos5250) boards set idle frequency to 266000000
+        # See: crbug.com/467401 and crosbug.com/p/19710
+        if self._board.startswith('daisy'):
+            min_freq = 266000000
 
         logging.info('Expecting idle DVFS clock = %u', min_freq)
         tries = 0
