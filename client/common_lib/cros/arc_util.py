@@ -25,7 +25,8 @@ _USERNAME = 'powerloadtest@gmail.com'
 _USERNAME_DISPLAY = 'power.loadtest@gmail.com'
 _PLTP_URL = 'https://sites.google.com/a/chromium.org/dev/chromium-os' \
                 '/testing/power-testing/pltp/pltp'
-
+_OPT_IN_BEGIN = 'Initializing ARC opt-in flow.'
+_OPT_IN_FINISH = 'ARC opt-in flow complete.'
 
 def should_start_arc(arc_mode):
     """
@@ -141,7 +142,7 @@ def opt_in(browser):
     @raises: error.TestFail if opt in fails.
 
     """
-    logging.info('Initializing arc opt-in flow.')
+    logging.info(_OPT_IN_BEGIN)
 
     opt_in_extension_id = extension_page.UrlToExtensionId(_ARC_SUPPORT_HOST_URL)
     try:
@@ -246,4 +247,4 @@ def opt_in(browser):
             raise error.TestFail('Opt-in app did not finish running after %s '
                                  'seconds!' % SIGN_IN_TIMEOUT)
 
-    logging.info('Arc opt-in flow complete.')
+    logging.info(_OPT_IN_FINISH)
