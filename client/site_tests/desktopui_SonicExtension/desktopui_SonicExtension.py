@@ -118,7 +118,6 @@ class desktopui_SonicExtension(test.test):
         logging.info('Starting sonic client test.')
         kwargs = {
             'extension_paths': [self._extension_dir],
-            'is_component': True,
             'extra_chrome_flags': [self._settings['extra_flags']],
         }
         with chromedriver.chromedriver(**kwargs) as chromedriver_instance:
