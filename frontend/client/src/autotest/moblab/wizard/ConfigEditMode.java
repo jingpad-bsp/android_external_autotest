@@ -230,7 +230,7 @@ public class ConfigEditMode
               reset();
               wizard.onFinishEdit();
               NotifyManager.getInstance().showMessage(
-                  "Configuration is submitted. Device is rebooted "
+                  "Configuration is submitted. Some services are being restarted "
                   + "for new change to take effect.");
             } else {
               String details = status.getDetails();
