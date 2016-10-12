@@ -1683,6 +1683,22 @@ class ImageServer(ImageServerBase):
             """
             try:
                 response = json.loads(self.run_call(call))
+                # This is a temp fix to fit both dict and tuple returning
+                # values. The dict check will be removed after a corresponding
+                # devserver CL is deployed.
+                if isinstance(response, dict):
+                    if response.get('detailed_error_msg'):
+                        raise DevServerException(
+                                response.get('detailed_error_msg'))
+
+                    if response.get('finished'):
+                        logging.debug('CrOS auto-update is finished')
+                        return True
+                    else:
+                        logging.debug('Current CrOS auto-update status: %s',
+                                      response.get('status'))
+                        return False
+
                 if not response[0]:
                     logging.debug('Current CrOS auto-update status: %s',
                                   response[1])
@@ -1748,6 +1764,11 @@ class ImageServer(ImageServerBase):
             return raised_error, pid
 
 
+    def _parse_AU_error(self, response):
+        """Parse auto_update error returned from devserver."""
+        return re.split('\n', response)[-1]
+
+
     def auto_update(self, host_name, build_name, log_dir=None,
                     force_update=False, full_update=False):
         """Auto-update a CrOS host.
@@ -1769,11 +1790,11 @@ class ImageServer(ImageServerBase):
                   'full_update': full_update}
 
         error_msg = 'CrOS auto-update failed for host %s: %s'
-        error_msg_attempt = 'Exception raised on auto_update attempt #%s: %s'
+        error_msg_attempt = 'Exception raised on auto_update attempt #%s:\n%s'
         is_au_success = False
         au_log_dir = os.path.join(log_dir,
                                   AUTO_UPDATE_LOG_DIR) if log_dir else None
-
+        error_list = []
         for au_attempt in range(AU_RETRY_LIMIT):
             logging.debug('Start CrOS auto-update for host %s at %d time(s).',
                           host_name, au_attempt + 1)
@@ -1785,6 +1806,7 @@ class ImageServer(ImageServerBase):
                 response = self._trigger_auto_update(**kwargs)
             except DevServerException as e:
                 logging.debug(error_msg_attempt, au_attempt+1, str(e))
+                error_list.append(str(e))
             else:
                 raised_error, pid = self.wait_for_auto_update_finished(response,
                                                                        **kwargs)
@@ -1809,31 +1831,37 @@ class ImageServer(ImageServerBase):
                     if raised_error:
                         logging.debug(error_msg_attempt, au_attempt+1,
                                       str(raised_error))
+                        error_list.append(self._parse_AU_error(str(raised_error)))
                     if not self.kill_au_process_for_host(host_name):
                         logging.debug('Failed to kill auto_update process %d',
                                       pid)
 
-                # Already reached the auto-update retry limit, report failure.
-                if au_attempt >= AU_RETRY_LIMIT:
-                    raise DevServerException(
-                            error_msg % (host_name,
-                                         'has reached AU retry limit.'))
             finally:
                 if not is_au_success and au_attempt < AU_RETRY_LIMIT - 1:
                     time.sleep(CROS_AU_RETRY_INTERVAL)
                     # TODO(kevcheng): Remove this once crbug.com/651974 is
                     # fixed.
                     # DNS is broken in the cassandra lab, so use the IP of the
-                    # hostname instead if it fails.
-                    host_name = socket.gethostbyname(host_name)
-                    kwargs['host_name'] = host_name
+                    # hostname instead if it fails. Not rename host_name here
+                    # for error msg reporting.
+                    host_name_ip = socket.gethostbyname(host_name)
+                    kwargs['host_name'] = host_name_ip
                     logging.debug(
                             'AU failed, trying IP instead of hostname: %s',
-                            host_name)
+                            host_name_ip)
 
         if not is_au_success:
-            raise DevServerException(
-                    error_msg % (host_name, 'has reached AU retry limit.'))
+            # If errors happen in the CrOS AU process, report the first error
+            # since the following errors might be caused by the first error.
+            # If error happens in RPCs of cleaning track log, collecting
+            # auto-update logs, or killing auto-update processes, just report
+            # them together.
+            if error_list:
+                raise DevServerException(error_msg % (host_name, error_list[0]))
+            else:
+                raise DevServerException(error_msg % (
+                        host_name, ('RPC calls after the whole auto-update '
+                                    'process failed.')))
 
 
 class AndroidBuildServer(ImageServerBase):
