@@ -224,7 +224,7 @@ class DrmModeFB(Structure):
         if self._l:
             self._l.drmModeFreeFB(self)
 
-    def map(self):
+    def map(self, size):
         """
         Map the framebuffer.
         """
@@ -239,8 +239,6 @@ class DrmModeFB(Structure):
                               pointer(mapDumb))
         if rv:
             raise IOError(rv, os.strerror(rv))
-
-        size = self.pitch * self.height
 
         # mmap.mmap() has a totally different order of arguments in Python
         # compared to C; check the documentation before altering this
@@ -370,17 +368,23 @@ def _bgrx24(i):
     return r, g, b
 
 
-def _copyImageBlocklinear(image, fb, m, unformat):
+def _copyImageBlocklinear(image, fb, unformat):
     gobPitch = 64
     gobHeight = 128
     while gobHeight > 8 and gobHeight >= 2 * fb.height:
         gobHeight //= 2
     gobSize = gobPitch * gobHeight
     gobWidth = gobPitch // (fb.bpp // 8)
+
+    gobCountX = (fb.pitch + gobPitch - 1) // gobPitch
+    gobCountY = (fb.height + gobHeight - 1) // gobHeight
+    fb.map(gobCountX * gobCountY * gobSize)
+    m = fb._map
+
     offset = 0
-    for gobY in range((fb.height + gobHeight - 1) // gobHeight):
+    for gobY in range(gobCountY):
         gobTop = gobY * gobHeight
-        for gobX in range((fb.width + gobWidth - 1) // gobWidth):
+        for gobX in range(gobCountX):
             m.seek(offset)
             gob = m.read(gobSize)
             iterGob = iter(gob)
@@ -393,9 +397,12 @@ def _copyImageBlocklinear(image, fb, m, unformat):
                     if gobLeft + x < fb.width:
                         image.putpixel((gobLeft + x, gobTop + y), rgb)
             offset += gobSize
+    fb.unmap()
 
 
-def _copyImageLinear(image, fb, m, unformat):
+def _copyImageLinear(image, fb, unformat):
+    fb.map(fb.pitch * fb.height)
+    m = fb._map
     pitch = fb.pitch
     lineLength = fb.width * fb.bpp // 8
     for y in range(fb.height):
@@ -406,26 +413,19 @@ def _copyImageLinear(image, fb, m, unformat):
         for x in range(fb.width):
             rgb = unformat(ichannels)
             image.putpixel((x, y), rgb)
+    fb.unmap()
 
 
 def _screenshot(drm, image, fb):
-    fb.map()
-    m = fb._map
-    pixels = []
-
     if fb.depth == 24:
         unformat = _bgrx24
     else:
         raise RuntimeError("Couldn't unformat FB: %r" % fb)
 
     if drm.version().name == "tegra":
-        _copyImageBlocklinear(image, fb, m, unformat)
+        _copyImageBlocklinear(image, fb, unformat)
     else:
-        _copyImageLinear(image, fb, m, unformat)
-
-    fb.unmap()
-
-    return pixels
+        _copyImageLinear(image, fb, unformat)
 
 
 _drm = None
@@ -452,7 +452,7 @@ def crtcScreenshot(crtc_id=None):
         if crtc is not None:
             framebuffer = crtc.fb()
             image = Image.new("RGB", (framebuffer.width, framebuffer.height))
-            pixels = _screenshot(_drm, image, framebuffer)
+            _screenshot(_drm, image, framebuffer)
             return image
 
     raise RuntimeError(
