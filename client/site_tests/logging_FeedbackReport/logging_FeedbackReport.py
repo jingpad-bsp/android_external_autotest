@@ -50,7 +50,7 @@ class logging_FeedbackReport(test.test):
         for element in elements:
             js = "document.getElementById('%s') != null" % element
             if not self.feedback_app.EvaluateJavaScript(js):
-                logging.info("%s not enabled." % element)
+                logging.info("%s not enabled.", element)
                 return False
 
         return True
@@ -69,8 +69,7 @@ class logging_FeedbackReport(test.test):
 
     def run_once(self):
         """Run the test."""
-        with chrome.Chrome(is_component=False,
-                           disable_default_apps=False) as cr:
+        with chrome.Chrome(disable_default_apps=False) as cr:
             # Open and confirm feedback app is working.
             time.sleep(self._WAIT)
             self._open_feedback()
