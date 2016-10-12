@@ -3,11 +3,10 @@
 # found in the LICENSE file.
 
 import json, logging, os, re, tempfile, time, urllib2, zipfile
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error, file_utils
 from autotest_lib.client.common_lib.cros import chromedriver
 
-from selenium.webdriver.common.keys import Keys
 
 UPDATE_CHECK_URL = ('https://clients2.google.com/service/update2/'
                     'crx?x=id%%3D%s%%26v%%3D0%%26uc&prodversion=32.0.0.0')
@@ -222,10 +221,7 @@ class network_CastTDLS(test.test):
         self._download_extension_crx(crx_file)
         self._unzip_file(crx_file, unzip_crx_folder)
         self._modify_manifest(unzip_crx_folder)
-        kwargs = {
-            'extension_paths': [unzip_crx_folder],
-            'is_component': True,
-        }
+        kwargs = { 'extension_paths': [unzip_crx_folder] }
         with chromedriver.chromedriver(**kwargs) as chromedriver_instance:
             driver = chromedriver_instance.driver
             extension_id = chromedriver_instance.get_extension(
