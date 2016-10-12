@@ -10,6 +10,7 @@ import urllib2
 
 import common
 from autotest_lib.client.common_lib import error, global_config
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.server.hosts import cros_host
 from autotest_lib.server.hosts import cros_repair
@@ -242,13 +243,27 @@ class MoblabHost(cros_host.CrosHost):
         self._verify_duts()
 
 
+    @retry.retry(error.AutoservError, timeout_min=2, delay_sec=10)
+    def _verify_upstart_service(self, service):
+        """Retry to verify the required moblab services are up and running.
+
+        Regarding crbug.com/649811, moblab services takes longer to restart
+        under the new provision framework. This is a fix to retry the service
+        check until all services are successfully restarted.
+
+        @param service: the moblab upstart service.
+
+        @return True if this service is started and running, otherwise False.
+        """
+        return self.upstart_status(service)
+
     def _verify_moblab_services(self):
         """Verify the required Moblab services are up and running.
 
         @raises AutoservError if any moblab service is not running.
         """
         for service in MOBLAB_SERVICES:
-            if not self.upstart_status(service):
+            if not self._verify_upstart_service(service):
                 raise error.AutoservError('Moblab service: %s is not running.'
                                           % service)
         for process in MOBLAB_PROCESSES:
