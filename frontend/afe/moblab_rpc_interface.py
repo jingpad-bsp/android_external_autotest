@@ -444,9 +444,11 @@ def submit_wizard_config_info(cloud_storage_info):
         _write_config_file(MOBLAB_BOTO_LOCATION, boto_config, True)
 
     _CONFIG.parse_config_file()
-
-    # TODO(ntang): replace reboot with less intrusive reloading.
-    os.system('sudo reboot')
+    services = ['moblab-devserver-init', 'moblab-apache-init',
+    'moblab-devserver-cleanup-init', ' moblab-gsoffloader_s-init',
+    'moblab-base-container-init', 'moblab-scheduler-init', 'moblab-gsoffloader-init']
+    cmd = ';/sbin/restart '.join(services)
+    os.system(cmd)
 
     return _create_operation_status_response(True, None)
 
