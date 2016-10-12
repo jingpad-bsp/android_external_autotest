@@ -42,7 +42,7 @@ class enterprise_CFM_Perf(test.test):
 
     def _temperature_data(self):
         """Returns temperature sensor data in fahrenheit."""
-        ectool = self.client.run('which ectool', ignore_status=True)
+        ectool = self.client.run('ectool version', ignore_status=True)
         if not ectool.exit_status:
             ec_temp = self.system_facade.get_ec_temperatures()
             return ec_temp[1]
