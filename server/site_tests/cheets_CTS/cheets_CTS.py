@@ -25,12 +25,10 @@ from autotest_lib.server.cros import tradefed_test
 # takes a bit more than 6 minutes (mostly for reboot, login, starting ARC).
 # In other words a RETRY of 10 takes about 1h, which is well within the limit of
 # the 4h TIMEOUT. Nevertheless RETRY steps will cause the test to end with a
-# test warning and should be treated as serious bugs. As bugs are more likely
-# on dev and beta channels (and we test more builds), we won't retry too hard
-# on these channels.
+# test warning and should be treated as serious bugs.
 # Finally, if we have a true test hang or even reboot, tradefed currently will
 # likely hang unit the TIMEOUT hits and no RETRY steps will happen.
-_CTS_MAX_RETRY = {'dev': 3, 'beta': 5, 'stable': 7}
+_CTS_MAX_RETRY = {'dev': 9, 'beta': 9, 'stable': 9}
 # Maximum default time allowed for each individual CTS package.
 _CTS_TIMEOUT_SECONDS = (4 * 3600)
 
