@@ -389,13 +389,12 @@ def _copyImageBlocklinear(image, fb, unformat):
             gob = m.read(gobSize)
             iterGob = iter(gob)
             gobLeft = gobX * gobWidth
-            for y in range(gobHeight):
-                if gobTop + y >= fb.height:
-                    break
-                for x in range(gobWidth):
-                    rgb = unformat(iterGob)
-                    if gobLeft + x < fb.width:
-                        image.putpixel((gobLeft + x, gobTop + y), rgb)
+            for i in range(gobWidth * gobHeight):
+                rgb = unformat(iterGob)
+                x = gobLeft + (((i >> 3) & 8) | ((i >> 1) & 4) | (i & 3))
+                y = gobTop + ((i >> 7 << 3) | ((i >> 3) & 6) | ((i >> 2) & 1))
+                if x < fb.width and y < fb.height:
+                    image.putpixel((x, y), rgb)
             offset += gobSize
     fb.unmap()
 
