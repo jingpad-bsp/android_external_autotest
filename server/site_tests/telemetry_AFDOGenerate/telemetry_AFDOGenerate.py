@@ -43,9 +43,9 @@ from autotest_lib.server.cros import telemetry_runner
 TELEMETRY_AFDO_BENCHMARKS = (
     ('page_cycler_v2.typical_25', ('--pageset-repeat=1',)),
     ('page_cycler_v2.intl_ja_zh', ('--pageset-repeat=1',)),
-    ('page_cycler_v2.intl_ar_fa_he', ('--pageset-repeat=1',)),
-    ('page_cycler_v2.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
-    # Temporarily disable these two benchmarks to finish in 30 minutes.
+    # Temporarily disable these two benchmarks to finish in 60 minutes.
+    # ('page_cycler_v2.intl_ar_fa_he', ('--pageset-repeat=1',)),
+    # ('page_cycler_v2.intl_es_fr_pt-BR', ('--pageset-repeat=1',)),
     # ('page_cycler_v2.intl_ko_th_vi', ('--pageset-repeat=1',)),
     # ('page_cycler_v2.intl_hi_ru', ('--pageset-repeat=1',)),
     ('octane',),
