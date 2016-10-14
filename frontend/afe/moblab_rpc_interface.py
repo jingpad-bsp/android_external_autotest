@@ -18,16 +18,18 @@ except ImportError:
 import ConfigParser
 import logging
 import os
+import re
 import shutil
 import socket
-import re
-
+import subprocess
 import common
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server.hosts import moblab_host
+
 
 _CONFIG = global_config.global_config
 MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
@@ -45,6 +47,11 @@ _GS_SECRETE_ACCESS_KEY = 'gs_secret_access_key'
 _RESULT_STORAGE_SERVER = 'results_storage_server'
 _USE_EXISTING_BOTO_FILE = 'use_existing_boto_file'
 
+# Location where dhcp leases are stored.
+_DHCPD_LEASES = '/var/lib/dhcp/dhcpd.leases'
+
+# File where information about the current device is stored.
+_ETC_LSB_RELEASE = '/etc/lsb-release'
 
 @rpc_utils.moblab_only
 def get_config_values():
@@ -456,10 +463,106 @@ def submit_wizard_config_info(cloud_storage_info):
 @rpc_utils.moblab_only
 def get_version_info():
     """ RPC handler to get informaiton about the version of the moblab.
+
     @return: A serialized JSON RPC object.
     """
-    lines = open('/etc/lsb-release').readlines()
-    lines.remove('')
-    version_response = {x.split('=')[0]: x.split('=')[1] for x in lines}
+    lines = open(_ETC_LSB_RELEASE).readlines()
+    version_response = {
+        x.split('=')[0]: x.split('=')[1] for x in lines if '=' in x}
     return rpc_utils.prepare_for_serialization(version_response)
+
+
+@rpc_utils.moblab_only
+def get_connected_dut_info():
+    """ RPC handler to get informaiton about the DUTs connected to the moblab.
+
+    @return: A serialized JSON RPC object.
+    """
+    # Make a list of the connected DUT's
+    leases = _get_dhcp_dut_leases()
+
+    # Get a list of the AFE configured DUT's
+    hosts = list(rpc_utils.get_host_query((), False, False, True, {}))
+    models.Host.objects.populate_relationships(hosts, models.Label,
+                                               'label_list')
+    configured_duts = {}
+    for host in hosts:
+        labels = [label.name for label in host.label_list]
+        labels.sort()
+        configured_duts[host.hostname] = ', '.join(labels)
+
+    return rpc_utils.prepare_for_serialization(
+            {'configured_duts': configured_duts,
+             'connected_duts': leases})
+
+
+def _get_dhcp_dut_leases():
+     """ Extract information about connected duts from the dhcp server.
+
+     @return: A dict of ipaddress to mac address for each device connected.
+     """
+     lease_info = open(_DHCPD_LEASES).read()
+
+     leases = {}
+     for lease in lease_info.split('lease'):
+         if lease.find('binding state active;') != -1:
+             ipaddress = lease.split('\n')[0].strip(' {')
+             last_octet = int(ipaddress.split('.')[-1].strip())
+             if last_octet > 150:
+                 continue
+             mac_address_search = re.search('hardware ethernet (.*);', lease)
+             if mac_address_search:
+                 leases[ipaddress] = mac_address_search.group(1)
+     return leases
+
+
+@rpc_utils.moblab_only
+def add_moblab_dut(ipaddress):
+    """ RPC handler to add a connected DUT to autotest.
+
+    @return: A string giving information about the status.
+    """
+    cmd = '/usr/local/autotest/cli/atest host create %s &' % ipaddress
+    subprocess.call(cmd, shell=True)
+    return (True, 'DUT %s added to Autotest' % ipaddress)
+
+
+@rpc_utils.moblab_only
+def remove_moblab_dut(ipaddress):
+    """ RPC handler to remove DUT entry from autotest.
+
+    @return: True if the command succeeds without an exception
+    """
+    models.Host.smart_get(ipaddress).delete()
+    return (True, 'DUT %s deleted from Autotest' % ipaddress)
+
+
+@rpc_utils.moblab_only
+def add_moblab_label(ipaddress, label_name):
+    """ RPC handler to add a label in autotest to a DUT entry.
+
+    @return: A string giving information about the status.
+    """
+    # Try to create the label in case it does not already exist.
+    label = None
+    try:
+        label = models.Label.add_object(name=label_name)
+    except:
+        label = models.Label.smart_get(label_name)
+    host_obj = models.Host.smart_get(ipaddress)
+    if label:
+        label.host_set.add(host_obj)
+        return (True, 'Added label %s to DUT %s' % (label_name, ipaddress))
+    return (False, 'Failed to add label %s to DUT %s' % (label_name, ipaddress))
+
+
+@rpc_utils.moblab_only
+def remove_moblab_label(ipaddress, label_name):
+    """ RPC handler to remove a label in autotest from a DUT entry.
+
+    @return: A string giving information about the status.
+    """
+    host_obj = models.Host.smart_get(ipaddress)
+    models.Label.smart_get(label_name).host_set.remove(host_obj)
+    return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
 
