@@ -238,9 +238,10 @@ class Task(object):
                     'event.')
 
         testbed_dut_count = None
-        match = re.match(TESTBED_DUT_COUNT_REGEX, boards)
-        if match:
-            testbed_dut_count = int(match.group(1))
+        if boards:
+            match = re.match(TESTBED_DUT_COUNT_REGEX, boards)
+            if match:
+                testbed_dut_count = int(match.group(1))
 
         try:
             day = config.getint(section, 'day')
