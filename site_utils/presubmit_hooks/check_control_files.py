@@ -11,13 +11,20 @@ that edits a control file.
 """
 
 
-import glob, os, re, subprocess
+import argparse
+import glob
+import os
+import re
+import subprocess
+
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
 
+DEPENDENCY_ARC = 'arc'
 SUITES_NEED_RETRY = set(['bvt-cq', 'bvt-inline', 'arc-bvt-cq'])
+TESTS_NEED_ARC = 'cheets_'
 
 
 class ControlFileCheckerError(Exception):
@@ -37,17 +44,33 @@ def CommandPrefix():
         return ['cros_sdk', '--']
 
 
-def GetOverlayPath():
-    """Return the path to the chromiumos-overlay directory."""
-    ourpath = os.path.abspath(__file__)
-    overlay = os.path.join(os.path.dirname(ourpath),
-                           "../../../../chromiumos-overlay/")
+def GetOverlayPath(overlay=None):
+    """
+    Return the path to the overlay directory.
+
+    If the overlay path is not given, the default chromiumos-overlay path
+    will be returned instead.
+
+    @param overlay: The overlay repository path for autotest ebuilds.
+
+    @return normalized absolutized path of the overlay repository.
+    """
+    if not overlay:
+        ourpath = os.path.abspath(__file__)
+        overlay = os.path.join(os.path.dirname(ourpath),
+                               "../../../../chromiumos-overlay/")
     return os.path.normpath(overlay)
 
 
-def GetAutotestTestPackages():
-    """Return a list of ebuilds which should be checked for test existance."""
-    overlay = GetOverlayPath()
+def GetAutotestTestPackages(overlay=None):
+    """
+    Return a list of ebuilds which should be checked for test existance.
+
+    @param overlay: The overlay repository path for autotest ebuilds.
+
+    @return autotest packages in overlay repository.
+    """
+    overlay = GetOverlayPath(overlay)
     packages = glob.glob(os.path.join(overlay, "chromeos-base/autotest-*"))
     # Return the packages list with the leading overlay path removed.
     return [x[(len(overlay) + 1):] for x in packages]
@@ -66,12 +89,17 @@ def GetEqueryWrappers():
     return ['equery'] + wrappers
 
 
-def GetUseFlags():
-    """Get the set of all use flags from autotest packages."""
+def GetUseFlags(overlay=None):
+    """Get the set of all use flags from autotest packages.
+
+    @param overlay: The overlay repository path for autotest ebuilds.
+
+    @returns: useflags
+    """
     useflags = set()
     for equery in GetEqueryWrappers():
         cmd_args = (CommandPrefix() + [equery, '-qC', 'uses'] +
-                    GetAutotestTestPackages())
+                    GetAutotestTestPackages(overlay))
         child = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         new_useflags = child.communicate()[0].splitlines()
@@ -174,11 +202,29 @@ def CheckRetry(ctrl_data, test_name):
                 'file for %s.' % (' or '.join(SUITES_NEED_RETRY), test_name))
 
 
+def CheckDependencies(ctrl_data, test_name):
+    """
+    Check if any dependencies of a test is required
+
+    @param ctrl_data: The control_data object for a test.
+    @param test_name: A string with the name of the test.
+
+    @raises: ControlFileCheckerError if check fails.
+    """
+    if test_name.startswith(TESTS_NEED_ARC):
+        if not DEPENDENCY_ARC in ctrl_data.dependencies:
+            raise ControlFileCheckerError(
+                    'DEPENDENCIES = \'arc\' for %s is needed' % test_name)
+
+
 def main():
     """
     Checks if all control files that are a part of this commit conform to the
     ChromeOS autotest guidelines.
     """
+    parser = argparse.ArgumentParser(description='Process overlay arguments.')
+    parser.add_argument('--overlay', default=None, help='the overlay directory path')
+    args = parser.parse_args()
     file_list = os.environ.get('PRESUBMIT_FILES')
     if file_list is None:
         raise ControlFileCheckerError('Expected a list of presubmit files in '
@@ -209,10 +255,11 @@ def main():
                 pass
 
             if not useflags:
-                useflags = GetUseFlags()
+                useflags = GetUseFlags(args.overlay)
             CheckSuites(ctrl_data, test_name, useflags)
             CheckValidAttr(ctrl_data, whitelist, test_name)
             CheckRetry(ctrl_data, test_name)
+            CheckDependencies(ctrl_data, test_name)
 
 
 if __name__ == '__main__':
