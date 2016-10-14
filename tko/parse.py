@@ -255,6 +255,11 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
             db.delete('tko_test_labels_tests', {'test_id': test_idx})
             db.delete('tko_tests', where)
 
+    # Upload job details to Sponge.
+    sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
+    if sponge_url:
+        job.keyval_dict['sponge_url'] = sponge_url
+
     # check for failures
     message_lines = [""]
     job_successful = True
@@ -329,9 +334,6 @@ def parse_one(db, jobname, path, reparse, mail_on_failure):
                          "compiling tko/tko.proto.")
 
     db.commit()
-
-    # Upload job details to Sponge.
-    sponge_utils.upload_results(job)
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop
