@@ -357,9 +357,11 @@ class HostJobHistory(object):
     for remembering the query results for reporting.
 
     @property hostname    Host name of the DUT.
-    @property start_time  Start of the requested time interval.
+    @property start_time  Start of the requested time interval, as a unix
+                          timestamp (epoch time).
                           This field may be `None`.
-    @property end_time    End of the requested time interval.
+    @property end_time    End of the requested time interval, as a unix
+                          timestamp (epoch time).
     @property _afe        Autotest frontend for queries.
     @property _host       Database host object for the DUT.
     @property _history    A list of jobs and special tasks that
