@@ -1,12 +1,15 @@
 package autotest.moblab.rpc;
 
+import com.google.gwt.json.client.JSONNumber;
 import com.google.gwt.json.client.JSONObject;
+import com.google.gwt.json.client.JSONString;
 import com.google.gwt.json.client.JSONValue;
 
 import autotest.common.JsonRpcCallback;
 import autotest.common.JsonRpcProxy;
 import autotest.common.SimpleCallback;
 
+import com.google.gwt.user.client.Window;
 import java.util.Map;
 
 /**
@@ -143,11 +146,111 @@ public class MoblabRpcHelper {
       final MoblabRpcCallbacks.FetchVersionInfoCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
     rpcProxy.rpcCall("get_version_info", null, new JsonRpcCallback() {
+          @Override
+          public void onSuccess(JSONValue result) {
+            VersionInfo info = new VersionInfo();
+            info.fromJson(result.isObject());
+            callback.onVersionInfoFetched(info);
+          }
+        });
+  }
+
+   /**
+   * Get information about the DUT's connected to the moblab.
+   */
+  public static void fetchDutInformation(
+      final MoblabRpcCallbacks.FetchConnectedDutInfoCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("get_connected_dut_info", null, new JsonRpcCallback() {
       @Override
       public void onSuccess(JSONValue result) {
-        VersionInfo info = new VersionInfo();
+        ConnectedDutInfo info = new ConnectedDutInfo();
         info.fromJson(result.isObject());
-        callback.onVersionInfoFetched(info);
+        callback.onFetchConnectedDutInfoSubmitted(info);
+      }
+    });
+  }
+
+  /**
+   * Enroll a device into the autotest syste.
+   * @param dutIpAddress ipAddress of the new DUT.
+   * @param callback Callback execute when the RPC is complete.
+   */
+  public static void addMoblabDut(String dutIpAddress,
+      final MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    rpcProxy.rpcCall("add_moblab_dut", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+  /**
+   * Remove a device from the autotest system.
+   * @param dutIpAddress ipAddress of the DUT to remove.
+   * @param callback Callback to execute when the RPC is complete.
+   */
+  public static void removeMoblabDut(String dutIpAddress,
+      final MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    rpcProxy.rpcCall("remove_moblab_dut", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+  /**
+   * Add a label to a specific DUT.
+   * @param dutIpAddress  ipAddress of the device to have the new label applied.
+   * @param labelName the label to apply
+   * @param callback callback to execute when the RPC is complete.
+   */
+  public static void addMoblabLabel(String dutIpAddress, String labelName,
+      final MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    params.put("label_name", new JSONString(labelName));
+    rpcProxy.rpcCall("add_moblab_label", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+  /**
+   * Remove a label from a specific DUT.
+   * @param dutIpAddress ipAddress of the device to have the label removed.
+   * @param labelName the label to remove
+   * @param callback callback to execute when the RPC is complete.
+   */
+  public static void removeMoblabLabel(String dutIpAddress, String labelName,
+      final MoblabRpcCallbacks.LogActionCompleteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("ipaddress", new JSONString(dutIpAddress));
+    params.put("label_name", new JSONString(labelName));
+    rpcProxy.rpcCall("remove_moblab_label", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
+        String information = result.isArray().get(1).isString().stringValue();
+        callback.onLogActionComplete(didSucceed, information);
       }
     });
   }
