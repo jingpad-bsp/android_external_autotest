@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import os.path
+import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -25,8 +26,27 @@ class platform_CUPSDaemon(test.test):
         """
 
         # Try a simple CUPS command; timeout/fail if it takes too long (i.e.,
-        # socket may exist, but it may not get passed off to cupsd propertly).
+        # socket may exist, but it may not get passed off to cupsd properly).
         utils.system_output('lpstat -W all', timeout=10)
+
+
+    def wait_for_path_exists(self, path, timeout=5):
+        """
+        Wait for a path to exist, with timeout.
+
+        @param path: path to look for
+        @param timeout: time to wait, in seconds
+
+        @return true if path is found; false otherwise
+        """
+        while timeout > 0:
+            if os.path.exists(path):
+                return True
+
+            time.sleep(1)
+            timeout -= 1
+
+        return os.path.exists(path)
 
 
     def run_once(self):
@@ -39,7 +59,7 @@ class platform_CUPSDaemon(test.test):
 
         upstart.ensure_running('upstart-socket-bridge')
 
-        if not os.path.exists(self._CUPS_SOCK_PATH):
+        if not self.wait_for_path_exists(self._CUPS_SOCK_PATH):
             raise error.TestFail('Missing CUPS socket: %s', self._CUPS_SOCK_PATH)
 
         # Make sure CUPS is stopped, so we can test on-demand launch.
