@@ -709,7 +709,7 @@ def _extension_page_load_info_handler(handler, form, loop_number, tracker):
         time_measurements.append(load_time)
         sorted_pagelt.append((url, load_time))
 
-        logging.debug("[extension] @ loop_%d url: %s load time: %s ms",
+        logging.debug("[extension] @ loop_%d url: %s load time: %d ms",
             loop_number, url, load_time)
         # we don't want to add url information to our keyvals.
         # httpd adds them automatically so we remove them again
@@ -723,9 +723,9 @@ def _extension_page_load_info_handler(handler, form, loop_number, tracker):
     for i in range(len(stats_ids)):
         key = key_base + stats_ids[i]
         if key in tracker._tmp_keyvals:
-            tracker._tmp_keyvals[key] += "_%s" % stats_vals[i]
+            tracker._tmp_keyvals[key] += "_%.2f" % stats_vals[i]
         else:
-            tracker._tmp_keyvals[key] = stats_vals[i]
+            tracker._tmp_keyvals[key] = "%.2f" % stats_vals[i]
 
 
     sorted_pagelt.sort(key=lambda item: item[1], reverse=True)
