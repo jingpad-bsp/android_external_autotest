@@ -24,6 +24,7 @@ nogroup:!:65533:
 nobody:!:65534:
 chronos:!:1000:
 chronos-access:!:1001:root,ipsec,chronos,ntfs-3g,avfs,fuse-exfat,chaps
+sslh:!:200:
 messagebus:!:201:
 syslog:!:202:
 sshd:!:204:
