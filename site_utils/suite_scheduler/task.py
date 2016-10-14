@@ -817,7 +817,10 @@ class Task(object):
         if self._boards and board not in self._boards:
             return []
 
-        labels = [Labels.BOARD_PREFIX + board]
+        board_label = Labels.BOARD_PREFIX + board
+        if self._testbed_dut_count:
+            board_label += '-%d' % self._testbed_dut_count
+        labels = [board_label]
         if self._pool:
             labels.append(Labels.POOL_PREFIX + self._pool)
 
