@@ -9,6 +9,7 @@ import logging
 import os
 import socket
 import time
+import traceback
 
 import common
 
@@ -20,6 +21,7 @@ except ImportError:
 
 from autotest_lib.client.common_lib import decorators
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.site_utils import job_directories
 from autotest_lib.tko import models
 from autotest_lib.tko import utils as tko_utils
@@ -33,6 +35,9 @@ RESULTS_URL_FMT = RETRIEVE_LOGS_CGI + 'results/%s-%s/%s'
 USE_PROD_SERVER = CONFIG.get_config_value(
         'SERVER', 'use_prod_sponge_server', default=False, type=bool)
 
+# Type string of metadata.
+_SPONGE_UPLOAD_FAILURE_TYPE = 'sponge_upload_failure'
+
 @decorators.test_module_available(sponge)
 def upload_results_in_test(test, test_pass=True, acts_summary=None):
     """Upload test results to Sponge.
@@ -43,6 +48,8 @@ def upload_results_in_test(test, test_pass=True, acts_summary=None):
             considered to success, or exception like TestFail would have been
             raised if the test has failed.
     @param acts_summary: Path to the json file of ACTS test summary.
+
+    @return: A url to the Sponge invocation.
     """
     try:
         # job keyval file has the information about the test job except
@@ -71,14 +78,22 @@ def upload_results_in_test(test, test_pass=True, acts_summary=None):
         logging.debug('Test result is uploaded to Sponge: %s', invocation_url)
         return invocation_url
     except Exception as e:
+        metadata = {'method': 'upload_results_in_test',
+                    'job_id': job_id, 'error': str(e),
+                    'details': traceback.format_exc()}
+        autotest_es.post(use_http=True, type_str=_SPONGE_UPLOAD_FAILURE_TYPE,
+                         metadata=metadata)
         logging.exception('Failed to upload to Sponge: %s', e)
 
 
 @decorators.test_module_available(sponge)
-def upload_results(job):
+def upload_results(job, log=logging.debug):
     """Upload test results to Sponge with given job details.
 
     @param job: A job object created by tko/parsers.
+    @param log: Logging method, default is logging.debug.
+
+    @return: A url to the Sponge invocation.
     """
     job_id = job_directories.get_job_id_or_task_id(job.dir)
     results_dir = tko_utils.find_toplevel_job_dir(job.dir)
@@ -109,7 +124,13 @@ def upload_results(job):
                 acts_summary=acts_summary,
                 job=job,
                 use_prod_server=USE_PROD_SERVER)
-        logging.debug('Test result is uploaded to Sponge: %s', invocation_url)
+        log('Test result is uploaded to Sponge: %s' % invocation_url)
         return invocation_url
     except Exception as e:
-        logging.exception('Failed to upload to Sponge: %s', e)
+        metadata = {'method': 'upload_results',
+                    'job_id': job_id, 'error': str(e),
+                    'details': traceback.format_exc()}
+        autotest_es.post(use_http=True, type_str=_SPONGE_UPLOAD_FAILURE_TYPE,
+                         metadata=metadata)
+        log('Failed to upload to Sponge: %s\nDetails:\n%s' %
+            (e, traceback.format_exc()))
