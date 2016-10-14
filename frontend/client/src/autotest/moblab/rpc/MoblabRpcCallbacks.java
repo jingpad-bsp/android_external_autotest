@@ -41,4 +41,18 @@ public class MoblabRpcCallbacks {
     public void onVersionInfoFetched(VersionInfo info);
   }
 
+  /**
+   * Callback for to get information about the connected DUT's.
+   */
+  public interface FetchConnectedDutInfoCallback {
+    public void onFetchConnectedDutInfoSubmitted(ConnectedDutInfo info);
+  }
+
+  /**
+   * Generic callback to return a status and information string from a RPC call.
+   */
+  public interface LogActionCompleteCallback {
+    public void onLogActionComplete(boolean didSucceed, String information);
+  }
+
 }
