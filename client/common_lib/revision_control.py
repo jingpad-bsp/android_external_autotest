@@ -209,7 +209,7 @@ class GitRepo(object):
         rv = self.gitcmd('commit -a -m %s' % msg)
         if rv.exit_status != 0:
             logging.error(rv.stderr)
-            raise revision_control.GitCommitError('Unable to commit', rv)
+            raise GitCommitError('Unable to commit', rv)
 
 
     def reset(self, branch_or_sha):
@@ -262,6 +262,8 @@ class GitRepo(object):
         This will try to be nice and detect any local changes and bail early.
         OTOH, if it finishes successfully, it'll blow away anything and
         everything so that local repo reflects the upstream branch requested.
+
+        @param remote_branch: branch to check out.
         """
         if not self.is_repo_initialized():
             self.clone()
@@ -279,7 +281,7 @@ class GitRepo(object):
                 error_class=GitError,
                 error_msg='Failed to check for local changes.')
         if rv.stdout:
-            loggin.error(rv.stdout)
+            logging.error(rv.stdout)
             e_msg = 'Local checkout dirty. (%s)'
             raise GitError(e_msg % rv.stdout)
 
