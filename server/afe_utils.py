@@ -18,6 +18,9 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+_CROS_VERSION_MAP = AFE.get_stable_version_map(AFE.CROS_IMAGE_TYPE)
+_FAFT_VERSION_MAP = AFE.get_stable_version_map(AFE.FAFT_IMAGE_TYPE)
+_ANDROID_VERSION_MAP = AFE.get_stable_version_map(AFE.ANDROID_IMAGE_TYPE)
 
 _CONFIG = global_config.global_config
 ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = _CONFIG.get_config_value(
@@ -25,7 +28,7 @@ ENABLE_DEVSERVER_TRIGGER_AUTO_UPDATE = _CONFIG.get_config_value(
         default=False)
 
 
-def host_in_lab(host):
+def _host_in_lab(host):
     """Check if the host is in the lab and an object the AFE knows.
 
     This check ensures that autoserv and the host's current job is running
@@ -110,7 +113,7 @@ def clear_version_labels(host):
     """
     host._afe_host.labels = [label for label in host._afe_host.labels
                              if not label.startswith(host.VERSION_PREFIX)]
-    if not host_in_lab(host):
+    if not _host_in_lab(host):
         return
 
     host_list = [host.hostname]
@@ -130,23 +133,41 @@ def add_version_label(host, image_name):
     """
     label = '%s:%s' % (host.VERSION_PREFIX, image_name)
     host._afe_host.labels.append(label)
-    if not host_in_lab(host):
+    if not _host_in_lab(host):
         return
     AFE.run('label_add_hosts', id=label, hosts=[host.hostname])
 
 
-def get_stable_version(board, android=False):
-    """Retrieves a board's stable version from the AFE.
+def get_stable_cros_version(board):
+    """Retrieve the stable Chrome OS version for a given board.
 
     @param board: Board to lookup.
-    @param android: If True, indicates we are looking up a Android/Brillo-based
-                    board. There is no default version that works for all
-                    Android/Brillo boards. If False, we are looking up a Chrome
-                    OS based board.
 
-    @returns Stable version of the given board.
+    @returns A version of Chrome OS to be installed in order to
+            repair the given board.
     """
-    return AFE.run('get_stable_version', board=board, android=android)
+    return _CROS_VERSION_MAP.get_version(board)
+
+
+def get_stable_faft_version(board):
+    """Retrieve the stable firmware version for FAFT DUTs.
+
+    @param board: Board to lookup.
+
+    @returns A version of firmware to be installed in order to
+            repair firmware on a DUT used for FAFT testing.
+    """
+    return _FAFT_VERSION_MAP.get_version(board)
+
+
+def get_stable_android_version(board):
+    """Retrieve the stable Android version a given board.
+
+    @param board: Board to lookup.
+
+    @returns Stable version of Android for the given board.
+    """
+    return _ANDROID_VERSION_MAP.get_version(board)
 
 
 def lookup_job_repo_url(host):
@@ -176,7 +197,7 @@ def get_host_attribute(host, attribute, use_local_value=True):
     @returns value for the given attribute or None if not found.
     """
     local_value = host._afe_host.attributes.get(attribute)
-    if not host_in_lab(host) or use_local_value:
+    if not _host_in_lab(host) or use_local_value:
         return local_value
 
     hosts = AFE.get_hosts(hostname=host.hostname)
@@ -194,7 +215,7 @@ def clear_host_attributes_before_provision(host):
     attributes = host.get_attributes_to_clear_before_provision()
     for attribute in attributes:
         host._afe_host.attributes.pop(attribute, None)
-    if not host_in_lab(host):
+    if not _host_in_lab(host):
         return
 
     for attribute in attributes:
@@ -211,7 +232,7 @@ def update_host_attribute(host, attribute, value):
     @raises AutoservError: If we failed to update the attribute.
     """
     host._afe_host.attributes[attribute] = value
-    if not host_in_lab(host):
+    if not _host_in_lab(host):
         return
 
     AFE.set_host_attribute(attribute, value, hostname=host.hostname)
