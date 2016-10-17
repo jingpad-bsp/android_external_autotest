@@ -1,5 +1,13 @@
 exe,euser,egroup,pidns,caps,filter
+
+# Since udev creates device nodes and changes owners/perms, it needs to run as
+# root.  TODO: We should namespace it.
 udevd,root,root,No,No,No
+
+# Frecon needs to run as root and in the original namespace because it might
+# launch new shells via login.  Would be nice if it integrated things.
+frecon,root,root,No,No,No
+
 session_manager,root,root,No,No,No
 rsyslogd,syslog,syslog,No,No,No
 dbus-daemon,messagebus,messagebus,No,No,No
@@ -33,3 +41,14 @@ attestationd,attestation,attestation,No,No,No
 periodic_schedu,root,root,No,No,No
 esif_ufd,root,root,No,No,No
 easy_unlock,easy-unlock,easy-unlock,No,No,No
+sslh-fork,sslh,sslh,Yes,No,No
+arc-networkd,root,root,Yes,No,No
+arc-obb-mounter,root,root,Yes,No,No
+upstart-socket-,root,root,No,No,No
+timberslide,root,root,No,No,No
+
+# We need to run as root due to caps not preserving across execs.
+# firewalld will fork+exec iptables to handle requests, and it
+# takes care of dropping root/caps for those commands.
+# TODO: We can fix this when minijail supports ambient caps.  http://b/32066154
+firewalld,root,root,No,No,No
