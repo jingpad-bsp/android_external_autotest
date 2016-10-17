@@ -52,6 +52,8 @@ import sys
 import time
 
 import common
+from chromite.lib import buildbot_annotations as annotations
+
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config, enum
@@ -366,16 +368,6 @@ def get_original_suite_name(suite_name, suite_args):
     return suite_name
 
 
-def GetBuildbotStepLink(anchor_text, url):
-    """Generate a buildbot formatted link.
-
-    @param anchor_text    The link text.
-    @param url            The url to link to.
-    """
-    new_anchor_text = anchor_text.replace('@', '-AT-')
-    return '@@@STEP_LINK@%s@%s@@@' % (new_anchor_text, url)
-
-
 class LogLink(object):
     """Information needed to record a link in the logs.
 
@@ -429,6 +421,27 @@ class LogLink(object):
             self.bug_count = None
 
 
+    @property
+    def bug_url(self):
+        """URL of associated bug."""
+        if self.bug_id:
+            return reporting_utils.link_crbug(self.bug_id)
+        else:
+            return None
+
+
+    @property
+    def _bug_count_text(self):
+        """Return bug count as human friendly text."""
+        if self.bug_count is None:
+            bug_info = 'unknown number of reports'
+        elif self.bug_count == 1:
+            bug_info = 'new report'
+        else:
+            bug_info = '%s reports' % self.bug_count
+        return bug_info
+
+
     def GenerateBuildbotLinks(self):
         """Generate a link formatted to meet buildbot expectations.
 
@@ -438,7 +451,6 @@ class LogLink(object):
 
         @return A list of links formatted for the buildbot log annotator.
         """
-        buildbot_links = []
         bug_info_strings = []
         info_strings = []
 
@@ -446,56 +458,42 @@ class LogLink(object):
             info_strings.append('retry_count: %d' % self.retry_count)
             bug_info_strings.append('retry_count: %d' % self.retry_count)
 
-        # Add the bug link to buildbot_links
-        if self.bug_id:
-            bug_url = self.get_bug_link(self.bug_id)
-            if self.bug_count is None:
-                bug_info = 'unknown number of reports'
-            elif self.bug_count == 1:
-                bug_info = 'new report'
-            else:
-                bug_info = '%s reports' % self.bug_count
-            bug_info_strings.append(bug_info)
-
-            if self.reason:
-                bug_info_strings.append(self.reason.strip())
-
-            bug_anchor_text = self.get_anchor_text(self._BUG_LINK_PREFIX,
-                                                   bug_info_strings)
-
-            buildbot_links.append(GetBuildbotStepLink(bug_anchor_text,
-                                                      bug_url))
-
-        # Add the log link to buildbot_links
         if self.reason:
-            info_strings.append(self.reason.strip())
+            bug_info_strings.append(self.reason)
+            info_strings.append(self.reason)
 
-        anchor_text = self.get_anchor_text(self._LOG_LINK_PREFIX,
-                                           info_strings)
-        buildbot_links.append(GetBuildbotStepLink(anchor_text, self.url))
+        # Add the bug link to buildbot_links
+        if self.bug_url:
+            bug_info_strings.append(self._bug_count_text)
 
-        return buildbot_links
+            bug_anchor_text = self._format_anchor_text(self._BUG_LINK_PREFIX,
+                                                       bug_info_strings)
+
+            yield annotations.StepLink(bug_anchor_text, self.bug_url)
+
+        anchor_text = self._format_anchor_text(self._LOG_LINK_PREFIX,
+                                               info_strings)
+        yield annotations.StepLink(anchor_text, self.url)
 
 
-    def get_anchor_text(self, prefix, info_strings):
-        """Generate the anchor_text given the prefix and info.
+    def _format_anchor_text(self, prefix, info_strings):
+        """Format anchor text given a prefix and info strings.
 
         @param prefix        The prefix of the anchor text.
         @param info_strings  The infos presented in the anchor text.
         @return A anchor_text with the right prefix and info strings.
         """
+        anchor_text = '[{prefix}]: {anchor}'.format(
+            prefix=prefix,
+            anchor=self.anchor.strip())
         if info_strings:
-            info = ', '.join(info_strings)
-            anchor_text = '[%(prefix)s]: %(anchor)s: %(info)s' % {
-                    'prefix': prefix, 'anchor': self.anchor.strip(),
-                    'info': info}
-        else:
-            anchor_text = '[%(prefix)s]: %(anchor)s' % {
-                    'prefix': prefix, 'anchor': self.anchor.strip()}
+            info_text = ', '.join(info_strings)
+            anchor_text += ': ' + info_text
         return anchor_text
 
-    def GenerateTextLink(self):
-        """Generate a link to the job's logs, for consumption by a human.
+    @property
+    def text_link(self):
+        """Link to the job's logs, for consumption by a human.
 
         @return A link formatted for human readability.
         """
@@ -507,15 +505,11 @@ class LogLink(object):
 
         @return A link formatted for the buildbot log annotator.
         """
-        if not self.testname:
+        if not self.testname or self.testname in self._SKIP_RETRY_DASHBOARD:
             return None
-
-        if self.testname in self._SKIP_RETRY_DASHBOARD:
-            return None
-
-        return GetBuildbotStepLink(
-            '[Flake-Dashboard]: %s' % self.testname,
-            reporting_utils.link_retry_url(self.testname))
+        return annotations.StepLink(
+            text='[Flake-Dashboard]: %s' % self.testname,
+            url=reporting_utils.link_retry_url(self.testname))
 
 
 class Timings(object):
@@ -1375,7 +1369,7 @@ class ResultCollector(object):
         # Output links to test logs
         logging.info('\nLinks to test logs:')
         for link in self._web_links:
-            logging.info(link.GenerateTextLink())
+            logging.info(link.text_link)
         logging.info('\n')
 
 
@@ -1420,7 +1414,7 @@ class ResultCollector(object):
                   = reporting_utils.link_retry_url(link.testname)
             # Write the bug url into the dict.
             if link.bug_id:
-              test_info['bug_url'] = link.get_bug_link(link.bug_id)
+              test_info['bug_url'] = link.bug_url
 
         # Write the suite timings into |output_dict|
         timings = self.timings
@@ -1613,8 +1607,9 @@ def main_without_exception_handling(options):
             pool_health_bug = reporting.PoolHealthBug(e)
             bug_id = reporting.Reporter().report(pool_health_bug).bug_id
             if bug_id is not None:
-                logging.info(GetBuildbotStepLink(
-                        'Pool Health Bug', LogLink.get_bug_link(bug_id)))
+                logging.info(annotations.StepLink(
+                    text='Pool Health Bug',
+                    url=reporting_utils.link_crbug(bug_id)))
                 e.add_bug_id(bug_id)
             raise e
         except (error.CrosDynamicSuiteException,
@@ -1631,8 +1626,9 @@ def main_without_exception_handling(options):
     logging.info('%s Created suite job: %s',
                  job_timer.format_time(job_timer.job_created_time),
                  job_url)
-    # TODO(akeshet): Move this link-printing to chromite.
-    logging.info(GetBuildbotStepLink('Link to suite', job_url))
+    logging.info(annotations.StepLink(
+        text='Link to suite',
+        url=job_url))
 
     if options.create_and_return:
         msg = '--create_and_return was specified, terminating now.'
