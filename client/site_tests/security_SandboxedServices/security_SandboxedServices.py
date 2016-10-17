@@ -84,6 +84,7 @@ class security_SandboxedServices(test.test):
         ps_fields_len = len(PS_FIELDS)
 
         output = utils.system_output(ps_cmd)
+        logging.debug('output of ps:\n%s', output)
 
         # Fill in fields that `ps` doesn't support but are in /proc/PID/status.
         cmd = (
@@ -94,6 +95,7 @@ class security_SandboxedServices(test.test):
         status_output = utils.system_output(cmd)
         status_data = dict(line.split(None, 1)
                            for line in status_output.splitlines())
+        logging.debug('output of awk:\n%s', status_output)
 
         # Now merge the two sets of process data.
         missing_status_fields = [None] * len(STATUS_FIELDS)
@@ -119,9 +121,24 @@ class security_SandboxedServices(test.test):
         whether (and how) they are sandboxed.
         """
 
+        def load(path):
+            """Load the baseline out of |path| and return it.
+
+            @param path: The baseline to load.
+            """
+            logging.info('Loading baseline %s', path)
+            reader = csv.DictReader(open(path))
+            return dict([(d['exe'], d) for d in reader])
+
         baseline_path = os.path.join(self.bindir, 'baseline')
-        dict_reader = csv.DictReader(open(baseline_path))
-        return dict([(d["exe"], d) for d in dict_reader])
+        ret = load(baseline_path)
+
+        board = utils.get_current_board()
+        baseline_path += '.' + board
+        if os.path.exists(baseline_path):
+            ret.update(load(baseline_path))
+
+        return ret
 
 
     def load_exclusions(self):
@@ -250,6 +267,18 @@ class security_SandboxedServices(test.test):
 
         if len(new_services) > 0:
             logging.warn('New services: %r', new_services)
+
+            # We won't complain about new non-root services (on the assumption
+            # that they've already somewhat sandboxed things), but we'll fail
+            # with new root services (on the assumption they haven't done any
+            # sandboxing work).  If they really need to run as root, they can
+            # update the baseline to whitelist it.
+            new_root_services = [x for x in new_services
+                                 if running_services[x].euser == 'root']
+            if new_root_services:
+                logging.error('New services are not allowed to run as root, '
+                              'but these are: %r', new_root_services)
+                sandbox_delta.extend(new_root_services)
 
         if len(sandbox_delta) > 0:
             logging.error('Failed sandboxing: %r', sandbox_delta)
