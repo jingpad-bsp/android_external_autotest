@@ -83,7 +83,7 @@ class provision_AndroidUpdate(test.test):
             # devices have their board label updated to have no android in
             # there.
             board = board.split('-')[-1]
-            value = afe_utils.get_stable_version(board=board, android=True)
+            value = afe_utils.get_stable_android_version(board)
             if not value:
                 raise error.TestFail('No stable version assigned for board: '
                                      '%s' % board)
