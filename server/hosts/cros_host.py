@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import sys
 import time
 
 import common
@@ -1404,15 +1405,23 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Strip the prefix and add it to dargs.
         dargs['board'] = board_fullname[board_fullname.find(':')+1:]
+        # Record who called us
+        orig = sys._getframe(1).f_code
         metric_fields = {'board' : dargs['board'],
-                         'success' : True,
-                         'error' : ''}
+                         'dut_host_name' : self.hostname,
+                         'success' : True}
+        metric_debug_fields = {'board' : dargs['board'],
+                               'caller' : "%s:%s" % (orig.co_filename, orig.co_name),
+                               'success' : True,
+                               'error' : ''}
+
         t0 = time.time()
         try:
             super(CrosHost, self).reboot(**dargs)
         except Exception as e:
             metric_fields['success'] = False
-            metric_fields['error'] = type(e).__name__
+            metric_debug_fields['success'] = False
+            metric_debug_fields['error'] = type(e).__name__
             raise
         finally:
             duration = int(time.time() - t0)
@@ -1420,6 +1429,9 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 metrics.Counter(
                         'chromeos/autotest/autoserv/reboot_count').increment(
                         fields=metric_fields)
+                metrics.Counter(
+                        'chromeos/autotest/autoserv/reboot_debug').increment(
+                        fields=metric_debug_fields)
                 metrics.SecondsDistribution(
                         'chromeos/autotest/autoserv/reboot_duration').add(
                         duration, fields=metric_fields)
