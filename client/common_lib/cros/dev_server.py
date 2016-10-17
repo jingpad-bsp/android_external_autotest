@@ -1812,12 +1812,16 @@ class ImageServer(ImageServerBase):
                                                                        **kwargs)
                 # Error happens in _clean_track_log won't be raised. Auto-update
                 # process will be retried.
-                is_clean_success = self.clean_track_log(host_name, pid)
+                # TODO(xixuan): Change kwargs['host_name'] back to host_name
+                # if crbug.com/651974 is fixed: host_name represents the host
+                # name of the host, and kwargs['host_name'] could be host_name
+                # or the IP of this host.
+                is_clean_success = self.clean_track_log(kwargs['host_name'], pid)
                 # Error happens in _collect_au_log won't be raised. Auto-update
                 # process will be retried.
                 if au_log_dir:
                     is_collect_success = self.collect_au_log(
-                            host_name, pid, au_log_dir)
+                            kwargs['host_name'], pid, au_log_dir)
                 else:
                     is_collect_success = True
                 # If any error is raised previously, log it and retry
@@ -1832,7 +1836,7 @@ class ImageServer(ImageServerBase):
                         logging.debug(error_msg_attempt, au_attempt+1,
                                       str(raised_error))
                         error_list.append(self._parse_AU_error(str(raised_error)))
-                    if not self.kill_au_process_for_host(host_name):
+                    if not self.kill_au_process_for_host(kwargs['host_name']):
                         logging.debug('Failed to kill auto_update process %d',
                                       pid)
 
