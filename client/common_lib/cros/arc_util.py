@@ -18,6 +18,7 @@ from autotest_lib.client.common_lib.cros import arc_common
 from telemetry.internal.browser import extension_page
 
 _ARC_SUPPORT_HOST_URL = 'chrome-extension://cnbgggchhmkkdmeppjobngjoejnihlei/'
+_ARC_SUPPORT_HOST_PAGENAME = '_generated_background_page.html'
 _DUMPSTATE_DEFAULT_TIMEOUT = 20
 _DUMPSTATE_PATH = '/var/log/arc-dumpstate.log'
 _DUMPSTATE_PIPE_PATH = '/var/run/arc/bugreport/pipe'
@@ -133,25 +134,17 @@ def set_browser_options_for_opt_in(b_options):
     b_options.gaia_login = True
 
 
-def opt_in(browser):
+def enable_arc_setting(browser):
     """
-    Step through opt in and wait for it to complete.
+    Enable ARC++ via the settings page checkbox.
+
+    Do nothing if the account is managed.
 
     @param browser: chrome.Chrome broswer object.
 
-    @raises: error.TestFail if opt in fails.
+    @returns: True if the opt-in should continue; else False.
 
     """
-    logging.info(_OPT_IN_BEGIN)
-
-    opt_in_extension_id = extension_page.UrlToExtensionId(_ARC_SUPPORT_HOST_URL)
-    try:
-        extension_main_page = browser.extensions.GetByExtensionId(
-            opt_in_extension_id)[0]
-    except Exception, e:
-        raise error.TestFail('Could not locate extension for arc opt-in.' +
-                             'Make sure disable_default_apps is False.')
-
     settings_tab = browser.tabs[0]
     settings_tab.Navigate('chrome://settings')
     settings_tab.WaitForDocumentReadyStateToBeComplete()
@@ -162,7 +155,7 @@ def opt_in(browser):
         """
         settings_tab.ExecuteJavaScript(js_code_assert_arc_option_available)
     except Exception, e:
-        raise error.TestFail('Could not locate section in chrome://settings' +
+        raise error.TestFail('Could not locate section in chrome://settings'
                              ' to enable arc. Make sure arc is available.')
 
     # Skip enabling for managed users, since value is policy enforced.
@@ -177,20 +170,63 @@ def opt_in(browser):
         policy_value = settings_tab.EvaluateJavaScript(js_code_policy_value)
         if not policy_value:
             logging.info('Returning early since ARC++ is policy enforced off.')
-            return
+            return False
     else:
         js_code_enable_arc = ('Preferences.setBooleanPref(\'arc.enabled\', '
                                                           'true, true)')
         settings_tab.ExecuteJavaScript(js_code_enable_arc)
 
+    return True
+
+
+def find_opt_in_extension_page(browser):
+    """
+    Find and verify the opt-in extension extension page.
+
+    @param browser: chrome.Chrome broswer object.
+
+    @returns: the extension page.
+
+    @raises: error.TestFail if extension is not found or is mal-formed.
+
+    """
+    opt_in_extension_id = extension_page.UrlToExtensionId(_ARC_SUPPORT_HOST_URL)
+    try:
+        extension_pages = browser.extensions.GetByExtensionId(
+            opt_in_extension_id)
+    except Exception, e:
+        raise error.TestFail('Could not locate extension for arc opt-in.' +
+                             'Make sure disable_default_apps is False.')
+
+    extension_main_page = None
+    for page in extension_pages:
+        url = page.EvaluateJavaScript('location.href;')
+        if url.endswith(_ARC_SUPPORT_HOST_PAGENAME):
+            extension_main_page = page
+            break
+    if not extension_main_page:
+        raise error.TestError('Found opt-in extension but not correct page!')
+    extension_main_page.WaitForDocumentReadyStateToBeComplete()
+
     js_code_did_start_conditions = ['appWindow', 'termsView',
             ('!appWindow.contentWindow.document'
              '.getElementById(\'terms\').hidden')]
 
-    extension_main_page.WaitForDocumentReadyStateToBeComplete()
     for condition in js_code_did_start_conditions:
         extension_main_page.WaitForJavaScriptExpression(condition, 60.0)
 
+    return extension_main_page
+
+
+def navigate_opt_in_extension(extension_main_page):
+    """
+    Step through the user input of the opt-in extension.
+
+    @param extension_main_page: opt-in extension object.
+
+    @raises error.TestFail if problem found.
+
+    """
     js_code_click_agree = """
         doc = appWindow.contentWindow.document;
         agree_button_element = doc.getElementById('button-agree');
@@ -225,7 +261,16 @@ def opt_in(browser):
     """
     web_views[0].ExecuteJavaScript(js_code_click_sign_in)
 
-    # Wait for app to close (i.e. complete sign in).
+
+def wait_for_opt_in_to_complete(extension_main_page):
+    """
+    Wait for opt-in app to close (i.e. complete sign in).
+
+    @param extension_main_page: opt-in extension object.
+
+    @raises error.TestFail if opt-in doesn't complete after timeout.
+
+    """
     SIGN_IN_TIMEOUT = 120
     try:
         extension_main_page.WaitForJavaScriptExpression('!appWindow',
@@ -247,4 +292,22 @@ def opt_in(browser):
             raise error.TestFail('Opt-in app did not finish running after %s '
                                  'seconds!' % SIGN_IN_TIMEOUT)
 
+
+def opt_in(browser):
+    """
+    Step through opt in and wait for it to complete.
+
+    Return early if the arc_setting cannot be set True.
+
+    @param browser: chrome.Chrome broswer object.
+
+    @raises: error.TestFail if opt in fails.
+
+    """
+    logging.info(_OPT_IN_BEGIN)
+    if not enable_arc_setting(browser):
+        return
+    extension_main_page = find_opt_in_extension_page(browser)
+    navigate_opt_in_extension(extension_main_page)
+    wait_for_opt_in_to_complete(extension_main_page)
     logging.info(_OPT_IN_FINISH)
