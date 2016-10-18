@@ -19,6 +19,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
 _CROS_VERSION_MAP = AFE.get_stable_version_map(AFE.CROS_IMAGE_TYPE)
+_FIRMWARE_VERSION_MAP = AFE.get_stable_version_map(AFE.FIRMWARE_IMAGE_TYPE)
 _FAFT_VERSION_MAP = AFE.get_stable_version_map(AFE.FAFT_IMAGE_TYPE)
 _ANDROID_VERSION_MAP = AFE.get_stable_version_map(AFE.ANDROID_IMAGE_TYPE)
 
@@ -147,6 +148,17 @@ def get_stable_cros_version(board):
             repair the given board.
     """
     return _CROS_VERSION_MAP.get_version(board)
+
+
+def get_stable_firmware_version(board):
+    """Retrieve the stable firmware version for a given board.
+
+    @param board: Board to lookup.
+
+    @returns A version of firmware to be installed via
+             `chromeos-firmwareupdate` from a repair build.
+    """
+    return _FIRMWARE_VERSION_MAP.get_version(board)
 
 
 def get_stable_faft_version(board):
