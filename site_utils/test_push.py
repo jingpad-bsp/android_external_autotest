@@ -512,6 +512,7 @@ def check_queue(queue):
 def main():
     """Entry point for test_push script."""
     arguments = parse_arguments()
+    top_hash = subprocess.check_output('git rev-parse HEAD', shell=True).strip()
 
     try:
         # Use daemon flag will kill child processes when parent process fails.
@@ -576,7 +577,8 @@ def main():
             gmail_lib.send_email(
                     arguments.email,
                     'Test for pushing to prod failed. Do NOT push!',
-                    ('Errors occurred during the test:\n\n%s\n\n' % str(e) +
+                    ('Test for CLs between <current_prod...%s> failed. Errors '
+                     'occurred during test:\n\n%s\n\n' % (top_hash, str(e)) +
                      '\n'.join(run_suite_output)))
         raise
     finally:
@@ -584,7 +586,7 @@ def main():
         reverify_all_push_duts(arguments.pool)
 
     message = ('\nAll tests are completed successfully, prod branch is ready to'
-               ' be pushed.')
+               ' be pushed to %s.' % top_hash)
     print message
     # Send out email about test completed successfully.
     if arguments.email:
