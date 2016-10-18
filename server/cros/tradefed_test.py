@@ -439,7 +439,8 @@ class TradefedTest(test.test):
                         '--report-speed=bits',
                         '--limit-rate=20M',
                         '-O',
-                        output) + tuple(ds_src),
+                        output,
+                        ds_src),
                 verbose=True)
         return output
 
@@ -574,7 +575,8 @@ class TradefedTest(test.test):
         # and destination_logs in
         # cheets_CTS.*/results/android-cts/logs/2016.mm.dd_hh.mm.ss/
         destination_results = destination
-        destination_results_datetime = os.path.join(destination_results, datetime)
+        destination_results_datetime = os.path.join(destination_results,
+                                                    datetime)
         destination_results_datetime_zip = destination_results_datetime + '.zip'
         destination_logs = os.path.join(destination, 'logs')
         destination_logs_datetime = os.path.join(destination_logs, datetime)
