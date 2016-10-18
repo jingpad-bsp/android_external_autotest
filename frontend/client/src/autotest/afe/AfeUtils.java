@@ -459,4 +459,20 @@ public class AfeUtils {
             }
         });
     }
+
+    public static void callGetSpongeUrl(JSONObject params,
+                                        final SimpleCallback onSuccess) {
+        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy(JsonRpcProxy.TKO_BASE_URL);
+        rpcProxy.rpcCall("get_detailed_test_views", params, new JsonRpcCallback() {
+            @Override
+            public void onSuccess(JSONValue result) {
+                if (onSuccess != null) {
+                    JSONArray testViews = (JSONArray)result;
+                    JSONValue keyVals = ((JSONObject)testViews.get(0)).get("job_keyvals");
+                    String spongeUrl = ((JSONObject)keyVals).get("sponge_url").isString().stringValue();
+                    onSuccess.doCallback(spongeUrl);
+                }
+            }
+        });
+    }
 }
