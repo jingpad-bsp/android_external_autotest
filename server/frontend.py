@@ -282,10 +282,10 @@ class _OSVersionMap(_StableVersionMap):
     """
 
     def get_all_versions(self):
-        # TODO(jrbarnette):  We exclude FAFT version mappings, but the
-        # returned dict doesn't distinguish CrOS boards from Android
-        # boards; both will be present, and the subclass can't
-        # distinguish them.
+        # TODO(jrbarnette):  We exclude non-OS (i.e. firmware) version
+        # mappings, but the returned dict doesn't distinguish CrOS
+        # boards from Android boards; both will be present, and the
+        # subclass can't distinguish them.
         #
         # Ultimately, the right fix is to move knowledge of image type
         # over to the RPC server side.
@@ -336,33 +336,33 @@ class _AndroidVersionMap(_OSVersionMap):
         return versions
 
 
-class _FAFTVersionMap(_StableVersionMap):
+class _SuffixHackVersionMap(_StableVersionMap):
     """
-    Stable version mapping for firmware versions used in FAFT repair.
+    Abstract super class for mappings using a pseudo-board name.
 
-    When DUTs used for FAFT fail repair, stable firmware may need to be
-    flashed directly from original tarballs.  The FAFT firmware version
-    mapping finds the appropriate tarball for a given board.
+    For non-OS image type mappings, we look them up in the
+    `stable_versions` table by constructing a "pseudo-board" from the
+    real board name plus a suffix string that identifies the image type.
+    So, for instance the name "lulu/firmware" is used to look up the
+    FAFT firmware version for lulu boards.
     """
 
-    # _SUFFIX - FAFT firmware versions are recorded in the
-    # stable_versions table by appending this value to the board
-    # name to construct a pseudo-board name that maps to a firmware
-    # version string.
+    # _SUFFIX - The suffix used in constructing the "pseudo-board"
+    # lookup key.  Each subclass must define this value for itself.
     #
-    _SUFFIX = '/firmware'
+    _SUFFIX = None
 
     def __init__(self, afe):
-        super(_FAFTVersionMap, self).__init__(afe, False)
+        super(_SuffixHackVersionMap, self).__init__(afe, False)
 
 
     def get_all_versions(self):
-        # Get all the mappings from the AFE, extract just the FAFT
-        # firmware mappings, and replace the pseudo-board name keys with
+        # Get all the mappings from the AFE, extract just the mappings
+        # with our suffix, and replace the pseudo-board name keys with
         # the real board names.
         #
         all_versions = super(
-                _FAFTVersionMap, self).get_all_versions()
+                _SuffixHackVersionMap, self).get_all_versions()
         return {
             board[0 : -len(self._SUFFIX)]: all_versions[board]
                 for board in all_versions.keys()
@@ -371,27 +371,71 @@ class _FAFTVersionMap(_StableVersionMap):
 
 
     def get_version(self, board):
-        # If there's no firmware mapping for `board`, the lookup will
-        # return the default CrOS version mapping.  To eliminate that
-        # case, we require a '/' character in the version, since CrOS
-        # versions won't match that.
+        board += self._SUFFIX
+        return super(_SuffixHackVersionMap, self).get_version(board)
+
+
+    def set_version(self, board, version):
+        board += self._SUFFIX
+        super(_SuffixHackVersionMap, self).set_version(board, version)
+
+
+    def delete_version(self, board):
+        board += self._SUFFIX
+        super(_SuffixHackVersionMap, self).delete_version(board)
+
+
+class _FAFTVersionMap(_SuffixHackVersionMap):
+    """
+    Stable version mapping for firmware versions used in FAFT repair.
+
+    When DUTs used for FAFT fail repair, stable firmware may need to be
+    flashed directly from original tarballs.  The FAFT firmware version
+    mapping finds the appropriate tarball for a given board.
+    """
+
+    _SUFFIX = '/firmware'
+
+    def get_version(self, board):
+        # If there's no mapping for `board`, the lookup will return the
+        # default CrOS version mapping.  To eliminate that case, we
+        # require a '/' character in the version, since CrOS versions
+        # won't match that.
         #
         # TODO(jrbarnette):  This is, of course, a hack.  Ultimately,
         # the right fix is to move handling to the RPC server side.
         #
-        board += self._SUFFIX
         version = super(_FAFTVersionMap, self).get_version(board)
         return version if '/' in version else None
 
 
-    def set_version(self, board, version):
-        super(_FAFTVersionMap, self).set_version(
-                board + self._SUFFIX, version)
+class _FirmwareVersionMap(_SuffixHackVersionMap):
+    """
+    Stable version mapping for firmware supplied in Chrome OS images.
 
+    A Chrome OS image bundles a version of the firmware that the
+    device should update to when the OS version is installed during
+    AU.
 
-    def delete_version(self, board):
-        super(_FAFTVersionMap, self).delete_version(
-                board + self._SUFFIX)
+    Test images suppress the firmware update during AU.  Instead, during
+    repair and verify we check installed firmware on a DUT, compare it
+    against the stable version mapping for the board, and update when
+    the DUT is out-of-date.
+    """
+
+    _SUFFIX = '/rwfw'
+
+    def get_version(self, board):
+        # If there's no mapping for `board`, the lookup will return the
+        # default CrOS version mapping.  To eliminate that case, we
+        # require the version start with "Google_", since CrOS versions
+        # won't match that.
+        #
+        # TODO(jrbarnette):  This is, of course, a hack.  Ultimately,
+        # the right fix is to move handling to the RPC server side.
+        #
+        version = super(_FirmwareVersionMap, self).get_version(board)
+        return version if version.startswith('Google_') else None
 
 
 class AFE(RpcClient):
@@ -409,15 +453,18 @@ class AFE(RpcClient):
     # Known image types for stable version mapping objects.
     # CROS_IMAGE_TYPE - Mappings for Chrome OS images.
     # FAFT_IMAGE_TYPE - Mappings for Firmware images for FAFT repair.
+    # FIRMWARE_IMAGE_TYPE - Mappings for released RW Firmware images.
     # ANDROID_IMAGE_TYPE - Mappings for Android images.
     #
     CROS_IMAGE_TYPE = 'cros'
     FAFT_IMAGE_TYPE = 'faft'
+    FIRMWARE_IMAGE_TYPE = 'firmware'
     ANDROID_IMAGE_TYPE = 'android'
 
     _IMAGE_MAPPING_CLASSES = {
         CROS_IMAGE_TYPE: _CrosVersionMap,
         FAFT_IMAGE_TYPE: _FAFTVersionMap,
+        FIRMWARE_IMAGE_TYPE: _FirmwareVersionMap,
         ANDROID_IMAGE_TYPE: _AndroidVersionMap
     }
 
