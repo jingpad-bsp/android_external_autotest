@@ -31,6 +31,9 @@ HOSTEVENT_THERMAL_SHUTDOWN  = 0x00008000
 HOSTEVENT_BATTERY_SHUTDOWN  = 0x00010000
 HOSTEVENT_INVALID           = 0x80000000
 
+# Time to wait after sending keypress commands.
+KEYPRESS_RECOVERY_TIME = 0.5
+
 
 class ChromeEC(object):
     """Manages control of a Chrome EC.
@@ -149,6 +152,9 @@ class ChromeEC(object):
                 'kbpress %d %d 0' %
                     (ec.KEYMATRIX[keyname][1], ec.KEYMATRIX[keyname][0]),
                 ])
+        # Don't spam the EC console as fast as we can; leave some recovery time
+        # in between commands.
+        time.sleep(KEYPRESS_RECOVERY_TIME)
 
 
     def send_key_string_raw(self, string):
