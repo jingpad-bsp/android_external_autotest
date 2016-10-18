@@ -52,3 +52,6 @@ timberslide,root,root,No,No,No
 # takes care of dropping root/caps for those commands.
 # TODO: We can fix this when minijail supports ambient caps.  http://b/32066154
 firewalld,root,root,No,No,No
+
+# Broadcomm bluetooth firmware patch downloader runs on some veyron boards.
+brcm_patchram_p,root,root,No,No,No
