@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import logging
+from datetime import datetime
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
@@ -63,17 +64,25 @@ class desktopui_ScreenLocker(test.test):
                 % (self._chrome.username, password))
 
 
-    def lock_screen(self):
-        """Lock the screen."""
+    def lock_screen(self, perf_values):
+        """Lock the screen.
+
+        @param perf_values: Performance data will be stored inside of this dict.
+
+        """
         logging.debug('lock_screen')
         if self.screen_locked:
             raise error.TestFail('Screen already locked')
         signal_listener = session_manager.ScreenIsLockedSignalListener(
                 gobject.MainLoop())
         ext = self._chrome.autotest_ext
+
+        start = datetime.now()
         ext.EvaluateJavaScript('chrome.autotestPrivate.lockScreen();')
         signal_listener.wait_for_signals(desc='Screen is locked.',
                                          timeout=self._SCREEN_IS_LOCKED_TIMEOUT)
+        perf_values['lock_seconds'] = (datetime.now() - start).total_seconds()
+
         utils.poll_for_condition(lambda: self.screenlocker_visible,
                 exception=error.TestFail('Screenlock screen not visible'))
         if not self.screen_locked:
@@ -110,7 +119,13 @@ class desktopui_ScreenLocker(test.test):
 
         """
         with chrome.Chrome(autotest_ext=True) as self._chrome:
-            self.lock_screen()
+            perf_values = {}
+            self.lock_screen(perf_values)
             self.attempt_unlock_bad_password()
             self.unlock_screen()
 
+            self.output_perf_value(
+                    description='time_to_lock_screen',
+                    value=perf_values['lock_seconds'],
+                    units='s',
+                    higher_is_better=False)
