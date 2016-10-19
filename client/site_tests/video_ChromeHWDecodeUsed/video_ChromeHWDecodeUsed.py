@@ -26,8 +26,8 @@ class video_ChromeHWDecodeUsed(test.test):
         blacklist = [
                 # (board, milestone, codec); None if don't care.
 
-                # kevin did support hw decode, but not ready in M54.
-                ('kevin', 54, 'vp8'),
+                # kevin did support hw decode, but not ready in M54 and M55.
+                ('kevin', 54, 'vp8'),('kevin', 55, 'vp8')
         ]
 
         entry = (utils.get_current_board(), utils.get_chrome_milestone(), codec)
