@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_states
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.client.common_lib import lsbrelease_utils
-from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
@@ -55,6 +54,7 @@ AUTOTEST_BASE = _CONFIG.get_config_value(
         default='/usr/local/autotest')
 
 _SERVO_HOST_REBOOT_TEST_NAME = 'servohost_Reboot'
+_SERVO_HOST_FORCE_REBOOT_TEST_NAME = 'servohost_Reboot.force_reboot'
 
 class ServoHost(ssh_host.SSHHost):
     """Host class for a host that controls a servo, e.g. beaglebone."""
@@ -382,12 +382,13 @@ class ServoHost(ssh_host.SSHHost):
             hqes = afe.get_host_queue_entries(host=afe_host.id, complete=0)
             for hqe in hqes:
                 job = afe.get_jobs(id=hqe.job.id)
-                if job and job[0].name == _SERVO_HOST_REBOOT_TEST_NAME:
+                if job and job[0].name in (_SERVO_HOST_REBOOT_TEST_NAME,
+                                           _SERVO_HOST_FORCE_REBOOT_TEST_NAME):
                     return True
         return False
 
 
-    def schedule_synchronized_reboot(self, dut_list, afe):
+    def schedule_synchronized_reboot(self, dut_list, afe, force_reboot=False):
         """Schedule a job to reboot the servo host.
 
         When we schedule a job, it will create a ServoHost object which will
@@ -396,22 +397,23 @@ class ServoHost(ssh_host.SSHHost):
         up a synchronized reboot but I'm coming up short on better ideas so I
         apologize for this circus show.
 
-        @param dut_list:  List of duts that need to be locked.
-        @param afe:       Instance of afe.
+        @param dut_list:      List of duts that need to be locked.
+        @param afe:           Instance of afe.
+        @param force_reboot:  Boolean to indicate if a forced reboot should be
+                              scheduled or not.
         """
         # If we've already scheduled job on a dut, we're done here.
         if self._sync_job_scheduled_for_duts(dut_list, afe):
             return
 
         # Looks like we haven't scheduled a job yet.
+        test = (_SERVO_HOST_REBOOT_TEST_NAME if not force_reboot
+                else _SERVO_HOST_FORCE_REBOOT_TEST_NAME)
         dut = self._choose_dut_for_synchronized_reboot(dut_list, afe)
         getter = control_file_getter.FileSystemGetter([AUTOTEST_BASE])
-        control_file = getter.get_control_file_contents_by_name(
-                _SERVO_HOST_REBOOT_TEST_NAME)
+        control_file = getter.get_control_file_contents_by_name(test)
         control_type = control_data.CONTROL_TYPE_NAMES.SERVER
-        priority = priorities.Priority.SUPER
-        afe.create_job(control_file=control_file,
-                       name=_SERVO_HOST_REBOOT_TEST_NAME,
+        afe.create_job(control_file=control_file, name=test,
                        control_type=control_type, hosts=[dut])
 
 
