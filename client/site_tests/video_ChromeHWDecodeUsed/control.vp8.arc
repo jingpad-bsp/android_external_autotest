@@ -9,7 +9,7 @@ CRITERIA = """
 This test will fail if VDA doesn't work with Chrome navigating to a webm file.
 """
 TIME = "SHORT"
-ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-perbuild"
+ATTRIBUTES = "suite:arc-bvt-cq, suite:bvt-cq"
 TEST_CATEGORY = "General"
 TEST_CLASS = "video"
 TEST_TYPE = "client"
