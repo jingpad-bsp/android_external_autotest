@@ -213,7 +213,7 @@ class security_SandboxedServices(test.test):
                 continue
 
             # Remember minijail0 invocations
-            if exe == "minijail0":
+            if exe in ('minijail0', 'minijail-init'):
                 minijail_processes[process.pid] = process
                 continue
 
