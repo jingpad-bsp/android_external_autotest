@@ -284,6 +284,11 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
 
     # Restart each, and record the status (including pid).
     for name in service_names:
+        # TODO(ayatane): temporary hack for crbug.com/657194
+        if name == 'sysmon':
+            cmd = ['sudo', 'service', 'sysmon', 'stop']
+            subprocess.check_call(cmd)
+            continue
         restart_service(name)
         service_statuses[name] = service_status(name)
 
