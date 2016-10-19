@@ -42,7 +42,9 @@ PRIMARY_ONLY_COMMANDS = ['test_importer']
 COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
                           'tko': 'tko/'}
 # Services present on all hosts.
-UNIVERSAL_SERVICES = ['sysmon']
+# TODO(ayatane): Temporarily stop starting sysmon
+# UNIVERSAL_SERVICES = ['sysmon']
+UNIVERSAL_SERVICES = []
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
@@ -284,11 +286,6 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
 
     # Restart each, and record the status (including pid).
     for name in service_names:
-        # TODO(ayatane): temporary hack for crbug.com/657194
-        if name == 'sysmon':
-            cmd = ['sudo', 'service', 'sysmon', 'stop']
-            subprocess.check_call(cmd)
-            continue
         restart_service(name)
         service_statuses[name] = service_status(name)
 
