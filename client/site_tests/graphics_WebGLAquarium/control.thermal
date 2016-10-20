@@ -21,4 +21,5 @@ This runs the WebGL aquarium test for 1hr with 1000 fish.
 job.run_test("graphics_WebGLAquarium",
              test_duration_secs=3600,
              test_setting_num_fishes=(1000),
+             tag='power',
              power_test=True, ac_ok=True)
