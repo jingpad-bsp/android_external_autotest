@@ -92,7 +92,8 @@ class security_SandboxedServices(test.test):
             "{printf \"%%s \", $NF; if ($1 == \"%s:\") printf \"\\n\"}'"
             " /proc/[1-9]*/status"
         ) % ('|'.join(STATUS_FIELDS), STATUS_FIELDS[-1])
-        status_output = utils.system_output(cmd)
+        # Processes might exit while awk is running, so ignore its exit status.
+        status_output = utils.system_output(cmd, ignore_status=True)
         status_data = dict(line.split(None, 1)
                            for line in status_output.splitlines())
         logging.debug('output of awk:\n%s', status_output)
