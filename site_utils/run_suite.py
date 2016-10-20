@@ -1571,7 +1571,7 @@ def main_without_exception_handling(options):
 
     utils.setup_logging(logfile=log_name)
 
-    if not options.bypass_labstatus:
+    if not options.bypass_labstatus and not options.web:
         utils.check_lab_status(options.build)
     instance_server = (options.web if options.web else
                        instance_for_pool(options.pool))
