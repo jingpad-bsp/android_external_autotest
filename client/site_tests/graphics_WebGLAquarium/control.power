@@ -18,4 +18,4 @@ DOC = """
 This runs the WebGL aquarium test and measures power consumption.
 """
 
-job.run_test("graphics_WebGLAquarium", power_test=True)
+job.run_test("graphics_WebGLAquarium", power_test=True, tag='power')
