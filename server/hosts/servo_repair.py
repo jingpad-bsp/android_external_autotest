@@ -260,7 +260,7 @@ class _RestartServod(hosts.RepairAction):
             raise hosts.AutoservRepairError(
                     'Can\'t restart servod: not running '
                     'embedded Chrome OS.')
-        host.run('stop servod || true')
+        host.run('stop servod PORT=%d || true' % host.servo_port)
         serial = 'SERIAL=%s' % host.servo_serial if host.servo_serial else ''
         if host.servo_board:
             host.run('start servod BOARD=%s PORT=%d %s' %
