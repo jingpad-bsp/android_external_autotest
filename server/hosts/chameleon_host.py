@@ -157,6 +157,13 @@ def create_chameleon_host(dut, chameleon_args):
         if dut_is_hostname:
             chameleon_hostname = chameleon.make_chameleon_hostname(dut)
             if utils.host_is_in_lab_zone(chameleon_hostname):
+                # Be more tolerant on chameleon in the lab because
+                # we don't want dead chameleon blocks non-chameleon tests.
+                if utils.ping(chameleon_hostname, deadline=3):
+                   logging.warning(
+                           'Chameleon %s is not accessible. Please file a bug'
+                           ' to test lab', chameleon_hostname)
+                   return None
                 return ChameleonHost(chameleon_host=chameleon_hostname)
         if chameleon_args:
             return ChameleonHost(**chameleon_args)
