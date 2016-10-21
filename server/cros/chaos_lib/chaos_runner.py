@@ -17,7 +17,7 @@ from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.ap_configurators import ap_batch_locker
-from autotest_lib.server.cros.chaos_ap_configurators \
+from autotest_lib.server.cros.ap_configurators \
         import ap_configurator_factory
 from autotest_lib.server.cros.network import chaos_clique_utils as utils
 from autotest_lib.server.cros.network import wifi_client
