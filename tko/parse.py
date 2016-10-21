@@ -26,7 +26,7 @@ from autotest_lib.tko.perf_upload import perf_uploader
 
 
 _ParseOptions = collections.namedtuple(
-    'ParseOptions', ['reparse', 'mail_on_failure'])
+    'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run'])
 
 
 def parse_args():
@@ -52,6 +52,8 @@ def parse_args():
                       action="store")
     parser.add_option("-d", help="Database name", dest="db_name",
                       action="store")
+    parser.add_option("--dry-run", help="Do not actually commit any results.",
+                      dest="dry_run", action="store_true", default=False)
     parser.add_option("--write-pidfile",
                       help="write pidfile (.parser_execute)",
                       dest="write_pidfile", action="store_true",
@@ -201,6 +203,7 @@ def parse_one(db, jobname, path, parse_options):
     """
     reparse = parse_options.reparse
     mail_on_failure = parse_options.mail_on_failure
+    dry_run = parse_options.dry_run
 
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
@@ -257,19 +260,21 @@ def parse_one(db, jobname, path, parse_options):
                 tko_utils.dprint("! Reparse returned new test "
                                  "testname=%r subdir=%r" %
                                  (test.testname, test.subdir))
-        for test_idx in old_tests.itervalues():
-            where = {'test_idx' : test_idx}
-            db.delete('tko_iteration_result', where)
-            db.delete('tko_iteration_perf_value', where)
-            db.delete('tko_iteration_attributes', where)
-            db.delete('tko_test_attributes', where)
-            db.delete('tko_test_labels_tests', {'test_id': test_idx})
-            db.delete('tko_tests', where)
+        if not dry_run:
+            for test_idx in old_tests.itervalues():
+                where = {'test_idx' : test_idx}
+                db.delete('tko_iteration_result', where)
+                db.delete('tko_iteration_perf_value', where)
+                db.delete('tko_iteration_attributes', where)
+                db.delete('tko_test_attributes', where)
+                db.delete('tko_test_labels_tests', {'test_id': test_idx})
+                db.delete('tko_tests', where)
 
     # Upload job details to Sponge.
-    sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
-    if sponge_url:
-        job.keyval_dict['sponge_url'] = sponge_url
+    if not dry_run:
+        sponge_url = sponge_utils.upload_results(job, log=tko_utils.dprint)
+        if sponge_url:
+            job.keyval_dict['sponge_url'] = sponge_url
 
     # check for failures
     message_lines = [""]
@@ -287,33 +292,35 @@ def parse_one(db, jobname, path, parse_options):
     try:
         message = "\n".join(message_lines)
 
-        # send out a email report of failure
-        if len(message) > 2 and mail_on_failure:
-            tko_utils.dprint("Sending email report of failure on %s to %s"
-                             % (jobname, job.user))
-            mailfailure(jobname, job, message)
+        if not dry_run:
+            # send out a email report of failure
+            if len(message) > 2 and mail_on_failure:
+                tko_utils.dprint("Sending email report of failure on %s to %s"
+                                 % (jobname, job.user))
+                mailfailure(jobname, job, message)
 
-        # write the job into the database.
-        db.insert_job(jobname, job,
-                      parent_job_id=job_keyval.get(constants.PARENT_JOB_ID,
-                                                   None))
+            # write the job into the database.
+            db.insert_job(jobname, job,
+                          parent_job_id=job_keyval.get(constants.PARENT_JOB_ID,
+                                                       None))
 
-        # Upload perf values to the perf dashboard, if applicable.
-        for test in job.tests:
-            perf_uploader.upload_test(job, test, jobname)
+            # Upload perf values to the perf dashboard, if applicable.
+            for test in job.tests:
+                perf_uploader.upload_test(job, test, jobname)
 
-        # Although the cursor has autocommit, we still need to force it to
-        # commit existing changes before we can use django models, otherwise it
-        # will go into deadlock when django models try to start a new
-        # trasaction while the current one has not finished yet.
-        db.commit()
+            # Although the cursor has autocommit, we still need to force it to
+            # commit existing changes before we can use django models, otherwise
+            # it will go into deadlock when django models try to start a new
+            # trasaction while the current one has not finished yet.
+            db.commit()
 
-        # Handle retry job.
-        orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID, None)
-        if orig_afe_job_id:
-            orig_job_idx = tko_models.Job.objects.get(
-                    afe_job_id=orig_afe_job_id).job_idx
-            _invalidate_original_tests(orig_job_idx, job.index)
+            # Handle retry job.
+            orig_afe_job_id = job_keyval.get(constants.RETRY_ORIGINAL_JOB_ID,
+                                             None)
+            if orig_afe_job_id:
+                orig_job_idx = tko_models.Job.objects.get(
+                        afe_job_id=orig_afe_job_id).job_idx
+                _invalidate_original_tests(orig_job_idx, job.index)
     except Exception as e:
         metadata = {'path': path, 'error': str(e),
                     'details': traceback.format_exc()}
@@ -344,7 +351,8 @@ def parse_one(db, jobname, path, parse_options):
         tko_utils.dprint("DEBUG: tko_pb2.py doesn't exist. Create by "
                          "compiling tko/tko.proto.")
 
-    db.commit()
+    if not dry_run:
+        db.commit()
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop
@@ -476,7 +484,8 @@ def main():
     processed_jobs = set()
 
     options, args = parse_args()
-    parse_options = _ParseOptions(options.reparse, options.mailit)
+    parse_options = _ParseOptions(options.reparse, options.mailit,
+                                  options.dry_run)
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 
