@@ -17,6 +17,8 @@ from autotest_lib.server import hosts
 from autotest_lib.server import site_linux_system
 from autotest_lib.server.cros import host_lock_manager
 from autotest_lib.server.cros.ap_configurators import ap_batch_locker
+from autotest_lib.server.cros.chaos_ap_configurators \
+        import ap_configurator_factory
 from autotest_lib.server.cros.network import chaos_clique_utils as utils
 from autotest_lib.server.cros.network import wifi_client
 from autotest_lib.server.hosts import adb_host
@@ -49,7 +51,7 @@ class ChaosRunner(object):
         logging.info('DUT time: %s', self._host.run('date').stdout.strip())
 
 
-    def run(self, job, batch_size=12, tries=10, capturer_hostname=None,
+    def run(self, job, batch_size=10, tries=10, capturer_hostname=None,
             conn_worker=None, work_client_hostname=None,
             disabled_sysinfo=False):
         """Executes Chaos test.
@@ -257,6 +259,7 @@ class ChaosRunner(object):
                         continue
 
                 batch_locker.unlock_aps()
+
             if webdriver_tunnel:
                 webdriver_instance.disconnect_ssh_tunnel(webdriver_tunnel,
                                                          WEBDRIVER_PORT)
@@ -269,3 +272,6 @@ class ChaosRunner(object):
             if self._broken_pdus:
                 logging.info('PDU is down!!!\nThe following PDUs are down:\n')
                 pprint.pprint(self._broken_pdus)
+
+            factory = ap_configurator_factory.APConfiguratorFactory()
+            factory.turn_off_all_routers()
