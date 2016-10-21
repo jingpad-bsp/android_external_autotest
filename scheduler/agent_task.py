@@ -601,6 +601,7 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         self.task = task
         self._extra_command_args = extra_command_args
         self.host.metadata = self.get_metadata()
+        self._milestone = ''
 
 
     def get_metadata(self):
@@ -676,7 +677,8 @@ class SpecialAgentTask(AgentTask, TaskWithJobKeyvals):
         """Increments an accumulator associated with this special task."""
         fields = {'type': self.TASK_TYPE,
                   'success': bool(self.success),
-                  'board': str(self.host.board)}
+                  'board': str(self.host.board),
+                  'milestone': self._milestone}
         metrics.Counter(self._SPECIAL_TASK_COUNT_METRIC).increment(
             fields=fields)
         if (self.task.time_finished and self.task.time_started):
