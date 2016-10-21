@@ -525,13 +525,14 @@ class TradefedTest(test.test):
                      datetime_id)
         return datetime_id
 
-    def _parse_result(self, result):
+    def _parse_result(self, result, waivers=None):
         """Check the result from the tradefed output.
 
         This extracts the test pass/fail/executed list from the output of
         tradefed. It is up to the caller to handle inconsistencies.
 
         @param result: The result object from utils.run.
+        @param waivers: a set() of tests which are permitted to fail.
         """
         # Parse the stdout to extract test status. In particular step over
         # similar output for each ABI and just look at the final summary.
@@ -552,6 +553,19 @@ class TradefedTest(test.test):
             # Unfortunately this happens. Assume it made no other mistakes.
             logging.warning('Tradefed forgot to print number of tests.')
             tests = passed + failed + not_executed
+        # TODO(rohitbm): make failure parsing more robust by extracting the list
+        # of failing tests instead of searching in the result blob. As well as
+        # only parse for waivers for the running ABI.
+        if waivers:
+            for testname in waivers:
+                if testname + ' FAIL' in result.stdout:
+                    failed -= 1
+                    # To maintain total count consistency.
+                    passed += 1
+                    logging.info('Waived failure %s', testname)
+
+        logging.info('tests=%d, passed=%d, failed=%d, not_executed=%d',
+                tests, passed, failed, not_executed)
         return (tests, passed, failed, not_executed)
 
     def _collect_logs(self, repository, datetime, destination):
