@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import re
 import time
 
 import common
@@ -46,7 +47,6 @@ class ACPowerVerifier(hosts.Verifier):
             logging.info('Cannot determine battery status - '
                          'skipping check.')
 
-
     @property
     def description(self):
         return 'The DUT is plugged in to AC power'
@@ -87,7 +87,6 @@ class WritableVerifier(hosts.Verifier):
                 msg = 'Can\'t create a file in %s' % testdir
                 raise hosts.AutoservVerifyError(msg)
 
-
     @property
     def description(self):
         return 'The stateful filesystems are writable'
@@ -95,17 +94,16 @@ class WritableVerifier(hosts.Verifier):
 
 class UpdateSuccessVerifier(hosts.Verifier):
     """
-    Checks that the DUT has not failed its last provision job.
+    Checks that the DUT successfully finished its last provision job.
 
-    At the start of update (e.g. for a Provision job), the code touches
-    the file named in `host.PROVISION_FAILED`.  The file is located
-    in a part of the stateful partition that will be removed when the
-    update finishes.  Thus, the presence of the file indicates that a
-    prior update failed.
+    At the start of any update (e.g. for a Provision job), the code
+    creates a marker file named `host.PROVISION_FAILED`.  The file is
+    located in a part of the stateful partition that will be removed if
+    an update finishes successfully.  Thus, the presence of the file
+    indicates that a prior update failed.
 
-    @return: True if there exists file /var/tmp/provision_failed, which
-             indicates the last provision job failed.
-             False if the file does not exist or the dut can't be reached.
+    The verifier tests for the existence of the marker file and fails if
+    it still exists.
     """
     def verify(self, host):
         result = host.run('test -f %s' % host.PROVISION_FAILED,
@@ -114,10 +112,118 @@ class UpdateSuccessVerifier(hosts.Verifier):
             raise hosts.AutoservVerifyError(
                     'Last AU on this DUT failed')
 
-
     @property
     def description(self):
         return 'The most recent AU attempt on this DUT succeeded'
+
+
+class FirmwareVersionVerifier(hosts.Verifier):
+    """
+    Check for a firmware update, and apply it if appropriate.
+
+    This verifier checks to ensure that either the firmware on the DUT
+    is up-to-date, or that the target firmware can be installed from the
+    currently running build.
+
+    Failure occurs when all of the following apply:
+     1. The DUT is not part of a FAFT pool.  (DUTs used for FAFT testing
+        instead use `FirmwareRepair`, below.)
+     2. The DUT has an assigned stable firmware version.
+     3. The DUT is not running the assigned stable firmware.
+     4. The firmware supplied in the running OS build is not the
+        assigned stable firmware.
+
+    If the DUT needs an upgrade and the currently running OS build
+    supplies the necessary firmware, use `chromeos-firmwareupdate` to
+    install the new firmware.  Failure to install will cause the
+    verifier to fail.
+
+    This verifier nominally breaks the rule that "verifiers must succeed
+    quickly", since it can invoke `reboot()` during the success code
+    path.  We're doing it anyway for two reasons:
+      * The time between updates will typically be measured in months,
+        so the amortized cost is low.
+      * The reason we distinguish repair from verify is to allow
+        rescheduling work immediately while the expensive repair happens
+        out-of-band.  But a firmware update will likely hit all DUTs at
+        once, so it's pointless to pass the buck to repair.
+
+    N.B. This verifier is a trigger for all repair actions that install
+    the stable repair image.  If the firmware is out-of-date, but the
+    stable repair image does *not* contain the proper firmware version,
+    _the target DUT will fail repair, and will be unable to fix itself_.
+    """
+
+    @staticmethod
+    def _get_rw_firmware(host):
+        result = host.run('crossystem fwid', ignore_status=True)
+        if result.exit_status == 0:
+            return result.output
+        else:
+            return None
+
+    @staticmethod
+    def _get_available_firmware(host):
+        result = host.run('chromeos-firmwareupdate -V',
+                          ignore_status=True)
+        if result.exit_status == 0:
+            version = re.search(r'BIOS version:\s*(?P<version>.*)',
+                                result.output)
+            if version is not None:
+                return version.group('version')
+        return None
+
+    def verify(self, host):
+        # Test 1 - The DUT is not part of a FAFT pool.
+        if host._is_firmware_repair_supported():
+            return
+        # Test 2 - The DUT has an assigned stable firmware version.
+        stable_firmware = afe_utils.get_stable_firmware_version(
+                host._get_board_from_afe())
+        if stable_firmware is None:
+            # This DUT doesn't have a firmware update target
+            return
+
+        # For tests 3 and 4:  If the output from `crossystem` or
+        # `chromeos-firmwareupdate` isn't what we expect, we log an
+        # error, but don't fail:  We don't want DUTs unable to test a
+        # build merely because of a bug or change in either of those
+        # commands.
+
+        # Test 3 - The DUT is not running the target stable firmware.
+        current_firmware = self._get_rw_firmware(host)
+        if current_firmware is None:
+            logging.error('DUT firmware version can\'t be determined.')
+            return
+        if current_firmware == stable_firmware:
+            return
+        # Test 4 - The firmware supplied in the running OS build is not
+        # the assigned stable firmware.
+        available_firmware = self._get_available_firmware(host)
+        if available_firmware is None:
+            logging.error('Supplied firmware version in OS can\'t be '
+                          'determined.')
+            return
+        if available_firmware != stable_firmware:
+            raise hosts.AutoservVerifyError(
+                    'DUT firmware requires update from %s to %s' %
+                    (current_firmware, stable_firmware))
+        # Time to update the firmware.
+        logging.info('Updating firmwware from %s to %s',
+                     current_firmware, stable_firmware)
+        try:
+            host.run('chromeos-firmwareupdate --mode=autoupdate')
+            host.reboot()
+        except Exception as e:
+            message = ('chromeos-firmwareupdate failed: from '
+                       '%s to %s')
+            logging.exception(message, current_firmware, stable_firmware)
+            raise hosts.AutoservVerifyError(
+                    message % (current_firmware, stable_firmware))
+
+    @property
+    def description(self):
+        return 'The firmware on this DUT is up-to-date'
 
 
 class TPMStatusVerifier(hosts.Verifier):
@@ -174,7 +280,6 @@ class TPMStatusVerifier(hosts.Verifier):
             logging.info('Cannot determine the Crytohome valid status - '
                          'skipping check.')
 
-
     @property
     def description(self):
         return 'The host\'s TPM is available and working'
@@ -194,7 +299,6 @@ class PythonVerifier(hosts.Verifier):
                     message = ('Python is missing; may be caused by '
                                'powerwash')
             raise hosts.AutoservVerifyError(message)
-
 
     @property
     def description(self):
@@ -236,7 +340,6 @@ class ServoSysRqRepair(hosts.RepairAction):
         raise hosts.AutoservRepairError(
                 '%s is still offline after reset.' % host.hostname)
 
-
     @property
     def description(self):
         return 'Reset the DUT via kernel sysrq'
@@ -259,7 +362,6 @@ class ServoResetRepair(hosts.RepairAction):
             return
         raise hosts.AutoservRepairError(
                 '%s is still offline after reset.' % host.hostname)
-
 
     @property
     def description(self):
@@ -286,7 +388,6 @@ class FirmwareRepair(hosts.RepairAction):
                     '%s has no servo support.' % host.hostname)
         host.firmware_install()
 
-
     @property
     def description(self):
         return 'Re-install the stable firmware'
@@ -302,7 +403,6 @@ class AutoUpdateRepair(hosts.RepairAction):
 
     def repair(self, host):
         afe_utils.machine_install_and_update_labels(host, repair=True)
-
 
     @property
     def description(self):
@@ -323,7 +423,6 @@ class PowerWashRepair(AutoUpdateRepair):
         host.reboot(timeout=host.POWERWASH_BOOT_TIMEOUT, wait=True)
         super(PowerWashRepair, self).repair(host)
 
-
     @property
     def description(self):
         return 'Powerwash and then re-install the stable build via AU'
@@ -343,7 +442,6 @@ class ServoInstallRepair(hosts.RepairAction):
                     '%s has no servo support.' % host.hostname)
         host.servo_install(host.stage_image_for_servo())
 
-
     @property
     def description(self):
         return 'Reinstall from USB using servo'
@@ -357,6 +455,7 @@ def create_cros_repair_strategy():
         (WritableVerifier,           'writable', ['ssh']),
         (TPMStatusVerifier,          'tpm',      ['ssh']),
         (UpdateSuccessVerifier,      'good_au',  ['ssh']),
+        (FirmwareVersionVerifier,    'rwfw',     ['ssh']),
         (PythonVerifier,             'python',   ['ssh']),
         (repair.LegacyHostVerifier,  'cros',     ['ssh']),
     ]
@@ -378,7 +477,7 @@ def create_cros_repair_strategy():
 
     usb_triggers       = ['ssh', 'writable']
     powerwash_triggers = ['tpm', 'good_au']
-    au_triggers        = ['python', 'cros', 'power']
+    au_triggers        = ['power', 'rwfw', 'python', 'cros']
 
     repair_actions = [
         # RPM cycling must precede Servo reset:  if the DUT has a dead
@@ -437,11 +536,13 @@ def create_moblab_repair_strategy():
     verify_dag = [
         (repair.SshVerifier,         'ssh',     []),
         (ACPowerVerifier,            'power',   ['ssh']),
+        (FirmwareVersionVerifier,    'rwfw',    ['ssh']),
         (PythonVerifier,             'python',  ['ssh']),
         (repair.LegacyHostVerifier,  'cros',    ['ssh']),
     ]
+    au_triggers = ['power', 'rwfw', 'python', 'cros']
     repair_actions = [
         (repair.RPMCycleRepair, 'rpm', [], ['ssh', 'power']),
-        (AutoUpdateRepair, 'au', ['ssh'], ['python', 'cros', 'power']),
+        (AutoUpdateRepair, 'au', ['ssh'], au_triggers),
     ]
     return hosts.RepairStrategy(verify_dag, repair_actions)
