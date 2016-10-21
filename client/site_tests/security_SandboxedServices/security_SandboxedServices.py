@@ -129,7 +129,8 @@ class security_SandboxedServices(test.test):
             """
             logging.info('Loading baseline %s', path)
             reader = csv.DictReader(open(path))
-            return dict([(d['exe'], d) for d in reader])
+            return dict((d['exe'], d) for d in reader
+                        if not d['exe'].startswith('#'))
 
         baseline_path = os.path.join(self.bindir, 'baseline')
         ret = load(baseline_path)
@@ -148,7 +149,8 @@ class security_SandboxedServices(test.test):
         """
 
         exclusions_path = os.path.join(self.bindir, 'exclude')
-        return set([line.strip() for line in open(exclusions_path)])
+        return set(line.strip() for line in open(exclusions_path)
+                   if not line.startswith('#'))
 
 
     def dump_services(self, running_services, minijail_processes):
