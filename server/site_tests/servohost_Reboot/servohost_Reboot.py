@@ -6,6 +6,7 @@ import logging
 
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
+from autotest_lib.server import afe_utils
 from autotest_lib.server import site_utils
 from autotest_lib.server import test
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -15,7 +16,7 @@ class servohost_Reboot(test.test):
     """Enable a safe reboot for a servo host."""
     version = 1
 
-    def run_once(self, host):
+    def run_once(self, host, force_reboot=False):
         """
         Perfom a safe reboot for a servo host.
 
@@ -26,11 +27,18 @@ class servohost_Reboot(test.test):
                 servo host.
         """
         s_host = host._servo_host
-        servo_host_build = s_host.get_stable_servo_build()
-        ds = dev_server.ImageServer.resolve(s_host.hostname)
-        url = ds.get_update_url(servo_host_build)
-        updater = autoupdater.ChromiumOSUpdater(update_url=url, host=s_host)
-        if updater.check_update_status() == autoupdater.UPDATER_NEED_REBOOT:
+        reboot_needed = force_reboot
+
+        # If we don't have to force reboot, check if we need to reboot at all.
+        if not force_reboot:
+          servo_host_build = afe_utils.get_stable_cros_version(
+                  s_host.get_board())
+          ds = dev_server.ImageServer.resolve(s_host.hostname)
+          url = ds.get_update_url(servo_host_build)
+          updater = autoupdater.ChromiumOSUpdater(update_url=url, host=s_host)
+          reboot_needed = (updater.check_update_status() ==
+                           autoupdater.UPDATER_NEED_REBOOT)
+        if reboot_needed:
             # Get the list of duts to lock but take out the current host so we
             # don't wait forever.
             afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
