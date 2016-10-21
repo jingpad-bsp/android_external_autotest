@@ -8,7 +8,7 @@ import sys
 import unittest
 
 import common
-from autotest_lib.site_utils import assign_stable_images
+from autotest_lib.site_utils.stable_images import assign_stable_images
 
 
 # _OMAHA_TEST_DATA - File with JSON data to be used as test input to
