@@ -231,6 +231,8 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                 childJobsTable.refresh();
 
                 jobHistoryTable.clear();
+
+                getSpongeUrl(jobObject);
             }
 
 
@@ -606,5 +608,21 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                 jobHistoryTable.addRows(rows);
             }
         }, true);
+    }
+
+    private void getSpongeUrl(JSONObject jobObject) {
+        getElementById("view_sponge_invocation").setInnerHTML("");
+        getElementById("view_sponge_invocation_wrapper").getStyle().setProperty("display", "none");
+        JSONObject params = new JSONObject();
+        params.put("afe_job_id", new JSONNumber(jobId));
+        AfeUtils.callGetSpongeUrl(params, new SimpleCallback() {
+            public void doCallback(Object spongeUrl) {
+                if (spongeUrl != null){
+                    getElementById("view_sponge_invocation_wrapper").getStyle().setProperty("display", "");
+                    getElementById("view_sponge_invocation").setAttribute("href", spongeUrl.toString());
+                    getElementById("view_sponge_invocation").setInnerHTML(spongeUrl.toString());
+                }
+            }
+        });
     }
 }
