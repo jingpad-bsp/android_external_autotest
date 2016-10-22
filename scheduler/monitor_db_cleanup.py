@@ -3,7 +3,11 @@ Autotest AFE Cleanup used by the scheduler
 """
 
 
-import time, logging, random
+import logging
+import random
+import time
+
+from chromite.lib import metrics
 
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import email_manager
@@ -60,6 +64,8 @@ class UserCleanup(PeriodicCleanup):
 
 
     @timer.decorate
+    @metrics.SecondsTimerDecorator(
+            'chromeos/autotest/scheduler/cleanup/user/durations')
     def _cleanup(self):
         logging.info('Running periodic cleanup')
         self._abort_timed_out_jobs()
@@ -245,6 +251,8 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
 
 
     @timer.decorate
+    @metrics.SecondsTimerDecorator(
+        'chromeos/autotest/scheduler/cleanup/daily/durations')
     def _cleanup(self):
         logging.info('Running 24 hour clean up')
         self._check_for_uncleanable_db_inconsistencies()
