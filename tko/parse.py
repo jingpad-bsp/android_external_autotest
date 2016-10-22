@@ -1,8 +1,15 @@
 #!/usr/bin/python -u
 
+import collections
 import datetime
+import errno
+import fcntl
 import json
-import os, sys, optparse, fcntl, errno, traceback, socket
+import optparse
+import os
+import socket
+import sys
+import traceback
 
 import common
 from autotest_lib.client.common_lib import mail, pidfile
@@ -16,6 +23,10 @@ from autotest_lib.site_utils import sponge_utils
 from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, status_lib
 from autotest_lib.tko.perf_upload import perf_uploader
+
+
+_ParseOptions = collections.namedtuple(
+    'ParseOptions', ['reparse', 'mail_on_failure'])
 
 
 def parse_args():
@@ -179,18 +190,18 @@ def _invalidate_original_tests(orig_job_idx, retry_job_idx):
     tko_utils.dprint('DEBUG: Invalidated tests associated to job: ' + msg)
 
 
-def parse_one(db, jobname, path, reparse, mail_on_failure):
+def parse_one(db, jobname, path, parse_options):
     """Parse a single job. Optionally send email on failure.
 
     @param db: database object.
     @param jobname: the tag used to search for existing job in db,
                     e.g. '1234-chromeos-test/host1'
     @param path: The path to the results to be parsed.
-    @param reparse: True/False, whether this is reparsing of the job.
-    @param mail_on_failure: whether to send email on FAILED test.
-
-
+    @param parse_options: _ParseOptions instance.
     """
+    reparse = parse_options.reparse
+    mail_on_failure = parse_options.mail_on_failure
+
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
     # old tests is a dict from tuple (test_name, subdir) to test_idx
@@ -385,35 +396,32 @@ def _get_job_subdirs(path):
     return None
 
 
-def parse_leaf_path(db, path, level, reparse, mail_on_failure):
+def parse_leaf_path(db, path, level, parse_options):
     """Parse a leaf path.
 
     @param db: database handle.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
-    @param reparse: True/False, whether this is reparsing of the job.
-    @param mail_on_failure: whether to send email on FAILED test.
+    @param parse_options: _ParseOptions instance.
 
     @returns: The job name of the parsed job, e.g. '123-chromeos-test/host1'
     """
     job_elements = path.split("/")[-level:]
     jobname = "/".join(job_elements)
     try:
-        db.run_with_retry(parse_one, db, jobname, path, reparse,
-                          mail_on_failure)
+        db.run_with_retry(parse_one, db, jobname, path, parse_options)
     except Exception:
         traceback.print_exc()
     return jobname
 
 
-def parse_path(db, path, level, reparse, mail_on_failure):
+def parse_path(db, path, level, parse_options):
     """Parse a path
 
     @param db: database handle.
     @param path: The path to the results to be parsed.
     @param level: Integer, level of subdirectories to include in the job name.
-    @param reparse: True/False, whether this is reparsing of the job.
-    @param mail_on_failure: whether to send email on FAILED test.
+    @param parse_options: _ParseOptions instance.
 
     @returns: A set of job names of the parsed jobs.
               set(['123-chromeos-test/host1', '123-chromeos-test/host2'])
@@ -425,16 +433,16 @@ def parse_path(db, path, level, reparse, mail_on_failure):
         # synchronous server side tests record output in this directory. without
         # this check, we do not parse these results.
         if os.path.exists(os.path.join(path, 'status.log')):
-            new_job = parse_leaf_path(db, path, level, reparse, mail_on_failure)
+            new_job = parse_leaf_path(db, path, level, parse_options)
             processed_jobs.add(new_job)
         # multi-machine job
         for subdir in job_subdirs:
             jobpath = os.path.join(path, subdir)
-            new_jobs = parse_path(db, jobpath, level + 1, reparse, mail_on_failure)
+            new_jobs = parse_path(db, jobpath, level + 1, parse_options)
             processed_jobs.update(new_jobs)
     else:
         # single machine job
-        new_job = parse_leaf_path(db, path, level, reparse, mail_on_failure)
+        new_job = parse_leaf_path(db, path, level, parse_options)
         processed_jobs.add(new_job)
     return processed_jobs
 
@@ -468,6 +476,7 @@ def main():
     processed_jobs = set()
 
     options, args = parse_args()
+    parse_options = _ParseOptions(options.reparse, options.mailit)
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 
@@ -505,8 +514,7 @@ def main():
                 else:
                     raise # something unexpected happened
             try:
-                new_jobs = parse_path(db, path, options.level, options.reparse,
-                           options.mailit)
+                new_jobs = parse_path(db, path, options.level, parse_options)
                 processed_jobs.update(new_jobs)
 
             finally:
