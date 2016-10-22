@@ -888,6 +888,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             # Make sure ro.boot.hardware and ro.build.product match.
             hardware = self._run_output_with_retry('getprop ro.boot.hardware')
             product = self._run_output_with_retry('getprop ro.build.product')
+            # TODO(sbasi) b/32337862: Remove msm8996 exemption once msm8996
+            # devices are properly configured with the correct product id.
+            if hardware == 'msm8996':
+                return
             if hardware != product:
                 raise error.AutoservHostError('ro.boot.hardware: %s does not '
                                               'match to ro.build.product: %s' %
