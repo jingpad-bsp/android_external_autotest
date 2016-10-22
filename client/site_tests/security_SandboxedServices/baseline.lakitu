@@ -13,3 +13,9 @@ systemd-udevd,root,root,No,No,No
 # TODO: We need better filters on these.
 python2.7,root,root,No,No,No
 curl,root,root,No,No,No
+
+# These processes won't run without network (which is the case for VMTests), but
+# they also run as root and are not sandboxed. You will hit these if you try to
+# run VMTests on your own KVM instance.
+docker,root,root,No,No,No
+containerd,root,root,No,No,No
