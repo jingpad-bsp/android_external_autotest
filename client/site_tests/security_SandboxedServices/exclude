@@ -23,3 +23,8 @@ sshd
 sudo
 tail
 x11vnc
+
+# The minijail daemon itself isn't useful to track as it just launches other
+# daemons.  Plus, it usually runs as root so it can drop privs for daemons.
+minijail0
+minijail-init
