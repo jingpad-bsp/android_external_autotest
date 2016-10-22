@@ -31,12 +31,12 @@ PS_FIELDS = (
 )
 # These fields aren't available via ps, so we have to get them indirectly.
 # Note: Case is significant as the fields match the /proc/PID/status file.
-# Note: Order is significant as it matches order in the /proc/PID/status file.
 STATUS_FIELDS = (
     'CapInh',
     'CapPrm',
     'CapEff',
     'CapBnd',
+    'CapAmb',
     'Seccomp',
 )
 PsOutput = namedtuple("PsOutput",
@@ -87,19 +87,33 @@ class security_SandboxedServices(test.test):
         logging.debug('output of ps:\n%s', output)
 
         # Fill in fields that `ps` doesn't support but are in /proc/PID/status.
+        # Example line output:
+        # Pid:1 CapInh:0000000000000000 CapPrm:0000001fffffffff CapEff:0000001fffffffff CapBnd:0000001fffffffff Seccomp:0
         cmd = (
             "awk '$1 ~ \"^(Pid|%s):\" "
-            "{printf \"%%s \", $NF; if ($1 == \"%s:\") printf \"\\n\"}'"
+            "{printf \"%%s%%s \", $1, $NF; if ($1 == \"%s:\") printf \"\\n\"}'"
             " /proc/[1-9]*/status"
         ) % ('|'.join(STATUS_FIELDS), STATUS_FIELDS[-1])
         # Processes might exit while awk is running, so ignore its exit status.
         status_output = utils.system_output(cmd, ignore_status=True)
-        status_data = dict(line.split(None, 1)
+        # Turn each line into a dict.
+        # [
+        #   {'pid': '1', 'CapInh': '0000000000000000', 'Seccomp': '0', ...},
+        #   {'pid': '10', ...},
+        #   ...,
+        # ]
+        status_list = list(dict(attr.split(':', 1) for attr in line.split())
                            for line in status_output.splitlines())
+        # Create a dict mapping a pid to its extended status data.
+        # {
+        #   '1': {'pid': '1', 'CapInh': '0000000000000000', ...},
+        #   '2': {'pid': '2', ...},
+        #   ...,
+        # }
+        status_data = dict((x['Pid'], x) for x in status_list)
         logging.debug('output of awk:\n%s', status_output)
 
         # Now merge the two sets of process data.
-        missing_status_fields = [None] * len(STATUS_FIELDS)
         running_processes = []
         for line in output.splitlines():
             # crbug.com/422700: Filter out zombie processes.
@@ -108,10 +122,11 @@ class security_SandboxedServices(test.test):
 
             fields = line.split(None, ps_fields_len - 1)
             pid = fields[0]
-            if pid in status_data:
-                status_fields = status_data[pid].split()
-            else:
-                status_fields = missing_status_fields
+            # The process lists might not be exactly the same (since we gathered
+            # data with multiple commands), and not all fields might exist (e.g.
+            # older kernels might not have all the fields).
+            pid_data = status_data.get(pid, {})
+            status_fields = [pid_data.get(key) for key in STATUS_FIELDS]
             running_processes.append(PsOutput(*fields + status_fields))
 
         return running_processes
