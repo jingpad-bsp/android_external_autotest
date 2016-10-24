@@ -41,6 +41,7 @@ PRIMARY_ONLY_COMMANDS = ['test_importer']
 # frontend repo, no need to update afe.
 COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
                           'tko': 'tko/'}
+BUILD_EXTERNALS_COMMAND = 'build_externals'
 # Services present on all hosts.
 # TODO(ayatane): Temporarily stop starting sysmon
 # UNIVERSAL_SERVICES = ['sysmon']
@@ -192,7 +193,7 @@ def discover_restart_services():
     return services
 
 
-def update_command(cmd_tag, dryrun=False):
+def update_command(cmd_tag, dryrun=False, use_chromite_master=False):
     """Restart a command.
 
     The command name is looked up in global_config.ini to find the full command
@@ -200,6 +201,8 @@ def update_command(cmd_tag, dryrun=False):
 
     @param cmd_tag: Which command to restart.
     @param dryrun: If true print the command that would have been run.
+    @param use_chromite_master: True if updating chromite to master, rather
+                                than prod.
 
     @raises UnknownCommandException If cmd_tag can't be looked up.
     @raises subprocess.CalledProcessError on a command failure.
@@ -214,6 +217,10 @@ def update_command(cmd_tag, dryrun=False):
 
     expanded_command = cmds[cmd_tag].replace('AUTOTEST_REPO',
                                               common.autotest_dir)
+    # When updating push servers, pass an arg to build_externals to update
+    # chromite to master branch for testing
+    if use_chromite_master and cmd_tag == BUILD_EXTERNALS_COMMAND:
+        expanded_command += ' --use_chromite_master'
 
     print('Running: %s: %s' % (cmd_tag, expanded_command))
     if dryrun:
@@ -308,7 +315,7 @@ def restart_services(service_names, dryrun=False, skip_service_status=False):
 
 
 def run_deploy_actions(cmds_skip=set(), dryrun=False,
-                       skip_service_status=False):
+                       skip_service_status=False, use_chromite_master=False):
     """Run arbitrary update commands specified in global.ini.
 
     @param cmds_skip: cmds no need to run since the corresponding repo/file
@@ -316,6 +323,8 @@ def run_deploy_actions(cmds_skip=set(), dryrun=False,
     @param dryrun: Don't really restart the service, just print out the command.
     @param skip_service_status: Set to True to skip service status check.
                                 Default is False.
+    @param use_chromite_master: True if updating chromite to master, rather
+                                than prod.
 
     @raises subprocess.CalledProcessError on a command failure.
     @raises UnstableServices if any services are unstable after restart.
@@ -330,7 +339,8 @@ def run_deploy_actions(cmds_skip=set(), dryrun=False,
                             status='primary')):
                 print('Command %s is only applicable to primary servers.' % cmd)
                 continue
-            update_command(cmd, dryrun=dryrun)
+            update_command(cmd, dryrun=dryrun,
+                           use_chromite_master=use_chromite_master)
 
     services = discover_restart_services()
     if services:
@@ -476,9 +486,9 @@ def main(args):
             return 1
 
     versions_before = repo_versions()
-    versions_after = {}
+    versions_after = set()
     cmd_versions_before = repo_versions_to_decide_whether_run_cmd_update()
-    cmd_versions_after = {}
+    cmd_versions_after = set()
 
     if behaviors.update:
         print('Updating Repo.')
@@ -494,7 +504,8 @@ def main(args):
                      {t[0] for t in cmd_versions_before & cmd_versions_after})
         try:
             run_deploy_actions(
-                    cmds_skip, behaviors.dryrun, behaviors.skip_service_status)
+                    cmds_skip, behaviors.dryrun, behaviors.skip_service_status,
+                    use_chromite_master=behaviors.update_push_servers)
         except UnstableServices as e:
             print('The following services were not stable after '
                   'the update:')
