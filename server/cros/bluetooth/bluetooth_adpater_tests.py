@@ -246,6 +246,15 @@ def retry(test_method, instance, *args, **kwargs):
 
     # Try to fix the serial device if applicable.
     logging.error('%s failed at the 1st time.', test_method.__name__)
+
+    # If this test does not use any attached serial device, just re-run
+    # the test.
+    logging.info('%s: retry the 2nd time.', test_method.__name__)
+    time.sleep(1)
+    if not hasattr(instance, 'device_type'):
+        return _is_successful(_run_method(test_method, test_method.__name__,
+                                          instance, *args, **kwargs))
+
     host = instance.host
     device = instance.devices[instance.device_type]
     if not fix_serial_device(host, device):
@@ -362,39 +371,37 @@ class BluetoothAdapterTests(test.test):
             'GAP_UUID': '00001800-0000-1000-8000-00805f9b34fb'}
 
 
-    def get_device(self, host, device_type):
+    def get_device(self, device_type):
         """Get the bluetooth device object.
 
-        @param host: the DUT, usually a chromebook
         @param device_type : the bluetooth HID device type, e.g., 'MOUSE'
 
         @returns: the bluetooth device object
 
         """
-        self.host = host
         self.device_type = device_type
         if self.devices[device_type] is None:
             self.devices[device_type] = get_bluetooth_emulated_device(
-                    host, device_type)
+                    self.host, device_type)
         return self.devices[device_type]
 
 
     @_test_retry_and_log
     def test_bluetoothd_running(self):
         """Test that bluetoothd is running."""
-        return self.bluetooth_hid_facade.is_bluetoothd_running()
+        return self.bluetooth_facade.is_bluetoothd_running()
 
 
     @_test_retry_and_log
     def test_start_bluetoothd(self):
         """Test that bluetoothd could be started successfully."""
-        return self.bluetooth_hid_facade.start_bluetoothd()
+        return self.bluetooth_facade.start_bluetoothd()
 
 
     @_test_retry_and_log
     def test_stop_bluetoothd(self):
         """Test that bluetoothd could be stopped successfully."""
-        return self.bluetooth_hid_facade.stop_bluetoothd()
+        return self.bluetooth_facade.stop_bluetoothd()
 
 
     @_test_retry_and_log
@@ -404,9 +411,9 @@ class BluetoothAdapterTests(test.test):
         This includes that the adapter is detectable, is powered on,
         and its hci device is hci0.
         """
-        has_adapter = self.bluetooth_hid_facade.has_adapter()
-        is_powered_on = self.bluetooth_hid_facade.is_powered_on()
-        hci = self.bluetooth_hid_facade.get_hci() == self.EXPECTED_HCI
+        has_adapter = self.bluetooth_facade.has_adapter()
+        is_powered_on = self.bluetooth_facade.is_powered_on()
+        hci = self.bluetooth_facade.get_hci() == self.EXPECTED_HCI
         self.results = {
                 'has_adapter': has_adapter,
                 'is_powered_on': is_powered_on,
@@ -417,11 +424,11 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_power_on_adapter(self):
         """Test that the adapter could be powered on successfully."""
-        power_on = self.bluetooth_hid_facade.set_powered(True)
+        power_on = self.bluetooth_facade.set_powered(True)
         is_powered_on = False
         try:
             utils.poll_for_condition(
-                    condition=self.bluetooth_hid_facade.is_powered_on,
+                    condition=self.bluetooth_facade.is_powered_on,
                     timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
                     desc='Waiting for adapter powered on')
             is_powered_on = True
@@ -437,12 +444,12 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_power_off_adapter(self):
         """Test that the adapter could be powered off successfully."""
-        power_off = self.bluetooth_hid_facade.set_powered(False)
+        power_off = self.bluetooth_facade.set_powered(False)
         is_powered_off = False
         try:
             utils.poll_for_condition(
                     condition=(lambda:
-                               not self.bluetooth_hid_facade.is_powered_on()),
+                               not self.bluetooth_facade.is_powered_on()),
                     timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
                     desc='Waiting for adapter powered off')
             is_powered_off = True
@@ -464,11 +471,11 @@ class BluetoothAdapterTests(test.test):
         This includes restarting bluetoothd, and removing the settings
         and cached devices.
         """
-        reset_on = self.bluetooth_hid_facade.reset_on()
+        reset_on = self.bluetooth_facade.reset_on()
         is_powered_on = False
         try:
             utils.poll_for_condition(
-                    condition=self.bluetooth_hid_facade.is_powered_on,
+                    condition=self.bluetooth_facade.is_powered_on,
                     timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
                     desc='Waiting for adapter reset on')
             is_powered_on = True
@@ -488,12 +495,12 @@ class BluetoothAdapterTests(test.test):
         This includes restarting bluetoothd, and removing the settings
         and cached devices.
         """
-        reset_off = self.bluetooth_hid_facade.reset_off()
+        reset_off = self.bluetooth_facade.reset_off()
         is_powered_off = False
         try:
             utils.poll_for_condition(
                     condition=(lambda:
-                               not self.bluetooth_hid_facade.is_powered_on()),
+                               not self.bluetooth_facade.is_powered_on()),
                     timeout=self.ADAPTER_POWER_STATE_TIMEOUT_SECS,
                     desc='Waiting for adapter reset off')
             is_powered_off = True
@@ -511,7 +518,7 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_UUIDs(self):
         """Test that basic profiles are supported."""
-        adapter_UUIDs = self.bluetooth_hid_facade.get_UUIDs()
+        adapter_UUIDs = self.bluetooth_facade.get_UUIDs()
         self.results = [uuid for uuid in self.SUPPORTED_UUIDS.values()
                         if uuid not in adapter_UUIDs]
         return not bool(self.results)
@@ -520,9 +527,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_start_discovery(self):
         """Test that the adapter could start discovery."""
-        start_discovery = self.bluetooth_hid_facade.start_discovery()
+        start_discovery = self.bluetooth_facade.start_discovery()
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_discovering = self.bluetooth_hid_facade.is_discovering()
+        is_discovering = self.bluetooth_facade.is_discovering()
         self.results = {
                 'start_discovery': start_discovery,
                 'is_discovering': is_discovering}
@@ -532,9 +539,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_stop_discovery(self):
         """Test that the adapter could stop discovery."""
-        stop_discovery = self.bluetooth_hid_facade.stop_discovery()
+        stop_discovery = self.bluetooth_facade.stop_discovery()
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_not_discovering = not self.bluetooth_hid_facade.is_discovering()
+        is_not_discovering = not self.bluetooth_facade.is_discovering()
         self.results = {
                 'stop_discovery': stop_discovery,
                 'is_not_discovering': is_not_discovering}
@@ -544,9 +551,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_discoverable(self):
         """Test that the adapter could be set discoverable."""
-        set_discoverable = self.bluetooth_hid_facade.set_discoverable(True)
+        set_discoverable = self.bluetooth_facade.set_discoverable(True)
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_discoverable = self.bluetooth_hid_facade.is_discoverable()
+        is_discoverable = self.bluetooth_facade.is_discoverable()
         self.results = {
                 'set_discoverable': set_discoverable,
                 'is_discoverable': is_discoverable}
@@ -556,9 +563,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_nondiscoverable(self):
         """Test that the adapter could be set non-discoverable."""
-        set_nondiscoverable = self.bluetooth_hid_facade.set_discoverable(False)
+        set_nondiscoverable = self.bluetooth_facade.set_discoverable(False)
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_nondiscoverable = not self.bluetooth_hid_facade.is_discoverable()
+        is_nondiscoverable = not self.bluetooth_facade.is_discoverable()
         self.results = {
                 'set_nondiscoverable': set_nondiscoverable,
                 'is_nondiscoverable': is_nondiscoverable}
@@ -568,9 +575,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_pairable(self):
         """Test that the adapter could be set pairable."""
-        set_pairable = self.bluetooth_hid_facade.set_pairable(True)
+        set_pairable = self.bluetooth_facade.set_pairable(True)
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_pairable = self.bluetooth_hid_facade.is_pairable()
+        is_pairable = self.bluetooth_facade.is_pairable()
         self.results = {
                 'set_pairable': set_pairable,
                 'is_pairable': is_pairable}
@@ -580,9 +587,9 @@ class BluetoothAdapterTests(test.test):
     @_test_retry_and_log
     def test_nonpairable(self):
         """Test that the adapter could be set non-pairable."""
-        set_nonpairable = self.bluetooth_hid_facade.set_pairable(False)
+        set_nonpairable = self.bluetooth_facade.set_pairable(False)
         time.sleep(self.ADAPTER_ACTION_SLEEP_SECS)
-        is_nonpairable = not self.bluetooth_hid_facade.is_pairable()
+        is_nonpairable = not self.bluetooth_facade.is_pairable()
         self.results = {
                 'set_nonpairable': set_nonpairable,
                 'is_nonpairable': is_nonpairable}
@@ -601,11 +608,11 @@ class BluetoothAdapterTests(test.test):
         has_device_initially = False
         start_discovery = False
         device_discovered = False
-        has_device = self.bluetooth_hid_facade.has_device
+        has_device = self.bluetooth_facade.has_device
 
         if has_device(device_address):
             has_device_initially = True
-        elif self.bluetooth_hid_facade.start_discovery():
+        elif self.bluetooth_facade.start_discovery():
             start_discovery = True
             try:
                 utils.poll_for_condition(
@@ -644,14 +651,14 @@ class BluetoothAdapterTests(test.test):
             @returns: True if it could pair with the device. False otherwise.
 
             """
-            return self.bluetooth_hid_facade.pair_legacy_device(
+            return self.bluetooth_facade.pair_legacy_device(
                     device_address, pin, trusted,
                     self.ADAPTER_PAIRING_TIMEOUT_SECS)
 
 
         has_device = False
         paired = False
-        if self.bluetooth_hid_facade.has_device(device_address):
+        if self.bluetooth_facade.has_device(device_address):
             has_device = True
             try:
                 utils.poll_for_condition(
@@ -678,15 +685,15 @@ class BluetoothAdapterTests(test.test):
         @returns: True if the device is removed successfully. False otherwise.
 
         """
-        device_is_paired_initially = self.bluetooth_hid_facade.device_is_paired(
+        device_is_paired_initially = self.bluetooth_facade.device_is_paired(
                 device_address)
         remove_pairing = False
         pairing_removed = False
 
         if device_is_paired_initially:
-            remove_pairing = self.bluetooth_hid_facade.remove_device_object(
+            remove_pairing = self.bluetooth_facade.remove_device_object(
                     device_address)
-            pairing_removed = not self.bluetooth_hid_facade.device_is_paired(
+            pairing_removed = not self.bluetooth_facade.device_is_paired(
                     device_address)
 
         self.results = {
@@ -707,10 +714,10 @@ class BluetoothAdapterTests(test.test):
 
         """
 
-        set_trusted = self.bluetooth_hid_facade.set_trusted(
+        set_trusted = self.bluetooth_facade.set_trusted(
                 device_address, trusted)
 
-        properties = self.bluetooth_hid_facade.get_device_properties(
+        properties = self.bluetooth_facade.get_device_properties(
                 device_address)
         actual_trusted = properties.get('Trusted')
 
@@ -740,12 +747,12 @@ class BluetoothAdapterTests(test.test):
             @returns: True if it could connect to the device. False otherwise.
 
             """
-            return self.bluetooth_hid_facade.connect_device(device_address)
+            return self.bluetooth_facade.connect_device(device_address)
 
 
         has_device = False
         connected = False
-        if self.bluetooth_hid_facade.has_device(device_address):
+        if self.bluetooth_facade.has_device(device_address):
             has_device = True
             try:
                 utils.poll_for_condition(
@@ -772,7 +779,7 @@ class BluetoothAdapterTests(test.test):
         @returns: True if disconnection is performed. False otherwise.
 
         """
-        return self.bluetooth_hid_facade.disconnect_device(device_address)
+        return self.bluetooth_facade.disconnect_device(device_address)
 
 
     def _enter_command_mode(self, device):
@@ -896,7 +903,7 @@ class BluetoothAdapterTests(test.test):
         @returns: True if the device name is derived. None otherwise.
 
         """
-        properties = self.bluetooth_hid_facade.get_device_properties(
+        properties = self.bluetooth_facade.get_device_properties(
                 device_address)
         self.discovered_device_name = properties.get('Name')
         return bool(self.discovered_device_name)
@@ -942,7 +949,7 @@ class BluetoothAdapterTests(test.test):
                   expected class of service. False otherwise.
 
         """
-        properties = self.bluetooth_hid_facade.get_device_properties(
+        properties = self.bluetooth_facade.get_device_properties(
                 device_address)
         device_class = properties.get('Class')
         discovered_class_of_service = (device_class & self.CLASS_OF_SERVICE_MASK
@@ -967,7 +974,7 @@ class BluetoothAdapterTests(test.test):
                   expected class of device. False otherwise.
 
         """
-        properties = self.bluetooth_hid_facade.get_device_properties(
+        properties = self.bluetooth_facade.get_device_properties(
                 device_address)
         device_class = properties.get('Class')
         discovered_class_of_device = (device_class & self.CLASS_OF_DEVICE_MASK
