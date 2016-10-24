@@ -1173,6 +1173,7 @@ class _ExternalGitRepo(ExternalPackage):
     # All the chromiumos projects used on the lab servers should have a 'prod'
     # branch used to track the software version deployed in prod.
     PROD_BRANCH = 'prod'
+    MASTER_BRANCH = 'master'
 
     def is_needed(self, unused_install_dir):
         """Tell build_externals that we need to fetch."""
@@ -1246,7 +1247,7 @@ class ChromiteRepo(_ExternalGitRepo):
 
     _GIT_URL = ('https://chromium.googlesource.com/chromiumos/chromite')
 
-    def build_and_install(self, install_dir):
+    def build_and_install(self, install_dir, master_branch=False):
         """
         Clone if the repo isn't initialized, pull clean bits if it is.
 
@@ -1255,13 +1256,17 @@ class ChromiteRepo(_ExternalGitRepo):
         directory because it doesn't need installation.
 
         @param install_dir: destination directory for chromite installation.
+        @param master_branch: if True, install master branch. Otherwise,
+                              install prod branch.
         """
+        init_branch = (self.MASTER_BRANCH if master_branch
+                       else self.PROD_BRANCH)
         local_chromite_dir = os.path.join(install_dir, 'chromite')
         git_repo = revision_control.GitRepo(
                 local_chromite_dir,
                 self._GIT_URL,
                 abs_work_tree=local_chromite_dir)
-        git_repo.reinit_repo_at(self.PROD_BRANCH)
+        git_repo.reinit_repo_at(init_branch)
 
 
         if git_repo.get_latest_commit_hash():
