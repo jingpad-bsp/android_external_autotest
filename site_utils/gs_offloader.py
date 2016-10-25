@@ -128,9 +128,9 @@ DEFAULT_CTS_APFE_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_apfe_server', default='')
 
 _PUBSUB_ENABLED = global_config.global_config.get_config_value(
-        'CROS', 'cloud_notification_enabled:', type=bool, default=False)
+        'CROS', 'cloud_notification_enabled', type=bool, default=False)
 _PUBSUB_TOPIC = global_config.global_config.get_config_value(
-        'CROS', 'cloud_notification_topic::', type='string', default=None)
+        'CROS', 'cloud_notification_topic', type='string', default=None)
 
 # the message data for new test result notification.
 NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'

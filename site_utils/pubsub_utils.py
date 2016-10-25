@@ -14,13 +14,13 @@ import os
 from apiclient import discovery
 from oauth2client.client import ApplicationDefaultCredentialsError
 from oauth2client.client import GoogleCredentials
+from autotest_lib.server.hosts import moblab_host
 
 import common
 
 # Cloud service
 # TODO(ntang): move this to config.
-CLOUD_SERVICE_ACCOUNT_FILE = ('/home/moblab/.config/moblab/'
-                              'moblab-cloud-credential.json')
+CLOUD_SERVICE_ACCOUNT_FILE = moblab_host.MOBLAB_SERVICE_ACCOUNT_LOCATION
 PUBSUB_SERVICE_NAME = 'pubsub'
 PUBSUB_VERSION = 'v1beta2'
 PUBSUB_SCOPES = ['https://www.googleapis.com/auth/pubsub']

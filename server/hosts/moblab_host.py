@@ -29,8 +29,10 @@ SUBNET_DUT_SEARCH_RE = (
         r'/?.*\((?P<ip>192.168.231.*)\) at '
         '(?P<mac>[0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])')
 MOBLAB_IMAGE_STORAGE = '/mnt/moblab/static'
-MOBLAB_BOTO_LOCATION = '/home/moblab/.boto'
-MOBLAB_LAUNCH_CONTROL_KEY_LOCATION = '/home/moblab/.launch_control_key'
+MOBLAB_HOME = '/home/moblab'
+MOBLAB_BOTO_LOCATION = '%s/.boto' % MOBLAB_HOME
+MOBLAB_LAUNCH_CONTROL_KEY_LOCATION = '%s/.launch_control_key' % MOBLAB_HOME
+MOBLAB_SERVICE_ACCOUNT_LOCATION = '%s/.service_account.json' % MOBLAB_HOME
 MOBLAB_AUTODIR = '/usr/local/autodir'
 DHCPD_LEASE_FILE = '/var/lib/dhcp/dhcpd.leases'
 MOBLAB_SERVICES = ['moblab-scheduler-init',
