@@ -20,6 +20,7 @@ The script uses latest gandof stable build as test build by default.
 
 import argparse
 import ast
+from contextlib import contextmanager
 import getpass
 import multiprocessing
 import os
@@ -47,7 +48,7 @@ from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
-AUTOTEST_DIR='/usr/local/autotest'
+AUTOTEST_DIR=common.autotest_dir
 CONFIG = global_config.global_config
 
 AFE = frontend_wrappers.RetryingAFE(timeout_min=0.5, delay_sec=2)
@@ -123,6 +124,9 @@ IGNORE_MISSING_TESTS = [
 manager = multiprocessing.Manager()
 run_suite_output = manager.list()
 all_suite_ids = manager.list()
+# A dict maps the name of the updated repos and the path of them.
+UPDATED_REPOS = {'autotest': AUTOTEST_DIR,
+                 'chromite': '%s/site-packages/chromite/' % AUTOTEST_DIR}
 
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
@@ -510,10 +514,40 @@ def check_queue(queue):
     raise exc_info[0](exc_info[1])
 
 
+def get_head_of_repos(repos):
+    """Get HEAD of updated repos, currently are autotest and chromite repos
+
+    @param repos: a map of repo name to the path of the repo. E.g.
+                  {'autotest': '/usr/local/autotest'}
+    @return: a map of repo names to the current HEAD of that repo.
+    """
+    @contextmanager
+    def cd(new_wd):
+        """Helper function to change working directory.
+
+        @param new_wd: new working directory that switch to.
+        """
+        prev_wd = os.getcwd()
+        os.chdir(os.path.expanduser(new_wd))
+        try:
+            yield
+        finally:
+            os.chdir(prev_wd)
+
+    updated_repo_heads = {}
+    for repo_name, path_to_repo in repos.iteritems():
+        with cd(path_to_repo):
+            head = subprocess.check_output('git rev-parse HEAD',
+                                           shell=True).strip()
+        updated_repo_heads[repo_name] = head
+    return updated_repo_heads
+
+
 def main():
     """Entry point for test_push script."""
     arguments = parse_arguments()
-    top_hash = subprocess.check_output('git rev-parse HEAD', shell=True).strip()
+    h = get_head_of_repos(UPDATED_REPOS)
+    updated_repo_msg = '\n'.join(['%s: %s' % (k, v) for k, v in h.iteritems()])
 
     try:
         # Use daemon flag will kill child processes when parent process fails.
@@ -578,16 +612,18 @@ def main():
             gmail_lib.send_email(
                     arguments.email,
                     'Test for pushing to prod failed. Do NOT push!',
-                    ('Test for CLs between <current_prod...%s> failed. Errors '
-                     'occurred during test:\n\n%s\n\n' % (top_hash, str(e)) +
-                     '\n'.join(run_suite_output)))
+                    ('Test CLs of the following repos failed. Below are the '
+                     'repos and the corresponding test HEAD.\n\n%s\n\n.'
+                     'Error occurred during test:\n\n%s\n\n' %
+                     (updated_repo_msg, str(e)) + '\n'.join(run_suite_output)))
         raise
     finally:
         # Reverify all the hosts
         reverify_all_push_duts(arguments.pool)
 
-    message = ('\nAll tests are completed successfully, prod branch is ready to'
-               ' be pushed to %s.' % top_hash)
+    message = ('\nAll tests are completed successfully, the prod branch of the '
+               'following repos ready to be pushed to the hash list below.\n'
+               '%s' % updated_repo_msg)
     print message
     # Send out email about test completed successfully.
     if arguments.email:
