@@ -3,10 +3,11 @@ autotest
 autotestd
 autotestd_monit
 bash
-check_ethernet
+check_ethernet.
 chrome
 chrome-sandbox
 endpoint
+flock
 grep
 init
 logger
@@ -23,6 +24,9 @@ sshd
 sudo
 tail
 x11vnc
+
+# This script gets launched from time to time based on hardware events.
+laptop_mode
 
 # The minijail daemon itself isn't useful to track as it just launches other
 # daemons.  Plus, it usually runs as root so it can drop privs for daemons.
