@@ -29,8 +29,10 @@ class TimeOptionTests(unittest.TestCase):
     """
 
     def _try_parse(self, options):
-        return dut_status._parse_command(
+        arguments = dut_status._parse_command(
                 ['mumble.py'] + options + ['hostname'])
+        dut_status._validate_time_range(arguments)
+        return arguments
 
 
     def _check_duration(self, arguments, duration):
@@ -40,7 +42,7 @@ class TimeOptionTests(unittest.TestCase):
 
     def _check_default_end(self, arguments, end_time):
         max_end = int(time.time())
-        assert arguments.until >= end_time
+        assert arguments.until <= end_time
         assert arguments.until <= max_end
 
 
@@ -58,10 +60,10 @@ class TimeOptionTests(unittest.TestCase):
         Also tests that --since and -s are equivalent.
 
         """
+        end_time = int(time.time())
+        start_time = end_time - 3600
+        start_time_string = time_utils.epoch_time_to_date_string(start_time)
         for option in ['--since', '-s']:
-            end_time = int(time.time())
-            start_time = end_time - 3600
-            start_time_string = time_utils.epoch_time_to_date_string(start_time)
             arguments = self._try_parse([option, start_time_string])
             self._check_default_end(arguments, end_time)
             assert arguments.since == start_time
@@ -73,9 +75,9 @@ class TimeOptionTests(unittest.TestCase):
         Also tests that --until and -u are equivalent.
 
         """
+        end_time = int(time.time()) - 3600
+        end_time_string = time_utils.epoch_time_to_date_string(end_time)
         for option in ['--until', '-u']:
-            end_time = int(time.time()) - 3600
-            end_time_string = time_utils.epoch_time_to_date_string(end_time)
             arguments = self._try_parse([option, end_time_string])
             assert arguments.until == end_time
             self._check_duration(arguments, dut_status._DEFAULT_DURATION)
@@ -114,8 +116,8 @@ class TimeOptionTests(unittest.TestCase):
         start_time_string = time_utils.epoch_time_to_date_string(start_time)
         duration = 4
         duration_string = '%d' % duration
-        arguments = self._try_parse(['--s', start_time_string,
-                                     '--d', duration_string])
+        arguments = self._try_parse(['-s', start_time_string,
+                                     '-d', duration_string])
         assert arguments.since == start_time
         self._check_duration(arguments, duration)
 
@@ -126,8 +128,8 @@ class TimeOptionTests(unittest.TestCase):
         end_time_string = time_utils.epoch_time_to_date_string(end_time)
         duration = 4
         duration_string = '%d' % duration
-        arguments = self._try_parse(['--u', end_time_string,
-                                     '--d', duration_string])
+        arguments = self._try_parse(['-u', end_time_string,
+                                     '-d', duration_string])
         assert arguments.until == end_time
         self._check_duration(arguments, duration)
 
@@ -141,9 +143,9 @@ class TimeOptionTests(unittest.TestCase):
         end_time = start_time + duration * 3600
         end_time_string = time_utils.epoch_time_to_date_string(end_time)
         with self.assertRaises(SystemExit):
-            self._try_parse(['--s', start_time_string,
-                             '--u', end_time_string,
-                             '--d', duration_string])
+            self._try_parse(['-s', start_time_string,
+                             '-u', end_time_string,
+                             '-d', duration_string])
 
 
 if __name__ == '__main__':
