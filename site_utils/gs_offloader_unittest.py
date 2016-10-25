@@ -945,6 +945,8 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         release_2_build = 'test-trybot-release/R54-8640.0.0-b5092'
         self.assertTrue(gs_offloader._is_valid_result(
             release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-cts'))
+        self.assertTrue(gs_offloader._is_valid_result(
+            release_build, gs_offloader.CTS_RESULT_PATTERN, 'test_that_wrapper'))
         self.assertFalse(gs_offloader._is_valid_result(
             release_build, gs_offloader.CTS_RESULT_PATTERN, 'arc-bvt-cq'))
         self.assertTrue(gs_offloader._is_valid_result(
