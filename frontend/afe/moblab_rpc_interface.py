@@ -26,7 +26,7 @@ import common
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.frontend.afe import models, model_logic, model_attributes
+from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server.hosts import moblab_host
 
@@ -191,6 +191,22 @@ def set_boto_key(boto_key):
     if not os.path.exists(boto_key):
         raise error.RPCException('Boto key: %s does not exist!' % boto_key)
     shutil.copyfile(boto_key, moblab_host.MOBLAB_BOTO_LOCATION)
+
+
+@rpc_utils.moblab_only
+def set_service_account_credential(service_account_filename):
+    """Update the service account credential file.
+
+    @param service_account_filename: Name of uploaded file through
+            handle_file_upload.
+    """
+    if not os.path.exists(service_account_filename):
+        raise error.RPCException(
+                'Service account file: %s does not exist!' %
+                service_account_filename)
+    shutil.copyfile(
+            service_account_filename,
+            moblab_host.MOBLAB_SERVICE_ACCOUNT_LOCATION)
 
 
 @rpc_utils.moblab_only
@@ -520,6 +536,8 @@ def _get_dhcp_dut_leases():
 def add_moblab_dut(ipaddress):
     """ RPC handler to add a connected DUT to autotest.
 
+    @param ipaddress: IP address of the DUT.
+
     @return: A string giving information about the status.
     """
     cmd = '/usr/local/autotest/cli/atest host create %s &' % ipaddress
@@ -531,6 +549,8 @@ def add_moblab_dut(ipaddress):
 def remove_moblab_dut(ipaddress):
     """ RPC handler to remove DUT entry from autotest.
 
+    @param ipaddress: IP address of the DUT.
+
     @return: True if the command succeeds without an exception
     """
     models.Host.smart_get(ipaddress).delete()
@@ -540,6 +560,9 @@ def remove_moblab_dut(ipaddress):
 @rpc_utils.moblab_only
 def add_moblab_label(ipaddress, label_name):
     """ RPC handler to add a label in autotest to a DUT entry.
+
+    @param ipaddress: IP address of the DUT.
+    @param label_name: The label name.
 
     @return: A string giving information about the status.
     """
@@ -559,6 +582,9 @@ def add_moblab_label(ipaddress, label_name):
 @rpc_utils.moblab_only
 def remove_moblab_label(ipaddress, label_name):
     """ RPC handler to remove a label in autotest from a DUT entry.
+
+    @param ipaddress: IP address of the DUT.
+    @param label_name: The label name.
 
     @return: A string giving information about the status.
     """
