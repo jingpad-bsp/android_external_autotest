@@ -289,7 +289,8 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         build = arguments.build
 
     # Remove cros-version label to force provision.
-    hosts = AFE.get_hosts(label=constants.Labels.BOARD_PREFIX+board)
+    hosts = AFE.get_hosts(label=constants.Labels.BOARD_PREFIX+board,
+                          locked=False)
     for host in hosts:
         labels_to_remove = [
                 l for l in host.labels
