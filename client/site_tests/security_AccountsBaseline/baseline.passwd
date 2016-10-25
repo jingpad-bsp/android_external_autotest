@@ -69,3 +69,4 @@ avfs:!:301:301::/dev/null:/bin/false
 fuse-exfat:!:302:302::/dev/null:/bin/false
 lpadmin:!:269:269:/dev/null:/bin/false
 android-root:!:655360:655360:CrOS android container user:/dev/null:/bin/false
+user-containers:!:10000:10000:CrOS unprivileged containers:/dev/null:/bin/false
