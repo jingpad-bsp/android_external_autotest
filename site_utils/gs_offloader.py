@@ -365,8 +365,10 @@ def _is_valid_result(build, result_pattern, suite):
     if not re.match(r'(?!trybot-).*-release/.*', build):
         return False
 
-    # Not valid if it's cts result but not 'arc-cts' suite.
-    if result_pattern == CTS_RESULT_PATTERN and suite != 'arc-cts':
+    # Not valid if it's cts result but not 'arc-cts'
+    # or 'test_that_wrapper' suite.
+    whitelisted_suites = ['arc-cts', 'test_that_wrapper']
+    if result_pattern == CTS_RESULT_PATTERN and suite not in whitelisted_suites:
         return False
 
     return True
