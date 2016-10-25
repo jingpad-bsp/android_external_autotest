@@ -252,7 +252,7 @@ def _main_for_local_run(argv, arguments):
     # sysroot.
     if arguments.board is None:
         arguments.board = _get_board_from_host(arguments.remote)
-        argv = ['--board', arguments.board] + argv
+        argv = ['--board=%s' % (arguments.board,)] + argv
 
     if arguments.autotest_dir:
         autotest_path = arguments.autotest_dir
@@ -312,14 +312,14 @@ def _main_for_lab_run(argv, arguments):
     flattened_argv = ' '.join([pipes.quote(item) for item in argv])
     command = [os.path.join(autotest_path, 'site_utils',
                             'run_suite.py'),
-               '--board', arguments.board,
-               '--build', arguments.build,
-               '--suite_name', 'test_that_wrapper',
-               '--pool', arguments.pool,
-               '--max_runtime_mins', str(arguments.max_runtime_mins),
-               '--suite_args', flattened_argv]
+               '--board=%s' % (arguments.board,),
+               '--build=%s' % (arguments.build,),
+               '--suite_name=%s' % 'test_that_wrapper',
+               '--pool=%s' % (arguments.pool,),
+               '--max_runtime_mins=%s' % str(arguments.max_runtime_mins),
+               '--suite_args=%s' % (flattened_argv,)]
     if arguments.web:
-        command.extend(['--web', arguments.web])
+        command.extend(['--web=%s' % (arguments.web,)])
     logging.info('About to start lab suite with command %s.', command)
     return subprocess.call(command)
 
