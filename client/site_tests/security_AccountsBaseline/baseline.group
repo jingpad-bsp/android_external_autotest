@@ -90,3 +90,4 @@ i2c:!:404:power
 netdev:!:408:
 android-root:!:655360:android-root
 arc-sensor:!:604:
+user-containers:!:10000:user-containers
