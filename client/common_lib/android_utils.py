@@ -30,7 +30,8 @@ def get_config_value_regex(section, regex):
     result = {}
     for key, value in configs.items():
         match = re.match(regex, key)
-        result[match.group(1)] = [v.strip() for v in value.split(',')]
+        result[match.group(1)] = [v.strip() for v in value.split(',')
+                                  if v.strip()]
     return result
 
 
