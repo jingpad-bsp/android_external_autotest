@@ -143,6 +143,9 @@ def add_label_to_hosts(id, hosts):
     host_objs = models.Host.smart_get_bulk(hosts)
     if label.platform:
         models.Host.check_no_platform(host_objs)
+    # Ensure a host has no more than one board label with it.
+    if label.name.startswith('board:'):
+        models.Host.check_no_board(host_objs)
     label.host_set.add(*host_objs)
 
 
@@ -430,7 +433,7 @@ def host_add_labels(id, labels):
     @param id: id or hostname for a host.
     @param labels: ids or names for labels.
 
-    @raises ValidationError: If adding more than one platform label.
+    @raises ValidationError: If adding more than one platform/board label.
     """
     # Create the labels on the master/shards.
     for label in labels:
@@ -438,14 +441,18 @@ def host_add_labels(id, labels):
 
     label_objs = models.Label.smart_get_bulk(labels)
     platforms = [label.name for label in label_objs if label.platform]
-    if len(platforms) > 1:
+    boards = [label.name for label in label_objs
+              if label.name.startswith('board:')]
+    if len(platforms) > 1 or len(boards) > 1:
         raise model_logic.ValidationError(
-            {'labels': 'Adding more than one platform label: %s' %
-                       ', '.join(platforms)})
+            {'labels': 'Adding more than one platform/board label: %s %s' %
+                       (', '.join(platforms), ', '.join(boards))})
 
     host_obj = models.Host.smart_get(id)
     if len(platforms) == 1:
         models.Host.check_no_platform([host_obj])
+    if len(boards) == 1:
+        models.Host.check_no_board([host_obj])
     add_labels_to_host(id, labels)
 
     rpc_utils.fanout_rpc([host_obj], 'add_labels_to_host', False,

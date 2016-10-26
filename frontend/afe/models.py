@@ -681,6 +681,29 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
             raise model_logic.ValidationError({'labels': '; '.join(errors)})
 
 
+    @classmethod
+    def check_no_board(cls, hosts):
+        """Verify the specified hosts have no board label.
+
+        @param cls: Implicit class object.
+        @param hosts: The hosts to verify.
+        @raises model_logic.ValidationError if any hosts already have a board
+            label.
+        """
+        Host.objects.populate_relationships(hosts, Label, 'label_list')
+        errors = []
+        for host in hosts:
+            boards = [label.name for label in host.label_list
+                      if label.name.startswith('board:')]
+            if boards:
+                # do a join, just in case this host has multiple boards,
+                # we'll be able to see it
+                errors.append('Host %s already has a board label: %s' % (
+                              host.hostname, ', '.join(boards)))
+        if errors:
+            raise model_logic.ValidationError({'labels': '; '.join(errors)})
+
+
     def is_dead(self):
         """Returns whether the host is dead (has status repair failed)."""
         return self.status == Host.Status.REPAIR_FAILED
