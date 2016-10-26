@@ -158,7 +158,7 @@ class FirmwareVersionVerifier(hosts.Verifier):
     def _get_rw_firmware(host):
         result = host.run('crossystem fwid', ignore_status=True)
         if result.exit_status == 0:
-            return result.output
+            return result.stdout
         else:
             return None
 
@@ -168,7 +168,7 @@ class FirmwareVersionVerifier(hosts.Verifier):
                           ignore_status=True)
         if result.exit_status == 0:
             version = re.search(r'BIOS version:\s*(?P<version>.*)',
-                                result.output)
+                                result.stdout)
             if version is not None:
                 return version.group('version')
         return None
@@ -209,7 +209,7 @@ class FirmwareVersionVerifier(hosts.Verifier):
                     'DUT firmware requires update from %s to %s' %
                     (current_firmware, stable_firmware))
         # Time to update the firmware.
-        logging.info('Updating firmwware from %s to %s',
+        logging.info('Updating firmware from %s to %s',
                      current_firmware, stable_firmware)
         try:
             host.run('chromeos-firmwareupdate --mode=autoupdate')
