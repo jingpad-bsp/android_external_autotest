@@ -178,7 +178,7 @@ def _set_stable_version(version_map, mode, board, version):
     if mode == _SHELL_MODE:
         print _SET_VERSION % (board, version)
     elif mode == _NORMAL_MODE:
-        version_map.set_stable_version(board, version)
+        version_map.set_version(board, version)
 
 
 def _delete_stable_version(version_map, mode, board):
@@ -196,7 +196,7 @@ def _delete_stable_version(version_map, mode, board):
     if mode == _SHELL_MODE:
         print _DELETE_VERSION % board
     elif mode == _NORMAL_MODE:
-        version_map.delete_stable_version(board)
+        version_map.delete_version(board)
 
 
 def _apply_upgrades(version_map, mode, afe_versions,
