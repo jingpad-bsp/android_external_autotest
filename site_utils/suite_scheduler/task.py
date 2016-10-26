@@ -184,7 +184,7 @@ class Task(object):
                        'boards', 'file_bugs', 'cros_build_spec',
                        'firmware_rw_build_spec', 'firmware_ro_build_spec',
                        'test_source', 'job_retry', 'hour', 'day', 'branches',
-                       'targets', 'os_type'])
+                       'targets', 'os_type', 'no_delay'])
         # The parameter of union() is the keys under the section in the config
         # The union merges this with the allowed set, so if any optional keys
         # are omitted, then they're filled in. If any extra keys are present,
@@ -209,6 +209,7 @@ class Task(object):
                 section, 'firmware_ro_build_spec')
         test_source = config.getstring(section, 'test_source')
         job_retry = config.getboolean(section, 'job_retry')
+        no_delay = config.getboolean(section, 'no_delay')
         for klass in driver.Driver.EVENT_CLASSES:
             if klass.KEYWORD == keyword:
                 priority = klass.PRIORITY
@@ -306,7 +307,8 @@ class Task(object):
                              hour=hour, day=day, os_type=os_type,
                              launch_control_branches=lc_branches,
                              launch_control_targets=lc_targets,
-                             testbed_dut_count=testbed_dut_count)
+                             testbed_dut_count=testbed_dut_count,
+                             no_delay=no_delay)
 
 
     @staticmethod
@@ -342,7 +344,7 @@ class Task(object):
                  firmware_ro_build_spec=None, test_source=None, job_retry=False,
                  hour=None, day=None, os_type=OS_TYPE_CROS,
                  launch_control_branches=None, launch_control_targets=None,
-                 testbed_dut_count=None):
+                 testbed_dut_count=None, no_delay=False):
         """Constructor
 
         Given an iterable in |branch_specs|, pre-vetted using CheckBranchSpecs,
@@ -431,6 +433,8 @@ class Task(object):
                 for Launch Control builds. The argument is required and only
                 applicable for android/brillo builds.
         @param testbed_dut_count: Number of duts to test when using a testbed.
+        @param no_delay: Set to True to allow suite to be created without
+                configuring delay_minutes. Default is False.
         """
         self._name = name
         self._suite = suite
@@ -455,6 +459,7 @@ class Task(object):
                 [t.strip() for t in launch_control_targets.split(',')]
                 if launch_control_targets else [])
         self._testbed_dut_count = testbed_dut_count
+        self._no_delay = no_delay
 
         if ((self._firmware_rw_build_spec or self._firmware_ro_build_spec or
              cros_build_spec) and
@@ -892,7 +897,8 @@ class Task(object):
                 job_retry=self._job_retry,
                 launch_control_build=launch_control_build,
                 run_prod_code=run_prod_code,
-                testbed_dut_count=self._testbed_dut_count):
+                testbed_dut_count=self._testbed_dut_count,
+                no_delay=self._no_delay):
             logging.info('Skipping scheduling %s on %s for %s',
                          self._suite, build_string, board)
 
