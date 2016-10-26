@@ -77,7 +77,7 @@ _VALID_HOSTNAME_PATTERNS = [
 
 # _EXPECTED_NUMBER_OF_HOST_INFO
 # The number of items per line when parsing the hostname_file csv file.
-_EXPECTED_NUMBER_OF_HOST_INFO = 5
+_EXPECTED_NUMBER_OF_HOST_INFO = 8
 
 # HostInfo
 # Namedtuple to store host info for processing when creating host in the afe.
@@ -511,12 +511,19 @@ def _parse_hostname_file_line(hostname_file_row):
                         '%d (expect %d): %s' %
                         (len(hostname_file_row), _EXPECTED_NUMBER_OF_HOST_INFO,
                          hostname_file_row))
-    # The file will have the info in the following format:
-    # board, dut hostname, dut mac address, servo host hostname, servo serial.
+    # The file will have the info in the following order:
+    # 0: board
+    # 1: dut hostname
+    # 2: dut/v4 mac address
+    # 3: dut ip
+    # 4: labstation hostname
+    # 5: servo serial
+    # 6: servo mac address
+    # 7: servo ip
     return HostInfo(
             hostname=hostname_file_row[1],
-            host_attr_dict={servo_host.SERVO_HOST_ATTR: hostname_file_row[3],
-                            servo_host.SERVO_SERIAL_ATTR: hostname_file_row[4]})
+            host_attr_dict={servo_host.SERVO_HOST_ATTR: hostname_file_row[4],
+                            servo_host.SERVO_SERIAL_ATTR: hostname_file_row[5]})
 
 
 def parse_hostname_file(hostname_file):
