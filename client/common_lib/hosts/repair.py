@@ -137,7 +137,23 @@ class _DependencyNode(object):
         self._tag = tag
 
 
-    def _verify_list(self, host, verifiers):
+    def _record(self, host, silent, *record_args):
+        """
+        Log a status record for `host`.
+
+        Call `host.record()` with the given `record_args`, unless
+        requested to skip by `silent`.
+
+        @param host         Host which will record the status record.
+        @param silent       Don't record the event if this is a true
+                            value.
+        @param record_args  Arguments to pass to `host.record()`.
+        """
+        if not silent:
+            host.record(*record_args)
+
+
+    def _verify_list(self, host, verifiers, silent):
         """
         Test a list of verifiers against a given host.
 
@@ -155,6 +171,7 @@ class _DependencyNode(object):
 
         @param host       The host to be tested against the verifiers.
         @param verifiers  List of verifiers to be checked.
+        @param silent     If true, don't log host status records.
 
         @raises AutoservVerifyDependencyError   Raised when at least
                         one verifier in the list has failed.
@@ -162,7 +179,7 @@ class _DependencyNode(object):
         failures = set()
         for v in verifiers:
             try:
-                v._verify_host(host)
+                v._verify_host(host, silent)
             except AutoservVerifyDependencyError as e:
                 failures.update(e.failures)
             except Exception as e:
@@ -171,14 +188,15 @@ class _DependencyNode(object):
             raise AutoservVerifyDependencyError(self, failures)
 
 
-    def _verify_dependencies(self, host):
+    def _verify_dependencies(self, host, silent):
         """
         Verify that all of this node's dependencies pass for a host.
 
-        @param host   The host to be verified.
+        @param host     The host to be verified.
+        @param silent   If true, don't log host status records.
         """
         try:
-            self._verify_list(host, self._dependency_list)
+            self._verify_list(host, self._dependency_list, silent)
         except AutoservVerifyDependencyError as e:
             e.log_dependencies(
                     'Skipping this operation',
@@ -284,7 +302,7 @@ class Verifier(_DependencyNode):
                 v._reverify()
 
 
-    def _verify_host(self, host):
+    def _verify_host(self, host, silent):
         """
         Determine the result of verification, and log results.
 
@@ -296,7 +314,8 @@ class Verifier(_DependencyNode):
         If we already have a cached result, return that result without
         logging any message.
 
-        @param host   The host to be tested for a problem.
+        @param host     The host to be tested for a problem.
+        @param silent   If true, don't log host status records.
         """
         if self._result is not None:
             if isinstance(self._result, Exception):
@@ -304,15 +323,16 @@ class Verifier(_DependencyNode):
             elif self._result:
                 return              # cached success
         self._result = False
-        self._verify_dependencies(host)
+        self._verify_dependencies(host, silent)
         logging.info('Verifying this condition: %s', self.description)
         try:
             self.verify(host)
-            host.record('GOOD', None, self._verify_tag)
+            self._record(host, silent, 'GOOD', None, self._verify_tag)
         except Exception as e:
             logging.exception('Failed: %s', self.description)
             self._result = e
-            host.record('FAIL', None, self._verify_tag, str(e))
+            self._record(host, silent,
+                         'FAIL', None, self._verify_tag, str(e))
             raise
         self._result = True
 
@@ -399,7 +419,7 @@ class RepairAction(_DependencyNode):
         self._repair_tag = 'repair.' + self.tag
 
 
-    def _repair_host(self, host):
+    def _repair_host(self, host, silent):
         """
         Apply this repair action if any triggers fail.
 
@@ -412,40 +432,46 @@ class RepairAction(_DependencyNode):
         triggered are written to the debug logs.   If repair doesn't
         trigger, nothing is logged to `status.log`.
 
-        @param host   The host to be repaired.
+        @param host     The host to be repaired.
+        @param silent   If true, don't log host status records.
         """
-        self._verify_dependencies(host)
+        self._verify_dependencies(host, silent)
         try:
-            self._verify_list(host, self._trigger_list)
+            self._verify_list(host, self._trigger_list, silent)
         except AutoservVerifyDependencyError as e:
             e.log_dependencies(
                     'Attempting this repair action',
                     'Repairing because these triggers failed')
-            host.record('START', None, self._repair_tag)
+            self._record(host, silent, 'START', None, self._repair_tag)
             try:
                 self.repair(host)
             except Exception as e:
                 logging.exception('Repair failed: %s', self.description)
-                host.record('FAIL', None, self._repair_tag, str(e))
-                host.record('END FAIL', None, self._repair_tag)
+                self._record(host, silent,
+                             'FAIL', None, self._repair_tag, str(e))
+                self._record(host, silent,
+                             'END FAIL', None, self._repair_tag)
                 raise
             try:
                 for v in self._trigger_list:
                     v._reverify()
-                self._verify_list(host, self._trigger_list)
-                host.record('END GOOD', None, self._repair_tag)
+                self._verify_list(host, self._trigger_list, silent)
+                self._record(host, silent,
+                             'END GOOD', None, self._repair_tag)
             except AutoservVerifyDependencyError as e:
                 e.log_dependencies(
                         'This repair action reported success',
                         'However, these triggers still fail')
-                host.record('END FAIL', None, self._repair_tag)
+                self._record(host, silent,
+                             'END FAIL', None, self._repair_tag)
                 raise AutoservRepairError(
                         'Some verification checks still fail')
             except Exception:
                 # The specification for `self._verify_list()` says
                 # that this can't happen; this is a defensive
                 # precaution.
-                host.record('END FAIL', None, self._repair_tag,
+                self._record(host, silent,
+                             'END FAIL', None, self._repair_tag,
                             'Internal error in repair')
                 raise
         else:
@@ -648,28 +674,30 @@ class RepairStrategy(object):
             self._repair_actions.append(r)
 
 
-    def verify(self, host):
+    def verify(self, host, silent=False):
         """
         Run the verifier DAG on the given host.
 
-        @param host   The target to be verified.
+        @param host     The target to be verified.
+        @param silent   If true, don't log host status records.
         """
         self._verify_root._reverify()
-        self._verify_root._verify_host(host)
+        self._verify_root._verify_host(host, silent)
 
 
-    def repair(self, host):
+    def repair(self, host, silent=False):
         """
-        Run the repair DAG on the given host.
+        Run the repair list on the given host.
 
-        @param host   The target to be repaired.
+        @param host     The target to be repaired.
+        @param silent   If true, don't log host status records.
         """
         self._verify_root._reverify()
         for ra in self._repair_actions:
             try:
-                ra._repair_host(host)
+                ra._repair_host(host, silent)
             except Exception as e:
                 # all logging and exception handling was done at
                 # lower levels
                 pass
-        self._verify_root._verify_host(host)
+        self._verify_root._verify_host(host, silent)
