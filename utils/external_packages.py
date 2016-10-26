@@ -911,25 +911,6 @@ class GdataPackage(ExternalPackage):
         return self.version
 
 
-class GFlagsPackage(ExternalPackage):
-    """
-    Gets the Python GFlags client library.
-    """
-    # gflags doesn't contain a proper version
-    version = '3.0.7'
-    local_filename = 'python-gflags-%s.zip' % version
-    urls = ('https://github.com/google/python-gflags/archive/master.zip',)
-    hex_sum = '66019a836dc700c8c6410fdc887cedb9ea5e1bee'
-    extracted_package_path = 'python-gflags-master'
-
-    _build_and_install = ExternalPackage._build_and_install_from_package
-    _build_and_install_current_dir = (
-                        ExternalPackage._build_and_install_current_dir_noegg)
-
-    def _get_installed_version_from_module(self, module):
-        return self.version
-
-
 class DnsPythonPackage(ExternalPackage):
     """
     dns module
