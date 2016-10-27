@@ -15,6 +15,10 @@ from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
+try:
+    from chromite.lib import metrics
+except:
+    metrics = None
 
 # Local stateful update path is relative to the CrOS source directory.
 LOCAL_STATEFUL_UPDATE_PATH = 'src/platform/dev/stateful_update'
@@ -209,8 +213,15 @@ class BaseUpdater(object):
         err_prefix = 'Failed to trigger an update on %s. ' % self.host.hostname
         logging.info('Triggering update via: %s', autoupdate_cmd)
         to_raise = self._base_update_handler(run_args, err_prefix)
+        if metrics:
+            c = metrics.Counter(
+                'chromeos/autotest/autoupdater/trigger')
+            f = {'dev_server':
+                 dev_server.ImageServer.get_server_name(self.update_url),
+                 'success': to_raise is None }
+            c.increment(fields=f)
         if to_raise:
-          raise to_raise
+            raise to_raise
 
 
     def _verify_update_completed(self):
@@ -237,9 +248,15 @@ class BaseUpdater(object):
                       'on %s. ' % (self.update_url, self.host.hostname))
         logging.info('Updating image via: %s', autoupdate_cmd)
         to_raise = self._base_update_handler(run_args, err_prefix)
+        if metrics:
+            c = metrics.Counter(
+                'chromeos/autotest/autoupdater/update')
+            f = {'dev_server':
+                 dev_server.ImageServer.get_server_name(self.update_url),
+                 'success': to_raise is None }
+            c.increment(fields=f)
         if to_raise:
             raise to_raise
-
         self._verify_update_completed()
 
 
