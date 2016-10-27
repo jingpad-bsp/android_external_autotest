@@ -25,6 +25,10 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
+try:
+    from chromite.lib import metrics
+except:
+    metrics = None
 
 CONFIG = global_config.global_config
 # This file is generated at build time and specifies, per suite and per test,
@@ -1853,6 +1857,16 @@ class ImageServer(ImageServerBase):
                     logging.debug(
                             'AU failed, trying IP instead of hostname: %s',
                             host_name_ip)
+
+        if metrics:
+            # TODO(akeshet) add |board| and |milestone| labels to this.
+            # TODO(akeshet) add a field with a classification of |raised_error|
+            # to this.
+            c = metrics.Counter(
+                    'chromeos/autotest/provision/cros_update_by_devserver')
+            f = {'dev_server': ImageServer.get_server_name(self.url()),
+                 'success': is_au_success}
+            c.increment(fields=f)
 
         if not is_au_success:
             # If errors happen in the CrOS AU process, report the first error

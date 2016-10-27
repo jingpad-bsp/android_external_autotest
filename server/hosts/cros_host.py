@@ -413,7 +413,16 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             autotest_stats.Gauge('verify_job_repo_url').send(
                 '%(board)s.%(build_type)s.%(branch)s.%(devserver)s' % stats_key,
                 stage_time)
-
+            if metrics:
+                monarch_fields = {
+                    'board': board,
+                    'build_type': build_type,
+                    'branch': branch,
+                    'dev_server': devserver,
+                }
+                metrics.Counter(
+                        'chromeos/autotest/provision/verify_url'
+                        ).increment(fields=monarch_fields)
 
     def stage_server_side_package(self, image=None):
         """Stage autotest server-side package on devserver.
@@ -657,8 +666,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 `job_repo_url`: repo_url, where repo_url is a devserver url to
                 autotest packages.
         """
-        devserver = None
-        logging.debug('Resolving a devserver for auto-update')
         if repair:
             update_url = self._get_cros_repair_image_name()
             force_update = True
@@ -670,12 +677,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         if not update_url and self._parser.options.image:
             update_url = self._parser.options.image
 
-        logging.info('Staging build for AU: %s', update_url)
 
         # Get build from parameter or AFE.
         # If the build is not a URL, let devserver to stage it first.
         # Otherwise, choose a devserver to trigger auto-update.
         build = None
+        devserver = None
+        logging.debug('Resolving a devserver for auto-update')
         if update_url.startswith('http://'):
             build = autoupdater.url_to_image_name(update_url)
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
@@ -685,18 +693,34 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
               logging.debug('Devserver that stages artifacts is not healthy, '
                             'switch to use devserver %s, will re-stage.',
                             server_name)
+              logging.info('Staging build for AU: %s', update_url)
               devserver.trigger_download(build, synchronous=False)
+              if metrics:
+                  c = metrics.Counter(
+                      'chromeos/autotest/provision/failover_download')
+                  c.increment(fields={'dev_server': server_name})
         else:
             build = update_url
             devserver = dev_server.ImageServer.resolve(build, self.hostname)
+            server_name = dev_server.ImageServer.get_server_name(devserver.url())
+            logging.info('Staging build for AU: %s', update_url)
             devserver.trigger_download(build, synchronous=False)
+            if metrics:
+                c = metrics.Counter(
+                        'chromeos/autotest/provision/trigger_download')
+                c.increment(fields={'dev_server': server_name})
 
         # Report provision stats.
-        server_name = dev_server.ImageServer.get_server_name(devserver.url())
-        server_name = server_name.replace('.', '_')
-        autotest_stats.Counter('cros_host_provision.' + server_name).increment()
+        statsd_server_name = server_name.replace('.', '_')
+        autotest_stats.Counter('cros_host_provision.' + statsd_server_name).increment()
         autotest_stats.Counter('cros_host_provision.total').increment()
         logging.debug('Resolved devserver for auto-update: %s', devserver.url())
+
+        # TODO(akeshet): add |board| and |milestone| (or branch) labels to this
+        # and other metrics from this function.
+        if metrics:
+            metrics.Counter('chromeos/autotest/provision/resolve',
+                            ).increment({'dev_server': server_name})
 
         devserver.auto_update(self.hostname, build,
                               log_dir=self.job.resultdir,
@@ -776,8 +800,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Report provision stats.
         server_name = dev_server.ImageServer.get_server_name(update_url)
-        server_name = server_name.replace('.', '_')
-        autotest_stats.Counter('cros_host_provision.' + server_name).increment()
+        statsd_server_name = server_name.replace('.', '_')
+        autotest_stats.Counter('cros_host_provision.' + statsd_server_name).increment()
         autotest_stats.Counter('cros_host_provision.total').increment()
 
         # Create a file to indicate if provision fails. The file will be removed
