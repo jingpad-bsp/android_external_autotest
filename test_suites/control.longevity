@@ -24,16 +24,14 @@ from autotest_lib.server.cros.dynamic_suite import dynamic_suite
 # the bug filer will fallback to it's defaults.
 _BUG_TEMPLATE = {
     'labels': ['longevity', 'longevity-auto-bug'],
-    'owner': 'harpreet@chromium.org',
+    'owner': '',
     'status': None,
     'summary': None,
     'title': None,
-    'cc': ['krishnargv@chromium.org', 'xiyuan@chromium.org',
-           'sduraisamy@chromium.org', 'afakhry@chromium.org',
-           'scunningham@chromium.org', 'mlight@chromium.org']
+    'cc': ['kiosk-autotest-alerts@google.com']
 }
 
-args_dict['name'] = 'longevity'
+args_dict['name'] = NAME
 args_dict['add_experimental'] = True
 args_dict['bug_template'] = _BUG_TEMPLATE
 args_dict['version_prefix'] = provision.CROS_VERSION_PREFIX
