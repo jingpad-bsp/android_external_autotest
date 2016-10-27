@@ -126,7 +126,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         elif session_id is not None:
             cmd = ['run', 'cts', '--continue-session', '%d' % session_id]
         else:
-            raise error.TestError('Need to provide an argument.')
+            raise error.TestFail('Error: Need to provide an argument.')
         # Automated media download is broken, so disable it. Instead we handle
         # this explicitly via _push_media(). This has the benefit of being
         # cached on the dev server. b/27245577
@@ -323,8 +323,8 @@ class cheets_CTS(tradefed_test.TradefedTest):
                     (tests, passed, failed, notexecuted))
             # An internal self-check. We really should never hit this.
             if tests != passed + failed + notexecuted:
-                raise error.TestError(
-                        'Test count inconsistent. %s' % self.summary)
+                raise error.TestFail('Error: Test count inconsistent. %s' %
+                                     self.summary)
             # Keep track of global counts as each step works on local failures.
             total_tests = tests
             total_passed = passed
@@ -380,9 +380,10 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 # This likely means there were too many crashes/reboots to
                 # attempt running all tests. Don't attempt to retry as it is
                 # impossible to pass at this stage (and also inconsistent).
-                raise error.TestFail('Fail: Ran out of steps with %d total '
-                        'passed and %d remaining not executed tests. %s' %
-                        (total_passed, notexecuted, self.summary))
+                raise error.TestFail(
+                    'Failed: Ran out of steps with %d total '
+                    'passed and %d remaining not executed tests. %s' %
+                    (total_passed, notexecuted, self.summary))
 
             # Managed to reduce notexecuted to zero. Now create a new test plan
             # to rerun only the failures we did encounter.
@@ -420,9 +421,11 @@ class cheets_CTS(tradefed_test.TradefedTest):
 
         # Final classification of test results.
         if notexecuted > 0 or failed > 0:
-            raise error.TestFail('Failed: after %d retries giving up. '
-                    'total_passed=%d, failed=%d, notexecuted=%d. %s' % (steps,
-                    total_passed, failed, notexecuted, self.summary))
+            raise error.TestFail(
+                'Failed: after %d retries giving up. '
+                'total_passed=%d, failed=%d, notexecuted=%d. %s' %
+                (steps, total_passed, failed, notexecuted, self.summary))
         if steps > 0:
+            # TODO(ihf): Make this error.TestPass('...') once available.
             raise error.TestWarn('Passed: after %d retries passing %d tests. %s'
-                    % (steps, total_passed, self.summary))
+                                 % (steps, total_passed, self.summary))
