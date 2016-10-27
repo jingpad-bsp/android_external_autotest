@@ -521,8 +521,10 @@ def version_match(build_version, release_version, update_url=''):
     stripped_version = stripped_version.split('/')[-1]
 
     is_trybot_non_release_build = (
-            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap)', build_version) or
-            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap)', update_url))
+            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap|toolchain)',
+                     build_version) or
+            re.match(r'.*trybot-.+-(paladin|pre-cq|test-ap|toolchain)',
+                     update_url))
 
     # Replace date string with 0 in release_version
     release_version_no_date = re.sub(r'\d{4}_\d{2}_\d{2}_\d+', '0',
