@@ -23,6 +23,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils as server_utils
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
 try:
@@ -1859,13 +1860,22 @@ class ImageServer(ImageServerBase):
                             host_name_ip)
 
         if metrics:
-            # TODO(akeshet) add |board| and |milestone| labels to this.
+            try:
+                board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+            except server_utils.ParseBuildNameException:
+                logging.warning('Unable to parse build name %s for metrics. '
+                                'Continuing anyway.', build_name)
+                board, build_type, milestone = ('', '', '')
             # TODO(akeshet) add a field with a classification of |raised_error|
             # to this.
             c = metrics.Counter(
                     'chromeos/autotest/provision/cros_update_by_devserver')
             f = {'dev_server': ImageServer.get_server_name(self.url()),
-                 'success': is_au_success}
+                 'success': is_au_success,
+                 'board': board,
+                 'build_type': build_type,
+                 'milestone': milestone}
             c.increment(fields=f)
 
         if not is_au_success:
