@@ -46,7 +46,7 @@ PERF_DAILY_RUN_TESTS = [
     'smoothness.tough_webgl_cases',
     'sunspider',
     'tab_switching.top_10',
-    'webrtc.webrtc_cases',
+    'webrtc.peerconnection',
 ]
 
 CONTROLFILE_TEMPLATE = (
