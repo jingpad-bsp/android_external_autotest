@@ -128,7 +128,7 @@ class DedupingScheduler(object):
                   file_bugs=False, firmware_rw_build=None,
                   firmware_ro_build=None, test_source_build=None,
                   job_retry=False, launch_control_build=None,
-                  run_prod_code=False, testbed_dut_count=None):
+                  run_prod_code=False, testbed_dut_count=None, no_delay=False):
         """Schedule |suite|, if it hasn't already been run.
 
         @param suite: the name of the suite to run, e.g. 'bvt'
@@ -161,6 +161,8 @@ class DedupingScheduler(object):
                               code for this suite run will be retrieved from the
                               build artifacts. Default is False.
         @param testbed_dut_count: Number of duts to test when using a testbed.
+        @param no_delay: Set to True to allow suite to be created without
+                         configuring delay_minutes. Default is False.
 
         @return True if the suite got scheduled
         @raise ScheduleException if an error occurs while scheduling.
@@ -194,21 +196,24 @@ class DedupingScheduler(object):
             # Such logic allows the values of delay_minutes for all calls
             # of `create_suite_job` running in parallel to be evenly distributed
             # between 0 and MAX_DELAY_MINUTES.
-            with self._lock:
-                delay_minutes = self.delay_minutes
-                if ((self.delay_minutes < MAX_DELAY_MINUTES and
-                     self.delay_minutes_interval > 0) or
-                    (self.delay_minutes >= DELAY_MINUTES_INTERVAL and
-                     self.delay_minutes_interval < 0)):
-                    self.delay_minutes += self.delay_minutes_interval
-                else:
-                    limit = ('Maximum' if self.delay_minutes_interval > 0 else
-                             'Minimum')
-                    logging.info(
-                            '%s delay minutes reached when scheduling '
-                            '%s on %s against %s (pool: %s)',
-                            limit, suite, builds, board, pool)
-                    self.delay_minutes_interval = -self.delay_minutes_interval
+            delay_minutes = 0
+            if not no_delay:
+                with self._lock:
+                    delay_minutes = self.delay_minutes
+                    if ((self.delay_minutes < MAX_DELAY_MINUTES and
+                         self.delay_minutes_interval > 0) or
+                        (self.delay_minutes >= DELAY_MINUTES_INTERVAL and
+                         self.delay_minutes_interval < 0)):
+                        self.delay_minutes += self.delay_minutes_interval
+                    else:
+                        limit = ('Maximum' if self.delay_minutes_interval > 0
+                                 else 'Minimum')
+                        logging.info(
+                                '%s delay minutes reached when scheduling '
+                                '%s on %s against %s (pool: %s)',
+                                limit, suite, builds, board, pool)
+                        self.delay_minutes_interval = (
+                                -self.delay_minutes_interval)
 
             # Update timeout settings for the suite job with delay_minutes.
             # `timeout` is in hours.
@@ -264,7 +269,8 @@ class DedupingScheduler(object):
                       force=False, file_bugs=False, firmware_rw_build=None,
                       firmware_ro_build=None, test_source_build=None,
                       job_retry=False, launch_control_build=None,
-                      run_prod_code=False, testbed_dut_count=None):
+                      run_prod_code=False, testbed_dut_count=None,
+                      no_delay=False):
         """Schedule |suite|, if it hasn't already been run.
 
         If |suite| has not already been run against |build| on |board|,
@@ -298,6 +304,8 @@ class DedupingScheduler(object):
                               code for this suite run will be retrieved from the
                               build artifacts. Default is False.
         @param testbed_dut_count: Number of duts to test when using a testbed.
+        @param no_delay: Set to True to allow suite to be created without
+                configuring delay_minutes. Default is False.
 
         @return True if the suite got scheduled, False if not
         @raise DedupException if we can't check for dups.
@@ -315,7 +323,8 @@ class DedupingScheduler(object):
                                   job_retry=job_retry,
                                   launch_control_build=launch_control_build,
                                   run_prod_code=run_prod_code,
-                                  testbed_dut_count=testbed_dut_count)
+                                  testbed_dut_count=testbed_dut_count,
+                                  no_delay=no_delay)
         return False
 
 
