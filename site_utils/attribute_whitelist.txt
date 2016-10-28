@@ -126,6 +126,7 @@ suite:power_requirements
 suite:push_to_prod
 suite:regression
 suite:sanity
+suite:sb65-presubmit
 suite:security
 suite:security_weekly
 suite:smoke
