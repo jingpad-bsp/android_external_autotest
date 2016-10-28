@@ -98,12 +98,14 @@ class VersionMatchUnittest(unittest.TestCase):
         trybot_paladin_release = '6803.0.2015_03_12_2103'
         trybot_pre_cq_build = 'trybot-wifi-pre-cq/R43-7000.0.0-b36'
         trybot_pre_cq_release = '7000.0.2016_03_12_2103'
+        trybot_toolchain_build = 'trybot-nyan_big-gcc-toolchain/R56-8936.0.0-b14'
+        trybot_toolchain_release = '8936.0.2016_10_26_1403'
 
 
         builds = [canary_build, cq_build, trybot_paladin_build,
-                  trybot_pre_cq_build]
+                  trybot_pre_cq_build, trybot_toolchain_build]
         releases = [canary_release, cq_release, trybot_paladin_release,
-                    trybot_pre_cq_release]
+                    trybot_pre_cq_release, trybot_toolchain_release]
         for i in range(len(builds)):
             for j in range(len(releases)):
                 self.assertEqual(
