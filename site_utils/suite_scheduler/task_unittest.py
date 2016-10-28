@@ -229,7 +229,8 @@ class TaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -248,7 +249,8 @@ class TaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(mytask.Run(self.sched, self._MAP, self._BOARD))
 
@@ -264,7 +266,8 @@ class TaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -313,7 +316,8 @@ class TaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(t.Run(self.sched, self._MAP, self._BOARD))
 
@@ -327,7 +331,7 @@ class TaskTest(TaskTestBase):
                 firmware_rw_build=None, firmware_ro_build=None,
                 test_source_build=None, job_retry=False,
                 launch_control_build=None, run_prod_code=False,
-                testbed_dut_count=None).AndRaise(
+                testbed_dut_count=None, no_delay=False).AndRaise(
                         deduping_scheduler.ScheduleException(
                                 'Simulated Failure'))
         self.mox.ReplayAll()
@@ -345,7 +349,8 @@ class TaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertTrue(self.task.Run(self.sched, self._MAP, self._BOARD, True))
 
@@ -381,7 +386,8 @@ class OneShotTaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -397,7 +403,8 @@ class OneShotTaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(False)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(False)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD))
 
@@ -411,7 +418,7 @@ class OneShotTaskTest(TaskTestBase):
                 firmware_rw_build=None, firmware_ro_build=None,
                 test_source_build=None, job_retry=False,
                 launch_control_build=None, run_prod_code=False,
-                testbed_dut_count=None).AndRaise(
+                testbed_dut_count=None, no_delay=False).AndRaise(
                         deduping_scheduler.ScheduleException(
                                 'Simulated Failure'))
         self.mox.ReplayAll()
@@ -429,7 +436,8 @@ class OneShotTaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
                                        force=True))
@@ -445,7 +453,8 @@ class OneShotTaskTest(TaskTestBase):
                                  job_retry=False,
                                  launch_control_build=None,
                                  run_prod_code=False,
-                                 testbed_dut_count=None).AndReturn(True)
+                                 testbed_dut_count=None,
+                                 no_delay=False).AndReturn(True)
         self.mox.ReplayAll()
         self.task._file_bugs = True
         self.assertFalse(self.task.Run(self.sched, self._MAP, self._BOARD,
