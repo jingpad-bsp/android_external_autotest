@@ -11,6 +11,7 @@ from collections import namedtuple
 from autotest_lib.client.bin import test
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.cros import asan
 
 
 PS_FIELDS = (
@@ -202,6 +203,9 @@ class security_SandboxedServices(test.test):
         baseline = self.load_baseline()
         exclusions = self.load_exclusions()
         running_processes = self.get_running_processes()
+        is_asan = asan.running_on_asan()
+        if is_asan:
+            logging.info('ASAN image detected -> skipping seccomp checks')
 
         kthreadd_pid = -1
 
@@ -270,7 +274,11 @@ class security_SandboxedServices(test.test):
                 logging.error('%s: missing caps usage', exe)
                 sandbox_delta.append(exe)
             elif (baseline[exe]['filter'] == 'Yes' and
-                  process.seccomp != SECCOMP_MODE_FILTER):
+                  process.seccomp != SECCOMP_MODE_FILTER and
+                  not is_asan):
+                # Since minijail disables seccomp at runtime when ASAN is
+                # active, we can't enforce it on ASAN bots.  Just ignore
+                # the test entirely.  (Comment applies to "is_asan" above.)
                 logging.error('%s: missing seccomp usage: wanted %s (%s) but '
                               'got %s (%s)', exe, SECCOMP_MODE_FILTER,
                               SECCOMP_MAP[SECCOMP_MODE_FILTER], process.seccomp,
