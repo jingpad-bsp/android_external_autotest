@@ -120,14 +120,25 @@ def lock(filename):
     # It is tempting just to call filelock.acquire(3600). But the implementation
     # has very poor temporal granularity (timeout/10), which is unsuitable for
     # our needs. See /usr/lib64/python2.7/site-packages/lockfile/
+    attempts = 0
     while not filelock.i_am_locking():
         try:
+            attempts += 1
             logging.info('Waiting for cache lock...')
             filelock.acquire(random.randint(1, 5))
         except (lockfile.AlreadyLocked, lockfile.LockTimeout):
-            pass
+            if attempts > 1000:
+                # Normally we should aqcuire the lock in a few seconds. Once we
+                # wait on the order of hours either the dev server IO is
+                # overloaded or a lock didn't get cleaned up. Take one for the
+                # team, break the lock and report a failure. This should fix
+                # the lock for following tests. If the failure affects more than
+                # one job look for a deadlock or dev server overload.
+                logging.error('Permanent lock failure. Trying to break lock.')
+                filelock.break_lock()
+                raise error.TestFail('Error: permanent cache lock failure.')
         else:
-            logging.info('Acquired cache lock.')
+            logging.info('Acquired cache lock after %d attempts.', attempts)
     try:
         yield
     finally:
