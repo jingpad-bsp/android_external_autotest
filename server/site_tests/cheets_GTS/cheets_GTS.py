@@ -73,8 +73,9 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # warnings, errors and failures can be raised here.
         tests, passed, failed, not_executed = self._parse_result(output)
         if tests != passed or failed > 0 or not_executed > 0:
-            raise error.TestFail('Passed (%d), Failed (%d), Not Executed ('
-                                 '%d)' % (passed, failed, not_executed))
+            raise error.TestFail('Failed: Passed (%d), Failed (%d), '
+                                 'Not Executed (%d)' %
+                                 (passed, failed, not_executed))
 
         # All test has passed successfully, here.
         logging.info('The test has passed successfully.')
