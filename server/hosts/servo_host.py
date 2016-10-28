@@ -12,6 +12,7 @@
 import httplib
 import logging
 import socket
+import traceback
 import xmlrpclib
 
 from autotest_lib.client.bin import utils
@@ -24,6 +25,7 @@ from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
+from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
@@ -413,8 +415,22 @@ class ServoHost(ssh_host.SSHHost):
         getter = control_file_getter.FileSystemGetter([AUTOTEST_BASE])
         control_file = getter.get_control_file_contents_by_name(test)
         control_type = control_data.CONTROL_TYPE_NAMES.SERVER
-        afe.create_job(control_file=control_file, name=test,
-                       control_type=control_type, hosts=[dut])
+        try:
+            afe.create_job(control_file=control_file, name=test,
+                           control_type=control_type, hosts=[dut])
+        except Exception as e:
+            # Sometimes creating the job will raise an exception. We'll log it
+            # but we don't want to fail because of it.
+            logging.exception('Scheduling reboot job failed: %s', e)
+            metadata = {'dut': dut,
+                        'servo_host': self.hostname,
+                        'error': str(e),
+                        'details': traceback.format_exc()}
+            # We want to track how often we fail here so we can justify
+            # investing some effort into hardening up afe.create_job().
+            autotest_es.post(use_http=True,
+                             type_str='servohost_Reboot_schedule_fail',
+                             metadata=metadata)
 
 
     def reboot(self, *args, **dargs):
@@ -439,7 +455,9 @@ class ServoHost(ssh_host.SSHHost):
         status = updater.check_update_status()
         if status == autoupdater.UPDATER_NEED_REBOOT:
             # Check if we need to schedule an organized reboot.
-            afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+            afe = frontend_wrappers.RetryingAFE(
+                    timeout_min=5, delay_sec=10,
+                    server=server_site_utils.get_global_afe_hostname())
             dut_list = self.get_attached_duts(afe)
             logging.info('servo host has the following duts: %s', dut_list)
             if len(dut_list) > 1:
