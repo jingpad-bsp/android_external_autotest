@@ -698,5 +698,17 @@ class RpcInterfaceTest(unittest.TestCase,
         self.assertEquals('cool-image', image)
 
 
+    def test_boards_allowed(self):
+        """Test method boards_allowed."""
+        boards = ['board:name']
+        self.assertEquals(True, rpc_interface.boards_allowed(boards))
+        boards = ['board:name', 'board:another']
+        self.assertEquals(False, rpc_interface.boards_allowed(boards))
+        boards = ['board:name-1', 'board:name-2']
+        self.assertEquals(True, rpc_interface.boards_allowed(boards))
+        boards = ['board:name-1', 'board:another-2']
+        self.assertEquals(False, rpc_interface.boards_allowed(boards))
+
+
 if __name__ == '__main__':
     unittest.main()
