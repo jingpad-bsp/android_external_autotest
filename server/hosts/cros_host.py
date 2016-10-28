@@ -417,13 +417,18 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 monarch_fields = {
                     'board': board,
                     'build_type': build_type,
+                    # TODO(akeshet): To be consistent with most other metrics,
+                    # consider changing the following field to be named
+                    # 'milestone'.
                     'branch': branch,
                     'dev_server': devserver,
                 }
                 metrics.Counter(
                         'chromeos/autotest/provision/verify_url'
                         ).increment(fields=monarch_fields)
-
+                metrics.SecondsDistribution(
+                        'chromeos/autotest/provision/verify_url_duration'
+                        ).add(stage_time, fields=monarch_fields)
     def stage_server_side_package(self, image=None):
         """Stage autotest server-side package on devserver.
 
@@ -684,31 +689,51 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         build = None
         devserver = None
         logging.debug('Resolving a devserver for auto-update')
+        previously_resolved = False
         if update_url.startswith('http://'):
             build = autoupdater.url_to_image_name(update_url)
-            devserver = dev_server.ImageServer.resolve(build, self.hostname)
+            previously_resolved = True
+        else:
+            build = update_url
+        devserver = dev_server.resolve(build, self.hostname)
+        server_name = dev_server.ImageServer.get_server_name(devserver.url())
+
+        try:
+            board, build_type, milestone, _ = server_utils.ParseBuildName(build)
+        except server_utils.ParseBuildNameException:
+            logging.warning('Unable to parse build name %s. Something is '
+                            'likely broken, but will continue anyway.',
+                            build)
+            board, build_type, milestone = ('', '', '')
+
+        monarch_fields = {
+                'dev_server': server_name,
+                'board': board,
+                'build_type': build_type,
+                'milestone': milestone
+        }
+
+        if previously_resolved:
             # Make sure devserver for Auto-Update has staged the build.
-            server_name = dev_server.ImageServer.get_server_name(devserver.url())
             if server_name not in update_url:
-              logging.debug('Devserver that stages artifacts is not healthy, '
-                            'switch to use devserver %s, will re-stage.',
+              logging.debug('Resolved to devserver that does not match '
+                            'update_url. The previously resolved devserver '
+                            'must be unhealthy. Switching to use devserver %s,'
+                            ' and re-staging.',
                             server_name)
               logging.info('Staging build for AU: %s', update_url)
               devserver.trigger_download(build, synchronous=False)
               if metrics:
                   c = metrics.Counter(
                       'chromeos/autotest/provision/failover_download')
-                  c.increment(fields={'dev_server': server_name})
+                  c.increment(fields=monarch_fields)
         else:
-            build = update_url
-            devserver = dev_server.ImageServer.resolve(build, self.hostname)
-            server_name = dev_server.ImageServer.get_server_name(devserver.url())
             logging.info('Staging build for AU: %s', update_url)
             devserver.trigger_download(build, synchronous=False)
             if metrics:
                 c = metrics.Counter(
                         'chromeos/autotest/provision/trigger_download')
-                c.increment(fields={'dev_server': server_name})
+                c.increment(fields=monarch_fields)
 
         # Report provision stats.
         statsd_server_name = server_name.replace('.', '_')
@@ -716,11 +741,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         autotest_stats.Counter('cros_host_provision.total').increment()
         logging.debug('Resolved devserver for auto-update: %s', devserver.url())
 
-        # TODO(akeshet): add |board| and |milestone| (or branch) labels to this
         # and other metrics from this function.
         if metrics:
             metrics.Counter('chromeos/autotest/provision/resolve',
-                            ).increment({'dev_server': server_name})
+                            ).increment(fields=monarch_fields)
 
         devserver.auto_update(self.hostname, build,
                               log_dir=self.job.resultdir,
