@@ -257,8 +257,8 @@ class TradefedTest(test.test):
 
         # adbd may take some time to come up. Repeatedly try to connect to adb.
         utils.poll_for_condition(lambda: self._try_adb_connect(),
-                                 exception=error.TestError('Failed to set up '
-                                                           'adb connection'),
+                                 exception=error.TestFail(
+                                     'Error: Failed to set up adb connection'),
                                  timeout=_ADB_READY_TIMEOUT_SECONDS,
                                  sleep_interval=_ADB_POLLING_INTERVAL_SECONDS)
 
@@ -276,7 +276,8 @@ class TradefedTest(test.test):
             return bool(result.stdout)
         utils.poll_for_condition(
             intent_helper_running,
-            exception=error.TestError('Timed out waiting for intent helper.'),
+            exception=error.TestFail(
+                'Error: Timed out waiting for intent helper.'),
             timeout=_ARC_READY_TIMEOUT_SECONDS,
             sleep_interval=_ARC_POLLING_INTERVAL_SECONDS)
 
@@ -387,7 +388,8 @@ class TradefedTest(test.test):
         self._safe_makedirs(output_dir)
 
         if parsed.scheme not in ['gs', 'http', 'https']:
-            raise error.TestError('Unknown download scheme %s' % parsed.scheme)
+            raise error.TestFail('Error: Unknown download scheme %s' %
+                                 parsed.scheme)
         if parsed.scheme in ['http', 'https']:
             logging.info('Using wget to download %s to %s.', uri, output_dir)
             # We are downloading 1 file at a time, hence using -O over -P.
@@ -460,7 +462,7 @@ class TradefedTest(test.test):
     def _install_bundle(self, gs_uri):
         """Downloads a zip file, installs it and returns the local path."""
         if not gs_uri.endswith('.zip'):
-            raise error.TestError('Not a .zip file %s.', gs_uri)
+            raise error.TestFail('Error: Not a .zip file %s.', gs_uri)
         # Atomic write through of file.
         with lock(self._tradefed_cache_lock):
             cache_path = self._download_to_cache(gs_uri)
@@ -519,7 +521,7 @@ class TradefedTest(test.test):
                 if summary:
                     error_msg += (' Test summary from previous runs: %s'
                             % summary)
-                raise error.TestError(error_msg)
+                raise error.TestFail(error_msg)
         datetime_id = match.group(1)
         logging.info('Tradefed identified results and logs with %s.',
                      datetime_id)
