@@ -43,8 +43,9 @@ class bluetooth_AdapterStandalone(BluetoothAdapterTests):
 
         @param host: device under test host
         """
+        self.host = host
         factory = remote_facade_factory.RemoteFacadeFactory(host)
-        self.bluetooth_hid_facade = factory.create_bluetooth_hid_facade()
+        self.bluetooth_facade = factory.create_bluetooth_hid_facade()
 
         # The bluetoothd must be running in the beginning.
         self.test_bluetoothd_running()
