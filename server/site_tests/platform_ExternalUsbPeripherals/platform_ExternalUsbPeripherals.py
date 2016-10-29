@@ -307,6 +307,7 @@ class platform_ExternalUsbPeripherals(test.test):
         board = host.get_board().split(':')[1]
         action_sequence = action_sequence.upper()
         actions = action_sequence.split(',')
+        actions.append('REBOOT')
         boot_id = 0
         self.remove_crash_data()
 
