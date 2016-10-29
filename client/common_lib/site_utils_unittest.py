@@ -227,7 +227,7 @@ class GetOffloaderUriTest(unittest.TestCase):
         god.stub_function_to_return(site_utils, 'get_interface_mac_address',
                 'test_mac')
         god.stub_function_to_return(site_utils, 'get_moblab_id', 'test_id')
-        gsuri = '%sresults/%s/%s/' % (
+        gsuri = '%s%s/%s/' % (
                 utils.DEFAULT_OFFLOAD_GSURI, 'test_mac', 'test_id')
         self.assertEqual(gsuri, utils.get_offload_gsuri())
 

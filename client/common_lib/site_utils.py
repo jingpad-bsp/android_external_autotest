@@ -200,9 +200,9 @@ def get_offload_gsuri():
     # name and mac-address/moblab_id as path.
     gsuri = DEFAULT_OFFLOAD_GSURI
     if not gsuri:
-        gsuri = CONFIG.get_config_value('CROS', 'image_storage_server')
+        gsuri = "%sresults/" % CONFIG.get_config_value('CROS', 'image_storage_server')
 
-    return '%sresults/%s/%s/' % (
+    return '%s%s/%s/' % (
             gsuri, get_interface_mac_address(MOBLAB_ETH), get_moblab_id())
 
 
