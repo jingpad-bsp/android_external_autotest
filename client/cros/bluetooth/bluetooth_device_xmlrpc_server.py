@@ -150,6 +150,8 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self.btmon = output_recorder.OutputRecorder(
                 'btmon', stop_delay_secs=self.BTMON_STOP_DELAY_SECS)
 
+        self.advertisements = []
+
 
     @xmlrpc_server.dbus_safe(False)
     def start_bluetoothd(self):
@@ -1126,6 +1128,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         adv = advertisement.Advertisement(self._system_bus, advertisement_data)
+        self.advertisements.append(adv)
         return self.advertising_async_method(
                 self._advertising.RegisterAdvertisement,
                 # reply handler
@@ -1167,6 +1170,13 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @returns: True on success. False otherwise.
 
         """
+        # It is required to execute remove_from_connection() to unregister the
+        # object-path handler of each advertisement. In this way, we could
+        # register an advertisement with the same path repeatedly.
+        for adv in self.advertisements:
+            adv.remove_from_connection()
+        del self.advertisements[:]
+
         return self.advertising_async_method(
                 self._advertising.ResetAdvertising,
                 # reply handler

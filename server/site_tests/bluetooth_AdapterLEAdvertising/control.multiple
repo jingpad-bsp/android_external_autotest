@@ -1,0 +1,87 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.server import utils
+
+AUTHOR = 'chromeos-chameleon'
+NAME = 'bluetooth_AdapterLEAdvertising.multiple'
+PURPOSE = 'Test bluetooth adapter advertising.'
+CRITERIA = 'Adapter should advertise with correct parameters.'
+ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_sanity'
+TIME = 'SHORT'
+TEST_CATEGORY = 'Functional'
+TEST_CLASS = 'bluetooth'
+TEST_TYPE = 'server'
+DEPENDENCIES = 'bluetooth'
+
+DOC = """
+This test case verifies that the Bluetooth adapter of the DUT can
+behave as a Bluetooth low-energy device and register multiple
+advertisements with data and parameters correctly. This test case also
+verifies that advertisements could be registered and unregistered
+continuously.
+
+Specifically, the subtests included in this autotest verify the
+following operations and parameters.
+    - test_register_advertisement
+      * All advertisements are registered successfully.
+      * The advertising min/max intervals are set correctly.
+        . The intervals are set to specified values.
+        . The intervals are set to default values after reset.
+      * The manufacturer id is set correctly.
+      * The service UUIDs are set correctly.
+      * The service data is set correctly.
+      * Advertising is enabled consequently.
+    - test_set_advertising_intervals
+      * The new advertising intervals are set correctly.
+    - test_reset_advertising
+      * All advertisement instances are removed.
+      * Advertising is disabled consequently.
+"""
+
+
+ADVERTISEMENT1 = {
+    'Path': '/org/bluez/test/advertisement1',
+    'Type': 'peripheral',
+    'ManufacturerData': {'0xff01': [0x1a, 0x1b, 0x1c, 0x1d, 0x1e]},
+    'ServiceUUIDs': ['180D', '180F'],
+    'SolicitUUIDs': [],
+    'ServiceData': {'9991': [0x11, 0x12, 0x13, 0x14, 0x15]},
+    'IncludeTxPower': True}
+
+ADVERTISEMENT2 = {
+    'Path': '/org/bluez/test/advertisement2',
+    'Type': 'peripheral',
+    'ManufacturerData': {'0xff02': [0x2a, 0x2b, 0x2c, 0x2d, 0x2e]},
+    'ServiceUUIDs': ['1821'],
+    'SolicitUUIDs': [],
+    'ServiceData': {'9992': [0x21, 0x22, 0x23, 0x24, 0x25]},
+    'IncludeTxPower': True}
+
+ADVERTISEMENT3 = {
+    'Path': '/org/bluez/test/advertisement3',
+    'Type': 'peripheral',
+    'ManufacturerData': {'0xff03': [0x3a, 0x3b, 0x3c, 0x3d, 0x3e]},
+    'ServiceUUIDs': ['1819', '180E'],
+    'SolicitUUIDs': [],
+    'ServiceData': {'9993': [0x31, 0x32, 0x33, 0x34, 0x35]},
+    'IncludeTxPower': True}
+
+ADVERTISEMENTS = [ADVERTISEMENT1, ADVERTISEMENT2, ADVERTISEMENT3]
+
+
+MIN_ADV_INTERVAL_MS = 200
+MAX_ADV_INTERVAL_MS = 200
+
+
+args_dict = utils.args_to_dict(args)
+
+def run(machine):
+    host = hosts.create_host(machine)
+    job.run_test('bluetooth_AdapterLEAdvertising', host=host,
+                 advertisements=ADVERTISEMENTS, multi_advertising=True,
+                 min_adv_interval_ms=MIN_ADV_INTERVAL_MS,
+                 max_adv_interval_ms=MAX_ADV_INTERVAL_MS)
+
+parallel_simple(run, machines)
