@@ -44,6 +44,7 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
                 again after the paired device is removed.
 
         """
+        self.host = host
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         self.bluetooth_hid_facade = factory.create_bluetooth_hid_facade()
 
