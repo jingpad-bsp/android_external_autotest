@@ -794,6 +794,12 @@ def parse_options():
                       help='Turn on -m option for gsutil. If not set, the '
                       'global config setting gs_offloader_multiprocessing '
                       'under CROS section is applied.')
+    parser.add_option('-i', '--offload_once', dest='offload_once',
+                      action='store_true',
+                      help='Upload all available results and then exit.')
+    parser.add_option('-y', '--normal_priority', dest='normal_priority',
+                      action='store_true',
+                      help='Upload using normal process priority.')
     options = parser.parse_args()[0]
     if options.process_all and options.process_hosts_only:
         parser.print_help()
@@ -832,8 +838,9 @@ def main():
 
     # Nice our process (carried to subprocesses) so we don't overload
     # the system.
-    logging.debug('Set process to nice value: %d', NICENESS)
-    os.nice(NICENESS)
+    if not options.normal_priority:
+        logging.debug('Set process to nice value: %d', NICENESS)
+        os.nice(NICENESS)
     if psutil:
         proc = psutil.Process()
         logging.debug('Set process to ionice IDLE')
@@ -851,6 +858,8 @@ def main():
         wait_for_gs_write_access(offloader.gs_uri)
     while True:
         offloader.offload_once()
+        if options.offload_once:
+            break
         time.sleep(SLEEP_TIME_SECS)
 
 
