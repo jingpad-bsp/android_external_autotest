@@ -20,6 +20,18 @@
     "master_name": "ChromeOSPerf"
   },
   {
+    "autotest_name": "enterprise_CFM_Perf",
+    "master_name": "ChromeOS_Enterprise"
+  },
+  {
+    "autotest_name": "firmware_StandbyPowerConsumption.30min",
+    "master_name": "ChromeOSPower"
+  },
+  {
+    "autotest_name": "firmware_StandbyPowerConsumption.4hr",
+    "master_name": "ChromeOSPower"
+  },
+  {
     "autotest_name": "graphics_GLBench",
     "master_name": "ChromeOS_Graphics"
   },
