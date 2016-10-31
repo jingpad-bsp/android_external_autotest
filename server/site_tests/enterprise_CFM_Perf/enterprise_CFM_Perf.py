@@ -90,6 +90,9 @@ class enterprise_CFM_Perf(test.test):
         """
         start_time = time.time()
         perf_keyval = {}
+        cpu_usage_list = list()
+        memory_usage_list = list()
+        temperature_list = list()
         board_name = self.system_facade.get_current_board()
         build_id = self.system_facade.get_chromeos_release_version()
         perf_file = open(os.path.join(self.resultsdir, _PERF_RESULT_FILE), 'w')
@@ -107,10 +110,47 @@ class enterprise_CFM_Perf(test.test):
                              board_name,
                              build_id])
             self.write_perf_keyval(perf_keyval)
+            cpu_usage_list.append(perf_keyval['cpu_usage'])
+            memory_usage_list.append(perf_keyval['memory_usage'])
+            temperature_list.append(perf_keyval['temperature'])
             time.sleep(_MEASUREMENT_DURATION_SECONDS)
         perf_file.close()
         utils.write_keyval(os.path.join(self.resultsdir, os.pardir),
                            {'perf_csv_folder': self.resultsdir})
+        self.upload_perf_data(cpu_usage_list,
+                              memory_usage_list,
+                              temperature_list)
+
+
+    def upload_perf_data(self, cpu_usage, memory_usage, temperature):
+        """Write perf results to results-chart.json file for Perf Dashboard.
+
+        @param cpu_usage: list of cpu usage values
+        @param memory_usage: list of memory usage values
+        @param temperature: list of temperature values
+        """
+        avg_cpu_usage = sum(cpu_usage)/len(cpu_usage)
+        avg_memory_usage = sum(memory_usage)/len(memory_usage)
+        avg_temp = sum(temperature)/len(temperature)
+
+        peak_cpu_usage = max(cpu_usage)
+        peak_memory_usage = max(memory_usage)
+        peak_temp = max(temperature)
+
+        self.output_perf_value(description='average_cpu_usage',
+                value=avg_cpu_usage, units='percent', higher_is_better=False)
+        self.output_perf_value(description='average_memory_usage',
+                value=avg_memory_usage, units='percent', higher_is_better=False)
+        self.output_perf_value(description='average_temperature',
+                value=avg_temp, units='Celsius', higher_is_better=False)
+
+        self.output_perf_value(description='peak_cpu_usage',
+                value=peak_cpu_usage, units='percent', higher_is_better=False)
+        self.output_perf_value(description='peak_memory_usage',
+                value=peak_memory_usage, units='percent',
+                higher_is_better=False)
+        self.output_perf_value(description='peak_temperature',
+                value=peak_temp, units='Celsius', higher_is_better=False)
 
 
     def run_once(self, host=None):
