@@ -12,6 +12,7 @@ PP_PATH = '/dev/ttyUSB0'
 PP_LOG = '/tmp/powerplay.log'
 CMD = '(stty 115200 cs8 -ixon; cat) < ' + PP_PATH + ' > ' + PP_LOG
 WAIT_DELAY = 10
+LONG_TIMEOUT = 60
 
 
 class firmware_StandbyPowerConsumption(FirmwareTest):
@@ -79,7 +80,7 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         self.set_powerplay_visible_to_servo_host(False)
         self.ec.send_command("hibernate")
         logging.info("Hibernating for %s seconds...", hibernate_length)
-        self.host.test_wait_for_sleep()
+        self.host.test_wait_for_sleep(LONG_TIMEOUT)
         self.set_powerplay_visible_to_servo_host(True)
 
         self.s_host = self.host._servo_host
@@ -87,7 +88,7 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         if is_pp_connected.exit_status:
             self.set_powerplay_visible_to_servo_host(False)
             self.servo.power_short_press()
-            self.host.test_wait_for_resume(boot_id)
+            self.host.test_wait_for_resume(boot_id, LONG_TIMEOUT)
             raise error.TestFail("Could not find powerplay.")
 
         pid = self.s_host.run_background(CMD)
@@ -95,7 +96,7 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         self.set_powerplay_visible_to_servo_host(False)
         self.s_host.run_background('kill -9 ' + pid)
         self.servo.power_short_press()
-        self.host.test_wait_for_resume(boot_id)
+        self.host.test_wait_for_resume(boot_id, LONG_TIMEOUT)
 
         pp_file = os.path.join(self.resultsdir, 'powerplay.log')
         self.s_host.get_file(PP_LOG, pp_file)
