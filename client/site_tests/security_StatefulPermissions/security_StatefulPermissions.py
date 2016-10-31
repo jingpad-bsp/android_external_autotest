@@ -92,11 +92,13 @@ class security_StatefulPermissions(test.test):
 
         # 'preserve/log' is test-only.
         paths.append("/unencrypted/preserve/log")
+        paths.append("/unencrypted/preserve")
 
         # Cover up Portage noise.
         paths.append("/encrypted/var/cache/edb")
         paths.append("/encrypted/var/lib/gentoo")
         paths.append("/encrypted/var/log/portage")
+        paths.append("/encrypted/var/lib/tpm_manager")
 
         # Cover up Autotest noise.
         paths.append("/dev_image")
