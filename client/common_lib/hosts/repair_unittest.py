@@ -280,7 +280,36 @@ class _DependencyNodeTestCase(unittest.TestCase):
         return set(failures)
 
 
-    def _check_log_records(self, *record_data):
+    def _generate_silent(self):
+        """
+        Iterator to test different settings of the `silent` parameter.
+
+        This iterator exists to standardize testing assertions that
+        This iterator exists to standardize testing common
+        assertions about the `silent` parameter:
+          * When the parameter is true, no calls are made to the
+            `record()` method on the target host.
+          * When the parameter is false, certain expected calls are made
+            to the `record()` method on the target host.
+
+        The iterator is meant to be used like this:
+
+            for silent in self._generate_silent():
+                # run test case that uses the silent parameter
+                self._check_log_records(silent, ... expected records ... )
+
+        The code above will run its test case twice, once with
+        `silent=True` and once with `silent=False`.  In between the
+        calls, log records are cleared.
+
+        @yields A boolean setting for `silent`.
+        """
+        for silent in [False, True]:
+            yield silent
+            self._fake_host.reset_log_records()
+
+
+    def _check_log_records(self, silent, *record_data):
         """
         Assert that log records occurred as expected.
 
@@ -289,12 +318,19 @@ class _DependencyNodeTestCase(unittest.TestCase):
         The verifier or repair action for `tag` provides the expected
         log record based on the status value.
 
+        The `silent` parameter is the value that was passed to the
+        verifier or repair action that did the logging.  When true,
+        it indicates that no records should have been logged.
+
         @param record_data  List describing the expected record events.
+        @param silent       When true, ignore `record_data` and assert
+                            that nothing was logged.
         """
         expected_records = []
-        for tag, status in record_data:
-            expected_records.append(
-                    self.nodes[tag].get_log_record(status))
+        if not silent:
+            for tag, status in record_data:
+                expected_records.append(
+                        self.nodes[tag].get_log_record(status))
         actual_records = self._fake_host.get_log_records()
         self.assertEqual(expected_records, actual_records)
 
@@ -307,8 +343,8 @@ class VerifyTests(_DependencyNodeTestCase):
     `Verifier` class:
       * Results from the `verify()` method are cached; the method is
         only called the first time that `_verify_host()` is called.
-      * The `_verify_host()` method uses `Host.record()` to log the
-        outcome of every call to the `verify()` method.
+      * The `_verify_host()` method makes the expected calls to
+        `Host.record()` for every call to the `verify()` method.
       * When a dependency fails, the dependent verifier isn't called.
       * Verifier calls are made in the order required by the DAG.
 
@@ -316,7 +352,7 @@ class VerifyTests(_DependencyNodeTestCase):
     but instead rely on custom-built DAGs.
     """
 
-    def _generate_reverify(self, verifier):
+    def _generate_verify_count(self, verifier):
         """
         Iterator to force a standard sequence with calls to `_reverify()`.
 
@@ -330,10 +366,10 @@ class VerifyTests(_DependencyNodeTestCase):
 
         The iterator is meant to be used like this:
 
-            for i in self._generate_verify_cases(verifier):
+            for count in self._generate_verify_cases(verifier):
                 # run a verifier._verify_host() test case
-                self.assertEqual(verifier.verify_count, i+1)
-                self._check_log_records( ... expected records ... )
+                self.assertEqual(verifier.verify_count, count)
+                self._check_log_records(silent, ... expected records ... )
 
         The code above will run the `_verify_host()` test case twice,
         then call `_reverify()` to clear cached results, then re-run
@@ -343,7 +379,7 @@ class VerifyTests(_DependencyNodeTestCase):
         @yields Each iteration yields the number of times `_reverify()`
                 has been called.
         """
-        for i in range(0, 2):
+        for i in range(1, 3):
             for _ in range(0, 2):
                 yield i
             verifier._reverify()
@@ -362,11 +398,12 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        verifier = self._make_verifier(0, 'pass', [])
-        for i in self._generate_reverify(verifier):
-            verifier._verify_host(self._fake_host)
-            self.assertEqual(verifier.verify_count, i+1)
-            self._check_log_records(('pass', 'GOOD'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(0, 'pass', [])
+            for count in self._generate_verify_count(verifier):
+                verifier._verify_host(self._fake_host, silent)
+                self.assertEqual(verifier.verify_count, count)
+                self._check_log_records(silent, ('pass', 'GOOD'))
 
 
     def test_fail(self):
@@ -383,13 +420,14 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        verifier = self._make_verifier(1, 'fail', [])
-        for i in self._generate_reverify(verifier):
-            with self.assertRaises(hosts.AutoservVerifyError) as e:
-                verifier._verify_host(self._fake_host)
-            self.assertEqual(verifier.verify_count, i+1)
-            self.assertEqual(verifier.message, str(e.exception))
-            self._check_log_records(('fail', 'FAIL'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(1, 'fail', [])
+            for count in self._generate_verify_count(verifier):
+                with self.assertRaises(hosts.AutoservVerifyError) as e:
+                    verifier._verify_host(self._fake_host, silent)
+                self.assertEqual(verifier.verify_count, count)
+                self.assertEqual(verifier.message, str(e.exception))
+                self._check_log_records(silent, ('fail', 'FAIL'))
 
 
     def test_dependency_success(self):
@@ -406,14 +444,16 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        child = self._make_verifier(0, 'pass', [])
-        parent = self._make_verifier(0, 'parent', [child])
-        for i in self._generate_reverify(parent):
-            parent._verify_host(self._fake_host)
-            self.assertEqual(parent.verify_count, i+1)
-            self.assertEqual(child.verify_count, i+1)
-            self._check_log_records(('pass', 'GOOD'),
-                                    ('parent', 'GOOD'))
+        for silent in self._generate_silent():
+            child = self._make_verifier(0, 'pass', [])
+            parent = self._make_verifier(0, 'parent', [child])
+            for count in self._generate_verify_count(parent):
+                parent._verify_host(self._fake_host, silent)
+                self.assertEqual(parent.verify_count, count)
+                self.assertEqual(child.verify_count, count)
+                self._check_log_records(silent,
+                                        ('pass', 'GOOD'),
+                                        ('parent', 'GOOD'))
 
 
     def test_dependency_fail(self):
@@ -434,16 +474,18 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        child = self._make_verifier(1, 'fail', [])
-        parent = self._make_verifier(0, 'parent', [child])
-        failures = self._make_expected_failures(child)
-        for i in self._generate_reverify(parent):
-            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
-                parent._verify_host(self._fake_host)
-            self.assertEqual(e.exception.failures, failures)
-            self.assertEqual(child.verify_count, i+1)
-            self.assertEqual(parent.verify_count, 0)
-            self._check_log_records(('fail', 'FAIL'))
+        for silent in self._generate_silent():
+            child = self._make_verifier(1, 'fail', [])
+            parent = self._make_verifier(0, 'parent', [child])
+            failures = self._make_expected_failures(child)
+            for count in self._generate_verify_count(parent):
+                expected_exception = hosts.AutoservVerifyDependencyError
+                with self.assertRaises(expected_exception) as e:
+                    parent._verify_host(self._fake_host, silent)
+                self.assertEqual(e.exception.failures, failures)
+                self.assertEqual(child.verify_count, count)
+                self.assertEqual(parent.verify_count, 0)
+                self._check_log_records(silent, ('fail', 'FAIL'))
 
 
     def test_two_dependencies_pass(self):
@@ -460,17 +502,19 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        left = self._make_verifier(0, 'left', [])
-        right = self._make_verifier(0, 'right', [])
-        top = self._make_verifier(0, 'top', [left, right])
-        for i in self._generate_reverify(top):
-            top._verify_host(self._fake_host)
-            self.assertEqual(top.verify_count, i+1)
-            self.assertEqual(left.verify_count, i+1)
-            self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', 'GOOD'),
-                                    ('right', 'GOOD'),
-                                    ('top', 'GOOD'))
+        for silent in self._generate_silent():
+            left = self._make_verifier(0, 'left', [])
+            right = self._make_verifier(0, 'right', [])
+            top = self._make_verifier(0, 'top', [left, right])
+            for count in self._generate_verify_count(top):
+                top._verify_host(self._fake_host, silent)
+                self.assertEqual(top.verify_count, count)
+                self.assertEqual(left.verify_count, count)
+                self.assertEqual(right.verify_count, count)
+                self._check_log_records(silent,
+                                        ('left', 'GOOD'),
+                                        ('right', 'GOOD'),
+                                        ('top', 'GOOD'))
 
 
     def test_two_dependencies_fail(self):
@@ -491,19 +535,22 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        left = self._make_verifier(1, 'left', [])
-        right = self._make_verifier(1, 'right', [])
-        top = self._make_verifier(0, 'top', [left, right])
-        failures = self._make_expected_failures(left, right)
-        for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
-                top._verify_host(self._fake_host)
-            self.assertEqual(e.exception.failures, failures)
-            self.assertEqual(top.verify_count, 0)
-            self.assertEqual(left.verify_count, i+1)
-            self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', 'FAIL'),
-                                    ('right', 'FAIL'))
+        for silent in self._generate_silent():
+            left = self._make_verifier(1, 'left', [])
+            right = self._make_verifier(1, 'right', [])
+            top = self._make_verifier(0, 'top', [left, right])
+            failures = self._make_expected_failures(left, right)
+            for count in self._generate_verify_count(top):
+                expected_exception = hosts.AutoservVerifyDependencyError
+                with self.assertRaises(expected_exception) as e:
+                    top._verify_host(self._fake_host, silent)
+                self.assertEqual(e.exception.failures, failures)
+                self.assertEqual(top.verify_count, 0)
+                self.assertEqual(left.verify_count, count)
+                self.assertEqual(right.verify_count, count)
+                self._check_log_records(silent,
+                                        ('left', 'FAIL'),
+                                        ('right', 'FAIL'))
 
 
     def test_two_dependencies_mixed(self):
@@ -524,19 +571,22 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        left = self._make_verifier(1, 'left', [])
-        right = self._make_verifier(0, 'right', [])
-        top = self._make_verifier(0, 'top', [left, right])
-        failures = self._make_expected_failures(left)
-        for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
-                top._verify_host(self._fake_host)
-            self.assertEqual(e.exception.failures, failures)
-            self.assertEqual(top.verify_count, 0)
-            self.assertEqual(left.verify_count, i+1)
-            self.assertEqual(right.verify_count, i+1)
-            self._check_log_records(('left', 'FAIL'),
-                                    ('right', 'GOOD'))
+        for silent in self._generate_silent():
+            left = self._make_verifier(1, 'left', [])
+            right = self._make_verifier(0, 'right', [])
+            top = self._make_verifier(0, 'top', [left, right])
+            failures = self._make_expected_failures(left)
+            for count in self._generate_verify_count(top):
+                expected_exception = hosts.AutoservVerifyDependencyError
+                with self.assertRaises(expected_exception) as e:
+                    top._verify_host(self._fake_host, silent)
+                self.assertEqual(e.exception.failures, failures)
+                self.assertEqual(top.verify_count, 0)
+                self.assertEqual(left.verify_count, count)
+                self.assertEqual(right.verify_count, count)
+                self._check_log_records(silent,
+                                        ('left', 'FAIL'),
+                                        ('right', 'GOOD'))
 
 
     def test_diamond_pass(self):
@@ -560,20 +610,22 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        bottom = self._make_verifier(0, 'bottom', [])
-        left = self._make_verifier(0, 'left', [bottom])
-        right = self._make_verifier(0, 'right', [bottom])
-        top = self._make_verifier(0, 'top', [left, right])
-        for i in self._generate_reverify(top):
-            top._verify_host(self._fake_host)
-            self.assertEqual(top.verify_count, i+1)
-            self.assertEqual(left.verify_count, i+1)
-            self.assertEqual(right.verify_count, i+1)
-            self.assertEqual(bottom.verify_count, i+1)
-            self._check_log_records(('bottom', 'GOOD'),
-                                    ('left', 'GOOD'),
-                                    ('right', 'GOOD'),
-                                    ('top', 'GOOD'))
+        for silent in self._generate_silent():
+            bottom = self._make_verifier(0, 'bottom', [])
+            left = self._make_verifier(0, 'left', [bottom])
+            right = self._make_verifier(0, 'right', [bottom])
+            top = self._make_verifier(0, 'top', [left, right])
+            for count in self._generate_verify_count(top):
+                top._verify_host(self._fake_host, silent)
+                self.assertEqual(top.verify_count, count)
+                self.assertEqual(left.verify_count, count)
+                self.assertEqual(right.verify_count, count)
+                self.assertEqual(bottom.verify_count, count)
+                self._check_log_records(silent,
+                                        ('bottom', 'GOOD'),
+                                        ('left', 'GOOD'),
+                                        ('right', 'GOOD'),
+                                        ('top', 'GOOD'))
 
 
     def test_diamond_fail(self):
@@ -601,20 +653,22 @@ class VerifyTests(_DependencyNodeTestCase):
             visible side-effects after the first call.
           * Calling `_reverify()` clears all cached results.
         """
-        bottom = self._make_verifier(1, 'bottom', [])
-        left = self._make_verifier(0, 'left', [bottom])
-        right = self._make_verifier(0, 'right', [bottom])
-        top = self._make_verifier(0, 'top', [left, right])
-        failures = self._make_expected_failures(bottom)
-        for i in self._generate_reverify(top):
-            with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
-                top._verify_host(self._fake_host)
-            self.assertEqual(e.exception.failures, failures)
-            self.assertEqual(top.verify_count, 0)
-            self.assertEqual(left.verify_count, 0)
-            self.assertEqual(right.verify_count, 0)
-            self.assertEqual(bottom.verify_count, i+1)
-            self._check_log_records(('bottom', 'FAIL'))
+        for silent in self._generate_silent():
+            bottom = self._make_verifier(1, 'bottom', [])
+            left = self._make_verifier(0, 'left', [bottom])
+            right = self._make_verifier(0, 'right', [bottom])
+            top = self._make_verifier(0, 'top', [left, right])
+            failures = self._make_expected_failures(bottom)
+            for count in self._generate_verify_count(top):
+                expected_exception = hosts.AutoservVerifyDependencyError
+                with self.assertRaises(expected_exception) as e:
+                    top._verify_host(self._fake_host, silent)
+                self.assertEqual(e.exception.failures, failures)
+                self.assertEqual(top.verify_count, 0)
+                self.assertEqual(left.verify_count, 0)
+                self.assertEqual(right.verify_count, 0)
+                self.assertEqual(bottom.verify_count, count)
+                self._check_log_records(silent, ('bottom', 'FAIL'))
 
 
 class RepairActionTests(_DependencyNodeTestCase):
@@ -625,8 +679,8 @@ class RepairActionTests(_DependencyNodeTestCase):
     `RepairAction` class:
       * Repair doesn't run unless all dependencies pass.
       * Repair doesn't run unless at least one trigger fails.
-      * The `_repair_host()` method uses `Host.record()` to log the
-        outcome of every call to the `repair()` method.
+      * The `_repair_host()` method makes the expected calls to
+        `Host.record()` for every call to the `repair()` method.
 
     The test cases don't use `RepairStrategy` to build repair
     graphs, but instead rely on custom-built structures.
@@ -644,13 +698,14 @@ class RepairActionTests(_DependencyNodeTestCase):
             `Host.record()`.
           * The repair action logs no messages with `Host.record()`.
         """
-        verifier = self._make_verifier(0, 'check', [])
-        repair_action = self._make_repair_action(True, 'unneeded',
-                                                 [], [verifier])
-        repair_action._repair_host(self._fake_host)
-        self.assertEqual(verifier.verify_count, 1)
-        self.assertEqual(repair_action.repair_count, 0)
-        self._check_log_records(('check', 'GOOD'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(0, 'check', [])
+            repair_action = self._make_repair_action(True, 'unneeded',
+                                                     [], [verifier])
+            repair_action._repair_host(self._fake_host, silent)
+            self.assertEqual(verifier.verify_count, 1)
+            self.assertEqual(repair_action.repair_count, 0)
+            self._check_log_records(silent, ('check', 'GOOD'))
 
 
     def test_repair_fails(self):
@@ -668,18 +723,20 @@ class RepairActionTests(_DependencyNodeTestCase):
             logged with `Host.record()` for the failed verifier and the
             failed repair.
         """
-        verifier = self._make_verifier(1, 'fail', [])
-        repair_action = self._make_repair_action(False, 'nofix',
-                                                 [], [verifier])
-        with self.assertRaises(_StubRepairFailure) as e:
-            repair_action._repair_host(self._fake_host)
-        self.assertEqual(repair_action.message, str(e.exception))
-        self.assertEqual(verifier.verify_count, 1)
-        self.assertEqual(repair_action.repair_count, 1)
-        self._check_log_records(('fail', 'FAIL'),
-                                ('nofix', 'START'),
-                                ('nofix', 'FAIL'),
-                                ('nofix', 'END FAIL'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(1, 'fail', [])
+            repair_action = self._make_repair_action(False, 'nofix',
+                                                     [], [verifier])
+            with self.assertRaises(_StubRepairFailure) as e:
+                repair_action._repair_host(self._fake_host, silent)
+            self.assertEqual(repair_action.message, str(e.exception))
+            self.assertEqual(verifier.verify_count, 1)
+            self.assertEqual(repair_action.repair_count, 1)
+            self._check_log_records(silent,
+                                    ('fail', 'FAIL'),
+                                    ('nofix', 'START'),
+                                    ('nofix', 'FAIL'),
+                                    ('nofix', 'END FAIL'))
 
 
     def test_repair_success(self):
@@ -695,16 +752,18 @@ class RepairActionTests(_DependencyNodeTestCase):
             messages are logged with `Host.record()` for the verifier
             and the repair.
         """
-        verifier = self._make_verifier(1, 'fail', [])
-        repair_action = self._make_repair_action(True, 'fix',
-                                                 [], [verifier])
-        repair_action._repair_host(self._fake_host)
-        self.assertEqual(repair_action.repair_count, 1)
-        self.assertEqual(verifier.verify_count, 2)
-        self._check_log_records(('fail', 'FAIL'),
-                                ('fix', 'START'),
-                                ('fail', 'GOOD'),
-                                ('fix', 'END GOOD'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(1, 'fail', [])
+            repair_action = self._make_repair_action(True, 'fix',
+                                                     [], [verifier])
+            repair_action._repair_host(self._fake_host, silent)
+            self.assertEqual(repair_action.repair_count, 1)
+            self.assertEqual(verifier.verify_count, 2)
+            self._check_log_records(silent,
+                                    ('fail', 'FAIL'),
+                                    ('fix', 'START'),
+                                    ('fail', 'GOOD'),
+                                    ('fix', 'END GOOD'))
 
 
     def test_repair_noop(self):
@@ -720,17 +779,19 @@ class RepairActionTests(_DependencyNodeTestCase):
           * The expected 'START', 'FAIL', and 'END FAIL' messages are
             logged with `Host.record()` for the verifier and the repair.
         """
-        verifier = self._make_verifier(2, 'fail', [])
-        repair_action = self._make_repair_action(True, 'nofix',
-                                                 [], [verifier])
-        with self.assertRaises(hosts.AutoservRepairError) as e:
-            repair_action._repair_host(self._fake_host)
-        self.assertEqual(repair_action.repair_count, 1)
-        self.assertEqual(verifier.verify_count, 2)
-        self._check_log_records(('fail', 'FAIL'),
-                                ('nofix', 'START'),
-                                ('fail', 'FAIL'),
-                                ('nofix', 'END FAIL'))
+        for silent in self._generate_silent():
+            verifier = self._make_verifier(2, 'fail', [])
+            repair_action = self._make_repair_action(True, 'nofix',
+                                                     [], [verifier])
+            with self.assertRaises(hosts.AutoservRepairError) as e:
+                repair_action._repair_host(self._fake_host, silent)
+            self.assertEqual(repair_action.repair_count, 1)
+            self.assertEqual(verifier.verify_count, 2)
+            self._check_log_records(silent,
+                                    ('fail', 'FAIL'),
+                                    ('nofix', 'START'),
+                                    ('fail', 'FAIL'),
+                                    ('nofix', 'END FAIL'))
 
 
     def test_dependency_pass(self):
@@ -748,19 +809,21 @@ class RepairActionTests(_DependencyNodeTestCase):
             for the successful dependency, the failed trigger, and
             the successful repair.
         """
-        dep = self._make_verifier(0, 'dep', [])
-        trigger = self._make_verifier(1, 'trig', [])
-        repair = self._make_repair_action(True, 'fixit',
-                                          [dep], [trigger])
-        repair._repair_host(self._fake_host)
-        self.assertEqual(dep.verify_count, 1)
-        self.assertEqual(trigger.verify_count, 2)
-        self.assertEqual(repair.repair_count, 1)
-        self._check_log_records(('dep', 'GOOD'),
-                                ('trig', 'FAIL'),
-                                ('fixit', 'START'),
-                                ('trig', 'GOOD'),
-                                ('fixit', 'END GOOD'))
+        for silent in self._generate_silent():
+            dep = self._make_verifier(0, 'dep', [])
+            trigger = self._make_verifier(1, 'trig', [])
+            repair = self._make_repair_action(True, 'fixit',
+                                              [dep], [trigger])
+            repair._repair_host(self._fake_host, silent)
+            self.assertEqual(dep.verify_count, 1)
+            self.assertEqual(trigger.verify_count, 2)
+            self.assertEqual(repair.repair_count, 1)
+            self._check_log_records(silent,
+                                    ('dep', 'GOOD'),
+                                    ('trig', 'FAIL'),
+                                    ('fixit', 'START'),
+                                    ('trig', 'GOOD'),
+                                    ('fixit', 'END GOOD'))
 
 
     def test_dependency_fail(self):
@@ -778,18 +841,20 @@ class RepairActionTests(_DependencyNodeTestCase):
           * The expected 'FAIL' record is logged via `Host.record()`
             for the single failed dependency.
         """
-        dep = self._make_verifier(1, 'dep', [])
-        trigger = self._make_verifier(1, 'trig', [])
-        repair = self._make_repair_action(True, 'fixit',
-                                          [dep], [trigger])
-        with self.assertRaises(hosts.AutoservVerifyDependencyError) as e:
-            repair._repair_host(self._fake_host)
-        self.assertEqual(e.exception.failures,
-                         self._make_expected_failures(dep))
-        self.assertEqual(dep.verify_count, 1)
-        self.assertEqual(trigger.verify_count, 0)
-        self.assertEqual(repair.repair_count, 0)
-        self._check_log_records(('dep', 'FAIL'))
+        for silent in self._generate_silent():
+            dep = self._make_verifier(1, 'dep', [])
+            trigger = self._make_verifier(1, 'trig', [])
+            repair = self._make_repair_action(True, 'fixit',
+                                              [dep], [trigger])
+            expected_exception = hosts.AutoservVerifyDependencyError
+            with self.assertRaises(expected_exception) as e:
+                repair._repair_host(self._fake_host, silent)
+            self.assertEqual(e.exception.failures,
+                             self._make_expected_failures(dep))
+            self.assertEqual(dep.verify_count, 1)
+            self.assertEqual(trigger.verify_count, 0)
+            self.assertEqual(repair.repair_count, 0)
+            self._check_log_records(silent, ('dep', 'FAIL'))
 
 
 class _RepairStrategyTestCase(_DependencyNodeTestCase):
@@ -862,7 +927,25 @@ class _RepairStrategyTestCase(_DependencyNodeTestCase):
         repair_data = self._make_repair_data(*repair_input)
         return hosts.RepairStrategy(verify_data, repair_data)
 
+    def _check_silent_records(self, silent):
+        """
+        Check that logging honored the `silent` parameter.
 
+        Asserts that logging with `Host.record()` occurred (or did not
+        occur) in accordance with the value of `silent`.
+
+        This method only asserts the presence or absence of log records.
+        Coverage for the contents of the log records is handled in other
+        test cases.
+
+        @param silent   When true, there should be no log records;
+                        otherwise there should be records present.
+        """
+        log_records = self._fake_host.get_log_records()
+        if silent:
+            self.assertEqual(log_records, [])
+        else:
+            self.assertNotEqual(log_records, [])
 
 
 class RepairStrategyVerifyTests(_RepairStrategyTestCase):
@@ -989,18 +1072,21 @@ class RepairStrategyVerifyTests(_RepairStrategyTestCase):
         strategy = hosts.RepairStrategy(verify_data, [])
         verifier = self.nodes['tester']
         count = 0
-        for i in range(0, 2):
-            for j in range(0, 2):
-                strategy.verify(self._fake_host)
-                count += 1
-                self.assertEqual(verifier.verify_count, count)
-            verifier.unrepair()
-            for j in range(0, 2):
-                with self.assertRaises(Exception) as e:
-                    strategy.verify(self._fake_host)
-                count += 1
-                self.assertEqual(verifier.verify_count, count)
-            verifier.try_repair()
+        for silent in self._generate_silent():
+            for i in range(0, 2):
+                for j in range(0, 2):
+                    strategy.verify(self._fake_host, silent)
+                    self._check_silent_records(silent)
+                    count += 1
+                    self.assertEqual(verifier.verify_count, count)
+                verifier.unrepair()
+                for j in range(0, 2):
+                    with self.assertRaises(Exception) as e:
+                        strategy.verify(self._fake_host, silent)
+                    self._check_silent_records(silent)
+                    count += 1
+                    self.assertEqual(verifier.verify_count, count)
+                verifier.try_repair()
 
 
 class RepairStrategyRepairTests(_RepairStrategyTestCase):
@@ -1112,7 +1198,7 @@ class RepairStrategyRepairTests(_RepairStrategyTestCase):
                          [self.nodes['base']])
 
 
-    def _check_repair_failure(self, strategy):
+    def _check_repair_failure(self, strategy, silent):
         """
         Check the effects of a call to `repair()` that fails.
 
@@ -1130,12 +1216,13 @@ class RepairStrategyRepairTests(_RepairStrategyTestCase):
         action_counts = [(a, a.repair_count)
                                  for a in strategy._repair_actions]
         with self.assertRaises(Exception) as e:
-            strategy.repair(self._fake_host)
+            strategy.repair(self._fake_host, silent)
+        self._check_silent_records(silent)
         for action, count in action_counts:
               self.assertEqual(action.repair_count, count + 1)
 
 
-    def _check_repair_success(self, strategy):
+    def _check_repair_success(self, strategy, silent):
         """
         Check the effects of a call to `repair()` that succeeds.
 
@@ -1150,7 +1237,8 @@ class RepairStrategyRepairTests(_RepairStrategyTestCase):
         """
         action_counts = [(a, a.repair_count)
                                  for a in strategy._repair_actions]
-        strategy.repair(self._fake_host)
+        strategy.repair(self._fake_host, silent)
+        self._check_silent_records(silent)
         for action, count in action_counts:
               self.assertEqual(action.repair_count, count + 1)
 
@@ -1180,21 +1268,30 @@ class RepairStrategyRepairTests(_RepairStrategyTestCase):
                         ('bfix', True, (), ('b',)))
         strategy = self._make_strategy(verify_input, repair_input)
 
-        # call where both 'afix' and 'bfix' fail
-        self._check_repair_failure(strategy)
+        for silent in self._generate_silent():
+            # call where both 'afix' and 'bfix' fail
+            self._check_repair_failure(strategy, silent)
+            # repair counts are now 1 for both verifiers
 
-        # call where both 'afix' and 'bfix' succeed
-        self._check_repair_success(strategy)
+            # call where both 'afix' and 'bfix' succeed
+            self._check_repair_success(strategy, silent)
+            # repair counts are now 0 for both verifiers
 
-        # call where 'afix' fails and 'bfix' succeeds
-        for tag in ['a', 'a', 'b']:
-            self.nodes[tag].unrepair()
-        self._check_repair_failure(strategy)
+            # call where 'afix' fails and 'bfix' succeeds
+            for tag in ['a', 'a', 'b']:
+                self.nodes[tag].unrepair()
+            self._check_repair_failure(strategy, silent)
+            # 'a' repair count is 1; 'b' count is 0
 
-        # call where 'afix' succeeds and 'bfix' fails
-        for tag in ['b', 'b']:
-            self.nodes[tag].unrepair()
-        self._check_repair_failure(strategy)
+            # call where 'afix' succeeds and 'bfix' fails
+            for tag in ['b', 'b']:
+                self.nodes[tag].unrepair()
+            self._check_repair_failure(strategy, silent)
+            # 'a' repair count is 0; 'b' count is 1
+
+            for tag in ['a', 'a', 'b']:
+                self.nodes[tag].unrepair()
+            # repair counts are now 2 for both verifiers
 
 
 if __name__ == '__main__':
