@@ -7,6 +7,7 @@ from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import service_stopper
 
+
 class graphics_LibDRM(test.test):
     version = 1
     _services = None
@@ -16,7 +17,7 @@ class graphics_LibDRM(test.test):
 
     def cleanup(self):
         if self._services:
-           self._services.restore_services()
+            self._services.restore_services()
 
     def run_once(self):
         num_errors = 0
@@ -29,16 +30,19 @@ class graphics_LibDRM(test.test):
         tests_exynos5 = ['kmstest']
         tests_mediatek = ['kmstest']
         tests_rockchip = ['kmstest']
-        arch_tests = { 'arm'     : [],
-                       'exynos5' : tests_exynos5,
-                       'i386'    : [],
-                       'mediatek': tests_mediatek,
-                       'rockchip': tests_rockchip,
-                       'tegra'   : [],
-                       'x86_64'  : [] }
+        arch_tests = {
+            'arm': [],
+            'exynos5': tests_exynos5,
+            'i386': [],
+            'mediatek': tests_mediatek,
+            'rockchip': tests_rockchip,
+            'tegra': [],
+            'x86_64': []
+        }
         arch = utils.get_cpu_soc_family()
         if not arch in arch_tests:
-            raise error.TestFail('Architecture "%s" not supported.', arch)
+            raise error.TestFail('Failed: Architecture "%s" not supported.',
+                                 arch)
         elif arch == 'tegra':
             logging.warning('Tegra does not support DRM.')
             return
@@ -68,4 +72,4 @@ class graphics_LibDRM(test.test):
         self.write_perf_keyval(keyvals)
 
         if num_errors > 0:
-            raise error.TestError('One or more libdrm tests failed.')
+            raise error.TestFail('Failed: %d libdrm tests failed.' % num_errors)
