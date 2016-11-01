@@ -59,8 +59,8 @@ class graphics_dEQP(test.test):
         major, minor = graphics_utils.get_gles_version()
         logging.info('Found gles%d.%d.', major, minor)
         if major is None or minor is None:
-            raise error.TestError(
-                'Could not get gles version information (%d, %d).' %
+            raise error.TestFail(
+                'Failed: Could not get gles version information (%d, %d).' %
                 (major, minor))
         if major >= 2:
             self._can_run_executables.append('gles2/deqp-gles2')
@@ -152,7 +152,7 @@ class graphics_dEQP(test.test):
         if test_prefix in self.DEQP_MODULES:
             module = self.DEQP_MODULES[test_prefix]
         else:
-            raise error.TestError('Invalid test name: %s' % name)
+            raise error.TestFail('Failed: Invalid test name: %s' % name)
         executable = os.path.join(self.DEQP_BASEDIR, 'modules', module,
                                   'deqp-%s' % module)
         # Must be in the executable directory when running for it to find it's
@@ -214,7 +214,8 @@ class graphics_dEQP(test.test):
         caselist_name = '%s-cases.txt' % test_filter.split('.')[0]
         caselist_file = os.path.join(os.path.dirname(executable), caselist_name)
         if not os.path.isfile(caselist_file):
-            raise error.TestError('No caselist file at %s!' % caselist_file)
+            raise error.TestFail('Failed: No caselist file at %s!' %
+                                 caselist_file)
 
         # And remove non-Pass'ing expectations from caselist.
         caselist = open(caselist_file).read().splitlines()
@@ -229,7 +230,7 @@ class graphics_dEQP(test.test):
 
         test_cases = list(set(test_cases) - set(not_passing_cases))
         if not test_cases:
-            raise error.TestError('Unable to bootstrap %s!' % test_filter)
+            raise error.TestFail('Failed: Unable to bootstrap %s!' % test_filter)
 
         test_cases.sort()
         return test_cases
@@ -258,15 +259,15 @@ class graphics_dEQP(test.test):
                 # for trouble (stability). Decide if it should be disallowed.
                 return self._load_not_passing_cases(test_filter)
             if subset != 'Pass':
-                raise error.TestError('No subset file found for %s!' %
-                                      subset_path)
+                raise error.TestFail('Failed: No subset file found for %s!' %
+                                     subset_path)
             # Ask dEQP for all cases and remove the failing ones.
             return self._bootstrap_new_test_cases(test_filter)
 
         test_cases = bz2.BZ2File(subset_path).read().splitlines()
         if not test_cases:
-            raise error.TestError('No test cases found in subset file %s!' %
-                                  subset_path)
+            raise error.TestFail(
+                'Failed: No test cases found in subset file %s!' % subset_path)
         return test_cases
 
     def run_tests_individually(self, test_cases):
@@ -300,9 +301,9 @@ class graphics_dEQP(test.test):
                        '--deqp-watchdog=enable '
                        '--deqp-surface-width=%d '
                        '--deqp-surface-height=%d '
-                       '--deqp-log-filename=%s' %
-                       (executable, test_case, self._surface, width, height,
-                        log_file))
+                       '--deqp-log-filename=%s' % (executable, test_case,
+                                                   self._surface, width, height,
+                                                   log_file))
 
             if not self._can_run(executable):
                 result = 'Skipped'
@@ -333,23 +334,29 @@ class graphics_dEQP(test.test):
 
                 if self._debug:
                     # Collect debug info and save to json file.
-                    output_msgs = {'start_time': start_time,
-                                   'end_time': end_time,
-                                   'stdout': [], 'stderr': [], 'dmesg': []}
+                    output_msgs = {
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'stdout': [],
+                        'stderr': [],
+                        'dmesg': []
+                    }
                     logs = self._log_reader.get_logs()
                     self._log_reader.set_start_by_current()
-                    output_msgs['dmesg'] = [msg
-                                            for msg in logs.splitlines()
-                                            if self._log_filter.match(msg)]
+                    output_msgs['dmesg'] = [
+                        msg for msg in logs.splitlines()
+                        if self._log_filter.match(msg)
+                    ]
                     if run_result:
                         output_msgs['stdout'] = run_result.stdout.splitlines()
                         output_msgs['stderr'] = run_result.stderr.splitlines()
                     with open(debug_file, 'w') as fd:
-                        json.dump(output_msgs,
-                                  fd,
-                                  indent=4,
-                                  separators=(',', ' : '),
-                                  sort_keys=True)
+                        json.dump(
+                            output_msgs,
+                            fd,
+                            indent=4,
+                            separators=(',', ' : '),
+                            sort_keys=True)
 
             logging.info('Result: %s', result)
             test_results[result] = test_results.get(result, 0) + 1
@@ -381,11 +388,11 @@ class graphics_dEQP(test.test):
         # in smaller batches. We start and end at multiples of batch_size
         # boundaries.
         shard_start = self._hasty_batch_size * (
-            (self._shard_number *
-             (num_test_cases / self._shard_count)) / self._hasty_batch_size)
-        shard_end = self._hasty_batch_size * (
-            ((self._shard_number + 1) *
-             (num_test_cases / self._shard_count)) / self._hasty_batch_size)
+            (self._shard_number * (num_test_cases / self._shard_count)) /
+            self._hasty_batch_size)
+        shard_end = self._hasty_batch_size * ((
+            (self._shard_number + 1) * (num_test_cases / self._shard_count)) /
+                                              self._hasty_batch_size)
         # The last shard will be slightly larger than the others. Extend it to
         # cover all test cases avoiding rounding problems with the integer
         # arithmetics done to compute shard_start and shard_end.
@@ -461,7 +468,7 @@ class graphics_dEQP(test.test):
         if not (self._test_names_file or self._test_names):
             self._filter = options['filter']
             if not self._filter:
-                raise error.TestError('No dEQP test filter specified')
+                raise error.TestFail('Failed: No dEQP test filter specified')
 
         # Some information to help postprocess logs into blacklists later.
         logging.info('ChromeOS BOARD = %s', self._board)
@@ -483,16 +490,20 @@ class graphics_dEQP(test.test):
         os.mkdir(self._log_path)
 
         if self._gpu_type.startswith('tegra'):
-            raise error.TestNAError('dEQP not implemented on tegra. '
-                                    'crbug.com/543373')
+            logging.warning('dEQP not implemented on tegra. '
+                            'crbug.com/543373')
+            return
 
         self._services.stop_services()
         if self._test_names_file:
-            test_cases = [line.rstrip('\n')
-                          for line in open(os.path.join(self.bindir,
-                                                        self._test_names_file))]
-            test_cases = [test
-                          for test in test_cases if test and not test.isspace()]
+            test_cases = [
+                line.rstrip('\n')
+                for line in open(
+                    os.path.join(self.bindir, self._test_names_file))
+            ]
+            test_cases = [
+                test for test in test_cases if test and not test.isspace()
+            ]
         if self._test_names:
             test_cases = []
             for name in self._test_names.split(','):
@@ -526,9 +537,10 @@ class graphics_dEQP(test.test):
             test_count += test_results[result]
             if result.lower() in ['pass']:
                 test_passes += test_results[result]
-            if result.lower() not in ['pass', 'notsupported', 'internalerror',
-                                      'qualitywarning', 'compatibilitywarning',
-                                      'skipped']:
+            if result.lower() not in [
+                    'pass', 'notsupported', 'internalerror', 'qualitywarning',
+                    'compatibilitywarning', 'skipped'
+            ]:
                 test_failures += test_results[result]
             if result.lower() in ['skipped']:
                 test_skipped += test_results[result]
@@ -540,16 +552,16 @@ class graphics_dEQP(test.test):
 
         if self._filter and test_count == 0 and options[
                 'subset_to_run'] != 'NotPass':
-            raise error.TestNAError('No test cases found for filter: %s!' %
-                                    self._filter)
+            logging.warning('No test cases found for filter: %s!', self._filter)
 
         if options['subset_to_run'] == 'NotPass':
             if test_passes:
+                # TODO(ihf): Make this an annotated TestPass once available.
                 raise error.TestWarn(
                     '%d formerly failing tests are passing now.' % test_passes)
         elif test_failures:
-            raise error.TestFail('%d/%d tests failed.' %
+            raise error.TestFail('Failed: %d/%d tests failed.' %
                                  (test_failures, test_count))
         if test_skipped > 0:
-            raise error.TestWarn('%d tests skipped, %d passes' %
+            raise error.TestFail('Failed: %d tests skipped, %d passes' %
                                  (test_skipped, test_passes))

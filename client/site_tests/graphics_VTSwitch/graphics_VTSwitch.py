@@ -18,10 +18,10 @@ def get_percent_difference(file1, file2):
     sizes = {}
     for filename in files:
         if not os.path.exists(filename):
-            raise error.TestFail('Could not find file \'%s\'.' % filename)
+            raise error.TestFail('Failed: Could not find file \'%s\'.' % filename)
         sizes[filename] = os.path.getsize(filename)
         if sizes[filename] == 0:
-            raise error.TestFail('File \'%s\' has zero size.' % filename)
+            raise error.TestFail('Failed: File \'%s\' has zero size.' % filename)
 
     diff_bytes = int(utils.system_output('cmp -l %s %s | wc -l' % files))
 
@@ -63,7 +63,7 @@ class graphics_VTSwitch(test.test):
 
         # Make sure we start in VT1
         if not self._switch_to_vt(1):
-            raise error.TestFail('Could not switch to VT1')
+            raise error.TestFail('Failed: Could not switch to VT1')
 
         # Take screenshot of sign-in screen.
         logged_out_screenshot = self._take_current_vt_screenshot()
@@ -72,7 +72,7 @@ class graphics_VTSwitch(test.test):
 
         # Go to VT2 and take a screenshot.
         if not self._switch_to_vt(2):
-            raise error.TestFail('Could not switch to VT2')
+            raise error.TestFail('Failed: Could not switch to VT2')
         vt2_screenshot = self._take_current_vt_screenshot()
 
         # Make sure VT1 and VT2 are sufficiently different.
@@ -141,7 +141,7 @@ class graphics_VTSwitch(test.test):
         self.write_perf_keyval(keyvals)
 
         if self._num_errors > 0:
-            raise error.TestError('Test failed with %d errors' %
+            raise error.TestFail('Failed: saw %d VT switching errors.' %
                                   self._num_errors)
 
 
