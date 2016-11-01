@@ -590,8 +590,11 @@ class ServoHost(ssh_host.SSHHost):
             self.run('update_engine_client --follow', ignore_status=True)
 
 
-    def verify(self):
-        """Update the servo host and verify it's in a good state."""
+    def verify(self, silent=False):
+        """Update the servo host and verify it's in a good state.
+
+        @param silent   If true, suppress logging in `status.log`.
+        """
         # TODO(jrbarnette) Old versions of beaglebone_servo include
         # the powerd package.  If you touch the .oobe_completed file
         # (as we do to work around an update_engine problem), then
@@ -602,16 +605,19 @@ class ServoHost(ssh_host.SSHHost):
         # isn't running.
         self.run('stop powerd', ignore_status=True)
         try:
-            self._repair_strategy.verify(self)
+            self._repair_strategy.verify(self, silent)
         except:
             self.disconnect_servo()
             raise
 
 
-    def repair(self):
-        """Attempt to repair servo host."""
+    def repair(self, silent=False):
+        """Attempt to repair servo host.
+
+        @param silent   If true, suppress logging in `status.log`.
+        """
         try:
-            self._repair_strategy.repair(self)
+            self._repair_strategy.repair(self, silent)
         except:
             self.disconnect_servo()
             raise
