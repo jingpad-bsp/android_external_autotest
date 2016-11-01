@@ -71,7 +71,8 @@ class cheets_GTS(tradefed_test.TradefedTest):
         self._collect_logs(repository, datetime_id, autotest)
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
-        tests, passed, failed, not_executed = self._parse_result(output)
+        tests, passed, failed, not_executed = self._parse_result(output,
+                                                                 self.waivers)
         if tests != passed or failed > 0 or not_executed > 0:
             raise error.TestFail('Failed: Passed (%d), Failed (%d), '
                                  'Not Executed (%d)' %
@@ -82,6 +83,8 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
     def run_once(self, target_package=None):
         """Runs GTS target package exactly once."""
+        self.waivers = self._get_failure_expectations()
+
         with self._login_chrome():
             self._connect_adb()
             self._disable_adb_install_dialog()
