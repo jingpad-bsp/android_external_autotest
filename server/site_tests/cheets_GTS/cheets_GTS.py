@@ -37,6 +37,8 @@ class cheets_GTS(tradefed_test.TradefedTest):
         else:
             self._android_gts = self._install_bundle(_PARTNER_GTS_LOCATION)
 
+        self.waivers = self._get_expected_failures('expectations')
+
     def _run_gts_tradefed(self, target_package):
         """This tests runs the GTS(XTS) tradefed binary and collects results.
 
@@ -83,8 +85,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
     def run_once(self, target_package=None):
         """Runs GTS target package exactly once."""
-        self.waivers = self._get_failure_expectations()
-
         with self._login_chrome():
             self._connect_adb()
             self._disable_adb_install_dialog()

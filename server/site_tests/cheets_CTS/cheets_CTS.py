@@ -76,6 +76,12 @@ class cheets_CTS(tradefed_test.TradefedTest):
         logging.info('CTS-tradefed path: %s', self._cts_tradefed)
         self._needs_push_media = False
 
+        # Load waivers and manual tests so TF doesn't re-run them.
+        self.waivers_and_manual_tests = self._get_expected_failures(
+                                                'expectations')
+        # Load packages with no tests.
+        self.notest_packages = self._get_expected_failures('notest_packages')
+
     def _clean_repository(self):
         """Ensures all old logs, results and plans are deleted.
 
@@ -283,33 +289,51 @@ class cheets_CTS(tradefed_test.TradefedTest):
         # Don't download media for tests that don't need it. b/29371037
         if target_package.startswith('android.mediastress'):
             self._needs_push_media = True
-        # Load waivers and manual tests so TF doesn't re-run them.
-        self.waivers_and_manual_tests = self._get_failure_expectations()
-        # Unconditionally run CTS package.
-        with self._login_chrome():
-            self._ready_arc()
-            # Start each iteration with a clean repository. This allows us to
-            # track session_id blindly.
-            self._clean_repository()
-            logging.info('Running %s:', target_package)
-            tests, passed, failed, notexecuted = self._tradefed_run(
-                    target_package)
-            logging.info('RESULT: tests=%d, passed=%d, failed=%d, notexecuted='
-                    '%d', tests, passed, failed, notexecuted)
-            self.summary = ('run(t=%d, p=%d, f=%d, ne=%d)' %
-                    (tests, passed, failed, notexecuted))
-            # An internal self-check. We really should never hit this.
-            if tests != passed + failed + notexecuted:
-                raise error.TestFail('Error: Test count inconsistent. %s' %
-                                     self.summary)
-            # Keep track of global counts as each step works on local failures.
-            total_tests = tests
-            total_passed = passed
-        # The DUT has rebooted at this point and is in a clean state.
+
+        steps = -1  # For historic reasons the first iteration is not counted.
+        total_tests = 0
+        self.summary = ''
+        # Unconditionally run CTS package until we see some tests executed.
+        while steps < self._max_retry and total_tests == 0:
+            with self._login_chrome():
+                self._ready_arc()
+                # Start each valid iteration with a clean repository. This
+                # allows us to track session_id blindly.
+                self._clean_repository()
+                logging.info('Running %s:', target_package)
+                tests, passed, failed, notexecuted = self._tradefed_run(
+                        target_package)
+                logging.info('RESULT: tests=%d, passed=%d, failed=%d, '
+                        'notexecuted=%d', tests, passed, failed, notexecuted)
+                self.summary += ('run(t=%d, p=%d, f=%d, ne=%d)' %
+                        (tests, passed, failed, notexecuted))
+                if tests == 0 and target_package in self.notest_packages:
+                    logging.info('Package has no tests as expected.')
+                    return
+                if tests > 0 and target_package in self.notest_packages:
+                    # We expected no tests, but the new bundle drop must have
+                    # added some for us. Alert us to the situation.
+                    raise error.TestFail('Failed: Remove package %s from '
+                                         'notest_packages directory!' %
+                                         target_package)
+                if tests == 0 and target_package not in self.notest_packages:
+                    logging.error('Did not find any tests in package. Hoping '
+                                  'this is transient. Retry after reboot.')
+                # An internal self-check. We really should never hit this.
+                if tests != passed + failed + notexecuted:
+                   raise error.TestFail('Error: Test count inconsistent. %s' %
+                                        self.summary)
+                # Keep track of global counts as each continue/retry step below
+                # works on local failures.
+                total_tests = tests
+                total_passed = passed
+                steps += 1
+            # The DUT has rebooted at this point and is in a clean state.
+        if total_tests == 0:
+            raise error.TestFail('Error: Could not find any tests in package.')
 
         # If the results were not completed or were failing then continue or
         # retry them iteratively MAX_RETRY times.
-        steps = 0
         while steps < self._max_retry and (notexecuted > 0 or failed > 0):
             # First retry until there is no test is left that was not executed.
             while notexecuted > 0 and steps < self._max_retry:
@@ -397,7 +421,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 # The DUT has rebooted at this point and is in a clean state.
 
         # Final classification of test results.
-        if notexecuted > 0 or failed > 0:
+        if total_passed == 0 or notexecuted > 0 or failed > 0:
             raise error.TestFail(
                 'Failed: after %d retries giving up. '
                 'total_passed=%d, failed=%d, notexecuted=%d. %s' %
