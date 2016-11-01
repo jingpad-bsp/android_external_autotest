@@ -20,6 +20,7 @@
 
 import contextlib
 import errno
+import glob
 import hashlib
 import logging
 import os
@@ -478,7 +479,10 @@ class TradefedTest(test.test):
         with lock(self._tradefed_cache_lock):
             cache_path = self._download_to_cache(gs_uri)
             local = self._instance_copy(cache_path)
-        return self._unzip(local)
+
+        unzipped = self._unzip(local)
+        self._abi = 'x86' if 'x86-x86' in unzipped else 'arm'
+        return unzipped
 
     def _install_files(self, gs_dir, files, permission):
         """Installs binary tools."""
@@ -625,3 +629,24 @@ class TradefedTest(test.test):
         shutil.copytree(
                 os.path.join(repository_logs, datetime),
                 destination_logs_datetime)
+
+    def _get_failure_expectations(self):
+        """Return a list of waivers and manual tests.
+
+        @return: a list of expected failing tests with unchecked status.
+        """
+        expected_fail_dir = os.path.join(self.bindir, 'expectations')
+        expected_fail_files = glob.glob(expected_fail_dir + '/*.' + self._abi)
+        expected_fail_tests = set()
+        for expected_fail_file in expected_fail_files:
+            try:
+                file_path = os.path.join(expected_fail_dir, expected_fail_file)
+                with open(file_path) as f:
+                    lines = set(f.read().splitlines())
+                    logging.info('Loaded %d expected failures from %s',
+                                 len(lines), expected_fail_file)
+                    expected_fail_tests = expected_fail_tests | lines
+            except IOError as e:
+                logging.error('Error loading %s (%s).', file_path, e.strerror)
+        logging.info('Finished loading test waivers: %s', expected_fail_tests)
+        return expected_fail_tests
