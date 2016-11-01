@@ -24,6 +24,10 @@ class job(object):
         self.aborted_by = aborted_by
         self.aborted_on = aborted_on
         self.keyval_dict = keyval_dict
+        self.afe_parent_job_id = None
+        self.build_version = None
+        self.suite = None
+        self.board = None
 
 
     @staticmethod
