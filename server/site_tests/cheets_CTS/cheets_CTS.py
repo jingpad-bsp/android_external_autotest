@@ -13,7 +13,6 @@
 # pylint: disable=invalid-name
 
 import contextlib
-import glob
 import logging
 import os
 import shutil
@@ -69,7 +68,6 @@ class cheets_CTS(tradefed_test.TradefedTest):
         else:
             self._android_cts = self._install_bundle(uri)
 
-        self._abi = 'x86' if 'x86-x86' in self._android_cts else 'arm'
         self._cts_tradefed = os.path.join(
                 self._android_cts,
                 'android-cts',
@@ -262,27 +260,6 @@ class cheets_CTS(tradefed_test.TradefedTest):
         logging.warning('Could not establish channel. Using retry=%d.', retry)
         return retry
 
-    def _get_waivers_manual_tests(self):
-        """Return a list of waivers and manual tests.
-
-        @return: a list of expected failing tests with unchecked status.
-        """
-        expected_fail_dir = os.path.join(self.bindir, 'expectations')
-        expected_fail_files = glob.glob(expected_fail_dir + '/*.' + self._abi)
-        expected_fail_tests = set()
-        for expected_fail_file in expected_fail_files:
-            try:
-                file_path = os.path.join(expected_fail_dir, expected_fail_file)
-                with open(file_path) as f:
-                    lines = set(f.read().splitlines())
-                    logging.info('Loaded %d expected failures from %s',
-                            len(lines), expected_fail_file)
-                    expected_fail_tests = expected_fail_tests | lines
-            except IOError as e:
-                logging.error('Error loading %s (%s).', file_path, e.strerror)
-        logging.info('Finished loading test waivers: %s', expected_fail_tests)
-        return expected_fail_tests
-
     def run_once(self,
                  target_package,
                  max_retry=None,
@@ -307,7 +284,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
         if target_package.startswith('android.mediastress'):
             self._needs_push_media = True
         # Load waivers and manual tests so TF doesn't re-run them.
-        self.waivers_and_manual_tests = self._get_waivers_manual_tests()
+        self.waivers_and_manual_tests = self._get_failure_expectations()
         # Unconditionally run CTS package.
         with self._login_chrome():
             self._ready_arc()
