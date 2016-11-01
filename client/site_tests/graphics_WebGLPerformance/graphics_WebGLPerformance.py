@@ -39,10 +39,11 @@ class graphics_WebGLPerformance(test.test):
         if self.GSC:
             keyvals = self.GSC.get_memory_keyvals()
             for key, val in keyvals.iteritems():
-                self.output_perf_value(description=key,
-                                       value=val,
-                                       units='bytes',
-                                       higher_is_better=False)
+                self.output_perf_value(
+                    description=key,
+                    value=val,
+                    units='bytes',
+                    higher_is_better=False)
             self.GSC.finalize()
             self.write_perf_keyval(keyvals)
 
@@ -54,7 +55,7 @@ class graphics_WebGLPerformance(test.test):
         """
         if not utils.wait_for_idle_cpu(60.0, 0.1):
             if not utils.wait_for_idle_cpu(20.0, 0.2):
-                raise error.TestFail('Could not get idle CPU.')
+                raise error.TestFail('Failed: Could not get idle CPU.')
 
         # Kick off test.
         tab = browser.tabs.New()
@@ -75,19 +76,21 @@ class graphics_WebGLPerformance(test.test):
         keyvals = {}
         keyvals['time_ms_geom_mean'] = time_ms_geom_mean
         self.write_perf_keyval(keyvals)
-        self.output_perf_value(description='time_geom_mean',
-                               value=time_ms_geom_mean,
-                               units='ms',
-                               higher_is_better=False,
-                               graph='time_geom_mean')
+        self.output_perf_value(
+            description='time_geom_mean',
+            value=time_ms_geom_mean,
+            units='ms',
+            higher_is_better=False,
+            graph='time_geom_mean')
         # Add extra value to the graph distinguishing different boards.
         variant = utils.get_board_with_frequency_and_memory()
         desc = 'time_geom_mean-%s' % variant
-        self.output_perf_value(description=desc,
-                               value=time_ms_geom_mean,
-                               units='ms',
-                               higher_is_better=False,
-                               graph='time_geom_mean')
+        self.output_perf_value(
+            description=desc,
+            value=time_ms_geom_mean,
+            units='ms',
+            higher_is_better=False,
+            graph='time_geom_mean')
 
         # Get a copy of the test report.
         test_report = tab.EvaluateJavaScript('test_report')
@@ -110,21 +113,24 @@ class graphics_WebGLPerformance(test.test):
         # Unfortunately that makes running on slow machines impractical without
         # deviating from upstream too much.
         if utils.get_gpu_family() == 'pinetrail':
-            raise error.TestNAError('Test is too slow to run regularly.')
+            # TODO(ihf): return a TestPass(message) once available.
+            logging.warning('Test is too slow to run regularly.')
+            return
 
         self._test_duration_secs = test_duration_secs
         ext_paths = []
         if fullscreen:
-            ext_paths.append(os.path.join(self.autodir, 'deps', 'graphics',
-                                          'graphics_test_extension'))
+            ext_paths.append(
+                os.path.join(self.autodir, 'deps', 'graphics',
+                             'graphics_test_extension'))
 
         with chrome.Chrome(logged_in=False, extension_paths=ext_paths) as cr:
             websrc_dir = os.path.join(self.autodir, 'deps', 'webgl_perf', 'src')
             try:
                 if not cr.browser.platform.SetHTTPServerDirectories(websrc_dir):
-                    raise error.TestError('Unable to start HTTP server')
-                test_url = cr.browser.platform.http_server.UrlOf(os.path.join(
-                    websrc_dir, 'index.html'))
+                    raise error.TestFail('Failed: Unable to start HTTP server')
+                test_url = cr.browser.platform.http_server.UrlOf(
+                    os.path.join(websrc_dir, 'index.html'))
                 self.run_performance_test(cr.browser, test_url)
             finally:
                 cr.browser.platform.StopAllLocalServers()

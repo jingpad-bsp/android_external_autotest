@@ -11,11 +11,15 @@ from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros import cros_logging
 
 # Kernel 3.8 to 3.14 has cur_delay_info, 3.18+ has frequency_info.
-CLOCK_PATHS = ['/sys/kernel/debug/dri/0/i915_frequency_info',
-               '/sys/kernel/debug/dri/0/i915_cur_delayinfo']
+CLOCK_PATHS = [
+    '/sys/kernel/debug/dri/0/i915_frequency_info',
+    '/sys/kernel/debug/dri/0/i915_cur_delayinfo'
+]
 # Kernel 3.8 has i915_fbc, kernel > 3.8 i915_fbc_status.
-FBC_PATHS = ['/sys/kernel/debug/dri/0/i915_fbc',
-             '/sys/kernel/debug/dri/0/i915_fbc_status']
+FBC_PATHS = [
+    '/sys/kernel/debug/dri/0/i915_fbc',
+    '/sys/kernel/debug/dri/0/i915_fbc_status'
+]
 GEM_PATHS = ['/sys/kernel/debug/dri/0/i915_gem_active']
 PSR_PATHS = ['/sys/kernel/debug/dri/0/i915_edp_psr_status']
 RC6_PATHS = ['/sys/kernel/debug/dri/0/i915_drpc_info']
@@ -30,9 +34,9 @@ class graphics_Idle(test.test):
 
     def run_once(self, arc_mode=None):
         # We use kiosk mode to make sure Chrome is idle.
-        with chrome.Chrome(logged_in=False,
-                           extra_browser_args=['--kiosk'],
-                           arc_mode=arc_mode):
+        with chrome.Chrome(
+                logged_in=False, extra_browser_args=['--kiosk'],
+                arc_mode=arc_mode):
             # Try to protect against runaway previous tests.
             if not utils.wait_for_idle_cpu(20.0, 0.1):
                 logging.warning('Could not get idle CPU before running tests.')
@@ -49,7 +53,7 @@ class graphics_Idle(test.test):
             errors += self.verify_lvds_downclock()
             errors += self.verify_short_blanking()
             if errors:
-                raise error.TestFail(errors)
+                raise error.TestFail('Failed: %s' % errors)
 
     def get_valid_path(self, paths):
         for path in paths:

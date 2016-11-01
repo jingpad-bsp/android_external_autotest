@@ -10,9 +10,10 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import arc
 
-_SDCARD_EXEC ='/sdcard/gralloctest'
+_SDCARD_EXEC = '/sdcard/gralloctest'
 _EXEC_DIRECTORY = '/data/executables/'
 _ANDROID_EXEC = _EXEC_DIRECTORY + 'gralloctest'
+
 
 class graphics_Gralloc(arc.ArcTest):
     """gralloc test."""
@@ -32,7 +33,7 @@ class graphics_Gralloc(arc.ArcTest):
         # weird permission issues inside the container, we first have to copy
         # the test to /sdcard/, then move it to a /data/ subdirectory we create.
         # The permissions on the exectuable have to be modified as well.
-        arc.adb_root();
+        arc.adb_root()
         cmd = os.path.join(self.srcdir, 'gralloctest')
         arc.adb_cmd('-e push %s %s' % (cmd, _SDCARD_EXEC))
         arc._android_shell('mkdir -p %s' % (_EXEC_DIRECTORY))
@@ -44,12 +45,14 @@ class graphics_Gralloc(arc.ArcTest):
         arc._android_shell('rm -rf %s' % (_EXEC_DIRECTORY))
         super(graphics_Gralloc, self).arc_teardown()
 
-
     def run_once(self):
-        success = True
-        test_names = ['alloc_varying_sizes', 'alloc_usage', 'api',
-                      'gralloc_order', 'uninitialized_handle', 'freed_handle',
-                      'mapping', 'perform', 'ycbcr', 'async']
+        failures = 0
+        # TODO(ihf): shard this test into multiple control files.
+        test_names = [
+            'alloc_varying_sizes', 'alloc_usage', 'api', 'gralloc_order',
+            'uninitialized_handle', 'freed_handle', 'mapping', 'perform',
+            'ycbcr', 'async'
+        ]
 
         # Run the tests and capture stdout.
         for test_name in test_names:
@@ -57,10 +60,10 @@ class graphics_Gralloc(arc.ArcTest):
             # Look for the regular expression indicating success.
             match = re.search(r'\[  PASSED  \]', stdout)
             if not match:
-                success = False
+                failures += 1
                 logging.error(stdout)
             else:
                 logging.debug(stdout)
 
-        if not success:
-            raise error.TestFail()
+        if failures:
+            raise error.TestFail('Failed: saw %d gralloc failures.' % failures)
