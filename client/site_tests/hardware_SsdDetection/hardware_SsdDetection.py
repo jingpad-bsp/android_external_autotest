@@ -32,13 +32,15 @@ class hardware_SsdDetection(test.test):
                     open(sysfs_path).read().strip() == '0')
 
         alpha_re = re.compile(r'^/dev/([a-zA-Z]+)$')
-        alnum_re = re.compile(r'^/dev/([a-zA-Z]+[0-9]+)$')
+        alnum_re = re.compile(r'^/dev/([a-zA-Z0-9]+)$')
         dev = alpha_re.findall(device) + alnum_re.findall(device)
         if len(dev) != 1 or not IsFixed(dev[0]):
             raise error.TestFail('The main disk %s is not fixed' % dev)
 
-        # If it is an mmcblk device, then it is SSD.
+        # If it is an mmcblk or nvme device, then it is SSD.
         # Else run hdparm to check for SSD.
+        if re.search("nvme", device):
+            return
 
         if re.search("mmcblk", device):
             return
