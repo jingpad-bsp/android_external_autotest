@@ -11,6 +11,7 @@ import common
 
 from autotest_lib.client.bin import local_host
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants as cros_constants
 from autotest_lib.server.hosts import base_classes
 from autotest_lib.server.hosts import moblab_host
@@ -134,6 +135,33 @@ class TestStationHost(base_classes.Host):
             dargs['options'] = dargs.get('options', '') + ' -t '
         return super(TestStationHost, self).run(cmd, *args, **dargs)
 
+    @retry.retry(error.GenericHostRunError, timeout_min=10)
+    def download_file(self, src_url, dest_file, unzip=False, unzip_dest=None):
+        """Download the given url.
+
+        @param src_url: The url to download from.
+        @param dest_file: Destination for the file to be downloaded to.
+        @param unzip: If True, unzip the downloaded file.
+        @param unzip_dest: Location to unzip the downloaded file to. If not
+                           provided, dest_file's directory is used.
+
+        @returns: The path of the downloaded file on the teststation.
+        """
+        try:
+            self.run('wget -q -O "%s" "%s"' % (dest_file, src_url))
+
+            readlink_result = self.run('readlink -f "%s"' % dest_file)
+            full_path = readlink_result.stdout.splitlines()[0]
+
+            if unzip:
+                unzip_dest = unzip_dest or os.path.dirname(full_path)
+                self.run('unzip "%s" -x -d "%s"' % (dest_file, unzip_dest))
+
+            return full_path
+        except:
+            # Delete the destination file if download failed.
+            self.run('rm -f "%s"' % dest_file)
+            raise
 
     def close(self):
         if not self._is_closed:
