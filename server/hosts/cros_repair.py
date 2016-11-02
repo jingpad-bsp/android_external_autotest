@@ -92,6 +92,35 @@ class WritableVerifier(hosts.Verifier):
         return 'The stateful filesystems are writable'
 
 
+class EXT4fsErrorVerifier(hosts.Verifier):
+    """
+    Confirm we have not seen critical file system kernel errors.
+    """
+    def verify(self, host):
+        # grep for stateful FS errors of the type "EXT4-fs error (device sda1):"
+        command = ("dmesg | grep -E \"EXT4-fs error \(device "
+                   "$(cut -d ' ' -f 5,9 /proc/$$/mountinfo | "
+                   "grep -e '^/mnt/stateful_partition ' | "
+                   "cut -d ' ' -f 2 | cut -d '/' -f 3)\):\"")
+        output = host.run(command=command, ignore_status=True).stdout
+        if output:
+            sample = output.splitlines()[0]
+            message = 'Saw file system error: %s' % sample
+            raise hosts.AutoservVerifyError(message)
+        # Check for other critical FS errors.
+        command = 'dmesg | grep "This should not happen!!  Data will be lost"'
+        output = host.run(command=command, ignore_status=True).stdout
+        if output:
+            message = 'Saw file system error: Data will be lost'
+            raise hosts.AutoservVerifyError(message)
+        else:
+            logging.error('Could not determine stateful mount.')
+
+    @property
+    def description(self):
+        return 'Did not find critical file system errors'
+
+
 class UpdateSuccessVerifier(hosts.Verifier):
     """
     Checks that the DUT successfully finished its last provision job.
@@ -270,10 +299,10 @@ class TPMStatusVerifier(hosts.Verifier):
                 raise hosts.AutoservVerifyError(
                         ('TPM connect failed -- '
                          'last_error=%d.' % tpm['last_error']))
-            if (tpm['owned'] and not tpm['can_load_srk']):
+            if tpm['owned'] and not tpm['can_load_srk']:
                 raise hosts.AutoservVerifyError(
                         'Cannot load the TPM SRK')
-            if (tpm['can_load_srk'] and not tpm['can_load_srk_pubkey']):
+            if tpm['can_load_srk'] and not tpm['can_load_srk_pubkey']:
                 raise hosts.AutoservVerifyError(
                         'Cannot load the TPM SRK public key')
         except KeyError:
@@ -321,11 +350,11 @@ class ServoSysRqRepair(hosts.RepairAction):
         # Press 3 times Alt+VolUp+X
         # no checking DUT health between each press as
         # killing Chrome is not really likely to fix the DUT SSH.
-        for i in range(3):
+        for _ in range(3):
             try:
-              host.servo.sysrq_x()
+                host.servo.sysrq_x()
             except error.TestFail, ex:
-              raise hosts.AutoservRepairError(
+                raise hosts.AutoservRepairError(
                       'cannot press sysrq-x: %s.' % str(ex))
             # less than 5 seconds between presses.
             time.sleep(2.0)
@@ -452,6 +481,7 @@ def create_cros_repair_strategy():
     verify_dag = [
         (repair.SshVerifier,         'ssh',      []),
         (ACPowerVerifier,            'power',    ['ssh']),
+        (EXT4fsErrorVerifier,        'ext4',     ['ssh']),
         (WritableVerifier,           'writable', ['ssh']),
         (TPMStatusVerifier,          'tpm',      ['ssh']),
         (UpdateSuccessVerifier,      'good_au',  ['ssh']),
@@ -476,7 +506,7 @@ def create_cros_repair_strategy():
     # into smaller individual verifiers.
 
     usb_triggers       = ['ssh', 'writable']
-    powerwash_triggers = ['tpm', 'good_au']
+    powerwash_triggers = ['tpm', 'good_au', 'ext4']
     au_triggers        = ['power', 'rwfw', 'python', 'cros']
 
     repair_actions = [
