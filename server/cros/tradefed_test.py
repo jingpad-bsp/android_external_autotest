@@ -630,14 +630,15 @@ class TradefedTest(test.test):
                 os.path.join(repository_logs, datetime),
                 destination_logs_datetime)
 
-    def _get_failure_expectations(self):
-        """Return a list of waivers and manual tests.
+    def _get_expected_failures(self, directory):
+        """Return a list of expected failures.
 
-        @return: a list of expected failing tests with unchecked status.
+        @return: a list of expected failures.
         """
-        expected_fail_dir = os.path.join(self.bindir, 'expectations')
+        logging.info('Loading expected failures from %s.', directory)
+        expected_fail_dir = os.path.join(self.bindir, directory)
         expected_fail_files = glob.glob(expected_fail_dir + '/*.' + self._abi)
-        expected_fail_tests = set()
+        expected_failures = set()
         for expected_fail_file in expected_fail_files:
             try:
                 file_path = os.path.join(expected_fail_dir, expected_fail_file)
@@ -645,8 +646,8 @@ class TradefedTest(test.test):
                     lines = set(f.read().splitlines())
                     logging.info('Loaded %d expected failures from %s',
                                  len(lines), expected_fail_file)
-                    expected_fail_tests = expected_fail_tests | lines
+                    expected_failures |= lines
             except IOError as e:
                 logging.error('Error loading %s (%s).', file_path, e.strerror)
-        logging.info('Finished loading test waivers: %s', expected_fail_tests)
-        return expected_fail_tests
+        logging.info('Finished loading expected failures: %s', expected_failures)
+        return expected_failures
