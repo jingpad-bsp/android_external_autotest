@@ -1,5 +1,7 @@
 package autotest.moblab.rpc;
 
+import java.util.List;
+
 /**
  * Moblab RPC callback interfaces.
  */
@@ -55,4 +57,15 @@ public class MoblabRpcCallbacks {
     public void onLogActionComplete(boolean didSucceed, String information);
   }
 
+  public interface FetchConnectedBoardsCallback {
+    public void onFetchConnectedBoardsSubmitted(List<String> boards);
+  }
+
+  public interface FetchBuildsForBoardCallback {
+    public void onFetchBuildsForBoardCallbackSubmitted(List<String> builds);
+  }
+
+  public interface RunSuiteCallback {
+    public void onRunSuiteComplete();
+  }
 }
