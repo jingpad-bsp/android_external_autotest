@@ -43,7 +43,7 @@ except ImportError:
 
 import job_directories
 import pubsub_utils
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
 from chromite.lib import parallel
@@ -131,6 +131,15 @@ _PUBSUB_ENABLED = global_config.global_config.get_config_value(
         'CROS', 'cloud_notification_enabled', type=bool, default=False)
 _PUBSUB_TOPIC = global_config.global_config.get_config_value(
         'CROS', 'cloud_notification_topic', default=None)
+
+
+# Test upload pubsub notification attributes
+NOTIFICATION_ATTR_VERSION = 'version'
+NOTIFICATION_ATTR_GCS_URI = 'gcs_uri'
+NOTIFICATION_ATTR_MOBLAB_MAC = 'moblab_mac_address'
+NOTIFICATION_ATTR_MOBLAB_ID = 'moblab_id'
+NOTIFICATION_VERSION = '1'
+
 
 # the message data for new test result notification.
 NEW_TEST_RESULT_MESSAGE = 'NEW_TEST_RESULT'
@@ -431,7 +440,11 @@ def _create_test_result_notification(gs_path):
     data = base64.b64encode(NEW_TEST_RESULT_MESSAGE)
     msg_payload = {'data': data}
     msg_attributes = {}
-    msg_attributes['gcs_uri'] = gs_path
+    msg_attributes[NOTIFICATION_ATTR_GCS_URI] = gs_path
+    msg_attributes[NOTIFICATION_ATTR_VERSION] = NOTIFICATION_VERSION
+    msg_attributes[NOTIFICATION_ATTR_MOBLAB_MAC] = \
+        site_utils.get_default_interface_mac_address()
+    msg_attributes[NOTIFICATION_ATTR_MOBLAB_ID] = site_utils.get_moblab_id()
     msg_payload['attributes'] = msg_attributes
 
     return msg_payload
