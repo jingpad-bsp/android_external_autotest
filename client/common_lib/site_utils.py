@@ -58,7 +58,8 @@ WIRELESS_SSID_PATTERN = 'wireless_ssid_(.*)/(\d+)'
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
 
-    Shell out to 'ping' to try to reach |host| for |timeout| seconds.
+    Shell out to 'ping' if host is an IPv4 addres or 'ping6' if host is an
+    IPv6 address to try to reach |host| for |timeout| seconds.
     Returns exit code of ping.
 
     Per 'man ping', if you specify BOTH |deadline| and |tries|, ping only
@@ -67,6 +68,9 @@ def ping(host, deadline=None, tries=None, timeout=60):
     Specifying |deadline| or |count| alone should return 0 as long as
     some packets receive responses.
 
+    Note that while this works with literal IPv6 addresses it will not work
+    with hostnames that resolve to IPv6 only.
+
     @param host: the host to ping.
     @param deadline: seconds within which |tries| pings must succeed.
     @param tries: number of pings to send.
@@ -74,11 +78,14 @@ def ping(host, deadline=None, tries=None, timeout=60):
     @return exit code of ping command.
     """
     args = [host]
+    ping_cmd = 'ping6' if re.search(r':.*:', host) else 'ping'
+
     if deadline:
         args.append('-w%d' % deadline)
     if tries:
         args.append('-c%d' % tries)
-    return base_utils.run('ping', args=args,
+
+    return base_utils.run(ping_cmd, args=args, verbose=True,
                           ignore_status=True, timeout=timeout,
                           stdout_tee=base_utils.TEE_TO_LOGS,
                           stderr_tee=base_utils.TEE_TO_LOGS).exit_status
