@@ -20,7 +20,7 @@ import common
 import gs_offloader
 import job_directories
 
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
@@ -492,10 +492,30 @@ class PubSubTest(mox.MoxTestBase):
 
     def test_create_test_result_notification(self):
         """Tests the test result notification message."""
+        self.mox.StubOutWithMock(site_utils, 'get_moblab_id')
+        self.mox.StubOutWithMock(site_utils,
+                                 'get_default_interface_mac_address')
+        site_utils.get_default_interface_mac_address().AndReturn(
+            '1c:dc:d1:11:01:e1')
+        site_utils.get_moblab_id().AndReturn(
+            'c8386d92-9ad1-11e6-80f5-111111111111')
+        self.mox.ReplayAll()
         msg = gs_offloader._create_test_result_notification('gs://test_bucket')
         self.assertEquals(base64.b64encode(
             gs_offloader.NEW_TEST_RESULT_MESSAGE), msg['data'])
-        self.assertEquals('gs://test_bucket', msg['attributes']['gcs_uri'])
+        self.assertEquals(
+            gs_offloader.NOTIFICATION_VERSION,
+            msg['attributes'][gs_offloader.NOTIFICATION_ATTR_VERSION])
+        self.assertEquals(
+            '1c:dc:d1:11:01:e1',
+            msg['attributes'][gs_offloader.NOTIFICATION_ATTR_MOBLAB_MAC])
+        self.assertEquals(
+            'c8386d92-9ad1-11e6-80f5-111111111111',
+            msg['attributes'][gs_offloader.NOTIFICATION_ATTR_MOBLAB_ID])
+        self.assertEquals(
+            'gs://test_bucket',
+            msg['attributes'][gs_offloader.NOTIFICATION_ATTR_GCS_URI])
+        self.mox.VerifyAll()
 
 
 class _MockJob(object):
