@@ -1,5 +1,6 @@
 package autotest.moblab.rpc;
 
+import com.google.gwt.json.client.JSONNull;
 import com.google.gwt.json.client.JSONNumber;
 import com.google.gwt.json.client.JSONObject;
 import com.google.gwt.json.client.JSONString;
@@ -10,6 +11,8 @@ import autotest.common.JsonRpcProxy;
 import autotest.common.SimpleCallback;
 
 import com.google.gwt.user.client.Window;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -251,6 +254,55 @@ public class MoblabRpcHelper {
         boolean didSucceed = result.isArray().get(0).isBoolean().booleanValue();
         String information = result.isArray().get(1).isString().stringValue();
         callback.onLogActionComplete(didSucceed, information);
+      }
+    });
+  }
+
+  public static void fetchConnectedBoards(
+      final MoblabRpcCallbacks.FetchConnectedBoardsCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("get_connected_boards", null, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        List<String> boards = new LinkedList<String>();
+        int boardListSize = result.isArray().size();
+        for (int i = 0; i < boardListSize; i++) {
+          boards.add(result.isArray().get(i).isString().stringValue());
+        }
+        callback.onFetchConnectedBoardsSubmitted(boards);
+      }
+    });
+  }
+
+  public static void fetchBuildsForBoard(String board_name,
+      final MoblabRpcCallbacks.FetchBuildsForBoardCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("board_name", new JSONString(board_name));
+    rpcProxy.rpcCall("get_builds_for_board", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        List<String> builds = new LinkedList<String>();
+        for (int i = 0; i < result.isArray().size(); i++) {
+          builds.add(result.isArray().get(i).isString().stringValue());
+        }
+        callback.onFetchBuildsForBoardCallbackSubmitted(builds);
+      }
+    });
+  }
+
+  public static void runSuite(String board, String build, String suite, String pool,
+      final MoblabRpcCallbacks.RunSuiteCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("board", new JSONString(board));
+    params.put("build", new JSONString(build));
+    params.put("suite", new JSONString(suite));
+    params.put("pool", new JSONString(pool));
+    rpcProxy.rpcCall("run_suite", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        callback.onRunSuiteComplete();
       }
     });
   }
