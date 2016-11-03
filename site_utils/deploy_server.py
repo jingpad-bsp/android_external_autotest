@@ -257,7 +257,7 @@ def main(args):
         if not failed or options.cont:
             failed += update_in_parallel(servers, options)
         else:
-            skipped.extend(servers)
+            skipped.extend(s[0] for s in servers)  # Only include server name.
 
     if failed:
         print('Errors updating:')
