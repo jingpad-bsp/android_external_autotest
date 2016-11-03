@@ -131,6 +131,9 @@ PROPERTY_VALUE_TRUE = '1'
 # to reboot the device and try again.
 APK_INSTALL_TIMEOUT_MIN = 5
 
+# The amount of time to wait for package verification to be turned off.
+DISABLE_PACKAGE_VERIFICATION_TIMEOUT_MIN = 1
+
 # Directory where (non-Brillo) Android stores tombstone crash logs.
 ANDROID_TOMBSTONE_CRASH_LOG_DIR = '/data/tombstones'
 # Directory where Brillo stores crash logs for native (non-Java) crashes.
@@ -1394,7 +1397,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def install_android(self, build_url, build_local_path=None, wipe=True,
-                        flash_all=False):
+                        flash_all=False, disable_package_verification=True):
         """Install the Android DUT.
 
         Following are the steps used here to provision an android device:
@@ -1466,6 +1469,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             timeout = (WAIT_UP_AFTER_WIPE_TIME_SECONDS if wipe else
                        DEFAULT_WAIT_UP_TIME_SECONDS)
             self.ensure_adb_mode(timeout=timeout)
+            if disable_package_verification:
+                # TODO: Use a whitelist of devices to do this for rather than
+                # doing it by default.
+                self.disable_package_verification()
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)
 
@@ -1590,6 +1597,19 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return []
         return result.stdout.splitlines()
 
+    @retry.retry(error.GenericHostRunError,
+                 timeout_min=DISABLE_PACKAGE_VERIFICATION_TIMEOUT_MIN)
+    def disable_package_verification(self):
+        """Disables package verification on an android device.
+
+        Disables the package verificatoin manager allowing any package to be
+        installed without checking
+        """
+        logging.info('Disabling package verification on %s.', self.adb_serial)
+        self.check_boot_to_adb_complete()
+        self.run('am broadcast -a '
+                 'com.google.gservices.intent.action.GSERVICES_OVERRIDE -e '
+                 'global:package_verifier_enable 0')
 
     @retry.retry(error.GenericHostRunError, timeout_min=APK_INSTALL_TIMEOUT_MIN)
     def install_apk(self, apk, force_reinstall=True):
