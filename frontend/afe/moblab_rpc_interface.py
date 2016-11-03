@@ -16,18 +16,20 @@ except ImportError:
     boto = None
 
 import ConfigParser
+import common
 import logging
 import os
 import re
 import shutil
 import socket
+import StringIO
 import subprocess
-import common
 
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import global_config, utils
 from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rpc_utils
+from autotest_lib.server import frontend
 from autotest_lib.server.hosts import moblab_host
 
 
@@ -592,3 +594,61 @@ def remove_moblab_label(ipaddress, label_name):
     models.Label.smart_get(label_name).host_set.remove(host_obj)
     return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
 
+
+@rpc_utils.moblab_only
+def get_connected_boards():
+    """ RPC handler to get a list of the boards connected to the moblab.
+
+    @return: A de-duped list of board types attached to the moblab.
+    """
+    hosts = list(rpc_utils.get_host_query((), False, False, True, {}))
+    if not hosts:
+        return []
+    models.Host.objects.populate_relationships(hosts, models.Label,
+                                               'label_list')
+    boards = set()
+    for host in hosts:
+        for label in host.label_list:
+            if 'board:' in label.name:
+                boards.add(label.name.replace('board:', ''))
+                break
+    boards = list(boards)
+    boards.sort()
+    return boards
+
+
+@rpc_utils.moblab_only
+def get_builds_for_board(board_name):
+    """ RPC handler to find the most recent builds for a board.
+
+    @param board_name: The name of a connected board.
+
+    @return: A list no longer than 20 items with the most recent builds.
+    """
+    output = StringIO.StringIO()
+    gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
+    utils.run('gsutil', args=('ls', gs_image_location + board_name + '-release'), stdout_tee=output)
+    lines = output.getvalue().split('\n')
+    output.close()
+    builds = [line.replace(gs_image_location,'').strip('/ ') for line in lines if line != '']
+    builds.sort()
+    builds.reverse()
+    return builds[:20]
+
+
+@rpc_utils.moblab_only
+def run_suite(board, build, suite, pool=None):
+    """ RPC handler to run a test suite.
+
+    @param board: a board name connected to the moblab.
+    @param build: a build name of a build in the GCS.
+    @param suite: the name of a suite to run
+    @param pool: Optional pool name to run the suite in.
+
+    @return: None
+    """
+    builds = {'cros-version': build}
+    afe = frontend.AFE(user='moblab')
+    afe.run('create_suite_job', board=board, builds=builds, name=suite,
+    pool=pool, run_prod_code=False, test_source_build=build,
+    wait_for_results=False)
