@@ -81,6 +81,7 @@ suite:faft_lv4
 suite:faft_lv5
 suite:faft_normal
 suite:faft_normal_ryu
+suite:faft_smoke
 suite:faft_stress
 suite:gpu_hang
 suite:graphics
