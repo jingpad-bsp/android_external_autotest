@@ -1642,6 +1642,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         """
         # _ping_check_status() takes about 1 second, hence the
         # "- 1" in the formula below.
+        # FIXME: if the ping command errors then _ping_check_status()
+        # returns instantly. If timeout is also smaller than twice
+        # _PING_WAIT_COUNT then the while loop below forks many
+        # thousands of ping commands (see /tmp/test_that_results_XXXXX/
+        # /results-1-logging_YYY.ZZZ/debug/autoserv.DEBUG) and hogs one
+        # CPU core for 60 seconds.
         poll_interval = min(int(timeout / self._PING_WAIT_COUNT), 60) - 1
         end_time = time.time() + timeout
         while time.time() <= end_time:
