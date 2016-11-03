@@ -489,11 +489,6 @@ class graphics_dEQP(test.test):
         shutil.rmtree(self._log_path, ignore_errors=True)
         os.mkdir(self._log_path)
 
-        if self._gpu_type.startswith('tegra'):
-            logging.warning('dEQP not implemented on tegra. '
-                            'crbug.com/543373')
-            return
-
         self._services.stop_services()
         if self._test_names_file:
             test_cases = [
@@ -560,6 +555,11 @@ class graphics_dEQP(test.test):
                 raise error.TestWarn(
                     '%d formerly failing tests are passing now.' % test_passes)
         elif test_failures:
+            # TODO(ihf): Delete this once hasty expectations have been
+            # checked in.
+            if self._gpu_type.startswith('tegra'):
+                raise error.TestWarn('Failed: %d/%d tests failed on tegra.' %
+                                     (test_failures, test_count))
             raise error.TestFail('Failed: %d/%d tests failed.' %
                                  (test_failures, test_count))
         if test_skipped > 0:
