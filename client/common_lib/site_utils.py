@@ -156,6 +156,11 @@ def get_chrome_version(job_views):
     return None
 
 
+def get_default_interface_mac_address():
+    """Returns the default moblab MAC address."""
+    return get_interface_mac_address(MOBLAB_ETH)
+
+
 def get_interface_mac_address(interface):
     """Return the MAC address of a given interface.
 
