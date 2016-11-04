@@ -438,10 +438,13 @@ class APConfiguratorFactory(object):
         return matching_aps
 
 
-    def turn_off_all_routers(self):
-        """Powers down all of the routers."""
+    def turn_off_all_routers(self, broken_pdus):
+        """Powers down all of the routers.
+
+        @param broken_pdus: list of bad/offline PDUs.
+        """
         ap_power_cartridge = ap_cartridge.APCartridge()
         for ap in self.ap_list:
             ap.power_down_router()
             ap_power_cartridge.push_configurator(ap)
-        ap_power_cartridge.run_configurators()
+        ap_power_cartridge.run_configurators(broken_pdus)
