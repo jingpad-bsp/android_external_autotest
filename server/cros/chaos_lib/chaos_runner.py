@@ -273,5 +273,6 @@ class ChaosRunner(object):
                 logging.info('PDU is down!!!\nThe following PDUs are down:\n')
                 pprint.pprint(self._broken_pdus)
 
-            factory = ap_configurator_factory.APConfiguratorFactory()
-            factory.turn_off_all_routers()
+            factory = ap_configurator_factory.APConfiguratorFactory(
+                    ap_constants.AP_TEST_TYPE_CHAOS)
+            factory.turn_off_all_routers(self._broken_pdus)
