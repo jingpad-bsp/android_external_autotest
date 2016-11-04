@@ -2,7 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import re, os, sys, time, random
+import math
+import os
+import random
+import re
+import sys
+import time
 
 import common
 from autotest_lib.client.common_lib import global_config
@@ -529,7 +534,10 @@ class db_sql(object):
                             commit=commit)
             for key, value in i.perf_keyval.iteritems():
                 data['attribute'] = key
-                data['value'] = value
+                if math.isnan(value) or math.isinf(value):
+                    data['value'] = None
+                else:
+                    data['value'] = value
                 self.insert('tko_iteration_result', data,
                             commit=commit)
 
