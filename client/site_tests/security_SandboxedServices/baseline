@@ -55,3 +55,6 @@ firewalld,root,root,No,No,No
 
 # Broadcomm bluetooth firmware patch downloader runs on some veyron boards.
 brcm_patchram_p,root,root,No,No,No
+
+# tpm_manager runs on all TPM2 boards, such as reef.
+tpm_managerd,root,root,No,No,No
