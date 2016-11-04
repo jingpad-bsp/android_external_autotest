@@ -13,7 +13,7 @@ TEST_TYPE = 'server'
 TIME = 'LENGTHY'
 
 DOC = ('Run package android.netlegacy22.permission of the '
-       'Android 6.0_r9 Compatibility Test Suite (CTS), build 3102289,'
+       'Android 6.0_r12 Compatibility Test Suite (CTS), build 3426263,'
        'using x86 ABI in the ARC container.')
 
 def run_CTS(machine):
