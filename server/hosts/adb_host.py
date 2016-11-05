@@ -1397,7 +1397,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
 
     def install_android(self, build_url, build_local_path=None, wipe=True,
-                        flash_all=False, disable_package_verification=True):
+                        flash_all=False, disable_package_verification=True,
+                        skip_setup_wizard=True):
         """Install the Android DUT.
 
         Following are the steps used here to provision an android device:
@@ -1473,6 +1474,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 # TODO: Use a whitelist of devices to do this for rather than
                 # doing it by default.
                 self.disable_package_verification()
+            if skip_setup_wizard:
+                self.skip_setup_wizard()
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)
 
@@ -1682,6 +1685,17 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return True
         except:
             return False
+
+    @retry.retry(error.GenericHostRunError, timeout_min=1)
+    def skip_setup_wizard(self):
+        """Skip the setup wizard.
+
+        Skip the starting setup wizard that normally shows up on android.
+        """
+        logging.info('Skipping setup wizard on %s.', self.adb_serial)
+        self.check_boot_to_adb_complete()
+        self.run('am start -n com.google.android.setupwizard/'
+                 '.SetupWizardExitActivity')
 
 
     def get_attributes_to_clear_before_provision(self):
