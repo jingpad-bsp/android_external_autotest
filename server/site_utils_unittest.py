@@ -52,5 +52,19 @@ class SiteUtilsUnittests(unittest.TestCase):
                              '%s' % (test_job_name, expected_info))
 
 
+    def test_board_labels_allowed(self):
+        """Test method board_labels_allowed."""
+        boards = ['board:name']
+        self.assertEquals(True, site_utils.board_labels_allowed(boards))
+        boards = ['board:name', 'board:another']
+        self.assertEquals(False, site_utils.board_labels_allowed(boards))
+        boards = ['board:name-1', 'board:name-2']
+        self.assertEquals(True, site_utils.board_labels_allowed(boards))
+        boards = ['board:name-1', 'board:another-2']
+        self.assertEquals(True, site_utils.board_labels_allowed(boards))
+        boards = ['board:name', 'board:another-1']
+        self.assertEquals(False, site_utils.board_labels_allowed(boards))
+
+
 if __name__ == '__main__':
     unittest.main()
