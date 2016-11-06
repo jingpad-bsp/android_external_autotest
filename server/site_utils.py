@@ -52,6 +52,11 @@ ENABLE_DRONE_IN_RESTRICTED_SUBNET = CONFIG.get_config_value(
 # Wait at most 10 mins for duts to go idle.
 IDLE_DUT_WAIT_TIMEOUT = 600
 
+# Mapping between board name and build target. This is for special case handling
+# for certain Android board that the board name and build target name does not
+# match.
+ANDROID_TARGET_TO_BOARD_MAP = {'seed_l8150': 'gm4g_sprout'}
+
 class TestLabException(Exception):
     """Exception raised when the Test Lab blocks a test or suite."""
     pass
