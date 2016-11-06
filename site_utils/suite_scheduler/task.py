@@ -294,6 +294,9 @@ class Task(object):
             for target in lc_targets.split(','):
                 board_name, _ = server_utils.parse_launch_control_target(
                         target.strip())
+                # Translate board name in build target to the actual board name.
+                board_name = server_utils.ANDROID_TARGET_TO_BOARD_MAP.get(
+                        board_name, board_name)
                 boards += '%s,' % board_name
             boards = boards.strip(',')
 
