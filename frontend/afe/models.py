@@ -682,23 +682,26 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
 
     @classmethod
-    def check_no_board(cls, hosts):
-        """Verify the specified hosts have no board label.
+    def check_board_labels_allowed(cls, hosts, new_labels=[]):
+        """Verify the specified hosts have valid board labels and the given
+        new board labels can be added.
 
         @param cls: Implicit class object.
         @param hosts: The hosts to verify.
-        @raises model_logic.ValidationError if any hosts already have a board
-            label.
+        @param new_labels: A list of labels to be added to the hosts.
+
+        @raises model_logic.ValidationError if any host has invalid board labels
+                or the given board labels cannot be added to the hsots.
         """
         Host.objects.populate_relationships(hosts, Label, 'label_list')
         errors = []
         for host in hosts:
             boards = [label.name for label in host.label_list
                       if label.name.startswith('board:')]
-            if boards:
+            if not server_utils.board_labels_allowed(boards + new_labels):
                 # do a join, just in case this host has multiple boards,
                 # we'll be able to see it
-                errors.append('Host %s already has a board label: %s' % (
+                errors.append('Host %s already has board labels: %s' % (
                               host.hostname, ', '.join(boards)))
         if errors:
             raise model_logic.ValidationError({'labels': '; '.join(errors)})
