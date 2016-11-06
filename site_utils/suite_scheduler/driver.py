@@ -225,6 +225,8 @@ class Driver(object):
                          'Launch Control build.')
             _,target,_ = utils.parse_launch_control_build(build_name)
             board = utils.parse_launch_control_target(target)[0]
+            # Translate board name in build target to the actual board name.
+            board = utils.ANDROID_TARGET_TO_BOARD_MAP.get(board, board)
             launch_control_builds = [build_name]
             logging.info('Testing Launch Control build %s on %s', build_name,
                          board)
