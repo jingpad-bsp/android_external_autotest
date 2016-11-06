@@ -34,7 +34,6 @@ __author__ = 'showard@google.com (Steve Howard)'
 import ast
 import datetime
 import logging
-import re
 import sys
 
 from django.db.models import Count
@@ -146,7 +145,7 @@ def add_label_to_hosts(id, hosts):
         models.Host.check_no_platform(host_objs)
     # Ensure a host has no more than one board label with it.
     if label.name.startswith('board:'):
-        models.Host.check_no_board(host_objs)
+        models.Host.check_board_labels_allowed(host_objs, [label.name])
     label.host_set.add(*host_objs)
 
 
@@ -427,29 +426,6 @@ def add_labels_to_host(id, labels):
     models.Host.smart_get(id).labels.add(*label_objs)
 
 
-def boards_allowed(boards):
-    """Check if the list of board labels can be set to a single host.
-
-    The only case multiple board labels can be set to a single host is for
-    testbed, which may have a list of board labels like
-    board:angler-1, board:angler-2, board:angler-3'
-
-    @param boards: A list of board labels.
-
-    @returns True if the the list of boards can be set to a single host.
-    """
-    if len(boards) <= 1:
-        return True
-    match = re.match('(board:[^-]+)(?:-\d+)?', boards[0])
-    if not match:
-        return False
-    pattern = '%s-\d+' % match.group(1)
-    for board in boards:
-        if not re.match(pattern, board):
-            return False
-    return True
-
-
 @rpc_utils.route_rpc_to_master
 def host_add_labels(id, labels):
     """Adds labels to a given host.
@@ -467,16 +443,17 @@ def host_add_labels(id, labels):
     platforms = [label.name for label in label_objs if label.platform]
     boards = [label.name for label in label_objs
               if label.name.startswith('board:')]
-    if len(platforms) > 1 or not boards_allowed(boards):
+    if len(platforms) > 1 or not utils.board_labels_allowed(boards):
         raise model_logic.ValidationError(
-            {'labels': 'Adding more than one platform/board label: %s %s' %
-                       (', '.join(platforms), ', '.join(boards))})
+            {'labels': ('Adding more than one platform label, or a list of '
+                        'non-compatible board labels.: %s %s' %
+                        (', '.join(platforms), ', '.join(boards)))})
 
     host_obj = models.Host.smart_get(id)
     if platforms:
         models.Host.check_no_platform([host_obj])
     if boards:
-        models.Host.check_no_board([host_obj])
+        models.Host.check_board_labels_allowed([host_obj], labels)
     add_labels_to_host(id, labels)
 
     rpc_utils.fanout_rpc([host_obj], 'add_labels_to_host', False,

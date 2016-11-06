@@ -67,16 +67,17 @@ class HostTest(unittest.TestCase,
         self.assertEquals(host2.status, models.Host.Status.RUNNING)
 
 
-    def test_check_no_board(self):
+    def test_check_board_labels_allowed(self):
         host = models.Host.create_one_time_host('othost')
         # First check with host with no board label.
-        self.assertEqual(host.check_no_board([host]), None)
+        self.assertEqual(host.check_board_labels_allowed([host]), None)
 
         # Second check with host with board label
         label = models.Label.add_object(name='board:test')
         label.host_set.add(host)
         self.assertRaises(model_logic.ValidationError,
-                          host.check_no_board, [host])
+                          host.check_board_labels_allowed, [host],
+                          ['board:new_board'])
 
 
 class SpecialTaskUnittest(unittest.TestCase,
