@@ -40,7 +40,9 @@ class LoopbackDongleLabel(base_label.BaseLabel):
     _NAME = 'loopback-dongle'
 
     def exists(self, host):
-        return '0' not in host.run('cat /sys/class/switch/h2w/state').stdout
+        results = host.run('cat /sys/class/switch/h2w/state',
+                           ignore_status=True)
+        return results and '0' not in results.stdout
 
 
 ADB_LABELS = [
