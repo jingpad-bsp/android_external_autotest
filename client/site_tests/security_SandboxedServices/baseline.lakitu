@@ -11,7 +11,6 @@ systemd-logind,root,root,No,No,No
 systemd-udevd,root,root,No,No,No
 
 # TODO: We need better filters on these.
-python2.7,root,root,No,No,No
 curl,root,root,No,No,No
 
 # These processes won't run without network (which is the case for VMTests), but
