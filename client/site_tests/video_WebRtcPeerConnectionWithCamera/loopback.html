@@ -81,15 +81,16 @@ CameraTest.prototype = {
 
   setup: function() {
     this.canvas = document.createElement('canvas');
-    this.canvas.width = localVideo.width;
-    this.canvas.height = localVideo.height;
     this.context = this.canvas.getContext('2d');
     this.remoteVideo.onloadedmetadata = this.collectAndAnalyzeStats.bind(this);
-    this.localVideo.addEventListener('play',
+    this.remoteVideo.addEventListener('play',
         this.startCheckingVideoFrames.bind(this), false);
   },
 
   startCheckingVideoFrames: function() {
+    // TODO(phoglund): replace with MediaRecorder. setInterval isn't at all
+    // reliable, so the number of captured frames can probably vary wildly
+    // over the 20 second execution time.
     this.videoFrameChecker = setInterval(this.checkVideoFrame.bind(this), 20);
   },
 
@@ -218,7 +219,7 @@ CameraTest.prototype = {
   },
 
   checkVideoFrame: function() {
-    this.context.drawImage(this.localVideo, 0, 0, this.canvas.width,
+    this.context.drawImage(this.remoteVideo, 0, 0, this.canvas.width,
       this.canvas.height);
     var imageData = this.context.getImageData(0, 0, this.canvas.width,
         this.canvas.height);
