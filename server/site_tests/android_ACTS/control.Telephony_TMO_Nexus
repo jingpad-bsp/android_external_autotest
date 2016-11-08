@@ -6,6 +6,8 @@ AUTHOR = 'angli, krisr'
 NAME = 'android_ACTS.Telephony_TMO_Nexus'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_telephony_nexus'
+DEPENDENCIES = 'carrier:tmobile'
 
 DOC = """
 This test runs telephony Nexus sanity against phones with T-Mobile SIMs.
