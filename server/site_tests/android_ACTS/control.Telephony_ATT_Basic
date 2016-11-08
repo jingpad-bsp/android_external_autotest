@@ -6,6 +6,8 @@ AUTHOR = 'angli, krisr'
 NAME = 'android_ACTS.Telephony_ATT_Basic'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_telephony_nexus'
+DEPENDENCIES = 'carrier:att'
 
 DOC = """
 This test runs telephony sanity against an phones with AT&T SIMs.
