@@ -195,8 +195,9 @@ def find_opt_in_extension_page(browser):
         extension_pages = browser.extensions.GetByExtensionId(
             opt_in_extension_id)
     except Exception, e:
-        raise error.TestFail('Could not locate extension for arc opt-in.' +
-                             'Make sure disable_default_apps is False.')
+        raise error.TestFail('Could not locate extension for arc opt-in. '
+                             'Make sure disable_default_apps is False. '
+                             '"%s".' % e)
 
     extension_main_page = None
     for page in extension_pages:
@@ -208,12 +209,14 @@ def find_opt_in_extension_page(browser):
         raise error.TestError('Found opt-in extension but not correct page!')
     extension_main_page.WaitForDocumentReadyStateToBeComplete()
 
-    js_code_did_start_conditions = ['appWindow', 'termsView',
-            ('!appWindow.contentWindow.document'
-             '.getElementById(\'terms\').hidden')]
-
-    for condition in js_code_did_start_conditions:
-        extension_main_page.WaitForJavaScriptExpression(condition, 60.0)
+    js_code_terms = 'appWindow.contentWindow.document.getElementById(\'terms\')'
+    js_code_did_start_conditions = [
+            'appWindow', js_code_terms, '!%s.hidden' % js_code_terms]
+    try:
+        for condition in js_code_did_start_conditions:
+            extension_main_page.WaitForJavaScriptExpression(condition, 60.0)
+    except Exception, e:
+        raise error.TestError('Error waiting for "%s": "%s".' % (condition, e))
 
     return extension_main_page
 
@@ -241,8 +244,8 @@ def navigate_opt_in_extension(extension_main_page):
         extension_main_page.WaitForJavaScriptExpression(
             js_code_is_lso_section_active, 120)
     except Exception, e:
-        raise error.TestFail('Error occured while waiting for lso session. This' +
-                             'may have been caused if gaia login was not used.')
+        raise error.TestFail('Error occured while waiting for lso session. '
+                             'Make sure gaia login was used.')
 
     web_views = utils.poll_for_condition(
             extension_main_page.GetWebviewContexts, timeout=60,
