@@ -524,9 +524,9 @@
     "dashboard_test_name": "tab_switching.top_10"
   },
   {
-    "autotest_name": "telemetry_Benchmarks.webrtc.webrtc_peerconnection",
+    "autotest_name": "telemetry_Benchmarks.webrtc.peerconnection",
     "master_name": "ChromeOSPerf",
-    "dashboard_test_name": "webrtc.webrtc_peerconnection"
+    "dashboard_test_name": "webrtc.peerconnection"
   },
   {
     "autotest_name": "video_HangoutHardwarePerf",
