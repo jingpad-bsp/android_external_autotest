@@ -173,13 +173,18 @@ class server_list(action_common.atest_list, server):
         @param results: return of the execute call, a list of server object that
                         contains server information.
         """
-        if not results:
+        if results:
+            if self.table:
+                formatter = server_manager_utils.format_servers_table
+            elif self.summary:
+                formatter = server_manager_utils.format_servers_summary
+            else:
+                formatter = server_manager_utils.format_servers
+            print formatter(results)
+        else:
             self.failure('No server is found.',
                          what_failed='Failed to find servers',
                          item=self.hostname, fatal=True)
-        else:
-            print server_manager_utils.get_server_details(results, self.table,
-                                                          self.summary)
 
 
 class server_create(server):
