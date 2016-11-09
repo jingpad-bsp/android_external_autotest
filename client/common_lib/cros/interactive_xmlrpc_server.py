@@ -217,7 +217,7 @@ class InteractiveXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
 
         """
         if hasattr(self, '_chrome'):
-            self._chrome.browser.Close()
+            self._chrome.close();
         return True
 
 
