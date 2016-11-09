@@ -53,11 +53,11 @@ except ImportError:
 
 
 _SDK_TOOLS_DIR = ('gs://chromeos-arc-images/builds/'
-        'git_mnc-dr-arc-dev-linux-static_sdk_tools/3264272')
+        'git_mnc-dr-arc-dev-linux-static_sdk_tools/3449114')
 _SDK_TOOLS_FILES = ['aapt']
 # To stabilize adb behavior, we use dynamically linked adb.
 _ADB_DIR = ('gs://chromeos-arc-images/builds/'
-        'git_mnc-dr-arc-dev-linux-cheets_arm-user/3264272')
+        'git_mnc-dr-arc-dev-linux-cheets_arm-user/3449114')
 _ADB_FILES = ['adb']
 
 _ADB_POLLING_INTERVAL_SECONDS = 1
