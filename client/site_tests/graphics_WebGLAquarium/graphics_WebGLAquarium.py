@@ -289,30 +289,27 @@ class graphics_WebGLAquarium(test.test):
         self.test_setting_num_fishes = test_setting_num_fishes
 
         with chrome.Chrome(logged_in=False) as cr:
-            try:
-                cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
-                test_url = cr.browser.platform.http_server.UrlOf(
-                    os.path.join(self.srcdir, 'aquarium.html'))
+            cr.browser.platform.SetHTTPServerDirectories(self.srcdir)
+            test_url = cr.browser.platform.http_server.UrlOf(
+                os.path.join(self.srcdir, 'aquarium.html'))
 
-                if not utils.wait_for_idle_cpu(60.0, 0.1):
-                    if not utils.wait_for_idle_cpu(20.0, 0.2):
-                        raise error.TestFail('Failed: Could not get idle CPU.')
-                if not utils.wait_for_cool_machine():
-                    raise error.TestFail('Failed: Could not get cold machine.')
-                if power_test:
-                    self._test_power = True
-                    self.run_power_test(cr.browser, test_url, ac_ok)
+            if not utils.wait_for_idle_cpu(60.0, 0.1):
+                if not utils.wait_for_idle_cpu(20.0, 0.2):
+                    raise error.TestFail('Failed: Could not get idle CPU.')
+            if not utils.wait_for_cool_machine():
+                raise error.TestFail('Failed: Could not get cold machine.')
+            if power_test:
+                self._test_power = True
+                self.run_power_test(cr.browser, test_url, ac_ok)
+                with self.sampler_lock:
+                    self.active_tab.Close()
+                    self.active_tab = None
+            else:
+                for n in self.test_setting_num_fishes:
+                    self.run_fish_test(cr.browser, test_url, n)
+                    # Do not close the tab when the sampler_callback is
+                    # doing his work.
                     with self.sampler_lock:
                         self.active_tab.Close()
                         self.active_tab = None
-                else:
-                    for n in self.test_setting_num_fishes:
-                        self.run_fish_test(cr.browser, test_url, n)
-                        # Do not close the tab when the sampler_callback is
-                        # doing his work.
-                        with self.sampler_lock:
-                            self.active_tab.Close()
-                            self.active_tab = None
-            finally:
-                cr.browser.platform.StopAllLocalServers()
         self.write_perf_keyval(self.perf_keyval)

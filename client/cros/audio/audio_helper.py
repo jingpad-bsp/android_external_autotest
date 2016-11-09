@@ -894,7 +894,7 @@ class chrome_rms_test(_base_rms_test):
 
     def cleanup(self, *args):
         try:
-            self.chrome.browser.Close()
+            self.chrome.close()
         finally:
             super(chrome_rms_test, self).cleanup()
 
