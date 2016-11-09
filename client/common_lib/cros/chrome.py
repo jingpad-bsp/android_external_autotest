@@ -54,7 +54,19 @@ def NormalizeEmail(username):
 
 
 class Chrome(object):
-    """Wrapper for creating a telemetry browser instance with extensions."""
+    """Wrapper for creating a telemetry browser instance with extensions.
+
+    The recommended way to use this class is to create the instance using the
+    with statement:
+
+    >>> with chrome.Chrome(...) as cr:
+    >>>     # Do whatever you need with cr.
+    >>>     pass
+
+    This will make sure all the clean-up functions are called.  If you really
+    need to use this class without the with statement, make sure to call the
+    close() method once you're done with the Chrome instance.
+    """
 
 
     BROWSER_TYPE_LOGIN = 'system'
@@ -301,4 +313,10 @@ class Chrome(object):
             if is_arc_available():
                 arc_util.pre_processing_before_close(self)
         finally:
+            # Calling platform.StopAllLocalServers() to tear down the telemetry
+            # server processes such as the one started by
+            # platform.SetHTTPServerDirectories().  Not calling this function
+            # will leak the process and may affect test results.
+            # (crbug.com/663387)
+            self._browser.platform.StopAllLocalServers()
             self._browser.Close()
