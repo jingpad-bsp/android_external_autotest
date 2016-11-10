@@ -469,7 +469,7 @@ def reimage_and_run(**dargs):
     # version_prefix+build should make it into each test as a DEPENDENCY.  The
     # easiest way to do this is to tack it onto the suite_dependencies.
     suite_spec.suite_dependencies.extend(
-            provision.join(version_prefix, build)
+            provision.NamespaceLabel(version_prefix, build)
             for version_prefix, build in suite_spec.builds.items())
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
