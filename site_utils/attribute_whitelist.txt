@@ -37,6 +37,7 @@ suite:cellular_modem_repair
 suite:chameleon_audio
 suite:chameleon_audio_nightly
 suite:chameleon_audio_perbuild
+suite:chameleon_audiovideo
 suite:chameleon_dp
 suite:chameleon_dp_hdmi
 suite:chameleon_dp_hdmi_stress
