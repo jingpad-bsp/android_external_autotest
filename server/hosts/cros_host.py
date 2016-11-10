@@ -981,9 +981,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.TestError('Host %s does not have servo.' %
                                   self.hostname)
 
-        # TODO(fdeng): use host.get_board() after
-        # crbug.com/271834 is fixed.
-        board = self._get_board_from_afe()
+        board = self.get_board().replace(ds_constants.BOARD_PREFIX, '')
 
         # If build is not set, try to install firmware from stable CrOS.
         if not build:
