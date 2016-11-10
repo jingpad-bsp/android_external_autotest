@@ -121,6 +121,15 @@ class AudioFacadeRemoteAdapter(object):
         self._audio_proxy.set_selected_output_volume(volume)
 
 
+    def set_input_gain(self, gain):
+        """Sets the system capture gain.
+
+        @param gain: the capture gain in db*100 (100 = 1dB)
+
+        """
+        self._audio_proxy.set_input_gain(gain)
+
+
     def set_selected_node_types(self, output_node_types, input_node_types):
         """Set selected node types.
 
