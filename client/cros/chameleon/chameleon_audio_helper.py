@@ -223,6 +223,9 @@ class AudioWidgetFactory(object):
         _display_facade: A DisplayFacadeRemoteAdapter to access Cros device
                          display functionality. This is created by the
                          'factory' argument passed to the constructor.
+        _system_facade: A SystemFacadeRemoteAdapter to access Cros device
+                         system functionality. This is created by the
+                         'factory' argument passed to the constructor.
         _chameleon_board: A ChameleonBoard object to access Chameleon
                           functionality.
         _link_factory: An AudioLinkFactory that creates link for widgets.
@@ -240,6 +243,7 @@ class AudioWidgetFactory(object):
         """
         self._audio_facade = factory.create_audio_facade()
         self._display_facade = factory.create_display_facade()
+        self._system_facade = factory.create_system_facade()
         self._usb_facade = factory.create_usb_facade()
         self._cros_host = cros_host
         self._chameleon_board = cros_host.chameleon
@@ -296,6 +300,7 @@ class AudioWidgetFactory(object):
                                             ids.CrosIds.USBOUT]
             is_audio_jack = audio_port.port_id in [ids.CrosIds.HEADPHONE,
                                                    ids.CrosIds.EXTERNAL_MIC]
+            is_internal_mic = audio_port.port_id == ids.CrosIds.INTERNAL_MIC
 
             # Determines the plug handler to be used.
             # By default, the plug handler is DummyPlugHandler.
@@ -319,6 +324,10 @@ class AudioWidgetFactory(object):
                 elif is_usb:
                     return audio_widget.CrosUSBInputWidgetHandler(
                             self._audio_facade, plug_handler)
+                elif is_internal_mic:
+                    return audio_widget.CrosIntMicInputWidgetHandler(
+                            self._audio_facade, plug_handler,
+                            self._system_facade)
                 else:
                     return audio_widget.CrosInputWidgetHandler(
                             self._audio_facade, plug_handler)
