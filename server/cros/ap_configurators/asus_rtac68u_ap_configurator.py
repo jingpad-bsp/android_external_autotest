@@ -9,10 +9,25 @@ import logging
 import ap_spec
 import dynamic_ap_configurator
 
+from selenium.common.exceptions import UnexpectedAlertPresentException
+
 
 class AsusRTAC68UAPConfigurator(
         dynamic_ap_configurator.DynamicAPConfigurator):
     """Configurator for Asus RT-AC68U router."""
+
+
+    def _alert_handler(self, alert):
+        """Checks for any modal dialogs which popup to alert the user and
+        either raises a RuntimeError or ignores the alert.
+
+        @param alert: The modal dialog's contents.
+        """
+        text = alert.text
+        if 'Open System' in text:
+            alert.accept()
+        else:
+            raise RuntimeError('Unhandled alert message: %s' % text)
 
 
     def get_number_of_pages(self):
@@ -43,12 +58,9 @@ class AsusRTAC68UAPConfigurator(
 
         @return a dictionary as described above.
         """
-        channel_width_2GHZ = {ap_spec.MODE_N: [20,40]}
-        channel_width_5GHZ = {ap_spec.MODE_N: [20,40],
-                              ap_spec.MODE_N|ap_spec.MODE_AC: [20,40,80]}
-        channel_width = {ap_spec.BAND_2GHZ: channel_width_2GHZ,
-                         ap_spec.BAND_5GHZ: channel_width_5GHZ}
-        return channel_width
+        return {ap_spec.BAND_2GHZ: {ap_spec.MODE_N: [20]},
+                ap_spec.BAND_5GHZ: {ap_spec.MODE_N: [20],
+                                    ap_spec.MODE_N|ap_spec.MODE_AC: [20]}}
 
 
     def is_security_mode_supported(self, security_mode):
@@ -91,6 +103,16 @@ class AsusRTAC68UAPConfigurator(
         self.click_button_by_xpath('//div[@class="button"]')
 
 
+    def _is_alert_present(self, xpath):
+        """Handle alerts if there is an alert on Save."""
+        try:
+            self.driver.find_element_by_xpath(xpath)
+            return
+        except UnexpectedAlertPresentException:
+            alert = self.driver.switch_to_alert()
+            self._alert_handler(alert)
+
+
     def save_page(self, page_number):
         """Saves the given page.
 
@@ -98,6 +120,8 @@ class AsusRTAC68UAPConfigurator(
         """
         apply = '//div[@class="apply_gen"]//input[@id="applyButton"]'
         self.click_button_by_xpath(apply)
+        self._is_alert_present(apply)
+        self.wait_for_object_by_xpath(apply)
 
 
     def set_mode(self, mode, band=None):
@@ -135,7 +159,7 @@ class AsusRTAC68UAPConfigurator(
 
         @param enabled: True to turn on the radio; False otherwise.
         """
-        self.add_item_to_command_list(self._set_radio, (enabled), 1, 700)
+        self.add_item_to_command_list(self._set_radio, (enabled,), 1, 700)
 
 
     def _set_radio(self, enabled=True):
@@ -143,8 +167,7 @@ class AsusRTAC68UAPConfigurator(
 
         @param enabled: True to turn on the radio; False otherwise.
         """
-        xpath = '//div[@id="tabMenu"]/table/tbody/tr/td[6]/div/span/table/\
-                 tbody/tr/td'
+        xpath = '//div[@id="tabMenu"]/table/tbody/tr/td[6]/div/span'
         self.wait_for_object_by_xpath(xpath)
         self.click_button_by_xpath(xpath)
 
@@ -216,8 +239,7 @@ class AsusRTAC68UAPConfigurator(
 
         @param width: the channel width.
         """
-        channel_width_choice = {20:'20 MHz', 40:'40 MHz',
-                                80:'80 MHz'}
+        channel_width_choice = {20:'20 MHz'}
         xpath = '//tr[@id="wl_bw_field"]//select[@name="wl_bw"]'
         self.select_item_from_popup_by_xpath(
                 channel_width_choice.get(channel_width), xpath)
