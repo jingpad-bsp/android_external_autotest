@@ -334,6 +334,14 @@ class ChameleonBoard(object):
         return self._chameleond_proxy.bluetooth_mouse
 
 
+    def get_avsync_probe(self):
+        """Gets the avsync probe device on Chameleon.
+
+        @return: An AVSyncProbeFlow object.
+        """
+        return self._chameleond_proxy.avsync_probe
+
+
     def get_mac_address(self):
         """Gets the MAC address of Chameleon.
 
