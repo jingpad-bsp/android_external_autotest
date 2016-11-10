@@ -58,6 +58,10 @@ class EnterprisePolicyTest(test.test):
 
     WEB_PORT = 8080
     WEB_HOST = 'http://localhost:%d' % WEB_PORT
+    CHROME_SETTINGS_PAGE = 'chrome://settings'
+    SETTING_LABEL = 0
+    SETTING_CHECKED = 1
+    SETTING_DISABLED = 2
 
     def setup(self):
         os.chdir(self.srcdir)
