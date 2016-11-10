@@ -188,7 +188,7 @@ class Chrome(object):
                               i, repr(e))
                 if i == num_tries-1:
                     raise
-
+        self._browser.platform.network_controller.InitializeIfNeeded()
 
     def __enter__(self):
         return self
@@ -320,3 +320,4 @@ class Chrome(object):
             # (crbug.com/663387)
             self._browser.platform.StopAllLocalServers()
             self._browser.Close()
+            self._browser.platform.network_controller.Close()
