@@ -72,7 +72,6 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         @param hibernate_length: Length of time dut should be in hibernate mode.
         """
         self.host = host
-        boot_id = self.host.get_boot_id()
 
         if not self.check_ec_capability(['x86','lid']):
             raise error.TestNAError("Nothing need to be tested on this device")
@@ -88,7 +87,8 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         if is_pp_connected.exit_status:
             self.set_powerplay_visible_to_servo_host(False)
             self.servo.power_short_press()
-            self.host.test_wait_for_resume(boot_id, LONG_TIMEOUT)
+            if not self.host.ping_wait_up(LONG_TIMEOUT):
+                raise error.TestNAError('Device did not resume from hibernate.')
             raise error.TestFail("Could not find powerplay.")
 
         pid = self.s_host.run_background(CMD)
@@ -96,7 +96,6 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         self.set_powerplay_visible_to_servo_host(False)
         self.s_host.run_background('kill -9 ' + pid)
         self.servo.power_short_press()
-        self.host.test_wait_for_resume(boot_id, LONG_TIMEOUT)
 
         pp_file = os.path.join(self.resultsdir, 'powerplay.log')
         self.s_host.get_file(PP_LOG, pp_file)
@@ -118,3 +117,6 @@ class firmware_StandbyPowerConsumption(FirmwareTest):
         if del_pp_log.exit_status:
             raise error.TestNAError("Unable to delete powerplay.log on servo "
                                     "host.")
+
+        if not self.host.ping_wait_up(LONG_TIMEOUT):
+            raise error.TestNAError('Device did not resume from hibernate.')
