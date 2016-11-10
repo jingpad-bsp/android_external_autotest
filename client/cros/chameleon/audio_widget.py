@@ -12,6 +12,7 @@ import tempfile
 
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import audio_test_data
+from autotest_lib.client.cros.audio import cras_configs
 from autotest_lib.client.cros.audio import sox_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids as ids
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
@@ -753,6 +754,53 @@ class CrosUSBInputWidgetHandler(CrosInputWidgetHandler):
                                 sample_format='S16_LE',
                                 channel=2,
                                 rate=48000)
+
+
+class CrosIntMicInputWidgetHandler(CrosInputWidgetHandler):
+    """
+    This class abstracts a Cros device audio input widget handler on int mic.
+
+    """
+    def __init__(self, audio_facade, plug_handler, system_facade):
+        """Initializes a CrosWidgetHandler.
+
+        @param audio_facade: An AudioFacadeRemoteAdapter to access Cros device
+                             audio functionality.
+        @param plug_handler: A PlugHandler object for plug and unplug.
+        @param system_facade: A SystemFacadeRemoteAdapter to access Cros device
+                             audio functionality.
+
+        """
+        super(CrosIntMicInputWidgetHandler, self).__init__(
+                audio_facade, plug_handler)
+        self._system_facade = system_facade
+
+
+    def set_proper_gain(self):
+        """Sets a proper gain.
+
+        On some boards, the default gain is too high. It relies on automatic
+        gain control in application level to adjust the gain. Since there is no
+        automatic gain control in the test, we set a proper gain before
+        recording.
+
+        """
+        board = self._system_facade.get_current_board()
+        proper_gain = cras_configs.get_proper_internal_mic_gain(board)
+
+        if proper_gain is None:
+            logging.debug('No proper gain for %s', board)
+        return
+
+        logging.debug('Set gain to %f dB on internal mic for %s ',
+                      proper_gain / 100, board)
+        self._audio_facade.set_input_gain(proper_gain)
+
+
+    def start_recording(self):
+        """Starts recording audio with proper gain."""
+        self.set_proper_gain()
+        self._audio_facade.start_recording(self._DEFAULT_DATA_FORMAT)
 
 
 class CrosOutputWidgetHandlerError(Exception):
