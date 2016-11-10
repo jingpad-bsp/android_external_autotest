@@ -122,8 +122,7 @@ class server_list(action_common.atest_list, server):
                                      'note\t\tserver1  | primary | scheduler | '
                                      'lab'),
                                action='store_true',
-                               default=False,
-                               metavar='TABLE')
+                               default=False)
         self.parser.add_option('-s', '--status',
                                help='Only show servers with given status',
                                type='string',
@@ -135,14 +134,18 @@ class server_list(action_common.atest_list, server):
                                      'server2(backup)\t\tdrone: server3(primary'
                                      ') server4(backup)'),
                                action='store_true',
-                               default=False,
-                               metavar='SUMMARY')
+                               default=False)
+        self.parser.add_option('--json',
+                               help='Format output as JSON.',
+                               action='store_true',
+                               default=False)
 
 
     def parse(self):
         """Parse command arguments.
         """
         (options, leftover) = super(server_list, self).parse()
+        self.json = options.json
         self.table = options.table
         self.status = options.status
         self.summary = options.summary
@@ -174,7 +177,9 @@ class server_list(action_common.atest_list, server):
                         contains server information.
         """
         if results:
-            if self.table:
+            if self.json:
+                formatter = server_manager_utils.format_servers_json
+            elif self.table:
                 formatter = server_manager_utils.format_servers_table
             elif self.summary:
                 formatter = server_manager_utils.format_servers_summary
