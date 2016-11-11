@@ -46,7 +46,7 @@ class graphics_Gralloc(arc.ArcTest):
         super(graphics_Gralloc, self).arc_teardown()
 
     def run_once(self):
-        failures = 0
+        failures = []
         # TODO(ihf): shard this test into multiple control files.
         test_names = [
             'alloc_varying_sizes', 'alloc_usage', 'api', 'gralloc_order',
@@ -56,14 +56,20 @@ class graphics_Gralloc(arc.ArcTest):
 
         # Run the tests and capture stdout.
         for test_name in test_names:
-            stdout = arc._android_shell('%s %s' % (_ANDROID_EXEC, test_name))
+            try:
+                cmd = '%s %s' % (_ANDROID_EXEC, test_name)
+                stdout = arc._android_shell(cmd)
+            except Exception:
+                logging.error('Exception running %s', cmd)
             # Look for the regular expression indicating success.
             match = re.search(r'\[  PASSED  \]', stdout)
             if not match:
-                failures += 1
+                failures.append(test_name)
                 logging.error(stdout)
             else:
                 logging.debug(stdout)
 
         if failures:
-            raise error.TestFail('Failed: saw %d gralloc failures.' % failures)
+            gpu_family = utils.get_gpu_family()
+            raise error.TestFail('Failed: gralloc on %s in %s.' %
+                                 (gpu_family, failures))
