@@ -335,9 +335,14 @@ def get_arm_soc_family():
 
 def get_cpu_soc_family():
     """Like get_cpu_arch, but for ARM, returns the SoC family name"""
+    f = open('/proc/cpuinfo', 'r')
+    cpuinfo = f.readlines()
+    f.close()
     family = get_cpu_arch()
     if family == 'arm':
         family = get_arm_soc_family()
+    if list_grep(cpuinfo, '^vendor_id.*:.*AMD'):
+        family = 'amd'
     return family
 
 
