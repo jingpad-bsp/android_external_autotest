@@ -1024,7 +1024,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.servo.program_bios(os.path.join(tmpd.name, ap_image), rw_only)
             self.servo.get_power_state_controller().reset()
             time.sleep(self.servo.BOOT_DELAY)
-            self._add_fw_version_label(build, rw_only)
+            if utils.host_is_in_lab_zone(self.hostname):
+                self._add_fw_version_label(build, rw_only)
         finally:
             tmpd.clean()
 
