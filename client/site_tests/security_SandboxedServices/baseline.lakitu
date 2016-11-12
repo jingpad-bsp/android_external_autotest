@@ -18,3 +18,11 @@ curl,root,root,No,No,No
 # run VMTests on your own KVM instance.
 docker,root,root,No,No,No
 containerd,root,root,No,No,No
+
+# Processes that used by GCP compute image packages.
+google_ip_forwa,root,root,No,No,No
+google_accounts,root,root,No,No,No
+google_clock_sk,root,root,No,No,No
+google_metadata,root,root,No,No,No
+google_instance,root,root,No,No,No
+google_network_,root,root,No,No,No
