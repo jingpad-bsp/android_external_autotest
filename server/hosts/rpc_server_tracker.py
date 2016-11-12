@@ -5,6 +5,7 @@
 import httplib
 import logging
 import socket
+import tempfile
 import time
 import xmlrpclib
 
@@ -195,6 +196,11 @@ class RpcServerTracker(object):
                 if not successful:
                     autotest_stats.Counter('ssh_tunnel_failure').increment()
                     logging.error('Failed to start XMLRPC server.')
+                    if logfile:
+                        with tempfile.NamedTemporaryFile() as temp:
+                            self._host.get_file(logfile, temp.name)
+                            logging.error('The log of XML RPC server:\n%s',
+                                          open(temp.name).read())
                     self.disconnect(port)
         logging.info('XMLRPC server started successfully.')
         return proxy
