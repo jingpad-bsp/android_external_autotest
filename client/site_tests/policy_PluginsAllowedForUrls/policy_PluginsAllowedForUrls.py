@@ -110,7 +110,7 @@ class policy_PluginsAllowedForUrls(
         return flash_pids != []
 
 
-    def _test_plugins_allowed_for_urls(self, policy_value, policies_dict):
+    def _test_plugins_allowed_for_urls(self, policy_value):
         """Verify CrOS enforces the PluginsAllowedForUrls policy.
 
         When PluginsAllowedForUrls is undefined, plugins shall be blocked on
@@ -118,13 +118,8 @@ class policy_PluginsAllowedForUrls(
         plugins shall be allowed only on the pages whose domain matches any of
         the listed URLs.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
         """
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-        logging.info('Running _test_plugins_allowed_for_urls(%s, %s)',
-                     policy_value, policies_dict)
-
         # Set a low audio volume to avoid annoying people during tests.
         audio_helper.set_volume_levels(10, 100)
 
@@ -155,5 +150,6 @@ class policy_PluginsAllowedForUrls(
 
         @param case: Name of the test case to run.
         """
-        policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_plugins_allowed_for_urls(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_plugins_allowed_for_urls(case_value)
