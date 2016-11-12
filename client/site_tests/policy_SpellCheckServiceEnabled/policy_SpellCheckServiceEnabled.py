@@ -38,10 +38,6 @@ class policy_SpellCheckServiceEnabled(
         'False_Disable': False,
         'NotSet_Editable': None
     }
-    CHROME_SETTINGS_PAGE = 'chrome://settings'
-    LABEL_TEXT = 0
-    INPUT_CHECKED = 1
-    INPUT_DISABLED = 2
 
 
     def _test_spelling_suggestions_enabled(self, policy_value, policies_dict):
@@ -58,9 +54,9 @@ class policy_SpellCheckServiceEnabled(
 
         setting_pref = 'spellcheck.use_spelling_service'
         properties = self._get_settings_checkbox_properties(setting_pref)
-        setting_label = properties[self.LABEL_TEXT]
-        setting_is_checked = properties[self.INPUT_CHECKED]
-        setting_is_disabled = properties[self.INPUT_DISABLED]
+        setting_label = properties[self.SETTING_LABEL]
+        setting_is_checked = properties[self.SETTING_CHECKED]
+        setting_is_disabled = properties[self.SETTING_DISABLED]
         logging.info('Check box "%s" status: checked=%s, disabled=%s',
                      setting_label, setting_is_checked, setting_is_disabled)
 
