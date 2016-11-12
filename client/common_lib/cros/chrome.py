@@ -179,7 +179,10 @@ class Chrome(object):
                 browser_to_create = browser_finder.FindBrowser(finder_options)
                 self._browser = browser_to_create.Create(finder_options)
                 if is_arc_available():
-                    if not disable_arc_opt_in:
+                    if disable_arc_opt_in:
+                        if arc_util.should_start_arc(arc_mode):
+                            arc_util.enable_arc_setting(self.browser)
+                    else:
                         arc_util.opt_in(self.browser)
                     arc_util.post_processing_after_browser(self)
                 break
