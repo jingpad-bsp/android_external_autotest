@@ -57,6 +57,26 @@ SECCOMP_MAP = {
 }
 
 
+def get_properties(service, init_process):
+    """Returns a dictionary of the properties of a service.
+
+    @param service: the PsOutput of the service.
+    @param init_process: the PsOutput of the init process.
+    """
+
+    properties = dict(service._asdict())
+    properties['exe'] = service.comm
+    properties['pidns'] = yes_or_no(service.pidns != init_process.pidns)
+    properties['caps'] = yes_or_no(service.capeff != init_process.capeff)
+    properties['filter'] = yes_or_no(service.seccomp == SECCOMP_MODE_FILTER)
+    return properties
+
+
+def yes_or_no(value):
+    """Returns 'Yes' or 'No' based on the truthiness of a value."""
+    return 'Yes' if value else 'No'
+
+
 class security_SandboxedServices(test.test):
     """Enforces sandboxing restrictions on the processes running
     on the system.
@@ -139,24 +159,27 @@ class security_SandboxedServices(test.test):
         """
 
         def load(path):
-            """Load the baseline out of |path| and return it.
+            """Load baseline from |path| and return its fields and dictionary.
 
             @param path: The baseline to load.
             """
             logging.info('Loading baseline %s', path)
             reader = csv.DictReader(open(path))
-            return dict((d['exe'], d) for d in reader
-                        if not d['exe'].startswith('#'))
+            return reader.fieldnames, dict((d['exe'], d) for d in reader
+                                           if not d['exe'].startswith('#'))
 
         baseline_path = os.path.join(self.bindir, 'baseline')
-        ret = load(baseline_path)
+        fields, ret = load(baseline_path)
 
         board = utils.get_current_board()
         baseline_path += '.' + board
         if os.path.exists(baseline_path):
-            ret.update(load(baseline_path))
+            new_fields, new_entries = load(baseline_path)
+            if new_fields != fields:
+                raise error.TestError('header mismatch in %s' % baseline_path)
+            ret.update(new_entries)
 
-        return ret
+        return fields, ret
 
 
     def load_exclusions(self):
@@ -169,27 +192,21 @@ class security_SandboxedServices(test.test):
                    if not line.startswith('#'))
 
 
-    def dump_services(self, running_services, minijail_processes):
+    def dump_services(self, fieldnames, running_services_properties):
         """Leaves a list of running services in the results dir
         so that we can update the baseline file if necessary.
 
-        @param running_services: list of services to be logged.
-        @param minijail_processes: list of Minijail processes used to log how
-        each running service is sandboxed.
+        @param fieldnames: list of fields to be written.
+        @param running_services_properties: list of services to be logged.
         """
 
-        csv_file = csv.writer(open(os.path.join(self.resultsdir,
-                                                "running_services"), 'w'))
-
-        for service in running_services:
-            service_minijail = ""
-
-            if service.ppid in minijail_processes:
-                launcher = minijail_processes[service.ppid]
-                service_minijail = launcher.args.split("--")[0].strip()
-
-            row = [service.comm, service.euser, service.args, service_minijail]
-            csv_file.writerow(row)
+        file_path = os.path.join(self.resultsdir, 'running_services')
+        with open(file_path, 'w') as output_file:
+            writer = csv.DictWriter(output_file, fieldnames=fieldnames,
+                                    extrasaction='ignore')
+            writer.writeheader()
+            for service_properties in running_services_properties:
+                writer.writerow(service_properties)
 
 
     def run_once(self):
@@ -200,7 +217,7 @@ class security_SandboxedServices(test.test):
         baselines for processes not seen running.
         """
 
-        baseline = self.load_baseline()
+        fieldnames, baseline = self.load_baseline()
         exclusions = self.load_exclusions()
         running_processes = self.get_running_processes()
         is_asan = asan.running_on_asan()
@@ -211,7 +228,6 @@ class security_SandboxedServices(test.test):
 
         init_process = None
         running_services = {}
-        minijail_processes = {}
 
         # Filter running processes list
         for process in running_processes:
@@ -229,11 +245,6 @@ class security_SandboxedServices(test.test):
                 continue
 
             if exe in exclusions:
-                continue
-
-            # Remember minijail0 invocations
-            if exe in ('minijail0', 'minijail-init'):
-                minijail_processes[process.pid] = process
                 continue
 
             running_services[exe] = process
@@ -286,7 +297,9 @@ class security_SandboxedServices(test.test):
                 sandbox_delta.append(exe)
 
         # Save current run to results dir
-        self.dump_services(running_services.values(), minijail_processes)
+        running_services_properties = [get_properties(s, init_process)
+                                       for s in running_services.values()]
+        self.dump_services(fieldnames, running_services_properties)
 
         if len(stale_baselines) > 0:
             logging.warn('Stale baselines: %r', stale_baselines)
