@@ -947,10 +947,10 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         fwro_version and fwrw_version.
 
         """
-        fw_label = provision.FWRWVersionLabel(build)
+        fw_label = provision.fwrw_version_to_label(build)
         self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
         if not rw_only:
-            fw_label = provision.FWROVersionLabel(build)
+            fw_label = provision.fwro_version_to_label(build)
             self._AFE.run('label_add_hosts', id=fw_label, hosts=[self.hostname])
 
 
