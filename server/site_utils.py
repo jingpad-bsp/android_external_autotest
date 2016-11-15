@@ -56,6 +56,7 @@ IDLE_DUT_WAIT_TIMEOUT = 600
 # for certain Android board that the board name and build target name does not
 # match.
 ANDROID_TARGET_TO_BOARD_MAP = {'seed_l8150': 'gm4g_sprout'}
+ANDROID_BOARD_TO_TARGET_MAP = {'gm4g_sprout': 'seed_l8150'}
 
 class TestLabException(Exception):
     """Exception raised when the Test Lab blocks a test or suite."""
