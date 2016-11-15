@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import collections
-import re
+
 import sys
 
 import common
@@ -25,212 +24,38 @@ SKIP_PROVISION = 'skip_provision'
 FLAKY_DEVSERVER_ATTEMPTS = 2
 
 
-def label_from_str(label_string):
-    """Return a proper Label instance from a label string.
-
-    This function is for converting an existing label string into a Label
-    instance of the proper type.  For constructing a specific type of label,
-    don't use this.  Instead, instantiate the specific Label subclass.
-
-    @param label_string: Label string.
-    @returns: An instance of Label or a subclass.
+### Helpers to convert value to label
+def cros_version_to_label(image):
     """
-    if NamespaceLabel.SEP in label_string:
-        label = NamespaceLabel.from_str(label_string)
-        namespaces = _PresetNamespaceLabelMeta.namespaces
-        if label.namespace in namespaces:
-            return namespaces[label.namespace](label.value)
-        else:
-            return label
-    else:
-        return Label(label_string)
+    Returns the proper label name for a ChromeOS build of |image|.
 
+    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
+    @returns: A string that is the appropriate label name.
 
-class Label(str):
-    """A string that is explicitly typed as a label."""
-
-    def __repr__(self):
-        return '{cls}({label})'.format(
-            cls=type(self).__name__,
-            label=super(Label, self).__repr__())
-
-    @property
-    def action(self):
-        """Return the action represented by the label.
-
-        This is used for determine actions to perform based on labels, for
-        example for provisioning or repair.
-
-        @return: An Action instance.
-        """
-        return Action(self, '')
-
-
-Action = collections.namedtuple('Action', 'name,value')
-
-
-class NamespaceLabel(Label):
-    """Label with namespace and value separated by a colon."""
-
-    SEP = ':'
-
-    def __new__(cls, namespace, value):
-        return super(NamespaceLabel, cls).__new__(
-            cls, cls.SEP.join((namespace, value)))
-
-    @classmethod
-    def from_str(cls, label):
-        """Make NamespaceLabel instance from full string.
-
-        @param label: Label string.
-        @returns: NamespaceLabel instance.
-        """
-        namespace, value = label.split(cls.SEP, 1)
-        return cls(namespace, value)
-
-    @property
-    def namespace(self):
-        """The label's namespace (before colon).
-
-        @returns: string
-        """
-        return self.split(self.SEP, 1)[0]
-
-    @property
-    def value(self):
-        """The label's value (after colon).
-
-        @returns: string
-        """
-        return self.split(self.SEP, 1)[1]
-
-    @property
-    def action(self):
-        """Return the action represented by the label.
-
-        See docstring on overridden method.
-
-        @return: An Action instance.
-        """
-        return Action(self.namespace, self.value)
-
-
-class _PresetNamespaceLabelMeta(type):
-    """Metaclass for PresetNamespaceLabelMeta and subclasses.
-
-    This automatically tracks the NAMESPACE for concrete classes that define
-    it.  The namespaces attribute is a dict mapping namespace strings to the
-    corresponding NamespaceLabel subclass.
     """
-
-    namespaces = {}
-
-    def __init__(cls, name, bases, dict_):
-        if hasattr(cls, 'NAMESPACE'):
-            type(cls).namespaces[cls.NAMESPACE] = cls
+    return CROS_VERSION_PREFIX + ':' + image
 
 
-class _PresetNamespaceLabel(NamespaceLabel):
-    """NamespaceLabel with preset namespace.
-
-    This class is abstract.  Concrete subclasses must set a NAMESPACE class
-    attribute.
+def fwro_version_to_label(image):
     """
+    Returns the proper label name for a RO firmware build of |image|.
 
-    __metaclass__ = _PresetNamespaceLabelMeta
+    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
+    @returns: A string that is the appropriate label name.
 
-    def __new__(cls, value):
-        return super(_PresetNamespaceLabel, cls).__new__(cls, cls.NAMESPACE, value)
-
-
-class CrosVersionLabel(_PresetNamespaceLabel):
-    """cros-version label."""
-    NAMESPACE = CROS_VERSION_PREFIX
-
-    @property
-    def value(self):
-        """The label's value (after colon).
-
-        @returns: string
-        """
-        return CrosVersion(super(CrosVersionLabel, self).value)
-
-
-class FWROVersionLabel(_PresetNamespaceLabel):
-    """Read-only firmware version label."""
-    NAMESPACE = FW_RO_VERSION_PREFIX
-
-
-class FWRWVersionLabel(_PresetNamespaceLabel):
-    """Read-write firmware version label."""
-    NAMESPACE = FW_RW_VERSION_PREFIX
-
-
-class CrosVersion(str):
-    """The name of a CrOS image version (e.g. lumpy-release/R27-3773.0.0).
-
-    Parts of the image name are exposed via properties.  In case the name is
-    not well-formed, these properties return INVALID_STR, which is not a valid value
-    for any part.
-
-    Class attributes:
-        INVALID_STR -- String returned if the version is not well-formed.
-
-    Properties:
-        group
-        milestone
-        version
-        rc
     """
+    return FW_RO_VERSION_PREFIX + ':' + image
 
-    INVALID_STR = 'N/A'
-    _NAME_PATTERN = re.compile(
-        r'^'
-        r'(?P<group>[a-z0-9-]+)'
-        r'/'
-        r'(?P<milestone>R[0-9]+)'
-        r'-'
-        r'(?P<version>[0-9.]+)'
-        r'(-(?P<rc>rc[0-9]+))?'
-        r'$'
-    )
 
-    def __repr__(self):
-        return '{cls}({name})'.format(
-            cls=type(self).__name__,
-            name=super(CrosVersion, self).__repr__())
+def fwrw_version_to_label(image):
+    """
+    Returns the proper label name for a RW firmware build of |image|.
 
-    def _get_group(self, group):
-        """Get regex match group, or fall back to N/A.
+    @param image: A string of the form 'lumpy-release/R28-3993.0.0'
+    @returns: A string that is the appropriate label name.
 
-        @param group: Group name string.
-        @returns String.
-        """
-        match = self._NAME_PATTERN.search(self)
-        if match is None:
-            return self.INVALID_STR
-        else:
-            return match.group(group)
-
-    @property
-    def group(self):
-        """Cros image group (e.g. lumpy-release)."""
-        return self._get_group('group')
-
-    @property
-    def milestone(self):
-        """Cros image milestone (e.g. R27)."""
-        return self._get_group('milestone')
-
-    @property
-    def version(self):
-        """Cros image milestone (e.g. 3773.0.0)."""
-        return self._get_group('version')
-
-    @property
-    def rc(self):
-        """Cros image rc (e.g. rc2)."""
-        return self._get_group('rc')
+    """
+    return FW_RW_VERSION_PREFIX + ':' + image
 
 
 class _SpecialTaskAction(object):
@@ -252,17 +77,19 @@ class _SpecialTaskAction(object):
     # across available label prefixes.
     _priorities = []
 
+
     @classmethod
-    def acts_on(cls, label_string):
+    def acts_on(cls, label):
         """
         Returns True if the label is a label that we recognize as something we
         know how to act on, given our _actions.
 
-        @param label_string: The label as a string.
+        @param label: The label as a string.
         @returns: True if there exists a test to run for this label.
+
         """
-        label = label_from_str(label_string)
-        return label.action.name in cls._actions
+        return label.split(':')[0] in cls._actions
+
 
     @classmethod
     def test_for(cls, label):
@@ -272,8 +99,10 @@ class _SpecialTaskAction(object):
         @param label: The label for which the action is being requested.
         @returns: The string name of the test that should be run.
         @raises KeyError: If the name was not recognized as one we care about.
+
         """
         return cls._actions[label]
+
 
     @classmethod
     def partition(cls, labels):
@@ -301,31 +130,30 @@ class _SpecialTaskAction(object):
 
         return capabilities, configurations
 
+
     @classmethod
-    def get_sorted_actions(cls, configurations):
+    def sort_configurations(cls, configurations):
         """
         Sort configurations based on the priority defined in cls._priorities.
 
         @param configurations: A list of actionable labels.
-        @return: A list of Action instances sorted by the action name in
-            cls._priorities.
-        """
-        actions = (label_from_str(label_string).action
-                   for label_string in configurations)
-        return sorted(actions, key=cls._get_action_priority)
 
-    @classmethod
-    def _get_action_priority(cls, action):
+        @return: A sorted list of tuple of (label_prefix, value), the tuples are
+                sorted based on the label_prefix's index in cls._priorities.
         """
-        Return the priority of the action string.
+        # Split a list of labels into a dict mapping name to value.  All labels
+        # must be provisionable labels, or else a ValueError
+        # For example, label 'cros-version:lumpy-release/R28-3993.0.0' is split
+        # to  {'cros-version': 'lumpy-release/R28-3993.0.0'}
+        split_configurations = dict()
+        for label in configurations:
+            name, _, value = label.partition(':')
+            split_configurations[name] = value
 
-        @param action: An Action instance.
-        @return: An int.
-        """
-        if action.name in cls._priorities:
-            return cls._priorities.index(action.name)
-        else:
-            return sys.maxint
+        sort_key = (lambda config:
+                (cls._priorities.index(config[0])
+                 if (config[0] in cls._priorities) else sys.maxint))
+        return sorted(split_configurations.items(), key=sort_key)
 
 
 class Verify(_SpecialTaskAction):
@@ -438,6 +266,21 @@ def is_for_special_action(label):
             label == SKIP_PROVISION)
 
 
+def join(provision_type, provision_value):
+    """
+    Combine the provision type and value into the label name.
+
+    @param provision_type: One of the constants that are the label prefixes.
+    @param provision_value: A string of the value for this provision type.
+    @returns: A string that is the label name for this (type, value) pair.
+
+    >>> join(CROS_VERSION_PREFIX, 'lumpy-release/R27-3773.0.0')
+    'cros-version:lumpy-release/R27-3773.0.0'
+
+    """
+    return '%s:%s' % (provision_type, provision_value)
+
+
 class SpecialTaskActionException(Exception):
     """
     Exception raised when a special task fails to successfully run a test that
@@ -469,8 +312,8 @@ def run_special_task_actions(job, host, labels, task):
                    "Can't %s label '%s'." % (task.name, label))
 
     # Sort the configuration labels based on `task._priorities`.
-    actions = task.get_sorted_actions(configurations)
-    for name, value in actions:
+    sorted_configurations = task.sort_configurations(configurations)
+    for name, value in sorted_configurations:
         action_item = task.test_for(name)
         success = action_item.execute(job=job, host=host, value=value)
         if not success:
