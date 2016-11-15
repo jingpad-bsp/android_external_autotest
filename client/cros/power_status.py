@@ -868,15 +868,17 @@ class DevFreqStats(AbstractStats):
     def _read_stats(self):
         stats = dict((freq, 0) for freq in self._available_freqs)
         fname = os.path.join(self._path, 'trans_stat')
-        freq_iter = iter(self._available_freqs)
 
         with open(fname) as fd:
             # The lines that contain the time in each frequency start on the 3rd
             # line, so skip the first 2 lines. The last line contains the number
             # of transitions, so skip that line too.
             # The time in each frequency is at the end of the line.
+            freq_pattern = re.compile(r'\d+(?=:)')
             for line in fd.readlines()[2:-1]:
-                stats[freq_iter.next()] += int(line.strip().split()[-1])
+                freq = freq_pattern.search(line)
+                if freq and freq.group() in self._available_freqs:
+                    stats[freq.group()] = int(line.strip().split()[-1])
 
         return stats
 
