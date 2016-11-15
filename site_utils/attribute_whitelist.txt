@@ -1,7 +1,10 @@
 suite:AFDO_page_replay
 suite:AFDO_record
 suite:android_bluetooth
-suite:android_telephony_nexus
+suite:android_telephony_nexus_att
+suite:android_telephony_nexus_spt
+suite:android_telephony_nexus_tmo
+suite:android_telephony_nexus_vzw
 suite:android_wifi
 suite:android_wifi_interop
 suite:android_wifi_connect

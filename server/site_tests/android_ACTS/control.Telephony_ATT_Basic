@@ -6,7 +6,7 @@ AUTHOR = 'angli, krisr'
 NAME = 'android_ACTS.Telephony_ATT_Basic'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_telephony_nexus'
+ATTRIBUTES = 'suite:android_telephony_nexus_att'
 DEPENDENCIES = 'carrier:att'
 
 DOC = """
