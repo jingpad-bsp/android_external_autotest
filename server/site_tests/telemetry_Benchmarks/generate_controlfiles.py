@@ -47,6 +47,7 @@ PERF_DAILY_RUN_TESTS = [
     'sunspider',
     'tab_switching.top_10',
     'webrtc.peerconnection',
+    'webrtc.stress',
 ]
 
 CONTROLFILE_TEMPLATE = (
