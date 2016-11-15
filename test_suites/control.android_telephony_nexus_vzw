@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bettyzhou, bmahadev, krisr'
-NAME = 'android_telephony_nexus'
-PURPOSE = 'Test Android Nexus Telephony Sanity'
+NAME = 'android_telephony_nexus_vzw'
+PURPOSE = 'Test Android Nexus Telephony Sanity For Verizon'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 
