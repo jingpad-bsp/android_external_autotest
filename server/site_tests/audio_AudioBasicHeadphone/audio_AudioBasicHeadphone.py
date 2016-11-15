@@ -110,4 +110,4 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
         audio_test_utils.check_recorded_frequency(
-                golden_file, recorder, check_anomaly=check_quality)
+                golden_file, recorder, check_artifacts=check_quality)
