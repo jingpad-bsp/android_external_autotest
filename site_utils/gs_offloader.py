@@ -450,7 +450,7 @@ def _create_test_result_notification(gs_path):
     return msg_payload
 
 
-def get_offload_dir_func(gs_uri, multiprocessing, pubsub_topic=None):
+def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None):
     """Returns the offload directory function for the given gs_uri
 
     @param gs_uri: Google storage bucket uri to offload to.
@@ -461,63 +461,74 @@ def get_offload_dir_func(gs_uri, multiprocessing, pubsub_topic=None):
     @return offload_dir function to perform the offload.
     """
     @timer.decorate
-    def offload_dir(dir_entry, dest_path):
+    def offload_dir(dir_entry, dest_path, job_complete_time):
         """Offload the specified directory entry to Google storage.
 
         @param dir_entry: Directory entry to offload.
         @param dest_path: Location in google storage where we will
                           offload the directory.
+        @param job_complete_time: The complete time of the job from the AFE
+                                  database.
 
         """
         try:
-            counter = autotest_stats.Counter(STATS_KEY)
-            counter.increment('jobs_offload_started')
-
-            sanitize_dir(dir_entry)
-            if DEFAULT_CTS_RESULTS_GSURI:
-                upload_testresult_files(dir_entry, multiprocessing)
-
-            if LIMIT_FILE_COUNT:
-                limit_file_count(dir_entry)
-
             error = False
-            stdout_file = tempfile.TemporaryFile('w+')
-            stderr_file = tempfile.TemporaryFile('w+')
-            process = None
-            signal.alarm(OFFLOAD_TIMEOUT_SECS)
-            gs_path = '%s%s' % (gs_uri, dest_path)
-            process = subprocess.Popen(
-                    get_cmd_list(multiprocessing, dir_entry, gs_path),
-                    stdout=stdout_file, stderr=stderr_file)
-            process.wait()
-            signal.alarm(0)
+            stdout_file = None
+            stderr_file = None
+            upload_signal_filename = '%s/%s/.GS_UPLOADED' % (
+                    RESULTS_DIR, dir_entry)
+            if not os.path.isfile(upload_signal_filename):
+                counter = autotest_stats.Counter(STATS_KEY)
+                counter.increment('jobs_offload_started')
 
-            if process.returncode == 0:
-                dir_size = get_directory_size_kibibytes(dir_entry)
+                sanitize_dir(dir_entry)
+                if DEFAULT_CTS_RESULTS_GSURI:
+                    upload_testresult_files(dir_entry, multiprocessing)
 
-                counter.increment('kibibytes_transferred_total',
-                                  dir_size)
-                metadata = {
-                    '_type': METADATA_TYPE,
-                    'size_KB': dir_size,
-                    'result_dir': dir_entry,
-                    'drone': socket.gethostname().replace('.', '_')
-                }
-                autotest_stats.Gauge(STATS_KEY, metadata=metadata).send(
-                        'kibibytes_transferred', dir_size)
-                counter.increment('jobs_offloaded')
+                if LIMIT_FILE_COUNT:
+                    limit_file_count(dir_entry)
 
-                if pubsub_topic:
-                    message = _create_test_result_notification(gs_path)
-                    msg_ids = pubsub_utils.publish_notifications(
-                            pubsub_topic, [message])
-                    if not msg_ids:
-                        error = True
+                stdout_file = tempfile.TemporaryFile('w+')
+                stderr_file = tempfile.TemporaryFile('w+')
+                process = None
+                signal.alarm(OFFLOAD_TIMEOUT_SECS)
+                gs_path = '%s%s' % (gs_uri, dest_path)
+                process = subprocess.Popen(
+                        get_cmd_list(multiprocessing, dir_entry, gs_path),
+                        stdout=stdout_file, stderr=stderr_file)
+                process.wait()
+                signal.alarm(0)
 
-                if not error:
+                if process.returncode == 0:
+                    dir_size = get_directory_size_kibibytes(dir_entry)
+
+                    counter.increment('kibibytes_transferred_total',
+                                      dir_size)
+                    metadata = {
+                        '_type': METADATA_TYPE,
+                        'size_KB': dir_size,
+                        'result_dir': dir_entry,
+                        'drone': socket.gethostname().replace('.', '_')
+                    }
+                    autotest_stats.Gauge(STATS_KEY, metadata=metadata).send(
+                            'kibibytes_transferred', dir_size)
+                    counter.increment('jobs_offloaded')
+
+                    if pubsub_topic:
+                        message = _create_test_result_notification(gs_path)
+                        msg_ids = pubsub_utils.publish_notifications(
+                                pubsub_topic, [message])
+                        if not msg_ids:
+                            error = True
+
+                    if not error:
+                        open(upload_signal_filename, 'a').close()
+                else:
+                    error = True
+            if os.path.isfile(upload_signal_filename):
+                if job_directories.is_job_expired(delete_age, job_complete_time):
                     shutil.rmtree(dir_entry)
-            else:
-                error = True
+
         except TimeoutException:
             # If we finished the call to Popen(), we may need to
             # terminate the child process.  We don't bother calling
@@ -564,12 +575,14 @@ def get_offload_dir_func(gs_uri, multiprocessing, pubsub_topic=None):
                     logging.warn('Try to correct file permission of %s.',
                                  dir_entry)
                     correct_results_folder_permission(dir_entry)
-            stdout_file.close()
-            stderr_file.close()
+            if stdout_file:
+                stdout_file.close()
+            if stderr_file:
+                stderr_file.close()
     return offload_dir
 
 
-def delete_files(dir_entry, dest_path):
+def delete_files(dir_entry, dest_path, job_complete_time):
     """Simply deletes the dir_entry from the filesystem.
 
     Uses same arguments as offload_dir so that it can be used in replace
@@ -578,6 +591,7 @@ def delete_files(dir_entry, dest_path):
 
     @param dir_entry: Directory entry to offload.
     @param dest_path: NOT USED.
+    @param job_complete_time: NOT USED.
     """
     shutil.rmtree(dir_entry)
 
@@ -645,6 +659,8 @@ class Offloader(object):
 
     def __init__(self, options):
         self._pubsub_topic = None
+        self._upload_age_limit = options.age_to_upload
+        self._delete_age_limit = options.age_to_delete
         if options.delete_only:
             self._offload_func = delete_files
         else:
@@ -662,7 +678,8 @@ class Offloader(object):
             elif _PUBSUB_ENABLED:
               self._pubsub_topic = _PUBSUB_TOPIC
             self._offload_func = get_offload_dir_func(
-                    self.gs_uri, multiprocessing, self._pubsub_topic)
+                    self.gs_uri, multiprocessing, self._delete_age_limit,
+                    self._pubsub_topic)
         classlist = []
         if options.process_hosts_only or options.process_all:
             classlist.append(job_directories.SpecialJobDirectory)
@@ -671,7 +688,6 @@ class Offloader(object):
         self._jobdir_classes = classlist
         assert self._jobdir_classes
         self._processes = options.parallelism
-        self._age_limit = options.days_old
         self._open_jobs = {}
         self._next_report_time = time.time()
         self._pusub_topic = None
@@ -764,7 +780,7 @@ class Offloader(object):
         with parallel.BackgroundTaskRunner(
                 self._offload_func, processes=self._processes) as queue:
             for job in self._open_jobs.values():
-                job.enqueue_offload(queue, self._age_limit)
+                job.enqueue_offload(queue, self._upload_age_limit)
         self._update_offload_results()
 
 
@@ -813,12 +829,32 @@ def parse_options():
     parser.add_option('-y', '--normal_priority', dest='normal_priority',
                       action='store_true',
                       help='Upload using normal process priority.')
+    parser.add_option('-u', '--age_to_upload', dest='age_to_upload',
+                      help='Minimum job age in days before a result can be '
+                      'offloaded, but not removed from local storage',
+                      type='int', default=None)
+    parser.add_option('-n', '--age_to_delete', dest='age_to_delete',
+                      help='Minimum job age in days before a result can be '
+                      'removed from local storage',
+                      type='int', default=None)
+
     options = parser.parse_args()[0]
     if options.process_all and options.process_hosts_only:
         parser.print_help()
         print ('Cannot process all files and only the hosts '
                'subdirectory. Please remove an argument.')
         sys.exit(1)
+
+    if options.days_old and (options.age_to_upload or options.age_to_delete):
+        parser.print_help()
+        print('Use the days_old option or the age_to_* options but not both')
+        sys.exit(1)
+
+    if options.age_to_upload == None:
+        options.age_to_upload = options.days_old
+    if options.age_to_delete == None:
+        options.age_to_delete = options.days_old
+
     return options
 
 
