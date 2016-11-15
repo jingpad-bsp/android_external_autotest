@@ -476,7 +476,7 @@ def perform_local_run(afe, autotest_path, tests, remote, fast_mode,
               provision failed prior to running any jobs.
     """
     # Create host in afe, add board and build labels.
-    cros_version_label = provision.CrosVersionLabel(build)
+    cros_version_label = provision.cros_version_to_label(build)
     build_label = afe.create_label(cros_version_label)
     board_label = afe.create_label(constants.BOARD_PREFIX + board)
     new_host = afe.create_host(remote)
