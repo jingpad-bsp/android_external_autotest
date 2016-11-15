@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import __builtin__
 import Queue
 import base64
 import datetime
@@ -66,7 +67,7 @@ class OffloaderOptionsTests(mox.MoxTestBase):
 
 
     def _mock_get_offload_func(self, is_moblab, multiprocessing=False,
-                               pubsub_topic=None):
+                               pubsub_topic=None, delete_age=0):
         """Mock the process of getting the offload_dir function."""
         if is_moblab:
             expected_gsuri = '%sresults/%s/%s/' % (
@@ -76,11 +77,11 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         else:
             expected_gsuri = utils.DEFAULT_OFFLOAD_GSURI
         utils.get_offload_gsuri().AndReturn(expected_gsuri)
-        offload_func = gs_offloader.get_offload_dir_func(
-                expected_gsuri, multiprocessing)
+        offload_func = gs_offloader.get_offload_dir_func(expected_gsuri,
+            multiprocessing, delete_age, pubsub_topic)
         self.mox.StubOutWithMock(gs_offloader, 'get_offload_dir_func')
         gs_offloader.get_offload_dir_func(expected_gsuri, multiprocessing,
-                pubsub_topic).AndReturn(offload_func)
+            delete_age, pubsub_topic).AndReturn(offload_func)
         self.mox.ReplayAll()
         return offload_func
 
@@ -94,7 +95,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
 
 
     def test_process_all_option(self):
@@ -105,7 +107,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
 
 
     def test_process_hosts_option(self):
@@ -118,7 +121,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
 
 
     def test_parallelism_option(self):
@@ -131,7 +135,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 2)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
 
 
     def test_delete_only_option(self):
@@ -143,13 +148,14 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          gs_offloader.delete_files)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
         self.assertIsNone(offloader._pubsub_topic)
 
 
     def test_days_old_option(self):
         """Test offloader handling for the --days_old option."""
-        offload_func = self._mock_get_offload_func(False)
+        offload_func = self._mock_get_offload_func(False, delete_age=7)
         offloader = gs_offloader.Offloader(
                 _get_options(['--days_old', '7']))
         self.assertEqual(set(offloader._jobdir_classes),
@@ -157,7 +163,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 7)
+        self.assertEqual(offloader._upload_age_limit, 7)
+        self.assertEqual(offloader._delete_age_limit, 7)
 
 
     def test_moblab_gsuri_generation(self):
@@ -169,7 +176,8 @@ class OffloaderOptionsTests(mox.MoxTestBase):
         self.assertEqual(offloader._processes, 1)
         self.assertEqual(offloader._offload_func,
                          offload_func)
-        self.assertEqual(offloader._age_limit, 0)
+        self.assertEqual(offloader._upload_age_limit, 0)
+        self.assertEqual(offloader._delete_age_limit, 0)
 
 
     def test_globalconfig_offloading_flag(self):
@@ -224,10 +232,10 @@ class OffloaderOptionsTests(mox.MoxTestBase):
 
 
 def _make_timestamp(age_limit, is_expired):
-    """Create a timestamp for use by `job_directories._is_job_expired()`.
+    """Create a timestamp for use by `job_directories.is_job_expired()`.
 
     The timestamp will meet the syntactic requirements for
-    timestamps used as input to `_is_job_expired()`.  If
+    timestamps used as input to `is_job_expired()`.  If
     `is_expired` is true, the timestamp will be older than
     `age_limit` days before the current time; otherwise, the
     date will be younger.
@@ -247,13 +255,13 @@ def _make_timestamp(age_limit, is_expired):
 
 
 class JobExpirationTests(unittest.TestCase):
-    """Tests to exercise `job_directories._is_job_expired()`."""
+    """Tests to exercise `job_directories.is_job_expired()`."""
 
     def test_expired(self):
         """Test detection of an expired job."""
         timestamp = _make_timestamp(_TEST_EXPIRATION_AGE, True)
         self.assertTrue(
-            job_directories._is_job_expired(
+            job_directories.is_job_expired(
                 _TEST_EXPIRATION_AGE, timestamp))
 
 
@@ -263,7 +271,7 @@ class JobExpirationTests(unittest.TestCase):
         # about _MARGIN_SECS seconds.
         timestamp = _make_timestamp(_TEST_EXPIRATION_AGE, False)
         self.assertFalse(
-            job_directories._is_job_expired(
+            job_directories.is_job_expired(
                 _TEST_EXPIRATION_AGE, timestamp))
 
 
@@ -277,7 +285,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
         """Create new job in initial state."""
         super(_MockJobDirectory, self).__init__(resultsdir)
         self._timestamp = None
-        self.queue_args = [resultsdir, os.path.dirname(resultsdir)]
+        self.queue_args = [resultsdir, os.path.dirname(resultsdir), self._timestamp]
 
 
     def get_timestamp_if_finished(self):
@@ -299,6 +307,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
 
         """
         self._timestamp = _make_timestamp(days_old, False)
+        self.queue_args[2] = self._timestamp
 
 
     def set_expired(self, days_old):
@@ -313,6 +322,7 @@ class _MockJobDirectory(job_directories._JobDirectory):
 
         """
         self._timestamp = _make_timestamp(days_old, True)
+        self.queue_args[2] = self._timestamp
 
 
     def set_incomplete(self):
@@ -792,7 +802,16 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         gs_offloader.upload_testresult_files(
                 mox.IgnoreArg(),mox.IgnoreArg()).AndReturn(None)
 
-    def _mock_offload_dir_calls(self, command, queue_args):
+    def _mock_create_marker_file(self):
+        self.mox.StubOutWithMock(__builtin__, 'open')
+        mock_marker_file = self.mox.CreateMock(file)
+        open(mox.IgnoreArg(), 'a').AndReturn(mock_marker_file)
+        mock_marker_file.close()
+
+
+    def _mock_offload_dir_calls(self, command, queue_args,
+                                marker_initially_exists=False,
+                                marker_eventually_exists=True):
         """Mock out the calls needed by `offload_dir()`.
 
         This covers only the calls made when there is no timeout.
@@ -801,6 +820,8 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
                        call to `get_cmd_list()`.
 
         """
+        self.mox.StubOutWithMock(os.path, 'isfile')
+        os.path.isfile(mox.IgnoreArg()).AndReturn(marker_initially_exists)
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS)
         command.append(queue_args[0])
         gs_offloader.get_cmd_list(
@@ -810,9 +831,10 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         self._mock_upload_testresult_files()
         signal.alarm(0)
         signal.alarm(0)
+        os.path.isfile(mox.IgnoreArg()).AndReturn(marker_eventually_exists)
 
 
-    def _run_offload_dir(self, should_succeed):
+    def _run_offload_dir(self, should_succeed, delete_age):
         """Make one call to `offload_dir()`.
 
         The caller ensures all mocks are set up already.
@@ -824,9 +846,10 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         """
         self.mox.ReplayAll()
         gs_offloader.get_offload_dir_func(
-                utils.DEFAULT_OFFLOAD_GSURI, False)(
+                utils.DEFAULT_OFFLOAD_GSURI, False, delete_age)(
                         self._job.queue_args[0],
-                        self._job.queue_args[1])
+                        self._job.queue_args[1],
+                        self._job.queue_args[2])
         self.mox.VerifyAll()
         self.assertEqual(not should_succeed,
                          os.path.isdir(self._job.queue_args[0]))
@@ -836,14 +859,16 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         """Test that `offload_dir()` can succeed correctly."""
         self._mock_offload_dir_calls(['test', '-d'],
                                      self._job.queue_args)
-        self._run_offload_dir(True)
+        self._mock_create_marker_file()
+        self._run_offload_dir(True, 0)
 
 
     def test_offload_failure(self):
         """Test that `offload_dir()` can fail correctly."""
         self._mock_offload_dir_calls(['test', '!', '-d'],
-                                     self._job.queue_args)
-        self._run_offload_dir(False)
+                                     self._job.queue_args,
+                                     marker_eventually_exists=False)
+        self._run_offload_dir(False, 0)
 
 
     def test_offload_timeout_early(self):
@@ -857,7 +882,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         signal.alarm(gs_offloader.OFFLOAD_TIMEOUT_SECS).AndRaise(
                         gs_offloader.TimeoutException('fubar'))
         signal.alarm(0)
-        self._run_offload_dir(False)
+        self._run_offload_dir(False, 0)
 
 
     def test_offload_timeout_late(self):
@@ -875,7 +900,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         signal.alarm(0).AndRaise(
                 gs_offloader.TimeoutException('fubar'))
         signal.alarm(0)
-        self._run_offload_dir(False)
+        self._run_offload_dir(False, 0)
 
 
     def test_sanitize_dir(self):

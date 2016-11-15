@@ -22,7 +22,7 @@ JOB_PATTERN = '.*/(\d+)-[^/]+'
 # debug_user is the name of user starts the job.
 JOB_FOLDER_PATTERN = '.*/(\d+-[^/]+)'
 
-def _is_job_expired(age_limit, timestamp):
+def is_job_expired(age_limit, timestamp):
   """Check whether a job timestamp is older than an age limit.
 
   @param age_limit: Minimum age, measured in days.  If the value is
@@ -146,7 +146,7 @@ class _JobDirectory(object):
     If the database has not marked the job as finished, return
     `None`.  Otherwise, return a timestamp for the job.  The
     timestamp is to be used to determine expiration in
-    `_is_job_expired()`.
+    `is_job_expired()`.
 
     @return Return `None` if the job is still running; otherwise
             return a string with a timestamp in the appropriate
@@ -172,16 +172,16 @@ class _JobDirectory(object):
                      soon as it is finished.
 
     """
+    timestamp = self.get_timestamp_if_finished()
     if not self._offload_count:
-      timestamp = self.get_timestamp_if_finished()
       if not timestamp:
         return
-      if not _is_job_expired(age_limit, timestamp):
+      if not is_job_expired(age_limit, timestamp):
         return
       self._first_offload_start = time.time()
     self._offload_count += 1
     if self.process_gs_instructions():
-      queue.put([self._dirname, os.path.dirname(self._dirname)])
+      queue.put([self._dirname, os.path.dirname(self._dirname), timestamp])
 
   def is_offloaded(self):
     """Return whether this job has been successfully offloaded."""
