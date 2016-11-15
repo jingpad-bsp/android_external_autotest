@@ -55,6 +55,7 @@ or Archiving postjob task, and an eventual Failed status for the HQE.
 """
 
 import logging
+import re
 
 from autotest_lib.client.common_lib import host_protections
 from autotest_lib.frontend.afe import models
@@ -298,6 +299,55 @@ class ResetTask(PreJobTask):
                 self.host.set_status(models.Host.Status.READY)
 
 
+# TODO (ayatane): Refactor using server/cros/provision
+def _is_cros_version(label):
+    """Return whether the label is a cros-version: label."""
+    return label.startswith('cros-version:')
+
+
+# TODO (ayatane): Refactor using server/cros/provision
+def _get_cros_version(label):
+    """Return cros-version from cros-version label."""
+    return label[len('cros-version:'):]
+
+
+# TODO (ayatane): Refactor into server/cros/provision
+class _CrosImage(object):
+    """The name of a CrOS image."""
+
+    _name_pattern = re.compile(
+        r'^'
+        r'(?P<group>[a-z0-9-]+)'
+        r'/'
+        r'(?P<milestone>LATEST|R[0-9]+)'
+        r'-'
+        r'(?P<version>[0-9.]+)'
+        r'(-(?P<rc>rc[0-9]+))?'
+        r'$'
+    )
+
+    def __init__(self, name):
+        """Initialize instance.
+
+        @param name: Image name string (lumpy-release/R27-3773.0.0)
+        """
+        self._name = name
+        match = self._name_pattern.search(name)
+        if match is None:
+            raise ValueError('Invalid CrOS image name: %r' % name)
+        self.group = match.group('group')
+        self.milestone = match.group('milestone')
+        self.version = match.group('version')
+        self.rc = match.group('rc')
+
+    def __repr__(self):
+        return '{cls}({name!r})'.format(cls=type(self).__name__,
+                                        name=self._name)
+
+    def __str__(self):
+        return self._name
+
+
 class ProvisionTask(PreJobTask):
     TASK_TYPE = models.SpecialTask.Task.PROVISION
 
@@ -323,14 +373,18 @@ class ProvisionTask(PreJobTask):
 
         @param labels: iterable of labels.
         """
-        for label in (provision.label_from_str(label) for label in labels):
-            if isinstance(label, provision.CrosVersionLabel):
-                self._milestone = label.value.milestone
-                if self._milestone == provision.CrosVersion.INVALID_STR:
-                    logging.warning('Could not parse cros-version: %s',
-                                    label.value)
-                break
-
+        labels = (label
+                  for label in labels
+                  if _is_cros_version(label))
+        for label in labels:
+            try:
+                cros_image = _CrosImage(_get_cros_version(label))
+            except ValueError as e:
+                logging.warning('Could not parse cros-version. Error msg: %s', e)
+                self._milestone = 'N/A'
+            else:
+                self._milestone = cros_image.milestone
+            break
 
 
     def _command_line(self):
