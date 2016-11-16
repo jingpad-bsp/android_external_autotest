@@ -7,6 +7,7 @@
 import logging
 import time
 
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.chameleon import chameleon_port_finder
 from autotest_lib.client.cros.chameleon import chameleon_screen_test
@@ -30,6 +31,8 @@ class display_HotPlugAtSuspend(test.test):
     RESUME_TIMEOUT = 60
     # Time margin to do plug/unplug before resume.
     TIME_MARGIN_BEFORE_RESUME = 5
+    # Timeout of waiting DUT mirrored.
+    TIMEOUT_WAITING_MIRRORED = 5
 
 
     def run_once(self, host, plug_status, test_mirrored=False):
@@ -120,8 +123,9 @@ class display_HotPlugAtSuspend(test.test):
                     continue
 
                 if plugged_before_resume:
-                    if test_mirrored and (
-                            not display_facade.is_mirrored_enabled()):
+                    if test_mirrored and (not utils.wait_for_value(
+                            display_facade.is_mirrored_enabled, True,
+                            timeout_sec=self.TIMEOUT_WAITING_MIRRORED)):
                         error_message = 'Error: not resumed to mirrored mode'
                         errors.append("%s - %s" % (test_case, error_message))
                         logging.error(error_message)
