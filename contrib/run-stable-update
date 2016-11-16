@@ -48,7 +48,7 @@ trap 'rm -f ${TMPFILE}' EXIT
 TMPFILE=$(mktemp)
 
 date
-$ASSIGN_STABLE "${OPTIONS[@]}" | tee ${TMPFILE}
+$ASSIGN_STABLE "${OPTIONS[@]}" 2>&1 | tee ${TMPFILE}
 echo
 
 # If we have a log directory, clean it up, and send e-mail notification.
