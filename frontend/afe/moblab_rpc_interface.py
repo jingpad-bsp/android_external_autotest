@@ -595,26 +595,50 @@ def remove_moblab_label(ipaddress, label_name):
     return (True, 'Removed label %s from DUT %s' % (label_name, ipaddress))
 
 
-@rpc_utils.moblab_only
-def get_connected_boards():
-    """ RPC handler to get a list of the boards connected to the moblab.
+def _get_connected_dut_labels(requested_label, only_first_label=True):
+    """ Query the DUT's attached to the moblab and return a filtered list of labels.
+    
+    @param requested_label:  the label name you are requesting.
+    @param only_first_label:  if the device has the same label name multiple times only
+                              return the first label value in the list.
 
-    @return: A de-duped list of board types attached to the moblab.
+    @return: A de-duped list of requested dut labels attached to the moblab.
     """
     hosts = list(rpc_utils.get_host_query((), False, False, True, {}))
     if not hosts:
         return []
     models.Host.objects.populate_relationships(hosts, models.Label,
                                                'label_list')
-    boards = set()
+    labels = set()
     for host in hosts:
         for label in host.label_list:
-            if 'board:' in label.name:
-                boards.add(label.name.replace('board:', ''))
-                break
-    boards = list(boards)
+            if requested_label in label.name:
+                labels.add(label.name.replace(requested_label, ''))
+                if only_first_label:
+                    break
+    return list(labels)
+
+
+@rpc_utils.moblab_only
+def get_connected_boards():
+    """ RPC handler to get a list of the boards connected to the moblab.
+
+    @return: A de-duped list of board types attached to the moblab.
+    """
+    boards = _get_connected_dut_labels("board:")
     boards.sort()
     return boards
+
+
+@rpc_utils.moblab_only
+def get_connected_pools():
+    """ RPC handler to get a list of the pools labels on the DUT's connected.
+
+    @return: A de-duped list of pool labels.
+    """
+    pools = _get_connected_dut_labels("pool:", False)
+    pools.sort()
+    return pools
 
 
 @rpc_utils.moblab_only
