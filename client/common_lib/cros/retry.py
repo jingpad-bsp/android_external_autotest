@@ -12,13 +12,6 @@ import time
 from autotest_lib.client.common_lib import error
 
 
-def handler(signum, frame):
-    """
-    Register a handler for the timeout.
-    """
-    raise error.TimeoutException('Call is timed out.')
-
-
 def install_sigalarm_handler(new_handler):
     """
     Try installing a sigalarm handler.
@@ -65,6 +58,31 @@ def set_sigalarm_timeout(timeout_secs, default_timeout=60):
     return signal.alarm(timeout_sec_n)
 
 
+def sigalarm_wrapper(message):
+    """
+    Raise a TimeoutException with the given message.  Needed because the body
+    of a closure (lambda) can only be an expression, not a statement (such
+    as "raise") :P :P :P
+
+    @param message: the exception message.
+    """
+    raise error.TimeoutException(message)
+
+
+def custom_sigalarm_handler(func, timeout_sec):
+    """
+    Returns a sigalarm handler which produces an exception with a custom
+    error message (function name and timeout length) instead of a generic
+    one.
+
+    @param func: the function that may time out
+    @param timeout_sec: timeout length in seconds
+    """
+    name = func.__name__ if hasattr(func, "__name__") else "unnamed function"
+    message = "sigalarm timeout (%d seconds) in %s" % (timeout_sec, name)
+    return lambda signum, frame: sigalarm_wrapper(message)
+
+
 def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
     """
     This function run the given function using the args, kwargs and
@@ -82,6 +100,7 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
     """
     old_alarm_sec = 0
     old_handler = signal.getsignal(signal.SIGALRM)
+    handler = custom_sigalarm_handler(func, timeout_sec)
     installed_handler = install_sigalarm_handler(handler)
     if installed_handler:
         old_alarm_sec = set_sigalarm_timeout(timeout_sec, default_timeout=60)
@@ -112,7 +131,7 @@ def timeout(func, args=(), kwargs={}, timeout_sec=60.0, default_result=None):
 
 
 def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
-          exception_to_raise=None):
+          exception_to_raise=None, label=None):
     """Retry calling the decorated function using a delay with jitter.
 
     Will raise RPC ValidationError exceptions from the decorated
@@ -132,11 +151,17 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
     @param delay_sec: pre-jittered delay between retries in seconds.  Actual
                       delays will be centered around this value, ranging up to
                       50% off this midpoint.
-    @param blacklist: a list of exceptions that will be raised without retrying
+    @param blacklist: a list of exceptions that will be raised without retrying.
     @param exception_to_raise: the exception to raise. Callers can specify the
-    the exception they want to raise.
+                               exception they want to raise.
+    @param label: a label added to the exception message to help debug.
     """
     def deco_retry(func):
+        """
+        Decorator wrapper.
+
+        @param func: the function to be retried and timed-out.
+        """
         random.seed()
 
 
@@ -150,7 +175,9 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
 
 
         def func_retry(*args, **kwargs):
-            # Used to cache exception to be raised later.
+            """
+            Used to cache exception to be raised later.
+            """
             exc_info = None
             delayed_enabled = False
             exception_tuple = () if blacklist is None else tuple(blacklist)
@@ -158,6 +185,16 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
             remaining_time = timeout_min * 60
             is_main_thread = isinstance(threading.current_thread(),
                                         threading._MainThread)
+            if label:
+                details = 'label="%s"' % label
+            elif hasattr(func, '__name__'):
+                details = 'function="%s()"' % func.__name__
+            else:
+                details = 'unknown function'
+
+            exception_message = ('retry exception (%s), timeout = %ds' %
+                                 (details, timeout_min * 60))
+
             while remaining_time > 0:
                 if delayed_enabled:
                     delay()
@@ -182,15 +219,15 @@ def retry(ExceptionToCheck, timeout_min=1.0, delay_sec=3, blacklist=None,
                     # Cache the exception to be raised later.
                     exc_info = sys.exc_info()
 
-                remaining_time = int(timeout_min*60 -
+                remaining_time = int(timeout_min * 60 -
                                      (time.time() - start_time))
 
             # The call must have timed out or raised ExceptionToCheck.
             if not exc_info:
                 if exception_to_raise:
-                    raise exception_to_raise('Call is timed out.')
+                    raise exception_to_raise(exception_message)
                 else:
-                    raise error.TimeoutException('Call is timed out.')
+                    raise error.TimeoutException(exception_message)
             # Raise the cached exception with original backtrace.
             if exception_to_raise:
                 raise exception_to_raise('%s: %s' % (exc_info[0], exc_info[1]))
