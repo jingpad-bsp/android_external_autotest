@@ -84,7 +84,6 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
         checks if the output of that command is what is expected.
         """
         self.ensure_internal_device_boot()
-        self._stop_service('tcsd')
         logging.info('Reading tpmc data.')
         tpmc_output = self.faft_client.system.run_shell_command_get_output(
             'tpmc read 0x1008 0x0d')
