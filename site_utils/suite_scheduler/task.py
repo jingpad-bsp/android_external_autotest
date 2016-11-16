@@ -1008,6 +1008,15 @@ class Task(object):
         """
         logging.info('Running %s on %s', self._name, board)
         for build in launch_control_builds:
+            # Filter out builds don't match the branches setting.
+            # Launch Control branches are merged in
+            # BaseEvents.launch_control_branches_targets property. That allows
+            # each event only query Launch Control once to get all latest
+            # builds. However, when a task tries to run, it should only process
+            # the builds matches the branches specified in task config.
+            if not any([branch in build
+                        for branch in self._launch_control_branches]):
+                continue
             try:
                 self._ScheduleSuite(scheduler, None, None, None,
                                     test_source_build=build,
