@@ -14,6 +14,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from autotest_lib.server import utils as server_utils
 
 try:
     from chromite.lib import metrics
@@ -214,11 +215,22 @@ class BaseUpdater(object):
         logging.info('Triggering update via: %s', autoupdate_cmd)
         to_raise = self._base_update_handler(run_args, err_prefix)
         if metrics:
+            build_name = url_to_image_name(self.update_url)
+            try:
+                board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+            except server_utils.ParseBuildNameException:
+                logging.warning('Unable to parse build name %s for metrics. '
+                                'Continuing anyway.', build_name)
+                board, build_type, milestone = ('', '', '')
             c = metrics.Counter(
                 'chromeos/autotest/autoupdater/trigger')
             f = {'dev_server':
                  dev_server.ImageServer.get_server_name(self.update_url),
-                 'success': to_raise is None }
+                 'success': to_raise is None,
+                 'board': board,
+                 'build_type': build_type,
+                 'milestone': milestone}
             c.increment(fields=f)
         if to_raise:
             raise to_raise
@@ -249,11 +261,22 @@ class BaseUpdater(object):
         logging.info('Updating image via: %s', autoupdate_cmd)
         to_raise = self._base_update_handler(run_args, err_prefix)
         if metrics:
+            build_name = url_to_image_name(self.update_url)
+            try:
+                board, build_type, milestone, _ = server_utils.ParseBuildName(
+                    build_name)
+            except server_utils.ParseBuildNameException:
+                logging.warning('Unable to parse build name %s for metrics. '
+                                'Continuing anyway.', build_name)
+                board, build_type, milestone = ('', '', '')
             c = metrics.Counter(
                 'chromeos/autotest/autoupdater/update')
             f = {'dev_server':
                  dev_server.ImageServer.get_server_name(self.update_url),
-                 'success': to_raise is None }
+                 'success': to_raise is None,
+                 'board': board,
+                 'build_type': build_type,
+                 'milestone': milestone}
             c.increment(fields=f)
         if to_raise:
             raise to_raise
