@@ -26,12 +26,14 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 
 
-def retry_mock(ExceptionToCheck, timeout_min, exception_to_raise=None):
+def retry_mock(ExceptionToCheck, timeout_min, exception_to_raise=None,
+               label=None):
     """A mock retry decorator to use in place of the actual one for testing.
 
     @param ExceptionToCheck: the exception to check.
     @param timeout_mins: Amount of time in mins to wait before timing out.
     @param exception_to_raise: the exception to raise in retry.retry
+    @param label: used in debug messages
 
     """
     def inner_retry(func):
@@ -78,6 +80,7 @@ class RunCallTest(mox.MoxTestBase):
     """Unit tests for ImageServerBase.run_call or DevServer.run_call."""
 
     def setUp(self):
+        """Set up the test"""
         self.test_call = 'http://nothing/test'
         self.contents = 'true'
         self.contents_readline = ['file/one', 'file/two']
@@ -88,6 +91,7 @@ class RunCallTest(mox.MoxTestBase):
 
 
     def tearDown(self):
+        """Tear down the test"""
         dev_server.ENABLE_SSH_CONNECTION_FOR_DEVSERVER = self.save_ssh_config
         super(RunCallTest, self).tearDown()
 
@@ -218,6 +222,7 @@ class DevServerTest(mox.MoxTestBase):
 
 
     def setUp(self):
+        """Set up the test"""
         super(DevServerTest, self).setUp()
         self.crash_server = dev_server.CrashServer(DevServerTest._CRASH_HOST)
         self.dev_server = dev_server.ImageServer(DevServerTest._HOST)
