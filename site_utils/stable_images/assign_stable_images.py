@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Automatically update the afe_stable_versions table.
+"""
+Automatically update the afe_stable_versions table.
 
 This command updates the stable repair version for selected boards
 in the lab.  For each board, if the version that Omaha is serving
@@ -18,17 +19,10 @@ critical scheduling pools.
 See `autotest_lib.site_utils.lab_inventory` for the full definition
 of "managed board".
 
-The command accepts two mutually exclusive options determining
-how changes will be handled:
-  * With no options, the command will make RPC calls to the AFE to
-    update the state according to the rules.
-  * With the `--shell-mode` option, the command will print a series
-    of `atest` commands that will accomplish the changes.
-  * With the `--dry-run` option, the command will compute and report
-    what would be done, but will skip actual RPC calls to change the
-    database.
+The command supports a `--dry-run` option that reports changes that
+would be made, without making the actual RPC calls to change the
+database.
 
-The `--shell-mode` and `--dry-run` options are mutually exclusive.
 """
 
 import argparse
@@ -55,51 +49,199 @@ from autotest_lib.site_utils import lab_inventory
 #
 _OMAHA_STATUS = 'gs://chromeos-build-release-console/omaha_status.json'
 
-# _SET_VERSION - `atest` command that will assign a specific board a
-# specific stable version in the AFE.
-#
-# _DELETE_VERSION - `atest` command that will delete a stable version
-# mapping from the AFE.
-#
+
 # _DEFAULT_BOARD - The distinguished board name used to identify a
 # stable version mapping that is used for any board without an explicit
 # mapping of its own.
 #
-_SET_VERSION = 'atest stable_version modify --board %s --version %s'
-_DELETE_VERSION = ('atest stable_version delete --no-confirmation '
-                   '--board %s')
+# _DEFAULT_VERSION_TAG - A string used to signify that there is no
+# mapping for a board, in other words, the board is mapped to the
+# default version.
+#
 _DEFAULT_BOARD = 'DEFAULT'
+_DEFAULT_VERSION_TAG = '(default)'
 
 
-# Execution modes:
-#
-# _NORMAL_MODE:  no command line options.
-# _DRY_RUN: --dry-run on the command line.
-# _SHELL_MODE: --shell-mode on the command line.
-#
-_NORMAL_MODE = 0
-_DRY_RUN = 1
-_SHELL_MODE = 2
+class _VersionUpdater(object):
+    """
+    Class to report and apply version changes.
+
+    This class is responsible for the low-level logic of applying
+    version upgrades and reporting them as command output.
+
+    This class exists to solve two problems:
+     1. To distinguish "normal" vs. "dry-run" modes.  Each mode has a
+        subclass; methods that perform actual AFE updates are
+        implemented for the normal mode subclass only.
+     2. To provide hooks for unit tests.  The unit tests override both
+        the reporting and modification behaviors, in order to test the
+        higher level logic that decides what changes are needed.
+
+    Methods meant merely to report changes to command output have names
+    starting with "report" or "_report".  Methods that are meant to
+    change the AFE in normal mode have names starting with "_do"
+    """
+
+    def __init__(self, afe):
+        self._afe = afe
+        self._version_map = None
+
+    def select_version_map(self, image_type):
+        """
+        Select an AFE version map object based on `image_type`.
+
+        This creates and remembers an AFE version mapper object to be
+        used for making changes in normal mode.
+
+        @param image_type   Image type parameter for the version mapper
+                            object.
+        @returns The full set of mappings for the image type.
+        """
+        self._version_map = self._afe.get_stable_version_map(image_type)
+        return self._version_map.get_all_versions()
+
+    def announce(self):
+        """Announce the start of processing to the user."""
+        pass
+
+    def report(self, message):
+        """
+        Report a pre-formatted message for the user.
+
+        The message is printed to stdout, followed by a newline.
+
+        @param message The message to be provided to the user.
+        """
+        print message
+
+    def report_default_changed(self, old_default, new_default):
+        """
+        Report that the default version mapping is changing.
+
+        This merely reports a text description of the pending change
+        without executing it.
+
+        @param old_default  The original default version.
+        @param new_default  The new default version to be applied.
+        """
+        self.report('Default %s -> %s' % (old_default, new_default))
+
+    def _report_board_changed(self, board, old_version, new_version):
+        """
+        Report a change in one board's assigned version mapping.
+
+        This merely reports a text description of the pending change
+        without executing it.
+
+        @param board        The board with the changing version.
+        @param old_version  The original version mapped to the board.
+        @param new_version  The new version to be applied to the board.
+        """
+        template = '    %-22s %s -> %s'
+        self.report(template % (board, old_version, new_version))
+
+    def report_board_unchanged(self, board, old_version):
+        """
+        Report that a board's version mapping is unchanged.
+
+        This reports that a board has a non-default mapping that will be
+        unchanged.
+
+        @param board        The board that is not changing.
+        @param old_version  The board's version mapping.
+        """
+        self._report_board_changed(board, '(no change)', old_version)
+
+    def _do_set_mapping(self, board, new_version):
+        """
+        Change one board's assigned version mapping.
+
+        @param board        The board with the changing version.
+        @param new_version  The new version to be applied to the board.
+        """
+        pass
+
+    def _do_delete_mapping(self, board):
+        """
+        Delete one board's assigned version mapping.
+
+        @param board        The board with the version to be deleted.
+        """
+        pass
+
+    def set_mapping(self, board, old_version, new_version):
+        """
+        Change and report a board version mapping.
+
+        @param board        The board with the changing version.
+        @param old_version  The original version mapped to the board.
+        @param new_version  The new version to be applied to the board.
+        """
+        self._report_board_changed(board, old_version, new_version)
+        self._do_set_mapping(board, new_version)
+
+    def upgrade_default(self, new_default):
+        """
+        Apply a default version change.
+
+        @param new_default  The new default version to be applied.
+        """
+        self._do_set_mapping(_DEFAULT_BOARD, new_default)
+
+    def delete_mapping(self, board, old_version):
+        """
+        Delete a board version mapping, and report the change.
+
+        @param board        The board with the version to be deleted.
+        @param old_version  The board's verson prior to deletion.
+        """
+        assert board != _DEFAULT_BOARD
+        self._report_board_changed(board,
+                                   old_version,
+                                   _DEFAULT_VERSION_TAG)
+        self._do_delete_mapping(board)
+
+
+class _DryRunUpdater(_VersionUpdater):
+    """Code for handling --dry-run execution."""
+
+    def announce(self):
+        self.report('Dry run:  no changes will be made.')
+
+
+class _NormalModeUpdater(_VersionUpdater):
+    """Code for handling normal execution."""
+
+    def _do_set_mapping(self, board, new_version):
+        self._version_map.set_version(board, new_version)
+
+    def _do_delete_mapping(self, board):
+        self._version_map.delete_version(board)
 
 
 def _read_gs_json_data(gs_uri):
-    """Read and parse a JSON file from googlestorage.
+    """
+    Read and parse a JSON file from googlestorage.
 
-    A wrapper around `gsutil cat` for the specified URI.  `stdout` of
-    the command is parsed as JSON, and the resulting object returned.
+    This is a wrapper around `gsutil cat` for the specified URI.
+    The standard output of the command is parsed as JSON, and the
+    resulting object returned.
 
     @return A JSON object parsed from `gs_uri`.
     """
     sp = subprocess.Popen(['gsutil', 'cat', gs_uri],
                           stdout=subprocess.PIPE)
-    json_object = json.load(sp.stdout)
-    sp.stdout.close()
-    sp.wait()
+    try:
+        json_object = json.load(sp.stdout)
+    finally:
+        sp.stdout.close()
+        sp.wait()
     return json_object
 
 
 def _make_omaha_versions(omaha_status):
-    """Convert parsed omaha versions data to a versions mapping.
+    """
+    Convert parsed omaha versions data to a versions mapping.
 
     Returns a dictionary mapping board names to the currently preferred
     version for the Beta channel as served by Omaha.  The mappings are
@@ -112,21 +254,20 @@ def _make_omaha_versions(omaha_status):
 
     @return A dictionary mapping Omaha boards to Beta versions.
     """
-    def _get_omaha_board(json_entry):
-        return json_entry['board']['public_codename']
-
-    def _get_omaha_version(json_entry):
+    def _get_omaha_data(json_entry):
+        board = json_entry['board']['public_codename']
         milestone = json_entry['chrome_version'].split('.')[0]
         build = json_entry['chrome_os_version']
-        return 'R%s-%s' % (milestone, build)
+        version = 'R%s-%s' % (milestone, build)
+        return (board, version)
 
-    return {_get_omaha_board(e): _get_omaha_version(e)
-                for e in omaha_status['omaha_data']
-                if e['channel'] == 'beta'}
+    return dict([_get_omaha_data(e) for e in omaha_status['omaha_data']
+                    if e['channel'] == 'beta'])
 
 
 def _get_upgrade_versions(afe_versions, omaha_versions, boards):
-    """Get the new stable versions to which we should update.
+    """
+    Get the new stable versions to which we should update.
 
     The new versions are returned as a tuple of a dictionary mapping
     board names to versions, plus a new default board setting.  The
@@ -162,98 +303,59 @@ def _get_upgrade_versions(afe_versions, omaha_versions, boards):
             max(version_counts.items(), key=lambda x: x[1])[0])
 
 
-def _set_stable_version(version_map, mode, board, version):
-    """Call the AFE to change a stable version mapping.
-
-    Setting the mapping for the distinguished board name
-    `_DEFAULT_BOARD` will change the default mapping for any board
-    that doesn't have its own mapping.
-
-    @param version_map  Object for stable version RPC calls.
-    @param mode         Mode indicating whether to print a shell
-                        command, call an RPC, or do nothing.
-    @param board        Update the mapping for this board.
-    @param version      Update the board to this version.
+def _apply_cros_upgrades(updater, old_versions, new_versions,
+                         new_default):
     """
-    if mode == _SHELL_MODE:
-        print _SET_VERSION % (board, version)
-    elif mode == _NORMAL_MODE:
-        version_map.set_version(board, version)
+    Change CrOS stable version mappings in the AFE.
 
+    The input `old_versions` dictionary represents the content of the
+    `afe_stable_versions` database table; it contains mappings for a
+    default version, plus exceptions for boards with non-default
+    mappings.
 
-def _delete_stable_version(version_map, mode, board):
-    """Call the AFE to delete a stable version mapping.
+    The `new_versions` dictionary contains a mapping for every board,
+    including boards that will be mapped to the new default version.
 
-    Deleting a mapping causes the board to revert to the current default
-    mapping in the AFE.
+    This function applies the AFE changes necessary to produce the new
+    AFE mappings indicated by `new_versions` and `new_default`.  The
+    changes are ordered so that at any moment, every board is mapped
+    either according to the old or the new mapping.
 
-    @param version_map  Object for stable version RPC calls.
-    @param mode         Mode indicating whether to print a shell
-                        command, call an RPC, or do nothing.
-    @param board        Delete the mapping for this board.
+    @param updater        Instance of _VersionUpdater responsible for
+                          making the actual database changes.
+    @param old_versions   The current board->version mappings in the
+                          AFE.
+    @param new_versions   New board->version mappings obtained by
+                          applying Beta channel upgrades from Omaha.
+    @param new_default    The new default build for the AFE.
     """
-    assert board != _DEFAULT_BOARD
-    if mode == _SHELL_MODE:
-        print _DELETE_VERSION % board
-    elif mode == _NORMAL_MODE:
-        version_map.delete_version(board)
-
-
-def _apply_upgrades(version_map, mode, afe_versions,
-                    upgrade_versions, new_default):
-    """Change stable version mappings in the AFE.
-
-    Update the `afe_stable_versions` database table to have the new
-    settings indicated by `upgrade_versions` and `new_default`.  Order
-    the changes so that at any moment, every board is mapped either
-    according to the old or the new mapping.
-
-    @param version_map        Object for stable version RPC calls.
-    @param mode               Mode indicating whether the action is to
-                              print shell commands, do nothing, or
-                              actually make RPC calls for changes.
-    @param afe_versions       The current board->version mappings in the
-                              AFE.
-    @param upgrade_versions   The current board->version mappings from
-                              Omaha for the Beta channel.
-    @param new_default        The new default build for the AFE.
-    """
-    old_default = afe_versions[_DEFAULT_BOARD]
-    if mode != _SHELL_MODE and new_default != old_default:
-        print 'Default %s -> %s' % (old_default, new_default)
-        print 'Applying stable version changes:'
-    # N.B. The ordering here matters:  Any board that will have a
-    # non-default stable version must be updated _before_ we change the
-    # default mapping, below.
-    for board, build in upgrade_versions.items():
-        if build == new_default:
-            continue
-        if board in afe_versions and build == afe_versions[board]:
-            if mode == _SHELL_MODE:
-                message = '# Leave board %s at %s'
-            else:
-                message = '    %-22s (no change) -> %s'
-            print message % (board, build)
+    old_default = old_versions[_DEFAULT_BOARD]
+    if old_default != new_default:
+        updater.report_default_changed(old_default, new_default)
+    updater.report('Applying stable version changes:')
+    default_count = 0
+    for board, new_build in new_versions.items():
+        if new_build == new_default:
+            default_count += 1
+        elif board in old_versions and new_build == old_versions[board]:
+            updater.report_board_unchanged(board, new_build)
         else:
-            if mode != _SHELL_MODE:
-                old_build = afe_versions.get(board, '(default)')
-                print '    %-22s %s -> %s' % (board, old_build, build)
-            _set_stable_version(version_map, mode, board, build)
-    # At this point, all non-default mappings have been installed.
-    # If there's a new default mapping, make that change now, and delete
-    # any non-default mappings made obsolete by the update.
-    if new_default != old_default:
-        _set_stable_version(version_map, mode, _DEFAULT_BOARD, new_default)
-    for board, build in upgrade_versions.items():
-        if board in afe_versions and build == new_default:
-            if mode != _SHELL_MODE:
-                print ('    %-22s %s -> (default)' %
-                       (board, afe_versions[board]))
-            _delete_stable_version(version_map, mode, board)
+            old_build = old_versions.get(board)
+            if old_build is None:
+                old_build = _DEFAULT_VERSION_TAG
+            updater.set_mapping(board, old_build, new_build)
+    if old_default != new_default:
+        updater.upgrade_default(new_default)
+    for board, new_build in new_versions.items():
+        if new_build == new_default and board in old_versions:
+            updater.delete_mapping(board, old_versions[board])
+    updater.report('%d boards now use the default mapping' %
+                   default_count)
 
 
 def _parse_command_line(argv):
-    """Parse the command line arguments.
+    """
+    Parse the command line arguments.
 
     Create an argument parser for this command's syntax, parse the
     command line, and return the result of the ArgumentParser
@@ -268,44 +370,37 @@ def _parse_command_line(argv):
             prog=argv[0],
             description='Update the stable repair version for all '
                         'boards')
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument('-x', '--shell-mode', dest='mode',
-                            action='store_const', const=_SHELL_MODE,
-                            help='print shell commands to make the '
-                                 'changes')
-    mode_group.add_argument('-n', '--dry-run', dest='mode',
-                            action='store_const', const=_DRY_RUN,
-                            help='print changes without executing them')
+    parser.add_argument('-n', '--dry-run', dest='updater_mode',
+                        action='store_const', const=_DryRunUpdater,
+                        help='print changes without executing them')
     parser.add_argument('extra_boards', nargs='*', metavar='BOARD',
                         help='Names of additional boards to be updated.')
     arguments = parser.parse_args(argv[1:])
-    if not arguments.mode:
-        arguments.mode = _NORMAL_MODE
+    if not arguments.updater_mode:
+        arguments.updater_mode = _NormalModeUpdater
     return arguments
 
 
 def main(argv):
-    """Standard main routine.
+    """
+    Standard main routine.
 
     @param argv  Command line arguments including `sys.argv[0]`.
     """
     arguments = _parse_command_line(argv)
-    if arguments.mode == _DRY_RUN:
-        print 'Dry run; no changes will be made.'
     afe = frontend_wrappers.RetryingAFE(server=None)
-    version_map = afe.get_stable_version_map(afe.CROS_IMAGE_TYPE)
+    updater = arguments.updater_mode(afe)
+    updater.announce()
     boards = (set(arguments.extra_boards) |
               lab_inventory.get_managed_boards(afe))
-    # The 'get_all_stable_versions' RPC returns a dictionary mapping
-    # `_DEFAULT_BOARD` to the current default version, plus a set of
-    # non-default board -> version mappings.
-    afe_versions = version_map.get_all_versions()
+
+    afe_versions = updater.select_version_map(afe.CROS_IMAGE_TYPE)
     omaha_versions = _make_omaha_versions(
             _read_gs_json_data(_OMAHA_STATUS))
     upgrade_versions, new_default = (
         _get_upgrade_versions(afe_versions, omaha_versions, boards))
-    _apply_upgrades(version_map, arguments.mode, afe_versions,
-                    upgrade_versions, new_default)
+    _apply_cros_upgrades(updater, afe_versions,
+                         upgrade_versions, new_default)
 
 
 if __name__ == '__main__':
