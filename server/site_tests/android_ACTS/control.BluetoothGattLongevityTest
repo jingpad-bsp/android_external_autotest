@@ -6,6 +6,8 @@ AUTHOR = 'tturney'
 NAME = 'android_ACTS.BluetoothGattLongevityTest'
 TIME = 'Long'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_bluetooth_longev_gatt'
+DEPENDENCIES = 'bluetoothcell'
 
 DOC = """
 This test runs BluetoothGattLongevityTest against a Bluetooth test bed.
