@@ -206,11 +206,13 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
     retries on urllib2.URLError or error.CmdError to avoid devserver flakiness.
     """
     #pylint: disable=C0111
-    def inner_decorator(method):
 
+    def inner_decorator(method):
+        label = method.__name__ if hasattr(method, '__name__') else None
         @retry.retry((urllib2.URLError, error.CmdError),
                      timeout_min=timeout_min,
-                     exception_to_raise=exception_to_raise)
+                     exception_to_raise=exception_to_raise,
+                     label=label)
         def wrapper(*args, **kwargs):
             """This wrapper actually catches the HTTPError."""
             try:
