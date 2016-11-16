@@ -31,7 +31,7 @@ public class SuiteRunnerView extends TabView {
   private ListBox boardSelector;
   private ListBox buildSelector;
   private ListBox suiteSelector;
-  private TextBox poolTextBox;
+  private ListBox poolSelector;
   private Button actionButton;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq", "bvt-inline",
@@ -48,16 +48,18 @@ public class SuiteRunnerView extends TabView {
     boardSelector.clear();
     buildSelector.clear();
     suiteSelector.clear();
-    poolTextBox.setText("");
+    poolSelector.clear();
 
     buildSelector.addItem("Select the build");
     suiteSelector.addItem("Select the suite");
+    poolSelector.addItem("Select the pool");
 
     for (String suite : suiteNames) {
       suiteSelector.addItem(suite);
     }
 
     loadBoards();
+    loadPools();
     addWidget(suiteRunnerMainPanel, "view_suite_run");
   };
 
@@ -68,8 +70,7 @@ public class SuiteRunnerView extends TabView {
     boardSelector = new ListBox();
     buildSelector = new ListBox();
     suiteSelector = new ListBox();
-    poolTextBox = new TextBox();
-    poolTextBox.setStyleName("run_suite_textbox");
+    poolSelector = new ListBox();
 
     boardSelector.addChangeHandler(new ChangeHandler() {
       @Override
@@ -97,34 +98,37 @@ public class SuiteRunnerView extends TabView {
     });
     suiteSelector.setStyleName("run_suite_selector");
 
+    poolSelector.setEnabled(false);
+    poolSelector.setStyleName("run_suite_selector");
+
     HorizontalPanel firstLine = createHorizontalLineItem("Select board:", boardSelector);
     HorizontalPanel secondLine = createHorizontalLineItem("Select build:", buildSelector);
     HorizontalPanel thirdLine = createHorizontalLineItem("Select suite:", suiteSelector);
-    HorizontalPanel fourthLine = createHorizontalLineItem("Pool (Optional):", poolTextBox);
-    fourthLine.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
-
+    HorizontalPanel fourthLine = createHorizontalLineItem("Pool (Optional):", poolSelector);
 
     actionButton = new Button("Run Suite", new ClickHandler() {
       public void onClick(ClickEvent event) {
         int boardSelection = boardSelector.getSelectedIndex();
         int buildSelection = buildSelector.getSelectedIndex();
         int suiteSelection = suiteSelector.getSelectedIndex();
+        int poolSelection = poolSelector.getSelectedIndex();
         if (boardSelection != 0 && buildSelection != 0 && suiteSelection != 0) {
+	  String poolLabel = new String();
+	  if (poolSelection != 0) {
+	    poolLabel = poolSelector.getItemText(poolSelection);
+	  }
           runSuite(boardSelector.getItemText(boardSelection),
               buildSelector.getItemText(buildSelection),
               suiteSelector.getItemText(suiteSelection),
-              poolTextBox.getText());
+              poolLabel);
         } else {
           Window.alert("You have to select a valid board, build and suite.");
         }
-
       }});
+
     actionButton.setEnabled(false);
     actionButton.setStyleName("run_suite_button");
-    SimplePanel spacer = new SimplePanel();
-    spacer.setStyleName("run_suite_spacer");
-    fourthLine.add(spacer);
-    fourthLine.add(actionButton);
+    HorizontalPanel fifthLine = createHorizontalLineItem("", actionButton);
 
     suiteRunnerMainPanel = new VerticalPanel();
 
@@ -132,6 +136,7 @@ public class SuiteRunnerView extends TabView {
     suiteRunnerMainPanel.add(secondLine);
     suiteRunnerMainPanel.add(thirdLine);
     suiteRunnerMainPanel.add(fourthLine);
+    suiteRunnerMainPanel.add(fifthLine);
   }
 
   private HorizontalPanel createHorizontalLineItem(String label, Widget item) {
@@ -192,6 +197,26 @@ public class SuiteRunnerView extends TabView {
   }
 
   /**
+   * Call an RPC to get the pools that are configured on the devices connected to the moblab. 
+   * and fill in the .
+   */
+  private void loadPools() {
+    poolSelector.setEnabled(false);
+    poolSelector.clear();
+    poolSelector.addItem("Select a pool");
+    MoblabRpcHelper.fetchConnectedPools(new MoblabRpcCallbacks.FetchConnectedPoolsCallback() {
+      @Override
+      public void onFetchConnectedPoolsSubmitted(List<String> connectedPools) {
+        for (String connectedPool : connectedPools) {
+          poolSelector.addItem(connectedPool);
+        }
+        poolSelector.setEnabled(true);
+      }
+    });
+  }
+
+
+  /**
    * Make a RPC to get the most recent builds available for the specified board and populate them
    * in the dropdown.
    * @param selectedBoard
@@ -223,7 +248,7 @@ public class SuiteRunnerView extends TabView {
   private void runSuite(String board, String build, String suite, String pool) {
     String realPoolLabel = pool;
     if (pool != null && !pool.isEmpty()) {
-      realPoolLabel = new StringBuilder("pool:").append(pool.trim()).toString();
+      realPoolLabel = pool.trim();
     }
     MoblabRpcHelper.runSuite(board, build, suite, realPoolLabel, new RunSuiteCallback() {
       @Override

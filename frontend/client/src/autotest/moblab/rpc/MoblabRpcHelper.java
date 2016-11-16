@@ -274,6 +274,22 @@ public class MoblabRpcHelper {
     });
   }
 
+  public static void fetchConnectedPools(
+      final MoblabRpcCallbacks.FetchConnectedPoolsCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    rpcProxy.rpcCall("get_connected_pools", null, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        List<String> pools = new LinkedList<String>();
+        int poolListSize = result.isArray().size();
+        for (int i = 0; i < poolListSize; i++) {
+          pools.add(result.isArray().get(i).isString().stringValue());
+        }
+        callback.onFetchConnectedPoolsSubmitted(pools);
+      }
+    });
+  }
+
   public static void fetchBuildsForBoard(String board_name,
       final MoblabRpcCallbacks.FetchBuildsForBoardCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
