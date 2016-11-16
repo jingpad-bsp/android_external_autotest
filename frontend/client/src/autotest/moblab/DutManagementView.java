@@ -134,6 +134,20 @@ public class DutManagementView extends TabView {
     poolLabelName = new TextBox();
     poolLabelName.setStyleName("dut_manage_action_row_item");
     poolCheckBox.setEnabled(false);
+
+   // Assemble the display panels in the correct order.
+    dutSetupPanel.add(dutInfoTable);
+    HorizontalPanel actionRow = new HorizontalPanel();
+    actionRow.setStyleName("dut_manage_action_row");
+    actionRow.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
+    actionRow.add(options);
+    actionRow.add(poolCheckBox);
+    actionRow.add(poolLabel);
+    actionRow.add(poolLabelName);
+    actionRow.add(actionButton);
+    dutSetupPanel.add(actionRow);
+    dutSetupPanel.add(informationArea);
+    addWidget(dutSetupPanel, "view_dut_manage");
     poolLabelName.setEnabled(false);
   }
 
@@ -146,7 +160,6 @@ public class DutManagementView extends TabView {
   }
 
   private void loadData() {
-
     MoblabRpcHelper.fetchDutInformation(new MoblabRpcCallbacks.FetchConnectedDutInfoCallback() {
       @Override
       public void onFetchConnectedDutInfoSubmitted(ConnectedDutInfo info) {
@@ -175,20 +188,6 @@ public class DutManagementView extends TabView {
         }
       }
     });
-
-    // Assemble the display panels in the correct order.
-    dutSetupPanel.add(dutInfoTable);
-    HorizontalPanel actionRow = new HorizontalPanel();
-    actionRow.setStyleName("dut_manage_action_row");
-    actionRow.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
-    actionRow.add(options);
-    actionRow.add(poolCheckBox);
-    actionRow.add(poolLabel);
-    actionRow.add(poolLabelName);
-    actionRow.add(actionButton);
-    dutSetupPanel.add(actionRow);
-    dutSetupPanel.add(informationArea);
-    addWidget(dutSetupPanel, "view_dut_manage");
   }
 
   /**
