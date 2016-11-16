@@ -6,6 +6,8 @@ AUTHOR = 'tturney'
 NAME = 'android_ACTS.BluetoothRfcommLongevityTest'
 TIME = 'Long'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_bluetooth_longev_rfcomm'
+DEPENDENCIES = 'bluetoothcell'
 
 DOC = """
 This test runs BluetoothRfcommLongevityTest against a Bluetooth test bed.
