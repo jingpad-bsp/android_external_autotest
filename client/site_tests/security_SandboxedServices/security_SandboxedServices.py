@@ -236,7 +236,7 @@ class security_SandboxedServices(test.test):
             if exe == "kthreadd":
                 kthreadd_pid = process.pid
                 continue
-            elif exe == 'init':
+            elif process.pid == "1":
                 init_process = process
                 continue
 
@@ -248,6 +248,9 @@ class security_SandboxedServices(test.test):
                 continue
 
             running_services[exe] = process
+
+        if not init_process:
+            raise error.TestFail("Cannot find init process")
 
         # Find differences between running services and baseline
         services_set = set(running_services.keys())
