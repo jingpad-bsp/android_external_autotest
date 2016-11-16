@@ -38,6 +38,7 @@ class android_ACTS(test.test):
                  test_case=None,
                  test_file=None,
                  additional_configs=[],
+                 additional_apks={},
                  override_build_url=None,
                  override_acts_zip=None,
                  override_internal_acts_dir=None,
@@ -56,6 +57,11 @@ class android_ACTS(test.test):
         @param additional_configs: Any additional config files to use.
                                    These should be relative to the
                                    autotest_config folder.
+        @param additional_apks: An array of apk info dictionaries.
+                                apk = Name of the apk (eg. sl4a.apk)
+                                package = Name of the package (eg. test.tools)
+                                artifact = Name of the artifact, if not given
+                                           package is used.
         @param override_build_url: The build url to fetch acts from. If None
                                    then the build url of the first adb device
                                    is used.
@@ -108,6 +114,10 @@ class android_ACTS(test.test):
                                              override_internal_acts_dir)
 
         container.install_sl4a_apk(testbed)
+
+        for apk in additional_apks:
+            container.install_apk(apk)
+
         container.setup_enviroment(python_bin=override_python_bin)
 
         container.upload_config(config_file)
