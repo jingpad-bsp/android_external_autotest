@@ -198,6 +198,23 @@ class ActsContainer(object):
                     constants.SL4A_PACKAGE,
                     package_name=constants.SL4A_PACKAGE)
 
+    def install_apk(self, apk_info, testbed):
+        """Installs an additional apk on all adb devices.
+
+        @param testbed: The testbed of phones to install to.
+        @param apk_info: A dictionary contianing the apk info. This dicitonary
+                         should contain the keys apk="Name of the apk",
+                         package="Name of the package". Additionally it can
+                         contain artifact="Name of the artifact", if missing
+                         the package name is used.
+        """
+        for serial, adb_host in testbed.get_adb_devices().iteritems():
+            adb_utils.install_apk_from_build(
+                    adb_host,
+                    apk_info['apk'],
+                    apk_info.get('artifact') or apk_info['package'],
+                    package_name=apk_info['package'])
+
     def get_test_paths(self):
         """Get all test paths within this container.
 
