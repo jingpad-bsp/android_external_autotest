@@ -1923,6 +1923,17 @@ class ImageServer(ImageServerBase):
                                     'process failed.')))
 
 
+    def get_file(self, source, dest):
+        """Download file from devserver.
+
+        The format of dest should be:
+            http://devserver_ip:8082/static/board/...
+        """
+        response = self.run_call(dest)
+        with open(source, 'w') as out_log:
+            out_log.write(response)
+
+
 class AndroidBuildServer(ImageServerBase):
     """Class for DevServer that handles RPCs related to Android builds.
 
