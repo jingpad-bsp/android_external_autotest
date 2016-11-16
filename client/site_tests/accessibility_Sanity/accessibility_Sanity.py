@@ -51,7 +51,8 @@ class accessibility_Sanity(a11y_test_base.a11y_test_base):
         """Entry point of this test."""
         extension_path = self._get_extension_path()
 
-        with chrome.Chrome(extension_paths=[extension_path]) as cr:
+        with chrome.Chrome(extension_paths=[extension_path],
+                           is_component=False) as cr:
             self._extension = cr.get_extension(extension_path)
 
             # Open test page.
