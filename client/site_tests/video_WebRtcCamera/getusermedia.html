@@ -2,7 +2,7 @@
 <html>
 <head><title>Loopback test</title></head>
 <body>
-  <video id="localVideo" width="1280" height="720" autoplay muted></video>
+  <video id="localVideo" autoplay muted></video>
 <script src="ssim.js"></script>
 <script src="blackframe.js"></script>
 <script>
@@ -39,6 +39,12 @@ function getResults() {
   return results;
 }
 
+function resolutionMatchesIndependentOfRotation(aWidth, aHeight,
+                                                bWidth, bHeight) {
+  return (aWidth === bWidth && aHeight === bHeight) ||
+         (aWidth === bHeight && aHeight === bWidth);
+}
+
 function saveResult(resolution, verdict) {
   results[resolution] = verdict;
 }
@@ -65,7 +71,9 @@ function CameraTest(resolution) {
     "video": {
       "mandatory" : {
           "maxWidth": this.resolution[0].toString(),
-          "maxHeight": this.resolution[1].toString()
+          "maxHeight": this.resolution[1].toString(),
+          "minWidth": this.resolution[0].toString(),
+          "minHeight": this.resolution[1].toString()
       },
     }
   };
@@ -94,6 +102,14 @@ CameraTest.prototype = {
   },
 
   startCheckingVideoFrames: function() {
+    if (!resolutionMatchesIndependentOfRotation(this.localVideo.videoWidth,
+        this.localVideo.videoHeight, this.resolution[0], this.resolution[1])) {
+      this.results.cameraErrors.push('resolution', 'Got ' +
+          this.localVideo.videoWidth + 'x' + this.localVideo.videoHeight +
+          ', expected ' + this.resolution[0] + 'x' + this.resolution[1] +
+          ' or rotated version thereof');
+    }
+
     this.videoFrameChecker = setInterval(this.checkVideoFrame.bind(this), 20);
   },
 
