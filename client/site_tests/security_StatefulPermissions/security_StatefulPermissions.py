@@ -23,7 +23,8 @@ class security_StatefulPermissions(test.test):
     # by 'security_ProfilePermissions'.
     _masks_byuser = {"adm": [],
                      "android-root": ["/encrypted/var/log/android.kmsg"],
-                     "attestation": ["/unencrypted/preserve/attestation.epb"],
+                     "attestation": ["/unencrypted/preserve",
+                                     "/unencrypted/preserve/attestation.epb"],
                      "avfs": [],
                      "bin": [],
                      "bluetooth": ["/encrypted/var/lib/bluetooth"],
@@ -76,6 +77,8 @@ class security_StatefulPermissions(test.test):
                      "syslog": ["/encrypted/var/log"],
                      "tcpdump": [],
                      "tlsdate": [],
+                     "tpm_manager": ["/encrypted/var/lib/tpm_manager",
+                                     "/unencrypted/preserve"],
                      "tss": ["/var/lib/tpm"],
                      "uucp": [],
                      "wpa": [],
@@ -93,13 +96,11 @@ class security_StatefulPermissions(test.test):
 
         # 'preserve/log' is test-only.
         paths.append("/unencrypted/preserve/log")
-        paths.append("/unencrypted/preserve")
 
         # Cover up Portage noise.
         paths.append("/encrypted/var/cache/edb")
         paths.append("/encrypted/var/lib/gentoo")
         paths.append("/encrypted/var/log/portage")
-        paths.append("/encrypted/var/lib/tpm_manager")
 
         # Cover up Autotest noise.
         paths.append("/dev_image")
