@@ -430,17 +430,20 @@ def _upload_files(host, path, result_pattern, multiprocessing):
         os.remove(test_result_file_gz)
 
 
-def _create_test_result_notification(gs_path):
+def _create_test_result_notification(gs_path, dir_entry):
     """Construct a test result notification.
 
     @param gs_path: The test result Google Cloud Storage URI.
+    @param dir_entry: The local offload directory name.
 
     @returns The notification message.
     """
+    gcs_uri = os.path.join(gs_path, os.path.basename(dir_entry))
+    logging.info('Notification on gcs_uri %s', gcs_uri)
     data = base64.b64encode(NEW_TEST_RESULT_MESSAGE)
     msg_payload = {'data': data}
     msg_attributes = {}
-    msg_attributes[NOTIFICATION_ATTR_GCS_URI] = gs_path
+    msg_attributes[NOTIFICATION_ATTR_GCS_URI] = gcs_uri
     msg_attributes[NOTIFICATION_ATTR_VERSION] = NOTIFICATION_VERSION
     msg_attributes[NOTIFICATION_ATTR_MOBLAB_MAC] = \
         site_utils.get_default_interface_mac_address()
@@ -515,7 +518,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                     counter.increment('jobs_offloaded')
 
                     if pubsub_topic:
-                        message = _create_test_result_notification(gs_path)
+                        message = _create_test_result_notification(
+                                gs_path, dir_entry)
                         msg_ids = pubsub_utils.publish_notifications(
                                 pubsub_topic, [message])
                         if not msg_ids:

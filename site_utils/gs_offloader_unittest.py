@@ -510,7 +510,8 @@ class PubSubTest(mox.MoxTestBase):
         site_utils.get_moblab_id().AndReturn(
             'c8386d92-9ad1-11e6-80f5-111111111111')
         self.mox.ReplayAll()
-        msg = gs_offloader._create_test_result_notification('gs://test_bucket')
+        msg = gs_offloader._create_test_result_notification(
+                'gs://test_bucket', '123-moblab')
         self.assertEquals(base64.b64encode(
             gs_offloader.NEW_TEST_RESULT_MESSAGE), msg['data'])
         self.assertEquals(
@@ -523,7 +524,7 @@ class PubSubTest(mox.MoxTestBase):
             'c8386d92-9ad1-11e6-80f5-111111111111',
             msg['attributes'][gs_offloader.NOTIFICATION_ATTR_MOBLAB_ID])
         self.assertEquals(
-            'gs://test_bucket',
+            'gs://test_bucket/123-moblab',
             msg['attributes'][gs_offloader.NOTIFICATION_ATTR_GCS_URI])
         self.mox.VerifyAll()
 
