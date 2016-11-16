@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, os, re, shutil, time
+import collections, logging, os, re, shutil, time
 
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
@@ -282,27 +282,63 @@ class Suspender(object):
 
         raise error.TestError('Failed to find device resume time in syslog.')
 
+    def _get_phase_times(self):
+        phase_times = []
+        regex = re.compile(r'PM: (\w+ )?(resume|suspend) of devices complete')
+        for line in self._logs:
+          match = regex.search(line)
+          if match:
+            ts = cros_logging.extract_kernel_timestamp(line)
+            phase = match.group(1)
+            if not phase:
+              phase = 'REG'
+            phase_times.append((phase.upper(), ts))
+        return sorted(phase_times, key = lambda entry: entry[1])
+
+    def _get_phase(self, ts, phase_table, dev):
+      for entry in phase_table:
+        #checking if timestamp was before that phase's cutoff
+        if ts < entry[1]:
+          return entry[0]
+      raise error.TestError('Device %s has a timestamp after all devices %s',
+                            dev, 'had already resumed')
 
     def _individual_device_times(self, start_resume):
         """Return dict of individual device suspend and resume times."""
         self.device_times.append(dict())
+        dev_details = collections.defaultdict(dict)
         regex = re.compile(r'call ([^ ]+)\+ returned 0 after ([0-9]+) usecs')
+        phase_table = self._get_phase_times()
         for line in self._logs:
-            match = regex.search(line)
-            if match:
-                key = 'seconds_dev_' + match.group(1).replace(':', '-')
-                secs = float(match.group(2)) / 1e6
-                if cros_logging.extract_kernel_timestamp(line) > start_resume:
-                    key += '_resume'
-                else:
-                    key += '_suspend'
-                if key in self.device_times[-1]:
-                    logging.warning('Duplicate entry for %s: +%f', key, secs)
-                    self.device_times[-1][key] += secs
-                else:
-                    logging.debug('%s: %f', key, secs)
-                    self.device_times[-1][key] = secs
+          match = regex.search(line)
+          if match:
+            device = match.group(1).replace(':', '-')
+            key = 'seconds_dev_' + device
+            secs = float(match.group(2)) / 1e6
+            ts = cros_logging.extract_kernel_timestamp(line)
+            if ts > start_resume:
+              key += '_resume'
+            else:
+              key += '_suspend'
+            #looking if we're in a special phase
+            phase = self._get_phase(ts, phase_table, device)
+            dev = dev_details[key]
+            if phase in dev:
+              logging.warning('Duplicate %s entry for device %s, +%f', phase,
+                              device, secs)
+              dev[phase] += secs
+            else:
+              dev[phase] = secs
 
+        for dev_key, dev in dev_details.iteritems():
+          total_secs = sum(dev.values())
+          self.device_times[-1][dev_key] = total_secs
+          report = '%s: %f TOT' % (dev_key, total_secs)
+          for phase in dev.keys():
+            if phase is 'REG':
+              continue
+            report += ', %f %s' % (dev[phase], phase)
+          logging.debug(report)
 
     def _identify_driver(self, device):
         """Return the driver name of a device (or "unknown")."""
