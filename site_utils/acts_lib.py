@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import errno
 import json
 import logging
 import os
@@ -412,20 +411,11 @@ class ActsContainer(object):
             act_result = None
             excep = e
 
-        results_file = os.path.join(self.log_directory, testbed_name, 'latest',
-                                    'test_run_summary.json')
-        cat_log_result = self.test_station.run('cat %s' % results_file,
-                                               ignore_status=True)
-        if not cat_log_result.exit_status:
-            json_results = json.loads(cat_log_result.stdout)
-        else:
-            json_results = {}
-
         return ActsTestResults(test_case or campaign,
                                testbed,
                                testbed_name=testbed_name,
                                run_result=act_result,
-                               json_results=json_results,
+                               log_directory=self.log_directory,
                                exception=excep)
 
 
@@ -443,7 +433,7 @@ class ActsTestResults(object):
                  testbed,
                  testbed_name=None,
                  run_result=None,
-                 json_results=None,
+                 log_directory=None,
                  exception=None):
         """
         @param name: A name to identify the test run.
@@ -451,13 +441,14 @@ class ActsTestResults(object):
         @param testbed_name: The name the testbed was run with, if none the
                              default name of the testbed is used.
         @param run_result: The raw i/o result of the test run.
-        @param json_results: Results loaded from the summary json output.
+        @param log_directory: The directory that acts logged to.
         @param exception: An exception that was thrown while running the test.
         """
         self.name = name
         self.run_result = run_result
-        self.json_results = json_results
         self.exception = exception
+        self.log_directory = log_directory
+        self.test_station = testbed.teststation
 
         self.testbed = testbed
         if not testbed_name:
@@ -472,6 +463,18 @@ class ActsTestResults(object):
 
         self.reported_to = set()
 
+        self.json_results = {}
+        self.results_dir = None
+        if self.log_directory:
+            self.results_dir = os.path.join(self.log_directory,
+                                            self.testbed_name, 'latest')
+            results_file = os.path.join(self.results_dir,
+                                        'test_run_summary.json')
+            cat_log_result = self.test_station.run('cat %s' % results_file,
+                                                   ignore_status=True)
+            if not cat_log_result.exit_status:
+                self.json_results = json.loads(cat_log_result.stdout)
+
     def log_output(self):
         """Logs the output of the test."""
         if self.run_result:
@@ -482,34 +485,31 @@ class ActsTestResults(object):
         if self.exception:
             raise self.exception
 
-    def save_to(self, local_file):
-        """Saves the test results to a file.
+    def upload_to_local(self, local_dir):
+        """Saves all acts results to a local directory.
 
-        Takes the json results and saves them to a json file on the drone.
-
-        @param local_file: The file on the drone to save to.
+        @param local_dir: The directory on the local machine to save all results
+                          to.
         """
-        try:
-            os.makedirs(os.path.dirname(local_file))
-        except IOError as e:
-            if e.errno != errno.EEXIST:
-                raise
-        with open(local_file, mode='w') as fd:
-            json.dump(self.json_results, fd)
+        if self.results_dir:
+            self.test_station.get_file(self.results_dir, local_dir)
 
     def upload_to_sponge(self, test):
         """Uploads the results to sponge.
 
         @param test: The autotest test object to upload.
         """
-        self.report_to_autotest(test)
-        summary_file = os.path.join(test.resultsdir, self.testbed_name,
-                                    'latest/test_run_summary.json')
-        self.save_to(summary_file)
-        sponge_utils.upload_results_in_test(test, acts_summary=summary_file)
+        if self.results_dir:
+            self.report_to_autotest(test)
+            summary_file = os.path.join(test.resultsdir,
+                                        'test_run_summary.json')
+            sponge_utils.upload_results_in_test(test, acts_summary=summary_file)
 
     def report_to_autotest(self, test):
         """Reports the results to an autotest test object.
+
+        Reports the results to the test and saves all acts results under the
+        tests results directory.
 
         @param test: The autotest test object to report to. If this test object
                      has already recived our report then this call will be
@@ -517,6 +517,9 @@ class ActsTestResults(object):
         """
         if test in self.reported_to:
             return
+
+        if self.results_dir:
+            self.upload_to_local(test.resultsdir)
 
         if not 'Results' in self.json_results:
             return
