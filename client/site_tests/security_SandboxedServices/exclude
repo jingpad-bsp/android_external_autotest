@@ -24,6 +24,7 @@ x11vnc
 
 # TODO: We should use a diff name to check against here (i.e. the script).
 bash
+dash
 python
 python2
 python2.7
