@@ -257,6 +257,8 @@ class BaseEvent(object):
                 ['git_mnc_release/shamu-eng/123',
                  'git_mnc_release/shamu-eng/124'].
         """
+        # Translate board name to the actual board name in build target.
+        board = utils.ANDROID_BOARD_TO_TARGET_MAP.get(board, board)
         # Pick a random devserver based on tick, this is to help load balancing
         # across all devservers.
         devserver = dev_server.AndroidBuildServer.random()
