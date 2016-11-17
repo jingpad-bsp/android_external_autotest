@@ -31,6 +31,7 @@ import common
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -272,8 +273,7 @@ def download_extract(url, target, extract_dir):
     @param target: Path of the file to save to.
     @param extract_dir: Directory to extract the content of the file to.
     """
-    utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target),
-              stderr_tee=utils.TEE_TO_LOGS)
+    dev_server.DevServer.get_file(url, target, timeout=300)
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
