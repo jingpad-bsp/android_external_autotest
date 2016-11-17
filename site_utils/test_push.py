@@ -127,6 +127,7 @@ all_suite_ids = manager.list()
 # A dict maps the name of the updated repos and the path of them.
 UPDATED_REPOS = {'autotest': AUTOTEST_DIR,
                  'chromite': '%s/site-packages/chromite/' % AUTOTEST_DIR}
+PUSH_USER = 'chromeos-test-lab'
 
 class TestPushException(Exception):
     """Exception to be raised when the test to push to prod failed."""
@@ -543,11 +544,31 @@ def get_head_of_repos(repos):
     return updated_repo_heads
 
 
+def push_prod_next_branch(updated_repo_heads):
+    """push prod-next branch to the tested HEAD after all tests pass.
+
+    The push command must be ran as PUSH_USER, since only PUSH_USER has the
+    right to push branches.
+
+    @param updated_repo_heads: a map of repo names to tested HEAD of that repo.
+    """
+    # prod-next branch for every repo is downloaded under PUSH_USER home dir.
+    cmd = 'cd ~/{repo}; git rebase {hash} prod-next; git push origin prod-next'
+    run_push_as_push_user = "sudo su - %s -c '%s'" % (PUSH_USER, cmd)
+
+    for repo_name, test_hash in updated_repo_heads.iteritems():
+         push_cmd = run_push_as_push_user.format(hash=test_hash, repo=repo_name)
+         print 'Pushing %s prod-next branch to %s' % (repo_name, test_hash)
+         print subprocess.check_output(push_cmd, stderr=subprocess.STDOUT,
+                                       shell=True)
+
+
 def main():
     """Entry point for test_push script."""
     arguments = parse_arguments()
-    h = get_head_of_repos(UPDATED_REPOS)
-    updated_repo_msg = '\n'.join(['%s: %s' % (k, v) for k, v in h.iteritems()])
+    updated_repo_heads = get_head_of_repos(UPDATED_REPOS)
+    updated_repo_msg = '\n'.join(
+        ['%s: %s' % (k, v) for k, v in updated_repo_heads.iteritems()])
 
     try:
         # Use daemon flag will kill child processes when parent process fails.
@@ -599,6 +620,9 @@ def main():
         au_suite.join()
         asynchronous_suite.join()
         testbed_suite.join()
+
+        # All tests pass, push prod-next branch for UPDATED_REPOS.
+        push_prod_next_branch(updated_repo_heads)
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
