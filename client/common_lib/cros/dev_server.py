@@ -493,6 +493,18 @@ class DevServer(object):
             return urllib2.urlopen(call).read()
 
 
+    @classmethod
+    def get_file(self, source, dest, timeout=None):
+        """Download file from devserver.
+
+        The format of dest should be:
+            http://devserver_ip:8082/static/board/...
+        """
+        response = self.run_call(dest, timeout=timeout)
+        with open(source, 'w') as out_log:
+            out_log.write(response)
+
+
     @staticmethod
     def servers():
         """Returns a list of servers that can serve as this type of server."""
@@ -1921,17 +1933,6 @@ class ImageServer(ImageServerBase):
                 raise DevServerException(error_msg % (
                         host_name, ('RPC calls after the whole auto-update '
                                     'process failed.')))
-
-
-    def get_file(self, source, dest):
-        """Download file from devserver.
-
-        The format of dest should be:
-            http://devserver_ip:8082/static/board/...
-        """
-        response = self.run_call(dest)
-        with open(source, 'w') as out_log:
-            out_log.write(response)
 
 
 class AndroidBuildServer(ImageServerBase):
