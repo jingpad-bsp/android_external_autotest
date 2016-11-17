@@ -273,7 +273,7 @@ def download_extract(url, target, extract_dir):
     @param target: Path of the file to save to.
     @param extract_dir: Directory to extract the content of the file to.
     """
-    dev_server.DevServer.get_file(url, target, timeout=300)
+    dev_server.ImageServerBase.download_file(url, target, timeout=300)
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
