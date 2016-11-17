@@ -135,7 +135,6 @@ class audiovideo_AVSync(test.test):
 
         chrome_args = {
             'extension_paths': [constants.MULTIMEDIA_TEST_EXTENSION],
-            'is_component': True,
             'extra_browser_args': [],
             'arc_mode': arc_common.ARC_MODE_DISABLED,
             'autotest_ext': True
