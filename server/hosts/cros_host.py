@@ -1005,7 +1005,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         try:
             fwurl = self._FW_IMAGE_URL_PATTERN % (ds.url(), build)
             local_tarball = os.path.join(tmpd.name, os.path.basename(fwurl))
-            ds.get_file(local_tarball, fwurl)
+            ds.download_file(fwurl, local_tarball)
 
             self._clear_fw_version_labels(rw_only)
             if config.chrome_ec:
