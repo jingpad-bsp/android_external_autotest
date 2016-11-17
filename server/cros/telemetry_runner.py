@@ -60,7 +60,8 @@ ON_DUT_WHITE_LIST = ['dromaeo.domcoreattr',
                      'startup.cold.blank_page',
                      'sunspider',
                      'tab_switching.top_10',
-                     'webrtc.peerconnection']
+                     'webrtc.peerconnection',
+                     'webrtc.stress']
 
 # BLACK LIST
 #  'session_restore.cold.typical_25', # profile generator not implemented on
