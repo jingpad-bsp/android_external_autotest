@@ -190,15 +190,6 @@ def get_sdcard_pid():
     return utils.read_one_line(_SDCARD_PID_PATH)
 
 
-def get_dlfs_pid():
-    """Returns the PID of the arc-downloads-filesystem FUSE daemon."""
-    job_pid = get_job_pid('arc-downloads-filesystem')
-    # |job_pid| is the minijail process, obtain the PID of the process running
-    # inside the mount namespace.
-    # FUSE process is the only process running as chronos in the process group.
-    return utils.system_output('pgrep -u chronos -g %s' % job_pid)
-
-
 def get_removable_media_pid():
     """Returns the PID of the arc-removable-media FUSE daemon."""
     job_pid = get_job_pid('arc-removable-media')
