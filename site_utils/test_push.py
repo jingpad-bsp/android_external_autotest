@@ -66,7 +66,7 @@ DEFAULT_TIMEOUT_MIN_FOR_SUITE_JOB = 30
 IMAGE_BUCKET = CONFIG.get_config_value('CROS', 'image_storage_server')
 DEFAULT_EMAIL = CONFIG.get_config_value(
         'SCHEDULER', 'notify_email', type=str, default='')
-DEFAULT_NUM_DUTS = "{'board:gandof': 4, 'board:quawks': 2}"
+DEFAULT_NUM_DUTS = "{'gandof': 4, 'quawks': 2, 'testbed': 2}"
 
 SUITE_JOB_START_INFO_REGEX = ('^.*Created suite job:.*'
                               'tab_id=view_job&object_id=(\d+)$')
@@ -137,20 +137,19 @@ class TestPushException(Exception):
 def check_dut_inventory(required_num_duts):
     """Check DUT inventory for each board.
 
-    @param required_num_duts: a dict specified the number of DUT each board
+    @param required_num_duts: a dict specifying the number of DUT each platform
                               requires in order to finish push tests.
     @raise TestPushException: if number of DUTs are less than the requirement.
     """
     hosts = AFE.run('get_hosts', status='Ready', locked=False)
-    boards = [[l for l in host['labels'] if l.startswith('board:')][0]
-              for host in hosts]
-    current_inventory = {b:boards.count(b) for b in boards}
+    platforms = [host['platform'] for host in hosts]
+    current_inventory = {p : platforms.count(p) for p in platforms}
     error_msg = ''
-    for board, req_num in required_num_duts.items():
-        curr_num = current_inventory.get(board, 0)
+    for platform, req_num in required_num_duts.items():
+        curr_num = current_inventory.get(platform, 0)
         if curr_num < req_num:
             error_msg += ('\nRequire %d %s DUTs, only %d are Ready now' %
-                          (req_num, board, curr_num))
+                          (req_num, platform, curr_num))
     if error_msg:
         raise TestPushException('Not enough DUTs to run push tests. %s' %
                                 error_msg)
