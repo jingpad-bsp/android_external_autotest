@@ -304,9 +304,9 @@ def do_run_suite(suite_name, arguments, use_shard=False,
         if labels_to_remove:
             AFE.run('host_remove_labels', id=host.id, labels=labels_to_remove)
 
-        # Test repair work flow on shards
+        # Test repair work flow on shards, powerwash test will timeout after 7m.
         if use_shard and not create_and_return:
-            powerwash_dut_to_test_repair(host.hostname, timeout=300)
+            powerwash_dut_to_test_repair(host.hostname, timeout=420)
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
     cmd = [os.path.join(current_dir, RUN_SUITE_COMMAND),
