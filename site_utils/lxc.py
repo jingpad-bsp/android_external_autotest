@@ -273,7 +273,17 @@ def download_extract(url, target, extract_dir):
     @param target: Path of the file to save to.
     @param extract_dir: Directory to extract the content of the file to.
     """
-    dev_server.ImageServerBase.download_file(url, target, timeout=300)
+    remote_url = dev_server.DevServer.get_server_url(url)
+    # TODO(xixuan): Better to only ssh to devservers in lab, and continue using
+    # wget for ganeti devservers.
+    if remote_url in dev_server.ImageServerBase.servers():
+        tmp_file = '/tmp/%s' % os.path.basename(target)
+        dev_server.ImageServerBase.download_file(url, tmp_file, timeout=300)
+        utils.run('sudo mv %s %s' % (tmp_file, target))
+    else:
+        utils.run('sudo wget --timeout=300 -nv %s -O %s' % (url, target),
+                  stderr_tee=utils.TEE_TO_LOGS)
+
     utils.run('sudo tar -xvf %s -C %s' % (target, extract_dir))
 
 
