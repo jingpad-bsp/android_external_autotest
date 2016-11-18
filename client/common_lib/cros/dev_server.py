@@ -493,18 +493,6 @@ class DevServer(object):
             return urllib2.urlopen(call).read()
 
 
-    @classmethod
-    def get_file(self, source, dest, timeout=None):
-        """Download file from devserver.
-
-        The format of dest should be:
-            http://devserver_ip:8082/static/board/...
-        """
-        response = self.run_call(dest, timeout=timeout)
-        with open(source, 'w') as out_log:
-            out_log.write(response)
-
-
     @staticmethod
     def servers():
         """Returns a list of servers that can serve as this type of server."""
@@ -886,6 +874,22 @@ class ImageServerBase(DevServer):
         else:
             return cls.run_ssh_call(
                     call, readline=readline, timeout=timeout)
+
+
+    @classmethod
+    def download_file(cls, remote_file, local_file, timeout=None):
+        """Download file from devserver.
+
+        The format of remote_file should be:
+            http://devserver_ip:8082/static/board/...
+
+        @param remote_file: The files on devserver that need to be downloaded.
+        @param local_file: The files saved to local.
+        @param timeout: The timeout seconds for this call.
+        """
+        response = cls.run_call(remote_file, timeout=timeout)
+        with open(local_file, 'w') as out_log:
+            out_log.write(response)
 
 
     def _poll_is_staged(self, **kwargs):
