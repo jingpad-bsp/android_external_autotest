@@ -622,7 +622,7 @@ def main():
         testbed_suite.join()
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
-        push_prod_next_branch(updated_repo_heads)
+        #push_prod_next_branch(updated_repo_heads)
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
