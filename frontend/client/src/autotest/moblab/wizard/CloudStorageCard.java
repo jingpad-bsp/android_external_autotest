@@ -88,21 +88,6 @@ public class CloudStorageCard extends FlexWizardCard {
         layoutTable.setWidget(row, 2, link);
       }
 
-      // Row for result bucket url.
-      row++;
-      layoutTable.setWidget(row, 0, new Label("Result Bucket URL(optional)"));
-      url = cloudStorageInfo.getResultStorageServer();
-      layoutTable.setWidget(row, 1,
-          createValueFieldWidget(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL, url));
-      if (url != null && ConfigWizard.Mode.View == getMode()) {
-        Anchor link = Utils.createGoogleStorageHttpUrlLink("link", url);
-        layoutTable.setWidget(row, 2, link);
-      } else if (ConfigWizard.Mode.Edit == getMode()){
-        ToolTip tip = new ToolTip( "?",
-          "If not specicifed, Molab will use the image bucket for result uploading.");
-        layoutTable.setWidget(row, 2, tip);
-      }
-
       if (ConfigWizard.Mode.Edit == getMode()) {
         chkUseExisting.setValue(cloudStorageInfo.isUseExistingBotoFile(), true);
       }
@@ -128,8 +113,6 @@ public class CloudStorageCard extends FlexWizardCard {
     }
     cloudStorageInfo.setImageStorageServer(
           getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_IMAGE_STORAGE_URL));
-    cloudStorageInfo.setResultStorageServer(
-          getStringValueFieldValue(CloudStorageInfo.JSON_FIELD_RESULT_STORAGE_URL));
     if (!chkUseExisting.getValue()) {
       // Boto key and secret are required.
       if (cloudStorageInfo.getBotoKey() == null || cloudStorageInfo.getBotoSecret() == null) {
@@ -151,14 +134,6 @@ public class CloudStorageCard extends FlexWizardCard {
         new OperationStatus(false, "The image bucket URL must end in /"));
       return;
     }
-    // Image bucket and results bucket can not be empty.
-    if (cloudStorageInfo.getResultStorageServer().substring(
-      cloudStorageInfo.getResultStorageServer().length() - 1) != "/") {
-      callback.onValidationStatus(
-        new OperationStatus(false, "The results bucket URL must end in /"));
-      return;
-    }
-
 
     // Sends validation request to server to validate the boto key and bucket urls.
     MoblabRpcHelper.validateCloudStorageInfo(cloudStorageInfo,
