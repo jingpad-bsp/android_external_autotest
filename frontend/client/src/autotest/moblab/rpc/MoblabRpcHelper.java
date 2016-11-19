@@ -307,14 +307,33 @@ public class MoblabRpcHelper {
     });
   }
 
-  public static void runSuite(String board, String build, String suite, String pool,
-      final MoblabRpcCallbacks.RunSuiteCallback callback) {
+  public static void fetchFirmwareForBoard(String board_name,
+      final MoblabRpcCallbacks.FetchFirmwareForBoardCallback callback) {
+    JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
+    JSONObject params = new JSONObject();
+    params.put("board_name", new JSONString(board_name));
+    rpcProxy.rpcCall("get_firmware_for_board", params, new JsonRpcCallback() {
+      @Override
+      public void onSuccess(JSONValue result) {
+        List<String> firmwareBuilds = new LinkedList<String>();
+        for (int i = 0; i < result.isArray().size(); i++) {
+          firmwareBuilds.add(result.isArray().get(i).isString().stringValue());
+        }
+        callback.onFetchFirmwareForBoardCallbackSubmitted(firmwareBuilds);
+      }
+    });
+  }
+
+  public static void runSuite(String board, String build, String suite, String pool, String rwFirmware,
+      String roFirmware, final MoblabRpcCallbacks.RunSuiteCallback callback) {
     JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
     JSONObject params = new JSONObject();
     params.put("board", new JSONString(board));
     params.put("build", new JSONString(build));
     params.put("suite", new JSONString(suite));
     params.put("pool", new JSONString(pool));
+    params.put("rw_firmware", new JSONString(rwFirmware));
+    params.put("ro_firmware", new JSONString(roFirmware));
     rpcProxy.rpcCall("run_suite", params, new JsonRpcCallback() {
       @Override
       public void onSuccess(JSONValue result) {

@@ -645,33 +645,82 @@ def get_connected_pools():
 def get_builds_for_board(board_name):
     """ RPC handler to find the most recent builds for a board.
 
-    @param board_name: The name of a connected board.
 
-    @return: A list no longer than 20 items with the most recent builds.
+    @param board_name: The name of a connected board.
+    @return: A list of string with the most recent builds for the latest
+             three milestones.
     """
-    output = StringIO.StringIO()
-    gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
-    utils.run('gsutil', args=('ls', gs_image_location + board_name + '-release'), stdout_tee=output)
-    lines = output.getvalue().split('\n')
-    output.close()
-    builds = [line.replace(gs_image_location,'').strip('/ ') for line in lines if line != '']
-    builds.sort()
-    builds.reverse()
-    return builds[:20]
+    return _get_builds_for_in_directory(board_name + '-release')
 
 
 @rpc_utils.moblab_only
-def run_suite(board, build, suite, pool=None):
+def get_firmware_for_board(board_name):
+    """ RPC handler to find the most recent firmware for a board.
+
+
+    @param board_name: The name of a connected board.
+    @return: A list of strings with the most recent firmware builds for the
+             latest three milestones.
+    """
+    return _get_builds_for_in_directory(board_name + '-firmware')
+
+
+def _get_builds_for_in_directory(directory_name, milestone_limit=3, build_limit=20):
+    """ Fetch the most recent builds for the last three milestones from gcs.
+
+
+    @param directory_name: The sub-directory under the configured GCS image
+                           storage bucket to search.
+
+
+    @return: A string list no longer than <milestone_limit> x <build_limit> items,
+             containing the most recent <build_limit> builds from the last
+             milestone_limit milestones.
+    """
+    output = StringIO.StringIO()
+    gs_image_location =_CONFIG.get_config_value('CROS', _IMAGE_STORAGE_SERVER)
+    utils.run('gsutil', args=('ls', gs_image_location + directory_name), stdout_tee=output)
+    lines = output.getvalue().split('\n')
+    output.close()
+    builds = [line.replace(gs_image_location,'').strip('/ ') for line in lines if line != '']
+    build_matcher = re.compile(r'^.*\/R([0-9]*)-.*')
+    build_map = {}
+    for build in builds:
+        match = build_matcher.match(build)
+        if match:
+            milestone = match.group(1)
+            if milestone not in build_map:
+                build_map[milestone] = []
+            build_map[milestone].append(build)
+    milestones = build_map.keys()
+    milestones.sort()
+    milestones.reverse()
+    build_list = []
+    for milestone in milestones[:milestone_limit]:
+         builds = build_map[milestone]
+         builds.reverse()
+         build_list.extend(builds[:build_limit])
+    return build_list
+
+
+@rpc_utils.moblab_only
+def run_suite(board, build, suite, ro_firmware=None, rw_firmware=None, pool=None):
     """ RPC handler to run a test suite.
 
     @param board: a board name connected to the moblab.
     @param build: a build name of a build in the GCS.
     @param suite: the name of a suite to run
+    @param ro_firmware: Optional ro firmware build number to use.
+    @param rw_firmware: Optional rw firmware build number to use.
     @param pool: Optional pool name to run the suite in.
 
     @return: None
     """
     builds = {'cros-version': build}
+    if rw_firmware:
+        builds['fwrw-version'] = rw_firmware
+    if ro_firmware:
+        builds['fwro-version'] = ro_firmware
     afe = frontend.AFE(user='moblab')
     afe.run('create_suite_job', board=board, builds=builds, name=suite,
     pool=pool, run_prod_code=False, test_source_build=build,
