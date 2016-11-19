@@ -210,7 +210,7 @@ def find_opt_in_extension_page(browser):
     extension_main_page.WaitForDocumentReadyStateToBeComplete()
 
     js_code_did_start_conditions = ['termsPage != null',
-            'termsPage.state_ == LoadState.LOADED']
+            '(termsPage.isManaged_ || termsPage.state_ == LoadState.LOADED)']
     try:
         for condition in js_code_did_start_conditions:
             extension_main_page.WaitForJavaScriptExpression(condition, 60.0)
