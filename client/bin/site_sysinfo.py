@@ -67,6 +67,7 @@ class logdir(base_sysinfo.loggable):
                 additional_exclude_str = "--exclude=" + self.additional_exclude
 
             utils.system("rsync --no-perms --chmod=ugo+r -a --exclude=autoserv*"
+                         " --safe-links"
                          " %s %s %s%s" % (additional_exclude_str, self.dir,
                                           log_dir, parent_dir))
 
