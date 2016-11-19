@@ -82,6 +82,7 @@ static const uint32_t format_list[] = {
 	GBM_FORMAT_VYUY,
 	GBM_FORMAT_AYUV,
 	GBM_FORMAT_NV12,
+	GBM_FORMAT_YVU420,
 };
 
 static const uint32_t usage_list[] = {
@@ -112,6 +113,8 @@ static int check_bo(struct gbm_bo *bo)
 	num_planes = gbm_bo_get_num_planes(bo);
 	if (format == GBM_FORMAT_NV12)
 		CHECK(num_planes == 2);
+	else if (format == GBM_FORMAT_YVU420)
+		CHECK(num_planes == 3);
 	else
 		CHECK(num_planes == 1);
 
@@ -543,6 +546,66 @@ static int test_import_dmabuf()
 	return 1;
 }
 
+
+/*
+ * Tests GBM_BO_IMPORT_FD_PLANAR entry point.
+ */
+static int test_import_planar()
+{
+	struct gbm_import_fd_planar_data fd_data;
+	struct gbm_bo *bo1, *bo2;
+	const int width = 567;
+	const int height = 891;
+	size_t num_planes, p;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(format_list); i++) {
+		uint32_t format = format_list[i];
+		if (gbm_device_is_format_supported(gbm, format, GBM_BO_USE_RENDERING)) {
+			bo1 = gbm_bo_create(gbm, width, height, format, GBM_BO_USE_RENDERING);
+			CHECK(check_bo(bo1));
+
+			num_planes = gbm_bo_get_num_planes(bo1);
+			for (p = 0; p < num_planes; p++) {
+				fd_data.fds[p] = gbm_bo_get_plane_fd(bo1, p);
+				CHECK(fd_data.fds[p] >= 0);
+
+				fd_data.strides[p] = gbm_bo_get_plane_stride(bo1, p);
+				fd_data.offsets[p] = gbm_bo_get_plane_offset(bo1, p);
+				fd_data.format_modifiers[p] =
+					gbm_bo_get_plane_format_modifier(bo1, p);
+			}
+
+			fd_data.width = width;
+			fd_data.height = height;
+			fd_data.format = format;
+
+			gbm_bo_destroy(bo1);
+
+			bo2 = gbm_bo_import(gbm, GBM_BO_IMPORT_FD_PLANAR, &fd_data,
+					    GBM_BO_USE_RENDERING);
+
+			CHECK(check_bo(bo2));
+			CHECK(fd_data.width == gbm_bo_get_width(bo2));
+			CHECK(fd_data.height == gbm_bo_get_height(bo2));
+
+			for (p = 0; p < num_planes; p++) {
+				CHECK(fd_data.strides[p] == gbm_bo_get_plane_stride(bo2, p));
+				CHECK(fd_data.offsets[p] == gbm_bo_get_plane_offset(bo2, p));
+				CHECK(fd_data.format_modifiers[p] ==
+				      gbm_bo_get_plane_format_modifier(bo2, p));
+			}
+
+			gbm_bo_destroy(bo2);
+
+			for (p = 0; p < num_planes; p++)
+				close(fd_data.fds[p]);
+		}
+	}
+
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	int result;
@@ -565,6 +628,7 @@ int main(int argc, char *argv[])
 	result &= test_export();
 	result &= test_import_vgem();
 	result &= test_import_dmabuf();
+	result &= test_import_planar();
 	result &= test_destroy();
 
 	if (!result) {
