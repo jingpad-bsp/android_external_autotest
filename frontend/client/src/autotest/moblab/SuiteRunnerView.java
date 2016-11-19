@@ -31,11 +31,14 @@ public class SuiteRunnerView extends TabView {
   private ListBox boardSelector;
   private ListBox buildSelector;
   private ListBox suiteSelector;
+  private ListBox rwFirmwareSelector;
+  private ListBox roFirmwareSelector;
   private ListBox poolSelector;
   private Button actionButton;
 
   private static List<String> suiteNames = Arrays.asList("bvt-cq", "bvt-inline",
-      "bvt-inline", "cts", "gts", "hardware_storagequal", "hardware_memoryqual");
+      "cts", "gts", "hardware_storagequal", "hardware_memoryqual",
+      "faft_setup", "faft_ec", "faft_bios");
 
   @Override
   public String getElementId() {
@@ -48,11 +51,16 @@ public class SuiteRunnerView extends TabView {
     boardSelector.clear();
     buildSelector.clear();
     suiteSelector.clear();
+    rwFirmwareSelector.clear();
+    roFirmwareSelector.clear();
     poolSelector.clear();
 
     buildSelector.addItem("Select the build");
     suiteSelector.addItem("Select the suite");
     poolSelector.addItem("Select the pool");
+
+    rwFirmwareSelector.addItem("Select the RW Firmware (Faft only) (Optional)");
+    roFirmwareSelector.addItem("Select the RO Firmware (Faft only) (Optional)");
 
     for (String suite : suiteNames) {
       suiteSelector.addItem(suite);
@@ -70,6 +78,8 @@ public class SuiteRunnerView extends TabView {
     boardSelector = new ListBox();
     buildSelector = new ListBox();
     suiteSelector = new ListBox();
+    rwFirmwareSelector = new ListBox();
+    roFirmwareSelector = new ListBox();
     poolSelector = new ListBox();
 
     boardSelector.addChangeHandler(new ChangeHandler() {
@@ -98,13 +108,19 @@ public class SuiteRunnerView extends TabView {
     });
     suiteSelector.setStyleName("run_suite_selector");
 
+    rwFirmwareSelector.setEnabled(false);
+    rwFirmwareSelector.setStyleName("run_suite_selector");
+    roFirmwareSelector.setEnabled(false);
+    roFirmwareSelector.setStyleName("run_suite_selector");
     poolSelector.setEnabled(false);
     poolSelector.setStyleName("run_suite_selector");
 
     HorizontalPanel firstLine = createHorizontalLineItem("Select board:", boardSelector);
     HorizontalPanel secondLine = createHorizontalLineItem("Select build:", buildSelector);
     HorizontalPanel thirdLine = createHorizontalLineItem("Select suite:", suiteSelector);
-    HorizontalPanel fourthLine = createHorizontalLineItem("Pool (Optional):", poolSelector);
+    HorizontalPanel fourthLine = createHorizontalLineItem("RW Firmware (Optional):", rwFirmwareSelector);
+    HorizontalPanel fifthLine = createHorizontalLineItem("RO Firmware (Optional):", roFirmwareSelector);
+    HorizontalPanel sixthLine = createHorizontalLineItem("Pool (Optional):", poolSelector);
 
     actionButton = new Button("Run Suite", new ClickHandler() {
       public void onClick(ClickEvent event) {
@@ -112,15 +128,27 @@ public class SuiteRunnerView extends TabView {
         int buildSelection = buildSelector.getSelectedIndex();
         int suiteSelection = suiteSelector.getSelectedIndex();
         int poolSelection = poolSelector.getSelectedIndex();
+        int rwFirmwareSelection = rwFirmwareSelector.getSelectedIndex();
+        int roFirmwareSelection = roFirmwareSelector.getSelectedIndex();
         if (boardSelection != 0 && buildSelection != 0 && suiteSelection != 0) {
-	  String poolLabel = new String();
+          String poolLabel = new String();
 	  if (poolSelection != 0) {
 	    poolLabel = poolSelector.getItemText(poolSelection);
+	  }
+	  String rwFirmware = new String();
+	  if (rwFirmwareSelection != 0) {
+	    rwFirmware = rwFirmwareSelector.getItemText(rwFirmwareSelection);
+	  }
+	  String roFirmware = new String();
+	  if (roFirmwareSelection != 0) {
+	    roFirmware = roFirmwareSelector.getItemText(roFirmwareSelection);
 	  }
           runSuite(boardSelector.getItemText(boardSelection),
               buildSelector.getItemText(buildSelection),
               suiteSelector.getItemText(suiteSelection),
-              poolLabel);
+              poolLabel,
+	      rwFirmware,
+	      roFirmware);
         } else {
           Window.alert("You have to select a valid board, build and suite.");
         }
@@ -128,7 +156,7 @@ public class SuiteRunnerView extends TabView {
 
     actionButton.setEnabled(false);
     actionButton.setStyleName("run_suite_button");
-    HorizontalPanel fifthLine = createHorizontalLineItem("", actionButton);
+    HorizontalPanel seventhLine = createHorizontalLineItem("", actionButton);
 
     suiteRunnerMainPanel = new VerticalPanel();
 
@@ -137,6 +165,8 @@ public class SuiteRunnerView extends TabView {
     suiteRunnerMainPanel.add(thirdLine);
     suiteRunnerMainPanel.add(fourthLine);
     suiteRunnerMainPanel.add(fifthLine);
+    suiteRunnerMainPanel.add(sixthLine);
+    suiteRunnerMainPanel.add(seventhLine);
   }
 
   private HorizontalPanel createHorizontalLineItem(String label, Widget item) {
@@ -157,13 +187,24 @@ public class SuiteRunnerView extends TabView {
     if (selectedIndex != 0) {
       actionButton.setEnabled(true);
     }
+    // Account for their being an extra item in the drop down
+    int listIndex = selectedIndex - 1;
+    if (listIndex  == suiteNames.indexOf("faft_setup") ||
+      listIndex == suiteNames.indexOf("faft_bios") ||
+      listIndex == suiteNames.indexOf("faft_ec")) {
+      loadFirmwareBuilds(boardSelector.getItemText(boardSelector.getSelectedIndex()));
+    } else {
+      rwFirmwareSelector.setEnabled(false);
+      roFirmwareSelector.setEnabled(false);
+      rwFirmwareSelector.setSelectedIndex(0);
+      roFirmwareSelector.setSelectedIndex(0);
+    }
   }
 
   private void buildSelected() {
     int selectedIndex = buildSelector.getSelectedIndex();
     if (selectedIndex != 0) {
       suiteSelector.setEnabled(true);
-
     }
   }
 
@@ -237,6 +278,34 @@ public class SuiteRunnerView extends TabView {
     });
   }
 
+
+  /**
+   * Make a RPC to get the most recent firmware available for the specified board and populate them
+   * in the dropdowns.
+   * @param selectedBoard
+   */
+  private void loadFirmwareBuilds(String selectedBoard) {
+    rwFirmwareSelector.setEnabled(false);
+    roFirmwareSelector.setEnabled(false);
+    rwFirmwareSelector.clear();
+    roFirmwareSelector.clear();
+    rwFirmwareSelector.addItem("Select the RW Firmware (Faft only) (Optional)");
+    roFirmwareSelector.addItem("Select the RO Firmware (Faft only) (Optional)");
+    MoblabRpcHelper.fetchFirmwareForBoard(selectedBoard,
+        new MoblabRpcCallbacks.FetchFirmwareForBoardCallback() {
+      @Override
+      public void onFetchFirmwareForBoardCallbackSubmitted(List<String> firmwareBuilds) {
+        for (String firmware : firmwareBuilds) {
+          rwFirmwareSelector.addItem(firmware);
+          roFirmwareSelector.addItem(firmware);
+        }
+        rwFirmwareSelector.setEnabled(true);
+        roFirmwareSelector.setEnabled(true);
+      }
+    });
+  }
+
+
   /**
    * For the selection option of board, build, suite and pool make a RPC call that will instruct
    * AFE to run the suite selected.
@@ -245,12 +314,14 @@ public class SuiteRunnerView extends TabView {
    * @param suite, a string that specifies the name of a suite selected to run.
    * @param pool, an optional name of a pool to run the suite in.
    */
-  private void runSuite(String board, String build, String suite, String pool) {
+  private void runSuite(String board, String build, String suite, String pool, String rwFirmware,
+      String roFirmware) {
     String realPoolLabel = pool;
     if (pool != null && !pool.isEmpty()) {
       realPoolLabel = pool.trim();
     }
-    MoblabRpcHelper.runSuite(board, build, suite, realPoolLabel, new RunSuiteCallback() {
+    MoblabRpcHelper.runSuite(board, build, suite, realPoolLabel, rwFirmware, roFirmware,
+        new RunSuiteCallback() {
       @Override
       public void onRunSuiteComplete() {
         Window.Location.assign("/afe");
