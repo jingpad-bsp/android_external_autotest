@@ -299,7 +299,8 @@ class ServoHost(ssh_host.SSHHost):
                     'verbose': verbose, 'args': args}
         if self.is_localhost():
             if self._sudo_required:
-                run_args['command'] = 'sudo -n %s' % command
+                run_args['command'] = 'sudo -n sh -c "%s"' % utils.sh_escape(
+                        command)
             try:
                 return utils.run(**run_args)
             except error.CmdError as e:
