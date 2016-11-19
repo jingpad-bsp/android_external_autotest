@@ -145,36 +145,36 @@ def enable_arc_setting(browser):
     @returns: True if the opt-in should continue; else False.
 
     """
-    settings_tab = browser.tabs[0]
-    settings_tab.Navigate('chrome://settings')
-    settings_tab.WaitForDocumentReadyStateToBeComplete()
+    settings_tab = browser.tabs.New()
 
     try:
-        js_code_assert_arc_option_available = """
-            assert(document.getElementById('android-apps-enabled'));
-        """
-        settings_tab.ExecuteJavaScript(js_code_assert_arc_option_available)
-    except Exception, e:
-        raise error.TestFail('Could not locate section in chrome://settings'
-                             ' to enable arc. Make sure arc is available.')
+        settings_tab.Navigate('chrome://settings')
+        settings_tab.WaitForDocumentReadyStateToBeComplete()
 
-    # Skip enabling for managed users, since value is policy enforced.
-    # Return early if a managed user has ArcEnabled set to false.
-    js_code_is_managed = ('document.getElementById('
-                          '"android-apps-enabled").disabled')
-    is_managed = settings_tab.EvaluateJavaScript(js_code_is_managed)
-    if is_managed:
-        logging.info('Determined that ARC++ is managed by user policy.')
-        js_code_policy_value = ('document.getElementById('
-                                '"android-apps-enabled").checked')
-        policy_value = settings_tab.EvaluateJavaScript(js_code_policy_value)
-        if not policy_value:
-            logging.info('Returning early since ARC++ is policy enforced off.')
-            return False
-    else:
-        js_code_enable_arc = ('Preferences.setBooleanPref(\'arc.enabled\', '
-                                                          'true, true)')
-        settings_tab.ExecuteJavaScript(js_code_enable_arc)
+        try:
+            settings_tab.ExecuteJavaScript(
+                    'assert(document.getElementById("android-apps-enabled"))')
+        except Exception, e:
+            raise error.TestFail('Could not locate section in chrome://settings'
+                                 ' to enable arc. Make sure ARC is available.')
+
+        # Skip enabling for managed users, since value is policy enforced.
+        # Return early if a managed user has ArcEnabled set to false.
+        is_managed = settings_tab.EvaluateJavaScript(
+                'document.getElementById("android-apps-enabled").disabled')
+        if is_managed:
+            logging.info('Determined that ARC is managed by user policy.')
+            policy_value = settings_tab.EvaluateJavaScript(
+                    'document.getElementById("android-apps-enabled").checked')
+            if not policy_value:
+                logging.info(
+                        'Returning early since ARC is policy-enforced off.')
+                return False
+        else:
+            settings_tab.ExecuteJavaScript(
+                    'Preferences.setBooleanPref("arc.enabled", true, true)')
+    finally:
+        settings_tab.Close()
 
     return True
 
