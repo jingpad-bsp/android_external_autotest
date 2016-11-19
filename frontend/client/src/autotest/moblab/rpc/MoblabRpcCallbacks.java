@@ -69,6 +69,10 @@ public class MoblabRpcCallbacks {
     public void onFetchBuildsForBoardCallbackSubmitted(List<String> builds);
   }
 
+  public interface FetchFirmwareForBoardCallback {
+    public void onFetchFirmwareForBoardCallbackSubmitted(List<String> firmwareBuilds);
+  }
+
   public interface RunSuiteCallback {
     public void onRunSuiteComplete();
   }
