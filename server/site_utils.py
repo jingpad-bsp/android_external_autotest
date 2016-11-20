@@ -55,8 +55,14 @@ IDLE_DUT_WAIT_TIMEOUT = 600
 # Mapping between board name and build target. This is for special case handling
 # for certain Android board that the board name and build target name does not
 # match.
-ANDROID_TARGET_TO_BOARD_MAP = {'seed_l8150': 'gm4g_sprout'}
-ANDROID_BOARD_TO_TARGET_MAP = {'gm4g_sprout': 'seed_l8150'}
+ANDROID_TARGET_TO_BOARD_MAP = {
+        'seed_l8150': 'gm4g_sprout',
+        'bat_land': 'bat'
+        }
+ANDROID_BOARD_TO_TARGET_MAP = {
+        'gm4g_sprout': 'seed_l8150',
+        'bat': 'bat_land'
+        }
 
 class TestLabException(Exception):
     """Exception raised when the Test Lab blocks a test or suite."""
