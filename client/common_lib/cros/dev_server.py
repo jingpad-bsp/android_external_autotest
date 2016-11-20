@@ -88,6 +88,41 @@ CROS_AU_POLLING_INTERVAL = 10
 # Number of seconds for intervals between retrying auto-update calls.
 CROS_AU_RETRY_INTERVAL = 20
 
+# Provision error patterns.
+# People who see this should know that they shouldn't change these
+# classification strings. These strings are used for monitoring provision
+# failures. Any changes may mess up the stats.
+_EXCEPTION_PATTERNS = [
+        # Raised when devserver portfile does not exist on host.
+        (r".*Devserver portfile does not exist!.*$",
+         '(1) Devserver portfile does not exist on host'),
+        # Raised when devserver cannot copy packages to host.
+        (r".*CrOS auto-update failed .* Could not copy .* to device.*$",
+         '(2) Cannot copy packages to host'),
+        # Raised when devserver fails to run specific commands on host.
+        (r".*CrOS auto-update failed .* cwd=None, "
+         "extra env=\{'LC_MESSAGES': 'C'\}.*$",
+         '(3) Fail to run specific command on host'),
+        # Raised when new build fails to boot on the host.
+        (r'.*CrOS auto-update failed for host .* RootfsUpdateError: '
+         'Build .* failed to boot on.*$',
+         '(4) Build failed to boot on host'),
+        # Raised when the auto-update process is timed out.
+        (r'.*The CrOS auto-update process is timed out, '
+         'thus will be terminated.*$',
+         '(5) Auto-update is timed out'),
+        # Raised when the host is not pingable.
+        (r".*DeviceNotPingableError.*$",
+         '(6) Host is not pingable during auto-update'),
+        # Raised when hosts have unexpected status after rootfs update.
+        (r'.*Update failed with unexpected update status: '
+         'UPDATE_STATUS_IDLE.*$',
+         '(7) Host has unexpected status: UPDATE_STATUS_IDLE after rootfs '
+         'update'),
+        # Raised when devserver returns non-json response to shard/drone.
+        (r'.*No JSON object could be decoded.*$',
+         '(8) Devserver returned non-json object')]
+
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
 
@@ -1821,6 +1856,29 @@ class ImageServer(ImageServerBase):
         return re.split('\n', response)[-1]
 
 
+    def _classify_exceptions(self, error_list):
+        """Parse the error that was raised from auto_update.
+
+        @param error_list: The list of errors (string) happened in auto-update
+
+        @return: A classified exception type (string) from _EXCEPTION_PATTERNS
+          or 'Unknown exception'. Current patterns in _EXCEPTION_PATTERNS are
+          very specific so that errors cannot match more than one pattern.
+        """
+        raised_error = ''
+        if not error_list:
+            return raised_error
+        else:
+            target_error = error_list[0]
+
+        for err_pattern, classification in _EXCEPTION_PATTERNS:
+            match = re.match(err_pattern, target_error)
+            if match:
+                return classification
+
+        return '(0) Unknown exception'
+
+
     def auto_update(self, host_name, build_name, log_dir=None,
                     force_update=False, full_update=False):
         """Auto-update a CrOS host.
@@ -1914,15 +1972,17 @@ class ImageServer(ImageServerBase):
                 logging.warning('Unable to parse build name %s for metrics. '
                                 'Continuing anyway.', build_name)
                 board, build_type, milestone = ('', '', '')
-            # TODO(akeshet) add a field with a classification of |raised_error|
-            # to this.
             c = metrics.Counter(
                     'chromeos/autotest/provision/cros_update_by_devserver')
+            # Add a field |error| here. Current error's pattern is manually
+            # specified in _EXCEPTION_PATTERNS.
+            raised_error = self._classify_exceptions(error_list)
             f = {'dev_server': ImageServer.get_server_name(self.url()),
                  'success': is_au_success,
                  'board': board,
                  'build_type': build_type,
-                 'milestone': milestone}
+                 'milestone': milestone,
+                 'error': raised_error}
             c.increment(fields=f)
 
         if not is_au_success:
