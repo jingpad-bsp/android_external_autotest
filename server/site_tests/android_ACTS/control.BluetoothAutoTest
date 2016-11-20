@@ -3,14 +3,14 @@
 # found in the LICENSE file.
 
 AUTHOR = 'tturney'
-NAME = 'android_ACTS.BluetoothGattLongevityTest'
-TIME = 'Long'
+NAME = 'android_ACTS.BluetoothAutoTest'
+TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_bluetooth_longev_gatt'
-DEPENDENCIES = 'bluetoothcell'
+ATTRIBUTES = 'suite:android_bluetooth'
 
 DOC = """
-This test runs BluetoothGattLongevityTest against a Bluetooth test bed.
+This test runs Bluetooth Audio Quality tests
+against a Bluetooth Funhaus test beds.
 
 """
 import common
@@ -21,8 +21,10 @@ def run(machine):
     job.run_test('android_ACTS',
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-bluetooth.config',
-                 acts_timeout=172800,
-                 test_file='bt_gatt_longevity')
+                 test_file='bt_auto_test',
+                 acts_timeout=18000,
+                 additional_configs=['audio_tones', 'sim_config.json']
+                 )
 
 
 parallel_simple(run, machines)
