@@ -10,7 +10,7 @@
 var resolutions = [[640, 480],
                    [1280, 720]];
 var results = {};
-var testProgress = 0;
+var isTestDone = 0;
 var durationMs = 20000;
 
 function testNextResolution() {
@@ -32,7 +32,7 @@ function testNextResolution() {
 
 function reportTestDone() {
   console.log('tests completed');
-  testProgress = 1;
+  isTestDone = 1;
 }
 
 function getResults() {
@@ -59,12 +59,13 @@ function CameraTest(resolution) {
   this.frameComparator = new Ssim();
   this.results = {cameraErrors: [],
       frameStats: {numBlackFrames: 0, numFrozenFrames:0, numFrames: 0}};
+
   this.constraints = {
     "audio": false,
     "video": {
       "mandatory" : {
-     	  "maxWidth": this.resolution[0].toString(),
-     	  "maxHeight": this.resolution[1].toString()
+          "maxWidth": this.resolution[0].toString(),
+          "maxHeight": this.resolution[1].toString()
       },
     }
   };
