@@ -4,8 +4,8 @@
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_WebRtcCamera"
-PURPOSE = "Check that a series of gUM calls at different resolutions"
-CRITERIA = "This test will fail if WebRTC gUM fails mandatory resolutions"
+PURPOSE = "Test getUserMedia camera acquisition and that we get sane video"
+CRITERIA = "This test will fail if WebRTC getUserMedia fails"
 ATTRIBUTES = "suite:av_webcam"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
@@ -18,10 +18,17 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This test starts a  WebRTC GetUserMedia call with one video tag.
-This test will iterate through a set of resolutions and check if the gUM call
-could set the requested resolutions. This also logs the number of black
-frames and frozen frames to perf (there should not be many such frames).
+This test makes WebRTC GetUserMedia call and renders the camera's media
+stream in a video tag. It uses the real webcam on the device.
+
+This test will test VGA and 720p (if supported by the device) and check
+if the gUM call succeeds.
+
+The test also logs the number of black frames and frozen frames to perf
+(there should not be many such frames). Those performance statistics
+should be monitored in the perf dashboard; many frozen or black frames
+mean that the gUM call succeeded, but the CrOS device fails to deliver
+sane video frames.
 """
 
 job.run_test("video_WebRtcCamera")
