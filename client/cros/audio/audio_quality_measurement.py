@@ -102,6 +102,19 @@ NEAR_START_OR_END_SECS = 0.01
 # before and after the whole wave for 0.1 secs.
 APPEND_ZEROS_SECS = 0.1
 
+# If the noise event is too close to the start or the end of the data, we
+# consider its noise as part of artifacts caused by edge effect of Hilbert
+# transform.
+# For example, originally, the data duration is 10 seconds.
+# We append 0.1 seconds of zeros in the beginning and the end of the data, so
+# the data becomes 10.2 seocnds long.
+# Then, we apply Hilbert transform to 10.2 seconds of data.
+# Near 0.1 seconds and 10.1 seconds, there will be edge effect of Hilbert
+# transform. We do not want these be treated as noise.
+# If NEAR_DATA_START_OR_END_SECS is set to 0.01, then the noise happened
+# at [0, 0.11] and [10.09, 10.1] will be ignored.
+NEAR_DATA_START_OR_END_SECS = 0.01
+
 class SineWaveNotFound(Exception):
     """Error when there's no sine wave found in the signal"""
     pass
@@ -407,7 +420,13 @@ def noise_detection(start_index, end_index,
     for index in xrange(0, length):
         if start_index <= index and index < end_index:
             continue
-        if float(index) / rate - APPEND_ZEROS_SECS < 0:
+        # Ignore noise too close to the beginning or the end of original data.
+        # Check the docstring of NEAR_DATA_START_OR_END_SECS.
+        if (float(index) / rate <=
+            NEAR_DATA_START_OR_END_SECS + APPEND_ZEROS_SECS):
+            continue
+        if (float(length - index) / rate <=
+            NEAR_DATA_START_OR_END_SECS + APPEND_ZEROS_SECS):
             continue
         if block_amplitude[index] > amplitude_threshold:
             same_event = False
