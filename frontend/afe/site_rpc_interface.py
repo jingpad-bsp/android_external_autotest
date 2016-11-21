@@ -16,6 +16,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros import dev_server
+# TODO(akeshet): Replace with monarch.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.server import utils
