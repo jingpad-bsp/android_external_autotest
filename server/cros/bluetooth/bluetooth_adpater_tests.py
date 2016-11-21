@@ -1124,6 +1124,66 @@ class BluetoothAdapterTests(test.test):
 
 
     @_test_retry_and_log(False)
+    def test_unregister_advertisement(self, advertisement_data, instance_id,
+                                      min_adv_interval_ms, max_adv_interval_ms,
+                                      advertising_disabled):
+        """Verify that an advertisement is unregistered correctly.
+
+        This test verifies the following data:
+        - advertisement removed
+        - advertising status: enabled if there are advertisements left;
+                              disabled otherwise.
+
+        @param advertisement_data: the data of an advertisement to unregister.
+        @param instance_id: the instance id of the advertisement to remove.
+        @param min_adv_interval_ms: min_adv_interval in milliseconds.
+        @param max_adv_interval_ms: max_adv_interval in milliseconds.
+        @param advertising_disabled: is advertising disabled? This happens
+                only when all advertisements are removed.
+
+        @returns: True if the advertisement is unregistered correctly.
+                  False otherwise.
+
+        """
+        self.count_advertisements -= 1
+        self._get_btmon_log(
+                lambda: self.bluetooth_le_facade.unregister_advertisement(
+                        advertisement_data))
+
+        # Verify that the advertisement is removed.
+        advertisement_removed = self.bluetooth_le_facade.btmon_find(
+                'Advertising Removed: %d' % instance_id)
+
+        # If advertising_disabled is True, there should be no log like
+        #       'Advertising: Enabled (0x01)'
+        # If advertising_disabled is False, there should be log like
+        #       'Advertising: Enabled (0x01)'
+
+        # Only need to check advertising status when the last advertisement
+        # is removed. For any other advertisements prior to the last one,
+        # we may or may not observe 'Advertising: Enabled (0x01)' message.
+        # Hence, the test would become flaky if we insist to see that message.
+        # A possible workaround is to sleep for a while and then check the
+        # message. The drawback is that we may need to wait up to 10 seconds
+        # if the advertising duration and intervals are long.
+        # In a test case, we always run test_check_duration_and_intervals()
+        # to check if advertising duration and intervals are correct after
+        # un-registering one or all advertisements, it is safe to do so.
+        advertising_enabled_found = self.bluetooth_le_facade.btmon_find(
+                'Advertising: Enabled (0x01)')
+        advertising_disabled_found = self.bluetooth_le_facade.btmon_find(
+                'Advertising: Disabled (0x00)')
+        advertising_status_correct = not advertising_disabled or (
+                advertising_disabled_found and not advertising_enabled_found)
+
+        self.results = {
+                'advertisement_removed': advertisement_removed,
+                'advertising_status_correct': advertising_status_correct,
+        }
+        return all(self.results.values())
+
+
+    @_test_retry_and_log(False)
     def test_set_advertising_intervals(self, min_adv_interval_ms,
                                        max_adv_interval_ms):
         """Test that new advertising intervals could be set correctly.
