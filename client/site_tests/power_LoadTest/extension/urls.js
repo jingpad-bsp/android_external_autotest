@@ -69,7 +69,7 @@ var tasks = [
     focus: false,
     // Google Play Music requires MP3 decoder for playing music.
     // Fall back to BBC if the browser does not have MP3 decoder bundle.
-    urls: isMP3DecoderPresent() ? [PLAY_MUSIC_URL, PLAY_MUSIC_URL] :
+    urls: isMP3DecoderPresent() ? [BBC_AUDIO_URL, BBC_AUDIO_URL] :
                                   [BBC_AUDIO_URL, BBC_AUDIO_URL]
   },
   {
