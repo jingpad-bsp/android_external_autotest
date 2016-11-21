@@ -552,7 +552,8 @@ def push_prod_next_branch(updated_repo_heads):
     @param updated_repo_heads: a map of repo names to tested HEAD of that repo.
     """
     # prod-next branch for every repo is downloaded under PUSH_USER home dir.
-    cmd = 'cd ~/{repo}; git rebase {hash} prod-next; git push origin prod-next'
+    cmd = ('cd ~/{repo}; git pull; git rebase {hash} prod-next;'
+           'git push origin prod-next')
     run_push_as_push_user = "sudo su - %s -c '%s'" % (PUSH_USER, cmd)
 
     for repo_name, test_hash in updated_repo_heads.iteritems():
@@ -621,7 +622,7 @@ def main():
         testbed_suite.join()
 
         # All tests pass, push prod-next branch for UPDATED_REPOS.
-        #push_prod_next_branch(updated_repo_heads)
+        push_prod_next_branch(updated_repo_heads)
     except Exception as e:
         print 'Test for pushing to prod failed:\n'
         print str(e)
