@@ -1056,13 +1056,18 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         self.btmon.stop()
 
 
-    def btmon_get(self):
+    def btmon_get(self, search_str, start_str):
         """Get btmon output contents.
+
+        @param search_str: only lines with search_str would be kept.
+        @param start_str: all lines before the occurrence of start_str would be
+                filtered.
 
         @returns: the recorded btmon output.
 
         """
-        return self.btmon.get_contents()
+        return self.btmon.get_contents(search_str=search_str,
+                                       start_str=start_str)
 
 
     def btmon_find(self, pattern_str):
