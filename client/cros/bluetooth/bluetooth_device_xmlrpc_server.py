@@ -151,6 +151,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 'btmon', stop_delay_secs=self.BTMON_STOP_DELAY_SECS)
 
         self.advertisements = []
+        self._adv_mainloop = gobject.MainLoop()
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -1091,33 +1092,35 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         @param error_handler: the error handler for the dbus method.
         @param *args: additional arguments for the dbus method.
 
-        @returns: True on success. False otherwise.
+        @returns: an empty string '' on success;
+                  None if there is no _advertising interface manager; and
+                  an error string if the dbus method fails.
 
         """
 
         def successful_cb():
             """Called when the dbus_method completed successfully."""
             reply_handler()
-            mainloop.quit()
+            self.advertising_cb_msg = ''
+            self._adv_mainloop.quit()
 
 
         def error_cb(error):
             """Called when the dbus_method failed."""
             error_handler(error)
-            mainloop.quit()
+            self.advertising_cb_msg = str(error)
+            self._adv_mainloop.quit()
 
 
         if not self._advertising:
-            return False
+            return None
 
-        mainloop = gobject.MainLoop()
-
-        # Call the RegisterAdvertisement dbus method.
+        # Call dbus_method with handlers.
         dbus_method(*args, reply_handler=successful_cb, error_handler=error_cb)
 
-        mainloop.run()
+        self._adv_mainloop.run()
 
-        return True
+        return self.advertising_cb_msg
 
 
     def register_advertisement(self, advertisement_data):
