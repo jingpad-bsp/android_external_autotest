@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 
 from autotest_lib.server import utils
+from autotest_lib.server.cros.bluetooth import advertisements_data
+
 
 AUTHOR = 'chromeos-chameleon'
 NAME = 'bluetooth_AdapterLEAdvertising.single'
 PURPOSE = 'Test bluetooth adapter advertising.'
 CRITERIA = 'Adapter should advertise with correct parameters.'
-ATTRIBUTES = 'suite:bluetooth, suite:bluetooth_sanity'
+ATTRIBUTES = 'suite:bluetooth'
 TIME = 'SHORT'
 TEST_CATEGORY = 'Functional'
 TEST_CLASS = 'bluetooth'
@@ -41,27 +43,6 @@ following operations and parameters.
 """
 
 
-ADVERTISEMENT1 = {
-    'Path': '/org/bluez/test/advertisement1',
-    'Type': 'peripheral',
-    'ManufacturerData': {'0xff01': [0x1a, 0x1b, 0x1c, 0x1d, 0x1e]},
-    'ServiceUUIDs': ['180D', '180F'],
-    'SolicitUUIDs': [],
-    'ServiceData': {'9991': [0x11, 0x12, 0x13, 0x14, 0x15]},
-    'IncludeTxPower': True}
-
-ADVERTISEMENT2 = {
-    'Path': '/org/bluez/test/advertisement2',
-    'Type': 'peripheral',
-    'ManufacturerData': {'0xff02': [0x2a, 0x2b, 0x2c, 0x2d, 0x2e]},
-    'ServiceUUIDs': ['1821'],
-    'SolicitUUIDs': [],
-    'ServiceData': {'9992': [0x21, 0x22, 0x23, 0x24, 0x25]},
-    'IncludeTxPower': True}
-
-ADVERTISEMENTS = [ADVERTISEMENT1, ADVERTISEMENT2]
-
-
 MIN_ADV_INTERVAL_MS = 300
 MAX_ADV_INTERVAL_MS = 400
 
@@ -71,7 +52,8 @@ args_dict = utils.args_to_dict(args)
 def run(machine):
     host = hosts.create_host(machine)
     job.run_test('bluetooth_AdapterLEAdvertising', host=host,
-                 advertisements=ADVERTISEMENTS, multi_advertising=False,
+                 advertisements=advertisements_data.ADVERTISEMENTS,
+                 multi_advertising=False,
                  min_adv_interval_ms=MIN_ADV_INTERVAL_MS,
                  max_adv_interval_ms=MAX_ADV_INTERVAL_MS)
 
