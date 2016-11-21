@@ -154,7 +154,7 @@ class GitRepo(object):
         return rv
 
 
-    def clone(self):
+    def clone(self, remote_branch=None):
         """
         Clones a repo using giturl and repodir.
 
@@ -162,10 +162,15 @@ class GitRepo(object):
         make sure the getter of the gitcmd doesn't think we do by setting
         work_tree to None.
 
+        @param remote_branch: Specify the remote branch to clone. None if to
+                              clone master branch.
+
         @raises GitCloneError: if cloning the master repo fails.
         """
         logging.info('Cloning git repo %s', self.giturl)
         cmd = 'clone %s %s ' % (self.giturl, self.repodir)
+        if remote_branch:
+            cmd += '-b %s' % remote_branch
         abs_work_tree = self.work_tree
         self.work_tree = None
         try:

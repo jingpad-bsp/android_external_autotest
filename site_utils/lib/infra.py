@@ -45,9 +45,13 @@ def local_runner(cmd, stream_output=False):
     """
     if not stream_output:
         return subprocess.check_output(cmd, shell=True)
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while proc.poll() is None:
         print proc.stdout.readline().rstrip('\n')
+    if proc.returncode !=0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
 
 
 _host_objects = {}
