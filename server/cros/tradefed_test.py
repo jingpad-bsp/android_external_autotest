@@ -575,14 +575,24 @@ class TradefedTest(test.test):
         # only parse for waivers for the running ABI.
         if waivers:
             for testname in waivers:
-                if testname + ' FAIL' in result.stdout:
-                    failed -= 1
+                # TODO(dhaddock): Find a more robust way to apply waivers.
+                fail_count = result.stdout.count(testname + ' FAIL')
+                if fail_count:
+                    if fail_count > 2:
+                        raise error.TestFail('Error: There are too many '
+                                             'failures found in the output to '
+                                             'be valid for applying waivers. '
+                                             'Please check output.')
+                    failed -= fail_count
                     # To maintain total count consistency.
-                    passed += 1
-                    logging.info('Waived failure %s', testname)
-
+                    passed += fail_count
+                    logging.info('Waived failure for %s %d time(s)',
+                                 testname, fail_count)
         logging.info('tests=%d, passed=%d, failed=%d, not_executed=%d',
                 tests, passed, failed, not_executed)
+        if failed < 0:
+            raise error.TestFail('Error: Internal waiver book keeping has '
+                                 'become inconsistent.')
         return (tests, passed, failed, not_executed)
 
     def _collect_logs(self, repository, datetime, destination):
