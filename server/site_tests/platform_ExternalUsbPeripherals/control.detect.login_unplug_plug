@@ -53,11 +53,6 @@ def run(machine):
                 "\"Kingston Technology Company Inc.\"",
                 "\"Alcor Micro Corp.\"",
                 "\"Microsoft Corp.|C-Media Electronics, Inc. Audio Adapter\"",
-                # Commenting out due to crbug.com/616158
-                #"\"CMOTECH Co., Ltd.|Huawei Technologies Co., Ltd. Modem/Networkcard\"",
-                "\"Realtek Semiconductor Corp.\"",
-                # Commenting out due to crbug.com/488667.
-                #"LG Electronics, Inc.",
                ]
     usb_checks = {
         # USB Audio Output devices
@@ -71,7 +66,7 @@ def run(machine):
              "\"Microsoft LifeChat LX-3000: USB Audio|C-Media USB Headphone Set: USB Audio\""],
         # USB stick four partitions volumes
         "loggedin:ls -l /media/removable/ | grep -i " :
-            ["\"USB Drive\"", "\"SD Card\"", "ExFAT", "Ext4", "FAT", "NTFS"],
+            ["\"SD Card\"", "ExFAT", "Ext4", "FAT", "NTFS"],
         # USB Web camera
         "cat /sys/class/video4linux/video*/name | grep -E " :
             ["\"TeckNet|USB 2.0 PC Camera\""],
