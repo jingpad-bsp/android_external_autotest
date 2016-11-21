@@ -305,7 +305,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
 
     def get_file(self, source, dest, delete_dest=False, preserve_perm=True,
-                 preserve_symlinks=False):
+                 preserve_symlinks=False, retry=True):
         """
         Copy files from the remote host to a local path.
 
@@ -356,7 +356,27 @@ class AbstractSSHHost(remote.RemoteHost):
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
-                logging.warning("trying scp, rsync failed: %s", e)
+                # retry on rsync exit values which may be caused by transient
+                # network problems:
+                #
+                # rc 10: Error in socket I/O
+                # rc 12: Error in rsync protocol data stream
+                # rc 23: Partial transfer due to error
+                # rc 255: Ssh error
+                #
+                # Note that rc 23 includes dangling symlinks.  In this case
+                # retrying is useless, but not very damaging since rsync checks
+                # for those before starting the transfer (scp does not).
+                status = e.result_obj.exit_status
+                if status in [10, 12, 23, 255] and retry:
+                    logging.warning('rsync status %d, retrying', status)
+                    self.get_file(source, dest, delete_dest, preserve_perm,
+                                  preserve_symlinks, retry=False)
+                    # The nested get_file() does all that's needed.
+                    return
+                else:
+                    logging.warning("trying scp, rsync failed: %s (%d)",
+                                     e, status)
 
         if try_scp:
             logging.debug('Trying scp.')
