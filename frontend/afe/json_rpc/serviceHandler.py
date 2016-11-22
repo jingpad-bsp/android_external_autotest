@@ -31,6 +31,10 @@ except django_exceptions.ImproperlyConfigured:
     from json import encoder
     json_encoder = encoder.JSONEncoder()
 
+# TODO(akeshet): Eliminate this and replace with monarch metrics. (At the
+# moment, I don't think we can just easily swap out, because this module is
+# called by apache for rpc handling, and we don't have a ts_mon thread for that
+# yet).
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 

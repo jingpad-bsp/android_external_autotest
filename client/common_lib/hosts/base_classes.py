@@ -19,7 +19,6 @@ import cPickle, logging, os, re, time
 
 from autotest_lib.client.common_lib import global_config, error, utils
 from autotest_lib.client.common_lib.cros import path_utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 class Host(object):
@@ -295,28 +294,15 @@ class Host(object):
         """
         key_string = 'Reboot.%s' % dargs.get('board')
 
-        total_reboot_timer = autotest_stats.Timer('%s.total' % key_string,
-                metadata=self._construct_host_metadata('reboot_total'))
-        wait_down_timer = autotest_stats.Timer('%s.wait_down' % key_string,
-                metadata=self._construct_host_metadata('reboot_down'))
-
-        total_reboot_timer.start()
-        wait_down_timer.start()
         if not self.wait_down(timeout=down_timeout,
                               warning_timer=down_warning,
                               old_boot_id=old_boot_id):
             if log_failure:
                 self.record("ABORT", None, "reboot.verify", "shut down failed")
             raise error.AutoservShutdownError("Host did not shut down")
-        wait_down_timer.stop()
-        wait_up_timer = autotest_stats.Timer('%s.wait_up' % key_string,
-                metadata=self._construct_host_metadata('reboot_up'))
-        wait_up_timer.start()
         if self.wait_up(timeout):
             self.record("GOOD", None, "reboot.verify")
             self.reboot_followup(**dargs)
-            wait_up_timer.stop()
-            total_reboot_timer.stop()
         else:
             self.record("ABORT", None, "reboot.verify",
                         "Host did not return from reboot")
