@@ -25,7 +25,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils as server_utils
 # TODO(cmasone): redo this class using requests module; http://crosbug.com/30107
 
@@ -137,8 +136,6 @@ ENABLE_SSH_CONNECTION_FOR_DEVSERVER = CONFIG.get_config_value(
 AUTO_UPDATE_LOG_DIR = 'autoupdate_logs'
 
 DEFAULT_SUBNET_MASKBIT = 19
-
-_timer = autotest_stats.Timer('devserver')
 
 
 class DevServerException(Exception):
@@ -354,25 +351,14 @@ class DevServer(object):
         @return: A dictionary of the devserver's load.
 
         """
-        server_name = DevServer.get_server_name(devserver)
-        # statsd treats |.| as path separator.
-        server_name = server_name.replace('.', '_')
         call = DevServer._build_call(devserver, 'check_health')
-
         @remote_devserver_call(timeout_min=timeout_min)
         def make_call():
             """Inner method that makes the call."""
             return cls.run_call(call, timeout=timeout_min*60)
-        try:
-            result_dict = json.load(cStringIO.StringIO(make_call()))
-            for key, val in result_dict.iteritems():
-                try:
-                    autotest_stats.Gauge(server_name).send(key, float(val))
-                except ValueError:
-                    # Ignore all non-numerical health data.
-                    pass
 
-            return result_dict
+        try:
+            return json.load(cStringIO.StringIO(make_call()))
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
                           ' Error: %s', call, timeout_min * 60, e)
@@ -424,7 +410,6 @@ class DevServer(object):
 
 
     @classmethod
-    @_timer.decorate
     def devserver_healthy(cls, devserver,
                           timeout_min=DEVSERVER_SSH_TIMEOUT_MINS):
         """Returns True if the |devserver| is healthy to stage build.
@@ -437,35 +422,36 @@ class DevServer(object):
 
         """
         server_name = DevServer.get_server_name(devserver)
-        # statsd treats |.| as path separator.
-        server_name = server_name.replace('.', '_')
+        c = metrics.Counter('chromeos/autotest/devserver/devserver_healthy')
+        reason = ''
+        healthy = False
         load = cls.get_devserver_load(devserver, timeout_min=timeout_min)
-        if not load:
-            # Failed to get the load of devserver.
-            autotest_stats.Counter(server_name +
-                                   '.devserver_not_healthy').increment()
-            return False
+        try:
+            if not load:
+                # Failed to get the load of devserver.
+                reason = '(1) Failed to get load.'
+                return False
 
-        apache_ok = DevServer.is_apache_client_count_ok(load)
-        if not apache_ok:
-            logging.error('Devserver check_health failed. Live Apache client '
-                          'count is too high: %d.',
-                          load[DevServer.APACHE_CLIENT_COUNT])
-            autotest_stats.Counter(server_name +
-                                   '.devserver_not_healthy').increment()
-            return False
+            apache_ok = DevServer.is_apache_client_count_ok(load)
+            if not apache_ok:
+                reason = '(2) Apache client count too high.'
+                logging.error('Devserver check_health failed. Live Apache client '
+                              'count is too high: %d.',
+                              load[DevServer.APACHE_CLIENT_COUNT])
+                return False
 
-        disk_ok = DevServer.is_free_disk_ok(load)
-        if not disk_ok:
-            logging.error('Devserver check_health failed. Free disk space is '
-                          'low. Only %dGB is available.',
-                          load[DevServer.FREE_DISK])
-        counter = '.devserver_healthy' if disk_ok else '.devserver_not_healthy'
-        # This counter indicates the load of a devserver. By comparing the
-        # value of this counter for all devservers, we can evaluate the
-        # load balancing across all devservers.
-        autotest_stats.Counter(server_name + counter).increment()
-        return disk_ok
+            disk_ok = DevServer.is_free_disk_ok(load)
+            if not disk_ok:
+                reason = '(3) Disk space too low.'
+                logging.error('Devserver check_health failed. Free disk space is '
+                              'low. Only %dGB is available.',
+                              load[DevServer.FREE_DISK])
+            healthy = bool(disk_ok)
+            return disk_ok
+        finally:
+            c.increment(fields={'dev_server': server_name,
+                                'healthy': healthy,
+                                'reason': reason})
 
 
     @staticmethod
@@ -748,19 +734,18 @@ class CrashServer(DevServer):
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
         server_name = self.get_server_name(self.url())
-        server_name = server_name.replace('.', '_')
-        stats_key = 'CrashServer.%s.symbolicate_dump' % server_name
-        autotest_stats.Counter(stats_key).increment()
-        timer = autotest_stats.Timer(stats_key)
-        timer.start()
+        f = {'dev_server': server_name}
+        c = metrics.Counter('chromeos/autotest/crashserver/symbolicate_dump')
+        c.increment(fields=f)
         # Symbolicate minidump.
-        call = self.build_call('symbolicate_dump',
-                               archive_url=_get_image_storage_server() + build)
-        request = requests.post(
-                call, files={'minidump': open(minidump_path, 'rb')})
-        if request.status_code == requests.codes.OK:
-            timer.stop()
-            return request.text
+        m = 'chromeos/autotest/crashserver/symbolicate_dump_duration'
+        with metrics.SecondsTimer(m, fields=f):
+            call = self.build_call('symbolicate_dump',
+                                   archive_url=_get_image_storage_server() + build)
+            request = requests.post(
+                    call, files={'minidump': open(minidump_path, 'rb')})
+            if request.status_code == requests.codes.OK:
+                return request.text
 
         error_fd = cStringIO.StringIO(request.text)
         raise urllib2.HTTPError(
@@ -811,32 +796,6 @@ class ImageServerBase(DevServer):
 
 
     @staticmethod
-    def create_stats_str(subname, server_name, artifacts):
-        """Create a graphite name given the staged items.
-
-        The resulting name will look like
-            'dev_server.subname.DEVSERVER_URL.artifact1_artifact2'
-        The name can be used to create a stats object like
-        stats.Timer, stats.Counter, etc.
-
-        @param subname: A name for the graphite sub path.
-        @param server_name: name of the devserver, e.g 172.22.33.44.
-        @param artifacts: A list of artifacts.
-
-        @return A name described above.
-
-        """
-        staged_items = sorted(artifacts) if artifacts else []
-        staged_items_str = '_'.join(staged_items).replace(
-                '.', '_') if staged_items else None
-        server_name = server_name.replace('.', '_')
-        stats_str = 'dev_server.%s.%s' % (subname, server_name)
-        if staged_items_str:
-            stats_str += '.%s' % staged_items_str
-        return stats_str
-
-
-    @staticmethod
     def create_metadata(server_name, image, artifacts=None, files=None):
         """Create a metadata dictionary given the staged items.
 
@@ -879,9 +838,8 @@ class ImageServerBase(DevServer):
             logging.debug('Error occurred with exit_code %d when executing the '
                           'ssh call: %s.', e.result_obj.exit_status,
                           e.result_obj.stderr)
-            stats_str = 'dev_server.%s.%s' % (hostname.replace('.', '_'),
-                                              'ssh_dev_server_failure')
-            autotest_stats.Counter(stats_str).increment()
+            c = metrics.Counter('chromeos/autotest/devserver/ssh_failure')
+            c.increment(fields={'dev_server': hostname})
             raise
         response = result.stdout
 
@@ -1065,37 +1023,28 @@ class ImageServerBase(DevServer):
                         (build, artifacts, files, archive_url))
         logging.info('Staging artifacts on devserver %s: %s',
                      self.url(), staging_info)
-        if artifacts:
-            server_name = self.get_server_name(self.url())
-            timer_key = self.create_stats_str(
-                    'stage_artifacts', server_name, artifacts)
-            counter_key = self.create_stats_str(
-                    'stage_artifacts_count', server_name, artifacts)
-            metadata = self.create_metadata(server_name, build, artifacts,
-                                            files)
-            autotest_stats.Counter(counter_key, metadata=metadata).increment()
-            timer = autotest_stats.Timer(timer_key, metadata=metadata)
-            timer.start()
+        success = False
         try:
             arguments = {'archive_url': archive_url,
                          'artifacts': artifacts_arg,
                          'files': files_arg}
             if kwargs:
                 arguments.update(kwargs)
-            self.call_and_wait(call_name='stage', error_message=error_message,
-                               **arguments)
-            if artifacts:
-                timer.stop()
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/devserver/stage_artifact_duration',
+                    fields={'artifacts': artifacts_arg}):
+                self.call_and_wait(call_name='stage', error_message=error_message,
+                                   **arguments)
             logging.info('Finished staging artifacts: %s', staging_info)
+            success = True
         except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('stage_artifacts timed out: %s', staging_info)
-            if artifacts:
-                timeout_key = self.create_stats_str(
-                        'stage_artifacts_timeout', server_name, artifacts)
-                autotest_stats.Counter(timeout_key,
-                                       metadata=metadata).increment()
             raise DevServerException(
                     'stage_artifacts timed out: %s' % staging_info)
+        finally:
+            metrics.Counter('chromeos/autotest/devserver/stage_artifact'
+                            ).increment(fields={'success': success,
+                                                'artifacts': artifacts_arg})
 
 
     def call_and_wait(self, *args, **kwargs):
@@ -1147,19 +1096,11 @@ class ImageServerBase(DevServer):
 
         logging.info('trigger_download starts for %s', build)
         server_name = self.get_server_name(self.url())
-        artifacts_list = artifacts.split(',')
-        counter_key = self.create_stats_str(
-                'trigger_download_count', server_name, artifacts_list)
-        metadata = self.create_metadata(server_name, build, artifacts_list)
-        autotest_stats.Counter(counter_key, metadata=metadata).increment()
         try:
             response = self.call_and_wait(call_name='stage', **kwargs)
             logging.info('trigger_download finishes for %s', build)
         except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('trigger_download timed out for %s.', build)
-            timeout_key = self.create_stats_str(
-                    'trigger_download_timeout', server_name, artifacts_list)
-            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'trigger_download timed out for %s.' % build)
         was_successful = response == SUCCESS
@@ -1197,12 +1138,6 @@ class ImageServerBase(DevServer):
             self.call_and_wait(call_name='stage', **kwargs)
         except (site_utils.TimeoutError, error.TimeoutException):
             logging.error('finish_download timed out for %s', build)
-            server_name = self.get_server_name(self.url())
-            artifacts_list = artifacts.split(',')
-            timeout_key = self.create_stats_str(
-                    'finish_download_timeout', server_name, artifacts_list)
-            metadata = self.create_metadata(server_name, build, artifacts_list)
-            autotest_stats.Counter(timeout_key, metadata=metadata).increment()
             raise DevServerException(
                     'finish_download timed out for %s.' % build)
 

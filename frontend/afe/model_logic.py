@@ -9,6 +9,8 @@ from django.db import models as dbmodels
 from django.db import transaction
 from django.db.models.sql import query
 import django.db.models.sql.where
+# TODO(akeshet): Replace with monarch stats once we know how to instrument rpc
+# handling with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import rdb_model_extensions
 

@@ -19,6 +19,8 @@ from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.client.common_lib import time_utils
+# TODO(akeshet): Replace with monarch once we know how to instrument rpc server
+# with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils as server_utils
 from autotest_lib.server.cros import provision
