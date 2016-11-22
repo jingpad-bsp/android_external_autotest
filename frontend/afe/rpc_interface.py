@@ -41,6 +41,8 @@ import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib.cros import dev_server
+# TODO(akeshet): Replace with monarch stats once we know how to instrument rpc
+# server with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import control_file, rpc_utils
 from autotest_lib.frontend.afe import models, model_logic, model_attributes

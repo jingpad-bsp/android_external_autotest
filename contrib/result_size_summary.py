@@ -15,7 +15,6 @@ import time
 import common
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 def get_summary(start_time, end_time, top=None, report_stat=False):
@@ -43,9 +42,6 @@ def get_summary(start_time, end_time, top=None, report_stat=False):
         for hit in hits[:top]:
             print ('%s: \t%.2f MB' %
                    (hit['result_dir'], hit['size_KB']/1000.0))
-    if report_stat:
-        autotest_stats.Gauge('gs_offloader').send(
-                'result_dir_size_total', total_GB)
 
 
 def main():
