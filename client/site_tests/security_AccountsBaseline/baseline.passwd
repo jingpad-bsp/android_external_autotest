@@ -53,6 +53,7 @@ goofy:x:248:248:role account for running factory flow tests:/home/goofy:/bin/bas
 easy-unlock:!:249:249::/dev/null:/bin/false
 trunks:!:251:251::/dev/null:/bin/false
 tpm_manager:!:252:252::/dev/null:/bin/false
+authpolicyd:!:254:254:authpolicy daemon:/dev/null:/bin/false
 saned:!:255:255:document scanning process:/dev/null:/bin/false
 volume:!:257:257::/dev/null:/bin/false
 apmanager:!:259:259::/dev/null:/bin/false
