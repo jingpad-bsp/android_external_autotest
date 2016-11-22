@@ -18,7 +18,6 @@ from autotest_lib.client.common_lib import lsbrelease_utils
 from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.client.cros import cros_ui
 from autotest_lib.client.cros.audio import cras_utils
@@ -410,9 +409,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 'branch': branch,
                 'devserver': devserver.replace('.', '_'),
             }
-            autotest_stats.Gauge('verify_job_repo_url').send(
-                '%(board)s.%(build_type)s.%(branch)s.%(devserver)s' % stats_key,
-                stage_time)
             if metrics:
                 monarch_fields = {
                     'board': board,
@@ -736,9 +732,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 c.increment(fields=monarch_fields)
 
         # Report provision stats.
-        statsd_server_name = server_name.replace('.', '_')
-        autotest_stats.Counter('cros_host_provision.' + statsd_server_name).increment()
-        autotest_stats.Counter('cros_host_provision.total').increment()
+        (metrics.Counter('chromeos/autotest/provision/install_with_devserver')
+         .increment(fields=monarch_fields))
         logging.debug('Resolved devserver for auto-update: %s', devserver.url())
 
         # and other metrics from this function.
@@ -824,9 +819,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Report provision stats.
         server_name = dev_server.ImageServer.get_server_name(update_url)
-        statsd_server_name = server_name.replace('.', '_')
-        autotest_stats.Counter('cros_host_provision.' + statsd_server_name).increment()
-        autotest_stats.Counter('cros_host_provision.total').increment()
+        (metrics.Counter('chromeos/autotest/provision/install')
+         .increment(fields={'devserver': server_name}))
 
         # Create a file to indicate if provision fails. The file will be removed
         # by stateful update or full install.
@@ -1088,18 +1082,15 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         @raises AutoservError if the image fails to boot.
 
         """
-        usb_boot_timer_key = ('servo_install.usb_boot_timeout_%s'
-                              % usb_boot_timeout)
         logging.info('Downloading image to USB, then booting from it. Usb boot '
                      'timeout = %s', usb_boot_timeout)
-        timer = autotest_stats.Timer(usb_boot_timer_key)
-        timer.start()
-        self.servo.install_recovery_image(image_url)
-        if not self.wait_up(timeout=usb_boot_timeout):
-            raise hosts.AutoservRepairError(
-                    'DUT failed to boot from USB after %d seconds' %
-                    usb_boot_timeout)
-        timer.stop()
+        with metrics.SecondsTimer(
+                'chromeos/autotest/provision/servo_install/boot_duration'):
+            self.servo.install_recovery_image(image_url)
+            if not self.wait_up(timeout=usb_boot_timeout):
+                raise hosts.AutoservRepairError(
+                        'DUT failed to boot from USB after %d seconds' %
+                        usb_boot_timeout)
 
         # The new chromeos-tpm-recovery has been merged since R44-7073.0.0.
         # In old CrOS images, this command fails. Skip the error.
@@ -1110,14 +1101,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             logging.warn('chromeos-tpm-recovery is too old.')
 
 
-        install_timer_key = ('servo_install.install_timeout_%s'
-                             % install_timeout)
-        timer = autotest_stats.Timer(install_timer_key)
-        timer.start()
-        logging.info('Installing image through chromeos-install.')
-        self.run('chromeos-install --yes', timeout=install_timeout)
-        self.halt()
-        timer.stop()
+        with metrics.SecondsTimer(
+                'chromeos/autotest/provision/servo_install/install_duration'):
+            logging.info('Installing image through chromeos-install.')
+            self.run('chromeos-install --yes', timeout=install_timeout)
+            self.halt()
 
         logging.info('Power cycling DUT through servo.')
         self.servo.get_power_state_controller().power_off()
