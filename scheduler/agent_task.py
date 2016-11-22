@@ -116,7 +116,6 @@ from chromite.lib import metrics
 
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import drone_manager, pidfile_monitor
 from autotest_lib.scheduler import scheduler_lib
@@ -336,13 +335,9 @@ class BaseAgentTask(object):
 
     def _check_paired_results_exist(self):
         if not self._paired_with_monitor().has_process():
-            metadata = {
-                    '_type': 'scheduler_error',
-                    'error': 'No paired results in task',
-                    'task': str(self),
-                    'pidfile_id': str(self._paired_with_monitor().pidfile_id)}
-            autotest_stats.Counter('no_paired_results_in_task',
-                                   metadata=metadata).increment()
+            metrics.Counter(
+                'chromeos/autotest/errors/scheduler/no_paired_results'
+            ).increment()
             self.finished(False)
             return False
         return True
