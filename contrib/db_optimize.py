@@ -17,7 +17,6 @@ import subprocess
 import sys
 
 import common
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.frontend import database_settings_helper
 from autotest_lib.scheduler import email_manager
 from autotest_lib.server import utils
@@ -25,9 +24,7 @@ from autotest_lib.server import utils
 # Format Appears as: [Date] [Time] - [Msg Level] - [Message]
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
 STATS_KEY = 'db_optimize.%s' % socket.gethostname()
-timer = autotest_stats.Timer(STATS_KEY)
 
-@timer.decorate
 def main_without_exception_handling():
     database_settings = database_settings_helper.get_default_db_config()
     command = ['mysqlcheck',
