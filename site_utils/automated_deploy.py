@@ -33,6 +33,7 @@ GIT_URL = {'autotest':
            'https://chromium.googlesource.com/chromiumos/chromite'}
 PROD_BRANCH = 'prod'
 MASTER_AFE = 'cautotest'
+NOTIFY_GROUP = 'chromeos-infra-discuss@google.com'
 
 
 class AutoDeployException(Exception):
@@ -101,11 +102,11 @@ def update_prod_branch(repo, repo_dir, hash_to_rebase):
     @raises subprocess.CalledProcessError on a command failure.
     """
     with infra.chdir(repo_dir):
-        rebase_to = hash_to_rebase if hash_to_rebase else 'prod-next'
-        push_cmd = 'git rebase %s prod; git push origin prod' % rebase_to
-        print 'Updating %s prod branch. Running:\n%s\n' % (repo, push_cmd)
-        result = infra.local_runner(push_cmd)
-        print '%s\nSuccessfully pushed %s prod branch!\n' % (result, repo)
+        print 'Updating %s prod branch.' % repo
+        rebase_to = hash_to_rebase if hash_to_rebase else 'origin/prod-next'
+        infra.local_runner('git rebase %s prod' % rebase_to, stream_output=True)
+        result = infra.local_runner('git push origin prod', stream_output=True)
+        print 'Successfully pushed %s prod branch!\n' % repo
 
         # Get the pushed commit range, which is used to get the pushed commits
         # using git log E.g. 123..456, then run git log --oneline 123..456.
@@ -130,13 +131,13 @@ def get_pushed_commits(repo, repo_dir, pushed_commits_range):
               B xxxx"
     @raises subprocess.CalledProcessError on a command failure.
     """
+    print 'Getting pushed CLs for %s repo.' % repo
     with infra.chdir(repo_dir):
         get_commits_cmd = 'git log --oneline %s' % pushed_commits_range
         if repo == 'autotest':
             get_commits_cmd += '|grep autotest'
-        print ('Get pushed %s CLs. Running:\n%s\n' % (repo, get_commits_cmd))
-        pushed_commits = infra.local_runner(get_commits_cmd)
-        print '%s\nSuccessfully got %s pushed CLs!\n' % (pushed_commits, repo)
+        pushed_commits = infra.local_runner(get_commits_cmd, stream_output=True)
+        print 'Successfully got pushed CLs for %s repo!\n' % repo
         return '\n%s\n%s\n' % (get_commits_cmd, pushed_commits)
 
 
@@ -148,15 +149,11 @@ def kick_off_deploy():
     print 'Start deploying changes to all lab servers...'
     with infra.chdir(AUTOTEST_DIR):
         # First update the local autotest repo to have the newest deploy script.
-        pull_cmd = 'git stash; git pull --rebase'
-        print ('!!!Local changes will be stashed. After deployment, you can run'
-               'git stash pop to restore the changes.\nUpdate local autotest to'
-               'get lastest deploy script. Running:\n%s\n' % pull_cmd)
-        infra.local_runner(pull_cmd, stream_output=True)
+        print ('Update local autotest to get lastest deploy script.')
+        infra.local_runner('git pull --rebase', stream_output=True)
         # Then kick off the deploy script.
         deploy_cmd = ('runlocalssh ./site_utils/deploy_server.py --afe=%s' %
                       MASTER_AFE)
-        print 'Deploying to product. Running:\n%s\n' % deploy_cmd
         infra.local_runner(deploy_cmd, stream_output=True)
         print 'Successfully deploy changes to all lab servers.!'
 
@@ -192,9 +189,7 @@ def main(args):
 
     # When deploy succeeds, print the update_log.
     print ('Deploy succeeds!!! Below is the push log of the updated repo:\n%s'
-           'Please email this to the correct group.\n\nNote: your local '
-           'autotest changes have been stashed. You can restore them by running'
-           ' git stash pop.'% update_log)
+           'Please email this to %s.'% (update_log, NOTIFY_GROUP))
 
 
 if __name__ == '__main__':
