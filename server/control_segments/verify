@@ -1,6 +1,9 @@
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+from chromite.lib import metrics
+
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
+
+DURATION_METRIC = '/chrome/infra/chromeos/autotest/autoserv/verify_duration'
 
 
 # A string of the form 'label1,label2:value,label3'.
@@ -10,17 +13,16 @@ labels_list = [l.strip() for l in job_labels.split(',') if l]
 
 def verify(machine):
     print 'Initializing host %s' % machine
-    timer = None
     job.record('START', None, 'verify')
     target = hosts.create_target_machine(machine,
                                          try_lab_servo=True)
+    hostname = utils.get_hostname_from_machine(machine)
     try:
-        timer = autotest_stats.Timer('verify_time')
-        timer.start()
-
-        target.verify()
-        provision.run_special_task_actions(job, target, labels_list,
-                                           provision.Verify)
+        with metrics.SecondsTimer(DURATION_METRIC,
+                                  fields={'dut_host_name': hostname}):
+            target.verify()
+            provision.run_special_task_actions(job, target, labels_list,
+                                               provision.Verify)
     except Exception as e:
         logging.exception(e)
         job.record('END FAIL', None, 'verify')
@@ -31,9 +33,6 @@ def verify(machine):
         hostname = utils.get_hostname_from_machine(machine)
         job.record('END GOOD', None, 'verify',
                    '%s verified successfully' % hostname)
-    finally:
-        if timer:
-            timer.stop()
 
 
 job.parallel_simple(verify, machines)
