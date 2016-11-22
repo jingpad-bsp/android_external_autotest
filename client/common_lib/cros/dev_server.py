@@ -16,9 +16,6 @@ import time
 import urllib2
 import urlparse
 
-import common
-from chromite.lib import metrics
-
 from autotest_lib.client.bin import utils as site_utils
 from autotest_lib.client.common_lib import android_utils
 from autotest_lib.client.common_lib import error
@@ -219,22 +216,6 @@ def _get_dev_server_list():
 def _get_crash_server_list():
     return CONFIG.get_config_value('CROS', 'crash_server', type=list,
         default=[])
-
-
-def _report_resolve_devserver_metric(devserver, method, success):
-    """Report Monarch metric for resolving a devserver.
-
-    @param devserver: devserver hostname string.
-    @param method: Method called to resolve devserver, as string.
-    @param success: Boolean.
-    """
-    metric_counter = metrics.Counter(
-        '/chrome/infra/chromeos/autotest/resolve_devserver')
-    metric_counter.increment({
-        'devserver': devserver,
-        'method': method,
-        'success': success,
-    })
 
 
 def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
@@ -595,11 +576,6 @@ class DevServer(object):
             devserver = devservers.pop(hash_index)
             if cls.devserver_healthy(devserver):
                 return cls(devserver)
-            else:
-                _report_resolve_devserver_metric(
-                    method='get_healthy_devserver',
-                    success=False,
-                    devserver=devserver)
 
 
     @classmethod
@@ -676,12 +652,7 @@ class DevServer(object):
             devserver = cls.get_healthy_devserver(build, devservers)
             if devservers:
                 tried_devservers |= set(devservers)
-
         if devserver:
-            _report_resolve_devserver_metric(
-                method='resolve',
-                success=True,
-                devserver=devserver)
             return devserver
         else:
             error_msg = ('All devservers are currently down: %s. '
