@@ -72,6 +72,9 @@ SUCCESS = 'Success'
 # The timeout minutes for a given devserver ssh call.
 DEVSERVER_SSH_TIMEOUT_MINS = 1
 
+# Error message for invalid devserver response.
+ERR_MSG_FOR_INVALID_DEVSERVER_RESPONSE = 'Proxy Error'
+
 # The timeout minutes for waiting a devserver staging.
 DEVSERVER_IS_STAGING_RETRY_MIN = 100
 
@@ -140,6 +143,11 @@ _timer = autotest_stats.Timer('devserver')
 
 class DevServerException(Exception):
     """Raised when the dev server returns a non-200 HTTP response."""
+    pass
+
+
+class DevServerOverloadException(Exception):
+    """Raised when the dev server returns a 502 HTTP response."""
     pass
 
 
@@ -244,7 +252,8 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
 
     def inner_decorator(method):
         label = method.__name__ if hasattr(method, '__name__') else None
-        @retry.retry((urllib2.URLError, error.CmdError),
+        @retry.retry((urllib2.URLError, error.CmdError,
+                      DevServerOverloadException),
                      timeout_min=timeout_min,
                      exception_to_raise=exception_to_raise,
                      label=label)
@@ -998,6 +1007,11 @@ class ImageServerBase(DevServer):
         try:
             response = self.run_call(call)
             logging.debug('response for RPC: %r', response)
+            if ERR_MSG_FOR_INVALID_DEVSERVER_RESPONSE in response:
+                logging.debug('Proxy error happens in RPC call, '
+                              'will retry in 30 seconds')
+                time.sleep(30)
+                raise DevServerOverloadException()
         except httplib.BadStatusLine as e:
             logging.error(e)
             raise DevServerException('Received Bad Status line, Devserver %s '
