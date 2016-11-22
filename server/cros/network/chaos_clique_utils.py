@@ -9,6 +9,7 @@ import re
 import shutil
 
 import common
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros.network import ap_constants
 from autotest_lib.client.common_lib.cros.network import iw_runner
 from autotest_lib.server import hosts
@@ -19,14 +20,16 @@ from autotest_lib.server.cros.ap_configurators import ap_cartridge
 from autotest_lib.server.cros.ap_configurators import ap_spec as ap_spec_module
 
 
-def allocate_packet_capturer(lock_manager, hostname):
+def allocate_packet_capturer(lock_manager, hostname, prefix):
     """Allocates a machine to capture packets.
 
     Locks the allocated machine if the machine was discovered via AFE
-    to prevent tests stomping on each other.
+    to prevent tests stomping on each other. Packet capture devices locked
+    need to be in the same chamber as the client from which the test is run.
 
     @param lock_manager HostLockManager object.
     @param hostname string optional hostname of a packet capture machine.
+    @param prefix string prefix for lab location of DUT ex. chromeos#
 
     @return: An SSHHost object representing a locked packet_capture machine.
     """
@@ -35,8 +38,18 @@ def allocate_packet_capturer(lock_manager, hostname):
 
     afe = frontend.AFE(debug=True,
                        server=site_utils.get_global_afe_hostname())
-    return hosts.SSHHost(site_utils.lock_host_with_labels(
-            afe, lock_manager, labels=['packet_capture']) + '.cros')
+    available_pcaps = afe.get_hosts(label='packet_capture')
+    for pcap in available_pcaps:
+        pcap_prefix = pcap.hostname.split('-')[0]
+        # Ensure the pcap and dut are in the same subnet
+        if pcap_prefix == prefix:
+            if lock_manager.lock([pcap.hostname]):
+                return hosts.SSHHost(pcap.hostname + '.cros')
+            else:
+                logging.info('Unable to lock %s', pcap.hostname)
+                continue
+    raise error.TestError('Unable to lock any pcaps - check in cautotest if '
+                          'pcaps in %s are locked.', prefix)
 
 
 def allocate_webdriver_instance(lock_manager):

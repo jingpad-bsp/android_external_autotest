@@ -71,9 +71,11 @@ class ChaosRunner(object):
 
         lock_manager = host_lock_manager.HostLockManager()
         webdriver_master = hosts.SSHHost(MASTERNAME, user='chaosvmmaster')
+        host_prefix = self._host.hostname.split('-')[0]
         with host_lock_manager.HostsLockedBy(lock_manager):
             capture_host = utils.allocate_packet_capturer(
-                    lock_manager, hostname=capturer_hostname)
+                    lock_manager, hostname=capturer_hostname,
+                    prefix=host_prefix)
             # Cleanup and reboot packet capturer before the test.
             utils.sanitize_client(capture_host)
             capturer = site_linux_system.LinuxSystem(capture_host, {},
