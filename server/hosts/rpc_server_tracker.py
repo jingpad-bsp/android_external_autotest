@@ -114,7 +114,7 @@ class RpcServerTracker(object):
 
     def xmlrpc_connect(self, command, port, command_name=None,
                        ready_test_name=None, timeout_seconds=10,
-                       logfile=None):
+                       logfile=None, request_timeout_seconds=None):
         """Connect to an XMLRPC server on the host.
 
         The `command` argument should be a simple shell command that
@@ -154,6 +154,7 @@ class RpcServerTracker(object):
             TestFail error if server is not ready in time.
         @param logfile Logfile to send output when running
             'command' argument.
+        @param request_timeout_seconds Timeout in seconds for an XMLRPC request.
 
         """
         # Clean up any existing state.  If the caller is willing
@@ -172,7 +173,11 @@ class RpcServerTracker(object):
 
         # Tunnel through SSH to be able to reach that remote port.
         rpc_url = self._setup_rpc(port, command_name, remote_pid=remote_pid)
-        proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
+        if request_timeout_seconds is not None:
+            proxy = TimeoutXMLRPCServerProxy(
+                    rpc_url, timeout=request_timeout_seconds, allow_none=True)
+        else:
+            proxy = xmlrpclib.ServerProxy(rpc_url, allow_none=True)
 
         if ready_test_name is not None:
             # retry.retry logs each attempt; calculate delay_sec to
@@ -291,3 +296,45 @@ class RpcServerTracker(object):
         """Disconnect all known RPC proxy ports."""
         for port in self._rpc_proxy_map.keys():
             self.disconnect(port)
+
+
+class TimeoutXMLRPCServerProxy(xmlrpclib.ServerProxy):
+    """XMLRPC ServerProxy supporting timeout."""
+    def __init__(self, uri, timeout=20, *args, **kwargs):
+        """Initializes a TimeoutXMLRPCServerProxy.
+
+        @param uri: URI to a XMLRPC server.
+        @param timeout: Timeout in seconds for a XMLRPC request.
+        @param *args: args to xmlrpclib.ServerProxy.
+        @param **kwargs: kwargs to xmlrpclib.ServerProxy.
+
+        """
+        if timeout:
+            kwargs['transport'] = TimeoutXMLRPCTransport(timeout=timeout)
+        xmlrpclib.ServerProxy.__init__(self, uri, *args, **kwargs)
+
+
+class TimeoutXMLRPCTransport(xmlrpclib.Transport):
+    """A Transport subclass supporting timeout."""
+    def __init__(self, timeout=20, *args, **kwargs):
+        """Initializes a TimeoutXMLRPCTransport.
+
+        @param timeout: Timeout in seconds for a HTTP request through this transport layer.
+        @param *args: args to xmlrpclib.Transport.
+        @param **kwargs: kwargs to xmlrpclib.Transport.
+
+        """
+        xmlrpclib.Transport.__init__(self, *args, **kwargs)
+        self.timeout = timeout
+
+
+    def make_connection(self, host):
+        """Overwrites make_connection in xmlrpclib.Transport with timeout.
+
+        @param host: Host address to connect.
+
+        @return: A httplib.HTTPConnection connecting to host with timeout.
+
+        """
+        conn = httplib.HTTPConnection(host, timeout=self.timeout)
+        return conn
