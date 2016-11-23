@@ -221,7 +221,12 @@ class BaseDroneManager(object):
 
 
     def reinitialize_drones(self):
-        self._call_all_drones('initialize', self._results_dir)
+        for drone in self.get_drones():
+            with metrics.SecondsTimer(
+                    'chromeos/autotest/drone_manager/'
+                    'reinitialize_drones_duration',
+                    fields={'drone': drone.hostname}):
+                drone.call('initialize', self._results_dir)
 
 
     def shutdown(self):
@@ -347,16 +352,6 @@ class BaseDroneManager(object):
         self._pidfiles = {}
         self._pidfiles_second_read = {}
         self._drone_queue = []
-
-
-    def _call_all_drones(self, method, *args, **kwargs):
-        all_results = {}
-        for drone in self.get_drones():
-            with metrics.SecondsTimer(
-                    'chromeos/autotest/drone_manager/call_duration',
-                    fields={'drone': drone.hostname, 'method': method}):
-                all_results[drone] = drone.call(method, *args, **kwargs)
-        return all_results
 
 
     def _parse_pidfile(self, drone, raw_contents):
@@ -550,6 +545,8 @@ class BaseDroneManager(object):
             self.sync_refresh()
 
 
+    @metrics.SecondsTimerDecorator(
+        'chromeos/autotest/drone_manager/execute_actions_duration')
     def execute_actions(self):
         """
         Called at the end of a scheduler cycle to execute all queued actions
