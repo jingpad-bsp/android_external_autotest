@@ -864,8 +864,9 @@ class ImageServerBase(DevServer):
         The format of remote_file should be:
             http://devserver_ip:8082/static/board/...
 
-        @param remote_file: The files on devserver that need to be downloaded.
-        @param local_file: The files saved to local.
+        @param remote_file: The URL of the file on devserver that need to be
+            downloaded.
+        @param local_file: The path of the file saved to local.
         @param timeout: The timeout seconds for this call.
         """
         response = cls.run_call(remote_file, timeout=timeout)
