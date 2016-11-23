@@ -3,14 +3,11 @@
 # found in the LICENSE file.
 
 import logging
-import socket
 import urllib2
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import afe_utils
 from autotest_lib.server import test
 
@@ -45,36 +42,6 @@ class provision_AutoUpdate(test.test):
         # We check value in initialize so that it fails faster.
         if not value:
             raise error.TestFail('No build version specified.')
-
-
-    @staticmethod
-    def log_devserver_match_stats(dut_hostname, devserver_url):
-        """Log stats whether host and devserver are in the same subnet.
-
-        @param dut_hostname: Hostname of the dut.
-        @param devserver_url: Url to the devserver.
-        """
-        try:
-            devserver_name = dev_server.ImageServer.get_server_name(
-                    devserver_url)
-            devserver_ip = socket.gethostbyname(devserver_name)
-            dut_ip = socket.gethostbyname(dut_hostname)
-        except socket.gaierror as e:
-            logging.error('Failed to get IP address, error: %s', e)
-            return
-
-        # Take the first 2 octets as the indicator of subnet.
-        devserver_subnet = '_'.join(devserver_ip.split('.')[0:2])
-        dut_subnet = '_'.join(dut_ip.split('.')[0:2])
-        if not utils.is_in_same_subnet(devserver_ip, dut_ip, 19):
-            counter = ('devserver_mismatch.%s_to_%s' %
-                       (devserver_subnet, dut_subnet))
-            autotest_stats.Counter(counter).increment()
-            counter = 'devserver_mismatch.%s' % devserver_subnet
-        else:
-            counter = 'devserver_match.%s' % devserver_subnet
-
-        autotest_stats.Counter(counter).increment()
 
 
     def run_once(self, host, value, force=False):
@@ -133,9 +100,6 @@ class provision_AutoUpdate(test.test):
                 except (dev_server.DevServerException, urllib2.URLError) as e2:
                     logging.warning('Failed to list_image_dir for build %s. '
                                     'Error: %s', image, e2)
-
-
-        self.log_devserver_match_stats(host.hostname, ds.url())
 
         url = _IMAGE_URL_PATTERN % (ds.url(), image)
 
