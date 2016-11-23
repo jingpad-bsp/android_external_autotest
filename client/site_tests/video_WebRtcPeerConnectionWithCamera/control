@@ -4,8 +4,8 @@
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
 NAME = "video_WebRtcPeerConnectionWithCamera"
-PURPOSE = "Check WebRTC local peer connection can be established"
-CRITERIA = "This test will fail if WebRTC peer connection not established"
+PURPOSE = "Ensure WebRTC call gets up and produces healthy video"
+CRITERIA = "Fails if the call doesn't even get up."
 ATTRIBUTES = "suite:av_webcam"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Performance"
@@ -18,11 +18,16 @@ BUG_TEMPLATE = {
 }
 
 DOC = """
-This test starts a local WebRTC call with two peer connections and ensures
-we get the right width and height for the video stream. This is done by
-checking both the video tag's attributes and peer connection stats
-(using getStats). Unless there's a direct failure, stats for the call are
-reported to the performance dashboard.
+This test starts a loopback WebRTC call with two peer connections
+and ensures it successfully establishes the call (otherwise the test
+will simply fail). If successful, it looks at the video frames coming
+out on the receiving side of the call and looks for freezes and black
+frames. If this test shows black frames and video_WebRtcCamera does not,
+it could mean video isn't encoded/decoded right on this device but that
+the camera works. Finally, input and output FPS are logged.
+
+Black frames/freezes/fps are reported to the perf dashboard and
+must be monitored there.
 """
 
 job.run_test("video_WebRtcPeerConnectionWithCamera")
