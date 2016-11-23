@@ -4,6 +4,7 @@
 
 import os
 import shutil
+import logging
 
 from autotest_lib.client.common_lib.cros import tpm_utils
 from autotest_lib.client.common_lib import error
@@ -64,6 +65,8 @@ class enterprise_LongevityTrackerServer(test.test):
             self.kiosk_facade.config_rise_player(ext_id, app_config_id)
 
         for cycle in range(5):
+            logging.info("Running longevity client side test Iteration: %d",
+                    cycle + 1)
             autotest.Autotest(self.client).run_test(
                     'longevity_Tracker',
                     kiosk_app_attributes=kiosk_app_attributes,
