@@ -6,8 +6,9 @@ Pidfile monitor.
 
 import logging
 import time, traceback
+import common
+from chromite.lib import metrics
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import scheduler_config
 
@@ -109,8 +110,10 @@ class PidfileRunMonitor(object):
                     'error': 'autoserv died without writing exit code',
                     'process': str(self._state.process),
                     'pidfile_id': str(self.pidfile_id)}
-        autotest_stats.Counter('autoserv_died_without_writing_exit_code',
-                               metadata=metadata).increment()
+        metric_name = ('chromeos/autotest/errors/'
+                       'autoserv_died_without_writing_exit_code')
+        metrics.Counter(metric_name).increment(
+                fields={'hostname': self._state.process.hostname})
         self.on_lost_process(self._state.process)
 
 
