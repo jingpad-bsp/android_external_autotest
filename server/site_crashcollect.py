@@ -9,18 +9,13 @@ import shutil
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.cros import constants
 from autotest_lib.server.cros.dynamic_suite.constants import JOB_BUILD_KEY
 from autotest_lib.server.crashcollect import collect_log_file
 from autotest_lib.server import utils
 
+from chromite.lib import metrics
 
-CRASH_SERVER_OVERLOAD = 'crash_server_overload'
-CRASH_SERVER_FOUND = 'crash_server_found'
-SYMBOLICATE_TIMEDOUT = 'symbolicate_timedout'
-
-timer = autotest_stats.Timer('crash_collect')
 
 def generate_minidump_stacktrace(minidump_path):
     """
@@ -38,8 +33,29 @@ def generate_minidump_stacktrace(minidump_path):
                      (minidump_path, symbol_dir, minidump_path))
 
 
-@timer.decorate
-def symbolicate_minidump_with_devserver(minidump_path, resultdir):
+def _resolve_crashserver():
+    """
+    Attempts to find a devserver / crashserver that has capacity to
+    symbolicate a crashdump.
+
+    @raises DevServerException if no server with capacity could be found.
+    @returns Hostname of resolved server, if found.
+    """
+    crashserver_name = dev_server.get_least_loaded_devserver(
+            devserver_type=dev_server.CrashServer)
+    if not crashserver_name:
+        metrics.Counter('chromeos/autotest/crashcollect/could_not_resolve'
+                        ).increment()
+        raise dev_server.DevServerException(
+                'No crash server has the capacity to symbolicate the dump.')
+    else:
+        metrics.Counter('chromeos/autotest/crashcollect/resolved',
+                        fields={'crash_server': crashserver_name})
+    return crashserver_name
+
+
+def _symbolicate_minidump_with_devserver(minidump_path, resultdir,
+                                        crashserver_name):
     """
     Generates a stack trace for the specified minidump by consulting devserver.
 
@@ -47,6 +63,7 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
 
     @param minidump_path: absolute path to minidump to by symbolicated.
     @param resultdir: server job's result directory.
+    @param crashserver_name: Name of crashserver to attempt to symbolicate with.
     @raise DevServerException upon failure, HTTP or otherwise.
     """
     # First, look up what build we tested.  If we can't find this, we can't
@@ -56,17 +73,14 @@ def symbolicate_minidump_with_devserver(minidump_path, resultdir):
         raise dev_server.DevServerException(
             'Cannot determine build being tested.')
 
-    crashserver_name = dev_server.get_least_loaded_devserver(
-            devserver_type=dev_server.CrashServer)
-    if not crashserver_name:
-        autotest_stats.Counter(CRASH_SERVER_OVERLOAD).increment()
-        raise dev_server.DevServerException(
-                'No crash server has the capacity to symbolicate the dump.')
-    else:
-        autotest_stats.Counter(CRASH_SERVER_FOUND).increment()
     devserver = dev_server.CrashServer(crashserver_name)
-    trace_text = devserver.symbolicate_dump(
-        minidump_path, keyvals[JOB_BUILD_KEY])
+
+    with metrics.SecondsTimer(
+            'chromeos/autotest/crashcollect/symbolicate_duration',
+            fields={'crash_server': crashserver_name}):
+        trace_text = devserver.symbolicate_dump(minidump_path,
+                                                keyvals[JOB_BUILD_KEY])
+
     if not trace_text:
         raise dev_server.DevServerException('Unknown error!!')
     with open(minidump_path + '.txt', 'w') as trace_file:
@@ -92,13 +106,17 @@ def generate_stacktrace_for_file(minidump, host_resultdir):
     # If that did not succeed, try to symbolicate using the dev server.
     try:
         logging.info('Generating stack trace using devserver for %s', minidump)
-        is_timeout, _ = retry.timeout(symbolicate_minidump_with_devserver,
-                                      args=(minidump, host_resultdir),
+        crashserver_name = _resolve_crashserver()
+        args = (minidump, host_resultdir, crashserver_name)
+        is_timeout, _ = retry.timeout(_symbolicate_minidump_with_devserver,
+                                      args=args,
                                       timeout_sec=600)
         if is_timeout:
             logging.info('Generating stack trace timed out for dump %s',
                          minidump)
-            autotest_stats.Counter(SYMBOLICATE_TIMEDOUT).increment()
+            metrics.Counter(
+                    'chromeos/autotest/crashcollect/symbolicate_timed_out'
+            ).increment(fields={'crash_server': crashserver_name})
         else:
             logging.info('Generated stack trace for dump %s', minidump)
             return
