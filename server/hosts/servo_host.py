@@ -26,7 +26,6 @@ from autotest_lib.client.common_lib.cros import autoupdater
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.client.common_lib.cros.network import ping_runner
 from autotest_lib.client.cros import constants as client_constants
 from autotest_lib.server import afe_utils
@@ -39,6 +38,7 @@ from autotest_lib.server.hosts import servo_repair
 from autotest_lib.server.hosts import ssh_host
 from autotest_lib.site_utils.rpm_control_system import rpm_client
 
+from chromite.lib import metrics
 
 # Names of the host attributes in the database that represent the values for
 # the servo_host and servo_port for a servo connected to the DUT.
@@ -68,8 +68,6 @@ class ServoHost(ssh_host.SSHHost):
 
     # Ready test function
     SERVO_READY_METHOD = 'get_version'
-
-    _timer = autotest_stats.Timer('servo_host')
 
     REBOOT_CMD = 'sleep 1; reboot & sleep 10; reboot -f'
 
@@ -504,7 +502,6 @@ class ServoHost(ssh_host.SSHHost):
         return status, current_build_number
 
 
-    @_timer.decorate
     def update_image(self, wait_for_update=False):
         """Update the image on the servo host, if needed.
 
@@ -573,8 +570,8 @@ class ServoHost(ssh_host.SSHHost):
                     updater.trigger_update()
                 except autoupdater.RootFSUpdateError as e:
                     trigger_download_status = 'failed with %s' % str(e)
-                    autotest_stats.Counter(
-                            'servo_host.RootFSUpdateError').increment()
+                    metrics.Counter('chromeos/autotest/servo/'
+                                    'rootfs_update_failed').increment()
                 else:
                     trigger_download_status = 'passed'
                 logging.info('Triggered download and update %s for %s, '

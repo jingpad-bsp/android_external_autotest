@@ -14,7 +14,6 @@ import inspect
 import logging
 import re
 from autotest_lib.client.common_lib import error, pxssh
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils
 from autotest_lib.server.hosts import abstract_ssh
 
@@ -131,10 +130,8 @@ class SSHHost(abstract_ssh.AbstractSSHHost):
                     logging.debug('Retrying because of DNS failure')
                     continue
                 logging.debug('Retry failed.')
-                autotest_stats.Counter('dns_retry_hack.fail').increment()
             elif not dns_retry_count:
                 logging.debug('Retry succeeded.')
-                autotest_stats.Counter('dns_retry_hack.pass').increment()
             break
 
         if ignore_timeout and not result:
