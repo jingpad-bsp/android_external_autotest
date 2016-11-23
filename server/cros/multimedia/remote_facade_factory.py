@@ -10,6 +10,8 @@ import xmlrpclib
 import pprint
 import sys
 
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.cros import constants
 from autotest_lib.server import autotest
@@ -61,17 +63,21 @@ class RemoteFacadeProxy(object):
     XMLRPC_CONNECT_TIMEOUT = 90
     XMLRPC_RETRY_TIMEOUT = 180
     XMLRPC_RETRY_DELAY = 10
+    REBOOT_TIMEOUT = 60
 
     def __init__(self, host, no_chrome):
         """Construct a RemoteFacadeProxy.
 
         @param host: Host object representing a remote host.
         @param no_chrome: Don't start Chrome by default.
+
         """
         self._client = host
         self._xmlrpc_proxy = None
         self._no_chrome = no_chrome
-        self.connect(reconnect=False)
+        self.connect()
+        if not no_chrome:
+            self._start_chrome(reconnect=False, retry=True)
 
 
     def __getattr__(self, name):
@@ -106,7 +112,9 @@ class RemoteFacadeProxy(object):
                     xmlrpclib.ProtocolError,
                     httplib.BadStatusLine):
                 # Reconnect the RPC server in case connection lost, e.g. reboot.
-                self.connect(reconnect=True)
+                self.connect()
+                if not self._no_chrome:
+                    self._start_chrome(reconnect=True, retry=False)
                 # Try again.
                 logging.warning('Retrying RPC %s.', rpc)
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
@@ -120,10 +128,14 @@ class RemoteFacadeProxy(object):
             raise
 
 
-    def connect(self, reconnect):
+    def connect(self):
         """Connects the XML-RPC proxy on the client.
 
-        @param reconnect: True for reconnection, False for the first-time.
+        @return: True on success. Note that if autotest server fails to
+                 connect to XMLRPC server on Cros host after timeout,
+                 error.TimeoutException will be raised by retry.retry
+                 decorator.
+
         """
         @retry.retry((socket.error,
                       xmlrpclib.ProtocolError,
@@ -145,9 +157,34 @@ class RemoteFacadeProxy(object):
 
         logging.info('Setup the connection to RPC server, with retries...')
         connect_with_retries()
-        if not self._no_chrome:
-            logging.info('Start Chrome with default arguments...')
-            self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
+        return True
+
+
+    def _start_chrome(self, reconnect, retry=False):
+        """Starts Chrome using browser facade on Cros host.
+
+        @param reconnect: True for reconnection, False for the first-time.
+        @param retry: True to retry using a reboot on host.
+
+        @raise: error.TestError: if fail to start Chrome after retry.
+
+        """
+        logging.info('Start Chrome with default arguments...')
+        success = self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
+        if not success and retry:
+            logging.warning('Can not start Chrome. Reboot host and try again')
+            # Reboot host and try again.
+            self._client.reboot()
+            # Wait until XMLRPC server can be reconnected.
+            utils.poll_for_condition(condition=self.connect,
+                                     timeout=self.REBOOT_TIMEOUT)
+            logging.info('Retry starting Chrome with default arguments...')
+            success = self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
+
+        if not success:
+            raise error.TestError(
+                    'Failed to start Chrome on DUT. '
+                    'Check multimedia_xmlrpc_server.log in result folder.')
 
 
     def __del__(self):
