@@ -555,14 +555,14 @@
   },
   {
     "autotest_name": "video_WebRtcPeerConnectionWithCamera",
-    "master_name": "ChromeOSVideo"
+    "master_name": "ChromeOSWebRtcVideo"
   },
   {
     "autotest_name": "video_WebRtcPerf",
-    "master_name": "ChromeOSVideo"
+    "master_name": "ChromeOSWebRtcVideo"
   },
   {
     "autotest_name": "video_WebRtcCamera",
-    "master_name": "ChromeOSVideo"
+    "master_name": "ChromeOSWebRtcVideo"
   }
 ]
