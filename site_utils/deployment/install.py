@@ -250,11 +250,47 @@ def _try_unlock_host(afe_host):
     return True
 
 
+def _update_host_attributes(afe, hostname, host_attr_dict):
+    """Update the attributes for a given host.
+
+    @param afe             AFE object for RPC calls.
+    @param hostname        Name of the host to be updated.
+    @param host_attr_dict  Dict of host attributes to store in the AFE.
+    """
+    # Let's grab the servo hostname/port/serial from host_attr_dict
+    # if possible.
+    host_attr_servo_host = None
+    host_attr_servo_port = None
+    host_attr_servo_serial = None
+    if hostname in host_attr_dict:
+        host_attr_servo_host = host_attr_dict[hostname].get(
+                servo_host.SERVO_HOST_ATTR)
+        host_attr_servo_port = host_attr_dict[hostname].get(
+                servo_host.SERVO_PORT_ATTR)
+        host_attr_servo_serial = host_attr_dict[hostname].get(
+                servo_host.SERVO_SERIAL_ATTR)
+
+    servo_hostname = (host_attr_servo_host or
+                      servo_host.make_servo_hostname(hostname))
+    servo_port = (host_attr_servo_port or
+                  str(servo_host.ServoHost.DEFAULT_PORT))
+    afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
+                           servo_hostname,
+                           hostname=hostname)
+    afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
+                           servo_port,
+                           hostname=hostname)
+    if host_attr_servo_serial:
+        afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
+                               host_attr_servo_serial,
+                               hostname=hostname)
+
+
 def _get_afe_host(afe, hostname, arguments, host_attr_dict):
     """Get an AFE Host object for the given host.
 
     If the host is found in the database, return the object
-    from the RPC call.
+    from the RPC call with the updated attributes in host_attr_dict.
 
     If no host is found, create one with appropriate servo
     attributes and the given board label.
@@ -282,38 +318,13 @@ def _get_afe_host(afe, hostname, arguments, host_attr_dict):
                 raise Exception('Host is in use, and failed to unlock it')
             raise Exception('Host is in use by Autotest')
     else:
-        # Let's grab the servo hostname/port/serial from host_attr_dict
-        # if possible.
-        host_attr_servo_host = None
-        host_attr_servo_port = None
-        host_attr_servo_serial = None
-        if hostname in host_attr_dict:
-            host_attr_servo_host = host_attr_dict[hostname].get(
-                    servo_host.SERVO_HOST_ATTR)
-            host_attr_servo_port = host_attr_dict[hostname].get(
-                    servo_host.SERVO_PORT_ATTR)
-            host_attr_servo_serial = host_attr_dict[hostname].get(
-                    servo_host.SERVO_SERIAL_ATTR)
         afe_host = afe.create_host(hostname,
                                    locked=True,
                                    lock_reason=_LOCK_REASON_NEW_HOST)
-        servo_hostname = (host_attr_servo_host or
-                          servo_host.make_servo_hostname(hostname))
-        servo_port = (host_attr_servo_port or
-                      str(servo_host.ServoHost.DEFAULT_PORT))
-        afe.set_host_attribute(servo_host.SERVO_HOST_ATTR,
-                               servo_hostname,
-                               hostname=hostname)
-        afe.set_host_attribute(servo_host.SERVO_PORT_ATTR,
-                               servo_port,
-                               hostname=hostname)
-        if host_attr_servo_serial:
-            afe.set_host_attribute(servo_host.SERVO_SERIAL_ATTR,
-                                   host_attr_servo_serial,
-                                   hostname=hostname)
-
         afe_host.add_labels([Labels.BOARD_PREFIX + arguments.board])
-        afe_host = afe.get_hosts([hostname])[0]
+
+    _update_host_attributes(afe, hostname, host_attr_dict)
+    afe_host = afe.get_hosts([hostname])[0]
     return afe_host, unlock_on_failure
 
 
