@@ -20,11 +20,12 @@ import os
 import re
 
 import common
+from chromite.lib import metrics
+
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.tko import db
 
 
@@ -37,7 +38,6 @@ form_ntuples_from_machines = server_utils.form_ntuples_from_machines
 GLOBAL_CONFIG = global_config.global_config
 DEFAULT_SERVER = 'autotest'
 
-_tko_timer = autotest_stats.Timer('tko')
 
 def dump_object(header, obj):
     """
@@ -136,7 +136,8 @@ class TKO(RpcClient):
         self._db = None
 
 
-    @_tko_timer.decorate
+    @metrics.SecondsTimerDecorator(
+        '/chrome/infra/chromeos/autotest/tko/get_job_status_duration')
     def get_job_test_statuses_from_db(self, job_id):
         """Get job test statuses from the database.
 
