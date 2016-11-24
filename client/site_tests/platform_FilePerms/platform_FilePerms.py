@@ -81,6 +81,9 @@ class platform_FilePerms(test.test):
             'type': 'debugfs',
             'options': standard_rw_options + ['gid=605', 'mode=750']},
         '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
+        '/run/imageloader/PepperFlashPlayer': {
+            'type': 'squashfs',
+            'options': ['ro', 'nodev', 'nosuid', 'mode=755']},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
         '/sys/fs/cgroup': {
             'type': 'tmpfs',
@@ -299,7 +302,9 @@ class platform_FilePerms(test.test):
                                  fs, fs_type)
                     continue
                 if not fs in self.expected_mount_options:
-                    logging.error('No expectations entry for "%s"', fs)
+                    logging.error(
+                            'No expectations entry for "%s" with info "%s"',
+                            fs, mtab[fs])
                     errors += 1
                     continue
 
