@@ -7,7 +7,6 @@ NAME = 'android_ACTS.BluetoothFunhausTest'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
 ATTRIBUTES = 'suite:android_bluetooth_funhaus'
-DEPENDENCIES = 'bluetoothcell'
 
 DOC = """
 This test runs Bluetooth Audio Quality tests
