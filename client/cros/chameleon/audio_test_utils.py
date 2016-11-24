@@ -168,6 +168,21 @@ def has_internal_microphone(host):
     return True
 
 
+def has_headphone(host):
+    """Checks if the Cros device has headphone.
+
+    @param host: The CrosHost object.
+
+    @returns: True if Cros device has headphone. False otherwise.
+
+    """
+    board_name = _get_board_name(host)
+    if host.get_board_type() == 'CHROMEBIT':
+        logging.info('Board %s does not have headphone.', board_name)
+        return False
+    return True
+
+
 def suspend_resume(host, suspend_time_secs, resume_network_timeout_secs=50):
     """Performs the suspend/resume on Cros device.
 
