@@ -36,6 +36,9 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
         @param check_quality: flag to check audio quality.
 
         """
+        if not audio_test_utils.has_headphone(host):
+            return
+
         golden_file = audio_test_data.FREQUENCY_TEST_FILE
 
         chameleon_board = host.chameleon
