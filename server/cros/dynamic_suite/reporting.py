@@ -14,10 +14,10 @@ import textwrap
 from xml.parsers import expat
 
 import common
+from chromite.lib import metrics
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import afe_urls
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
@@ -35,7 +35,6 @@ except ImportError, e:
 else:
     fundamental_libs = True
 
-EMAIL_COUNT_KEY = 'emails.test_failure.%s'
 BUG_CONFIG_SECTION = 'BUG_REPORTING'
 
 CHROMIUM_EMAIL_ADDRESS = global_config.global_config.get_config_value(
@@ -945,7 +944,6 @@ def send_email(bug, bug_template):
     @param bug_template: A template dictionary specifying the default bug
                          filing options for failures in this suite.
     """
-    autotest_stats.Counter(EMAIL_COUNT_KEY % 'total').increment()
     to_set = set(bug.cc) if bug.cc else set()
     if bug.owner:
         to_set.add(bug.owner)
@@ -954,10 +952,13 @@ def send_email(bug, bug_template):
     if bug_template.get('owner'):
         to_set.add(bug_template.get('owner'))
     recipients = ', '.join(to_set)
+    success = False
     try:
         gmail_lib.send_email(
             recipients, bug.title(), bug.summary(), retry=False,
             creds_path=site_utils.get_creds_abspath(EMAIL_CREDS_FILE))
-    except Exception:
-        autotest_stats.Counter(EMAIL_COUNT_KEY % 'fail').increment()
-        raise
+        success = True
+    finally:
+        (metrics.Counter('/chrome/infra/chromeos'
+                         '/autotest/errors/send_bug_email')
+         .increment(fields={'success': success}))
