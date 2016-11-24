@@ -74,7 +74,7 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
-                 is_component=True, num_tries=3, extra_browser_args=None,
+                 is_component=False, num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, dont_override_profile=False,
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
