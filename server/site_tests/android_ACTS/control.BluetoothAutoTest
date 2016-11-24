@@ -23,7 +23,7 @@ def run(machine):
                  config_file='android1758-bluetooth.config',
                  test_file='bt_auto_test',
                  acts_timeout=18000,
-                 additional_configs=['audio_tones', 'sim_config.json']
+                 additional_configs=['audio_tones', 'simcard_list.json']
                  )
 
 
