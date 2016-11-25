@@ -27,16 +27,20 @@ class BrowserFacadeNative(object):
         """Start a custom Chrome with given arguments.
 
         @param kwargs: A dict of keyword arguments passed to Chrome.
+        @return: True on success, False otherwise.
+
         """
-        self._resource.start_custom_chrome(kwargs)
+        return self._resource.start_custom_chrome(kwargs)
 
 
     def start_default_chrome(self, restart=False):
         """Start the default Chrome.
 
         @param restart: True to start Chrome without clearing previous state.
+        @return: True on success, False otherwise.
+
         """
-        self._resource.start_default_chrome(restart)
+        return self._resource.start_default_chrome(restart)
 
 
     def new_tab(self, url):
