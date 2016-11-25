@@ -526,9 +526,11 @@ def log_process_activity():
 
     Useful to debug performance tests and to find runaway processes.
     """
-    logging.info('Logging current process activity using top.')
+    logging.info('Logging current process activity using top and ps.')
     cmd = 'top -b -n1 -c'
     output = utils.run(cmd)
+    logging.info(output)
+    output = utils.run('ps axl')
     logging.info(output)
 
 
