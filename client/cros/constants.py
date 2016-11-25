@@ -175,6 +175,7 @@ MULTIMEDIA_XMLRPC_SERVER_COMMAND = (
 MULTIMEDIA_XMLRPC_SERVER_CLEANUP_PATTERN = 'multimedia_xmlrpc_server'
 MULTIMEDIA_XMLRPC_SERVER_READY_METHOD = 'ready'
 MULTIMEDIA_XMLRPC_SERVER_LOG_FILE= '/var/log/multimedia_xmlrpc_server.log'
+MULTIMEDIA_XMLRPC_SERVER_REQUEST_TIMEOUT = 180
 
 MULTIMEDIA_TEST_EXTENSION = (
         '/usr/local/autotest/cros/multimedia/multimedia_test_extension')
