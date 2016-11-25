@@ -21,6 +21,25 @@ retry_chrome_call = retry.retry(
         timeout_min=_FLAKY_CALL_RETRY_TIMEOUT_SEC / 60.0,
         delay_sec=_FLAKY_CHROME_CALL_RETRY_DELAY_SEC)
 
+
+class FacadeResoureError(Exception):
+    """Error in FacadeResource."""
+    pass
+
+
+_FLAKY_CHROME_START_RETRY_TIMEOUT_SEC = 120
+_FLAKY_CHROME_START_RETRY_DELAY_SEC = 10
+
+
+# Telemetry sometimes fails to start Chrome.
+retry_start_chrome = retry.retry(
+        (Exception,),
+        timeout_min=_FLAKY_CHROME_START_RETRY_TIMEOUT_SEC / 60.0,
+        delay_sec=_FLAKY_CHROME_START_RETRY_DELAY_SEC,
+        exception_to_raise=FacadeResoureError,
+        label='Start Chrome')
+
+
 class FacadeResource(object):
     """This class provides access to telemetry chrome wrapper."""
 
@@ -44,17 +63,39 @@ class FacadeResource(object):
         return self._chrome.browser
 
 
+    @retry_start_chrome
+    def _start_chrome(self, kwargs):
+        """Start a Chrome with given arguments.
+
+        @param kwargs: A dict of keyword arguments passed to Chrome.
+
+        @return: A chrome.Chrome object.
+
+        """
+        logging.debug('Try to start Chrome with kwargs: %s', kwargs)
+        return chrome.Chrome(**kwargs)
+
+
     def start_custom_chrome(self, kwargs):
         """Start a custom Chrome with given arguments.
 
         @param kwargs: A dict of keyword arguments passed to Chrome.
+
+        @return: True on success, False otherwise.
+
         """
         # Close the previous Chrome.
         if self._chrome:
             self._chrome.close()
 
         # Start the new Chrome.
-        self._chrome = chrome.Chrome(**kwargs)
+        try:
+            self._chrome = self._start_chrome(kwargs)
+        except FacadeResoureError:
+            logging.error('Failed to start Chrome after retries')
+            return False
+        else:
+            logging.info('Chrome started successfully')
 
         # The opened tabs are stored by tab descriptors.
         # Key is the tab descriptor string.
@@ -71,11 +112,16 @@ class FacadeResource(object):
             logging.warning('Delay 30s for issue 588579 on daisy')
             time.sleep(30)
 
+        return True
+
 
     def start_default_chrome(self, restart=False):
         """Start the default Chrome.
 
         @param restart: True to start Chrome without clearing previous state.
+
+        @return: True on success, False otherwise.
+
         """
         # TODO: (crbug.com/618111) Add test driven switch for
         # supporting arc_mode enabled or disabled. At this time
@@ -90,7 +136,7 @@ class FacadeResource(object):
             'arc_mode': arc_mode,
             'autotest_ext': True
         }
-        self.start_custom_chrome(kwargs)
+        return self.start_custom_chrome(kwargs)
 
 
     def __enter__(self):
