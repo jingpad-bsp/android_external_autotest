@@ -36,14 +36,17 @@ To https:TEST_URL
         # Test whether rebase to the given hash when the hash is given.
         run_cmd.return_value = self.PUSH_LOG
         ad.update_prod_branch('test', 'test_dir', '123')
-        expect_cmd = 'git rebase 123 prod; git push origin prod'
-        run_cmd.assert_called_with(expect_cmd)
+        expect_cmds = [mock.call('git rebase 123 prod', stream_output=True),
+                       mock.call('git push origin prod', stream_output=True)]
+        run_cmd.assert_has_calls(expect_cmds)
 
         # Test whether rebase to prod-next branch when the hash is not given.
         run_cmd.return_value = self.PUSH_LOG
         ad.update_prod_branch('test', 'test_dir', None)
-        expect_cmd = 'git rebase prod-next prod; git push origin prod'
-        run_cmd.assert_called_with(expect_cmd)
+        expect_cmds = [mock.call('git rebase origin/prod-next prod',
+                                 stream_output=True),
+                       mock.call('git push origin prod', stream_output=True)]
+        run_cmd.assert_has_calls(expect_cmds)
 
         # Test to grep the pushed commit range from the normal push log.
         run_cmd.return_value = self.PUSH_LOG
@@ -70,7 +73,7 @@ To https:TEST_URL
         expect_return = '\n%s\n%s\n' % (expect_git_log_cmd, fake_commits_logs)
         actual_return = ad.get_pushed_commits('autotest', 'test', '123..456')
 
-        run_cmd.assert_called_with(expect_git_log_cmd)
+        run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
 
         #Test to get pushed commits for chromite repo.
@@ -78,7 +81,7 @@ To https:TEST_URL
         expect_return = '\n%s\n%s\n' % (expect_git_log_cmd, fake_commits_logs)
         actual_return = ad.get_pushed_commits('chromite', 'test', '123..456')
 
-        run_cmd.assert_called_with(expect_git_log_cmd)
+        run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
 
 
