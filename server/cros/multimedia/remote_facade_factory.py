@@ -65,19 +65,23 @@ class RemoteFacadeProxy(object):
     XMLRPC_RETRY_DELAY = 10
     REBOOT_TIMEOUT = 60
 
-    def __init__(self, host, no_chrome):
+    def __init__(self, host, no_chrome, extra_browser_args=None):
         """Construct a RemoteFacadeProxy.
 
         @param host: Host object representing a remote host.
         @param no_chrome: Don't start Chrome by default.
+        @param extra_browser_args: A list containing extra browser args passed
+                                   to Chrome in addition to default ones.
 
         """
         self._client = host
         self._xmlrpc_proxy = None
         self._no_chrome = no_chrome
+        self._extra_browser_args = extra_browser_args
         self.connect()
         if not no_chrome:
-            self._start_chrome(reconnect=False, retry=True)
+            self._start_chrome(reconnect=False, retry=True,
+                               extra_browser_args=self._extra_browser_args)
 
 
     def __getattr__(self, name):
@@ -114,7 +118,9 @@ class RemoteFacadeProxy(object):
                 # Reconnect the RPC server in case connection lost, e.g. reboot.
                 self.connect()
                 if not self._no_chrome:
-                    self._start_chrome(reconnect=True, retry=False)
+                    self._start_chrome(
+                            reconnect=True, retry=False,
+                            extra_browser_args=self._extra_browser_args)
                 # Try again.
                 logging.warning('Retrying RPC %s.', rpc)
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
@@ -162,17 +168,22 @@ class RemoteFacadeProxy(object):
         return True
 
 
-    def _start_chrome(self, reconnect, retry=False):
+    def _start_chrome(self, reconnect, retry=False, extra_browser_args=None):
         """Starts Chrome using browser facade on Cros host.
 
         @param reconnect: True for reconnection, False for the first-time.
         @param retry: True to retry using a reboot on host.
+        @param extra_browser_args: A list containing extra browser args passed
+                                   to Chrome in addition to default ones.
 
         @raise: error.TestError: if fail to start Chrome after retry.
 
         """
-        logging.info('Start Chrome with default arguments...')
-        success = self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
+        logging.info(
+                'Start Chrome with default arguments and extra browser args %s...',
+                extra_browser_args)
+        success = self._xmlrpc_proxy.browser.start_default_chrome(
+                reconnect, extra_browser_args)
         if not success and retry:
             logging.warning('Can not start Chrome. Reboot host and try again')
             # Reboot host and try again.
@@ -180,8 +191,11 @@ class RemoteFacadeProxy(object):
             # Wait until XMLRPC server can be reconnected.
             utils.poll_for_condition(condition=self.connect,
                                      timeout=self.REBOOT_TIMEOUT)
-            logging.info('Retry starting Chrome with default arguments...')
-            success = self._xmlrpc_proxy.browser.start_default_chrome(reconnect)
+            logging.info(
+                    'Retry starting Chrome with default arguments and '
+                    'extra browser args %s...', extra_browser_args)
+            success = self._xmlrpc_proxy.browser.start_default_chrome(
+                    reconnect, extra_browser_args)
 
         if not success:
             raise error.TestError(
@@ -204,13 +218,15 @@ class RemoteFacadeFactory(object):
     """
 
     def __init__(self, host, no_chrome=False, install_autotest=True,
-                 results_dir=None):
+                 results_dir=None, extra_browser_args=None):
         """Construct a RemoteFacadeFactory.
 
         @param host: Host object representing a remote host.
         @param no_chrome: Don't start Chrome by default.
         @param install_autotest: Install autotest on host.
         @param results_dir: A directory to store multimedia server init log.
+        @param extra_browser_args: A list containing extra browser args passed
+                                   to Chrome in addition to default ones.
         If it is not None, we will get multimedia init log to the results_dir.
 
         """
@@ -221,7 +237,10 @@ class RemoteFacadeFactory(object):
             client_at = autotest.Autotest(self._client)
             client_at.install()
         try:
-            self._proxy = RemoteFacadeProxy(self._client, no_chrome)
+            self._proxy = RemoteFacadeProxy(
+                    host=self._client,
+                    no_chrome=no_chrome,
+                    extra_browser_args=extra_browser_args)
         finally:
             if results_dir:
                 host.get_file(constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
