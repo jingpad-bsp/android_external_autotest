@@ -138,7 +138,7 @@ def get_pushed_commits(repo, repo_dir, pushed_commits_range):
             get_commits_cmd += '|grep autotest'
         pushed_commits = infra.local_runner(get_commits_cmd, stream_output=True)
         print 'Successfully got pushed CLs for %s repo!\n' % repo
-        return '\n%s\n%s\n' % (get_commits_cmd, pushed_commits)
+        return '\n%s:\n%s\n%s\n' % (repo, get_commits_cmd, pushed_commits)
 
 
 def kick_off_deploy():
