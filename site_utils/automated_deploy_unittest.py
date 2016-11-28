@@ -69,17 +69,21 @@ To https:TEST_URL
         run_cmd.return_value = fake_commits_logs
 
         #Test to get pushed commits for autotest repo.
+        repo = 'autotest'
         expect_git_log_cmd = 'git log --oneline 123..456|grep autotest'
-        expect_return = '\n%s\n%s\n' % (expect_git_log_cmd, fake_commits_logs)
-        actual_return = ad.get_pushed_commits('autotest', 'test', '123..456')
+        expect_return = ('\n%s:\n%s\n%s\n' %
+                         (repo, expect_git_log_cmd, fake_commits_logs))
+        actual_return = ad.get_pushed_commits(repo, 'test', '123..456')
 
         run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
 
         #Test to get pushed commits for chromite repo.
+        repo = 'chromite'
         expect_git_log_cmd = 'git log --oneline 123..456'
-        expect_return = '\n%s\n%s\n' % (expect_git_log_cmd, fake_commits_logs)
-        actual_return = ad.get_pushed_commits('chromite', 'test', '123..456')
+        expect_return = ('\n%s:\n%s\n%s\n' %
+                         (repo, expect_git_log_cmd, fake_commits_logs))
+        actual_return = ad.get_pushed_commits(repo, 'test', '123..456')
 
         run_cmd.assert_called_with(expect_git_log_cmd, stream_output=True)
         self.assertEqual(expect_return, actual_return)
