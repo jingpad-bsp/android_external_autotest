@@ -40,18 +40,25 @@ def local_runner(cmd, stream_output=False):
     @param cmd: The command to run.
     @param stream_output: If True, streams the stdout of the process.
 
-    @returns: The output of cmd.
+    @returns: The output of cmd, will be stdout and stderr.
     @raises CalledProcessError: If there was a non-0 return code.
     """
-    if not stream_output:
-        return subprocess.check_output(cmd, shell=True)
-
+    print 'Running command: %s' % cmd
     proc = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while proc.poll() is None:
-        print proc.stdout.readline().rstrip('\n')
-    if proc.returncode !=0:
-        raise subprocess.CalledProcessError(proc.returncode, cmd)
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if stream_output:
+        output = ''
+        for newline in iter(proc.stdout.readline, ''):
+            output += newline
+            print newline.rstrip(os.linesep)
+    else:
+        output = proc.communicate()[0]
+
+    return_code = proc.wait()
+    if return_code !=0:
+        print "ERROR: '%s' failed with error:\n%s" % (cmd, output)
+        raise subprocess.CalledProcessError(return_code, cmd, output[:1024])
+    return output
 
 
 _host_objects = {}
