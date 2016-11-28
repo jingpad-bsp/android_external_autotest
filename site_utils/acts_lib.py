@@ -176,8 +176,7 @@ class AndroidTestingEnviroment(object):
         self.container_directory = container_directory
 
     def install_sl4a_apk(self):
-        """Install sl4a to a test bed.
-        """
+        """Install sl4a to a test bed."""
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
                     adb_host,
@@ -187,11 +186,13 @@ class AndroidTestingEnviroment(object):
 
     def install_apk(self, apk_info):
         """Installs an additional apk on all adb devices.
-        @param apk_info: A dictionary contianing the apk info. This dicitonary
-                         should contain the keys apk="Name of the apk",
-                         package="Name of the package". Additionally it can
-                         contain artifact="Name of the artifact", if missing
-                         the package name is used.
+
+        @param apk_info: A dictionary contianing the apk info. This dictionary
+                         should contain the keys:
+                            apk="Name of the apk",
+                            package="Name of the package".
+                            artifact="Name of the artifact", if missing
+                                      the package name is used."
         """
         for serial, adb_host in self.testbed.get_adb_devices().iteritems():
             adb_utils.install_apk_from_build(
