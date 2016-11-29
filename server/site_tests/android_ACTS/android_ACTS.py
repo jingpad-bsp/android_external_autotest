@@ -110,10 +110,12 @@ class android_ACTS(test.test):
             package = acts_lib.create_acts_package_from_current_artifact(
                     test_station, job_repo_url, target_zip)
 
-        container = package.create_container(ts_tempfolder,
-                                             override_internal_acts_dir)
+        container = package.create_container(testbed,
+                ts_tempfolder,
+                testbed_name=testbed_name,
+                internal_acts_directory=override_internal_acts_dir)
 
-        container.install_sl4a_apk(testbed)
+        container.install_sl4a_apk()
 
         for apk in additional_apks:
             container.install_apk(apk)
@@ -129,12 +131,10 @@ class android_ACTS(test.test):
         if test_file:
             container.upload_campaign(test_file)
 
-        results = container.run_test(testbed,
-                                     config_file,
+        results = container.run_test(config_file,
                                      campaign=test_file,
                                      test_case=test_case,
                                      python_bin=override_python_bin,
-                                     testbed_name=testbed_name,
                                      timeout=acts_timeout)
 
         results.log_output()
