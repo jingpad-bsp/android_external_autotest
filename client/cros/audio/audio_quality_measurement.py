@@ -5,6 +5,7 @@
 """This module provides utilities to detect some artifacts and measure the
     quality of audio."""
 
+import logging
 import math
 import numpy
 
@@ -114,6 +115,19 @@ APPEND_ZEROS_SECS = 0.1
 # If NEAR_DATA_START_OR_END_SECS is set to 0.01, then the noise happened
 # at [0, 0.11] and [10.09, 10.1] will be ignored.
 NEAR_DATA_START_OR_END_SECS = 0.01
+
+# If the noise event is too close to the start or the end of the sine wave in
+# the data, we consider its noise as part of artifacts caused by edge effect of
+# Hilbert transform.
+# A |-------------|vvvvvvvvvvvvvvvvvvvvvvv|-------------|
+# B |ooooooooo| d |                       | d |ooooooooo|
+#
+# A is full signal. It contains a sine wave and silence before and after sine
+# wave.
+# In B, |oooo| shows the parts that we are going to check for noise before/after
+# sine wave. | d | is determined by NEAR_SINE_START_OR_END_SECS.
+NEAR_SINE_START_OR_END_SECS = 0.01
+
 
 class SineWaveNotFound(Exception):
     """Error when there's no sine wave found in the signal"""
@@ -418,8 +432,12 @@ def noise_detection(start_index, end_index,
     previous_noise_index = None
     times = 0
     for index in xrange(0, length):
-        if start_index <= index and index < end_index:
+        # Ignore noise too close to the beginning or the end of sine wave.
+        # Check the docstring of NEAR_SINE_START_OR_END_SECS.
+        if ((start_index - rate * NEAR_SINE_START_OR_END_SECS) <= index and
+            (index < end_index + rate * NEAR_SINE_START_OR_END_SECS)):
             continue
+
         # Ignore noise too close to the beginning or the end of original data.
         # Check the docstring of NEAR_DATA_START_OR_END_SECS.
         if (float(index) / rate <=
@@ -822,6 +840,10 @@ def quality_measurement(
 
     if start_index > end_index:
         raise SineWaveNotFound('No sine wave found in signal')
+
+    logging.debug('Found sine wave: start: %s, end: %s',
+                  float(start_index) / rate - APPEND_ZEROS_SECS,
+                  float(end_index) / rate - APPEND_ZEROS_SECS)
 
     sum_of_amplitude = float(sum(amplitude[start_index:end_index]))
     # Finds average amplitude of sine wave.
