@@ -202,6 +202,30 @@ class FirmwareVersionVerifier(hosts.Verifier):
                 return version.group('version')
         return None
 
+    @staticmethod
+    def _check_hardware_match(version_a, version_b):
+        """
+        Check that two firmware versions identify the same hardware.
+
+        Firmware version strings look like this:
+            Google_Gnawty.5216.239.34
+        The part before the numbers identifies the hardware for which
+        the firmware was built.  This function checks that the hardware
+        identified by `version_a` and `version_b` is the same.
+
+        This is a sanity check to protect us from installing the wrong
+        firmware on a DUT when a board label has somehow gone astray.
+
+        @param version_a  First firmware version for the comparison.
+        @param version_b  Second firmware version for the comparison.
+        """
+        hardware_a = version_a.split('.')[0]
+        hardware_b = version_b.split('.')[0]
+        if hardware_a != hardware_b:
+            message = 'Hardware/Firmware mismatch updating %s to %s'
+            raise hosts.AutoservVerifyError(
+                    message % (version_a, version_b))
+
     def verify(self, host):
         # Test 1 - The DUT is not part of a FAFT pool.
         if host._is_firmware_repair_supported():
@@ -240,6 +264,7 @@ class FirmwareVersionVerifier(hosts.Verifier):
         # Time to update the firmware.
         logging.info('Updating firmware from %s to %s',
                      current_firmware, stable_firmware)
+        self._check_hardware_match(current_firmware, stable_firmware)
         try:
             host.run('chromeos-firmwareupdate --mode=autoupdate')
             host.reboot()
