@@ -10,6 +10,7 @@
 import logging
 import multiprocessing
 import os
+import pprint
 import time
 from contextlib import contextmanager
 
@@ -420,6 +421,7 @@ def check_recorded_frequency(
                                         normalized_signal,
                                         data_format['rate'],
                                         dominant_frequency=dominant_frequency)
+            logging.debug('Quality measurement result:\n%s', pprint.pformat(result))
             if check_artifacts:
                 if len(result['artifacts']['noise_before_playback']) > 0:
                     errors.append(
