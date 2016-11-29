@@ -46,7 +46,7 @@ class FacadeResource(object):
     ARC_DISABLED = 'disabled'
     ARC_ENABLED = 'enabled'
     ARC_VERSION = 'CHROMEOS_ARC_VERSION'
-    EXTRA_BROWSER_ARGS = ['--enable-gpu-benchmarking']
+    EXTRA_BROWSER_ARGS = ['--enable-gpu-benchmarking', '--use-fake-ui-for-media-stream']
 
     def __init__(self, chrome_object=None, restart=False):
         """Initializes a FacadeResource.
