@@ -120,39 +120,106 @@ class ActsPackage(object):
         self.zip_file = zip_file_path
 
     def create_container(self,
+                         testbed,
                          container_directory,
+                         testbed_name=None,
                          internal_acts_directory=None):
         """Unpacks this package into a container.
 
         Unpacks this acts package into a container to run acts tests in.
 
+        @param testbed: The testbed that the container will be testing on.
         @param container_directory: The directory on the teststation to hold
                                     the container.
+        @param testbed_name: An overriding name for the testbed.
         @param internal_acts_directory: The directory inside of the package
                                         that holds acts.
 
         @returns: An ActsContainer with info on the unpacked acts container.
         """
+        if testbed.teststation != self.test_station:
+            raise error.TestError('Creating a contianer for a testbed on a '
+                                   'different teststation is not allowed.')
+
         self.test_station.run('unzip "%s" -x -d "%s"' %
                               (self.zip_file, container_directory))
 
-        return ActsContainer(self.test_station,
+        return ActsContainer(testbed,
                              container_directory,
+                             testbed_name=testbed_name,
                              acts_directory=internal_acts_directory)
 
 
-class ActsContainer(object):
-    """A container for running acts tests with a contained version of acts."""
-    def __init__(self, test_station, container_directory, acts_directory=None):
+class AndroidTestingEnviroment(object):
+    """A container for testing android devices on a test station."""
+    def __init__(self, testbed, container_directory=None, testbed_name=None):
+        """Creates a new android testing enviroment.
+
+        @param testbed: The testbed to test on.
+        @param container_directory: The directory on the teststation to work
+                                    out of.
+        @param testbed_name: An overriding name for the testbed.
         """
-        @param test_station: The test staiton this container is on.
+        self.testbed = testbed
+
+        if not testbed_name:
+            # If no override is given get the name from the hostname.
+            hostname = testbed.hostname
+            if dnsname_mangler.is_ip_address(hostname):
+                testbed_name = hostname
+            else:
+                testbed_name = hostname.split('.')[0]
+
+        self.testbed_name = testbed_name
+
+        self.test_station = self.testbed.teststation
+        self.container_directory = container_directory
+
+    def install_sl4a_apk(self):
+        """Install sl4a to a test bed.
+        """
+        for serial, adb_host in self.testbed.get_adb_devices().iteritems():
+            adb_utils.install_apk_from_build(
+                    adb_host,
+                    constants.SL4A_APK,
+                    constants.SL4A_PACKAGE,
+                    package_name=constants.SL4A_PACKAGE)
+
+    def install_apk(self, apk_info):
+        """Installs an additional apk on all adb devices.
+        @param apk_info: A dictionary contianing the apk info. This dicitonary
+                         should contain the keys apk="Name of the apk",
+                         package="Name of the package". Additionally it can
+                         contain artifact="Name of the artifact", if missing
+                         the package name is used.
+        """
+        for serial, adb_host in self.testbed.get_adb_devices().iteritems():
+            adb_utils.install_apk_from_build(
+                    adb_host,
+                    apk_info['apk'],
+                    apk_info.get('artifact') or apk_info['package'],
+                    package_name=apk_info['package'])
+
+
+class ActsContainer(AndroidTestingEnviroment):
+    """A container for running acts tests with a contained version of acts."""
+    def __init__(self,
+                testbed,
+                container_directory,
+                testbed_name=None,
+                acts_directory=None):
+        """
+        @param testbed: The testbed to test on.
         @param container_directory: The directory on the teststation this
                                     container operates out of.
+        @param testbed_name: An overriding name for the testbed.
         @param acts_directory: The directory within the container that holds
                                acts. If none then it defaults to
                                DEFAULT_ACTS_INTERNAL_DIRECTORY.
         """
-        self.test_station = test_station
+        super(ActsContainer, self).__init__(testbed,
+                container_directory=container_directory,
+                testbed_name=testbed_name)
 
         if not acts_directory:
             acts_directory = DEFAULT_ACTS_INTERNAL_DIRECTORY
@@ -162,8 +229,6 @@ class ActsContainer(object):
                                                acts_directory)
         else:
             self.acts_directory = acts_directory
-
-        self.container_directory = container_directory
 
         self.tests_directory = os.path.join(self.acts_directory, TEST_DIR_NAME)
         self.framework_directory = os.path.join(self.acts_directory,
@@ -185,35 +250,6 @@ class ActsContainer(object):
 
         self.configs = {}
         self.campaigns = {}
-
-    def install_sl4a_apk(self, testbed):
-        """Install sl4a to a test bed.
-
-        @param testbed: The testbed of phones to install to.
-        """
-        for serial, adb_host in testbed.get_adb_devices().iteritems():
-            adb_utils.install_apk_from_build(
-                    adb_host,
-                    constants.SL4A_APK,
-                    constants.SL4A_PACKAGE,
-                    package_name=constants.SL4A_PACKAGE)
-
-    def install_apk(self, apk_info, testbed):
-        """Installs an additional apk on all adb devices.
-
-        @param testbed: The testbed of phones to install to.
-        @param apk_info: A dictionary contianing the apk info. This dicitonary
-                         should contain the keys apk="Name of the apk",
-                         package="Name of the package". Additionally it can
-                         contain artifact="Name of the artifact", if missing
-                         the package name is used.
-        """
-        for serial, adb_host in testbed.get_adb_devices().iteritems():
-            adb_utils.install_apk_from_build(
-                    adb_host,
-                    apk_info['apk'],
-                    apk_info.get('artifact') or apk_info['package'],
-                    package_name=apk_info['package'])
 
     def get_test_paths(self):
         """Get all test paths within this container.
@@ -333,19 +369,16 @@ class ActsContainer(object):
         self.test_station.run(install_deps_command)
 
     def run_test(self,
-                 testbed,
                  config,
                  campaign=None,
                  test_case=None,
                  extra_env={},
                  python_bin='python',
-                 testbed_name=None,
                  timeout=7200):
         """Runs a test within the container.
 
         Runs a test within a container using the given settings.
 
-        @param testbed: The testbed to use for testing.
         @param config: The name of the config file to use as the main config.
                        This should have already been uploaded with
                        upload_config. The string passed into upload_config
@@ -358,20 +391,10 @@ class ActsContainer(object):
                           campaign will be used.
         @param extra_env: Extra enviroment variables to run the test with.
         @param python_bin: The python binary to execute the test with.
-        @param testbed_name: The name of the test bed, if none then the name
-                             of the actual test bed is used.
         @param timeout: How many seconds to wait before timing out.
 
         @returns: The results of the test run.
         """
-        if not testbed_name:
-            # If no override is given get the name from the hostname.
-            hostname = testbed.hostname
-            if dnsname_mangler.is_ip_address(hostname):
-                testbed_name = hostname
-            else:
-                testbed_name = hostname.split('.')[0]
-
         if not config in self.configs:
             # Check if the config has been uploaded and upload if it hasn't
             self.upload_config(config)
@@ -402,7 +425,7 @@ class ActsContainer(object):
         command_setup = 'cd %s' % self.working_directory
 
         act_base_cmd = '%s %s -c %s -tb %s ' % (python_bin, self.acts_file,
-                                                full_config, testbed_name)
+                                                full_config, self.testbed_name)
 
         # Format the acts command based on what type of test is being run.
         if test_case and campaign:
@@ -429,8 +452,8 @@ class ActsContainer(object):
             excep = e
 
         return ActsTestResults(test_case or campaign,
-                               testbed,
-                               testbed_name=testbed_name,
+                               self.testbed,
+                               testbed_name=self.testbed_name,
                                run_result=act_result,
                                log_directory=self.log_directory,
                                exception=excep)
