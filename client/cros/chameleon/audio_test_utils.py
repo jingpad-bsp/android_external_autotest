@@ -11,6 +11,7 @@ import logging
 import multiprocessing
 import os
 import pprint
+import re
 import time
 from contextlib import contextmanager
 
@@ -234,6 +235,40 @@ def dump_cros_audio_logs(host, audio_facade, directory, suffix=''):
 
     host.get_file(constants.MULTIMEDIA_XMLRPC_SERVER_LOG_FILE,
                   get_file_path('multimedia_xmlrpc_server.log'))
+
+
+def examine_audio_diagnostics(path):
+    """Examines audio diagnostic content.
+
+    @param path: Path to audio diagnostic file.
+
+    @raise: error.TestFail if there is unexpected result.
+
+    """
+    error_msgs = []
+    line_number = 1
+
+    underrun_pattern = re.compile('num_underruns: (\d*)')
+
+    with open(path) as f:
+        for line in f.readlines():
+
+            # Check for number of underruns.
+            search_result = underrun_pattern.search(line)
+            if search_result:
+                num_underruns = int(search_result.group(1))
+                if num_underruns != 0:
+                    error_msgs.append('Found nonzero underrun at line %d: %s',
+                                      line_number, line)
+
+            # TODO(cychiang) add other check like maximum client reply delay.
+            line_number = line_number + 1
+
+    if error_msgs:
+        raise error.TestFail('Found issue in audio diganostics result : %s',
+                             '\n'.join(error_msgs))
+
+    logging.info('audio_diagnostic result looks fine')
 
 
 @contextmanager
