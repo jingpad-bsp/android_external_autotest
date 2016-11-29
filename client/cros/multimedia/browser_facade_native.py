@@ -33,14 +33,16 @@ class BrowserFacadeNative(object):
         return self._resource.start_custom_chrome(kwargs)
 
 
-    def start_default_chrome(self, restart=False):
+    def start_default_chrome(self, restart=False, extra_browser_args=None):
         """Start the default Chrome.
 
         @param restart: True to start Chrome without clearing previous state.
+        @param extra_browser_args: A list containing extra browser args passed
+                                   to Chrome in addition to default ones.
         @return: True on success, False otherwise.
 
         """
-        return self._resource.start_default_chrome(restart)
+        return self._resource.start_default_chrome(restart, extra_browser_args)
 
 
     def new_tab(self, url):
