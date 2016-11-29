@@ -38,8 +38,8 @@ def _format_args(channels, bits, rate):
 
 
 def generate_sine_tone_cmd(
-        filename, channels=2, bits=16, rate=48000, duration=None, frequence=440,
-        gain=None):
+        filename, channels=2, bits=16, rate=48000, duration=None, frequencies=440,
+        gain=None, raw=True):
     """Gets a command to generate sine tones at specified ferquencies.
 
     @param filename: The name of the file to store the sine wave in.
@@ -47,16 +47,25 @@ def generate_sine_tone_cmd(
     @param bits: The number of bits of each sample.
     @param rate: The sampling rate.
     @param duration: The length of the generated sine tone (in seconds).
-    @param frequence: The frequence of the sine wave.
+    @param frequencies: The frequencies of the sine wave. Pass a number or a
+                        list to specify frequency for each channel.
     @param gain: The gain (in db).
+    @param raw: True to use raw data format. False to use what filename specifies.
+
     """
     args = [SOX_PATH, '-n']
-    args += _raw_format_args(channels, bits, rate)
+    if raw:
+        args += _raw_format_args(channels, bits, rate)
+    else:
+        args += _format_args(channels, bits, rate)
     args.append(filename)
     args.append('synth')
     if duration is not None:
         args.append(str(duration))
-    args += ['sine', str(frequence)]
+    if not isinstance(frequencies, list):
+        frequencies = [frequencies]
+    for freq in frequencies:
+        args += ['sine', str(freq)]
     if gain is not None:
         args += ['gain', str(gain)]
     return args
