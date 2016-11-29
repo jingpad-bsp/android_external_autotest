@@ -13,8 +13,8 @@ import sys
 import common
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import models
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-
+from autotest_lib.server import site_utils
+from chromite.lib import metrics
 
 def number_of_jobs_since(delta):
     """Returns the number of jobs kicked off in the last |duration| minutes.
@@ -31,7 +31,11 @@ def main():
         description=('A script which records the number of afe jobs run in a time interval.'))
     parser.parse_args(sys.argv[1:])
     count = number_of_jobs_since(timedelta(days=1))
-    autotest_stats.Gauge('jobs_rate').send('afe_daily_count', count)
+
+    with site_utils.SetupTsMonGlobalState('count_jobs', short_lived=True):
+        # TODO: Reporting a stat for each job created from the afe directly could be better.
+        # More discussions are needed to decide whether to remove this file.
+        metrics.Gauge('chromeos/autotest/experimental/jobs_rate/afe_daily_count').set(count)
 
 
 if __name__ == '__main__':
