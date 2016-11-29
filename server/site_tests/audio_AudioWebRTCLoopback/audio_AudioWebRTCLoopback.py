@@ -46,11 +46,14 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
     RECORD_SECONDS = 10
     DELAY_AFTER_BINDING_SECONDS = 0.5
 
-    def run_once(self, host, check_quality=False):
+    def run_once(self, host, check_quality=False, chrome_block_size=None):
         """Running basic headphone audio tests.
 
         @param host: device under test host
         @param check_quality: flag to check audio quality.
+        @param chrome_block_size: A number to be passed to Chrome
+                                  --audio-buffer-size argument to specify
+                                  block size.
 
         """
         if not audio_test_utils.has_headphone(host):
@@ -61,8 +64,15 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
         golden_file.generate_file()
 
         chameleon_board = host.chameleon
+
+        # Checks if a block size is specified for Chrome.
+        extra_browser_args = None
+        if chrome_block_size:
+            extra_browser_args = ['--audio-buffer-size=%d' % chrome_block_size]
+
         factory = remote_facade_factory.RemoteFacadeFactory(
-                host, results_dir=self.resultsdir)
+                host, results_dir=self.resultsdir,
+                extra_browser_args=extra_browser_args)
 
         chameleon_board.setup_and_reset(self.outputdir)
 
