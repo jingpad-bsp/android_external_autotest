@@ -7,6 +7,7 @@
 
 import logging
 import os
+import subprocess
 
 from autotest_lib.client.cros.audio import audio_data
 from autotest_lib.client.cros.audio import sox_utils
@@ -148,6 +149,49 @@ class FakeTestData(object):
         self.duration_secs = duration_secs
 
 
+class AudioTestDataGenerateOnDemand(AudioTestData):
+    """AudioTestData that generates real data on demand."""
+    def __init__(self, data_format=None, path=None, frequencies=None,
+                 duration_secs=None):
+        """
+        Initializes an audio test file that generate file on demand.
+
+        @param data_format: A dict containing data format including
+                            file_type, sample_format, channel, and rate.
+                            file_type: file type e.g. 'raw' or 'wav'.
+                            sample_format: One of the keys in
+                                           audio_data.SAMPLE_FORMAT.
+                            channel: number of channels.
+                            rate: sampling rate.
+        @param path: The path to the file.
+        @param frequencies: A list containing the frequency of each channel in
+                            this file. Only applicable to data of sine tone.
+        @param duration_secs: Duration of test file in seconds.
+
+        """
+        self.data_format = data_format
+        self.path = path
+        self.frequencies = frequencies
+        self.duration_secs = duration_secs
+
+
+    def generate_file(self):
+        """Generates the data with specified format and frequencies."""
+        sample_format = audio_data.SAMPLE_FORMATS[self.data_format['sample_format']]
+        bits = sample_format['size_bytes'] * 8
+
+        command = sox_utils.generate_sine_tone_cmd(
+                filename=self.path,
+                channels=self.data_format['channel'],
+                bits=bits,
+                rate=self.data_format['rate'],
+                duration=self.duration_secs,
+                frequencies=self.frequencies,
+                raw=(self.data_format['file_type'] == 'raw'))
+
+        subprocess.check_call(command)
+
+
 AUDIO_PATH = os.path.join(os.path.dirname(__file__))
 
 """
@@ -195,6 +239,24 @@ SIMPLE_FREQUENCY_TEST_FILE = AudioTestData(
                          channel=2,
                          rate=48000),
         frequencies=[440, 440])
+
+
+"""
+This test data contains fixed frequency sine wave in two channels.
+Left and right channel are both 660Hz. The duration is 60 seconds.
+The file format is two-channel wav data with each sample being a signed
+16-bit integer in little-endian with sampling rate 48000 samples/sec.
+The volume is 1.0.
+"""
+SIMPLE_FREQUENCY_LOUD_WAVE_FILE = AudioTestDataGenerateOnDemand(
+        path=os.path.join(AUDIO_PATH, 'fix_660_16.wav'),
+        data_format=dict(file_type='wav',
+                         sample_format='S16_LE',
+                         channel=2,
+                         rate=48000),
+        duration_secs=60,
+        frequencies=[660, 660])
+
 
 """
 This test data contains fixed frequency sine wave in two channels.
