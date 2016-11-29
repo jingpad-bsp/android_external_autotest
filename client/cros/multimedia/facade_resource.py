@@ -115,10 +115,13 @@ class FacadeResource(object):
         return True
 
 
-    def start_default_chrome(self, restart=False):
+    def start_default_chrome(self, restart=False, extra_browser_args=None):
         """Start the default Chrome.
 
         @param restart: True to start Chrome without clearing previous state.
+        @param extra_browser_args: A list containing extra browser args passed
+                                   to Chrome. This list will be appened to
+                                   default EXTRA_BROWSER_ARGS.
 
         @return: True on success, False otherwise.
 
@@ -136,6 +139,8 @@ class FacadeResource(object):
             'arc_mode': arc_mode,
             'autotest_ext': True
         }
+        if extra_browser_args:
+            kwargs['extra_browser_args'] += extra_browser_args
         return self.start_custom_chrome(kwargs)
 
 
