@@ -18,7 +18,6 @@ import common
 from chromite.lib import metrics
 from chromite.lib import ts_mon_config
 from autotest_lib.client.common_lib import time_utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils import host_history
 from autotest_lib.site_utils import host_history_utils
@@ -94,14 +93,6 @@ def report_stats(board, pool, start_time, end_time, span):
         print 'Machine utilization rate  = %-4.2f%%' % (100*mur)
         print 'Machine availability rate = %-4.2f%%' % (100*mar)
 
-    autotest_stats.Gauge('machine_utilization_rate').send('%s_hours.%s.%s' %
-                                                          (span, board, pool),
-                                                          mur)
-    autotest_stats.Gauge('machine_availability_rate').send('%s_hours.%s.%s' %
-                                                           (span, board, pool),
-                                                           mar)
-    autotest_stats.Gauge('machine_idle_rate').send('%s_hours.%s.%s' %
-                                                   (span, board, pool), mir)
     fields = {'board': board,
               'pool': pool}
     if span == 1:
