@@ -220,6 +220,7 @@ class FacadeResource(object):
         tab = self._browser.tabs.New()
         tab.Navigate(url)
         tab.Activate()
+        tab.WaitForDocumentReadyStateToBeComplete()
         tab_descriptor = self._generate_tab_descriptor(tab)
         self._tabs[tab_descriptor] = tab
         self.clean_unexpected_tabs()
