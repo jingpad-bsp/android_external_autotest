@@ -14,7 +14,6 @@ from autotest_lib.scheduler import email_manager
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import host_protections
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 class PeriodicCleanup(object):
@@ -55,15 +54,12 @@ class UserCleanup(PeriodicCleanup):
     """User cleanup that is controlled by the global config variable
        clean_interval_minutes in the SCHEDULER section.
     """
-    timer = autotest_stats.Timer('monitor_db_cleanup.user_cleanup')
-
 
     def __init__(self, db, clean_interval_minutes):
         super(UserCleanup, self).__init__(db, clean_interval_minutes)
         self._last_reverify_time = time.time()
 
 
-    @timer.decorate
     @metrics.SecondsTimerDecorator(
             'chromeos/autotest/scheduler/cleanup/user/durations')
     def _cleanup(self):
@@ -76,7 +72,6 @@ class UserCleanup(PeriodicCleanup):
         self._django_session_cleanup()
 
 
-    @timer.decorate
     def _abort_timed_out_jobs(self):
         msg = 'Aborting all jobs that have timed out and are not complete'
         logging.info(msg)
@@ -87,7 +82,6 @@ class UserCleanup(PeriodicCleanup):
             job.abort()
 
 
-    @timer.decorate
     def _abort_jobs_past_max_runtime(self):
         """
         Abort executions that have started and are past the job's max runtime.
@@ -106,7 +100,6 @@ class UserCleanup(PeriodicCleanup):
             queue_entry.abort()
 
 
-    @timer.decorate
     def _check_for_db_inconsistencies(self):
         logging.info('Cleaning db inconsistencies')
         self._check_all_invalid_related_objects()
@@ -162,7 +155,6 @@ class UserCleanup(PeriodicCleanup):
             email_manager.manager.enqueue_notify_email(subject, message)
 
 
-    @timer.decorate
     def _clear_inactive_blocks(self):
         msg = 'Clear out blocks for all completed jobs.'
         logging.info(msg)
@@ -192,7 +184,6 @@ class UserCleanup(PeriodicCleanup):
         return sorted(hosts)
 
 
-    @timer.decorate
     def _reverify_dead_hosts(self):
         if not self._should_reverify_hosts_now():
             return
@@ -218,7 +209,6 @@ class UserCleanup(PeriodicCleanup):
                     host=host, task=models.SpecialTask.Task.VERIFY)
 
 
-    @timer.decorate
     def _django_session_cleanup(self):
         """Clean up django_session since django doesn't for us.
            http://www.djangoproject.com/documentation/0.96/sessions/
@@ -232,7 +222,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
     """Cleanup that runs at the startup of monitor_db and every subsequent
        twenty four hours.
     """
-    timer = autotest_stats.Timer('monitor_db_cleanup.twentyfourhour_cleanup')
 
 
     def __init__(self, db, drone_manager, run_at_initialize=True):
@@ -250,7 +239,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
             db, clean_interval_minutes, run_at_initialize=run_at_initialize)
 
 
-    @timer.decorate
     @metrics.SecondsTimerDecorator(
         'chromeos/autotest/scheduler/cleanup/daily/durations')
     def _cleanup(self):
@@ -259,7 +247,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         self._cleanup_orphaned_containers()
 
 
-    @timer.decorate
     def _check_for_uncleanable_db_inconsistencies(self):
         logging.info('Checking for uncleanable DB inconsistencies')
         self._check_for_active_and_complete_queue_entries()
@@ -268,7 +255,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         self._check_for_multiple_atomic_group_hosts()
 
 
-    @timer.decorate
     def _check_for_active_and_complete_queue_entries(self):
         query = models.HostQueueEntry.objects.filter(active=True, complete=True)
         if query.count() != 0:
@@ -286,7 +272,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
             self._send_inconsistency_message(subject, lines)
 
 
-    @timer.decorate
     def _check_for_multiple_platform_hosts(self):
         rows = self._db.execute("""
             SELECT afe_hosts.id, hostname, COUNT(1) AS platform_count,
@@ -306,7 +291,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
             self._send_inconsistency_message(subject, lines)
 
 
-    @timer.decorate
     def _check_for_no_platform_hosts(self):
         rows = self._db.execute("""
             SELECT hostname
@@ -321,7 +305,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
                          ', '.join(row[0] for row in rows))
 
 
-    @timer.decorate
     def _check_for_multiple_atomic_group_hosts(self):
         rows = self._db.execute("""
             SELECT afe_hosts.id, hostname,
@@ -353,7 +336,6 @@ class TwentyFourHourUpkeep(PeriodicCleanup):
         email_manager.manager.enqueue_notify_email(subject, message)
 
 
-    @timer.decorate
     def _cleanup_orphaned_containers(self):
         """Cleanup orphaned containers in each drone.
 
