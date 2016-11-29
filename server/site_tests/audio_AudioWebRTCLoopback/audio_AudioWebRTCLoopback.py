@@ -137,3 +137,9 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
 
         audio_test_utils.check_recorded_frequency(
                 golden_file, linein, check_artifacts=check_quality)
+
+        diagnostic_path = os.path.join(
+                self.resultsdir,
+                'audio_diagnostics.txt.after_recording')
+        logging.info('Examine diagnostic file at %s', diagnostic_path)
+        audio_test_utils.examine_audio_diagnostics(diagnostic_path)
