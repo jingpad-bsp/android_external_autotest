@@ -4,15 +4,15 @@
 #
 
 AUTHOR = "ARC Team"
-ATTRIBUTES = "suite:sanity"
-NAME = "cheets_CTSHelper.sanity"
+ATTRIBUTES = "suite:smoke"
+NAME = "cheets_CTSHelper.smoke"
 TIME = "MEDIUM"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "login"
 TEST_TYPE = "client"
 
 DOC = """
-This test verifies a single login to the browser and start of ARC.
+This test verifies in the VM a single login to the browser and start of ARC.
 """
 
 job.run_test('cheets_CTSHelper', count=1, tag='sanity')
