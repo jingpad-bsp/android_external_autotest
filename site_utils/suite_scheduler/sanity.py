@@ -11,10 +11,9 @@ import common
 
 _WHITELISTED_SUITES = (
     'arc-cts',
-    'arc-cts-06h',
-    'arc-cts-12h',
-    'arc-cts-18h',
-    'arc-cts-24h',
+    'arc-cts-dev',
+    'arc-cts-beta',
+    'arc-cts-stable',
     'arc-gts',
     'arc-gts-tot',
     'arc-nightly',
@@ -23,7 +22,7 @@ _WHITELISTED_SUITES = (
     'crosbolt_arc_perf_nightly',
 )
 
-def CheckControlFileExistance(tasks):
+def CheckControlFileExistence(tasks):
     """
     Make sure that for any task that schedules a suite, that
     test_suites/control.<suite> exists. this prevents people from accidentally
