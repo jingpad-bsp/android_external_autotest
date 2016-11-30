@@ -233,7 +233,7 @@ def main():
         tasks_per_event = d.TasksFromConfig(config)
         # flatten [[a]] -> [a]
         tasks = [x for y in tasks_per_event.values() for x in y]
-        control_files_exist = sanity.CheckControlFileExistance(tasks)
+        control_files_exist = sanity.CheckControlFileExistence(tasks)
         return control_files_exist
 
     logging_manager.configure_logging(SchedulerLoggingConfig(),
