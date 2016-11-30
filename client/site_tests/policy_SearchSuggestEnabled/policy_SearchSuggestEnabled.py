@@ -2,11 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring
-# pylint: disable=docstring-section-name
-# pylint: disable=no-init
-# pylint: disable=g-wrong-blank-lines
-
 import logging
 
 from autotest_lib.client.common_lib import error
@@ -44,18 +39,13 @@ class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
     }
 
 
-    def _test_search_suggest_enabled(self, policy_value, policies_dict):
+    def _test_search_suggest_enabled(self, policy_value):
         """
         Verify CrOS enforces SearchSuggestEnabled policy.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
 
         """
-        logging.info('Running _test_search_suggest_enabled(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         setting_pref = 'search.suggest_enabled'
         properties = self._get_settings_checkbox_properties(setting_pref)
         setting_label = properties[self.SETTING_LABEL]
@@ -65,13 +55,13 @@ class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
                      setting_label, setting_is_checked, setting_is_disabled)
 
         # Setting checked if policy is True, unchecked if False.
-        if policy_value == 'true' and not setting_is_checked:
+        if policy_value == True and not setting_is_checked:
             raise error.TestFail('Search Suggest should be checked.')
-        if policy_value == 'false' and setting_is_checked:
+        if policy_value == False and setting_is_checked:
             raise error.TestFail('Search Suggest should be unchecked.')
 
         # Setting is enabled if policy is Not set, disabled if True or False.
-        if policy_value == 'null':
+        if policy_value == None:
             if setting_is_disabled:
                 raise error.TestFail('Search Suggest should be editable.')
         else:
@@ -83,14 +73,9 @@ class policy_SearchSuggestEnabled(enterprise_policy_base.EnterprisePolicyTest):
         """
         Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_search_suggest_enabled(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_search_suggest_enabled(case_value)

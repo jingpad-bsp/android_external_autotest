@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 import time
 import utils
 
@@ -90,7 +89,7 @@ class policy_JavaScriptBlockedForUrls(
             return False
 
 
-    def _test_javascript_blocked_for_urls(self, policy_value, policies_dict):
+    def _test_javascript_blocked_for_urls(self, policy_value):
         """Verify CrOS enforces the JavaScriptBlockedForUrls policy.
 
         When JavaScriptBlockedForUrls is undefined, JavaScript execution shall
@@ -101,14 +100,9 @@ class policy_JavaScriptBlockedForUrls(
         Note: This test does not use self.navigate_to_url(), because it can
         not depend on methods that evaluate or execute JavaScript.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value for this case.
 
         """
-        logging.info('Running _test_javascript_blocked_for_urls(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         tab = self.cr.browser.tabs.New()
         tab.Activate()
         tab.Navigate(self.TEST_URL)
@@ -119,7 +113,8 @@ class policy_JavaScriptBlockedForUrls(
             exception=error.TestError('Test page is not ready.'))
         javascript_is_allowed = self._can_execute_javascript(tab)
 
-        if policy_value is not None and self.WEB_HOST in policy_value:
+        if policy_value is not None and (self.WEB_HOST in policy_value or
+                                         self.TEST_URL in policy_value):
             # If |WEB_HOST| is in |policy_value|, then JavaScript execution
             # should be blocked. If execution is allowed, raise an error.
             if javascript_is_allowed:
@@ -133,11 +128,9 @@ class policy_JavaScriptBlockedForUrls(
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| string and |policies_dict| data based
-        on the test |case|.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_javascript_blocked_for_urls(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_javascript_blocked_for_urls(case_value)

@@ -40,18 +40,13 @@ class policy_SpellCheckServiceEnabled(
     }
 
 
-    def _test_spelling_suggestions_enabled(self, policy_value, policies_dict):
+    def _test_spelling_suggestions_enabled(self, policy_value):
         """
         Verify CrOS enforces the SpellCheckServiceEnabled policy.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
 
         """
-        logging.info('Running _test_spelling_suggestions_enabled(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         setting_pref = 'spellcheck.use_spelling_service'
         properties = self._get_settings_checkbox_properties(setting_pref)
         setting_label = properties[self.SETTING_LABEL]
@@ -61,13 +56,13 @@ class policy_SpellCheckServiceEnabled(
                      setting_label, setting_is_checked, setting_is_disabled)
 
         # Setting checked if policy is True, unchecked if False.
-        if policy_value == 'true' and not setting_is_checked:
+        if policy_value == True and not setting_is_checked:
             raise error.TestFail('Spelling Suggestions should be checked.')
-        if policy_value == 'false' and setting_is_checked:
+        if policy_value == False and setting_is_checked:
             raise error.TestFail('Spelling Suggestions should be unchecked.')
 
         # Setting is enabled if policy is Not set, disabled if True or False.
-        if policy_value == 'null':
+        if policy_value == None:
             if setting_is_disabled:
                 raise error.TestFail('Spelling Suggestions should '
                                      'be editable.')
@@ -81,14 +76,9 @@ class policy_SpellCheckServiceEnabled(
         """
         Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_spelling_suggestions_enabled(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_spelling_suggestions_enabled(case_value)
