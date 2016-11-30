@@ -42,18 +42,14 @@ class policy_ForceYouTubeSafetyMode(
     }
     YOUTUBE_SEARCH_URL = 'https://www.youtube.com/results?search_query=kittens'
 
-    def _test_force_youtube_safety(self, policy_value, policies_dict):
+    def _test_force_youtube_safety(self, policy_value):
         """Verify CrOS enforces ForceYouTubeSafetyMode policy.
 
-        @param policy_value: policy value string expected on policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value for this case.
 
         """
-        logging.info('Running _test_force_youtube_safety(policy_value=%s,'
-                     ' policies_dict=%s)', policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
         is_safety_mode_active = self._is_restricted_mode_active()
-        if policy_value == 'true':
+        if policy_value == True:
             if not is_safety_mode_active:
                 raise error.TestFail('Restricted Mode should be active.')
         else:
@@ -80,14 +76,9 @@ class policy_ForceYouTubeSafetyMode(
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data based on the
-        test |case|.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_force_youtube_safety(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_force_youtube_safety(case_value)

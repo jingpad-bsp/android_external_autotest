@@ -2,12 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring
-# pylint: disable=docstring-section-name
-# pylint: disable=no-init
-
-import logging
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
@@ -57,19 +51,15 @@ class policy_AutoFillEnabled(enterprise_policy_base.EnterprisePolicyTest):
         return is_editable
 
 
-    def _test_autofill_enabled(self, policy_value, policies_dict):
+    def _test_autofill_enabled(self, policy_value):
         """
         Verify CrOS enforces AutoFillEnabled policy.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value for this case.
 
         """
-        logging.info('Running _test_autofill_enabled(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
         autofill_is_enabled = self._is_autofill_setting_editable()
-        if policy_value == 'true' or policy_value == 'null':
+        if policy_value == True or policy_value == None:
             if not autofill_is_enabled:
                 raise error.TestFail('Autofill should be enabled.')
         else:
@@ -81,14 +71,9 @@ class policy_AutoFillEnabled(enterprise_policy_base.EnterprisePolicyTest):
         """
         Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_autofill_enabled(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_autofill_enabled(case_value)

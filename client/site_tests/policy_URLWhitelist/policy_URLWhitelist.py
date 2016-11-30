@@ -102,7 +102,7 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
         return True
 
 
-    def _test_url_whitelist(self, policy_value, policies_dict):
+    def _test_url_whitelist(self, policy_value):
         """Verify CrOS enforces URLWhitelist policy value.
 
         Navigate to all the websites in the BLOCKED_URLS_LIST. Verify that
@@ -110,15 +110,11 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
         Also verify that the websites not in the URLWhitelist policy value
         are blocked.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
+
         @raises: TestFail if url is blocked/not blocked based on the
                  corresponding policy values.
         """
-        logging.info('Running _test_url_whitelist(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         for url in self.BLOCKED_URLS_LIST:
             url_is_blocked = self._is_url_blocked(url)
             if policy_value:
@@ -139,10 +135,8 @@ class policy_URLWhitelist(enterprise_policy_base.EnterprisePolicyTest):
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
         """
-        policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_url_whitelist(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_url_whitelist(case_value)

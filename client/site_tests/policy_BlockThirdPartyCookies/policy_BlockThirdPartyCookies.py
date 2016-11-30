@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
@@ -31,7 +29,7 @@ class policy_BlockThirdPartyCookies(
         'DefaultCookiesSetting': 1}
 
 
-    def _test_block_3rd_party_cookies(self, policy_value, policies_dict):
+    def _test_block_3rd_party_cookies(self, policy_value):
         """
         Verify CrOS enforces BlockThirdPartyCookies policy value.
 
@@ -40,16 +38,11 @@ class policy_BlockThirdPartyCookies(
         set either True or False, then the check box shall be uneditable.
         When Not set, then the check box shall be editable.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data sent to the fake DM server.
+        @param policy_value: policy value for this case.
         @raises: TestFail if setting is incorrectly (un)checked or
                  (un)editable, based on the policy value.
 
         """
-        logging.info('Running _test_block_3rd_party_cookies(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         # Get check box status from the settings page.
         setting_pref = 'profile.block_third_party_cookies'
         properties = self._get_settings_checkbox_properties(setting_pref)
@@ -58,15 +51,15 @@ class policy_BlockThirdPartyCookies(
         setting_is_disabled = properties[self.SETTING_DISABLED]
 
         # Setting shall be checked if policy is set True, unchecked if False.
-        if policy_value == 'true' and not setting_is_checked:
+        if policy_value == True and not setting_is_checked:
             raise error.TestFail('Block 3rd-party cookies setting should be '
                                  'checked.')
-        if policy_value == 'false' and setting_is_checked:
+        if policy_value == False and setting_is_checked:
             raise error.TestFail('Block 3rd-party cookies setting should be '
                                  'unchecked.')
 
         # Setting shall be enabled if policy is Not set, disabled if set.
-        if policy_value == 'null':
+        if policy_value == None:
             if setting_is_disabled:
                 raise error.TestFail('Block 3rd-party cookies setting should '
                                      'be editable.')
@@ -80,14 +73,9 @@ class policy_BlockThirdPartyCookies(
         """
         Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_block_3rd_party_cookies(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_block_3rd_party_cookies(case_value)

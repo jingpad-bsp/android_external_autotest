@@ -6,8 +6,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
-
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
 
@@ -70,7 +68,7 @@ class policy_CookiesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         return tab.GetCookieByName(self.COOKIE_NAME) is None
 
 
-    def _test_cookies_allowed_for_urls(self, policy_value, policies_dict):
+    def _test_cookies_allowed_for_urls(self, policy_value):
         """Verify CrOS enforces CookiesAllowedForUrls policy value.
 
         When the CookiesAllowedForUrls policy is set to one or more urls/hosts,
@@ -78,15 +76,10 @@ class policy_CookiesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         the policy value. When set to None, check that cookies are blocked for
         all URLs.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value for this case.
         @raises: TestFail if cookies are blocked/not blocked based on the
                  corresponding policy values.
         """
-        logging.info('Running _test_cookies_allowed_for_urls(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         cookie_is_blocked = self._is_cookie_blocked(self.TEST_URL)
 
         if policy_value and self.WEB_HOST in policy_value:
@@ -105,5 +98,6 @@ class policy_CookiesAllowedForUrls(enterprise_policy_base.EnterprisePolicyTest):
 
         @param case: Name of the test case to run.
         """
-        policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_cookies_allowed_for_urls(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_cookies_allowed_for_urls(case_value)

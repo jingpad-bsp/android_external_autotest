@@ -116,19 +116,18 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         self.POLICY_NAME = 'ProxySettings'
         self.PROXY_PORT = 3128
         self.PAC_FILE = 'proxy_test.pac'
-        self.PAC_FILE_URL = '%s/%s' % (self.WEB_HOST, self.PAC_FILE)
-        self.FIXED_PROXY = '''{
-          "ProxyBypassList": "www.google.com,www.googleapis.com",
-          "ProxyMode": "fixed_servers",
-          "ProxyServer": "localhost:%s"
-        }''' % self.PROXY_PORT
-        self.DIRECT_PROXY = '''{
-          "ProxyMode": "direct"
-        }'''
-        self.PAC_PROXY = '''{
-          "ProxyMode": "pac_script",
-          "ProxyPacUrl": "%s"
-        }''' % self.PAC_FILE_URL
+        self.FIXED_PROXY = {
+            'ProxyBypassList': 'www.google.com,www.googleapis.com',
+            'ProxyMode': 'fixed_servers',
+            'ProxyServer': 'localhost:%s' % self.PROXY_PORT
+        }
+        self.PAC_PROXY = {
+            'ProxyMode': 'pac_script',
+            'ProxyPacUrl': '%s/%s' % (self.WEB_HOST, self.PAC_FILE)
+        }
+        self.DIRECT_PROXY = {
+            'ProxyMode': 'direct'
+        }
         self.TEST_URL = 'http://www.wired.com/'
         self.TEST_CASES = {
             'FixedProxy_UseFixedProxy': self.FIXED_PROXY,
@@ -143,16 +142,11 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
         super(policy_ProxySettings, self).cleanup()
 
 
-    def _test_proxy_configuration(self, policy_value, policies_dict):
+    def _test_proxy_configuration(self, policy_value):
         """Verify CrOS enforces the specified ProxySettings configuration.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
         """
-        logging.info('Running _test_proxy_configuration(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         self._proxy_server.reset_requests_received()
         self.navigate_to_url(self.TEST_URL)
         proxied_requests = self._proxy_server.get_requests_received()
@@ -166,11 +160,12 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
                              if self.TEST_URL in request]
         logging.info('matching_requests: %s', matching_requests)
 
-        if policy_value is None or 'direct' in policy_value:
+        mode = policy_value['ProxyMode'] if policy_value else None
+        if mode is None or mode == 'direct':
             if matching_requests:
                 raise error.TestFail('Requests should not have been sent '
                                      'through the proxy server.')
-        elif 'fixed_servers' in policy_value or 'pac_script' in policy_value:
+        elif mode == 'fixed_servers' or mode == 'pac_script':
             if not matching_requests:
                 raise error.TestFail('Requests should have been sent '
                                      'through the proxy server.')
@@ -181,11 +176,8 @@ class policy_ProxySettings(enterprise_policy_base.EnterprisePolicyTest):
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data based on the
-        test |case|.
-
         @param case: Name of the test case to run.
         """
-        policy_value = self.TEST_CASES[case]
-        policies_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        self._test_proxy_configuration(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value)
+        self._test_proxy_configuration(case_value)
