@@ -2,10 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# pylint: disable=module-missing-docstring
-# pylint: disable=docstring-section-name
-# pylint: disable=no-init
-
 import logging
 import time
 
@@ -75,7 +71,7 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         tab.Close()
         return is_disabled
 
-    def _test_edit_bookmarks_enabled(self, policy_value, policies_dict):
+    def _test_edit_bookmarks_enabled(self, policy_value):
         """Verify CrOS enforces EditBookmarksEnabled policy.
 
         When EditBookmarksEnabled is true or not set, the UI allows the user
@@ -88,14 +84,10 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         verify the 'Enable bookmark editing' choice from a production or
         staging DMS, use case=NotSet_Enable.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value for this case.
         """
-        logging.info('Running _test_edit_bookmarks_enabled(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
         add_bookmark_is_disabled = self._is_add_bookmark_disabled()
-        if policy_value == 'true' or policy_value == 'null':
+        if policy_value == True or policy_value == None:
             if add_bookmark_is_disabled:
                 raise error.TestFail('Add Bookmark should be enabled.')
         else:
@@ -105,13 +97,8 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_edit_bookmarks_enabled(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_edit_bookmarks_enabled(case_value)

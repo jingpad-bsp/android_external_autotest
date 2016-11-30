@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging, utils
+import utils
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros.enterprise import enterprise_policy_base
@@ -67,7 +67,7 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
             exception=error.TestError('Test page is not ready.'))
 
 
-    def _test_popups_blocked_for_urls(self, policy_value, policies_dict):
+    def _test_popups_blocked_for_urls(self, policy_value):
         """Verify CrOS enforces the PopupsBlockedForUrls policy.
 
         When PopupsBlockedForUrls is undefined, popups shall be allowed on
@@ -75,13 +75,8 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
         shall be blocked only on the pages whose domain matches any of the
         listed URLs.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data to send to the fake DM server.
+        @param policy_value: policy value expected.
         """
-        logging.info('Running _test_popups_blocked_for_urls(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         tab = self.navigate_to_url(self.TEST_URL)
         self._wait_for_page_ready(tab)
         is_blocked = tab.EvaluateJavaScript('isPopupBlocked();')
@@ -101,10 +96,8 @@ class policy_PopupsBlockedForUrls(enterprise_policy_base.EnterprisePolicyTest):
     def run_test_case(self, case):
         """Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
         """
-        policy_value, policies_dict = self._get_policy_data_for_case(case)
-        self._test_popups_blocked_for_urls(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_popups_blocked_for_urls(case_value)
