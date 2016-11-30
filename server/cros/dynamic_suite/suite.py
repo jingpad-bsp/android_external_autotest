@@ -156,15 +156,15 @@ class RetryHandler(object):
         @returns: True if we should retry the job.
 
         """
-        if (self.suite_max_reached() or not result.test_executed or
-            not result.is_worse_than(
-                job_status.Status(self._retry_level, '', 'reason'))):
-            return False
-        failed_job_id = result.id
-        return (failed_job_id in self._retry_map and
-                self._retry_map[failed_job_id]['state'] ==
-                        self.States.NOT_ATTEMPTED and
-                self._retry_map[failed_job_id]['retry_max'] > 0)
+        return (
+            not self.suite_max_reached()
+            and result.test_executed
+            and result.is_worse_than(
+                job_status.Status(self._retry_level, '', 'reason'))
+            and result.id in self._retry_map
+            and self._retry_map[result.id]['state'] == self.States.NOT_ATTEMPTED
+            and self._retry_map[result.id]['retry_max'] > 0
+        )
 
 
     def add_retry(self, old_job_id, new_job_id):
