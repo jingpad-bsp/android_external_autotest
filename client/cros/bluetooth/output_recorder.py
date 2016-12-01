@@ -43,11 +43,13 @@ class OutputRecorder(object):
     """
 
     DEFAULT_OPEN_MODE = 'a'
+    START_DELAY_SECS = 1        # Delay after starting recording.
     STOP_DELAY_SECS = 1         # Delay before stopping recording.
     POLLING_DELAY_SECS = 0.1    # Delay before next polling.
     TMP_FILE = '/tmp/output_recorder.dat'
 
     def __init__(self, cmd, open_mode=DEFAULT_OPEN_MODE,
+                 start_delay_secs=START_DELAY_SECS,
                  stop_delay_secs=STOP_DELAY_SECS, save_file=TMP_FILE):
         """Construction of output recorder.
 
@@ -60,6 +62,7 @@ class OutputRecorder(object):
         """
         self.cmd = cmd
         self.open_mode = open_mode
+        self.start_delay_secs = start_delay_secs
         self.stop_delay_secs = stop_delay_secs
         self.save_file = save_file
         self.contents = []
@@ -117,6 +120,7 @@ class OutputRecorder(object):
         self.clear_contents()
         self._recording_thread = threading.Thread(target=self.record)
         self._recording_thread.start()
+        time.sleep(self.start_delay_secs)
 
 
     def stop(self):
@@ -125,9 +129,6 @@ class OutputRecorder(object):
         time.sleep(self.stop_delay_secs)
         self._stop_recording_thread_event.set()
         self._recording_thread.join()
-
-        for line in self.contents:
-            logging.debug('%s', line)
 
         # Kill the process.
         self._recorder.terminate()
@@ -139,13 +140,35 @@ class OutputRecorder(object):
         self.contents = []
 
 
-    def get_contents(self):
-        """Get the contents.
+    def get_contents(self, search_str='', start_str=''):
+        """Get the (filtered) contents.
 
-        @returns: the contents.
+        @param search_str: only lines with search_str would be kept.
+        @param start_str: all lines before the occurrence of start_str would be
+                          filtered.
+
+        @returns: the (filtered) contents.
 
         """
-        return self.contents
+        search_pattern = re.compile(search_str) if search_str else None
+        start_pattern = re.compile(start_str) if start_str else None
+
+        # Just returns the original contents if no filtered conditions are
+        # specified.
+        if not search_pattern and not start_pattern:
+            return self.contents
+
+        contents = []
+        start_flag = not bool(start_pattern)
+        for line in self.contents:
+            if start_flag:
+                if search_pattern.search(line):
+                    contents.append(line.strip())
+            elif start_pattern.search(line):
+                start_flag = True
+                contents.append(line.strip())
+
+        return contents
 
 
     def find(self, pattern_str, flags=re.I):
