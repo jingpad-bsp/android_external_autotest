@@ -74,7 +74,7 @@ class Chrome(object):
 
 
     def __init__(self, logged_in=True, extension_paths=[], autotest_ext=False,
-                 is_component=False, num_tries=3, extra_browser_args=None,
+                 num_tries=3, extra_browser_args=None,
                  clear_enterprise_policy=True, dont_override_profile=False,
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
@@ -87,8 +87,6 @@ class Chrome(object):
         @param extension_paths: path of unpacked extension to install.
         @param autotest_ext: Load a component extension with privileges to
                              invoke chrome.autotestPrivate.
-        @param is_component: Whether extensions should be loaded as component
-                             extensions.
         @param num_tries: Number of attempts to log in.
         @param extra_browser_args: Additional argument(s) to pass to the
                                    browser. It can be a string or a list.
@@ -166,7 +164,7 @@ class Chrome(object):
             extensions_to_load = b_options.extensions_to_load
             for path in extension_paths:
                 extension = extension_to_load.ExtensionToLoad(
-                        path, self.browser_type, is_component=is_component)
+                        path, self.browser_type)
                 extensions_to_load.append(extension)
             self._extensions_to_load = extensions_to_load
 
