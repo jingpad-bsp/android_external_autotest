@@ -431,7 +431,6 @@ class ArcTest(test.test):
         """Log in to a test account."""
         extension_paths = [extension_path] if extension_path else []
         self._chrome = chrome.Chrome(extension_paths=extension_paths,
-                                     is_component=not extension_paths,
                                      arc_mode=arc_mode,
                                      **chrome_kargs)
         if extension_path:
