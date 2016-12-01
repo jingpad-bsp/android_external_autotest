@@ -739,8 +739,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                         ).increment(fields=monarch_fields)
 
         success, retryable = devserver.auto_update(
-                self.hostname, build, log_dir=self.job.resultdir,
-                force_update=force_update, full_update=force_full_update)
+                self.hostname, build,
+                original_board=self.get_board().replace(
+                        ds_constants.BOARD_PREFIX, ''),
+                original_release_version=self.get_release_version(),
+                log_dir=self.job.resultdir,
+                force_update=force_update,
+                full_update=force_full_update)
         if not success and retryable:
           # It indicates that last provision failed due to devserver load
           # issue, so another devserver is resolved to kick off provision
@@ -768,9 +773,13 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
               c.increment(fields=monarch_fields)
 
               devserver.auto_update(
-                    self.hostname, build, log_dir=self.job.resultdir,
-                    force_update=force_update, full_update=force_full_update)
-
+                      self.hostname, build,
+                      original_board=self.get_board().replace(
+                              ds_constants.BOARD_PREFIX, ''),
+                      original_release_version=self.get_release_version(),
+                      log_dir=self.job.resultdir,
+                      force_update=force_update,
+                      full_update=force_full_update)
 
         # The reason to resolve a new devserver in function machine_install
         # is mostly because that the update_url there may has a strange format,
