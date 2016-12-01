@@ -17,6 +17,24 @@ from autotest_lib.server import site_utils
 from autotest_lib.tko import utils
 
 
+def _log_error(msg):
+    """Log an error message.
+
+    @param msg: Message string
+    """
+    print >> sys.stderr, msg
+    sys.stderr.flush()  # we want these msgs to show up immediately
+
+
+def _format_operational_error(e):
+    """Format OperationalError.
+
+    @param e: OperationalError instance.
+    """
+    return ("%s: An operational error occurred during a database "
+            "operation: %s" % (time.strftime("%X %x"), str(e)))
+
+
 class MySQLTooManyRows(Exception):
     """Too many records."""
     pass
@@ -151,7 +169,8 @@ class db_sql(object):
             try:
                 result = function(*args, **dargs)
             except OperationalError, e:
-                self._log_operational_error(e)
+                _log_error("%s; retrying, don't panic yet"
+                           % _format_operational_error(e))
                 stop_time = time.time()
                 elapsed_time = stop_time - start_time
                 if elapsed_time > self.query_timeout:
@@ -162,17 +181,11 @@ class db_sql(object):
                         self._init_db()
                         autotest_stats.Counter('tko_db_error').increment()
                     except OperationalError, e:
-                        self._log_operational_error(e)
+                        _log_error('%s; panic now'
+                                   % _format_operational_error(e))
             else:
                 success = True
         return result
-
-
-    def _log_operational_error(self, e):
-        msg = ("%s: An operational error occured during a database "
-               "operation: %s" % (time.strftime("%X %x"), str(e)))
-        print >> sys.stderr, msg
-        sys.stderr.flush() # we want these msgs to show up immediately
 
 
     def dprint(self, value):
