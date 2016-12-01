@@ -330,6 +330,26 @@ def _test_retry_and_log(test_method_or_retry_flag):
         return decorator
 
 
+def test_case_log(method):
+    """A decorator for test case methods.
+
+    The main purpose of this decorator is to display the test case name
+    in the test log which looks like
+
+        <... test_case_RA3_CD_SI200_CD_PC_CD_UA3 ...>
+
+    @param method: the test case method to decorate.
+
+    @returns: a wrapper function of the decorated method.
+
+    """
+    @functools.wraps(method)
+    def wrapper(instance, *args, **kwargs):
+        logging.info('\n<... %s ...>', method.__name__)
+        method(instance, *args, **kwargs)
+    return wrapper
+
+
 class BluetoothAdapterTests(test.test):
     """Server side bluetooth adapter tests.
 
