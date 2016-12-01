@@ -17,9 +17,7 @@ TIME = "FAST"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "graphics"
 TEST_TYPE = "client"
-
-#TODO(ihf): Port to frecon and enable again (crbug.com/413088).
-#ATTRIBUTES = "suite:graphics, suite:graphics_per-day, suite:graphics_system"
+ATTRIBUTES = "suite:graphics_per-day, suite:bvt-perbuild"
 BUG_TEMPLATE = {
     'components': ['OS>Kernel>Graphics'],
 }
