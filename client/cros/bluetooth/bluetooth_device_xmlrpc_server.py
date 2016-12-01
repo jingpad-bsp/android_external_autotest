@@ -1148,6 +1148,47 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 adv.get_path(), {})
 
 
+    def unregister_advertisement(self, advertisement_data):
+        """Unregister an advertisement.
+
+        Note that to unregister an advertisement, it is required to use
+        the same self._advertising interface manager. This is because
+        bluez only allows the same sender to invoke UnregisterAdvertisement
+        method. Hence, watch out that the bluetoothd is not restarted or
+        self.start_bluetoothd() is not executed between the time span that
+        an advertisement is registered and unregistered.
+
+        @param advertisement_data: a dict of the advertisements to unregister.
+
+        @returns: True on success. False otherwise.
+
+        """
+        path = advertisement_data.get('Path')
+        for index, adv in enumerate(self.advertisements):
+            if adv.get_path() == path:
+                break
+        else:
+            logging.error('Fail to find the advertisement under the path: %s',
+                          path)
+            return False
+
+        result = self.advertising_async_method(
+                self._advertising.UnregisterAdvertisement,
+                # reply handler
+                lambda: logging.info('unregister_advertisement: succeeded.'),
+                # error handler
+                lambda error: logging.error(
+                    'unregister_advertisement: failed: %s', str(error)),
+                # other arguments
+                adv.get_path())
+
+        # Call remove_from_connection() so that the same path could be reused.
+        adv.remove_from_connection()
+        del self.advertisements[index]
+
+        return result
+
+
     def set_advertising_intervals(self, min_adv_interval_ms,
                                   max_adv_interval_ms):
         """Set advertising intervals.

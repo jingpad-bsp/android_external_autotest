@@ -586,6 +586,17 @@ class BluetoothDevice(object):
         return self._proxy.register_advertisement(advertisement_data)
 
 
+    def unregister_advertisement(self, advertisement_data):
+        """Unregister an advertisement.
+
+        @param advertisement_data: a dict of the advertisement to unregister.
+
+        @returns: True on success. False otherwise.
+
+        """
+        return self._proxy.unregister_advertisement(advertisement_data)
+
+
     def set_advertising_intervals(self, min_adv_interval_ms,
                                   max_adv_interval_ms):
         """Set advertising intervals.
