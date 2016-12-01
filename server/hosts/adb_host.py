@@ -8,6 +8,7 @@ import functools
 import logging
 import os
 import re
+import signal
 import stat
 import sys
 import time
@@ -383,6 +384,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             serial = self.adb_serial
         elif function == FASTBOOT_CMD:
             serial = self.fastboot_serial
+            function = 'timeout --signal=%d %d %s' % (signal.SIGKILL,
+                                                      timeout + 1, function)
         else:
             raise NotImplementedError('Mode %s is not supported' % function)
 
