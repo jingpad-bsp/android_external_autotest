@@ -1,6 +1,10 @@
 suite:AFDO_page_replay
 suite:AFDO_record
 suite:android_bluetooth
+suite:android_bluetooth_auto
+suite:android_bluetooth_funhaus
+suite:android_bluetooth_longev_gatt
+suite:android_bluetooth_longev_rfcomm
 suite:android_telephony_nexus_att
 suite:android_telephony_nexus_spt
 suite:android_telephony_nexus_tmo
