@@ -52,9 +52,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 'tools',
                 'xts-tradefed')
         logging.info('GTS-tradefed path: %s', gts_tradefed)
-        gts_tradefed_args = [
-                'run', 'xts', '--package', target_package,
-                '--result-server=https://cts.googleplex.com/results/uploadUrl']
+        gts_tradefed_args = ['run', 'xts', '--package', target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
         output = self._run(
                 gts_tradefed,
