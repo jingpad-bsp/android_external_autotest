@@ -69,9 +69,9 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
     @return the contents of the desired control file.
     """
     getter = control_file_getter.DevServerGetter.create(build, ds)
+    devserver_name = ds.get_server_name(ds.url())
     timer = autotest_stats.Timer('control_files.parse.%s.%s' %
-                                 (ds.get_server_name(ds.url()
-                                                     ).replace('.', '_'),
+                                 (devserver_name.replace('.', '_'),
                                   suite_name.rsplit('.')[-1]))
     # Get the control file for the suite.
     try:
@@ -79,10 +79,13 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
             control_file_in = getter.get_control_file_contents_by_name(
                     suite_name)
     except error.CrosDynamicSuiteException as e:
-        raise type(e)("%s while testing %s." % (e, build))
+        raise type(e)('Failed to get control file for %s '
+                      '(devserver: %s) (error: %s)' %
+                      (build, devserver_name, e))
     if not control_file_in:
         raise error.ControlFileEmpty(
-                "Fetching %s returned no data." % suite_name)
+            "Fetching %s returned no data. (devserver: %s)" %
+            (suite_name, devserver_name))
     # Force control files to only contain ascii characters.
     try:
         control_file_in.encode('ascii')
@@ -111,15 +114,16 @@ def _stage_build_artifacts(build, hostname=None):
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
     ds = dev_server.resolve(build, hostname=hostname)
+    ds_name = ds.get_server_name(ds.url())
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     timer = autotest_stats.Timer('control_files.stage.%s' % (
-            ds.get_server_name(ds.url()).replace('.', '_')))
+            ds_name.replace('.', '_')))
     try:
         with timer:
             ds.stage_artifacts(image=build, artifacts=['test_suites'])
     except dev_server.DevServerException as e:
         raise error.StageControlFileFailure(
-                "Failed to stage %s: %s" % (build, e))
+                "Failed to stage %s on %s: %s" % (build, ds_name, e))
     timings[constants.PAYLOAD_FINISHED_TIME] = formatted_now()
     return (ds, timings)
 
@@ -623,15 +627,17 @@ def _initialize_control_file_getter(build):
     # Stage the test artifacts.
     try:
         ds = dev_server.ImageServer.resolve(build)
+        ds_name = ds.get_server_name(ds.url())
         build = ds.translate(build)
     except dev_server.DevServerException as e:
-        raise ValueError('Could not resolve build %s: %s' % (build, e))
+        raise ValueError('Could not resolve build %s: %s' %
+                         (build, e))
 
     try:
         ds.stage_artifacts(image=build, artifacts=['test_suites'])
     except dev_server.DevServerException as e:
         raise error.StageControlFileFailure(
-                'Failed to stage %s: %s' % (build, e))
+                'Failed to stage %s on %s: %s' % (build, ds_name, e))
 
     # Collect the control files specified in this build
     return control_file_getter.DevServerGetter.create(build, ds)
