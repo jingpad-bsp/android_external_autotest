@@ -6,7 +6,7 @@ AUTHOR = 'tturney'
 NAME = 'android_ACTS.BluetoothAutoTest'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
-ATTRIBUTES = 'suite:android_bluetooth'
+ATTRIBUTES = 'suite:android_bluetooth_auto'
 DEPENDENCIES = 'bluetoothauto'
 
 DOC = """
