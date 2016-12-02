@@ -6,18 +6,18 @@
         "is_active": true
       },
       "channel": "canary",
-      "chrome_os_version": "8848.0.0",
-      "chrome_version": "55.0.2874.0",
+      "chrome_os_version": "9029.0.0",
+      "chrome_version": "57.0.2933.0",
       "keyset": "amd64-generic-goofy-premp",
       "is_mp_keyset": false,
       "payloads": [
         {
-          "name": "canary-channel/amd64-generic-goofy/8848.0.0/payloads/chromeos_8848.0.0_amd64-generic-goofy_canary-channel_full_premp.bin-317ab41767750381c5acc4705264f258.signed",
+          "name": "canary-channel/amd64-generic-goofy/9029.0.0/payloads/chromeos_9029.0.0_amd64-generic-goofy_canary-channel_full_premp.bin-481afee30bba3c52f9ceee8df117f030.signed",
           "fraction": 1.0,
           "max_fraction": false
         },
         {
-          "name": "canary-channel/amd64-generic-goofy/8848.0.0/payloads/chromeos_8847.0.0-8848.0.0_amd64-generic-goofy_canary-channel_delta_premp.bin-c228c9ee888ba9e1bcec9adfdf5662df.signed",
+          "name": "canary-channel/amd64-generic-goofy/9029.0.0/payloads/chromeos_9027.0.0-9029.0.0_amd64-generic-goofy_canary-channel_delta_premp.bin-f24686b5f8beb0c788c3c107dcb29ca1.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -29,13 +29,12 @@
         "is_active": true
       },
       "channel": "canary",
-      "chrome_os_version": "8848.0.0",
-      "chrome_version": "55.0.2874.0",
+      "chrome_os_version": "9030.0.0",
       "keyset": "arkham-mp",
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "canary-channel/arkham/8848.0.0/payloads/chromeos_8848.0.0_arkham_canary-channel_full_mp.bin-820c3e4803068d3e172a4e604bbb6f19.signed",
+          "name": "canary-channel/arkham/9030.0.0/payloads/chromeos_9030.0.0_arkham_canary-channel_full_mp.bin-d73a0de081090827a18bd502c0377136.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -47,13 +46,12 @@
         "is_active": true
       },
       "channel": "dev",
-      "chrome_os_version": "8838.0.0",
-      "chrome_version": "55.0.2869.0",
+      "chrome_os_version": "8872.40.11",
       "keyset": "arkham-mp",
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "dev-channel/arkham/8838.0.0/payloads/chromeos_8838.0.0_arkham_dev-channel_full_mp.bin-0af959992b05fb432d8cc48a92c1675c.signed",
+          "name": "dev-channel/arkham/8872.40.11/payloads/chromeos_8872.40.11_arkham_dev-channel_full_mp.bin-c720e1677872dd255907cbf1138fc537.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -65,13 +63,13 @@
         "is_active": true
       },
       "channel": "beta",
-      "chrome_os_version": "8530.71.1",
-      "chrome_version": "53.0.2785.85",
+      "chrome_os_version": "8872.40.8",
+      "chrome_version": "55.0.2883.37",
       "keyset": "arkham-mp",
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "beta-channel/arkham/8530.71.1/payloads/chromeos_8530.71.1_arkham_beta-channel_full_mp.bin-8b41295830937046dbccb72c385e87f1.signed",
+          "name": "beta-channel/arkham/8872.40.8/payloads/chromeos_8872.40.8_arkham_beta-channel_full_mp.bin-17c7c783a48a59f5dae08a28ee0872e5.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -83,13 +81,13 @@
         "is_active": true
       },
       "channel": "stable",
-      "chrome_os_version": "8350.53.0",
-      "chrome_version": "52.0.2743.74",
+      "chrome_os_version": "8530.71.2",
+      "chrome_version": "53.0.2785.85",
       "keyset": "arkham-mp",
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "stable-channel/arkham/8350.53.0/payloads/chromeos_8350.53.0_arkham_stable-channel_full_mp.bin-37bb5a1491c9ff528a944200e4b9339a.signed",
+          "name": "stable-channel/arkham/8530.71.2/payloads/chromeos_8530.71.2_arkham_stable-channel_full_mp.bin-de6b87050bc9f6292ab1ff7798373c39.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -101,18 +99,69 @@
         "is_active": true
       },
       "channel": "beta",
-      "chrome_os_version": "8743.44.0",
-      "chrome_version": "54.0.2840.43",
+      "chrome_os_version": "8872.54.0",
+      "chrome_version": "55.0.2883.54",
       "keyset": "paine-mp-v2",
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "beta-channel/auron-paine/8743.44.0/payloads/chromeos_8743.25.0-8743.44.0_auron-paine_beta-channel_delta_paine-mp-v2.bin-6778051777f9cc57b685b1e111382616.signed",
+          "name": "beta-channel/auron-paine/8872.54.0/payloads/chromeos_8872.54.0_auron-paine_beta-channel_full_paine-mp-v2.bin-1b66fe750ce3cd84417bed6c0246d708.signed",
           "fraction": 1.0,
           "max_fraction": false
         },
         {
-          "name": "beta-channel/auron-paine/8743.44.0/payloads/chromeos_8743.44.0_auron-paine_beta-channel_full_paine-mp-v2.bin-287b030d3b60d401aa84d4dfebaa4041.signed",
+          "name": "beta-channel/auron-paine/8872.54.0/payloads/chromeos_8872.44.0-8872.54.0_auron-paine_beta-channel_delta_paine-mp-v2.bin-800af667230df9fd07fd9d8533ac102a.signed",
+          "fraction": 1.0,
+          "max_fraction": false
+        }
+      ]
+    },
+    {
+      "board": {
+        "public_codename": "gale",
+        "is_active": true
+      },
+      "channel": "canary",
+      "chrome_os_version": "9030.0.0",
+      "keyset": "gale-mp",
+      "is_mp_keyset": true,
+      "payloads": [
+        {
+          "name": "canary-channel/gale/9030.0.0/payloads/chromeos_9030.0.0_gale_canary-channel_full_mp.bin-75a9264cebf2b0b9286f3b2bc5cd21a5.signed",
+          "fraction": 1.0,
+          "max_fraction": false
+        }
+      ]
+    },
+    {
+      "board": {
+        "public_codename": "gale",
+        "is_active": true
+      },
+      "channel": "dev",
+      "chrome_os_version": "8872.40.9",
+      "keyset": "gale-mp",
+      "is_mp_keyset": true,
+      "payloads": [
+        {
+          "name": "dev-channel/gale/8872.40.9/payloads/chromeos_8872.40.9_gale_dev-channel_full_mp.bin-3851c278da136f0001cf42f607f27790.signed",
+          "fraction": 1.0,
+          "max_fraction": false
+        }
+      ]
+    },
+    {
+      "board": {
+        "public_codename": "gale",
+        "is_active": true
+      },
+      "channel": "beta",
+      "chrome_os_version": "8872.40.9",
+      "keyset": "gale-mp",
+      "is_mp_keyset": true,
+      "payloads": [
+        {
+          "name": "beta-channel/gale/8872.40.9/payloads/chromeos_8872.40.9_gale_beta-channel_full_mp.bin-0385cc7e0cac3b722cf335cfeaff2088.signed",
           "fraction": 1.0,
           "max_fraction": false
         }
@@ -149,10 +198,10 @@
       "is_mp_keyset": true,
       "payloads": [
         {
-          "name": "stable-channel/zako-freon/6680.78.0/payloads/chromeos_6680.64.0-6680.78.0_zako-freon_stable-channel_delta_zako-mp-v2.bin-5044ec18df02e2634c91342f929f00fe.signed"
+          "name": "stable-channel/zako-freon/6680.78.0/payloads/chromeos_6680.78.0_zako-freon_stable-channel_full_zako-mp-v2.bin-f3d3585d08f17e4aacf2d7b9b0ef4d9c.signed"
         },
         {
-          "name": "stable-channel/zako-freon/6680.78.0/payloads/chromeos_6680.78.0_zako-freon_stable-channel_full_zako-mp-v2.bin-f3d3585d08f17e4aacf2d7b9b0ef4d9c.signed"
+          "name": "stable-channel/zako-freon/6680.78.0/payloads/chromeos_6680.64.0-6680.78.0_zako-freon_stable-channel_delta_zako-mp-v2.bin-5044ec18df02e2634c91342f929f00fe.signed"
         }
       ]
     }
