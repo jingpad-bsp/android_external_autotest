@@ -30,6 +30,7 @@ from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import frontend
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.server.cros.dynamic_suite import job_status
 from autotest_lib.server.cros.dynamic_suite import reporting
 from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
@@ -542,9 +543,18 @@ class SuiteTest(mox.MoxTestBase):
 
     def testScheduleStableTests(self):
         """Should schedule only stable tests with the AFE."""
+        # Since test data_one is experimental, it will be skip.
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=False)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
@@ -555,10 +565,19 @@ class SuiteTest(mox.MoxTestBase):
 
     def testScheduleStableTestsIgnoreDeps(self):
         """Should schedule only stable tests with the AFE."""
+        # Since test data_one is experimental, it will be skip.
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=False,
                                    ignore_deps=True)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
@@ -570,9 +589,17 @@ class SuiteTest(mox.MoxTestBase):
 
     def testScheduleUnrunnableTestsTESTNA(self):
         """Tests which fail to schedule should be TEST_NA."""
+        # Since all tests will be fail to schedule, the num of scheduled tests
+        # will be zero.
+        name_list = []
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 0,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True, raises=True)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
@@ -582,9 +609,17 @@ class SuiteTest(mox.MoxTestBase):
 
     def testRetryMapAfterScheduling(self):
         """Test job-test and test-job mapping are correctly updated."""
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven', 'experimental_name-data_one']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
@@ -608,9 +643,17 @@ class SuiteTest(mox.MoxTestBase):
 
     def testSuiteMaxRetries(self):
         """Test suite max retries."""
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven', 'experimental_name-data_one']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 7,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=True)
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,
                                        self.devserver,
@@ -626,10 +669,19 @@ class SuiteTest(mox.MoxTestBase):
 
     def testSuiteDependencies(self):
         """Should add suite dependencies to tests scheduled."""
+        # Since add_experimental set to False, will skip experimental data_one.
+        name_list = ['name-data_two', 'name-data_three',
+                     'name-data_four', 'name-data_five', 'name-data_six',
+                     'name-data_seven']
+        keyval_dict = {constants.SCHEDULED_TEST_COUNT_KEY: 6,
+                       constants.SCHEDULED_TEST_NAMES_KEY: repr(name_list)}
+
         self.mock_control_file_parsing()
         recorder = self.mox.CreateMock(base_job.base_job)
         self.expect_job_scheduling(recorder, add_experimental=False,
                                    suite_deps=['extra'])
+        self.mox.StubOutWithMock(utils, 'write_keyval')
+        utils.write_keyval(None, keyval_dict)
 
         self.mox.ReplayAll()
         suite = Suite.create_from_name(self._TAG, self._BUILDS, self._BOARD,

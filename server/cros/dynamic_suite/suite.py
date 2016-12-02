@@ -918,9 +918,18 @@ class Suite(object):
                         test.name = constants.EXPERIMENTAL_PREFIX + test.name
                     tests.append(test)
 
+            scheduled_test_names = []
             for test in tests:
                 if self._schedule_test(record, test):
-                    n_scheduled += 1
+                    scheduled_test_names.append(test.name)
+
+            # Write the num of scheduled tests and name of them to keyval file.
+            n_scheduled = len(scheduled_test_names)
+            logging.debug('Scheduled %d tests, writing the total to keyval.',
+                          n_scheduled)
+            d = {constants.SCHEDULED_TEST_COUNT_KEY: n_scheduled,
+                 constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names)}
+            utils.write_keyval(self._results_dir, d)
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
