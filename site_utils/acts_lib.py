@@ -305,17 +305,17 @@ class ActsContainer(AndroidTestingEnviroment):
         if not os.path.isabs(dst):
             dst = os.path.join(self.container_directory, dst)
 
-        path = dst
-        while len(path) > 1:
-            path = os.path.dirname(path)
-            result = self.test_station.run('mkdir "%s"' % path,
-                                           ignore_status=True)
-            if result.exit_status:
-                break
+        path = os.path.dirname(dst)
+        result = self.test_station.run('mkdir "%s"' % path,
+                                       ignore_status=True)
+
+        original_dst = dst
+        if os.path.basename(src) == os.path.basename(dst):
+            dst = os.path.dirname(dst)
 
         self.test_station.send_file(src, dst)
 
-        return dst
+        return original_dst
 
     def upload_config(self, config_file):
         """Uploads a config file to the container.
