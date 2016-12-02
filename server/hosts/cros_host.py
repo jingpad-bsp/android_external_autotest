@@ -1127,25 +1127,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                                       self.BOOT_TIMEOUT)
 
 
-    def _is_firmware_repair_supported(self):
-        """Check if the firmware repair is supported.
-
-        The firmware repair is only applicable to DUTs in pools listed in
-        global config CROS/pools_support_firmware_repair.
-
-        @return: True if it is supported; otherwise False.
-        """
-        logging.info('Checking if host %s can be repaired with firmware '
-                     'repair.', self.hostname)
-        pools = server_utils.get_labels_from_afe(self.hostname, 'pool:',
-                                                 self._AFE)
-        pools_support_firmware_repair = CONFIG.get_config_value('CROS',
-                'pools_support_firmware_repair', type=str).split(',')
-
-        return (pools and pools_support_firmware_repair and
-                set(pools).intersection(set(pools_support_firmware_repair)))
-
-
     def repair_servo(self):
         """
         Confirm that servo is initialized and verified.
@@ -1368,38 +1349,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             raise error.AutoservError('The host has wrong cros-version label.')
 
 
-    def verify_firmware_status(self):
-        """Verify the host's firmware is in a good state.
-
-        @raise error.AutoservError: If state is not good.
-        """
-        if self._is_firmware_repair_supported():
-            try:
-                # Read the AP firmware and dump the sections we are interested.
-                cmd = ('mkdir /tmp/verify_firmware; '
-                       'cd /tmp/verify_firmware; '
-                       'for section in VBLOCK_A VBLOCK_B FW_MAIN_A FW_MAIN_B; '
-                       'do flashrom -r image.bin -i $section:$section; '
-                       'done')
-                self.run(cmd)
-
-                # Verify the firmware blocks A and B.
-                cmd = ('vbutil_firmware --verify /tmp/verify_firmware/VBLOCK_%c'
-                       ' --signpubkey /usr/share/vboot/devkeys/root_key.vbpubk'
-                       ' --fv /tmp/verify_firmware/FW_MAIN_%c')
-                for c in ('A', 'B'):
-                    rv = self.run(cmd % (c, c), ignore_status=True)
-                    if rv.exit_status:
-                        raise error.AutoservError(
-                                'Firmware %c is in a bad state.' % c)
-            finally:
-                # Remove the tempoary files.
-                self.run('rm -rf /tmp/verify_firmware')
-        else:
-            logging.info('Do not care about firmware status when the host '
-                         'is not in pools that support firmware repair.')
-
-
     def cleanup(self):
         self.run('rm -f %s' % client_constants.CLEANUP_LOGS_PAUSED_FILE)
         try:
@@ -1539,8 +1488,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
             self.run('update_engine_client --status')
 
         self.verify_cros_version_label()
-
-        self.verify_firmware_status()
 
 
     def verify(self):

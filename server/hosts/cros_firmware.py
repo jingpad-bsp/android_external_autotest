@@ -2,12 +2,81 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""
+Repair actions and verifiers relating to CrOS firmware.
+
+This contains the repair actions and verifiers need to find problems
+with the firmware installed on Chrome OS DUTs, and when necessary, to
+fix problems by updating or re-installing the firmware.
+"""
+
 import logging
 import re
 
 import common
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import hosts
 from autotest_lib.server import afe_utils
+from autotest_lib.site_utils.suite_scheduler import constants
+
+
+_CONFIG = global_config.global_config
+_FIRMWARE_REPAIR_POOLS = set(_CONFIG.get_config_value('CROS',
+            'pools_support_firmware_repair', type=str).split(','))
+_POOL_PREFIX = constants.Labels.POOL_PREFIX
+
+def _is_firmware_repair_supported(host):
+    """
+    Check if a host supports firmware repair.
+
+    Firmware repair is only applicable to DUTs in pools listed in
+    the global config setting CROS/pools_support_firmware_repair.
+
+    @return: `True` if it is supported, or `False` otherwise.
+    """
+    pool_labels = afe_utils.get_labels(host, _POOL_PREFIX)
+    pools = set([l[len(_POOL_PREFIX) : ] for l in pool_labels])
+    return bool(pools & _FIRMWARE_REPAIR_POOLS)
+
+
+class FirmwareStatusVerifier(hosts.Verifier):
+    """
+    Verify that a host's firmware is in a good state.
+
+    For DUTs that run firmware tests, it's possible that the firmware
+    on the DUT can get corrupted.  This verifier checks whether it
+    appears that firmware should be re-flashed using servo.
+    """
+
+    def verify(self, host):
+        if not _is_firmware_repair_supported(host):
+            return
+        try:
+            # Read the AP firmware and dump the sections that we're
+            # interested in.
+            cmd = ('mkdir /tmp/verify_firmware; '
+                   'cd /tmp/verify_firmware; '
+                   'for section in VBLOCK_A VBLOCK_B FW_MAIN_A FW_MAIN_B; '
+                   'do flashrom -r image.bin -i $section:$section; '
+                   'done')
+            host.run(cmd)
+
+            # Verify the firmware blocks A and B.
+            cmd = ('vbutil_firmware --verify /tmp/verify_firmware/VBLOCK_%c'
+                   ' --signpubkey /usr/share/vboot/devkeys/root_key.vbpubk'
+                   ' --fv /tmp/verify_firmware/FW_MAIN_%c')
+            for c in ('A', 'B'):
+                rv = host.run(cmd % (c, c), ignore_status=True)
+                if rv.exit_status:
+                    raise hosts.AutoservVerifyError(
+                            'Firmware %c is in a bad state.' % c)
+        finally:
+            # Remove the temporary files.
+            host.run('rm -rf /tmp/verify_firmware')
+
+    @property
+    def description(self):
+        return 'Firmware on this DUT is clean'
 
 
 class FirmwareVersionVerifier(hosts.Verifier):
@@ -92,7 +161,7 @@ class FirmwareVersionVerifier(hosts.Verifier):
 
     def verify(self, host):
         # Test 1 - The DUT is not part of a FAFT pool.
-        if host._is_firmware_repair_supported():
+        if _is_firmware_repair_supported(host):
             return
         # Test 2 - The DUT has an assigned stable firmware version.
         stable_firmware = afe_utils.get_stable_firmware_version(
@@ -155,7 +224,7 @@ class FirmwareRepair(hosts.RepairAction):
     """
 
     def repair(self, host):
-        if not host._is_firmware_repair_supported():
+        if not _is_firmware_repair_supported(host):
             raise hosts.AutoservRepairError(
                     'Firmware repair is not applicable to host %s.' %
                     host.hostname)
