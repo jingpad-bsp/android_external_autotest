@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Project, chromeos-video@google.com"
-NAME = "video_WebRtcPeerConnectionWithCamera"
+NAME = "video_WebRtcPeerConnectionWithCamera.vp8"
 PURPOSE = "Ensure WebRTC call gets up and produces healthy video"
 CRITERIA = "Fails if the call doesn't even get up."
 ATTRIBUTES = "suite:av_webcam"
@@ -30,4 +30,5 @@ Black frames/freezes/fps are reported to the perf dashboard and
 must be monitored there.
 """
 
-job.run_test("video_WebRtcPeerConnectionWithCamera")
+job.run_test("video_WebRtcPeerConnectionWithCamera",
+             video_codec="VP8")
