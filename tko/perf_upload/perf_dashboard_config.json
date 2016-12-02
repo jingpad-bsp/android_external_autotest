@@ -554,7 +554,11 @@
     "master_name": "ChromeOSVideo"
   },
   {
-    "autotest_name": "video_WebRtcPeerConnectionWithCamera",
+    "autotest_name": "video_WebRtcPeerConnectionWithCamera.h264",
+    "master_name": "ChromeOSWebRtcVideo"
+  },
+  {
+    "autotest_name": "video_WebRtcPeerConnectionWithCamera.vp8",
     "master_name": "ChromeOSWebRtcVideo"
   },
   {
