@@ -4,16 +4,17 @@
 <body>
   <video id="localVideo" autoplay muted></video>
   <video id="remoteVideo" autoplay muted></video>
-<script src="ssim.js"></script>
 <script src="blackframe.js"></script>
+<script src="munge_sdp.js"></script>
+<script src="ssim.js"></script>
 <script>
 
 var results = {};
 var testStatus = 'running';
 
 // Starts the test.
-function testWebRtcLoopbackCall() {
-  var test = new WebRtcLoopbackCallTest();
+function testWebRtcLoopbackCall(videoCodec) {
+  var test = new WebRtcLoopbackCallTest(videoCodec);
   test.run();
 }
 
@@ -41,7 +42,8 @@ function average(array) {
 }
 
 // Actual test object.
-function WebRtcLoopbackCallTest() {
+function WebRtcLoopbackCallTest(videoCodec) {
+  this.videoCodec = videoCodec;
   this.localStream = null;
   this.remoteStream = null;
   this.results = {cameraType: '', peerConnectionStats: [],
@@ -97,7 +99,6 @@ WebRtcLoopbackCallTest.prototype = {
   },
 
   reportError: function(message) {
-    console.error(message);
     testStatus = message;
   },
 
@@ -115,7 +116,7 @@ WebRtcLoopbackCallTest.prototype = {
     this.remotePeerConnection.onaddstream = this.gotRemoteStream.bind(this);
 
     this.localPeerConnection.addStream(this.localStream);
-    this.localPeerConnection.createOffer(this.gotLocalDescription.bind(this),
+    this.localPeerConnection.createOffer(this.gotOffer.bind(this),
         function(error) {});
     this.localVideo.src = URL.createObjectURL(stream);
 
@@ -132,7 +133,6 @@ WebRtcLoopbackCallTest.prototype = {
     function gatherOneReport() {
       var elapsed = new Date() - startTime;
       if (elapsed > durationMs) {
-        console.log('Done gathering stats.');
         clearInterval(pollFunction);
         callback();
         return;
@@ -225,14 +225,22 @@ WebRtcLoopbackCallTest.prototype = {
     this.remoteVideo.src = URL.createObjectURL(event.stream);
   },
 
-  gotLocalDescription: function(description) {
+  gotOffer: function(description) {
+    description.sdp =
+        setSdpDefaultVideoCodec(description.sdp, this.videoCodec);
     this.localPeerConnection.setLocalDescription(description);
     this.remotePeerConnection.setRemoteDescription(description);
-    this.remotePeerConnection.createAnswer(this.gotRemoteDescription.bind(
+    this.remotePeerConnection.createAnswer(this.gotAnswer.bind(
         this), function(error) {});
   },
 
-  gotRemoteDescription: function(description) {
+  gotAnswer: function(description) {
+    var selectedCodec =
+        getSdpDefaultVideoCodec(description.sdp);
+    if (selectedCodec != this.videoCodec) {
+      this.reportError('Expected codec ' + this.videoCodec + ', but WebRTC ' +
+                       'selected ' + selectedCodec);
+    }
     this.remotePeerConnection.setLocalDescription(description);
     this.localPeerConnection.setRemoteDescription(description);
   },
@@ -250,12 +258,14 @@ WebRtcLoopbackCallTest.prototype = {
   },
 }
 
-
 window.onerror = function (message, filename, lineno, colno, error) {
-  console.log("Something went wrong, here is the stack trace --> %s",
-      error.stack);
-  testStatus = 'exception-in-test-page: ' + error.stack
+  testStatus = 'exception-in-test-page: ' + error.stack;
 };
+
+// Used by munge_sdp.js.
+function failure(location, msg) {
+  testStatus = 'failed-to-munge: ' + msg + ' in ' + location;
+}
 </script>
 </body>
 </html>

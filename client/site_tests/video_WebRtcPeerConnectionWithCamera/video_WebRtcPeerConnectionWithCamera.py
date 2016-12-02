@@ -21,7 +21,7 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
     """Tests a full WebRTC call with a real webcam."""
     version = 1
 
-    def start_loopback(self, cr):
+    def start_loopback(self, cr, video_codec):
         """Opens WebRTC loopback page.
 
         @param cr: Autotest Chrome instance.
@@ -32,7 +32,8 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         self.tab.Navigate(cr.browser.platform.http_server.UrlOf(
                 os.path.join(self.bindir, 'loopback.html')))
         self.tab.WaitForDocumentReadyStateToBeComplete()
-        self.tab.EvaluateJavaScript("testWebRtcLoopbackCall()")
+        self.tab.EvaluateJavaScript(
+                "testWebRtcLoopbackCall('%s')" % video_codec)
 
     def wait_test_completed(self, timeout_secs):
         """Waits until the test is done.
@@ -50,14 +51,14 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
             test_done, timeout=timeout_secs, sleep_interval=1,
             desc='loopback.html reports itself as finished')
 
-    def run_once(self):
+    def run_once(self, video_codec):
         """Runs the video_WebRtcPeerConnectionWithCamera test."""
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS) as cr:
-            self.start_loopback(cr)
+            self.start_loopback(cr, video_codec)
             self.wait_test_completed(TIMEOUT)
-            self.print_loopback_result()
+            self.print_loopback_result(video_codec)
 
-    def print_loopback_result(self):
+    def print_loopback_result(self, video_codec):
         """Prints loopback results (unless we failed to retrieve them).
 
         @raises TestError if the test failed outright.
@@ -75,24 +76,25 @@ class video_WebRtcPeerConnectionWithCamera(test.test):
         if not pc_stats:
             raise error.TestFail('Peer Connection Stats is empty')
         self.output_perf_value(
-                description='max_input_fps', value=pc_stats[1], units='fps',
-                higher_is_better=True)
+                description='max_input_fps_%s' % video_codec,
+                value=pc_stats[1], units='fps', higher_is_better=True)
         self.output_perf_value(
-                description='max_sent_fps', value=pc_stats[4], units='fps',
-                higher_is_better=True)
+                description='max_sent_fps_%s' % video_codec,
+                value=pc_stats[4], units='fps', higher_is_better=True)
 
         frame_stats = results.get('frameStats')
         if not frame_stats:
             raise error.TestFail('Frame Stats is empty')
+
         self.output_perf_value(
-                description='black_frames',
+                description='black_frames_%s' % video_codec,
                 value=frame_stats['numBlackFrames'],
                 units='frames', higher_is_better=False)
         self.output_perf_value(
-                description='frozen_frames',
+                description='frozen_frames_%s' % video_codec,
                 value=frame_stats['numFrozenFrames'],
                 units='frames', higher_is_better=False)
         self.output_perf_value(
-                description='total_num_frames',
+                description='total_num_frames_%s' % video_codec,
                 value=frame_stats['numFrames'],
                 units='frames', higher_is_better=True)
