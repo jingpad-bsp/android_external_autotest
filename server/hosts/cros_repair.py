@@ -345,6 +345,7 @@ class ServoInstallRepair(hosts.RepairAction):
 
 def create_cros_repair_strategy():
     """Return a `RepairStrategy` for a `CrosHost`."""
+    FirmwareStatusVerifier = cros_firmware.FirmwareStatusVerifier
     FirmwareVersionVerifier = cros_firmware.FirmwareVersionVerifier
     verify_dag = [
         (repair.SshVerifier,         'ssh',      []),
@@ -353,6 +354,7 @@ def create_cros_repair_strategy():
         (WritableVerifier,           'writable', ['ssh']),
         (TPMStatusVerifier,          'tpm',      ['ssh']),
         (UpdateSuccessVerifier,      'good_au',  ['ssh']),
+        (FirmwareStatusVerifier,     'fwstatus', ['ssh']),
         (FirmwareVersionVerifier,    'rwfw',     ['ssh']),
         (PythonVerifier,             'python',   ['ssh']),
         (repair.LegacyHostVerifier,  'cros',     ['ssh']),
@@ -385,17 +387,13 @@ def create_cros_repair_strategy():
         (ServoSysRqRepair, 'sysrq', [], ['ssh']),
         (ServoResetRepair, 'servoreset', [], ['ssh']),
 
-        # TODO(jrbarnette):  the real dependency for firmware isn't
-        # 'cros', but rather a to-be-created verifier that replaces
-        # CrosHost.verify_firmware_status()
-        #
         # N.B. FirmwareRepair can't fix a 'good_au' failure directly,
         # because it doesn't remove the flag file that triggers the
         # failure.  We include it as a repair trigger because it's
         # possible the the last update failed because of the firmware,
         # and we want the repair steps below to be able to trust the
         # firmware.
-        (FirmwareRepair, 'firmware', [], ['ssh', 'cros', 'good_au']),
+        (FirmwareRepair, 'firmware', [], ['ssh', 'fwstatus', 'good_au']),
 
         (repair.RebootRepair, 'reboot', ['ssh'], ['writable']),
 
