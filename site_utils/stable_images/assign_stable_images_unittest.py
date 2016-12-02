@@ -23,17 +23,19 @@ from autotest_lib.site_utils.stable_images import assign_stable_images
 #     + Board with no "beta" channel.
 #     + Board with "beta" and another channel.
 #     + Board with only a "beta" channel.
+#     + Board with no "chrome_version" entry.
 #     + Obsolete board with "is_active" set to false.
 # The JSON content of the file is a subset of an actual
-# `omaha_status.json` file copied when this unit test was new.
+# `omaha_status.json` file copied when the unit test was last
+# updated.
 #
 # _EXPECTED_OMAHA_VERSIONS - The expected output produced by
 #   _STUB_OMAHA_DATA.
 #
 _OMAHA_TEST_DATA = 'test_omaha_status.json'
 
-_EXPECTED_OMAHA_VERSIONS = {'arkham': 'R53-8530.71.1',
-                            'auron-paine': 'R54-8743.44.0',
+_EXPECTED_OMAHA_VERSIONS = {'arkham': 'R55-8872.40.8',
+                            'auron-paine': 'R55-8872.54.0',
                             'zako-freon': 'R41-6680.52.0'}
 
 _DEFAULT_BOARD = assign_stable_images._DEFAULT_BOARD
