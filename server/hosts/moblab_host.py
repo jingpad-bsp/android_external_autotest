@@ -174,7 +174,7 @@ class MoblabHost(cros_host.CrosHost):
         # Set the timeout_min to be longer than self.timeout_min for rebooting.
         self._initialize_frontend_rpcs(timeout_min)
         # Verify the AFE can handle a simple request.
-        self.afe.get_hosts()
+        self._check_afe()
         # Reset the timeout_min after rebooting checks for afe services.
         self.afe.set_timeout(self.timeout_min)
 
@@ -259,6 +259,7 @@ class MoblabHost(cros_host.CrosHost):
         """
         return self.upstart_status(service)
 
+
     def _verify_moblab_services(self):
         """Verify the required Moblab services are up and running.
 
@@ -276,11 +277,35 @@ class MoblabHost(cros_host.CrosHost):
                                           % process)
 
 
+    def _check_afe(self):
+        """Verify whether afe of moblab works before verify its DUTs.
+
+        Verifying moblab sometimes happens after a successful provision, in
+        which case moblab is restarted but tunnel of afe is not re-connected.
+        This func is used to check whether afe is working now.
+
+        @return True if afe works, otherwise, raise urllib2.HTTPError.
+        """
+        try:
+            self.afe.get_hosts()
+        except:
+            logging.debug('AFE is not responding')
+            raise
+
+        return True
+
+
     def _verify_duts(self):
         """Verify the Moblab DUTs are up and running.
 
         @raises AutoservError if no DUTs are in the Ready State.
         """
+        # Check whether afe is well connected, if not, restart it.
+        try:
+            self._check_afe()
+        except:
+            self.wait_afe_up()
+
         # Add the DUTs if they have not yet been added.
         self.find_and_add_duts()
         # Ensure a boto file is installed in case this Moblab was wiped in
