@@ -43,7 +43,8 @@ class android_ACTS(test.test):
                  override_acts_zip=None,
                  override_internal_acts_dir=None,
                  override_python_bin='python',
-                 acts_timeout=7200):
+                 acts_timeout=7200,
+                 perma_path=None):
         """Runs an acts test case.
 
         @param testbed: The testbed to test on.
@@ -83,7 +84,12 @@ class android_ACTS(test.test):
         job_repo_url = afe_utils.get_host_attribute(
                 host, host.job_repo_url_attribute)
         test_station = testbed.teststation
-        ts_tempfolder = test_station.get_tmp_dir()
+        if not perma_path:
+            ts_tempfolder = test_station.get_tmp_dir()
+        else:
+            test_station.run('rm -fr "%s"' % perma_path)
+            test_station.run('mkdir "%s"' % perma_path)
+            ts_tempfolder = perma_path
         target_zip = os.path.join(ts_tempfolder, 'acts.zip')
 
         if override_acts_zip and override_build_url:
