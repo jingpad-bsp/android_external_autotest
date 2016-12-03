@@ -173,13 +173,11 @@ class Servo(object):
         # to minimize the dependencies on the rest of Autotest.
         self._servo_host = servo_host
         self._servo_serial = servo_serial
+        self._server = servo_host.get_servod_server_proxy()
         self._power_state = _PowerStateController(self)
         self._usb_state = None
         self._programmer = None
 
-    @property
-    def _server(self):
-        return self._servo_host.get_servod_server_proxy()
 
     @property
     def servo_serial(self):
