@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json
 import logging
 
 from autotest_lib.client.bin import utils
@@ -22,6 +21,9 @@ class policy_ChromeOsLockOnIdleSuspend(
     policy ChromeOsLockOnIdleSuspend: True, False, and Not set. The
     corresponding test cases are: True_Lock, False_Unlock, NotSet_Unlock.
 
+    Note: True_Lock case is not run as part of the regression suite due to
+    bug crbug.com/666430. See control.true_lock for details.
+
     """
     version = 1
 
@@ -31,14 +33,14 @@ class policy_ChromeOsLockOnIdleSuspend(
         'False_Unlock': False,
         'NotSet_Unlock': None
     }
-    SCREEN_LOCK_DELAY = 8
+    IDLE_ACTION_DELAY = 5
     POWER_MANAGEMENT_IDLE_SETTINGS = {
         'AC': {
             'Delays': {
                 'ScreenDim': 2000,
                 'ScreenOff': 3000,
                 'IdleWarning': 4000,
-                'Idle': 5000
+                'Idle': (IDLE_ACTION_DELAY * 1000)
             },
             'IdleAction': 'Suspend'
         },
@@ -47,7 +49,7 @@ class policy_ChromeOsLockOnIdleSuspend(
                 'ScreenDim': 2000,
                 'ScreenOff': 3000,
                 'IdleWarning': 4000,
-                'Idle': 5000
+                'Idle': (IDLE_ACTION_DELAY * 1000)
             },
             'IdleAction': 'Suspend'
         }
@@ -57,8 +59,7 @@ class policy_ChromeOsLockOnIdleSuspend(
     SUPPORTING_POLICIES = {
         'AllowScreenLock': True,
         'LidCloseAction': 0,
-        'PowerManagementIdleSettings': (
-            json.dumps(POWER_MANAGEMENT_IDLE_SETTINGS)),
+        'PowerManagementIdleSettings': POWER_MANAGEMENT_IDLE_SETTINGS,
         'RestoreOnStartup': 4,
         'RestoreOnStartupURLs': STARTUP_URLS
     }
@@ -86,11 +87,11 @@ class policy_ChromeOsLockOnIdleSuspend(
         login_status = utils.wait_for_value(
             lambda: self.cr.login_status['isScreenLocked'],
                     expected_value=True,
-                    timeout_sec=self.SCREEN_LOCK_DELAY)
+                    timeout_sec=self.IDLE_ACTION_DELAY)
         return login_status
 
 
-    def _test_require_password_to_wake(self, policy_value, policies_dict):
+    def _test_require_password_to_wake(self, policy_value):
         """
         Verify CrOS enforces ChromeOsLockOnIdleSuspend policy value.
 
@@ -99,16 +100,11 @@ class policy_ChromeOsLockOnIdleSuspend(
         When set either True or False, then the check box shall be uneditable.
         When Not set, then the check box shall be editable.
 
-        @param policy_value: policy value expected on chrome://policy page.
-        @param policies_dict: policy dict data sent to the fake DM server.
+        @param policy_value: policy value for this case.
         @raises: TestFail if setting is incorrectly (un)checked or
                  (un)editable, based on the policy value.
 
         """
-        logging.info('Running _test_require_password_to_wake(%s, %s)',
-                     policy_value, policies_dict)
-        self.setup_case(self.POLICY_NAME, policy_value, policies_dict)
-
         # Get check box status from the settings page.
         setting_pref = 'settings.enable_screen_lock'
         properties = self._get_settings_checkbox_properties(setting_pref)
@@ -116,15 +112,15 @@ class policy_ChromeOsLockOnIdleSuspend(
         setting_is_disabled = properties[self.SETTING_DISABLED]
 
         # Setting shall be checked if policy is set True, unchecked if False.
-        if policy_value == 'true' and not setting_is_checked:
+        if policy_value == True and not setting_is_checked:
             raise error.TestFail('"Require password to wake from sleep" '
                                  'setting should be checked.')
-        if policy_value == 'false' and setting_is_checked:
+        if policy_value == False and setting_is_checked:
             raise error.TestFail('"Require password to wake from sleep" '
                                  'setting should be unchecked.')
 
         # Setting shall be enabled if policy is Not set, disabled if set.
-        if policy_value == 'null':
+        if policy_value == None:
             if setting_is_disabled:
                 raise error.TestFail('"Require password to wake from sleep" '
                                      'setting should be editable.')
@@ -135,7 +131,7 @@ class policy_ChromeOsLockOnIdleSuspend(
 
         # Screen shall be locked if the policy is True, else unlocked.
         screen_is_locked = self._is_screen_locked()
-        if policy_value == 'true':
+        if policy_value == True:
             if not screen_is_locked:
                 raise error.TestFail('Screen should be locked.')
         else:
@@ -147,14 +143,9 @@ class policy_ChromeOsLockOnIdleSuspend(
         """
         Setup and run the test configured for the specified test case.
 
-        Set the expected |policy_value| and |policies_dict| data defined for
-        the specified test |case|, and run the test.
-
         @param case: Name of the test case to run.
 
         """
-        policy_value = self.packed_json_string(self.TEST_CASES[case])
-        policy_dict = {self.POLICY_NAME: self.TEST_CASES[case]}
-        policies_dict = self.SUPPORTING_POLICIES.copy()
-        policies_dict.update(policy_dict)
-        self._test_require_password_to_wake(policy_value, policies_dict)
+        case_value = self.TEST_CASES[case]
+        self.setup_case(self.POLICY_NAME, case_value, self.SUPPORTING_POLICIES)
+        self._test_require_password_to_wake(case_value)
