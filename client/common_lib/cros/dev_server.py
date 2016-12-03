@@ -1892,6 +1892,11 @@ class ImageServer(ImageServerBase):
                 logging.warning('Unable to parse build name %s for metrics. '
                                 'Continuing anyway.', build_name)
                 board, build_type, milestone = ('', '', '')
+
+            # Note: To avoid reaching or exceeding the monarch field cardinality
+            # limit, we avoid a metric that includes both dut hostname and other
+            # high cardinality fields.
+            # Per-devserver cros_update metric.
             c = metrics.Counter(
                     'chromeos/autotest/provision/cros_update_by_devserver')
             # Add a field |error| here. Current error's pattern is manually
@@ -1904,6 +1909,16 @@ class ImageServer(ImageServerBase):
                  'milestone': milestone,
                  'error': raised_error}
             c.increment(fields=f)
+
+            # Per-DUT cros_update metric.
+            c = metrics.Counter(
+                    'chromeos/autotest/provision/cros_update_per_dut')
+            f = {'success': is_au_success,
+                 'board': board,
+                 'error': raised_error,
+                 'dut_host_name': host_name}
+            c.increment(fields=f)
+
 
         if not is_au_success:
             # If errors happen in the CrOS AU process, report the first error
