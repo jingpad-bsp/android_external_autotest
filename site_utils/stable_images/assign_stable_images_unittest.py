@@ -34,8 +34,9 @@ from autotest_lib.site_utils.stable_images import assign_stable_images
 #
 _OMAHA_TEST_DATA = 'test_omaha_status.json'
 
-_EXPECTED_OMAHA_VERSIONS = {'arkham': 'R55-8872.40.8',
-                            'auron-paine': 'R55-8872.54.0',
+_EXPECTED_OMAHA_VERSIONS = {'auron-paine': 'R55-8872.54.0',
+                            'gale': 'R55-8872.40.9',
+                            'kevin': 'R55-8872.64.0',
                             'zako-freon': 'R41-6680.52.0'}
 
 _DEFAULT_BOARD = assign_stable_images._DEFAULT_BOARD
