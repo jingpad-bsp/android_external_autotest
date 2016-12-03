@@ -255,20 +255,13 @@ def _make_omaha_versions(omaha_status):
     @return A dictionary mapping Omaha boards to Beta versions.
     """
     def _entry_valid(json_entry):
-        # TODO(jrbarnette) To avoid failures for now, we're
-        # excluding entries without a 'chrome_version' setting,
-        # but this means whirlwind will quit updating when R57 hits
-        # beta.  We need a better solution before then.
-        #   http://crbug.com/669944
-        #   http://b2/33250855
-        return (json_entry['channel'] == 'beta'
-                and 'chrome_version' in json_entry)
+        return json_entry['channel'] == 'beta'
 
     def _get_omaha_data(json_entry):
         board = json_entry['board']['public_codename']
-        milestone = json_entry['chrome_version'].split('.')[0]
+        milestone = json_entry['milestone']
         build = json_entry['chrome_os_version']
-        version = 'R%s-%s' % (milestone, build)
+        version = 'R%d-%s' % (milestone, build)
         return (board, version)
 
     return dict([_get_omaha_data(e) for e in omaha_status['omaha_data']
