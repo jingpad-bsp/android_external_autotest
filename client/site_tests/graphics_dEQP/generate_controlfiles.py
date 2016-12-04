@@ -50,6 +50,7 @@ tests = [
     Test('dEQP-GLES3.performance', Suite.daily, shards=1,  hasty=False, notpass=False, time='LONG'),
     Test('dEQP-GLES3.stress',      Suite.daily, shards=1,  hasty=False, notpass=False, time='LONG'),
     Test('dEQP-GLES31.functional', Suite.none,  shards=1,  hasty=False, notpass=False, time='LENGTHY'),
+    Test('dEQP-GLES31.functional', Suite.bvtpb, shards=10, hasty=True,  notpass=False, time='FAST'),
     Test('dEQP-GLES31.info',       Suite.bvtcq, shards=1,  hasty=False, notpass=False, time='FAST'),
     Test('dEQP-GLES31.stress',     Suite.none,  shards=1,  hasty=False, notpass=False, time='LONG'),
 ]
