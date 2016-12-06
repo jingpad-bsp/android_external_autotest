@@ -194,11 +194,19 @@ class power_LoadTest(test.test):
         self._statomatic = power_status.StatoMatic()
 
         self._power_status.refresh()
+        help_output = utils.system_output('check_powerd_config --help')
+        if 'low_battery_shutdown' in help_output:
+          logging.info('Have low_battery_shutdown option')
+          self._sys_low_batt_p = float(utils.system_output(
+                  'check_powerd_config --low_battery_shutdown_percent'))
+          self._sys_low_batt_s = int(utils.system_output(
+                  'check_powerd_config --low_battery_shutdown_time'))
+        else:
+          # TODO(dchan) Once M57 in stable, remove this option and function.
+          logging.info('No low_battery_shutdown option')
+          (self._sys_low_batt_p, self._sys_low_batt_s) = \
+              self._get_sys_low_batt_values_from_log()
 
-        self._sys_low_batt_p = float(utils.system_output(
-                'check_powerd_config --low_battery_shutdown_percent'))
-        self._sys_low_batt_s = int(utils.system_output(
-                'check_powerd_config --low_battery_shutdown_time'))
         if self._sys_low_batt_p and self._sys_low_batt_s:
             raise error.TestError(
                     "Low battery percent and seconds are non-zero.")
@@ -212,6 +220,7 @@ class power_LoadTest(test.test):
 
         self._ah_charge_start = self._power_status.battery[0].charge_now
         self._wh_energy_start = self._power_status.battery[0].energy
+
 
     def run_once(self):
         t0 = time.time()
@@ -504,6 +513,7 @@ class power_LoadTest(test.test):
 
         return low_battery
 
+
     def _set_backlight_level(self):
         self._backlight.set_default()
         # record brightness level
@@ -526,6 +536,34 @@ class power_LoadTest(test.test):
         else:
             logging.info('Setting lightbar to %s', level)
             self._tmp_keyvals['level_lightbar_current'] = level
+
+
+    def _get_sys_low_batt_values_from_log(self):
+        """Determine the low battery values for device and return.
+
+        2012/11/01: power manager (powerd.cc) parses parameters in filesystem
+          and outputs a log message like:
+
+           [1101/173837:INFO:powerd.cc(258)] Using low battery time threshold
+                     of 0 secs and using low battery percent threshold of 3.5
+
+           It currently checks to make sure that only one of these values is
+           defined.
+
+        Returns:
+          Tuple of (percent, seconds)
+            percent: float of low battery percentage
+            seconds: float of low battery seconds
+
+        """
+        split_re = 'threshold of'
+
+        powerd_log = '/var/log/power_manager/powerd.LATEST'
+        cmd = 'grep "low battery time" %s' % powerd_log
+        line = utils.system_output(cmd)
+        secs = float(line.split(split_re)[1].split()[0])
+        percent = float(line.split(split_re)[2].split()[0])
+        return (percent, secs)
 
 
     def _has_light_sensor(self):
