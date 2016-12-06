@@ -176,7 +176,9 @@ class AbstractSSHHost(remote.RemoteHost):
         else:
             delete_flag = ""
         if preserve_symlinks:
-            symlink_flag = ""
+            # Preserve only the symlinks that work independently of the
+            # destination.  Dangling symlinks may cause failures later.
+            symlink_flag = "--safe-links"
         else:
             symlink_flag = "-L"
         command = ("rsync %s %s --timeout=1800 --rsh='%s' -az --no-o --no-g "
