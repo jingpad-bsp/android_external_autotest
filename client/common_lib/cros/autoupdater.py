@@ -14,6 +14,7 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error, global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import utils as server_utils
+from chromite.lib import retry_util
 
 try:
     from chromite.lib import metrics
@@ -162,44 +163,47 @@ class BaseUpdater(object):
         return error_msg
 
 
-    def _base_update_handler(self, run_args, err_msg_prefix=None):
+    def _base_update_handler_no_retry(self, run_args):
         """Base function to handle a remote update ssh call.
 
         @param run_args: Dictionary of args passed to ssh_host.run function.
-        @param err_msg_prefix: Prefix of the exception error message.
 
-        @returns: The exception thrown, None if no exception.
+        @throws: intercepts and re-throws all exceptions
         """
-        to_raise = None
-        err_msg = err_msg_prefix
         try:
             self.host.run(**run_args)
-        except (error.AutoservSshPermissionDeniedError,
-                error.AutoservSSHTimeout) as e:
-            logging.exception(e)
-            err_msg += 'SSH reports an error: %s' % type(e).__name__
-            to_raise = RootFSUpdateError(err_msg)
-        except error.AutoservRunError as e:
-            logging.exception(e)
-            # Check if exit code is 255, if so it's probably a generic SSH error
-            result = e.args[1]
-            if result.exit_status == 255:
-                err_msg += ('SSH reports a generic error (255) which is '
-                            'probably a lab network failure')
-                to_raise = RootFSUpdateError(err_msg)
-
-            # We have ruled out all SSH cases, the error code is from
-            # update_engine_client.
-            else:
-                list_image_dir_contents(self.update_url)
-                err_msg += ('Update failed. Returned update_engine error code: '
-                            '%s. Reported error: %s' %
-                            (self.get_last_update_error(), type(e).__name__))
-                to_raise = RootFSUpdateError(err_msg)
         except Exception as e:
-            to_raise = e
+            logging.debug('exception in update handler: %s', e)
+            raise e
 
-        return to_raise
+
+    def _base_update_handler(self, run_args, err_msg_prefix=None):
+        """Handle a remote update ssh call, possibly with retries.
+
+        @param run_args: Dictionary of args passed to ssh_host.run function.
+        @param err_msg_prefix: Prefix of the exception error message.
+        """
+        def exception_handler(e):
+            """Examines exceptions and returns True if the update handler
+            should be retried.
+
+            @param e: the exception intercepted by the retry util.
+            """
+            return (isinstance(e, error.AutoservSSHTimeout) or
+                    (isinstance(e, error.GenericHostRunError) and
+                     hasattr(e, 'description') and
+                     (re.search('ERROR_CODE=37', e.description) or
+                      re.search('generic error .255.', e.description))))
+
+        try:
+            # Try the update twice (arg 2 is max_retry, not including the first
+            # call).  Some exceptions may be caught by the retry handler.
+            retry_util.GenericRetry(exception_handler, 1,
+                                    self._base_update_handler_no_retry,
+                                    run_args)
+        except Exception as e:
+            message = err_msg_prefix + ': ' + str(e)
+            raise RootFSUpdateError(message)
 
 
     def trigger_update(self):
@@ -212,7 +216,11 @@ class BaseUpdater(object):
         run_args = {'command': autoupdate_cmd}
         err_prefix = 'Failed to trigger an update on %s. ' % self.host.hostname
         logging.info('Triggering update via: %s', autoupdate_cmd)
-        to_raise = self._base_update_handler(run_args, err_prefix)
+        try:
+            to_raise = None
+            self._base_update_handler(run_args, err_prefix)
+        except Exception as e:
+            to_raise = e
         if metrics:
             build_name = url_to_image_name(self.update_url)
             try:
@@ -258,7 +266,11 @@ class BaseUpdater(object):
         err_prefix = ('Failed to install device image using payload at %s '
                       'on %s. ' % (self.update_url, self.host.hostname))
         logging.info('Updating image via: %s', autoupdate_cmd)
-        to_raise = self._base_update_handler(run_args, err_prefix)
+        try:
+            to_raise = None
+            self._base_update_handler(run_args, err_prefix)
+        except Exception as e:
+            to_raise = e
         if metrics:
             build_name = url_to_image_name(self.update_url)
             try:
