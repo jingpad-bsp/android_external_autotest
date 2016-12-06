@@ -397,43 +397,51 @@ class TestAutoUpdater(mox.MoxTestBase):
         # Test with success.
         host.run(command=expected_cmd)
 
-        # SSH Timeout
+        # One-time SSH timeout, then success.
         host.run(command=expected_cmd).AndRaise(
-                error.AutoservSSHTimeout("ssh timed out", 255))
+                error.AutoservSSHTimeout('ssh timed out', 255))
+        host.run(command=expected_cmd)
+
+        # One-time ERROR 37, then success.
+        host.run(command=expected_cmd).AndRaise(
+                error.AutoservRunError('ERROR_CODE=37', 37))
+        host.run(command=expected_cmd)
+
+        # Two-time SSH timeout Error
+        host.run(command=expected_cmd).AndRaise(
+                error.AutoservSSHTimeout('ssh timed out', 255))
+        host.run(command=expected_cmd).AndRaise(
+                error.AutoservSSHTimeout('ssh timed out', 255))
 
         # SSH Permission Error
         host.run(command=expected_cmd).AndRaise(
-                error.AutoservSshPermissionDeniedError("ssh timed out", 255))
+                error.AutoservSshPermissionDeniedError('no permission', 255))
 
-        # Generic SSH Error (maybe)
+        # Generic SSH Error.
         cmd_result_255 = self.mox.CreateMockAnything()
         cmd_result_255.exit_status = 255
 
         host.run(command=expected_cmd).AndRaise(
-                error.AutoservRunError("Sometimes SSH specific result.",
-                                       cmd_result_255))
+                error.AutoservRunError('ssh failure', cmd_result_255))
 
         # Command Failed Error
         cmd_result_1 = self.mox.CreateMockAnything()
         cmd_result_1.exit_status = 1
         host.run(command=expected_cmd).AndRaise(
-                error.AutoservRunError("ssh timed out", cmd_result_1))
-        autoupdater.ChromiumOSUpdater.get_last_update_error()
+                error.AutoservRunError("unknown error", cmd_result_1))
 
         self.mox.ReplayAll()
 
-        # Verify Success.
+        # Expect success
+        updater.trigger_update()
+        updater.trigger_update()
         updater.trigger_update()
 
-        # Verify each type of error listed above.
-        self.assertRaises(autoupdater.RootFSUpdateError,
-                          updater.trigger_update)
-        self.assertRaises(autoupdater.RootFSUpdateError,
-                          updater.trigger_update)
-        self.assertRaises(autoupdater.RootFSUpdateError,
-                          updater.trigger_update)
-        self.assertRaises(autoupdater.RootFSUpdateError,
-                          updater.trigger_update)
+        # Expect errors as listed above
+        self.assertRaises(autoupdater.RootFSUpdateError, updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError, updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError, updater.trigger_update)
+        self.assertRaises(autoupdater.RootFSUpdateError, updater.trigger_update)
 
         self.mox.VerifyAll()
 
