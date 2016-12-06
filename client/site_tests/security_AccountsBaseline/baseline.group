@@ -94,3 +94,4 @@ android-root:!:655360:android-root
 arc-sensor:!:604:
 user-containers:!:10000:user-containers
 imageloaderd:!:220:
+arc-networkd:!:284:
