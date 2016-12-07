@@ -4,9 +4,10 @@
 
 import contextlib, fcntl, logging, os, re, shutil
 
-import common, constants, cros_logging
+import common
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.cros import constants, cros_logging
 
 
 class CrashTest(test.test):
@@ -206,7 +207,7 @@ class CrashTest(test.test):
 
         @param has_consent: True to indicate consent, False otherwise
         """
-        autotest_cros_dir = os.path.dirname(__file__)
+        autotest_cros_dir = os.path.join(os.path.dirname(__file__), '..')
         if has_consent:
             if os.path.isdir(constants.WHITELIST_DIR):
                 # Create policy file that enables metrics/consent.
