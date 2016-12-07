@@ -6,9 +6,10 @@ import os, os.path, logging
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
-from autotest_lib.client.cros.crash_test import CrashTest
+from autotest_lib.client.cros.crash.crash_test import CrashTest
 
 class logging_CrashServices(test.test):
+    """Verifies crash collection for system services."""
     version = 3
 
     process_list = {
@@ -69,7 +70,7 @@ class logging_CrashServices(test.test):
         for entry in entries:
             (filename, ext) = os.path.splitext(entry)
             if ext == filetype and filename.startswith(process_name):
-                logging.info('the path is %s' % os.path)
+                logging.info('the path is %s', os.path)
                 if os.path.getsize(path + '/' + entry) > 0 :
                     return entry
         return None
