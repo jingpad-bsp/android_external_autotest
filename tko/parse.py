@@ -8,6 +8,7 @@ import json
 import optparse
 import os
 import socket
+import subprocess
 import sys
 import traceback
 
@@ -26,7 +27,7 @@ from autotest_lib.tko.perf_upload import perf_uploader
 
 
 _ParseOptions = collections.namedtuple(
-    'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run'])
+    'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report'])
 
 
 def parse_args():
@@ -61,6 +62,12 @@ def parse_args():
     parser.add_option("--record-duration",
                       help="Record timing to metadata db",
                       dest="record_duration", action="store_true",
+                      default=False)
+    parser.add_option("--suite-report",
+                      help=("Allows parsing job to attempt to create a suite "
+                            "timing report, if it detects that the job being "
+                            "parsed is a suite job."),
+                      dest="suite_report", action="store_true",
                       default=False)
     options, args = parser.parse_args()
 
@@ -204,6 +211,7 @@ def parse_one(db, jobname, path, parse_options):
     reparse = parse_options.reparse
     mail_on_failure = parse_options.mail_on_failure
     dry_run = parse_options.dry_run
+    suite_report = parse_options.suite_report
 
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
@@ -300,9 +308,9 @@ def parse_one(db, jobname, path, parse_options):
                 mailfailure(jobname, job, message)
 
             # write the job into the database.
-            db.insert_job(jobname, job,
-                          parent_job_id=job_keyval.get(constants.PARENT_JOB_ID,
-                                                       None))
+            job_data = db.insert_job(
+                jobname, job,
+                parent_job_id=job_keyval.get(constants.PARENT_JOB_ID, None))
 
             # Upload perf values to the perf dashboard, if applicable.
             for test in job.tests:
@@ -353,6 +361,25 @@ def parse_one(db, jobname, path, parse_options):
 
     if not dry_run:
         db.commit()
+
+    # Generate a suite report.
+    # Check whether this is a suite job, a suite job will be a hostless job, its
+    # jobname will be <JOB_ID>-<USERNAME>/hostless, the suite field will not be
+    # NULL
+    try:
+        if suite_report and jobname.endswith('/hostless') and job_data['suite']:
+            tko_utils.dprint('Start dumping suite timing report...')
+            timing_log = os.path.join(path, 'suite_timing.log')
+            dump_cmd = ("%s/site_utils/dump_suite_report.py %s "
+                        "--output='%s' --debug" %
+                        (common.autotest_dir, job_data['afe_job_id'],
+                         timing_log))
+            subprocess.check_output(dump_cmd, shell=True)
+            tko_utils.dprint('Successfully finish dumping suite timing report')
+
+        #TODO(shuqianz), add code to upload the event.log to datastore later
+    except Exception as e:
+        tko_utils.dprint("WARNING: fail to dump suit report. Error:\n%s" % e)
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop
@@ -486,7 +513,7 @@ def main():
 
     options, args = parse_args()
     parse_options = _ParseOptions(options.reparse, options.mailit,
-                                  options.dry_run)
+                                  options.dry_run, options.suite_report)
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 

@@ -447,6 +447,8 @@ class db_sql(object):
         @param job: The job object.
         @param parent_job_id: The parent job id.
         @param commit: If commit the transaction .
+
+        @return The dict of data inserted into the tko_jobs table.
         """
         job.machine_idx = self.lookup_machine(job.machine)
         if not job.machine_idx:
@@ -489,6 +491,8 @@ class db_sql(object):
         self.update_job_keyvals(job, commit=commit)
         for test in job.tests:
             self.insert_test(job, test, commit=commit)
+
+        return data
 
 
     def update_job_keyvals(self, job, commit=None):
