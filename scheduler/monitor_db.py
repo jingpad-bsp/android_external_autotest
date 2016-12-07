@@ -335,7 +335,8 @@ class BaseDispatcher(object):
         if self._extra_debugging:
             logging.debug(msg)
 
-
+    @metrics.SecondsTimerDecorator(
+            'chromeos/autotest/scheduler/tick_durations/tick')
     def tick(self):
         """
         This is an altered version of tick() where we keep track of when each
@@ -390,11 +391,15 @@ class BaseDispatcher(object):
         metrics.Counter('chromeos/autotest/scheduler/tick').increment()
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _run_cleanup(self):
         self._periodic_cleanup.run_cleanup_maybe()
         self._24hr_upkeep.run_cleanup_maybe()
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _garbage_collection(self):
         threshold_time = time.time() - self._seconds_between_garbage_stats
         if threshold_time < self._last_garbage_stats_time:
@@ -696,6 +701,8 @@ class BaseDispatcher(object):
                     (len(unrecovered_hqes), message))
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _schedule_special_tasks(self):
         """
         Execute queued SpecialTasks that are ready to run on idle hosts.
@@ -815,6 +822,8 @@ class BaseDispatcher(object):
             self._host_scheduler.schedule_host_job(host, queue_entry)
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _schedule_new_jobs(self):
         """
         Find any new HQEs and call schedule_pre_job_tasks for it.
@@ -873,6 +882,8 @@ class BaseDispatcher(object):
         #                               new_jobs_with_hosts)
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _schedule_running_host_queue_entries(self):
         """
         Adds agents to the dispatcher.
@@ -892,6 +903,8 @@ class BaseDispatcher(object):
             self.add_agent_task(agent_task)
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _schedule_delay_tasks(self):
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='status = "%s"' % models.HostQueueEntry.Status.WAITING):
@@ -900,6 +913,8 @@ class BaseDispatcher(object):
                 self.add_agent_task(task)
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _find_aborting(self):
         """
         Looks through the afe_host_queue_entries for an aborted entry.
@@ -995,6 +1010,8 @@ class BaseDispatcher(object):
         return True
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _handle_agents(self):
         """
         Handles agents of the dispatcher.
@@ -1065,6 +1082,8 @@ class BaseDispatcher(object):
                      num_agent_processes, num_started_this_tick)
 
 
+    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
+    # sub-step.
     def _process_recurring_runs(self):
         recurring_runs = models.RecurringRun.objects.filter(
             start_date__lte=datetime.datetime.now())
