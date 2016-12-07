@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import logging
 import numpy
+import os
 import unittest
 
 import common
@@ -108,7 +109,9 @@ class SpectralAnalysisTest(unittest.TestCase):
 
     def testSpectralAnalysisRealData(self):
         """This unittest checks the spectral analysis works on real data."""
-        binary = open('client/cros/audio/test_data/1k_2k.raw', 'r').read()
+        file_path = os.path.join(
+                os.path.dirname(__file__), 'test_data', '1k_2k.raw')
+        binary = open(file_path, 'r').read()
         data = audio_data.AudioRawData(binary, 2, 'S32_LE')
         saturate_value = audio_data.get_maximum_value_from_sample_format(
                 'S32_LE')
