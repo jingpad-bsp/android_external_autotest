@@ -36,7 +36,7 @@ Sampe Code for dump realtime audio page:
 
 import logging
 import socket
-from struct import pack, unpack
+from struct import calcsize, pack, unpack
 
 
 CHAMELEON_STREAN_SERVER_PORT = 9994
@@ -69,6 +69,9 @@ class RealtimeMode(object):
 
     # Drop data when memory overflow
     BestEffort = 2
+
+    # Strings used for logging.
+    LogStrings = ['None', 'Stop when overflow', 'Best effort']
 
 
 class ChameleonStreamServer(object):
@@ -107,8 +110,9 @@ class ChameleonStreamServer(object):
     dump_video_frame_struct = '!LLH'
     # uint8 is_dual, uint8 mode.
     dump_realtime_video_frame_struct = '!BB'
-    # uint32 frame_number, uint16 width, uint16 height, uint8 channel.
-    video_frame_data_struct = '!LHHB'
+    # uint32 frame_number, uint16 width, uint16 height, uint8 channel,
+    # uint8 padding[3]
+    video_frame_data_struct = '!LHHBBBB'
     # uint8 mode.
     dump_realtime_audio_page_struct = '!B'
     # uint32 page_count.
@@ -155,6 +159,11 @@ class ChameleonStreamServer(object):
         data = sock.recv(self._PACKET_HEAD_SIZE)
         if not data:
             return None
+
+        while len(data) != self._PACKET_HEAD_SIZE:
+            remain_length = self._PACKET_HEAD_SIZE - len(data)
+            recv_content = sock.recv(remain_length)
+            data += recv_content
 
         message_type, error_code, length = unpack(self.packet_head_struct, data)
 
@@ -310,9 +319,10 @@ class ChameleonStreamServer(object):
         if not self._is_data_type(message):
             raise ValueError('Message is not data')
 
-        frame_number, width, height, channel = unpack(
-            self.video_frame_data_struct, content[:9])
-        data = content[9:]
+        video_frame_head_size = calcsize(self.video_frame_data_struct)
+        frame_number, width, height, channel, _, _, _ = unpack(
+            self.video_frame_data_struct, content[:video_frame_head_size])
+        data = content[video_frame_head_size:]
         return (error_code, frame_number, width, height, channel, data)
 
     def _get_version(self):
@@ -454,8 +464,8 @@ class ChameleonStreamServer(object):
         @raise ValueError if error code from response is not OK.
 
         """
-        logging.info('dump realtime video frame is_dual %d, mode %d', is_dual,
-                     mode)
+        logging.info('dump realtime video frame is_dual %d, mode %s', is_dual,
+                     RealtimeMode.LogStrings[mode])
         packet = self._generate_dump_realtime_video_stream_packet(is_dual, mode)
         self._send_and_receive(packet, self._video_sock)
         self._is_realtime_video = True
@@ -515,7 +525,7 @@ class ChameleonStreamServer(object):
         if not self._is_realtime_video:
             return
         packet = self._generate_packet_head(self._StopDumpVideoFrame, 0)
-        self._video_sock.send(packet, self._video_sock)
+        self._video_sock.send(packet)
         # Drop video frames until receive _StopDumpVideoFrame response.
         while True:
             (message, _, _, _) = self._receive_whole_packet(self._video_sock)
@@ -544,7 +554,8 @@ class ChameleonStreamServer(object):
         @raise ValueError if error code from response is not OK.
 
         """
-        logging.info('dump realtime audio page mode %d', mode)
+        logging.info('dump realtime audio page mode %s',
+                     RealtimeMode.LogStrings[mode])
         packet = self._generate_dump_realtime_audio_stream_packet(mode)
         self._send_and_receive(packet, self._audio_sock)
         self._is_realtime_audio = True
