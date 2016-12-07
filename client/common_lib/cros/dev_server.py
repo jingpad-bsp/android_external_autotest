@@ -120,7 +120,15 @@ _EXCEPTION_PATTERNS = [
          'update'),
         # Raised when devserver returns non-json response to shard/drone.
         (r'.*No JSON object could be decoded.*$',
-         '(8) Devserver returned non-json object')]
+         '(8) Devserver returned non-json object'),
+        # Raised when devserver loses host's ssh connection
+        (r'.*CrOS auto-update failed for host .* SSHConnectionError\: .* '
+         'port 22\: Connection timed out.*$',
+         "(9) Devserver lost host's ssh connection"),
+        # Raised when error happens in writing files to host
+        (r'.*CrOS auto-update failed for host .* '
+         'Write failed\: Broken pipe.*$',
+         "(10) Broken pipe while writing or connecting to host")]
 
 PREFER_LOCAL_DEVSERVER = CONFIG.get_config_value(
         'CROS', 'prefer_local_devserver', type=bool, default=False)
