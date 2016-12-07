@@ -38,17 +38,26 @@ class display_Resolution(test.test):
             ('EDIDv2', 1280, 720),
             ('EDIDv2', 1920, 1080),
     ]
+    # These boards are unable to work with servo - crosbug.com/p/27591.
+    INCOMPATIBLE_SERVO_BOARDS = ['daisy', 'falco']
 
     def run_once(self, host, test_mirrored=False, test_suspend_resume=False,
                  test_reboot=False, test_lid_close_open=False,
                  resolution_list=None):
-        # Check the servo object
+
+        # Check the servo object.
         if test_lid_close_open and host.servo is None:
             raise error.TestError('Invalid servo object found on the host.')
         if test_lid_close_open and not host.get_board_type() == 'CHROMEBOOK':
             raise error.TestNAError('DUT is not Chromebook. Test Skipped')
         if test_mirrored and not host.get_board_type() == 'CHROMEBOOK':
             raise error.TestNAError('DUT is not Chromebook. Test Skipped')
+
+        # Check for incompatible with servo chromebooks.
+        board_name = host.get_board().split(':')[1]
+        if board_name in self.INCOMPATIBLE_SERVO_BOARDS:
+            raise error.TestNAError(
+                    'DUT is incompatible with servo. Skipping test.')
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
         display_facade = factory.create_display_facade()
