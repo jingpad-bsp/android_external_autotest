@@ -1767,7 +1767,7 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
                       timedelta(hours=0.3))
             rpc_helper.diagnose_pool(
                     options.board, options.pool, cutoff)
-        except proxy.JSONRPCException as e:
+        except proxy.JSONRPCException:
             logging.warning('Unable to display pool info.')
 
     # And output return message.
