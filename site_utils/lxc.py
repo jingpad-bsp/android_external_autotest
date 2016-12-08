@@ -34,11 +34,11 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.server import utils as server_utils
 from autotest_lib.site_utils import lxc_config
 from autotest_lib.site_utils import lxc_utils
 
+from chromite.lib import metrics
 
 config = global_config.global_config
 
@@ -111,11 +111,7 @@ CONTAINER_RUN_TEST_METADB_TYPE = 'container_run_test'
 # that prefix to determine the lease time.
 CONTAINER_UTSNAME_FORMAT = 'test_%s'
 
-STATS_KEY = 'lxc.%s' % socket.gethostname().replace('.', '_')
-timer = autotest_stats.Timer(STATS_KEY)
-# Timer used inside container should not include the hostname, as that will
-# create individual timer for each container.
-container_timer = autotest_stats.Timer('lxc')
+STATS_KEY = 'chromeos/autotest/lxc'
 
 
 def _get_container_info_moblab(container_path, **filters):
@@ -315,7 +311,7 @@ def install_package_precheck(packages):
     return True
 
 
-@container_timer.decorate
+@metrics.SecondsTimerDecorator('%s/install_packages_duration' % STATS_KEY)
 @retry.retry(error.CmdError, timeout_min=30)
 def install_packages(packages=[], python_packages=[]):
     """Install the given package inside container.
@@ -359,7 +355,6 @@ def install_packages(packages=[], python_packages=[]):
         logging.debug('Python packages are installed: %s.', python_packages)
 
 
-@container_timer.decorate
 @retry.retry(error.CmdError, timeout_min=20)
 def install_package(package):
     """Install the given package inside container.
@@ -379,7 +374,6 @@ def install_package(package):
     install_packages(packages=[package])
 
 
-@container_timer.decorate
 @retry.retry(error.CmdError, timeout_min=20)
 def install_python_package(package):
     """Install the given python package inside container using pip.
@@ -524,7 +518,7 @@ class Container(object):
             return False
 
 
-    @timer.decorate
+    @metrics.SecondsTimerDecorator('%s/container_start_duration' % STATS_KEY)
     def start(self, wait_for_network=True):
         """Start the container.
 
@@ -552,7 +546,7 @@ class Container(object):
                           time.time() - start_time)
 
 
-    @timer.decorate
+    @metrics.SecondsTimerDecorator('%s/container_stop_duration' % STATS_KEY)
     def stop(self):
         """Stop the container.
 
@@ -568,7 +562,7 @@ class Container(object):
                             output))
 
 
-    @timer.decorate
+    @metrics.SecondsTimerDecorator('%s/container_destroy_duration' % STATS_KEY)
     def destroy(self, force=True):
         """Destroy the container.
 
@@ -729,7 +723,7 @@ class ContainerBucket(object):
             container.destroy()
 
 
-    @timer.decorate
+    @metrics.SecondsTimerDecorator('%s/create_from_base_duration' % STATS_KEY)
     def create_from_base(self, name, disable_snapshot_clone=False,
                          force_cleanup=False):
         """Create a container from the base container.
@@ -848,7 +842,7 @@ class ContainerBucket(object):
                   (self.container_path, config_path))
 
 
-    @timer.decorate
+    @metrics.SecondsTimerDecorator('%s/setup_test_duration' % STATS_KEY)
     @cleanup_if_fail()
     def setup_test(self, name, job_id, server_package_url, result_path,
                    control=None, skip_cleanup=False, job_folder=None,
