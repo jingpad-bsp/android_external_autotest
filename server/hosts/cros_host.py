@@ -1126,6 +1126,11 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
     def close(self):
         super(CrosHost, self).close()
+        if self._chameleon_host:
+            self._chameleon_host.close()
+
+        if self._servo_host:
+            self._servo_host.close()
 
 
     def get_power_supply_info(self):
