@@ -147,7 +147,7 @@ def create_suite_job(
         max_runtime_mins=None,
         suite_min_duts=0,
         offload_failures_only=False,
-        builds={},
+        builds=None,
         test_source_build=None,
         run_prod_code=False,
         delay_minutes=0,
@@ -220,6 +220,9 @@ def create_suite_job(
     if num == 0:
         logging.warning("Can't run on 0 hosts; using default.")
         num = None
+
+    if builds is None:
+        builds = {}
 
     # Default test source build to CrOS build if it's not specified and
     # run_prod_code is set to False.
