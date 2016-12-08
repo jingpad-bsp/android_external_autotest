@@ -1512,7 +1512,6 @@ def create_suite(afe, options):
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
     wait = not options.no_wait
     file_bugs = options.file_bugs
-    retry = options.retry
     offload_failures_only = options.offload_failures_only == 'True'
     try:
         priority = int(options.priority)
@@ -1537,7 +1536,7 @@ def create_suite(afe, options):
                    suite_args=options.suite_args,
                    wait_for_results=wait,
                    timeout_mins=timeout_mins, max_runtime_mins=max_runtime_mins,
-                   job_retry=retry, max_retries=options.max_retries,
+                   job_retry=options.retry, max_retries=options.max_retries,
                    suite_min_duts=options.suite_min_duts,
                    offload_failures_only=offload_failures_only,
                    run_prod_code=options.run_prod_code,
