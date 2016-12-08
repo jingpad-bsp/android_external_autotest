@@ -19,6 +19,7 @@ from autotest_lib.frontend.afe import models, model_logic
 from autotest_lib.client.common_lib import control_data, error
 from autotest_lib.client.common_lib import global_config, priorities
 from autotest_lib.client.common_lib import time_utils
+from autotest_lib.client.common_lib.cros import dev_server
 # TODO(akeshet): Replace with monarch once we know how to instrument rpc server
 # with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -1361,7 +1362,7 @@ def get_sample_dut(board, pool):
 
     @return: Name of a dut with the given board and pool.
     """
-    if not board or not pool:
+    if not (dev_server.PREFER_LOCAL_DEVSERVER and pool and board):
         return None
 
     hosts = get_host_query(
