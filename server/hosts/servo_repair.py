@@ -21,7 +21,8 @@ class _UpdateVerifier(hosts.Verifier):
     """
 
     def verify(self, host):
-        host.update_image(wait_for_update=False)
+        if host.is_in_lab():
+            host.update_image(wait_for_update=False)
 
     @property
     def description(self):
