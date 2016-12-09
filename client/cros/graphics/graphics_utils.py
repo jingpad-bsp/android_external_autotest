@@ -905,6 +905,10 @@ class GraphicsKernelMemory(object):
     # present.
     # e.g. ".../memory" vs ".../gpu_memory" -- if the system has either one of
     # these, the test will read from that path.
+    amdgpu_fields = {
+        'gem_objects': ['/sys/kernel/debug/dri/0/amdgpu_gem_info'],
+        'memory': ['/sys/kernel/debug/dri/0/amdgpu_gtt_mm'],
+    }
     arm_fields = {}
     exynos_fields = {
         'gem_objects': ['/sys/kernel/debug/dri/?/exynos_gem_objects'],
@@ -917,19 +921,19 @@ class GraphicsKernelMemory(object):
     tegra_fields = {
         'memory': ['/sys/kernel/debug/memblock/memory'],
     }
-    x86_fields = {
+    i915_fields = {
         'gem_objects': ['/sys/kernel/debug/dri/0/i915_gem_objects'],
         'memory': ['/sys/kernel/debug/dri/0/i915_gem_gtt'],
     }
 
     arch_fields = {
+        'amdgpu': amdgpu_fields,
         'arm': arm_fields,
         'exynos5': exynos_fields,
-        'i386': x86_fields,
+        'i915': i915_fields,
         'mediatek': mediatek_fields,
         'rockchip': rockchip_fields,
         'tegra': tegra_fields,
-        'x86_64': x86_fields,
     }
 
     num_errors = 0
@@ -941,11 +945,19 @@ class GraphicsKernelMemory(object):
         keyvals = {}
 
         # Get architecture type and list of sysfs fields to read.
-        arch = utils.get_cpu_soc_family()
+        soc = utils.get_cpu_soc_family()
 
-        if not arch in self.arch_fields:
-            raise error.TestFail('Architecture "%s" not yet supported.' % arch)
-        fields = self.arch_fields[arch]
+        arch = utils.get_cpu_arch()
+        if arch == 'x86_64' or arch == 'i386':
+            pci_vga_device = utils.run("lspci | grep VGA").stdout.rstrip('\n')
+            if "Advanced Micro Devices" in pci_vga_device:
+                soc = 'amdgpu'
+            elif "Intel Corporation" in pci_vga_device:
+                soc = 'i915'
+
+        if not soc in self.arch_fields:
+            raise error.TestFail('Error: Architecture "%s" not yet supported.' % soc)
+        fields = self.arch_fields[soc]
 
         for field_name in fields:
             possible_field_paths = fields[field_name]

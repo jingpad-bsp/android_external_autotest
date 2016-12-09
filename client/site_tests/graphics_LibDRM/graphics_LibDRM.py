@@ -31,6 +31,7 @@ class graphics_LibDRM(test.test):
         tests_mediatek = ['kmstest']
         tests_rockchip = ['kmstest']
         arch_tests = {
+            'amd': [],
             'arm': [],
             'exynos5': tests_exynos5,
             'i386': [],
@@ -39,14 +40,14 @@ class graphics_LibDRM(test.test):
             'tegra': [],
             'x86_64': []
         }
-        arch = utils.get_cpu_soc_family()
-        if not arch in arch_tests:
-            raise error.TestFail('Failed: Architecture "%s" not supported.',
-                                 arch)
-        elif arch == 'tegra':
+        soc = utils.get_cpu_soc_family()
+        if not soc in arch_tests:
+            raise error.TestFail('Error: Architecture "%s" not supported.',
+                                 soc)
+        elif soc == 'tegra':
             logging.warning('Tegra does not support DRM.')
             return
-        tests = tests_common + arch_tests[arch]
+        tests = tests_common + arch_tests[soc]
 
         # If UI is running, we must stop it and restore later.
         self._services.stop_services()
