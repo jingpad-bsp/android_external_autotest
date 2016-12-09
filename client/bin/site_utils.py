@@ -19,11 +19,12 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.bin import base_utils
 
-_UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
+_AMD_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/amd_pci_ids.json'
 _INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
+_UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
 
+pciid_to_amd_architecture = {}
 pciid_to_intel_architecture = {}
-
 
 class Crossystem(object):
     """A wrapper for the crossystem utility."""
@@ -957,13 +958,13 @@ def has_mali():
     """ @return: True if system has a Mali GPU enabled."""
     return os.path.exists('/dev/mali0')
 
-
 def get_gpu_family():
     """Returns the GPU family name."""
+    global pciid_to_amd_architecture
     global pciid_to_intel_architecture
 
-    cpuarch = base_utils.get_cpu_soc_family()
-    if cpuarch == 'exynos5' or cpuarch == 'rockchip' or has_mali():
+    socfamily = base_utils.get_cpu_soc_family()
+    if socfamily == 'exynos5' or socfamily == 'rockchip' or has_mali():
         cmd = wflinfo_cmd()
         wflinfo = utils.system_output(cmd,
                                       retain_output=True,
@@ -973,24 +974,34 @@ def get_gpu_family():
         if version:
             return 'mali-t%s' % version[0]
         return 'mali-unrecognized'
-    if cpuarch == 'tegra':
+    if socfamily == 'tegra':
         return 'tegra'
     if os.path.exists('/sys/kernel/debug/pvr'):
         return 'rogue'
 
-    pci_path = '/sys/bus/pci/devices/0000:00:02.0/device'
+    pci_vga_device = utils.run("lspci | grep VGA").stdout.rstrip('\n')
+    bus_device_function = pci_vga_device.partition(' ')[0]
+    pci_path = '/sys/bus/pci/devices/0000:' + bus_device_function + '/device'
 
     if not os.path.exists(pci_path):
-        raise error.TestError('PCI device 0000:00:02.0 not found')
+        raise error.TestError('PCI device 0000:' + bus_device_function + ' not found')
 
     device_id = utils.read_one_line(pci_path).lower()
 
-    # Only load Intel PCI ID file once and only if necessary.
-    if not pciid_to_intel_architecture:
-        with open(_INTEL_PCI_IDS_FILE_PATH, 'r') as in_f:
-            pciid_to_intel_architecture = json.load(in_f)
+    if "Advanced Micro Devices" in pci_vga_device:
+        if not pciid_to_amd_architecture:
+            with open(_AMD_PCI_IDS_FILE_PATH, 'r') as in_f:
+                pciid_to_amd_architecture = json.load(in_f)
 
-    return pciid_to_intel_architecture[device_id]
+        return pciid_to_amd_architecture[device_id]
+
+    if "Intel Corporation" in pci_vga_device:
+        # Only load Intel PCI ID file once and only if necessary.
+        if not pciid_to_intel_architecture:
+            with open(_INTEL_PCI_IDS_FILE_PATH, 'r') as in_f:
+                pciid_to_intel_architecture = json.load(in_f)
+
+        return pciid_to_intel_architecture[device_id]
 
 # TODO(ihf): Consider using /etc/lsb-release DEVICETYPE != CHROMEBOOK/CHROMEBASE
 # for sanity check, but usage seems a bit inconsistent. See
