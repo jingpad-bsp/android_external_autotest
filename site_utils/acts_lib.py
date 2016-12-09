@@ -181,7 +181,7 @@ class AndroidTestingEnviroment(object):
             adb_utils.install_apk_from_build(
                     adb_host,
                     constants.SL4A_APK,
-                    constants.SL4A_PACKAGE,
+                    constants.SL4A_ARTIFACT,
                     package_name=constants.SL4A_PACKAGE)
 
     def install_apk(self, apk_info):
@@ -198,7 +198,7 @@ class AndroidTestingEnviroment(object):
             adb_utils.install_apk_from_build(
                     adb_host,
                     apk_info['apk'],
-                    apk_info.get('artifact') or apk_info['package'],
+                    apk_info.get('artifact') or constants.SL4A_ARTIFACT,
                     package_name=apk_info['package'])
 
 
