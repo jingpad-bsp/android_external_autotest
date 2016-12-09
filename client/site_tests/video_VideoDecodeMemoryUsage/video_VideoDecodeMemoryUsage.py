@@ -69,12 +69,14 @@ KERNEL_MEMORY_ENTRIES = ['Slab', 'Shmem', 'KernelStack', 'PageTables']
 MEM_TOTAL_ENTRY = 'MemTotal'
 
 # Paths of files to read graphics memory usage from
-X86_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/i915_gem_objects'
+AMDGPU_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/amdgpu_gem_info'
 ARM_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/exynos_gem_objects'
+X86_GEM_OBJECTS_PATH = '/sys/kernel/debug/dri/0/i915_gem_objects'
 
-GEM_OBJECTS_PATH = {'x86_64': X86_GEM_OBJECTS_PATH,
-                    'i386'  : X86_GEM_OBJECTS_PATH,
-                    'arm'   : ARM_GEM_OBJECTS_PATH}
+GEM_OBJECTS_PATH = {'amdgpu'    : AMDGPU_GEM_OBJECTS_PATH,
+                    'exynos5'   : ARM_GEM_OBJECTS_PATH,
+                    'x86_64'    : X86_GEM_OBJECTS_PATH}
+
 
 # To parse the content of the files abvoe. The first line looks like:
 # "432 objects, 272699392 bytes"
@@ -84,6 +86,9 @@ GEM_OBJECTS_RE = re.compile('(\d+)\s+objects,\s+(\d+)\s+bytes')
 SLEEP_TIME = 1.5
 
 
+_AMD_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/amd_pci_ids.json'
+_INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
+
 def _get_kernel_memory_usage():
     with file(MEMINFO_PATH) as f:
         mem_info = {x.group(1): int(x.group(2))
@@ -91,14 +96,24 @@ def _get_kernel_memory_usage():
     # Sum up the kernel memory usage (in KB) in mem_info
     return sum(map(mem_info.get, KERNEL_MEMORY_ENTRIES))
 
+def get_gem_path_from_gpu(gpu):
+    if 'mali' in gpu:
+        if utils.get_cpu_soc_family == 'exynos5':
+            return 'exynos5'
+    if gpu in open(_AMD_PCI_IDS_FILE_PATH).read():
+        return 'amdgpu'
+    if gpu in open(_INTEL_PCI_IDS_FILE_PATH).read():
+        return 'x86_64'
+    return None
 
 def _get_graphics_memory_usage():
     """Get the memory usage (in KB) of the graphics module."""
-    arch = utils.get_cpu_arch()
-    try:
-        path = GEM_OBJECTS_PATH[arch]
-    except KeyError:
-        raise error.TestError('unknown platform: %s' % arch)
+    gpu = utils.get_gpu_family()
+    gem_path = get_gem_path_from_gpu(gpu)
+    if gem_path in GEM_OBJECTS_PATH:
+        path = GEM_OBJECTS_PATH[gem_path]
+    else:
+        raise error.TestFail('Error: gem_path for gpu "%s" not specified.' % gpu)
     try:
         with open(path, 'r') as input:
             for line in input:
