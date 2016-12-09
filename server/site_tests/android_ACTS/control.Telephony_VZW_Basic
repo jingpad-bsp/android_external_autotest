@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = 'angli, krisr'
+AUTHOR = 'bettyzhou, krisr'
 NAME = 'android_ACTS.Telephony_VZW_Basic'
 TIME = 'LONG'
 TEST_TYPE = 'Server'
+ATTRIBUTES = 'suite:android_telephony_nightly_vzw'
+DEPENDENCIES = 'carrier:verizon'
 
 DOC = """
 This test runs telephony sanity against an phones with Verizon SIMs.
