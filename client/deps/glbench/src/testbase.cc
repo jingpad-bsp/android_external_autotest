@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "glinterface.h"
 #include "md5.h"
@@ -97,7 +98,7 @@ double Bench(TestBase* test) {
 
 void SaveImage(const char* name, const int width, const int height) {
   const int size = width * height * 4;
-  scoped_ptr<char[]> pixels(new char[size]);
+  std::unique_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   // I really think we want to use outdir as a straight argument
   base::FilePath dirname = base::FilePath(FLAGS_outdir);
@@ -111,7 +112,7 @@ void ComputeMD5(unsigned char digest[16], const int width, const int height) {
   MD5Context ctx;
   MD5Init(&ctx);
   const int size = width * height * 4;
-  scoped_ptr<char[]> pixels(new char[size]);
+  std::unique_ptr<char[]> pixels(new char[size]);
   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
   MD5Update(&ctx, (unsigned char *)pixels.get(), size);
   MD5Final(digest, &ctx);
