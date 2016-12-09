@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head><title>Loopback test</title></head>
+<head><title>GetUserMedia test</title></head>
 <body>
-  <video id="localVideo" autoplay muted></video>
-<script src="ssim.js"></script>
-<script src="blackframe.js"></script>
+  <script src="ssim.js"></script>
+  <script src="blackframe.js"></script>
 <script>
 
 var resolutions = [[640, 480],
@@ -29,7 +28,6 @@ function testNextResolution() {
     durationMs);
 }
 
-
 function reportTestDone() {
   console.log('tests completed');
   isTestDone = 1;
@@ -51,14 +49,12 @@ function saveResult(resolution, verdict) {
 
 function CameraTest(resolution) {
   this.resolution = resolution;
-  this.localVideo = document.getElementById("localVideo");
-  this.localVideo.width = this.resolution[0].toString();
-  this.localVideo.height = this.resolution[1].toString();
+  this.localVideo = document.createElement('video');
+  this.localVideo.id = 'local-video';
+  this.localVideo.autoplay = true;
+  document.body.appendChild(this.localVideo);
   this.localStream = null;
-  this.video = document.querySelector('video');
   this.canvas = document.createElement('canvas');
-  this.canvas.width = this.localVideo.width;
-  this.canvas.height = this.localVideo.height;
   this.context = this.canvas.getContext('2d');
   this.previousFrame = [];
   this.identicalFrameSsimThreshold = 0.985;
@@ -138,7 +134,7 @@ CameraTest.prototype = {
     this.localStream.getTracks().forEach(function(track) {
       track.stop();
     });
-    this.localVideo.src = null;
+    document.body.removeChild(this.localVideo);
   },
 }
 
