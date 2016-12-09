@@ -54,7 +54,6 @@ class UserCrashTest(crash_test.CrashTest):
         hierarchy:
           <symbol-root>/<module_name>/<file_id>/<module_name>.sym
         """
-        # Dump the symbols from the crasher
         self._symbol_dir = os.path.join(self.srcdir, 'symbols')
         utils.system('rm -rf %s' % self._symbol_dir)
         os.mkdir(self._symbol_dir)
@@ -113,7 +112,7 @@ class UserCrashTest(crash_test.CrashTest):
 
 
     def _verify_stack(self, stack, basename, from_crash_reporter):
-        logging.debug('Crash stackwalk was: %s', stack)
+        logging.debug('minidump_stackwalk output:\n%s', stack)
 
         # Should identify cause as SIGSEGV at address 0x16
         match = re.search(r'Crash reason:\s+(.*)', stack)
@@ -150,7 +149,7 @@ class UserCrashTest(crash_test.CrashTest):
                              crasher_path=None):
         """Runs the crasher process.
 
-        Will wait up to 5 seconds for crash_reporter to report the crash.
+        Will wait up to 10 seconds for crash_reporter to report the crash.
         crash_reporter_caught will be marked as true when the "Received crash
         notification message..." appears. While associated logs are likely to be
         available at this point, the function does not guarantee this.
@@ -160,7 +159,7 @@ class UserCrashTest(crash_test.CrashTest):
             returncode: return code of the crasher
             crashed: did the crasher return segv error code
             crash_reporter_caught: did crash_reporter catch a segv
-            output: stderr/stdout output of the crasher process
+            output: stderr output of the crasher process
         """
         if crasher_path is None:
             crasher_path = self._crasher_path
@@ -213,12 +212,12 @@ class UserCrashTest(crash_test.CrashTest):
                 'Timeout waiting for crash_reporter to finish: ' +
                 self._log_reader.get_logs()))
 
-        logging.debug('crash_reporter_caught message: %s', expected_message)
         is_caught = False
         try:
             utils.poll_for_condition(
                 lambda: self._log_reader.can_find(expected_message),
-                timeout=5)
+                timeout=5,
+                desc='Logs contain crash_reporter message: ' + expected_message)
             is_caught = True
         except utils.TimeoutError:
             pass
@@ -258,18 +257,16 @@ class UserCrashTest(crash_test.CrashTest):
 
     def _check_minidump_stackwalk(self, minidump_path, basename,
                                   from_crash_reporter):
-        # Now stackwalk the minidump
         stack = utils.system_output('/usr/bin/minidump_stackwalk %s %s' %
                                     (minidump_path, self._symbol_dir))
         self._verify_stack(stack, basename, from_crash_reporter)
 
 
     def _check_generated_report_sending(self, meta_path, payload_path,
-                                        username, exec_name, report_kind,
+                                        exec_name, report_kind,
                                         expected_sig=None):
         # Now check that the sending works
         result = self._call_sender_one_crash(
-            username=username,
             report=os.path.basename(payload_path))
         if (not result['send_attempt'] or not result['send_success'] or
             result['report_exists']):
@@ -277,7 +274,7 @@ class UserCrashTest(crash_test.CrashTest):
         if result['exec_name'] != exec_name:
             raise error.TestFail('Executable name incorrect')
         if result['report_kind'] != report_kind:
-            raise error.TestFail('Expected a minidump report')
+            raise error.TestFail('Expected a %s report' % report_kind)
         if result['report_payload'] != payload_path:
             raise error.TestFail('Sent the wrong minidump payload')
         if result['meta_path'] != meta_path:
@@ -308,7 +305,7 @@ class UserCrashTest(crash_test.CrashTest):
                                            crasher_path=crasher_path)
 
         if not result['crashed'] or not result['crash_reporter_caught']:
-            return result;
+            return result
 
         crash_dir = self._get_crash_dir(username)
 
@@ -355,7 +352,7 @@ class UserCrashTest(crash_test.CrashTest):
             else:
                 # This appears to be a breakpad created minidump.
                 if not breakpad_minidump is None:
-                    raise error.TestFail('Breakpad wrote multimpe minidumps')
+                    raise error.TestFail('Breakpad wrote multiple minidumps')
                 breakpad_minidump = os.path.join(crash_dir, filename)
 
         if breakpad_minidump:
@@ -373,13 +370,13 @@ class UserCrashTest(crash_test.CrashTest):
 
     def _check_crashed_and_caught(self, result):
         if not result['crashed']:
-            raise error.TestFail('crasher did not do its job of crashing: %d' %
+            raise error.TestFail('Crasher returned %d instead of crashing' %
                                  result['returncode'])
 
         if not result['crash_reporter_caught']:
-            logging.debug('Messages that should have included segv: %s',
+            logging.debug('Logs do not contain crash_reporter message:\n%s',
                           self._log_reader.get_logs())
-            raise error.TestFail('Did not find segv message')
+            raise error.TestFail('crash_reporter did not catch crash')
 
 
     def _check_crashing_process(self, username, consent=True):
@@ -403,6 +400,5 @@ class UserCrashTest(crash_test.CrashTest):
                                        from_crash_reporter=True)
         self._check_generated_report_sending(result['meta'],
                                              result['minidump'],
-                                             username,
                                              result['basename'],
                                              'minidump')
