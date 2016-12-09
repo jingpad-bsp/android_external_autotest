@@ -101,7 +101,8 @@ AUTOTEST_SERVER_PACKAGE_FILE_FMT = (
 ADB_DEVICE_PREFIXES = ['product:', 'model:', 'device:']
 
 # Map of product names to build target name.
-PRODUCT_TARGET_MAP = {'dragon' : 'ryu',
+PRODUCT_TARGET_MAP = {'bat' : 'bat_land',
+                      'dragon' : 'ryu',
                       'flo' : 'razor',
                       'flo_lte' : 'razorg',
                       'gm4g_sprout' : 'seed_l8150',
