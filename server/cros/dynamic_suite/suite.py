@@ -683,10 +683,14 @@ class Suite(object):
         self._pool = pool
         self._jobs = []
         self._jobs_to_tests = {}
-        self._tests = Suite.find_and_parse_tests(self._cf_getter,
-                        self._predicate, self._tag, add_experimental=True,
-                        forgiving_parser=forgiving_parser,
-                        run_prod_code=run_prod_code)
+        self._tests = Suite.find_and_parse_tests(
+                self._cf_getter,
+                self._predicate,
+                self._tag,
+                add_experimental=True,
+                forgiving_parser=forgiving_parser,
+                run_prod_code=run_prod_code,
+        )
 
         self._max_runtime_mins = max_runtime_mins
         self._timeout_mins = timeout_mins
