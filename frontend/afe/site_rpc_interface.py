@@ -129,14 +129,31 @@ def _stage_build_artifacts(build, hostname=None):
 
 
 @rpc_utils.route_rpc_to_master
-def create_suite_job(name='', board='', pool='', control_file='',
-                     check_hosts=True, num=None, file_bugs=False, timeout=24,
-                     timeout_mins=None, priority=priorities.Priority.DEFAULT,
-                     suite_args=None, wait_for_results=True, job_retry=False,
-                     max_retries=None, max_runtime_mins=None, suite_min_duts=0,
-                     offload_failures_only=False, builds={},
-                     test_source_build=None, run_prod_code=False,
-                     delay_minutes=0, is_cloning=False, **kwargs):
+def create_suite_job(
+        name='',
+        board='',
+        pool='',
+        control_file='',
+        check_hosts=True,
+        num=None,
+        file_bugs=False,
+        timeout=24,
+        timeout_mins=None,
+        priority=priorities.Priority.DEFAULT,
+        suite_args=None,
+        wait_for_results=True,
+        job_retry=False,
+        max_retries=None,
+        max_runtime_mins=None,
+        suite_min_duts=0,
+        offload_failures_only=False,
+        builds={},
+        test_source_build=None,
+        run_prod_code=False,
+        delay_minutes=0,
+        is_cloning=False,
+        **kwargs
+):
     """
     Create a job to run a test suite on the given device with the given image.
 
