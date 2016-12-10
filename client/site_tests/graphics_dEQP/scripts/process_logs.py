@@ -278,7 +278,7 @@ def get_result_paths_from_autotest_db(host, user, password, build_from,
                                       build_to):
   paths = []
   # TODO(ihf): Introduce flag to toggle between JOB_TAGS_ALL and _MASTER.
-  sql = JOB_TAGS_ALL % (build_from, build_to)
+  sql = JOB_TAGS_MASTER % (build_from, build_to)
   cmd = ['mysql', '-u%s' % user, '-p%s' % password, '--host', host, '-e', sql]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   for line in p.communicate()[0].splitlines():
