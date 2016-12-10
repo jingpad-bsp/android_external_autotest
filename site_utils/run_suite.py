@@ -1489,14 +1489,15 @@ class ResultCollector(object):
                 self._board, self._build, self._num_child_jobs, runtime_in_secs)
 
 
-@retry.retry(error.StageControlFileFailure, timeout_min=10)
-def create_suite(afe, options):
-    """Create a suite with retries.
+def _make_builds_from_options(options):
+    """Create a dict of builds for creating a suite job.
 
-    @param afe: The afe object to insert the new suite job into.
-    @param options: The options to use in creating the suite.
+    The returned dict maps version label prefixes to build names.  Together,
+    each key-value pair describes a complete label.
 
-    @return: The afe_job_id of the new suite job.
+    @param options: SimpleNamespace from argument parsing.
+
+    @return: dict mapping version label prefixes to build names
     """
     builds = {}
     if options.build:
@@ -1510,6 +1511,18 @@ def create_suite(afe, options):
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
+    return builds
+
+
+@retry.retry(error.StageControlFileFailure, timeout_min=10)
+def create_suite(afe, options):
+    """Create a suite with retries.
+
+    @param afe: The afe object to insert the new suite job into.
+    @param options: The options to use in creating the suite.
+
+    @return: The afe_job_id of the new suite job.
+    """
     try:
         priority = int(options.priority)
     except ValueError:
@@ -1526,7 +1539,7 @@ def create_suite(afe, options):
         name=options.name,
         board=options.board,
         build=options.build,
-        builds=builds,
+        builds=_make_builds_from_options(options),
         test_source_build=options.test_source_build,
         check_hosts=not options.no_wait,
         pool=options.pool,
