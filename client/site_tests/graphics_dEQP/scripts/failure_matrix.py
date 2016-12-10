@@ -23,6 +23,7 @@ gpu_list = [
     'mali-t628',
     'mali-t760',
     'rogue',
+    'tegra',
 ]
 
 _PROBLEM_STATUS = ['Fail', 'Flaky']
