@@ -211,8 +211,8 @@ def make_parser():
                         default=None, action="store",
                         help="Argument string for suite control file.")
     parser.add_argument('--offload_failures_only',
-                        dest='offload_failures_only',
-                        action='store', default='False',
+                        dest='offload_failures_only', type=bool_str,
+                        action='store', default=False,
                         help='Only enable gs_offloading for failed tests. '
                         'Successful tests will be deleted. Must pass "True"'
                         ' or "False" if used.')
@@ -1512,7 +1512,6 @@ def create_suite(afe, options):
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
     wait = not options.no_wait
     file_bugs = options.file_bugs
-    offload_failures_only = options.offload_failures_only == 'True'
     try:
         priority = int(options.priority)
     except ValueError:
@@ -1543,7 +1542,7 @@ def create_suite(afe, options):
         job_retry=options.retry,
         max_retries=options.max_retries,
         suite_min_duts=options.suite_min_duts,
-        offload_failures_only=offload_failures_only,
+        offload_failures_only=options.offload_failures_only,
         run_prod_code=options.run_prod_code,
         delay_minutes=options.delay_minutes,
     )
