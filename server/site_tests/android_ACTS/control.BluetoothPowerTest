@@ -21,6 +21,7 @@ def run(machine):
                  testbed=hosts.create_testbed(machine),
                  config_file='android1758-power-test-station.config',
                  test_file='bt_power_test',
+                 additional_apks=[{'apk':'PMC.apk', 'package':'com.android.pmc'}],
                  acts_timeout=86400,
                  additional_configs=['bt_configs', 'bt_music']
                  )
