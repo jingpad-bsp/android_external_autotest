@@ -1511,7 +1511,6 @@ def create_suite(afe, options):
     if options.firmware_ro_build:
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
     wait = not options.no_wait
-    file_bugs = options.file_bugs
     try:
         priority = int(options.priority)
     except ValueError:
@@ -1533,7 +1532,7 @@ def create_suite(afe, options):
         check_hosts=wait,
         pool=options.pool,
         num=options.num,
-        file_bugs=file_bugs,
+        file_bugs=options.file_bugs,
         priority=priority,
         suite_args=options.suite_args,
         wait_for_results=wait,
