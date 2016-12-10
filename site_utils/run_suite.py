@@ -1524,22 +1524,29 @@ def create_suite(afe, options):
             raise
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
-    return afe.run('create_suite_job', name=options.name,
-                   board=options.board, build=options.build,
-                   builds=builds, test_source_build=options.test_source_build,
-                   check_hosts=wait, pool=options.pool,
-                   num=options.num,
-                   file_bugs=file_bugs, priority=priority,
-                   suite_args=options.suite_args,
-                   wait_for_results=wait,
-                   timeout_mins=options.timeout_mins + options.delay_minutes,
-                   max_runtime_mins=(options.max_runtime_mins
-                                     + options.delay_minutes),
-                   job_retry=options.retry, max_retries=options.max_retries,
-                   suite_min_duts=options.suite_min_duts,
-                   offload_failures_only=offload_failures_only,
-                   run_prod_code=options.run_prod_code,
-                   delay_minutes=options.delay_minutes)
+    return afe.run(
+        'create_suite_job',
+        name=options.name,
+        board=options.board,
+        build=options.build,
+        builds=builds,
+        test_source_build=options.test_source_build,
+        check_hosts=wait,
+        pool=options.pool,
+        num=options.num,
+        file_bugs=file_bugs,
+        priority=priority,
+        suite_args=options.suite_args,
+        wait_for_results=wait,
+        timeout_mins=options.timeout_mins + options.delay_minutes,
+        max_runtime_mins=options.max_runtime_mins + options.delay_minutes,
+        job_retry=options.retry,
+        max_retries=options.max_retries,
+        suite_min_duts=options.suite_min_duts,
+        offload_failures_only=offload_failures_only,
+        run_prod_code=options.run_prod_code,
+        delay_minutes=options.delay_minutes,
+    )
 
 
 SuiteResult = namedtuple('SuiteResult', ['return_code', 'output_dict'])
