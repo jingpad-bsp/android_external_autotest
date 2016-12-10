@@ -43,9 +43,7 @@ COMMANDS_TO_REPOS_DICT = {'afe': 'frontend/',
                           'tko': 'tko/'}
 BUILD_EXTERNALS_COMMAND = 'build_externals'
 # Services present on all hosts.
-# TODO(ayatane): Temporarily stop starting sysmon
-# UNIVERSAL_SERVICES = ['sysmon']
-UNIVERSAL_SERVICES = []
+UNIVERSAL_SERVICES = ['sysmon']
 
 AFE = frontend_wrappers.RetryingAFE(
         server=server_utils.get_global_afe_hostname(), timeout_min=5,
