@@ -243,14 +243,16 @@ def create_suite_job(
     if run_prod_code:
         ds = dev_server.resolve(test_source_build, hostname=sample_dut)
         keyvals = {}
-        getter = control_file_getter.FileSystemGetter(
-                [_CONFIG.get_config_value('SCHEDULER',
-                                          'drone_installation_directory')])
-        control_file = getter.get_control_file_contents_by_name(suite_name)
     else:
         (ds, keyvals) = _stage_build_artifacts(
                 test_source_build, hostname=sample_dut)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
+
+    if run_prod_code:
+        getter = control_file_getter.FileSystemGetter(
+                [_CONFIG.get_config_value('SCHEDULER',
+                                          'drone_installation_directory')])
+        control_file = getter.get_control_file_contents_by_name(suite_name)
 
     if not control_file:
         # No control file was supplied so look it up from the build artifacts.
