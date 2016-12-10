@@ -273,32 +273,33 @@ def create_suite_job(
         board = utils.ParseBuildName(builds[provision.CROS_VERSION_PREFIX])[0]
 
     # Prepend builds and board to the control file.
-    inject_dict = {'board': board,
-                   # `build` is needed for suites like AU to stage image inside
-                   # suite control file.
-                   'build': test_source_build,
-                   'builds': builds,
-                   'check_hosts': check_hosts,
-                   'pool': pool,
-                   'num': num,
-                   'file_bugs': file_bugs,
-                   'timeout': timeout,
-                   'timeout_mins': timeout_mins,
-                   'devserver_url': ds.url(),
-                   'priority': priority,
-                   'suite_args' : suite_args,
-                   'wait_for_results': wait_for_results,
-                   'job_retry': job_retry,
-                   'max_retries': max_retries,
-                   'max_runtime_mins': max_runtime_mins,
-                   'offload_failures_only': offload_failures_only,
-                   'test_source_build': test_source_build,
-                   'run_prod_code': run_prod_code,
-                   'delay_minutes': delay_minutes,
-                   }
-
     if is_cloning:
         control_file = tools.remove_injection(control_file)
+
+    inject_dict = {
+        'board': board,
+        # `build` is needed for suites like AU to stage image inside suite
+        # control file.
+        'build': test_source_build,
+        'builds': builds,
+        'check_hosts': check_hosts,
+        'pool': pool,
+        'num': num,
+        'file_bugs': file_bugs,
+        'timeout': timeout,
+        'timeout_mins': timeout_mins,
+        'devserver_url': ds.url(),
+        'priority': priority,
+        'suite_args' : suite_args,
+        'wait_for_results': wait_for_results,
+        'job_retry': job_retry,
+        'max_retries': max_retries,
+        'max_runtime_mins': max_runtime_mins,
+        'offload_failures_only': offload_failures_only,
+        'test_source_build': test_source_build,
+        'run_prod_code': run_prod_code,
+        'delay_minutes': delay_minutes,
+    }
     control_file = tools.inject_vars(inject_dict, control_file)
 
     return rpc_utils.create_job_common(name,
