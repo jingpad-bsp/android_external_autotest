@@ -123,6 +123,30 @@ def bool_str(x):
             '%s is not one of True or False' % (x,))
 
 
+def _get_priority_value(x):
+    """Convert a priority representation to its int value.
+
+    Priorities can be described either by an int value (possibly as a string)
+    or a name string.  This function coerces both forms to an int value.
+
+    This function is intended for casting command line arguments during
+    parsing.
+
+    @param x: priority value as an int, int string, or name string
+
+    @returns: int value of priority
+    """
+    try:
+        return int(x)
+    except ValueError:
+        try:
+            return priorities.Priority.get_value(x)
+        except AttributeError:
+            raise argparse.ArgumentTypeError(
+                'Unknown priority level %s.  Try one of %s.'
+                % (x, ', '.join(priorities.Priority.names)))
+
+
 def make_parser():
     """Make ArgumentParser instance for run_suite.py."""
     parser = argparse.ArgumentParser(
@@ -184,6 +208,7 @@ def make_parser():
     # know what you're doing, one can specify a custom priority level between
     # other levels.
     parser.add_argument("-r", "--priority", dest="priority",
+                        type=_get_priority_value,
                         default=priorities.Priority.DEFAULT,
                         action="store",
                         help="Priority of suite. Either numerical value, or "
@@ -1523,15 +1548,6 @@ def create_suite(afe, options):
 
     @return: The afe_job_id of the new suite job.
     """
-    try:
-        priority = int(options.priority)
-    except ValueError:
-        try:
-            priority = priorities.Priority.get_value(options.priority)
-        except AttributeError:
-            print 'Unknown priority level %s.  Try one of %s.' % (
-                  options.priority, ', '.join(priorities.Priority.names))
-            raise
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
     return afe.run(
@@ -1545,7 +1561,7 @@ def create_suite(afe, options):
         pool=options.pool,
         num=options.num,
         file_bugs=options.file_bugs,
-        priority=priority,
+        priority=options.priority,
         suite_args=options.suite_args,
         wait_for_results=not options.no_wait,
         timeout_mins=options.timeout_mins + options.delay_minutes,
