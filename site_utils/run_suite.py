@@ -1524,8 +1524,6 @@ def create_suite(afe, options):
             raise
     logging.info('%s Submitted create_suite_job rpc',
                  diagnosis_utils.JobTimer.format_time(datetime.now()))
-    # Adjust timeout based on the delay_minutes setting.
-    timeout_mins = options.timeout_mins + options.delay_minutes
     return afe.run('create_suite_job', name=options.name,
                    board=options.board, build=options.build,
                    builds=builds, test_source_build=options.test_source_build,
@@ -1534,7 +1532,7 @@ def create_suite(afe, options):
                    file_bugs=file_bugs, priority=priority,
                    suite_args=options.suite_args,
                    wait_for_results=wait,
-                   timeout_mins=timeout_mins,
+                   timeout_mins=options.timeout_mins + options.delay_minutes,
                    max_runtime_mins=(options.max_runtime_mins
                                      + options.delay_minutes),
                    job_retry=options.retry, max_retries=options.max_retries,
