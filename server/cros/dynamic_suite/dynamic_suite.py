@@ -10,7 +10,6 @@ import common
 
 from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
@@ -197,16 +196,6 @@ Step by step:
 
 DEFAULT_TRY_JOB_TIMEOUT_MINS = tools.try_job_timeout_mins()
 
-# For builds older than R50 and suite control files in private repos, the suite
-# control files may not be updated to the new format, i.e., making call like:
-#   dynamic_suite.reimage_and_run(**args_dict)
-# The config AUTOSERV/support_builds_arg_in_suite_job can be manually set to
-# False to support these suite control files.
-# TODO (dshi): Remove this config once R52 is off the stable channel and there
-# is no more need to test older builds.
-SUPPORT_BUILDS_ARG = global_config.global_config.get_config_value(
-        'AUTOSERV', 'support_builds_arg_in_suite_job', type=bool, default=True)
-
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
 
 class SuiteSpec(object):
@@ -341,21 +330,13 @@ class SuiteSpec(object):
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
         """
-        required_keywords = {'board': str,
-                             'name': str,
-                             'job': base_job.base_job,
-                             'devserver_url': str}
-        if SUPPORT_BUILDS_ARG:
-            required_keywords['builds'] = dict
-        else:
-            logging.debug('Global config AUTOSERV/'
-                          'support_builds_arg_in_suite_job is set to False. '
-                          'Skip enforcing `builds` argument in the suite job.')
-            build = dargs.get('build')
-            if not build:
-                raise  error.SuiteArgumentException(
-                        'reimage_and_run() needs argument `build` or `builds`.')
-            builds = {provision.CROS_VERSION_PREFIX: build}
+        required_keywords = {
+                'board': str,
+                'builds': dict,
+                'name': str,
+                'job': base_job.base_job,
+                'devserver_url': str,
+        }
 
         for key, expected in required_keywords.iteritems():
             value = locals().get(key)
