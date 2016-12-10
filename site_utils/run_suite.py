@@ -1510,7 +1510,6 @@ def create_suite(afe, options):
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
         builds[provision.FW_RO_VERSION_PREFIX] = options.firmware_ro_build
-    wait = not options.no_wait
     try:
         priority = int(options.priority)
     except ValueError:
@@ -1529,13 +1528,13 @@ def create_suite(afe, options):
         build=options.build,
         builds=builds,
         test_source_build=options.test_source_build,
-        check_hosts=wait,
+        check_hosts=not options.no_wait,
         pool=options.pool,
         num=options.num,
         file_bugs=options.file_bugs,
         priority=priority,
         suite_args=options.suite_args,
-        wait_for_results=wait,
+        wait_for_results=not options.no_wait,
         timeout_mins=options.timeout_mins + options.delay_minutes,
         max_runtime_mins=options.max_runtime_mins + options.delay_minutes,
         job_retry=options.retry,
