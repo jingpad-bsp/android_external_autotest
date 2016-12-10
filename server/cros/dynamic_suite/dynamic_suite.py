@@ -240,6 +240,11 @@ class SuiteSpec(object):
             'devserver_url': str,
     }
 
+    _VERSION_PREFIXES = frozenset((
+            provision.CROS_VERSION_PREFIX,
+            provision.ANDROID_BUILD_VERSION_PREFIX,
+    ))
+
     def __init__(
             self,
             builds=None,
@@ -414,12 +419,11 @@ class SuiteSpec(object):
 
     def _translate_builds(self):
         """Translate build names if they are in LATEST format."""
-        for system_image_prefix in (provision.CROS_VERSION_PREFIX,
-                                    provision.ANDROID_BUILD_VERSION_PREFIX):
-            if system_image_prefix in self.builds:
+        for prefix in self._VERSION_PREFIXES:
+            if prefix in self.builds:
                 translated_build = self.devserver.translate(
-                    self.builds[system_image_prefix])
-                self.builds[system_image_prefix] = translated_build
+                        self.builds[prefix])
+                self.builds[prefix] = translated_build
 
 
 def skip_reimage(g):
