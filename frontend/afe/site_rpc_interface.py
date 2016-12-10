@@ -259,12 +259,12 @@ def create_suite_job(
                                                           ds, suite_name)
     # Do not change this naming convention without updating
     # site_utils.parse_job_name.
-    if not run_prod_code:
-        name = '%s-%s' % (test_source_build, suite_name)
-    else:
+    if run_prod_code:
         # If run_prod_code is True, test_source_build is not set, use the
         # first build in the builds list for the sutie job name.
         name = '%s-%s' % (builds.values()[0], suite_name)
+    else:
+        name = '%s-%s' % (test_source_build, suite_name)
 
     timeout_mins = timeout_mins or timeout * 60
     max_runtime_mins = max_runtime_mins or timeout * 60
