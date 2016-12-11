@@ -64,7 +64,7 @@ class desktopui_FlashSanityCheck(test.test):
     _time_to_wait_secs = 5
     _swf_runtime = 5
     _retries = 10
-    _component_download_timeout_secs = 900
+    _component_download_timeout_secs = 300
 
     def verify_file(self, name):
         """
@@ -246,10 +246,9 @@ class desktopui_FlashSanityCheck(test.test):
                                  'download.')
         # TODO(ihf): Remove --component-updater=test-request once Finch is set
         # up to behave more like a user in the field.
-        browser_args = ('--ppapi-flash-version=0.0.0.0 '
-                        '--component-updater=fast-update '
-                        '--component-updater=test-request '
-                        '--enable-features=CrosCompUpdates')
+        browser_args = ['--ppapi-flash-path=',
+                        '--ppapi-flash-version=0.0.0.0',
+                        '--component-updater=fast-update,test-request']
         logging.info(browser_args)
         # Browser will download component, but it will require a subsequent
         # reboot by the caller to use it. (Browser restart is not enough.)
@@ -286,10 +285,9 @@ class desktopui_FlashSanityCheck(test.test):
         # Verify that binary was mounted during boot.
         self.verify_file(os.path.join(_COMPONENT_MOUNT, 'libpepflashplayer.so'))
         self.verify_file(os.path.join(_COMPONENT_MOUNT, 'manifest.json'))
-        # Enable component updates. Pretend we have a really old Flash revision
-        # on system to force using the downloaded component.
-        browser_args = ('--enable-features=CrosCompUpdates '
-                        '--ppapi-flash-version=1.0.0.0')
+        # Pretend we have a really old Flash revision on system to force using
+        # the downloaded component.
+        browser_args = ['--ppapi-flash-version=1.0.0.0']
         # Verify that Flash runs from _COMPONENT_MOUNT.
         self.run_flash_test(
             browser_args=browser_args, load_path=_COMPONENT_MOUNT)
@@ -302,18 +300,19 @@ class desktopui_FlashSanityCheck(test.test):
         self.verify_file(os.path.join(_SYSTEM_STORE, _BINARY))
         # Enable component updates and pretend we have a really new Flash
         # version on the system image.
-        browser_args = ('--enable-features=CrosCompUpdates '
-                        '--ppapi-flash-version=9999.0.0.0')
+        browser_args = ['--ppapi-flash-version=9999.0.0.0']
         # Verify that Flash runs from _SYSTEM_STORE.
         self.run_flash_test(browser_args=browser_args, load_path=_SYSTEM_STORE)
 
-    def run_flash_test(self, browser_args='', load_path=None):
+    def run_flash_test(self, browser_args=None, load_path=None):
         """
         Verifies that directing the browser to an swf file results in a running
         Pepper Flash process which does not immediately crash.
         """
+        if not browser_args:
+            browser_args = []
         # This is Flash. Disable html5 by default feature.
-        browser_args += ' --disable-features=PreferHtmlOverPlugins'
+        browser_args += ['--disable-features=PreferHtmlOverPlugins']
         # As this is an end to end test with nontrivial setup we can expect a
         # certain amount of flakes which are *unrelated* to running Flash. We
         # try to hide these unrelated flakes by selective retry.
@@ -329,7 +328,7 @@ class desktopui_FlashSanityCheck(test.test):
     def run_once(self, CU_action=_CU_ACTION_SANITY):
         """
         Main entry point for desktopui_FlashSanityCheck.
- 
+
         Performs an action as specified by control file or
         by the component_UpdateFlash server test. (The current need to reboot
         after switching to/from component binary makes this test a server test.)
