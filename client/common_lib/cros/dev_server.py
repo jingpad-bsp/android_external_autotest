@@ -1003,15 +1003,21 @@ class ImageServerBase(DevServer):
         logging.info('Staging artifacts on devserver %s: %s',
                      self.url(), staging_info)
         success = False
+        server_name = self.get_server_name(self.url())
         try:
             arguments = {'archive_url': archive_url,
                          'artifacts': artifacts_arg,
                          'files': files_arg}
             if kwargs:
                 arguments.update(kwargs)
+            # TODO(akeshet): canonicalize artifacts_arg before using it as a
+            # metric field (as it stands it is a not-very-well-controlled
+            # string).
+            f = {'artifacts': artifacts_arg,
+                 'dev_server': server_name}
             with metrics.SecondsTimer(
                     'chromeos/autotest/devserver/stage_artifact_duration',
-                    fields={'artifacts': artifacts_arg}):
+                    fields=f):
                 self.call_and_wait(call_name='stage', error_message=error_message,
                                    **arguments)
             logging.info('Finished staging artifacts: %s', staging_info)
@@ -1021,9 +1027,11 @@ class ImageServerBase(DevServer):
             raise DevServerException(
                     'stage_artifacts timed out: %s' % staging_info)
         finally:
+            f = {'success': success,
+                 'artifacts': artifacts_arg,
+                 'dev_server': server_name}
             metrics.Counter('chromeos/autotest/devserver/stage_artifact'
-                            ).increment(fields={'success': success,
-                                                'artifacts': artifacts_arg})
+                            ).increment(fields=f)
 
 
     def call_and_wait(self, *args, **kwargs):
