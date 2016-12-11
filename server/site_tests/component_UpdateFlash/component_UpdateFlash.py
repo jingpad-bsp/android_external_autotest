@@ -4,6 +4,7 @@
 
 import logging
 
+from autotest_lib.client.common_lib import error
 from autotest_lib.server import autotest
 from autotest_lib.server import test
 
@@ -15,8 +16,13 @@ class component_UpdateFlash(test.test):
         """Runs client test."""
         logging.info('+++++ component_UpdateFlash +++++')
         logging.info('Performing %s', CU_action)
-        self.autotest_client.run_test(
-            name, CU_action=CU_action, tag=CU_action, check_client_result=True)
+        try:
+            self.autotest_client.run_test(name,
+                                          CU_action=CU_action,
+                                          tag=CU_action,
+                                          check_client_result=True)
+        except:
+            raise error.TestError('Failed: %s.' % CU_action)
 
     def _run_flash_sanity(self):
         """Verify that simple Flash site runs."""
@@ -70,7 +76,3 @@ class component_UpdateFlash(test.test):
         # Currently mounting the component binaries requires a reboot.
         self._reboot()
         self._verify_component_flash()
-        # Cleanup.
-        self._delete_component()
-        # Verify that switching back to system Flash does not require a reboot.
-        self._verify_system_flash()
