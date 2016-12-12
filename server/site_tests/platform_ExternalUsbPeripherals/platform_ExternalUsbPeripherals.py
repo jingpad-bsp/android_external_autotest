@@ -4,6 +4,7 @@
 
 import logging, threading, time
 
+from autotest_lib.client.cros.crash_test import CrashTest
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
@@ -11,7 +12,9 @@ _WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
 _SUSPEND_TIME = 30
 _WAKE_PRESS_IN_SEC = 0.2
-_CRASH_PATHS = ['/var/spool', '/home/chronos', '/home/chronos/u*']
+_CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
+                CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
+                CrashTest._USER_CRASH_DIRS.replace("/crash","")]
 
 class platform_ExternalUsbPeripherals(test.test):
     """Uses servo to repeatedly connect/remove USB devices during boot."""
@@ -137,11 +140,7 @@ class platform_ExternalUsbPeripherals(test.test):
 
 
     def open_lid(self, boot_id):
-        """Open lid through servo to resume.
-
-        @param boot_id: boot id obtained prior to suspending
-
-        """
+        """Open lid through servo to resume."""
         logging.info('Opening lid...')
         self.host.servo.lid_open()
         self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
