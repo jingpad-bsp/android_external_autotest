@@ -15,7 +15,7 @@ open and wpa2psk. This test will run in Casey labs.
 """
 
 from autotest_lib.server.cros.ap_configurators import ap_spec
-from autotest_lib.server.cros.chaos_lib import chaos_runner
+from autotest_lib.server.cros.chaos_lib import static_runner
 
 def run_chaos_static(machine):
     host = hosts.create_host(machine)
@@ -34,7 +34,7 @@ def run_chaos_static(machine):
                                configurator_type=ap_spec.CONFIGURATOR_STATIC)]
 
     for spec in ap_specs:
-        runner = chaos_runner.ChaosRunner(
+        runner = static_runner.StaticRunner(
                 'network_WiFi_ChaosConnectDisconnect', host, spec)
         runner.run(job)
 

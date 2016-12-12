@@ -382,9 +382,17 @@ class APConfiguratorFactory(object):
         if self.test_type == ap_constants.AP_TEST_TYPE_CHAOS:
             ap_label = 'chaos_ap'
             lab_label = 'chaos_chamber'
-        else:
+        elif self.test_type == ap_constants.AP_TEST_TYPE_CLIQUE:
             ap_label = 'clique_ap'
             lab_label = 'clique_chamber'
+        elif self.test_type == ap_constants.AP_TEST_TYPE_CASEY5:
+            ap_label = 'casey_ap5'
+            lab_label = 'casey_chamber5'
+        elif self.test_type == ap_constants.AP_TEST_TYPE_CASEY7:
+            ap_label = 'casey_ap7'
+            lab_label = 'casey_chamber7'
+        else:
+            return None
         all_aps = set(afe.get_hostnames(label=ap_label))
         chamber_devices = set(afe.get_hostnames(label=lab_label))
         chamber_aps = all_aps.intersection(chamber_devices)
