@@ -28,5 +28,5 @@ class testbed_DummyTest(test.test):
         if test_apk_install:
             for adb_host in testbed.get_adb_devices().values():
               adb_utils.install_apk_from_build(
-                        adb_host, constants.SL4A_APK, constants.SL4A_PACKAGE,
+                        adb_host, constants.SL4A_APK, constants.SL4A_ARTIFACT,
                         package_name=constants.SL4A_PACKAGE)
