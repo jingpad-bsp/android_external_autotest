@@ -830,7 +830,7 @@ class Suite(object):
                   Returns None if scheduling failed due to
                   NoEligibleHostException or a non-existent board label.
                   Returns None if it encounters other rpc errors we don't know
-                  how to handle and ignore_errors is False.
+                  how to handle and ignore_errors is True.
 
         """
         msg = 'Scheduling %s' % test.name
