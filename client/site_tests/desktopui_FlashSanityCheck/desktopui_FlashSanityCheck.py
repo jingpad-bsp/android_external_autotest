@@ -84,13 +84,16 @@ class desktopui_FlashSanityCheck(test.test):
             if not 'dynamically linked' in output:
                 logging.error(output)
                 raise error.TestFail('Failed: Flash not dynamically linked.')
-            cpu_arch = utils.get_cpu_arch()
-            if cpu_arch == 'arm' and not 'ARM' in output:
+            arch = utils.get_arch_userspace()
+            logging.info('get_arch_userspace = %s', arch)
+            if arch == 'arm' and not 'ARM' in output:
                 logging.error(output)
                 raise error.TestFail('Failed: Flash binary not for ARM.')
-            if cpu_arch == 'x86_64' and not 'x86-64' in output:
-                raise error.TestFail('Failed: Flash binary not for x86-64.')
-            if cpu_arch == 'i386' and not '80386' in output:
+            if arch == 'x86_64' and not 'x86-64' in output:
+                logging.error(output)
+                raise error.TestFail('Failed: Flash binary not for x86_64.')
+            if arch == 'i386' and not '80386' in output:
+                logging.error(output)
                 raise error.TestFail('Failed: Flash binary not for i386.')
         logging.info('Verified file %s', name)
 
