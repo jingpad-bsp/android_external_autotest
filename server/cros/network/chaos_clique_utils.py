@@ -24,12 +24,11 @@ def allocate_packet_capturer(lock_manager, hostname, prefix):
     """Allocates a machine to capture packets.
 
     Locks the allocated machine if the machine was discovered via AFE
-    to prevent tests stomping on each other. Packet capture devices locked
-    need to be in the same chamber as the client from which the test is run.
+    to prevent tests stomping on each other.
 
     @param lock_manager HostLockManager object.
     @param hostname string optional hostname of a packet capture machine.
-    @param prefix string prefix for lab location of DUT ex. chromeos#
+    @param prefix string chamber location (ex. chromeos3, chromeos5, chromeos7)
 
     @return: An SSHHost object representing a locked packet_capture machine.
     """
@@ -50,7 +49,6 @@ def allocate_packet_capturer(lock_manager, hostname, prefix):
                 continue
     raise error.TestError('Unable to lock any pcaps - check in cautotest if '
                           'pcaps in %s are locked.', prefix)
-
 
 def allocate_webdriver_instance(lock_manager):
     """Allocates a machine to capture webdriver instance.
