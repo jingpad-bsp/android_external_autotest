@@ -148,9 +148,6 @@ def kick_off_deploy():
     """
     print 'Start deploying changes to all lab servers...'
     with infra.chdir(AUTOTEST_DIR):
-        # First update the local autotest repo to have the newest deploy script.
-        print ('Update local autotest to get lastest deploy script.')
-        infra.local_runner('git pull --rebase', stream_output=True)
         # Then kick off the deploy script.
         deploy_cmd = ('runlocalssh ./site_utils/deploy_server.py --afe=%s' %
                       MASTER_AFE)
