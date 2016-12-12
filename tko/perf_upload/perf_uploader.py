@@ -285,6 +285,10 @@ def upload_test(job, test, jobname):
     # Format the perf data for the upload, then upload it.
     test_name = test.testname
     platform_name = job.machine_group
+    # Append the platform name with '.arc' if the suffix of the control
+    # filename is '.arc'.
+    if job.label and re.match('.*\.arc$', job.label):
+        platform_name += '.arc'
     hardware_id = test.attributes.get('hwid', '')
     hardware_hostname = test.machine
     variant_name = test.attributes.get(constants.VARIANT_KEY, None)
