@@ -41,6 +41,7 @@ except ImportError:
     pass
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import priorities
+from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
@@ -134,6 +135,7 @@ class TestPushException(Exception):
     pass
 
 
+@retry.retry(TestPushException, timeout_min=5, delay_sec=30)
 def check_dut_inventory(required_num_duts):
     """Check DUT inventory for each board.
 
@@ -141,6 +143,7 @@ def check_dut_inventory(required_num_duts):
                               requires in order to finish push tests.
     @raise TestPushException: if number of DUTs are less than the requirement.
     """
+    print 'Checking DUT inventory...'
     hosts = AFE.run('get_hosts', status='Ready', locked=False)
     platforms = [host['platform'] for host in hosts]
     current_inventory = {p : platforms.count(p) for p in platforms}
@@ -186,6 +189,7 @@ def reverify_all_push_duts(pool):
 
     @param pool: Name of the pool used by test_push.
     """
+    print 'Reverifying DUTs in pool %s' % pool
     pool_label = constants.Labels.POOL_PREFIX + pool
     hosts = [h.hostname for h in AFE.get_hosts(label=pool_label)]
     AFE.reverify_hosts(hostnames=hosts)
@@ -576,6 +580,9 @@ def main():
     try:
         # Use daemon flag will kill child processes when parent process fails.
         use_daemon = not arguments.continue_on_failure
+        # Verify all the DUTs at the beginning of testing push.
+        reverify_all_push_duts(arguments.pool)
+        time.sleep(15) # Wait 15 secs for the verify test to start.
         check_dut_inventory(arguments.num_duts)
         queue = multiprocessing.Queue()
 
