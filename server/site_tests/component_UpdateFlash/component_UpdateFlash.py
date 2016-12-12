@@ -57,6 +57,7 @@ class component_UpdateFlash(test.test):
 
     def cleanup(self):
         """Leaves this test without a component Flash installed."""
+        logging.info('+++++ Cleaning DUT for other tests +++++')
         self._delete_component()
 
     def run_once(self, host):
@@ -65,6 +66,7 @@ class component_UpdateFlash(test.test):
         self.autotest_client = autotest.Autotest(self.host)
         # Paranoia: by rebooting the DUT we protect this test from other tests
         # leaving running webservers behind.
+        logging.info('+++++ Rebooting DUT on start to reduce flakes +++++')
         self._reboot()
         # Test Flash once with whatever was the default on the DUT.
         self._run_flash_sanity()
