@@ -846,6 +846,7 @@ class Suite(object):
             Status('TEST_NA', test.name,
                    'Skipping:  test not supported on this board.',
                    begin_time_str=begin_time_str).record_all(record)
+            return None
         except proxy.ValidationError as e:
             # The goal here is to treat a dependency on a
             # non-existent board label the same as a
@@ -878,13 +879,16 @@ class Suite(object):
             logging.debug('Assuming label not found')
             Status('TEST_NA', test.name, e.problem_keys.values()[0],
                    begin_time_str=begin_time_str).record_all(record)
+            return None
         except (error.RPCException, proxy.JSONRPCException) as e:
             if retry_for:
                 # Mark that we've attempted to retry the old job.
                 self._retry_handler.set_attempted(job_id=retry_for)
+
             if ignore_errors:
                 logging.error('Failed to schedule test: %s, Reason: %s',
                               test.name, e)
+                return None
             else:
                 raise e
         else:
@@ -902,7 +906,6 @@ class Suite(object):
             if self._results_dir:
                 self._remember_provided_job_id(job)
             return job
-        return None
 
 
     def schedule(self, record, add_experimental=True):
