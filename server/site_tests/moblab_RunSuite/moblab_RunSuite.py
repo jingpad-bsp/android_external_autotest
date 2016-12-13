@@ -41,7 +41,7 @@ class moblab_RunSuite(moblab_test.MoblabTest):
         # stable_version for the given board.
         stable_version_map = host.afe.get_stable_version_map(
                 host.afe.CROS_IMAGE_TYPE)
-        build = stable_version_map.get_version(board)
+        build = stable_version_map.get_image_name(board)
 
         logging.debug('Running suite: %s.', suite_name)
         try:

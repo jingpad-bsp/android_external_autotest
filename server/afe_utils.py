@@ -139,15 +139,15 @@ def add_version_label(host, image_name):
     AFE.run('label_add_hosts', id=label, hosts=[host.hostname])
 
 
-def get_stable_cros_version(board):
-    """Retrieve the stable Chrome OS version for a given board.
+def get_stable_cros_image_name(board):
+    """Retrieve the Chrome OS stable image name for a given board.
 
     @param board: Board to lookup.
 
-    @returns A version of Chrome OS to be installed in order to
+    @returns Name of a Chrome OS image to be installed in order to
             repair the given board.
     """
-    return _CROS_VERSION_MAP.get_version(board)
+    return _CROS_VERSION_MAP.get_image_name(board)
 
 
 def get_stable_firmware_version(board):
