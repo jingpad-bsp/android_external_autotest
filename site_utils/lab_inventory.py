@@ -64,29 +64,9 @@ from autotest_lib.site_utils import gmail_lib
 from autotest_lib.site_utils.suite_scheduler import constants
 
 
-# The pools in the Lab that are actually of interest.
-#
-# These are general purpose pools of DUTs that are considered
-# identical for purposes of testing.  That is, a device in one of
-# these pools can be shifted to another pool at will for purposes
-# of supplying test demand.
-#
-# Devices in these pools are not allowed to have special-purpose
-# attachments, or to be part of in any kind of custom fixture.
-# Devices in these pools are also required to reside in areas
-# managed by the Platforms team (i.e. at the time of this writing,
-# only in "Atlantis" or "Destiny").
-#
-# CRITICAL_POOLS - Pools that must be kept fully supplied in order
-#     to guarantee timely completion of tests from builders.
-# SPARE_POOL - A low priority pool that is allowed to provide
-#     spares to replace broken devices in the critical pools.
-# MANAGED_POOLS - The set of all the general purpose pools
-#     monitored by this script.
-
-CRITICAL_POOLS = ['bvt', 'cq', 'continuous', 'cts']
-SPARE_POOL = 'suites'
-MANAGED_POOLS = CRITICAL_POOLS + [SPARE_POOL]
+CRITICAL_POOLS = constants.Pools.CRITICAL_POOLS
+SPARE_POOL = constants.Pools.SPARE_POOL
+MANAGED_POOLS = constants.Pools.MANAGED_POOLS
 
 # _EXCLUDED_LABELS - A set of labels that disqualify a DUT from
 #     monitoring by this script.  Currently, we're excluding any
