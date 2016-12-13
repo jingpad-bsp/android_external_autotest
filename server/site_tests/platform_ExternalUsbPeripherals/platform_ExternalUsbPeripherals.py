@@ -4,7 +4,7 @@
 
 import logging, threading, time
 
-from autotest_lib.client.cros.crash_test import CrashTest
+from autotest_lib.client.cros.crash.crash_test import CrashTest
 from autotest_lib.server import autotest, test
 from autotest_lib.client.common_lib import error
 
