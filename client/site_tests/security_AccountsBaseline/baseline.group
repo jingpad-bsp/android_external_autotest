@@ -67,7 +67,7 @@ goofy:!:248:goofy
 easy-unlock:!:249:
 trunks:!:251:trunks
 tpm_manager:!:252:tpm_manager
-authpolicyd:!:254:authpolicyd
+authpolicyd:!:254:authpolicyd,authpolicyd-exec
 scanner:!:255:saned
 volume:!:257:
 uinput:!:258:bluetooth,volume
@@ -95,3 +95,4 @@ arc-sensor:!:604:
 user-containers:!:10000:user-containers
 imageloaderd:!:220:
 arc-networkd:!:284:
+authpolicyd-exec:!:607:
