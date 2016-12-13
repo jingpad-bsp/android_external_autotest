@@ -8,6 +8,28 @@ Repair actions and verifiers relating to CrOS firmware.
 This contains the repair actions and verifiers need to find problems
 with the firmware installed on Chrome OS DUTs, and when necessary, to
 fix problems by updating or re-installing the firmware.
+
+The operations in the module support two distinct use cases:
+  * DUTs used for FAFT tests can in some cases have problems with
+    corrupted firmware.  The module supplies `FirmwareStatusVerifier`
+    to check for corruption, and supplies `FirmwareRepair` to re-install
+    firmware via servo when needed.
+  * DUTs used for general testing normally should be running a
+    designated "stable" firmware version.  This module supplies
+    `FirmwareVersionVerifier` to detect and automatically update
+    firmware that is out-of-date from the designated version.
+
+For purposes of the operations in the module, we distinguish three kinds
+of DUT, based on pool assignments:
+  * DUTs used for general testing.  These DUTs automatically check for
+    and install the stable firmware using `FirmwareVersionVerifier`.
+  * DUTs in pools used for FAFT testing.  These check for bad firmware
+    builds with `FirmwareStatusVerifier`, and will fix problems using
+    `FirmwareRepair`.  These DUTs don't check for or install the
+    stable firmware.
+  * DUTs not in general pools, and not used for FAFT.  These DUTs
+    are expected to be managed by separate processes and are excluded
+    from all of the verification and repair code in this module.
 """
 
 import logging
@@ -20,23 +42,68 @@ from autotest_lib.server import afe_utils
 from autotest_lib.site_utils.suite_scheduler import constants
 
 
-_CONFIG = global_config.global_config
-_FIRMWARE_REPAIR_POOLS = set(_CONFIG.get_config_value('CROS',
-            'pools_support_firmware_repair', type=str).split(','))
-_POOL_PREFIX = constants.Labels.POOL_PREFIX
+# _FIRMWARE_REPAIR_POOLS - The set of pools that should be
+# managed by `FirmwareStatusVerifier` and `FirmwareRepair`.
+#
+_FIRMWARE_REPAIR_POOLS = set(
+    global_config.global_config.get_config_value(
+            'CROS',
+            'pools_support_firmware_repair',
+            type=str).split(','))
+
+
+# _FIRMWARE_UPDATE_POOLS - The set of pools that should be
+# managed by `FirmwareVersionVerifier`.
+#
+_FIRMWARE_UPDATE_POOLS = set(constants.Pools.MANAGED_POOLS)
+
+
+def _get_host_pools(host):
+    """
+    Return the set of pools to which the host is assigned.
+
+    Returns all of a host's assigned pools as a set of pool names,
+    with the 'pool:' prefix stripped off.
+
+    @param host  The host for which to find the pools.
+    @return A set object containing all the pools.
+    """
+    pool_prefix = constants.Labels.POOL_PREFIX
+    pool_labels = afe_utils.get_labels(host, pool_prefix)
+    return set([l[len(pool_prefix) : ] for l in pool_labels])
+
 
 def _is_firmware_repair_supported(host):
     """
     Check if a host supports firmware repair.
 
-    Firmware repair is only applicable to DUTs in pools listed in
-    the global config setting CROS/pools_support_firmware_repair.
+    When this function returns true, the DUT should be managed by
+    `FirmwareStatusVerifier` and `FirmwareRepair`, but not
+    `FirmwareVersionVerifier`.  In general, this applies to DUTs
+    used for firmware testing.
 
-    @return: `True` if it is supported, or `False` otherwise.
+    @return A true value if the host should use `FirmwareStatusVerifier`
+            and `FirmwareRepair`; a false value otherwise.
     """
-    pool_labels = afe_utils.get_labels(host, _POOL_PREFIX)
-    pools = set([l[len(_POOL_PREFIX) : ] for l in pool_labels])
-    return bool(pools & _FIRMWARE_REPAIR_POOLS)
+    return bool(_get_host_pools(host) & _FIRMWARE_REPAIR_POOLS)
+
+
+def _is_firmware_update_supported(host):
+    """
+    Return whether a DUT should be running the standard firmware.
+
+    In the test lab, DUTs used for general testing, (e.g. the `bvt`
+    pool) need their firmware kept up-to-date with
+    `FirmwareVersionVerifier`.  However, some pools have alternative
+    policies for firmware management.  This returns whether a given DUT
+    should be updated via the standard stable version update, or
+    managed by some other procedure.
+
+    @param host   The host to be checked for update policy.
+    @return A true value if the host should use
+            `FirmwareVersionVerifier`; a false value otherwise.
+    """
+    return bool(_get_host_pools(host) & _FIRMWARE_UPDATE_POOLS)
 
 
 class FirmwareStatusVerifier(hosts.Verifier):
@@ -79,6 +146,31 @@ class FirmwareStatusVerifier(hosts.Verifier):
         return 'Firmware on this DUT is clean'
 
 
+class FirmwareRepair(hosts.RepairAction):
+    """
+    Reinstall the firmware image using servo.
+
+    This repair function attempts to use servo to install the DUT's
+    designated "stable firmware version".
+
+    This repair method only applies to DUTs used for FAFT.
+    """
+
+    def repair(self, host):
+        if not _is_firmware_repair_supported(host):
+            raise hosts.AutoservRepairError(
+                    'Firmware repair is not applicable to host %s.' %
+                    host.hostname)
+        if not host.servo:
+            raise hosts.AutoservRepairError(
+                    '%s has no servo support.' % host.hostname)
+        host.firmware_install()
+
+    @property
+    def description(self):
+        return 'Re-install the stable firmware via servo'
+
+
 class FirmwareVersionVerifier(hosts.Verifier):
     """
     Check for a firmware update, and apply it if appropriate.
@@ -88,17 +180,17 @@ class FirmwareVersionVerifier(hosts.Verifier):
     currently running build.
 
     Failure occurs when all of the following apply:
-     1. The DUT is not part of a FAFT pool.  (DUTs used for FAFT testing
-        instead use `FirmwareRepair`, below.)
-     2. The DUT has an assigned stable firmware version.
+     1. The DUT is not excluded from updates.  For example, DUTs used
+        for FAFT testing use `FirmwareRepair` instead.
+     2. The DUT's board has an assigned stable firmware version.
      3. The DUT is not running the assigned stable firmware.
      4. The firmware supplied in the running OS build is not the
         assigned stable firmware.
 
     If the DUT needs an upgrade and the currently running OS build
-    supplies the necessary firmware, use `chromeos-firmwareupdate` to
-    install the new firmware.  Failure to install will cause the
-    verifier to fail.
+    supplies the necessary firmware, the verifier installs the new
+    firmware using `chromeos-firmwareupdate`.  Failure to install will
+    cause the verifier to fail.
 
     This verifier nominally breaks the rule that "verifiers must succeed
     quickly", since it can invoke `reboot()` during the success code
@@ -160,8 +252,8 @@ class FirmwareVersionVerifier(hosts.Verifier):
                     message % (version_a, version_b))
 
     def verify(self, host):
-        # Test 1 - The DUT is not part of a FAFT pool.
-        if _is_firmware_repair_supported(host):
+        # Test 1 - The DUT is not excluded from updates.
+        if not _is_firmware_update_supported(host):
             return
         # Test 2 - The DUT has an assigned stable firmware version.
         stable_firmware = afe_utils.get_stable_firmware_version(
@@ -211,28 +303,3 @@ class FirmwareVersionVerifier(hosts.Verifier):
     @property
     def description(self):
         return 'The firmware on this DUT is up-to-date'
-
-
-class FirmwareRepair(hosts.RepairAction):
-    """
-    Reinstall the firmware image using servo.
-
-    This repair function attempts to use servo to install the DUT's
-    designated "stable firmware version".
-
-    This repair method only applies to DUTs used for FAFT.
-    """
-
-    def repair(self, host):
-        if not _is_firmware_repair_supported(host):
-            raise hosts.AutoservRepairError(
-                    'Firmware repair is not applicable to host %s.' %
-                    host.hostname)
-        if not host.servo:
-            raise hosts.AutoservRepairError(
-                    '%s has no servo support.' % host.hostname)
-        host.firmware_install()
-
-    @property
-    def description(self):
-        return 'Re-install the stable firmware via servo'
