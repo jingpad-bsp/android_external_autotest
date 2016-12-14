@@ -117,7 +117,8 @@ class RpcInterfaceTest(unittest.TestCase,
 
     def test_job_keyvals(self):
         keyval_dict = {'mykey': 'myvalue'}
-        job_id = rpc_interface.create_job(name='test', priority='Medium',
+        job_id = rpc_interface.create_job(name='test',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'],
@@ -128,7 +129,8 @@ class RpcInterfaceTest(unittest.TestCase,
 
 
     def test_test_retry(self):
-        job_id = rpc_interface.create_job(name='flake', priority='Medium',
+        job_id = rpc_interface.create_job(name='flake',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'],
@@ -221,7 +223,8 @@ class RpcInterfaceTest(unittest.TestCase,
 
 
     def _create_job_helper(self, **kwargs):
-        return rpc_interface.create_job(name='test', priority='Medium',
+        return rpc_interface.create_job(name='test',
+                                        priority=priorities.Priority.DEFAULT,
                                         control_file='control file',
                                         control_type=SERVER, **kwargs)
 
@@ -646,7 +649,8 @@ class RpcInterfaceTest(unittest.TestCase,
 
     def test_get_image_for_job_with_keyval_build(self):
         keyval_dict = {'build': 'cool-image'}
-        job_id = rpc_interface.create_job(name='test', priority='Medium',
+        job_id = rpc_interface.create_job(name='test',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'],
@@ -659,7 +663,8 @@ class RpcInterfaceTest(unittest.TestCase,
 
     def test_get_image_for_job_with_keyval_builds(self):
         keyval_dict = {'builds': {'cros-version': 'cool-image'}}
-        job_id = rpc_interface.create_job(name='test', priority='Medium',
+        job_id = rpc_interface.create_job(name='test',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'],
@@ -673,7 +678,8 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_get_image_for_job_with_control_build(self):
         CONTROL_FILE = """build='cool-image'
         """
-        job_id = rpc_interface.create_job(name='test', priority='Medium',
+        job_id = rpc_interface.create_job(name='test',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'])
@@ -687,7 +693,8 @@ class RpcInterfaceTest(unittest.TestCase,
     def test_get_image_for_job_with_control_builds(self):
         CONTROL_FILE = """builds={'cros-version': 'cool-image'}
         """
-        job_id = rpc_interface.create_job(name='test', priority='Medium',
+        job_id = rpc_interface.create_job(name='test',
+                                          priority=priorities.Priority.DEFAULT,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           hosts=['host1'])
