@@ -91,6 +91,9 @@ CROS_AU_POLLING_INTERVAL = 10
 # Number of seconds for intervals between retrying auto-update calls.
 CROS_AU_RETRY_INTERVAL = 20
 
+# The file name for auto-update logs.
+CROS_AU_LOG_FILENAME = 'CrOS_update_%s_%s.log'
+
 # Provision error patterns.
 # People who see this should know that they shouldn't change these
 # classification strings. These strings are used for monitoring provision
@@ -1660,6 +1663,12 @@ class ImageServer(ImageServerBase):
 
         return True
 
+
+    def _get_au_log_filename(self, log_dir, host_name, pid):
+        """Return the auto-update log's filename."""
+        return os.path.join(log_dir, CROS_AU_LOG_FILENAME % (
+                    host_name, pid))
+
     @remote_devserver_call()
     def _collect_au_log(self, log_dir, **kwargs):
         """Collect logs from devserver after cros-update process is finished.
@@ -1679,9 +1688,8 @@ class ImageServer(ImageServerBase):
         response = self.run_call(call)
         if not os.path.exists(log_dir):
             os.mkdir(log_dir)
-        write_file = os.path.join(
-                log_dir, 'CrOS_update_%s_%s.log' % (
-                        kwargs['host_name'], kwargs['pid']))
+        write_file = self._get_au_log_filename(
+                log_dir, kwargs['host_name'], kwargs['pid'])
         logging.debug('Saving auto-update logs into %s', write_file)
         try:
             with open(write_file, 'w') as out_log:
@@ -1950,6 +1958,12 @@ class ImageServer(ImageServerBase):
                     if raised_error:
                         logging.debug(error_msg_attempt, au_attempt+1,
                                       str(raised_error))
+                        if au_log_dir:
+                            logging.debug('Please see error details in log %s',
+                                          self._get_au_log_filename(
+                                                  au_log_dir,
+                                                  kwargs['host_name'],
+                                                  pid))
                         error_list.append(self._parse_AU_error(str(raised_error)))
                     if not self.kill_au_process_for_host(kwargs['host_name']):
                         logging.debug('Failed to kill auto_update process %d',
