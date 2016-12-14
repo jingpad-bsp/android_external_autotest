@@ -7,6 +7,7 @@ import time
 
 from autotest_lib.client.bin import test, utils
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import utils as sys_utils
 from autotest_lib.client.cros import upstart
 
 
@@ -49,7 +50,7 @@ class platform_CUPSDaemon(test.test):
         return os.path.exists(path)
 
 
-    def run_once(self):
+    def run_upstart_tests(self):
         """
         Run some sanity tests for cupsd and the upstart-socket-bridge
         socket-activation.
@@ -85,3 +86,46 @@ class platform_CUPSDaemon(test.test):
             raise error.TestFail('Missing CUPS socket: %s', self._CUPS_SOCK_PATH)
 
         self.check_cups_is_responding()
+
+
+    def run_systemd_tests(self):
+        """
+        Check if cupsd is running and responsive.
+        """
+        # Check to see if the service is running.
+        if sys_utils.get_service_pid('cups') == 0:
+            # Try to start it.
+            if sys_utils.start_service('cups', ignore_status=True) != 0:
+                raise error.TestNAError('No cupsd service found')
+
+        sys_utils.stop_service('cups', ignore_status=False)
+        sys_utils.start_service('cups.socket', ignore_status=False)
+
+        if not self.wait_for_path_exists(self._CUPS_SOCK_PATH):
+            raise error.TestFail('Missing CUPS socket: %s', self._CUPS_SOCK_PATH)
+
+        # Test that cupsd is automatically launched through socket activation.
+        self.check_cups_is_responding()
+
+        sys_utils.stop_service('cups', ignore_status=False)
+        sys_utils.stop_service('cups.socket', ignore_status=False)
+
+        # Dummy file to test that cups.socket handles lingering file properly.
+        utils.system('touch %s' % self._CUPS_SOCK_PATH)
+
+        sys_utils.start_service('cups.socket', ignore_status=False)
+
+        if not os.path.exists(self._CUPS_SOCK_PATH):
+            raise error.TestFail('Missing CUPS socket: %s', self._CUPS_SOCK_PATH)
+
+        self.check_cups_is_responding()
+
+
+    def run_once(self):
+        """
+        Run some sanity tests for cupsd.
+        """
+        if sys_utils.has_systemd():
+            self.run_systemd_tests()
+        else:
+            self.run_upstart_tests()
