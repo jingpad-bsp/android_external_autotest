@@ -22,11 +22,8 @@ import re
 
 def _pidof(exe_name):
     """Returns the PID of the first process with the given name."""
-    pid = utils.system_output('pidof %s' % exe_name, ignore_status=True).strip()
-    if len(pid.split()) > 1:
-        pid = pid.split()[0]
-
-    return pid
+    return utils.system_output('pidof -s %s' % exe_name,
+                               ignore_status=True).strip()
 
 
 class Process(object):
@@ -38,13 +35,13 @@ class Process(object):
     Attributes:
         _name: String name of process.
         _service_name: Name of the service corresponding to the process.
-        _parent: String name of process's parent. Defaults to None.
+        _parent: String name of process's parent.
     """
 
     _START_POLL_INTERVAL_SECONDS = 1
     _START_TIMEOUT = 30
 
-    def __init__(self, name, service_name, parent=None):
+    def __init__(self, name, service_name, parent):
         self._name = name
         self._service_name = service_name
         self._parent = parent
@@ -61,10 +58,8 @@ class Process(object):
         retries = 0
         ps_results = ""
         while retries < self._START_TIMEOUT:
-            if self._parent is None:
-                ps_results = _pidof(self._name)
-            else:
-                ppid = _pidof(self._parent)
+            ppid = _pidof(self._parent)
+            if ppid != "":
                 get_pid_command = ('ps -C %s -o pid,ppid | grep " %s$"'
                     ' | awk \'{print $1}\'') % (self._name, ppid)
                 ps_results = utils.system_output(get_pid_command).strip()
@@ -84,6 +79,9 @@ class Process(object):
 class UpstartProcess(Process):
     """Represents an Upstart service."""
 
+    def __init__(self, name, service_name, parent='init'):
+        super(UpstartProcess, self).__init__(name, service_name, parent)
+
     def exists(self):
         """Checks if the service is present in Upstart configuration."""
         return upstart.has_service(self._service_name)
@@ -94,6 +92,9 @@ class UpstartProcess(Process):
 
 class SystemdProcess(Process):
     """Represents an systemd service."""
+
+    def __init__(self, name, service_name, parent='systemd'):
+        super(SystemdProcess, self).__init__(name, service_name, parent)
 
     def exists(self):
         """Checks if the service is present in systemd configuration."""
