@@ -459,6 +459,11 @@
     "dashboard_test_name": "page_cycler.typical_25"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.page_cycler_v2.typical_25",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "page_cycler_v2.typical_25"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.robohornet_pro",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "robohornet_pro"
