@@ -964,7 +964,7 @@ def create_job_page_handler(name, priority, control_file, control_type,
                 builds=builds, test_source_build=test_source_build,
                 is_cloning=is_cloning, **kwargs)
     return create_job(name, priority, control_file, control_type, image=image,
-                      hostless=hostless, is_cloning=is_cloning, **kwargs)
+                      hostless=hostless, **kwargs)
 
 
 @rpc_utils.route_rpc_to_master
@@ -997,7 +997,6 @@ def create_job(
         run_reset=True,
         require_ssp=None,
         args=(),
-        is_cloning=False,
         **kwargs):
     """\
     Create and enqueue a job.
@@ -1041,7 +1040,6 @@ def create_job(
                        image is not set, drone will run the test without server-
                        side packaging. Default is None.
     @param args A list of args to be injected into control file.
-    @param is_cloning: True if creating a cloning job.
     @param kwargs extra keyword args. NOT USED.
 
     @returns The created Job id number.
