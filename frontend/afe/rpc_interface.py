@@ -44,7 +44,8 @@ from autotest_lib.client.common_lib.cros import dev_server
 # TODO(akeshet): Replace with monarch stats once we know how to instrument rpc
 # server with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
-from autotest_lib.frontend.afe import control_file, rpc_utils
+from autotest_lib.frontend.afe import control_file as control_file_lib
+from autotest_lib.frontend.afe import rpc_utils
 from autotest_lib.frontend.afe import models, model_logic, model_attributes
 from autotest_lib.frontend.afe import site_rpc_interface
 from autotest_lib.frontend.tko import models as tko_models
@@ -801,7 +802,7 @@ def generate_control_file(tests=(), profilers=(),
     cf_info, test_objects, profiler_objects = (
         rpc_utils.prepare_generate_control_file(tests, profilers,
                                                 db_tests))
-    cf_info['control_file'] = control_file.generate_control(
+    cf_info['control_file'] = control_file_lib.generate_control(
         tests=test_objects, profilers=profiler_objects,
         is_server=cf_info['is_server'],
         client_control_file=client_control_file, profile_only=profile_only,
