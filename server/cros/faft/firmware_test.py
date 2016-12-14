@@ -11,7 +11,6 @@ import re
 import time
 import uuid
 
-from threading import Timer
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import test
@@ -734,7 +733,7 @@ class FirmwareTest(FAFTBase):
         logging.info('Checking power state "%s" maximum %d times.',
                      power_state, retries)
         while retries > 0:
-            logging.info("try count: %d" % retries)
+            logging.info("try count: %d", retries)
             try:
                 retries = retries - 1
                 ret = self._get_power_state(power_state)
@@ -743,41 +742,11 @@ class FirmwareTest(FAFTBase):
                 pass
         return False
 
-    def delayed(seconds):
-        def decorator(f):
-            def wrapper(*args, **kargs):
-                t = Timer(seconds, f, args, kargs)
-                t.start()
-            return wrapper
-        return decorator
-
-    @delayed(WAKE_DELAY)
-    def wake_by_power_button(self):
-        """Delay by WAKE_DELAY seconds and then wake DUT with power button."""
-        self.servo.power_normal_press()
-
-    @delayed(WAKE_DELAY)
-    def wake_by_lid_switch(self):
-        """Delay by WAKE_DELAY seconds and then wake DUT with lid switch."""
-        self.servo.set('lid_open', 'no')
-        time.sleep(self.LID_DELAY)
-        self.servo.set('lid_open', 'yes')
-
-    def suspend_as_reboot(self, wake_func):
-        """
-        Suspend DUT and also kill FAFT client so that this acts like a reboot.
-
-        Args:
-          wake_func: A function that is called to wake DUT. Note that this
-            function must delay itself so that we don't wake DUT before
-            suspend_as_reboot returns.
-        """
+    def suspend(self):
+        """Suspends the DUT."""
         cmd = '(sleep %d; powerd_dbus_suspend) &' % self.EC_SUSPEND_DELAY
         self.faft_client.system.run_shell_command(cmd)
-        self.faft_client.disconnect()
         time.sleep(self.EC_SUSPEND_DELAY)
-        logging.info("wake function disabled")
-        wake_func()
 
     def _fetch_servo_log(self):
         """Fetch the servo log."""
@@ -1092,13 +1061,14 @@ class FirmwareTest(FAFTBase):
         return ret
 
     def run_shutdown_process(self, shutdown_action, pre_power_action=None,
-            run_power_action=True, post_power_action=None, shutdown_timeout=None):
+                             run_power_action=True, post_power_action=None,
+                             shutdown_timeout=None):
         """Run shutdown_action(), which makes DUT shutdown, and power it on.
 
         @param shutdown_action: function which makes DUT shutdown, like
                                 pressing power key.
         @param pre_power_action: function which is called before next power on.
-        @param power_action: power_key press by default, set to None to skip.
+        @param run_power_action: power_key press by default, set to None to skip.
         @param post_power_action: function which is called after next power on.
         @param shutdown_timeout: a timeout to confirm DUT shutdown.
         @raise TestFail: if the shutdown_action() failed to turn DUT off.
