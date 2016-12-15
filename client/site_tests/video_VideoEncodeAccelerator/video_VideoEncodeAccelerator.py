@@ -43,6 +43,27 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
 
     version = 1
 
+    def get_filter_option(self):
+        """Get option of filtering test
+        """
+        option = ''
+
+        blacklist = {
+                # board: [tests to skip...]
+
+                # Kevin doesn't support HW encode for plane sizes not multiple
+                # of cache line
+                'kevin': ['CacheLineUnalignedInputTest']
+                }
+
+        board = utils.get_current_board()
+        if board in blacklist:
+            for item in blacklist[board]:
+                option += '-' + item + '*'
+        if option:
+            option = ' --gtest_filter=' + option
+
+        return option
 
     @chrome_binary_test.nuke_chrome
     def run_once(self, in_cloud, streams, profile):
@@ -70,6 +91,7 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
                     input_path, width, height, profile, output_path, bit_rate)
             if utils.is_freon():
                 cmd_line += ' --ozone-platform=gbm'
+            cmd_line += self.get_filter_option()
             try:
                 self.run_chrome_test_binary(BINARY, cmd_line, as_chronos=False)
             except error.TestFail as test_failure:
