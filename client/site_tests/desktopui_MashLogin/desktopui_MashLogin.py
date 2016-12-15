@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.bin import test
+from autotest_lib.client.bin import site_utils, test
 from autotest_lib.client.common_lib.cros import chrome
 
 
@@ -15,6 +15,14 @@ class desktopui_MashLogin(test.test):
 
     def run_once(self):
         """Entry point of this test."""
+
+        # Mash requires a connected display to start chrome. Chromebox and
+        # Chromebit devices in the lab run without a connected display.
+        # Limit this test to devices with a built-in display until we can fix
+        # mash. http://crbug.com/673561
+        if site_utils.get_board_type() not in ['CHROMEBOOK', 'CHROMEBASE']:
+            logging.warning('chrome --mash requires a display, skipping test.')
+            return
 
         # GPU info collection via devtools SystemInfo.getInfo does not work
         # under mash due to differences in how the GPU process is configured.
