@@ -120,22 +120,45 @@ class ActsPackage(object):
         self.zip_file = zip_file_path
 
     def create_container(self,
-                         testbed,
                          container_directory,
-                         testbed_name=None,
                          internal_acts_directory=None):
         """Unpacks this package into a container.
 
-        Unpacks this acts package into a container to run acts tests in.
+        Unpacks this acts package into a container to interact with acts.
 
-        @param testbed: The testbed that the container will be testing on.
         @param container_directory: The directory on the teststation to hold
                                     the container.
-        @param testbed_name: An overriding name for the testbed.
         @param internal_acts_directory: The directory inside of the package
                                         that holds acts.
 
         @returns: An ActsContainer with info on the unpacked acts container.
+        """
+        self.test_station.run('unzip "%s" -x -d "%s"' %
+                              (self.zip_file, container_directory))
+
+        return ActsContainer(self.test_station,
+                             container_directory,
+                             acts_directory=internal_acts_directory)
+
+    def create_enviroment(self,
+                          container_directory,
+                          testbed,
+                          testbed_name=None,
+                          internal_acts_directory=None):
+        """Unpacks this package into an acts testing enviroment.
+
+        Unpacks this acts package into a test enviroment to test with acts.
+
+        @param container_directory: The directory on the teststation to hold
+                                    the test enviroment.
+        @param testbed: The testbed that the test enviroment
+                        will be testing on.
+        @param testbed_name: An overriding name for the testbed.
+        @param internal_acts_directory: The directory inside of the package
+                                        that holds acts.
+
+        @returns: An ActsTestingEnviroment with info on the unpacked
+                  acts testing enviroment.
         """
         if testbed.teststation != self.test_station:
             raise error.TestError('Creating a contianer for a testbed on a '
@@ -144,20 +167,18 @@ class ActsPackage(object):
         self.test_station.run('unzip "%s" -x -d "%s"' %
                               (self.zip_file, container_directory))
 
-        return ActsContainer(testbed,
-                             container_directory,
-                             testbed_name=testbed_name,
-                             acts_directory=internal_acts_directory)
+        return ActsTestingEnviroment(testbed=testbed,
+                container_directory=container_directory,
+                testbed_name=testbed_name,
+                acts_directory=internal_acts_directory)
 
 
 class AndroidTestingEnviroment(object):
     """A container for testing android devices on a test station."""
-    def __init__(self, testbed, container_directory=None, testbed_name=None):
+    def __init__(self, testbed, testbed_name=None):
         """Creates a new android testing enviroment.
 
         @param testbed: The testbed to test on.
-        @param container_directory: The directory on the teststation to work
-                                    out of.
         @param testbed_name: An overriding name for the testbed.
         """
         self.testbed = testbed
@@ -171,9 +192,6 @@ class AndroidTestingEnviroment(object):
                 testbed_name = hostname.split('.')[0]
 
         self.testbed_name = testbed_name
-
-        self.test_station = self.testbed.teststation
-        self.container_directory = container_directory
 
     def install_sl4a_apk(self):
         """Install sl4a to a test bed."""
@@ -202,25 +220,22 @@ class AndroidTestingEnviroment(object):
                     package_name=apk_info['package'])
 
 
-class ActsContainer(AndroidTestingEnviroment):
-    """A container for running acts tests with a contained version of acts."""
+class ActsContainer(object):
+    """A container for working with acts."""
     def __init__(self,
-                testbed,
-                container_directory,
-                testbed_name=None,
-                acts_directory=None):
+                 test_station,
+                 container_directory,
+                 acts_directory=None):
         """
-        @param testbed: The testbed to test on.
+        @param test_station: The test station that the container is on.
         @param container_directory: The directory on the teststation this
                                     container operates out of.
-        @param testbed_name: An overriding name for the testbed.
         @param acts_directory: The directory within the container that holds
                                acts. If none then it defaults to
                                DEFAULT_ACTS_INTERNAL_DIRECTORY.
         """
-        super(ActsContainer, self).__init__(testbed,
-                container_directory=container_directory,
-                testbed_name=testbed_name)
+        self.test_station = test_station
+        self.container_directory = container_directory
 
         if not acts_directory:
             acts_directory = DEFAULT_ACTS_INTERNAL_DIRECTORY
@@ -234,23 +249,12 @@ class ActsContainer(AndroidTestingEnviroment):
         self.tests_directory = os.path.join(self.acts_directory, TEST_DIR_NAME)
         self.framework_directory = os.path.join(self.acts_directory,
                                                 FRAMEWORK_DIR_NAME)
-        self.config_location = os.path.join(self.container_directory,
-                                            CONFIG_DIR_NAME)
-
-        self.log_directory = os.path.join(self.container_directory,
-                                          LOG_DIR_NAME)
-
-        self.working_directory = os.path.join(self.container_directory,
-                                              CONFIG_DIR_NAME)
 
         self.acts_file = os.path.join(self.framework_directory,
                                       ACTS_EXECUTABLE_IN_FRAMEWORK)
 
         self.setup_file = os.path.join(self.framework_directory,
                                        SETUP_FILE_NAME)
-
-        self.configs = {}
-        self.campaigns = {}
 
     def get_test_paths(self):
         """Get all test paths within this container.
@@ -317,6 +321,63 @@ class ActsContainer(AndroidTestingEnviroment):
 
         return original_dst
 
+    def setup_enviroment(self, python_bin='python'):
+        """Sets up the teststation system enviroment so the container can run.
+
+        Prepares the remote system so that the container can run. This involves
+        uninstalling all versions of acts for the version of python being
+        used and installing all needed dependencies.
+
+        @param python_bin: The python binary to use.
+        """
+        uninstall_command = '%s %s uninstall' % (python_bin, self.setup_file)
+        install_deps_command = '%s %s install_deps' % (python_bin,
+                                                       self.setup_file)
+
+        self.test_station.run(uninstall_command)
+        self.test_station.run(install_deps_command)
+
+
+class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
+    """A container for running acts tests with a contained version of acts."""
+    def __init__(self,
+                 container_directory,
+                 testbed,
+                 testbed_name=None,
+                 acts_directory=None):
+        """
+        @param testbed: The testbed to test on.
+        @param container_directory: The directory on the teststation this
+                                    container operates out of.
+        @param testbed_name: An overriding name for the testbed.
+        @param acts_directory: The directory within the container that holds
+                               acts. If none then it defaults to
+                               DEFAULT_ACTS_INTERNAL_DIRECTORY.
+        """
+        AndroidTestingEnviroment.__init__(self, testbed,
+                                          testbed_name=testbed_name)
+
+        ActsContainer.__init__(self, testbed.teststation,
+                               container_directory=container_directory,
+                               acts_directory=acts_directory)
+
+        self.config_location = os.path.join(self.container_directory,
+                                            CONFIG_DIR_NAME)
+
+        self.log_directory = os.path.join(self.container_directory,
+                                          LOG_DIR_NAME)
+
+        self.acts_file = os.path.join(self.framework_directory,
+                                      ACTS_EXECUTABLE_IN_FRAMEWORK)
+
+        self.working_directory = os.path.join(container_directory,
+                                              CONFIG_DIR_NAME)
+        self.test_station.run('mkdir %s' % self.working_directory,
+                ignore_status=True)
+
+        self.configs = {}
+        self.campaigns = {}
+
     def upload_config(self, config_file):
         """Uploads a config file to the container.
 
@@ -352,22 +413,6 @@ class ActsContainer(AndroidTestingEnviroment):
         self.campaigns[campaign_file] = full_path
 
         return full_path
-
-    def setup_enviroment(self, python_bin='python'):
-        """Sets up the teststation system enviroment so the container can run.
-
-        Prepares the remote system so that the container can run. This involves
-        uninstalling all versions of acts for the version of python being
-        used and installing all needed dependencies.
-
-        @param python_bin: The python binary to use.
-        """
-        uninstall_command = '%s %s uninstall' % (python_bin, self.setup_file)
-        install_deps_command = '%s %s install_deps' % (python_bin,
-                                                       self.setup_file)
-
-        self.test_station.run(uninstall_command)
-        self.test_station.run(install_deps_command)
 
     def run_test(self,
                  config,
