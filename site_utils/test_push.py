@@ -191,15 +191,15 @@ def reverify_all_push_duts(pool):
     AFE.reverify_hosts(hostnames=hosts)
 
 
-def get_default_build(board='gandof'):
+def get_default_build(board='gandof', server='chromeos-autotest.hot'):
     """Get the default build to be used for test.
 
     @param board: Name of board to be tested, default is gandof.
     @return: Build to be tested, e.g., gandof-release/R36-5881.0.0
     """
     build = None
-    cmd = ('%s/cli/atest stable_version list --board=%s -w cautotest' %
-           (AUTOTEST_DIR, board))
+    cmd = ('%s/cli/atest stable_version list --board=%s -w %s' %
+           (AUTOTEST_DIR, board, server))
     result = subprocess.check_output(cmd, shell=True).strip()
     build = re.search(BUILD_REGEX, result)
     if build:
@@ -229,6 +229,8 @@ def parse_arguments():
                         help='Default is the latest stable build of given '
                              'board. Must be a stable build, otherwise AU test '
                              'will fail.')
+    parser.add_argument('-w', '--web', default='chromeos-autotest.hot',
+                        help='Specify web server to grab stable version from.')
     parser.add_argument('-ab', '--android_board', dest='android_board',
                         default='shamu-2', help='Android board to test.')
     parser.add_argument('-ai', '--android_build', dest='android_build',
@@ -256,9 +258,10 @@ def parse_arguments():
 
     # Get latest stable build as default build.
     if not arguments.build:
-        arguments.build = get_default_build(arguments.board)
+        arguments.build = get_default_build(arguments.board, arguments.web)
     if not arguments.shard_build:
-        arguments.shard_build = get_default_build(arguments.shard_board)
+        arguments.shard_build = get_default_build(arguments.shard_board,
+                                                  arguments.web)
 
     arguments.num_duts = ast.literal_eval(arguments.num_duts)
 
