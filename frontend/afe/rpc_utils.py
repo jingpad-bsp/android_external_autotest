@@ -578,13 +578,10 @@ def get_job_info(job, preserve_metahosts=False, queue_entry_filter_data=None):
 
 
 def check_for_duplicate_hosts(host_objects):
-    host_ids = set()
-    duplicate_hostnames = set()
-    for host in host_objects:
-        if host.id in host_ids:
-            duplicate_hostnames.add(host.hostname)
-        host_ids.add(host.id)
-
+    host_counts = collections.Counter(host_objects)
+    duplicate_hostnames = {host.hostname
+                           for host, count in host_counts.iteritems()
+                           if count > 1}
     if duplicate_hostnames:
         raise model_logic.ValidationError(
                 {'hosts' : 'Duplicate hosts: %s'
