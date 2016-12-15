@@ -7,6 +7,7 @@ Autotest scheduler
 """
 
 import datetime
+import functools
 import gc
 import logging
 import optparse
@@ -274,6 +275,15 @@ def _autoserv_command_line(machines, extra_args, job=None, queue_entry=None,
             verbose=verbose, in_lab=True)
     return command
 
+def _calls_log_tick_msg(func):
+    """Used to trace functions called by BaseDispatcher.tick."""
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        self._log_tick_msg('Starting %s' % func.__name__)
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
 
 class BaseDispatcher(object):
 
@@ -326,15 +336,7 @@ class BaseDispatcher(object):
             self._recover_hosts()
 
 
-    def _log_tick_msg(self, msg):
-        if self._tick_debug:
-            logging.debug(msg)
-
-
-    def _log_extra_msg(self, msg):
-        if self._extra_debugging:
-            logging.debug(msg)
-
+    # TODO(pprabhu) Drop this metric once tick_times has been verified.
     @metrics.SecondsTimerDecorator(
             'chromeos/autotest/scheduler/tick_durations/tick')
     def tick(self):
@@ -343,63 +345,68 @@ class BaseDispatcher(object):
         major step begins so we can try to figure out where we are using most
         of the tick time.
         """
-        system_utils.DroneCache.refresh()
-        self._log_tick_msg('Calling new tick, starting garbage collection().')
-        self._garbage_collection()
-        self._log_tick_msg('Calling _drone_manager.trigger_refresh().')
-        _drone_manager.trigger_refresh()
-        self._log_tick_msg('Calling _process_recurring_runs().')
-        self._process_recurring_runs()
-        self._log_tick_msg('Calling _schedule_delay_tasks().')
-        self._schedule_delay_tasks()
-        self._log_tick_msg('Calling _schedule_running_host_queue_entries().')
-        self._schedule_running_host_queue_entries()
-        self._log_tick_msg('Calling _schedule_special_tasks().')
-        self._schedule_special_tasks()
-        self._log_tick_msg('Calling _schedule_new_jobs().')
-        self._schedule_new_jobs()
-        self._log_tick_msg('Calling _drone_manager.sync_refresh().')
-        _drone_manager.sync_refresh()
-        # _run_cleanup must be called between drone_manager.sync_refresh, and
-        # drone_manager.execute_actions, as sync_refresh will clear the calls
-        # queued in drones. Therefore, any action that calls drone.queue_call
-        # to add calls to the drone._calls, should be after drone refresh is
-        # completed and before drone_manager.execute_actions at the end of the
-        # tick.
-        self._log_tick_msg('Calling _run_cleanup().')
-        self._run_cleanup()
-        self._log_tick_msg('Calling _find_aborting().')
-        self._find_aborting()
-        self._log_tick_msg('Calling _find_aborted_special_tasks().')
-        self._find_aborted_special_tasks()
-        self._log_tick_msg('Calling _handle_agents().')
-        self._handle_agents()
-        self._log_tick_msg('Calling _host_scheduler.tick().')
-        self._host_scheduler.tick()
-        self._log_tick_msg('Calling _drone_manager.execute_actions().')
-        _drone_manager.execute_actions()
-        self._log_tick_msg('Calling '
-                           'email_manager.manager.send_queued_emails().')
-        # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in
-        # this sub-step.
-        email_manager.manager.send_queued_emails()
-        self._log_tick_msg('Calling django.db.reset_queries().')
-        # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in
-        # this sub-step.
-        django.db.reset_queries()
-        self._tick_count += 1
-        metrics.Counter('chromeos/autotest/scheduler/tick').increment()
+        with metrics.RuntimeBreakdownTimer(
+            'chromeos/autotest/scheduler/tick_times') as breakdown_timer:
+            self._log_tick_msg('New tick')
+            system_utils.DroneCache.refresh()
+
+            with breakdown_timer.Step('garbage_collection'):
+                self._garbage_collection()
+            with breakdown_timer.Step('trigger_refresh'):
+                self._log_tick_msg('Starting _drone_manager.trigger_refresh')
+                _drone_manager.trigger_refresh()
+            with breakdown_timer.Step('process_recurring_runs'):
+                self._process_recurring_runs()
+            with breakdown_timer.Step('schedule_delay_tasks'):
+                self._schedule_delay_tasks()
+            with breakdown_timer.Step('schedule_running_host_queue_entries'):
+                self._schedule_running_host_queue_entries()
+            with breakdown_timer.Step('schedule_special_tasks'):
+                self._schedule_special_tasks()
+            with breakdown_timer.Step('schedule_new_jobs'):
+                self._schedule_new_jobs()
+            with breakdown_timer.Step('sync_refresh'):
+                self._log_tick_msg('Starting _drone_manager.sync_refresh')
+                _drone_manager.sync_refresh()
+            # _run_cleanup must be called between drone_manager.sync_refresh,
+            # and drone_manager.execute_actions, as sync_refresh will clear the
+            # calls queued in drones. Therefore, any action that calls
+            # drone.queue_call to add calls to the drone._calls, should be after
+            # drone refresh is completed and before
+            # drone_manager.execute_actions at the end of the tick.
+            with breakdown_timer.Step('run_cleanup'):
+                self._run_cleanup()
+            with breakdown_timer.Step('find_aborting'):
+                self._find_aborting()
+            with breakdown_timer.Step('find_aborted_special_tasks'):
+                self._find_aborted_special_tasks()
+            with breakdown_timer.Step('handle_agents'):
+                self._handle_agents()
+            with breakdown_timer.Step('host_scheduler_tick'):
+                self._log_tick_msg('Starting _host_scheduler.tick')
+                self._host_scheduler.tick()
+            with breakdown_timer.Step('drones_execute_actions'):
+                self._log_tick_msg('Starting _drone_manager.execute_actions')
+                _drone_manager.execute_actions()
+            with breakdown_timer.Step('send_queued_emails'):
+                self._log_tick_msg(
+                    'Starting email_manager.manager.send_queued_emails')
+                email_manager.manager.send_queued_emails()
+            with breakdown_timer.Step('db_reset_queries'):
+                self._log_tick_msg('Starting django.db.reset_queries')
+                django.db.reset_queries()
+
+            self._tick_count += 1
+            metrics.Counter('chromeos/autotest/scheduler/tick').increment()
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _run_cleanup(self):
         self._periodic_cleanup.run_cleanup_maybe()
         self._24hr_upkeep.run_cleanup_maybe()
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _garbage_collection(self):
         threshold_time = time.time() - self._seconds_between_garbage_stats
         if threshold_time < self._last_garbage_stats_time:
@@ -702,8 +709,7 @@ class BaseDispatcher(object):
                     (len(unrecovered_hqes), message))
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _schedule_special_tasks(self):
         """
         Execute queued SpecialTasks that are ready to run on idle hosts.
@@ -816,8 +822,7 @@ class BaseDispatcher(object):
             self._host_scheduler.schedule_host_job(host, queue_entry)
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _schedule_new_jobs(self):
         """
         Find any new HQEs and call schedule_pre_job_tasks for it.
@@ -871,8 +876,7 @@ class BaseDispatcher(object):
         #                               new_jobs_with_hosts)
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _schedule_running_host_queue_entries(self):
         """
         Adds agents to the dispatcher.
@@ -892,8 +896,7 @@ class BaseDispatcher(object):
             self.add_agent_task(agent_task)
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _schedule_delay_tasks(self):
         for entry in scheduler_models.HostQueueEntry.fetch(
                 where='status = "%s"' % models.HostQueueEntry.Status.WAITING):
@@ -902,8 +905,7 @@ class BaseDispatcher(object):
                 self.add_agent_task(task)
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _find_aborting(self):
         """
         Looks through the afe_host_queue_entries for an aborted entry.
@@ -942,6 +944,7 @@ class BaseDispatcher(object):
             job.stop_if_necessary()
 
 
+    @_calls_log_tick_msg
     def _find_aborted_special_tasks(self):
         """
         Find SpecialTasks that have been marked for abortion.
@@ -999,8 +1002,7 @@ class BaseDispatcher(object):
         return True
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _handle_agents(self):
         """
         Handles agents of the dispatcher.
@@ -1071,8 +1073,7 @@ class BaseDispatcher(object):
                      num_agent_processes, num_started_this_tick)
 
 
-    # TODO(pprabhu) crbug.com/667171: Add back metric for % time spent in this
-    # sub-step.
+    @_calls_log_tick_msg
     def _process_recurring_runs(self):
         recurring_runs = models.RecurringRun.objects.filter(
             start_date__lte=datetime.datetime.now())
@@ -1112,6 +1113,16 @@ class BaseDispatcher(object):
                     rrun.start_date = rrun.start_date + difference
                     rrun.loop_count -= 1
                     rrun.save()
+
+
+    def _log_tick_msg(self, msg):
+        if self._tick_debug:
+            logging.debug(msg)
+
+
+    def _log_extra_msg(self, msg):
+        if self._extra_debugging:
+            logging.debug(msg)
 
 
 SiteDispatcher = utils.import_site_class(
