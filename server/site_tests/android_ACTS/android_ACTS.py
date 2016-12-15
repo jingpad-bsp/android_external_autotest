@@ -116,32 +116,32 @@ class android_ACTS(test.test):
             package = acts_lib.create_acts_package_from_current_artifact(
                     test_station, job_repo_url, target_zip)
 
-        container = package.create_container(testbed,
-                ts_tempfolder,
+        test_env = package.create_enviroment(testbed=testbed,
+                container_directory=ts_tempfolder,
                 testbed_name=testbed_name,
                 internal_acts_directory=override_internal_acts_dir)
 
-        container.install_sl4a_apk()
+        test_env.install_sl4a_apk()
 
         for apk in additional_apks:
-            container.install_apk(apk)
+            test_env.install_apk(apk)
 
-        container.setup_enviroment(python_bin=override_python_bin)
+        test_env.setup_enviroment(python_bin=override_python_bin)
 
-        container.upload_config(config_file)
+        test_env.upload_config(config_file)
 
         if additional_configs:
             for additional_config in additional_configs:
-                container.upload_config(additional_config)
+                test_env.upload_config(additional_config)
 
         if test_file:
-            container.upload_campaign(test_file)
+            test_env.upload_campaign(test_file)
 
-        results = container.run_test(config_file,
-                                     campaign=test_file,
-                                     test_case=test_case,
-                                     python_bin=override_python_bin,
-                                     timeout=acts_timeout)
+        results = test_env.run_test(config_file,
+                                    campaign=test_file,
+                                    test_case=test_case,
+                                    python_bin=override_python_bin,
+                                    timeout=acts_timeout)
 
         results.log_output()
         results.upload_to_sponge(self)
