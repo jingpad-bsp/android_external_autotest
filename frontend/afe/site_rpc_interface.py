@@ -95,6 +95,18 @@ def _get_control_file_contents_by_name(build, ds, suite_name):
     return control_file_in
 
 
+def _get_control_file_by_suite(suite_name):
+    """Get control file contents by suite name.
+
+    @param suite_name: Suite name as string.
+    @returns: Control file contents as string.
+    """
+    getter = control_file_getter.FileSystemGetter(
+        [_CONFIG.get_config_value('SCHEDULER',
+                                  'drone_installation_directory')])
+    return getter.get_control_file_contents_by_name(suite_name)
+
+
 def _stage_build_artifacts(build, hostname=None):
     """
     Ensure components of |build| necessary for installing images are staged.
@@ -249,10 +261,7 @@ def create_suite_job(
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
     if run_prod_code:
-        getter = control_file_getter.FileSystemGetter(
-                [_CONFIG.get_config_value('SCHEDULER',
-                                          'drone_installation_directory')])
-        control_file = getter.get_control_file_contents_by_name(suite_name)
+        control_file = _get_control_file_by_suite(suite_name)
 
     if not control_file:
         # No control file was supplied so look it up from the build artifacts.
