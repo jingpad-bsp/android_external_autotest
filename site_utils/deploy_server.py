@@ -267,6 +267,8 @@ def main(args):
         print('To retry:')
         print('  %s <options> %s' %
               (str(args[0]), str(' '.join(failed + skipped))))
+        # Exit with error.
+        return 1
 
 
 if __name__ == '__main__':
