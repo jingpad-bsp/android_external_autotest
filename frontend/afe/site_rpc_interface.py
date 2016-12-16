@@ -52,7 +52,7 @@ def formatted_now():
     return datetime.datetime.now().strftime(time_utils.TIME_FMT)
 
 
-def _get_control_file_contents_by_name(build, ds, suite_name):
+def _get_control_file_by_build(build, ds, suite_name):
     """Return control file contents for |suite_name|.
 
     Query the dev server at |ds| for the control file |suite_name|, included
@@ -266,8 +266,8 @@ def create_suite_job(
     if not control_file:
         # No control file was supplied so look it up from the build artifacts.
         suite_name = canonicalize_suite_name(name)
-        control_file = _get_control_file_contents_by_name(test_source_build,
-                                                          ds, suite_name)
+        control_file = _get_control_file_by_build(
+                test_source_build, ds, suite_name)
     # Do not change this naming convention without updating
     # site_utils.parse_job_name.
     if run_prod_code:
