@@ -357,14 +357,16 @@ class TestBed(object):
                 logging.info('Installing build %s on DUT with serial %s.',
                              build, serial)
                 host = self.get_adb_devices()[serial]
-                if not build_url:
-                    build_url, _ = host.stage_build_for_install(build)
+                if build_url:
+                    device_build_url = build_url
+                else:
+                    device_build_url, _ = host.stage_build_for_install(build)
                 arguments.append({'host': host,
-                                  'build_url': build_url,
+                                  'build_url': device_build_url,
                                   'build_local_path': build_local_path})
                 attribute_name = '%s_%s' % (constants.JOB_REPO_URL,
                                             host.adb_serial)
-                host_attributes[attribute_name] = build_url
+                host_attributes[attribute_name] = device_build_url
 
             thread_pool = pool.ThreadPool(_POOL_SIZE)
             thread_pool.map(self._install_device, arguments)
