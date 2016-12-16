@@ -46,24 +46,20 @@ class video_VideoEncodeAccelerator(chrome_binary_test.ChromeBinaryTest):
     def get_filter_option(self):
         """Get option of filtering test
         """
-        option = ''
 
         blacklist = {
                 # board: [tests to skip...]
 
                 # Kevin doesn't support HW encode for plane sizes not multiple
                 # of cache line
-                'kevin': ['CacheLineUnalignedInputTest']
+                'kevin': ['CacheLineUnalignedInputTest/*']
                 }
 
         board = utils.get_current_board()
         if board in blacklist:
-            for item in blacklist[board]:
-                option += '-' + item + '*'
-        if option:
-            option = ' --gtest_filter=' + option
+            return ' --gtest_filter=-' + ':'.join(blacklist[board])
 
-        return option
+        return ''
 
     @chrome_binary_test.nuke_chrome
     def run_once(self, in_cloud, streams, profile):
