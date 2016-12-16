@@ -13,11 +13,13 @@ from autotest_lib.client.common_lib.cros import retry
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import reporting
 # Mock the retry.retry used in the test_push before import it.
-def mock_retry(ExceptionToCheck, timeout_min, exception_to_raise=None):
+def mock_retry(ExceptionToCheck, timeout_min, delay_sec,
+               exception_to_raise=None):
     """A mock retry decorator to use in place of the actual one for testing.
 
     @param ExceptionToCheck: the exception to check.
     @param timeout_mins: Amount of time in mins to wait before timing out.
+    @param delay_sec: Amount of time in secs to wait before retry.
     @param exception_to_raise: Ignored
 
     """
