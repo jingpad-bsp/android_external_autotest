@@ -71,7 +71,6 @@ from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import lxc
 from autotest_lib.site_utils import lxc_utils
 from autotest_lib.client.common_lib import pidfile, logging_manager
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 
 
 # Control segment to stage server-side package.
@@ -621,14 +620,6 @@ def record_autoserv(options, duration_secs):
 
 def main():
     start_time = datetime.datetime.now()
-    # White list of tests with run time measurement enabled.
-    measure_run_time_tests_names = _CONFIG.get_config_value(
-            'AUTOSERV', 'measure_run_time_tests', type=str)
-    if measure_run_time_tests_names:
-        measure_run_time_tests = [t.strip() for t in
-                                  measure_run_time_tests_names.split(',')]
-    else:
-        measure_run_time_tests = []
     # grab the parser
     parser = autoserv_parser.autoserv_parser
     parser.parse_args()
@@ -726,11 +717,9 @@ def main():
     autotest.BaseAutotest.set_install_in_tmpdir(
         parser.options.install_in_tmpdir)
 
-    timer = None
     try:
         # Take the first argument as control file name, get the test name from
-        # the control file. If the test name exists in the list of tests with
-        # run time measurement enabled, start a timer to begin measurement.
+        # the control file.
         if (len(parser.args) > 0 and parser.args[0] != '' and
             parser.options.machines):
             try:
@@ -739,18 +728,6 @@ def main():
             except control_data.ControlVariableException:
                 logging.debug('Failed to retrieve test name from control file.')
                 test_name = None
-            if test_name in measure_run_time_tests:
-                machines = parser.options.machines.replace(',', ' '
-                                                           ).strip().split()
-                try:
-                    afe = frontend.AFE()
-                    board = server_utils.get_board_from_afe(machines[0], afe)
-                    timer = autotest_stats.Timer('autoserv_run_time.%s.%s' %
-                                                 (board, test_name))
-                    timer.start()
-                except (urllib2.HTTPError, urllib2.URLError):
-                    # Ignore error if RPC failed to get board
-                    pass
     except control_data.ControlVariableException as e:
         logging.error(str(e))
     exit_code = 0
@@ -806,8 +783,6 @@ def main():
     finally:
         if pid_file_manager:
             pid_file_manager.close_file(exit_code)
-        if timer:
-            timer.stop()
         # Record the autoserv duration time. Must be called
         # just before the system exits to ensure accuracy.
         duration_secs = (datetime.datetime.now() - start_time).total_seconds()
