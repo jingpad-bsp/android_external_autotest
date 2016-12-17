@@ -164,14 +164,15 @@ def send_email(to, subject, message_text, retry=True, creds_path=None):
             logging.warning('Will retry error %s', exc)
         return should_retry
 
-    metrics.Counter('chromeos/autotest/send_email/total').increment()
+    success = False
     try:
         retry_util.GenericRetry(
                 handler, retry_count, _run, sleep=RETRY_DELAY,
                 backoff_factor=RETRY_BACKOFF_FACTOR)
-    except Exception:
-        metrics.Counter('chromeos/autotest/send_email/fail').increment()
-        raise
+        success = True
+    finally:
+        metrics.Counter('chromeos/autotest/send_email/count').increment(
+                fields={'success': success})
 
 
 if __name__ == '__main__':
