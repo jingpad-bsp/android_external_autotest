@@ -19,13 +19,16 @@ import traceback
 import time
 import urllib2
 
+
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
+
+from chromite.lib import metrics
+
 try:
     from autotest_lib.puppylab import results_mocker
 except ImportError:
@@ -242,9 +245,9 @@ def _run_with_ssp(job, container_name, job_id, results, parser, ssp_url,
                        'logs in ssp_logs folder for more details.' % e)
         raise
     finally:
-        counter_key = '%s.%s' % (lxc.STATS_KEY,
-                                 'success' if success else 'fail')
-        autotest_stats.Counter(counter_key).increment()
+        metrics.Counter(
+            'chromeos/autotest/experimental/execute_job_in_ssp').increment(
+                fields={'success': success})
         # metadata is uploaded separately so it can use http to upload.
         metadata = {'drone': socket.gethostname(),
                     'job_id': job_id,
