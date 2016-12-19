@@ -242,14 +242,7 @@ def create_suite_job(
         test_source_build = Suite.get_test_source_build(
                 builds, test_source_build=test_source_build)
 
-    # If 'prefer_local_devserver' is True in global setting, and both board
-    # and pool are specified, pick a dut in the given board and pool, and
-    # use that to help to pick a devserver in the same subnet of the duts
-    # to be used to run tests.
-    if dev_server.PREFER_LOCAL_DEVSERVER and pool and board:
-        sample_dut = rpc_utils.get_sample_dut(board, pool)
-    else:
-        sample_dut = None
+    sample_dut = rpc_utils.get_sample_dut(board, pool)
 
     suite_name = canonicalize_suite_name(name)
     if run_prod_code:
