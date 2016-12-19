@@ -253,13 +253,6 @@ def create_suite_job(
                 test_source_build, hostname=sample_dut)
     keyvals[constants.SUITE_MIN_DUTS_KEY] = suite_min_duts
 
-    if run_prod_code:
-        control_file = _get_control_file_by_suite(suite_name)
-
-    if not control_file:
-        # No control file was supplied so look it up from the build artifacts.
-        control_file = _get_control_file_by_build(
-                test_source_build, ds, suite_name)
     # Do not change this naming convention without updating
     # site_utils.parse_job_name.
     if run_prod_code:
@@ -274,6 +267,14 @@ def create_suite_job(
 
     if not board:
         board = utils.ParseBuildName(builds[provision.CROS_VERSION_PREFIX])[0]
+
+    if run_prod_code:
+        control_file = _get_control_file_by_suite(suite_name)
+
+    if not control_file:
+        # No control file was supplied so look it up from the build artifacts.
+        control_file = _get_control_file_by_build(
+                test_source_build, ds, suite_name)
 
     # Prepend builds and board to the control file.
     if is_cloning:
