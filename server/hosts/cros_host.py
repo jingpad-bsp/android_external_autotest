@@ -330,7 +330,8 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
 
     def _get_cros_repair_image_name(self):
-        return afe_utils.get_stable_cros_version(self._get_board_from_afe())
+        return afe_utils.get_stable_cros_image_name(
+                self._get_board_from_afe())
 
 
     def lookup_job_repo_url(self):

@@ -312,8 +312,21 @@ class _CrosVersionMap(_OSVersionMap):
         super(_CrosVersionMap, self).__init__(afe, False)
 
 
-    def get_version(self, board):
-        version = super(_CrosVersionMap, self).get_version(board)
+    def get_image_name(self, board):
+        """
+        Return the full image name of the stable version for `board`.
+
+        This finds the stable version for `board`, and returns a string
+        identifying the associated image file.  The string represents
+        part of a URL for access to the image.
+
+        The image name is typically of a form like
+        "falco-release/R55-8872.44.0".
+
+        @return A string identifying the image file for the stable
+                image for `board`.
+        """
+        version = self.get_version(board)
         build_pattern = GLOBAL_CONFIG.get_config_value(
                 'CROS', 'stable_build_pattern')
         return build_pattern % (board, version)
