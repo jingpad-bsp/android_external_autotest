@@ -52,7 +52,7 @@ class firmware_TPMKernelVersion(FirmwareTest):
         self.dut_run_cmd('crossystem kernkey_vfy dev_boot_usb')
         # Boot CrOS from USB
         self.faft_client.system.set_dev_boot_usb(1)
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
+        self.switcher.simple_reboot()
         self.switcher.bypass_dev_boot_usb()
         self.switcher.wait_for_client()
 
