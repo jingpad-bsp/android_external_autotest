@@ -243,16 +243,34 @@ class SuiteSpec(object):
                       on the SUITE field of control files.
     """
 
-    def __init__(self, builds=None, board=None, name=None, job=None,
-                 pool=None, num=None, check_hosts=True,
-                 add_experimental=True, file_bugs=False,
-                 file_experimental_bugs=False, max_runtime_mins=24*60,
-                 timeout=24, timeout_mins=None, suite_dependencies=[],
-                 bug_template={}, devserver_url=None,
-                 priority=priorities.Priority.DEFAULT, predicate=None,
-                 wait_for_results=True, job_retry=False, max_retries=None,
-                 offload_failures_only=False, test_source_build=None,
-                 run_prod_code=False, delay_minutes=0, **dargs):
+    def __init__(
+            self,
+            builds=None,
+            board=None,
+            name=None,
+            job=None,
+            pool=None,
+            num=None,
+            check_hosts=True,
+            add_experimental=True,
+            file_bugs=False,
+            file_experimental_bugs=False,
+            max_runtime_mins=24*60,
+            timeout=24,
+            timeout_mins=None,
+            suite_dependencies=[],
+            bug_template={},
+            devserver_url=None,
+            priority=priorities.Priority.DEFAULT,
+            predicate=None,
+            wait_for_results=True,
+            job_retry=False,
+            max_retries=None,
+            offload_failures_only=False,
+            test_source_build=None,
+            run_prod_code=False,
+            delay_minutes=0,
+            **dargs):
         """
         Vets arguments for reimage_and_run() and populates self with supplied
         values.
