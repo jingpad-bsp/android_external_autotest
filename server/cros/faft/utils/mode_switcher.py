@@ -318,9 +318,8 @@ class _BaseModeSwitcher(object):
                      reboot_type, reboot_method.__name__)
         is_normal = is_dev = False
         if sync_before_boot:
-            if wait_for_dut_up:
-                is_normal = self.checkers.mode_checker('normal')
-                is_dev = self.checkers.mode_checker('dev')
+            is_normal = self.checkers.mode_checker('normal')
+            is_dev = self.checkers.mode_checker('dev')
             boot_id = self.faft_framework.get_bootid()
             self.faft_framework.blocking_sync()
         logging.info("-[mode_aware_reboot]-[ is_normal=%s is_dev=%s ]-",
@@ -328,17 +327,22 @@ class _BaseModeSwitcher(object):
         reboot_method()
         if sync_before_boot:
             self.wait_for_client_offline(orig_boot_id=boot_id)
+        # For encapsulating the behavior of skipping firmware screen,
+        # e.g. requiring unplug and plug USB, the variants are not
+        # hard coded in tests. We keep this logic in this
+        # mode_aware_reboot method.
+        if not is_dev:
+            self.servo.switch_usbkey('host')
+        # Encapsulating the behavior of skipping dev firmware screen,
+        # hitting ctrl-D
+        # Note that if booting from recovery mode, will not
+        # call bypass_dev_mode because can't determine prior to
+        # reboot if we're going to boot up in dev or normal mode.
+        if not is_normal:
+            self.bypass_dev_mode()
+        if not is_dev:
+            self.bypass_rec_mode()
         if wait_for_dut_up:
-            # For encapsulating the behavior of skipping firmware screen,
-            # e.g. requiring unplug and plug USB, the variants are not
-            # hard coded in tests. We keep this logic in this
-            # mode_aware_reboot method.
-            if not is_dev:
-                self.servo.switch_usbkey('host')
-            if not is_normal:
-                self.bypass_dev_mode()
-            if not is_dev:
-                self.bypass_rec_mode()
             self.wait_for_client()
         logging.info("-[ModeSwitcher]-[ end mode_aware_reboot(%r, %s, ..) ]-",
                      reboot_type, reboot_method.__name__)
