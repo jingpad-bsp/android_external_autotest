@@ -525,19 +525,28 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
     suite = Suite.create_from_predicates(
-        predicates=[predicate], name=spec.name,
-        builds=spec.builds, board=spec.board, devserver=spec.devserver,
-        afe=afe, tko=tko, pool=spec.pool,
-        results_dir=spec.job.resultdir,
-        max_runtime_mins=spec.max_runtime_mins, timeout_mins=spec.timeout_mins,
-        file_bugs=spec.file_bugs,
-        file_experimental_bugs=spec.file_experimental_bugs,
-        suite_job_id=suite_job_id, extra_deps=spec.suite_dependencies,
-        priority=spec.priority, wait_for_results=spec.wait_for_results,
-        job_retry=spec.job_retry, max_retries=spec.max_retries,
-        offload_failures_only=spec.offload_failures_only,
-        test_source_build=spec.test_source_build,
-        run_prod_code=spec.run_prod_code)
+            predicates=[predicate],
+            name=spec.name,
+            builds=spec.builds,
+            board=spec.board,
+            devserver=spec.devserver,
+            afe=afe,
+            tko=tko,
+            pool=spec.pool,
+            results_dir=spec.job.resultdir,
+            max_runtime_mins=spec.max_runtime_mins,
+            timeout_mins=spec.timeout_mins,
+            file_bugs=spec.file_bugs,
+            file_experimental_bugs=spec.file_experimental_bugs,
+            suite_job_id=suite_job_id,
+            extra_deps=spec.suite_dependencies,
+            priority=spec.priority,
+            wait_for_results=spec.wait_for_results,
+            job_retry=spec.job_retry,
+            max_retries=spec.max_retries,
+            offload_failures_only=spec.offload_failures_only,
+            test_source_build=spec.test_source_build,
+            run_prod_code=spec.run_prod_code)
 
 
     if spec.delay_minutes:
