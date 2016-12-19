@@ -261,6 +261,35 @@ class _BaseModeSwitcher(object):
         logging.info('-[ModeSwitcher]-[ end reboot_to_mode(%r, %r, %r) ]-',
                      to_mode, from_mode, wait_for_dut_up)
 
+    def simple_reboot(self, reboot_type='warm', sync_before_boot=True):
+        """Simple reboot method
+
+        Just reboot the DUT using either cold or warm reset.  Does not wait for
+        DUT to come back online.  Will wait for test to handle this.
+
+        @param reboot_type: A string of reboot type, 'warm' or 'cold'.
+                            If reboot_type != warm/cold, raise exception.
+        @param sync_before_boot: True to sync to disk before booting.
+                                 If sync_before_boot=False, DUT offline before
+                                 calling mode_aware_reboot.
+        """
+        if reboot_type == 'warm':
+            reboot_method = self.servo.get_power_state_controller().warm_reset
+        elif reboot_type == 'cold':
+            reboot_method = self.servo.get_power_state_controller().reset
+        else:
+            raise NotImplementedError('Not supported reboot_type: %s',
+                                      reboot_type)
+        if sync_before_boot:
+            boot_id = self.faft_framework.get_bootid()
+            self.faft_framework.blocking_sync()
+        logging.info("-[ModeSwitcher]-[ start simple_reboot(%r) ]-",
+                     reboot_type)
+        reboot_method()
+        if sync_before_boot:
+            self.wait_for_client_offline(orig_boot_id=boot_id)
+        logging.info("-[ModeSwitcher]-[ end simple_reboot(%r) ]-",
+                     reboot_type)
 
     def mode_aware_reboot(self, reboot_type=None, reboot_method=None,
                           sync_before_boot=True, wait_for_dut_up=True):
