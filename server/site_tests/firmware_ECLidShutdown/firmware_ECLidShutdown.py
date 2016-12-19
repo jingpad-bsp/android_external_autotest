@@ -65,7 +65,7 @@ class firmware_ECLidShutdown(FirmwareTest):
                                  0)
         # reboot into recovery mode and wait a bit for it to actually get there
         self.faft_client.system.request_recovery_boot()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
+        self.switcher.simple_reboot()
         time.sleep(self.faft_config.firmware_screen)
 
         # close/open lid
@@ -92,7 +92,7 @@ class firmware_ECLidShutdown(FirmwareTest):
                                  vboot.GBB_FLAG_DISABLE_LID_SHUTDOWN)
         # reboot into recovery mode and wait a bit for it to get there
         self.faft_client.system.request_recovery_boot()
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
+        self.switcher.simple_reboot()
         time.sleep(self.faft_config.firmware_screen)
 
         # close/open the lid

@@ -105,7 +105,7 @@ class firmware_EmmcWriteLoad(FirmwareTest):
 
     def run_once(self):
         self.faft_client.system.set_dev_boot_usb(1)
-        self.switcher.mode_aware_reboot(wait_for_dut_up=False)
+        self.switcher.simple_reboot()
         self.switcher.bypass_dev_boot_usb()
         self.switcher.wait_for_client()
 
