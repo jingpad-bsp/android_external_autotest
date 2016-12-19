@@ -1,14 +1,12 @@
 import heapq
 import os
-import time
-import traceback
 import logging
 
 from chromite.lib import metrics
 
 import common
 from autotest_lib.client.common_lib import error, global_config, utils
-from autotest_lib.scheduler import email_manager, drone_utility, drones
+from autotest_lib.scheduler import drone_utility, drones
 from autotest_lib.scheduler import drone_task_queue
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import thread_lib
@@ -183,9 +181,6 @@ class BaseDroneManager(object):
         self._attached_files = {}
         # heapq of _DroneHeapWrappers
         self._drone_queue = []
-        # map drone hostname to time stamp of email that
-        # has been sent about the drone hitting process limit.
-        self._notify_record = {}
         # A threaded task queue used to refresh drones asynchronously.
         if _THREADED_DRONE_MANAGER:
             self._refresh_task_queue = thread_lib.ThreadedTaskQueue(
@@ -437,20 +432,8 @@ class BaseDroneManager(object):
             percent = float(drone.active_processes) / drone.max_processes
         except ZeroDivisionError:
             percent = 100
-        max_percent = scheduler_config.config.max_processes_warning_threshold
-        if percent >= max_percent:
-            message = ('Drone %s is hitting %s of process limit.' %
-                       (drone.hostname, format(percent, '.2%')))
-            logging.warning(message)
-            last_notified = self._notify_record.get(drone.hostname, 0)
-            now = time.time()
-            if last_notified + BaseDroneManager.NOTIFY_INTERVAL < now:
-                body = ('Active processes/Process limit: %d/%d (%s)' %
-                        (drone.active_processes, drone.max_processes,
-                         format(percent, '.2%')))
-                email_manager.manager.enqueue_notify_email(message, body)
-                self._notify_record[drone.hostname] = now
-
+        metrics.Gauge('chromeos/autotest/drone/active_process_percentage'
+                      ).set(percent, fields={'drone_hostname': drone.hostname})
 
     def trigger_refresh(self):
         """Triggers a drone manager refresh.
@@ -564,10 +547,9 @@ class BaseDroneManager(object):
         try:
             self._results_drone.execute_queued_calls()
         except error.AutoservError:
-            warning = ('Results repository failed to execute calls:\n' +
-                       traceback.format_exc())
-            email_manager.manager.enqueue_notify_email(
-                'Results repository error', warning)
+            m = 'chromeos/autotest/errors/results_repository_failed'
+            metrics.Counter(m).increment(
+                fields={'drone_hostname': self._results_drone.hostname})
             self._results_drone.clear_call_queue()
 
 
