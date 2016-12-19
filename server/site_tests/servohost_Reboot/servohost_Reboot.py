@@ -31,7 +31,7 @@ class servohost_Reboot(test.test):
 
         # If we don't have to force reboot, check if we need to reboot at all.
         if not force_reboot:
-          servo_host_build = afe_utils.get_stable_cros_version(
+          servo_host_build = afe_utils.get_stable_cros_image_name(
                   s_host.get_board())
           ds = dev_server.ImageServer.resolve(s_host.hostname)
           url = ds.get_update_url(servo_host_build)

@@ -539,7 +539,7 @@ class ServoHost(ssh_host.SSHHost):
                          self.hostname)
             return
 
-        target_build = afe_utils.get_stable_cros_version(self.get_board())
+        target_build = afe_utils.get_stable_cros_image_name(self.get_board())
         target_build_number = server_site_utils.ParseBuildName(
                 target_build)[3]
         ds = dev_server.ImageServer.resolve(self.hostname)
