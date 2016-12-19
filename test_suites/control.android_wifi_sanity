@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bmahadev, krisr'
-NAME = 'android_wifi'
+NAME = 'android_wifi_sanity'
 PURPOSE = 'Test Android WiFi Sanity'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
