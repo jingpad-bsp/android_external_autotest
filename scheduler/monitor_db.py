@@ -661,12 +661,13 @@ class BaseDispatcher(object):
 
 
     def _check_for_remaining_orphan_processes(self, orphans):
+        m = 'chromeos/autotest/errors/unrecovered_orphan_processes'
+        metrics.Gauge(m).set(len(orphans))
+
         if not orphans:
             return
         subject = 'Unrecovered orphan autoserv processes remain'
         message = '\n'.join(str(process) for process in orphans)
-        email_manager.manager.enqueue_notify_email(subject, message)
-
         die_on_orphans = global_config.global_config.get_config_value(
             scheduler_config.CONFIG_SECTION, 'die_on_orphans', type=bool)
 
@@ -811,13 +812,6 @@ class BaseDispatcher(object):
         """
         if self.host_has_agent(host):
             host_agent_task = list(self._host_agents.get(host.id))[0].task
-            subject = 'Host with agents assigned to an HQE'
-            message = ('HQE: %s assigned host %s, but the host has '
-                       'agent: %s for queue_entry %s. The HQE '
-                       'will have to try and acquire a host next tick ' %
-                       (queue_entry, host.hostname, host_agent_task,
-                        host_agent_task.queue_entry))
-            email_manager.manager.enqueue_notify_email(subject, message)
         else:
             self._host_scheduler.schedule_host_job(host, queue_entry)
 
@@ -854,15 +848,10 @@ class BaseDispatcher(object):
         metrics.Counter(
             'chromeos/autotest/scheduler/scheduled_jobs_hostless'
         ).increment_by(new_hostless_jobs)
+
         if not host_jobs:
             return
-        if not _inline_host_acquisition:
-            message = ('Found %s jobs that need hosts though '
-                       '_inline_host_acquisition=%s. Will acquire hosts.' %
-                       ([str(job) for job in host_jobs],
-                        _inline_host_acquisition))
-            email_manager.manager.enqueue_notify_email(
-                    'Processing unexpected host acquisition requests', message)
+
         jobs_with_hosts = self._host_scheduler.find_hosts_for_jobs(host_jobs)
         for host_assignment in jobs_with_hosts:
             self._schedule_host_job(host_assignment.host, host_assignment.job)

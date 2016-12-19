@@ -147,13 +147,10 @@ class UserCleanup(PeriodicCleanup):
                 first_model, first_field, second_model, second_field))
 
         if errors:
-            subject = ('%s relationships to invalid models, cleaned all' %
-                       len(errors))
-            message = '\n'.join(errors)
-            logging.warning(subject)
-            logging.warning(message)
-            email_manager.manager.enqueue_notify_email(subject, message)
-
+            m = 'chromeos/autotest/scheduler/cleanup/invalid_models_cleaned'
+            metrics.Counter(m).increment_by(len(errors))
+            logging.warn('Cleaned invalid models due to errors: %s'
+                         % ('\n'.join(errors)))
 
     def _clear_inactive_blocks(self):
         msg = 'Clear out blocks for all completed jobs.'
