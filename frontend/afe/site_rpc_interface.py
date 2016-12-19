@@ -258,7 +258,6 @@ def create_suite_job(
 
     if not control_file:
         # No control file was supplied so look it up from the build artifacts.
-        suite_name = canonicalize_suite_name(name)
         control_file = _get_control_file_by_build(
                 test_source_build, ds, suite_name)
     # Do not change this naming convention without updating
