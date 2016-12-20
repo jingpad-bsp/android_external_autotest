@@ -1482,7 +1482,10 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                 # doing it by default.
                 self.disable_package_verification()
             if skip_setup_wizard:
-                self.skip_setup_wizard()
+                try:
+                    self.skip_setup_wizard()
+                except error.GenericHostRunError:
+                    logging.error('Could not skip setup wizard.')
         logging.info('Successfully installed Android build staged at %s.',
                      build_url)
 
