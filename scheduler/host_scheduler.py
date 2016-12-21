@@ -333,8 +333,8 @@ class HostScheduler(BaseHostScheduler):
                         ).increment_by(new_jobs_with_hosts)
 
         num_jobs_without_hosts = len(unverified_host_jobs) - new_jobs_with_hosts
-        metrics.Counter('%s/new_jobs_without_hosts' % _METRICS_PREFIX
-                        ).increment_by(num_jobs_without_hosts)
+        metrics.Gauge('%s/current_jobs_without_hosts' % _METRICS_PREFIX
+                      ).set(num_jobs_without_hosts)
         metrics.Counter('%s/tick' % _METRICS_PREFIX).increment()
 
 
