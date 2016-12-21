@@ -1364,14 +1364,10 @@ def get_sample_dut(board, pool):
     """
     if not (dev_server.PREFER_LOCAL_DEVSERVER and pool and board):
         return None
-    first_host = get_host_query(
-        multiple_labels=('pool:%s' % pool, 'board:%s' % board),
-        exclude_only_if_needed_labels=False,
-        exclude_atomic_group_hosts=False,
-        valid_only=True,
-        filter_data={},
-    ).first()
-    if first_host is None:
+
+    hosts = get_host_query(
+            ('pool:%s' % pool, 'board:%s' % board), False, False, True, {})
+    if not hosts:
         return None
-    else:
-        return first_host.hostname
+
+    return list(hosts)[0].get_object_dict()['hostname']
