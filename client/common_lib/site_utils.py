@@ -35,7 +35,8 @@ DEFAULT_OFFLOAD_GSURI = CONFIG.get_config_value(
         'CROS', 'results_storage_server', default=None)
 
 # Default Moblab Ethernet Interface.
-MOBLAB_ETH = 'eth0'
+_MOBLAB_ETH_0 = 'eth0'
+_MOBLAB_ETH_1 = 'eth1'
 
 # A list of subnets that requires dedicated devserver and drone in the same
 # subnet. Each item is a tuple of (subnet_ip, mask_bits), e.g.,
@@ -54,6 +55,26 @@ for subnet in restricted_subnets_list:
 # 192.168.0.1/24 should use wireless ssid of `ssid_1`
 # wireless_ssid_192.168.0.1/24: ssid_1
 WIRELESS_SSID_PATTERN = 'wireless_ssid_(.*)/(\d+)'
+
+def get_built_in_ethernet_nic_name():
+    """Gets the moblab public network interface.
+
+    If the eth0 is an USB interface, try to use eth1 instead. Otherwise
+    use eth0 by default.
+    """
+    try:
+        cmd_result = base_utils.run('readlink -f /sys/class/net/eth0')
+        if cmd_result.exit_status == 0 and 'usb' in cmd_result.stdout:
+            cmd_result = base_utils.run('readlink -f /sys/class/net/eth1')
+            if cmd_result.exit_status == 0 and not ('usb' in cmd_result.stdout):
+                logging.info('Eth0 is a USB dongle, use eth1 as moblab nic.')
+                return _MOBLAB_ETH_1
+    except error.CmdError:
+        # readlink is not supported.
+        logging.info('No readlink available, use eth0 as moblab nic.')
+        pass
+    return _MOBLAB_ETH_0
+
 
 def ping(host, deadline=None, tries=None, timeout=60):
     """Attempt to ping |host|.
@@ -158,7 +179,8 @@ def get_chrome_version(job_views):
 
 def get_default_interface_mac_address():
     """Returns the default moblab MAC address."""
-    return get_interface_mac_address(MOBLAB_ETH)
+    return get_interface_mac_address(
+            get_built_in_ethernet_nic_name())
 
 
 def get_interface_mac_address(interface):
@@ -215,7 +237,8 @@ def get_offload_gsuri():
         gsuri = "%sresults/" % CONFIG.get_config_value('CROS', 'image_storage_server')
 
     return '%s%s/%s/' % (
-            gsuri, get_interface_mac_address(MOBLAB_ETH), get_moblab_id())
+            gsuri, get_interface_mac_address(get_built_in_ethernet_nic_name()),
+            get_moblab_id())
 
 
 # TODO(petermayo): crosbug.com/31826 Share this with _GsUpload in
