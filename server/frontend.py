@@ -311,25 +311,34 @@ class _CrosVersionMap(_OSVersionMap):
     def __init__(self, afe):
         super(_CrosVersionMap, self).__init__(afe, False)
 
+    @staticmethod
+    def format_image_name(board, version):
+        """
+        Return an image name for a given `board` and `version`.
+
+        This formats `board` and `version` into a string identifying an
+        image file.  The string represents part of a URL for access to
+        the image.
+
+        The returned image name is typically of a form like
+        "falco-release/R55-8872.44.0".
+        """
+        build_pattern = GLOBAL_CONFIG.get_config_value(
+                'CROS', 'stable_build_pattern')
+        return build_pattern % (board, version)
 
     def get_image_name(self, board):
         """
         Return the full image name of the stable version for `board`.
 
         This finds the stable version for `board`, and returns a string
-        identifying the associated image file.  The string represents
-        part of a URL for access to the image.
-
-        The image name is typically of a form like
-        "falco-release/R55-8872.44.0".
+        identifying the associated image as for `format_image_name()`,
+        above.
 
         @return A string identifying the image file for the stable
                 image for `board`.
         """
-        version = self.get_version(board)
-        build_pattern = GLOBAL_CONFIG.get_config_value(
-                'CROS', 'stable_build_pattern')
-        return build_pattern % (board, version)
+        return self.format_image_name(board, self.get_version(board))
 
 
 class _AndroidVersionMap(_OSVersionMap):
