@@ -125,6 +125,7 @@ class AndroidArtifacts(object):
     # (os, board) = 'artifacts'
     DEFAULT_ARTIFACTS_MAP = {
         ('android', 'default'): [BOOTLOADER_IMAGE, RADIO_IMAGE, ZIP_IMAGE],
+        ('android', 'bat_land'): [ZIP_IMAGE],
         ('brillo', 'default'):  [ZIP_IMAGE, VENDOR_PARTITIONS],
         ('emulated_brillo', 'default'): [TARGET_FILES, DTB],
     }
@@ -152,6 +153,7 @@ class AndroidArtifacts(object):
 
         @return: A string of artifacts to be staged.
         """
+        logging.debug('artifacts for %s %s', os, board)
         if board in cls.artifacts_map:
             logging.debug('Found override of artifacts for board %s: %s', board,
                           cls.artifacts_map[board])
@@ -160,4 +162,5 @@ class AndroidArtifacts(object):
             artifacts = cls.DEFAULT_ARTIFACTS_MAP[(os, board)]
         else:
             artifacts = cls.DEFAULT_ARTIFACTS_MAP[(os, 'default')]
+        logging.debug('found %s', ','.join(artifacts))
         return ','.join(artifacts)
