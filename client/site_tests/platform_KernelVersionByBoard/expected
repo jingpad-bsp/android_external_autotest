@@ -10,7 +10,7 @@ cave 3.18
 celes 3.18
 chell 3.18
 cid 3.14
-clapper 3.10
+clapper 4.4
 cranky 3.10
 cyan 3.18
 daisy 3.8
@@ -29,6 +29,7 @@ gnawty 3.10
 gru 4.4
 guado 3.14
 heli 3.10
+kefka 3.18
 kevin 4.4
 kip 3.10
 lars 3.18
@@ -52,7 +53,7 @@ pbody 3.18
 peach_pi 3.8
 peach_pit 3.8
 peppy 3.8
-quawks 3.10
+quawks 4.4
 rambi 3.10
 reef 4.4
 reks 3.18
@@ -61,7 +62,7 @@ rikku 3.14
 samus 3.14
 sentry 3.18
 setzer 3.18
-squawks 3.10
+squawks 4.4
 storm 3.14
 stout 3.8
 stumpy 3.8
