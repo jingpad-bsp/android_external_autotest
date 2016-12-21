@@ -418,8 +418,9 @@ def parse_leaf_path(db, path, level, parse_options):
     jobname = "/".join(job_elements)
     try:
         db.run_with_retry(parse_one, db, jobname, path, parse_options)
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        tko_utils.dprint("Error parsing leaf path: %s\nException:\n%s\n%s" %
+                         (path, e, traceback.format_exc()))
     return jobname
 
 
