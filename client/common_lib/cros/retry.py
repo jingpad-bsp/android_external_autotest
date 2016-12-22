@@ -78,7 +78,10 @@ def custom_sigalarm_handler(func, timeout_sec):
     @param func: the function that may time out
     @param timeout_sec: timeout length in seconds
     """
-    name = func.__name__ if hasattr(func, "__name__") else "unnamed function"
+    try:
+        name = str(func.__name__)
+    except Exception as e:
+        name = '(unavailable function name: exception: %s)' % e
     message = "sigalarm timeout (%d seconds) in %s" % (timeout_sec, name)
     return lambda signum, frame: sigalarm_wrapper(message)
 
