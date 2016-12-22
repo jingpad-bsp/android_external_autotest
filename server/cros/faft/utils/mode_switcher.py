@@ -303,6 +303,8 @@ class _BaseModeSwitcher(object):
         @param reboot_method: A custom method to do the reboot. Only use it if
                               reboot_type='custom'.
         @param sync_before_boot: True to sync to disk before booting.
+                                 If sync_before_boot=False, DUT offline before
+                                 calling mode_aware_reboot.
         @param wait_for_dut_up: True to wait DUT online again. False to do the
                                 reboot only.
         """
