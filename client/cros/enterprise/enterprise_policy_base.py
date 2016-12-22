@@ -156,7 +156,8 @@ class EnterprisePolicyTest(test.test):
 
 
     def setup_case(self, policy_name, policy_value, mandatory_policies={},
-                   suggested_policies={}, policy_name_is_suggested=False):
+                   suggested_policies={}, policy_name_is_suggested=False,
+                   skip_policy_value_verification=False):
         """Set up and confirm the preconditions of a test case.
 
         If the AutoTest fake DM Server is used, make a JSON policy blob
@@ -175,6 +176,8 @@ class EnterprisePolicyTest(test.test):
         @param suggested_policies: optional dict of suggested policies
                 (not policy_name) in name -> value format.
         @param policy_name_is_suggested: True if policy_name a suggested policy.
+        @param skip_policy_value_verification: True if setup_case should not
+                verify that the correct policy value shows on policy page.
 
         @raises error.TestError if cryptohome vault is not mounted for user.
         @raises error.TestFail if |policy_name| and |policy_value| are not
@@ -197,7 +200,8 @@ class EnterprisePolicyTest(test.test):
                                            allow_fail=True):
             raise error.TestError('Expected to find a mounted vault for %s.'
                                   % self.username)
-        self.verify_policy_value(policy_name, policy_value)
+        if not skip_policy_value_verification:
+            self.verify_policy_value(policy_name, policy_value)
 
 
     def _make_json_blob(self, mandatory_policies, suggested_policies):
