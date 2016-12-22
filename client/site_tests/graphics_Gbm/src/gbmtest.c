@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -606,6 +607,52 @@ static int test_import_planar()
 	return 1;
 }
 
+static int test_gem_map()
+{
+	uint32_t *pixel, pixel_size;
+	struct gbm_bo *bo;
+	void *map_data, *addr;
+
+	uint32_t stride = 0;
+	const int width = 666;
+	const int height = 777;
+
+	addr = map_data = NULL;
+
+	bo = gbm_bo_create(gbm, width, height, GBM_FORMAT_ARGB8888, GBM_BO_USE_LINEAR);
+	CHECK(check_bo(bo));
+
+	addr = gbm_bo_map(bo, 0, 0, width, height, 0, &stride, &map_data, 0);
+
+	CHECK(addr != MAP_FAILED);
+	CHECK(map_data);
+	CHECK(stride > 0);
+
+	pixel = (uint32_t *)addr;
+	pixel_size = sizeof(*pixel);
+
+	pixel[(height / 2) * (stride / pixel_size) + width / 2] = 0xABBAABBA;
+	gbm_bo_unmap(bo, map_data);
+
+	/* Re-map and verify written previously data. */
+	stride = 0;
+	addr = map_data = NULL;
+
+	addr = gbm_bo_map(bo, 0, 0, width, height, 0, &stride, &map_data, 0);
+
+	CHECK(addr != MAP_FAILED);
+	CHECK(map_data);
+	CHECK(stride > 0);
+
+	pixel = (uint32_t *)addr;
+	CHECK(pixel[(height / 2) * (stride / pixel_size) + width / 2] == 0xABBAABBA);
+
+	gbm_bo_unmap(bo, map_data);
+	gbm_bo_destroy(bo);
+
+	return 1;
+}
+
 int main(int argc, char *argv[])
 {
 	int result;
@@ -629,6 +676,7 @@ int main(int argc, char *argv[])
 	result &= test_import_vgem();
 	result &= test_import_dmabuf();
 	result &= test_import_planar();
+	result &= test_gem_map();
 	result &= test_destroy();
 
 	if (!result) {
