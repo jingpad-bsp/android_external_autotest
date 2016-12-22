@@ -432,7 +432,7 @@ class BaseDroneManager(object):
             percent = float(drone.active_processes) / drone.max_processes
         except ZeroDivisionError:
             percent = 100
-        metrics.Gauge('chromeos/autotest/drone/active_process_percentage'
+        metrics.Float('chromeos/autotest/drone/active_process_percentage'
                       ).set(percent, fields={'drone_hostname': drone.hostname})
 
     def trigger_refresh(self):
