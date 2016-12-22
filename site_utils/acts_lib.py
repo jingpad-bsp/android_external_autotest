@@ -434,7 +434,8 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
                          been uploaded with upload_campaign. The string passed
                          into upload_campaign should be used here.
         @param test_case: The test case to run the test with. If none then the
-                          campaign will be used.
+                          campaign will be used. If multiple are given,
+                          multiple will be run.
         @param extra_env: Extra enviroment variables to run the test with.
         @param python_bin: The python binary to execute the test with.
         @param timeout: How many seconds to wait before timing out.
@@ -478,7 +479,17 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
             raise error.TestError(
                     'campaign and test_file cannot both have a value.')
         elif test_case:
-            act_cmd = '%s -tc %s' % (act_base_cmd, test_case)
+            if isinstance(test_case, str):
+                test_case = [test_case]
+            if len(test_case) < 1:
+                raise error.TestError('At least one test case must be given.')
+
+            tc_str = ''
+            for tc in test_case:
+                tc_str = '%s %s' % (tc_str, tc)
+            tc_str = tc_str.strip()
+
+            act_cmd = '%s -tc %s' % (act_base_cmd, tc_str)
         elif campaign:
             act_cmd = '%s -tf %s' % (act_base_cmd, full_campaign)
         else:
@@ -497,7 +508,7 @@ class ActsTestingEnviroment(ActsContainer, AndroidTestingEnviroment):
             act_result = None
             excep = e
 
-        return ActsTestResults(test_case or campaign,
+        return ActsTestResults(str(test_case) or campaign,
                                self.testbed,
                                testbed_name=self.testbed_name,
                                run_result=act_result,
