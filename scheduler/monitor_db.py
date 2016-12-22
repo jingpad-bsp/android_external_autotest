@@ -857,6 +857,16 @@ class BaseDispatcher(object):
         if not host_jobs:
             return
 
+        if not _inline_host_acquisition:
+          # In this case, host_scheduler is responsible for scheduling
+          # host_jobs. Scheduling the jobs ourselves can lead to DB corruption
+          # since host_scheduler assumes it is the single process scheduling
+          # host jobs.
+          metrics.Gauge(
+              'chromeos/autotest/errors/scheduler/unexpected_host_jobs').set(
+                  len(host_jobs))
+          return
+
         jobs_with_hosts = self._host_scheduler.find_hosts_for_jobs(host_jobs)
         for host_assignment in jobs_with_hosts:
             self._schedule_host_job(host_assignment.host, host_assignment.job)
