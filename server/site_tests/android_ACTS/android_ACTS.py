@@ -54,7 +54,8 @@ class android_ACTS(test.test):
                           is given.
         @param test_file: The campaign file to run. Should be None when
                           test_case is given. This should be relative to the
-                          autotest_campaign folder.
+                          autotest_campaign folder. If multiple are given,
+                          multiple test cases will be run.
         @param additional_configs: Any additional config files to use.
                                    These should be relative to the
                                    autotest_config folder.
