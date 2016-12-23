@@ -13,7 +13,7 @@ from autotest_lib.client.cros.audio import audio_test_data
 from autotest_lib.client.cros.chameleon import audio_test_utils
 from autotest_lib.client.cros.chameleon import chameleon_audio_helper
 from autotest_lib.client.cros.chameleon import chameleon_audio_ids
-from autotest_lib.client.cros.multimedia import webrtc_resource
+from autotest_lib.client.cros.multimedia import webrtc_utils
 from autotest_lib.server.cros.audio import audio_test
 from autotest_lib.server.cros.multimedia import remote_facade_factory
 
@@ -105,7 +105,7 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
                 usb_out.set_playback_data(golden_file)
 
                 browser_facade = factory.create_browser_facade()
-                apprtc = webrtc_resource.AppRTCController(browser_facade)
+                apprtc = webrtc_utils.AppRTCController(browser_facade)
                 logging.info('Load AppRTC loopback webpage')
                 apprtc.new_apprtc_loopback_page()
 
