@@ -72,13 +72,7 @@ _autoserv_directory = autoserv_utils.autoserv_directory
 _autoserv_path = autoserv_utils.autoserv_path
 _testing_mode = False
 _drone_manager = None
-_inline_host_acquisition = global_config.global_config.get_config_value(
-        scheduler_config.CONFIG_SECTION, 'inline_host_acquisition', type=bool,
-        default=True)
 
-_enable_ssp_container = global_config.global_config.get_config_value(
-        'AUTOSERV', 'enable_ssp_container', type=bool,
-        default=True)
 
 def _site_init_monitor_db_dummy():
     return {}
@@ -310,6 +304,10 @@ class BaseDispatcher(object):
         self._extra_debugging = global_config.global_config.get_config_value(
                 scheduler_config.CONFIG_SECTION, 'extra_debugging', type=bool,
                 default=False)
+        self._inline_host_acquisition = (
+                global_config.global_config.get_config_value(
+                        scheduler_config.CONFIG_SECTION,
+                        'inline_host_acquisition', type=bool, default=True))
 
         # If _inline_host_acquisition is set the scheduler will acquire and
         # release hosts against jobs inline, with the tick. Otherwise the
@@ -317,7 +315,7 @@ class BaseDispatcher(object):
         # will not explicitly unlease a host when a job finishes using it.
         self._job_query_manager = query_managers.AFEJobQueryManager()
         self._host_scheduler = (host_scheduler.BaseHostScheduler()
-                                if _inline_host_acquisition else
+                                if self._inline_host_acquisition else
                                 host_scheduler.DummyHostScheduler())
 
 
@@ -726,7 +724,7 @@ class BaseDispatcher(object):
         # scheduler has vetted the assignment. Note that this doesn't include
         # frontend tasks with hosts leased by other active hqes.
         for task in self._job_query_manager.get_prioritized_special_tasks(
-                only_tasks_with_leased_hosts=not _inline_host_acquisition):
+                only_tasks_with_leased_hosts=not self._inline_host_acquisition):
             if self.host_has_agent(task.host):
                 continue
             self.add_agent_task(self._get_agent_task_for_special_task(task))
@@ -774,7 +772,7 @@ class BaseDispatcher(object):
         @returns A list of pending HostQueueEntries sorted in priority order.
         """
         queue_entries = self._job_query_manager.get_pending_queue_entries(
-                only_hostless=not _inline_host_acquisition)
+                only_hostless=not self._inline_host_acquisition)
         if not queue_entries:
             return []
         return queue_entries
@@ -857,7 +855,7 @@ class BaseDispatcher(object):
         if not host_jobs:
             return
 
-        if not _inline_host_acquisition:
+        if not self._inline_host_acquisition:
           # In this case, host_scheduler is responsible for scheduling
           # host_jobs. Scheduling the jobs ourselves can lead to DB corruption
           # since host_scheduler assumes it is the single process scheduling
@@ -1338,6 +1336,10 @@ class QueueTask(AbstractQueueTask):
     def __init__(self, queue_entries):
         super(QueueTask, self).__init__(queue_entries)
         self._set_ids(queue_entries=queue_entries)
+        self._enable_ssp_container = (
+                global_config.global_config.get_config_value(
+                        'AUTOSERV', 'enable_ssp_container', type=bool,
+                        default=True))
 
 
     def prolog(self):
@@ -1367,7 +1369,7 @@ class QueueTask(AbstractQueueTask):
     def _command_line(self):
         invocation = super(QueueTask, self)._command_line()
         # Check if server-side packaging is needed.
-        if (_enable_ssp_container and
+        if (self._enable_ssp_container and
             self.job.control_type == control_data.CONTROL_TYPE.SERVER and
             self.job.require_ssp != False):
             invocation += ['--require-ssp']
