@@ -393,6 +393,8 @@ class SchedulerFunctionalTest(unittest.TestCase,
         self.mock_config.set_config_value('SCHEDULER', 'max_repair_limit', 1)
         self.mock_config.set_config_value(
                 'SCHEDULER', 'secs_to_wait_for_atomic_group_hosts', 600)
+        self.mock_config.set_config_value(
+                'SCHEDULER', 'inline_host_acquisition', True)
         scheduler_config.config.read_config()
 
 
