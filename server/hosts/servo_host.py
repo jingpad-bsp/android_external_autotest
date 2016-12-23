@@ -542,7 +542,11 @@ class ServoHost(ssh_host.SSHHost):
         target_build = afe_utils.get_stable_cros_image_name(self.get_board())
         target_build_number = server_site_utils.ParseBuildName(
                 target_build)[3]
-        ds = dev_server.ImageServer.resolve(self.hostname)
+        # For servo image staging, we want it as more widely distributed as
+        # possible, so that devservers' load can be evenly distributed. So use
+        # hostname instead of target_build as hash.
+        ds = dev_server.ImageServer.resolve(self.hostname,
+                                            hostname=self.hostname)
         url = ds.get_update_url(target_build)
 
         updater = autoupdater.ChromiumOSUpdater(update_url=url, host=self)
