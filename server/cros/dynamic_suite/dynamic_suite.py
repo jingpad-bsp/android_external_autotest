@@ -232,6 +232,14 @@ class SuiteSpec(object):
                       on the SUITE field of control files.
     """
 
+    _REQUIRED_KEYWORDS = {
+            'board': str,
+            'builds': dict,
+            'name': str,
+            'job': base_job.base_job,
+            'devserver_url': str,
+    }
+
     def __init__(
             self,
             builds=None,
@@ -330,15 +338,7 @@ class SuiteSpec(object):
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
         """
-        required_keywords = {
-                'board': str,
-                'builds': dict,
-                'name': str,
-                'job': base_job.base_job,
-                'devserver_url': str,
-        }
-
-        for key, expected in required_keywords.iteritems():
+        for key, expected in self._REQUIRED_KEYWORDS.iteritems():
             value = locals().get(key)
             if not value or not isinstance(value, expected):
                 raise error.SuiteArgumentException(
