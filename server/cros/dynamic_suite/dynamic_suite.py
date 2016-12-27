@@ -368,10 +368,7 @@ class SuiteSpec(object):
 
         self.name = name
         self.job = job
-        if pool:
-            self.pool = 'pool:%s' % pool
-        else:
-            self.pool = pool
+        self._init_pool(pool)
         self.num = num
         self.check_hosts = check_hosts
         self.skip_reimage = skip_reimage
@@ -407,7 +404,15 @@ class SuiteSpec(object):
             # this behavior.
             if not value or not isinstance(value, expected_type):
                 raise error.SuiteArgumentException(
-                        'reimage_and_run() needs %s=<%r>' % (key, expected_type))
+                        'reimage_and_run() needs %s=<%r>'
+                        % (key, expected_type))
+
+    def _init_pool(self, pool):
+        """Initialize pool attribute."""
+        if pool:
+            self.pool = 'pool:%s' % pool
+        else:
+            self.pool = pool
 
 
 def skip_reimage(g):
