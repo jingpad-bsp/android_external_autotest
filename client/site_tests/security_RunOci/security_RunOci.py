@@ -86,6 +86,8 @@ CONFIG_JSON_TEMPLATE = '''
 class security_RunOci(test.test):
     version = 1
 
+    preserve_srcdir = True
+
     def get_test_option(self, handle):
         """
         Gets the test configuration from the json file given in handle.
