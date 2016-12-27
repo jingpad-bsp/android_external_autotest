@@ -338,11 +338,12 @@ class SuiteSpec(object):
                         deprecate and remove arguments in ToT while not
                         breaking branch builds.
         """
-        for key, expected in self._REQUIRED_KEYWORDS.iteritems():
-            value = locals().get(key)
-            if not value or not isinstance(value, expected):
-                raise error.SuiteArgumentException(
-                        'reimage_and_run() needs %s=<%r>' % (key, expected))
+        self._check_init_params(
+                board=board,
+                builds=builds,
+                name=name,
+                job=job,
+                devserver_url=devserver_url)
 
         self.board = 'board:%s' % board
         self.builds = builds
@@ -395,6 +396,13 @@ class SuiteSpec(object):
         self.offload_failures_only = offload_failures_only
         self.run_prod_code = run_prod_code
         self.delay_minutes = delay_minutes
+
+    def _check_init_params(self, **kwargs):
+        for key, expected in self._REQUIRED_KEYWORDS.iteritems():
+            value = kwargs.get(key)
+            if not value or not isinstance(value, expected):
+                raise error.SuiteArgumentException(
+                        'reimage_and_run() needs %s=<%r>' % (key, expected))
 
 
 def skip_reimage(g):
