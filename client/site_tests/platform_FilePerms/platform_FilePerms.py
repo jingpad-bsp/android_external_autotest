@@ -103,6 +103,9 @@ class platform_FilePerms(test.test):
         '/sys/fs/cgroup/freezer': {
             'type': 'cgroup',
             'options': standard_rw_options},
+        '/sys/fs/cgroup/schedtune/chrome': {
+            'type': 'cgroup',
+            'options': standard_rw_options},
         '/sys/fs/fuse/connections': {
             'type': 'fusectl',
             'options': standard_rw_options},
