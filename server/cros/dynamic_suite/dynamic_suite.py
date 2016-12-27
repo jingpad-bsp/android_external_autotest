@@ -379,11 +379,7 @@ class SuiteSpec(object):
         self.max_runtime_mins = max_runtime_mins
         self.timeout = timeout
         self.timeout_mins = timeout_mins or timeout * 60
-        if isinstance(suite_dependencies, str):
-            self.suite_dependencies = [dep.strip(' ') for dep
-                                       in suite_dependencies.split(',')]
-        else:
-            self.suite_dependencies = suite_dependencies
+        self._init_suite_dependencies(suite_dependencies)
         self.bug_template = bug_template
         self.priority = priority
         self.predicate = predicate
@@ -413,6 +409,14 @@ class SuiteSpec(object):
             self.pool = 'pool:%s' % pool
         else:
             self.pool = pool
+
+    def _init_suite_dependencies(self, suite_dependencies):
+        """Initialize suite dependencies attribute."""
+        if isinstance(suite_dependencies, str):
+            self.suite_dependencies = [dep.strip(' ') for dep
+                                       in suite_dependencies.split(',')]
+        else:
+            self.suite_dependencies = suite_dependencies
 
 
 def skip_reimage(g):
