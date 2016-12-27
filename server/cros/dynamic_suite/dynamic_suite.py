@@ -398,11 +398,16 @@ class SuiteSpec(object):
         self.delay_minutes = delay_minutes
 
     def _check_init_params(self, **kwargs):
-        for key, expected in self._REQUIRED_KEYWORDS.iteritems():
+        for key, expected_type in self._REQUIRED_KEYWORDS.iteritems():
             value = kwargs.get(key)
-            if not value or not isinstance(value, expected):
+            # TODO(ayatane): `not value` includes both the cases where value is
+            # None and where value is the correct type, but empty (e.g., empty
+            # dict).  It looks like this is NOT the intended behavior, but I'm
+            # hesitant to remove it in case something is actually relying on
+            # this behavior.
+            if not value or not isinstance(value, expected_type):
                 raise error.SuiteArgumentException(
-                        'reimage_and_run() needs %s=<%r>' % (key, expected))
+                        'reimage_and_run() needs %s=<%r>' % (key, expected_type))
 
 
 def skip_reimage(g):
