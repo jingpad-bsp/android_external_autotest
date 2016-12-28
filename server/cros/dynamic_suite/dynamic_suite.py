@@ -357,11 +357,7 @@ class SuiteSpec(object):
                     self.builds[system_image_prefix])
                 self.builds[system_image_prefix] = translated_build
 
-        if test_source_build:
-            test_source_build = self.devserver.translate(test_source_build)
-
-        self.test_source_build = Suite.get_test_source_build(
-                self.builds, test_source_build=test_source_build)
+        self._init_test_source_build(test_source_build)
 
         self.name = name
         self.job = job
@@ -421,6 +417,14 @@ class SuiteSpec(object):
             self.devserver = dev_server.AndroidBuildServer(devserver_url)
         else:
             self.devserver = dev_server.ImageServer(devserver_url)
+
+    def _init_test_source_build(self, test_source_build):
+        """Initialize test_source_build attribute."""
+        if test_source_build:
+            test_source_build = self.devserver.translate(test_source_build)
+
+        self.test_source_build = Suite.get_test_source_build(
+                self.builds, test_source_build=test_source_build)
 
 
 def skip_reimage(g):
