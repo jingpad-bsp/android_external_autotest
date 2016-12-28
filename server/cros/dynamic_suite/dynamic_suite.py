@@ -348,10 +348,7 @@ class SuiteSpec(object):
         self.board = 'board:%s' % board
         self.builds = builds
 
-        if provision.ANDROID_BUILD_VERSION_PREFIX in self.builds:
-            self.devserver = dev_server.AndroidBuildServer(devserver_url)
-        else:
-            self.devserver = dev_server.ImageServer(devserver_url)
+        self._init_devserver(devserver_url)
 
         for system_image_prefix in [provision.CROS_VERSION_PREFIX,
                                     provision.ANDROID_BUILD_VERSION_PREFIX]:
@@ -417,6 +414,13 @@ class SuiteSpec(object):
                                        in suite_dependencies.split(',')]
         else:
             self.suite_dependencies = suite_dependencies
+
+    def _init_devserver(self, devserver_url):
+        """Initialize devserver attribute."""
+        if provision.ANDROID_BUILD_VERSION_PREFIX in self.builds:
+            self.devserver = dev_server.AndroidBuildServer(devserver_url)
+        else:
+            self.devserver = dev_server.ImageServer(devserver_url)
 
 
 def skip_reimage(g):
