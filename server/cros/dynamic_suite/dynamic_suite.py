@@ -352,11 +352,6 @@ class SuiteSpec(object):
 
         self.board = 'board:%s' % board
         self.builds = builds
-
-        self._init_devserver(devserver_url)
-        self._translate_builds()
-        self._init_test_source_build(test_source_build)
-
         self.name = name
         self.job = job
         self.pool = ('pool:%s' % pool) if pool else pool
@@ -370,7 +365,6 @@ class SuiteSpec(object):
         self.max_runtime_mins = max_runtime_mins
         self.timeout = timeout
         self.timeout_mins = timeout_mins or timeout * 60
-        self._init_suite_dependencies(suite_dependencies)
         self.bug_template = bug_template
         self.priority = priority
         self.predicate = predicate
@@ -380,6 +374,11 @@ class SuiteSpec(object):
         self.offload_failures_only = offload_failures_only
         self.run_prod_code = run_prod_code
         self.delay_minutes = delay_minutes
+
+        self._init_suite_dependencies(suite_dependencies)
+        self._init_devserver(devserver_url)
+        self._init_test_source_build(test_source_build)
+        self._translate_builds()
 
     def _check_init_params(self, **kwargs):
         for key, expected_type in self._REQUIRED_KEYWORDS.iteritems():
