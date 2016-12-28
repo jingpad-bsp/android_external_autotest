@@ -233,7 +233,7 @@ class BaseUpdater(object):
             c = metrics.Counter(
                 'chromeos/autotest/autoupdater/trigger')
             f = {'dev_server':
-                 dev_server.ImageServer.get_server_name(self.update_url),
+                 dev_server.get_hostname(self.update_url),
                  'success': to_raise is None,
                  'board': board,
                  'build_type': build_type,
@@ -283,7 +283,7 @@ class BaseUpdater(object):
             c = metrics.Counter(
                 'chromeos/autotest/autoupdater/update')
             f = {'dev_server':
-                 dev_server.ImageServer.get_server_name(self.update_url),
+                 dev_server.get_hostname(self.update_url),
                  'success': to_raise is None,
                  'board': board,
                  'build_type': build_type,
