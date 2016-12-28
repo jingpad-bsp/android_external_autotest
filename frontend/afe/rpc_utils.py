@@ -6,6 +6,7 @@ only RPC interface functions go into that file.
 
 __author__ = 'showard@google.com (Steve Howard)'
 
+import collections
 import datetime
 from functools import wraps
 import inspect
@@ -864,12 +865,12 @@ def bucket_hosts_by_shard(host_objs, rpc_hostnames=False):
 
     @return: A map of shard hostname: list of hosts on the shard.
     """
-    shard_host_map = {}
+    shard_host_map = collections.defaultdict(list)
     for host in host_objs:
         if host.shard:
             shard_name = (host.shard.rpc_hostname() if rpc_hostnames
                           else host.shard.hostname)
-            shard_host_map.setdefault(shard_name, []).append(host.hostname)
+            shard_host_map[shard_name].append(host.hostname)
     return shard_host_map
 
 
