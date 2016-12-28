@@ -75,15 +75,40 @@ else:
     DEFAULT_SHADOW_FILE = None
     RUNNING_STAND_ALONE_CLIENT = True
 
+
 class global_config_class(object):
     """Object to access config values."""
     _NO_DEFAULT_SPECIFIED = object()
 
-    config = None
+    _config = None
     config_file = DEFAULT_CONFIG_FILE
     moblab_file=DEFAULT_MOBLAB_FILE
     shadow_file = DEFAULT_SHADOW_FILE
     running_stand_alone_client = RUNNING_STAND_ALONE_CLIENT
+
+
+    @property
+    def config(self):
+        """ConfigParser instance.
+
+        If the instance dict doesn't have a config key, this descriptor
+        will be called to ensure the config file is parsed (setting the
+        config key in the instance dict as a side effect).  Once the
+        instance dict has a config key, that value will be used in
+        preference.
+        """
+        if self._config is None:
+            self.parse_config_file()
+        return self._config
+
+
+    @config.setter
+    def config(self, value):
+        """Set config attribute.
+
+        @param value: value to set
+        """
+        self._config = value
 
 
     def check_stand_alone_client_run(self):
@@ -97,7 +122,7 @@ class global_config_class(object):
         self.config_file = config_file
         self.moblab_file = moblab_file
         self.shadow_file = shadow_file
-        self.config = None
+        self._config = None
 
 
     def _handle_no_value(self, section, key, default):
@@ -159,8 +184,6 @@ class global_config_class(object):
 
         @return: The obtained value or default.
         """
-        self._ensure_config_parsed()
-
         try:
             val = self.config.get(section, key)
         except ConfigParser.Error:
@@ -183,7 +206,6 @@ class global_config_class(object):
                  an empty dictionary if no matching key is found.
         """
         configs = {}
-        self._ensure_config_parsed()
         for option, value in self.config.items(section):
             if re.match(key_regex, option):
                 configs[option] = self._convert_value(option, section, value,
@@ -239,7 +261,6 @@ class global_config_class(object):
         @param key: Name of the key.
         @param new_value: new value.
         """
-        self._ensure_config_parsed()
         self.config.set(section, key, new_value)
 
 
@@ -249,13 +270,6 @@ class global_config_class(object):
         overrides).
         """
         self.parse_config_file()
-
-
-    def _ensure_config_parsed(self):
-        """Make sure config files are parsed.
-        """
-        if self.config is None:
-            self.parse_config_file()
 
 
     def merge_configs(self, override_config):
@@ -346,7 +360,6 @@ class global_config_class(object):
 
     def get_sections(self):
         """Return a list of sections available."""
-        self._ensure_config_parsed()
         return self.config.sections()
 
 
