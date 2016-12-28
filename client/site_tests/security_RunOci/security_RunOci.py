@@ -54,15 +54,27 @@ CONFIG_JSON_TEMPLATE = '''
     ],
     "hooks": {},
     "linux": {
-        "devices": [
+        "namespaces": [
         {
-            "path": "/dev/null",
-            "type": "c",
-            "major": 1,
-            "minor": 3,
-            "fileMode": 438,
-            "uid": 0,
-            "gid": 0
+            "type": "cgroup"
+        },
+        {
+            "type": "pid"
+        },
+        {
+            "type": "network"
+        },
+        {
+            "type": "ipc"
+        },
+        {
+            "type": "user"
+        },
+        {
+            "type": "uts"
+        },
+        {
+            "type": "mount"
         }
         ],
         "uidMappings": [
