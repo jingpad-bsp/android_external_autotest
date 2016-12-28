@@ -361,7 +361,7 @@ class SuiteSpec(object):
 
         self.name = name
         self.job = job
-        self._init_pool(pool)
+        self.pool = ('pool:%s' % pool) if pool else pool
         self.num = num
         self.check_hosts = check_hosts
         self.skip_reimage = skip_reimage
@@ -395,13 +395,6 @@ class SuiteSpec(object):
                 raise error.SuiteArgumentException(
                         'reimage_and_run() needs %s=<%r>'
                         % (key, expected_type))
-
-    def _init_pool(self, pool):
-        """Initialize pool attribute."""
-        if pool:
-            self.pool = 'pool:%s' % pool
-        else:
-            self.pool = pool
 
     def _init_suite_dependencies(self, suite_dependencies):
         """Initialize suite dependencies attribute."""
