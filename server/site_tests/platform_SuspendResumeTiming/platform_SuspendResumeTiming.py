@@ -110,6 +110,7 @@ class platform_SuspendResumeTiming(test.test):
         and if no peripherals are connected to servo.
         """
         self.host = host
+        self.host.servo.set('dut_hub1_rst1', 'on')
 
         # Reboot to create new powerd.Latest log file.
         self.host.reboot()
