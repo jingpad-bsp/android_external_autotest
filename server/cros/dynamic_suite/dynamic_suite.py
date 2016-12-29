@@ -527,21 +527,18 @@ def reimage_and_run(**dargs):
         my_job_id = None
         logging.warning('Could not determine own job id.')
 
-    _perform_reimage_and_run(suite_spec, afe, tko,
-                             suite_spec.predicate, suite_job_id=my_job_id)
+    _perform_reimage_and_run(suite_spec, afe, tko, suite_job_id=my_job_id)
 
     logging.debug('Returning from dynamic_suite.reimage_and_run.')
 
 
-def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
+def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     """
     Do the work of reimaging hosts and running tests.
 
     @param spec: a populated SuiteSpec object.
     @param afe: an instance of AFE as defined in server/frontend.py.
     @param tko: an instance of TKO as defined in server/frontend.py.
-    @param predicate: A function mapping ControlData objects to True if they
-                      should be included in the suite.
     @param suite_job_id: Job id that will act as parent id to all sub jobs.
                          Default: None
     """
@@ -563,7 +560,7 @@ def _perform_reimage_and_run(spec, afe, tko, predicate, suite_job_id=None):
         {constants.ARTIFACT_FINISHED_TIME: timestamp})
 
     suite = Suite.create_from_predicates(
-            predicates=[predicate],
+            predicates=[spec.predicate],
             name=spec.name,
             builds=spec.builds,
             board=spec.board,
