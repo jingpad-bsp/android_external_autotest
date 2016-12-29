@@ -1007,7 +1007,6 @@ class Suite(object):
         # requirement of building site packages to use other functions in this
         # module.
         from autotest_lib.server.cros.dynamic_suite import reporting
-        from autotest_lib.server.cros.dynamic_suite import reporting_utils
 
         if bug_template is None:
             bug_template = {}
@@ -1026,71 +1025,102 @@ class Suite(object):
                 results_generator = job_status.wait_for_results(self._afe,
                                                                 self._tko,
                                                                 self._jobs)
-            template = reporting_utils.BugTemplate(bug_template)
             for result in results_generator:
-                result.record_all(record)
-                if job_status.is_for_infrastructure_fail(result):
-                    self._remember_provided_job_id(result)
-                elif isinstance(result, Status):
-                    self._remember_test_status_job_id(result)
-
-                if self._job_retry and self._retry_handler.should_retry(result):
-                    new_job = self._schedule_test(
-                            record=record, test=self._jobs_to_tests[result.id],
-                            retry_for=result.id, ignore_errors=True)
-                    if new_job:
-                        results_generator.send([new_job])
-
-                # TODO (fdeng): If the suite times out before a retry could
-                # finish, we would lose the chance to file a bug for the
-                # original job.
-                if self._should_report(result):
-                    job_views = self._tko.run('get_detailed_test_views',
-                                              afe_job_id=result.id)
-                    failure = reporting.TestBug(self._cros_build,
-                            site_utils.get_chrome_version(job_views),
-                            self._tag,
-                            result)
-
-                    # Try to merge with bug template in test control file.
-                    try:
-                        test_data = self._jobs_to_tests[result.id]
-                        merged_template = template.finalize_bug_template(
-                                test_data.bug_template)
-                    except AttributeError:
-                        # Test control file does not have bug template defined.
-                        merged_template = bug_template
-                    except reporting_utils.InvalidBugTemplateException as e:
-                        merged_template = {}
-                        logging.error('Merging bug templates failed with '
-                                      'error: %s An empty bug template will '
-                                      'be used.', e)
-
-                    # File bug when failure is one of the _FILE_BUG_SUITES,
-                    # otherwise send an email to the owner anc cc.
-                    if self._tag in _FILE_BUG_SUITES:
-                        bug_id, bug_count = bug_reporter.report(failure,
-                                                                merged_template)
-
-                        # We use keyvals to communicate bugs filed with
-                        # run_suite.
-                        if bug_id is not None:
-                            bug_keyvals = tools.create_bug_keyvals(
-                                    result.id, result.test_name,
-                                    (bug_id, bug_count))
-                            try:
-                                utils.write_keyval(self._results_dir,
-                                                   bug_keyvals)
-                            except ValueError:
-                                logging.error('Unable to log bug keyval for:%s',
-                                              result.test_name)
-                    else:
-                        reporting.send_email(failure, merged_template)
+                self._record_result(
+                    result=result,
+                    record=record,
+                    results_generator=results_generator,
+                    bug_reporter=bug_reporter,
+                    bug_template=bug_template)
 
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
                    'Exception waiting for results').record_result(record)
+
+
+    def _record_result(self, result, record, results_generator, bug_reporter,
+                         bug_template):
+        """
+        Record a single test job result.
+
+        @param result: Status instance for job.
+        @param record: callable that records job status.
+                 prototype:
+                   record(base_job.status_log_entry)
+        @param results_generator: Results generator for sending job retries.
+        @param bug_reporter: Reporter instance for reporting bugs.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
+        """
+        # reporting modules have dependency on external packages, e.g., httplib2
+        # Such dependency can cause issue to any module tries to import suite.py
+        # without building site-packages first. Since the reporting modules are
+        # only used in this function, move the imports here avoid the
+        # requirement of building site packages to use other functions in this
+        # module.
+        from autotest_lib.server.cros.dynamic_suite import reporting
+        from autotest_lib.server.cros.dynamic_suite import reporting_utils
+
+        result.record_all(record)
+        if job_status.is_for_infrastructure_fail(result):
+            self._remember_provided_job_id(result)
+        elif isinstance(result, Status):
+            self._remember_test_status_job_id(result)
+
+        if self._job_retry and self._retry_handler.should_retry(result):
+            new_job = self._schedule_test(
+                    record=record, test=self._jobs_to_tests[result.id],
+                    retry_for=result.id, ignore_errors=True)
+            if new_job:
+                results_generator.send([new_job])
+
+        # TODO (fdeng): If the suite times out before a retry could
+        # finish, we would lose the chance to file a bug for the
+        # original job.
+        if self._should_report(result):
+            job_views = self._tko.run('get_detailed_test_views',
+                                      afe_job_id=result.id)
+            failure = reporting.TestBug(self._cros_build,
+                    site_utils.get_chrome_version(job_views),
+                    self._tag,
+                    result)
+
+            # Try to merge with bug template in test control file.
+            template = reporting_utils.BugTemplate(bug_template)
+            try:
+                test_data = self._jobs_to_tests[result.id]
+                merged_template = template.finalize_bug_template(
+                        test_data.bug_template)
+            except AttributeError:
+                # Test control file does not have bug template defined.
+                merged_template = template.bug_template
+            except reporting_utils.InvalidBugTemplateException as e:
+                merged_template = {}
+                logging.error('Merging bug templates failed with '
+                              'error: %s An empty bug template will '
+                              'be used.', e)
+
+            # File bug when failure is one of the _FILE_BUG_SUITES,
+            # otherwise send an email to the owner anc cc.
+            if self._tag in _FILE_BUG_SUITES:
+                bug_id, bug_count = bug_reporter.report(failure,
+                                                        merged_template)
+
+                # We use keyvals to communicate bugs filed with
+                # run_suite.
+                if bug_id is not None:
+                    bug_keyvals = tools.create_bug_keyvals(
+                            result.id, result.test_name,
+                            (bug_id, bug_count))
+                    try:
+                        utils.write_keyval(self._results_dir,
+                                           bug_keyvals)
+                    except ValueError:
+                        logging.error('Unable to log bug keyval for:%s',
+                                      result.test_name)
+            else:
+                reporting.send_email(failure, merged_template)
 
 
     def abort(self):
