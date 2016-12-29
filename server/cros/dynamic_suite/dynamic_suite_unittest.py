@@ -11,6 +11,7 @@ import os
 import signal
 import unittest
 
+import common
 from autotest_lib.client.common_lib import base_job, error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server.cros import provision
@@ -111,7 +112,9 @@ class DynamicSuiteTest(mox.MoxTestBase):
         self.assertEquals(spec.num, None)
         self.assertEquals(spec.check_hosts, True)
         self.assertEquals(spec.add_experimental, True)
-        self.assertEquals(spec.suite_dependencies, [])
+        self.assertEquals(
+                spec.suite_dependencies,
+                ['cros-version:build_1', 'fwrw-version:fwrw_build_1'])
 
 
     def testReimageAndSIGTERM(self):
