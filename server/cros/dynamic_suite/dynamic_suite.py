@@ -579,7 +579,6 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
             test_source_build=spec.test_source_build,
             run_prod_code=spec.run_prod_code)
 
-
     if spec.delay_minutes:
         logging.debug('delay_minutes is set. Sleeping %d minutes before '
                       'creating test jobs.', spec.delay_minutes)
