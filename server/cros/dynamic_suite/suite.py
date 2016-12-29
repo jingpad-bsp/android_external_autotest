@@ -1078,12 +1078,7 @@ class Suite(object):
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
-            job_views = self._tko.run('get_detailed_test_views',
-                                      afe_job_id=result.id)
-            failure = reporting.TestBug(self._cros_build,
-                    site_utils.get_chrome_version(job_views),
-                    self._tag,
-                    result)
+            failure = self._get_test_bug(result)
 
             # Try to merge with bug template in test control file.
             template = reporting_utils.BugTemplate(bug_template)
@@ -1120,6 +1115,28 @@ class Suite(object):
                                       result.test_name)
             else:
                 reporting.send_email(failure, merged_template)
+
+
+    def _get_test_bug(self, result):
+        """Get TestBug for the given result.
+
+        @param result: Status instance for a test job.
+        @returns: TestBug instance.
+        """
+        # reporting modules have dependency on external packages, e.g., httplib2
+        # Such dependency can cause issue to any module tries to import suite.py
+        # without building site-packages first. Since the reporting modules are
+        # only used in this function, move the imports here avoid the
+        # requirement of building site packages to use other functions in this
+        # module.
+        from autotest_lib.server.cros.dynamic_suite import reporting
+
+        job_views = self._tko.run('get_detailed_test_views',
+                                  afe_job_id=result.id)
+        return reporting.TestBug(self._cros_build,
+                site_utils.get_chrome_version(job_views),
+                self._tag,
+                result)
 
 
     def abort(self):
