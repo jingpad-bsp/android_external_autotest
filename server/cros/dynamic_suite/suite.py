@@ -678,7 +678,7 @@ class Suite(object):
         self._pool = pool
         self._jobs = []
         self._jobs_to_tests = {}
-        self._tests = Suite.find_and_parse_tests(
+        self.tests = Suite.find_and_parse_tests(
                 self._cf_getter,
                 lambda control_data: all(f(control_data) for f in predicates),
                 self._tag,
@@ -702,14 +702,6 @@ class Suite(object):
         self.wait_for_results = wait_for_results
         self._offload_failures_only = offload_failures_only
         self._test_source_build = test_source_build
-
-
-    @property
-    def tests(self):
-        """
-        A list of ControlData objects in the suite, with added |text| attr.
-        """
-        return self._tests
 
 
     @property
