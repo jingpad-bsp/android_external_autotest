@@ -367,7 +367,6 @@ class SuiteSpec(object):
         self.timeout_mins = timeout_mins or timeout * 60
         self.bug_template = bug_template
         self.priority = priority
-        self.predicate = predicate
         self.wait_for_results = wait_for_results
         self.job_retry = job_retry
         self.max_retries = max_retries
@@ -375,6 +374,7 @@ class SuiteSpec(object):
         self.run_prod_code = run_prod_code
         self.delay_minutes = delay_minutes
 
+        self._init_predicate(predicate)
         self._init_suite_dependencies(suite_dependencies)
         self._init_devserver(devserver_url)
         self._init_test_source_build(test_source_build)
@@ -393,6 +393,14 @@ class SuiteSpec(object):
                 raise error.SuiteArgumentException(
                         'reimage_and_run() needs %s=<%r>'
                         % (key, expected_type))
+
+    def _init_predicate(self, predicate):
+        """Initialize predicate attribute."""
+        if predicate is None:
+            self.predicate = Suite.name_in_tag_predicate(self.name)
+        else:
+            self.predicate = predicate
+
 
     def _init_suite_dependencies(self, suite_dependencies):
         """Initialize suite dependencies attribute."""
@@ -519,13 +527,8 @@ def reimage_and_run(**dargs):
         my_job_id = None
         logging.warning('Could not determine own job id.')
 
-    if suite_spec.predicate is None:
-        predicate = Suite.name_in_tag_predicate(suite_spec.name)
-    else:
-        predicate = suite_spec.predicate
-
     _perform_reimage_and_run(suite_spec, afe, tko,
-                             predicate, suite_job_id=my_job_id)
+                             suite_spec.predicate, suite_job_id=my_job_id)
 
     logging.debug('Returning from dynamic_suite.reimage_and_run.')
 
