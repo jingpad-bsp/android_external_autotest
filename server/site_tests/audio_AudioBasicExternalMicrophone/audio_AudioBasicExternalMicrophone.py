@@ -112,4 +112,5 @@ class audio_AudioBasicExternalMicrophone(audio_test.AudioTest):
         # correlation, which is suitable for fully-digital audio path like USB
         # and HDMI.
         audio_test_utils.check_recorded_frequency(
-                golden_file, recorder, check_artifacts=check_quality)
+                golden_file, recorder, check_artifacts=check_quality,
+                ignore_frequencies=[50, 60])
