@@ -411,10 +411,10 @@ class SuiteTest(mox.MoxTestBase):
 
         self.assertFalse(self.files['one'] in suite.tests)
         self.assertFalse(self.files['two'] in suite.tests)
-        self.assertFalse(self.files['one'] in suite.unstable_tests())
-        self.assertFalse(self.files['two'] in suite.stable_tests())
-        self.assertFalse(self.files['one'] in suite.stable_tests())
-        self.assertFalse(self.files['two'] in suite.unstable_tests())
+        self.assertFalse(self.files['one'] in suite.unstable_tests)
+        self.assertFalse(self.files['two'] in suite.stable_tests)
+        self.assertFalse(self.files['one'] in suite.stable_tests)
+        self.assertFalse(self.files['two'] in suite.unstable_tests)
         self.assertFalse(self.files['four'] in suite.tests)
         self.assertTrue(self.files['five'] in suite.tests)
 
@@ -430,10 +430,10 @@ class SuiteTest(mox.MoxTestBase):
 
         self.assertTrue(self.files['one'] in suite.tests)
         self.assertTrue(self.files['two'] in suite.tests)
-        self.assertTrue(self.files['one'] in suite.unstable_tests())
-        self.assertTrue(self.files['two'] in suite.stable_tests())
-        self.assertFalse(self.files['one'] in suite.stable_tests())
-        self.assertFalse(self.files['two'] in suite.unstable_tests())
+        self.assertTrue(self.files['one'] in suite.unstable_tests)
+        self.assertTrue(self.files['two'] in suite.stable_tests)
+        self.assertFalse(self.files['one'] in suite.stable_tests)
+        self.assertFalse(self.files['two'] in suite.unstable_tests)
         # Sanity check.
         self.assertFalse(self.files['four'] in suite.tests)
 
