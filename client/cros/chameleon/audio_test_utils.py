@@ -323,6 +323,11 @@ DEFAULT_TOLERANT_NOISE_LEVEL = 0.01
 # they will be considered equivalent.
 DEFAULT_EQUIVALENT_THRESHOLD = 0.2
 
+# The frequency at lower than _DC_FREQ_THRESHOLD should have coefficient
+# smaller than _DC_COEFF_THRESHOLD.
+_DC_FREQ_THRESHOLD = 0.001
+_DC_COEFF_THRESHOLD = 0.01
+
 def get_second_peak_ratio(source_id, recorder_id, is_hsp=False):
     """Gets the second peak ratio suitable for use case.
 
@@ -544,16 +549,28 @@ def check_recorded_frequency(
         def should_be_ignored(frequency):
             """Checks if frequency is close to any frequency in ignore list.
 
+            The ignore list is harmonics of frequency to be ignored
+            (like power noise), plus harmonics of dominant frequencies,
+            plus DC.
+
             @param frequency: The frequency to be tested.
 
             @returns: True if the frequency should be ignored. False otherwise.
 
             """
-            for ignore_frequency in ignore_frequencies_harmonics + harmonics:
+            for ignore_frequency in (ignore_frequencies_harmonics + harmonics
+                                     + [0.0]):
                 if (abs(frequency - ignore_frequency) <
                     frequency_diff_threshold):
                     logging.debug('Ignore frequency: %s', frequency)
                     return True
+
+        # Checks DC is small enough.
+        for freq, coeff in spectral:
+            if freq < _DC_FREQ_THRESHOLD and coeff > _DC_COEFF_THRESHOLD:
+                errors.append(
+                        'Channel %d: Found large DC coefficient: '
+                        '(%f Hz, %f)' % (test_channel, freq, coeff))
 
         # Filter out the frequencies to be ignored.
         spectral = [x for x in spectral if not should_be_ignored(x[0])]
