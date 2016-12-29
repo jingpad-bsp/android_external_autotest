@@ -545,7 +545,8 @@ def _perform_reimage_and_run(spec, afe, tko, suite_job_id=None):
     # We can't do anything else until the devserver has finished downloading
     # control_files and test_suites packages so that we can get the control
     # files we should schedule.
-    _stage_artifacts(spec)
+    if not spec.run_prod_code:
+        _stage_artifacts(spec)
 
     timestamp = datetime.datetime.now().strftime(time_utils.TIME_FMT)
     utils.write_keyval(
@@ -603,10 +604,9 @@ def _stage_artifacts(suite_spec):
     @param suite_spec: a populated SuiteSpec object.
     """
     try:
-        if not suite_spec.run_prod_code:
-            suite_spec.devserver.stage_artifacts(
-                    image=suite_spec.test_source_build,
-                    artifacts=['control_files', 'test_suites'])
+        suite_spec.devserver.stage_artifacts(
+                image=suite_spec.test_source_build,
+                artifacts=['control_files', 'test_suites'])
     except dev_server.DevServerException as e:
         # If we can't get the control files, there's nothing to run.
         raise error.AsynchronousBuildFailure(e)
