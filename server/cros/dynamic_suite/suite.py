@@ -903,8 +903,7 @@ class Suite(object):
                 logging.debug('Job %d created to retry job %d. '
                               'Have retried for %d time(s)',
                               job.id, retry_for, retry_count)
-            if self._results_dir:
-                self._remember_provided_job_id(job)
+            self._remember_provided_job_id(job)
             return job
 
 
@@ -1014,10 +1013,9 @@ class Suite(object):
             template = reporting_utils.BugTemplate(bug_template)
             for result in results_generator:
                 result.record_all(record)
-                if (self._results_dir and
-                    job_status.is_for_infrastructure_fail(result)):
+                if job_status.is_for_infrastructure_fail(result):
                     self._remember_provided_job_id(result)
-                elif (self._results_dir and isinstance(result, Status)):
+                elif isinstance(result, Status):
                     self._remember_test_status_job_id(result)
 
                 if self._job_retry and self._retry_handler.should_retry(result):
@@ -1099,7 +1097,7 @@ class Suite(object):
         @param job: some representation of a job, including id, test_name
                     and owner
         """
-        if job.id and job.owner and job.test_name:
+        if self._results_dir and job.id and job.owner and job.test_name:
             job_id_owner = '%s-%s' % (job.id, job.owner)
             logging.debug('Adding job keyval for %s=%s',
                           job.test_name, job_id_owner)
@@ -1115,7 +1113,8 @@ class Suite(object):
         @param status: Test status, including properties such as id, test_name
                        and owner.
         """
-        if status.id and status.owner and status.test_name:
+        if (self._results_dir
+                and status.id and status.owner and status.test_name):
             test_id_owner = '%s-%s' % (status.id, status.owner)
             logging.debug('Adding status keyval for %s=%s',
                           status.test_name, test_id_owner)
