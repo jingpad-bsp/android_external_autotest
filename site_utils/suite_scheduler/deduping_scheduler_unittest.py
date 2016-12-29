@@ -277,7 +277,7 @@ class DedupingSchedulerTest(mox.MoxTestBase):
         self.mox.StubOutWithMock(reporting.Reporter, '__init__')
         self.mox.StubOutWithMock(reporting.Reporter, '_create_bug_report')
         self.mox.StubOutWithMock(reporting.Reporter, '_check_tracker')
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(site_utils, 'get_sheriffs')
         self.scheduler._file_bug = True
         # Lab is UP!
@@ -310,7 +310,8 @@ class DedupingSchedulerTest(mox.MoxTestBase):
                      min_rpc_timeout=mox.IgnoreArg()).AndRaise(exception)
         reporting.Reporter.__init__()
         reporting.Reporter._check_tracker().AndReturn(True)
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(None)
+        (reporting.Reporter._find_issue_by_marker(mox.IgnoreArg())
+         .AndReturn(None))
         reporting.Reporter._create_bug_report(
                 mox.IgnoreArg(), {}, []).AndReturn(mock_bug_id)
 
