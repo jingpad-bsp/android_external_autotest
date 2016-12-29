@@ -604,7 +604,7 @@ class Suite(object):
             file_experimental_bugs=False,
             suite_job_id=None,
             ignore_deps=False,
-            extra_deps=[],
+            extra_deps=None,
             priority=priorities.Priority.DEFAULT,
             forgiving_parser=True,
             wait_for_results=True,
@@ -661,6 +661,9 @@ class Suite(object):
         @param test_source_build: Build that contains the server-side test code.
 
         """
+        if extra_deps is None:
+            extra_deps = []
+
         def combined_predicate(test):
             #pylint: disable-msg=C0111
             return all((f(test) for f in predicates))
