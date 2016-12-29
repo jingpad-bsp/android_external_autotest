@@ -379,6 +379,7 @@ class SuiteSpec(object):
         self._init_devserver(devserver_url)
         self._init_test_source_build(test_source_build)
         self._translate_builds()
+        self._add_builds_to_suite_deps()
 
     def _check_init_params(self, **kwargs):
         for key, expected_type in self._REQUIRED_KEYWORDS.iteritems():
@@ -423,6 +424,23 @@ class SuiteSpec(object):
                 translated_build = self.devserver.translate(
                         self.builds[prefix])
                 self.builds[prefix] = translated_build
+
+    def _add_builds_to_suite_deps(self):
+        """Add builds to suite_dependencies.
+
+        To support provision both CrOS and firmware, option builds are added to
+        SuiteSpec, e.g.,
+
+        builds = {'cros-version:': 'x86-alex-release/R18-1655.0.0',
+                  'fwrw-version:': 'x86-alex-firmware/R36-5771.50.0'}
+
+        version_prefix+build should make it into each test as a DEPENDENCY.
+        The easiest way to do this is to tack it onto the suite_dependencies.
+        """
+        self.suite_dependencies.extend(
+                provision.join(version_prefix, build)
+                for version_prefix, build in self.builds.iteritems()
+        )
 
 
 def skip_reimage(g):
@@ -488,16 +506,6 @@ def reimage_and_run(**dargs):
                                             the required build fails to parse.
     """
     suite_spec = SuiteSpec(**dargs)
-
-    # To support provision both CrOS and firmware, option builds is added to
-    # SuiteSpec, e.g.,
-    # builds = {'cros-version:': 'x86-alex-release/R18-1655.0.0',
-    #           'fwrw-version:': 'x86-alex-firmware/R36-5771.50.0'}
-    # version_prefix+build should make it into each test as a DEPENDENCY.  The
-    # easiest way to do this is to tack it onto the suite_dependencies.
-    suite_spec.suite_dependencies.extend(
-            provision.join(version_prefix, build)
-            for version_prefix, build in suite_spec.builds.items())
 
     afe = frontend_wrappers.RetryingAFE(timeout_min=30, delay_sec=10,
                                         user=suite_spec.job.user, debug=False)
