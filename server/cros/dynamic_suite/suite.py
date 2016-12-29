@@ -941,9 +941,10 @@ class Suite(object):
             n_scheduled = len(scheduled_test_names)
             logging.debug('Scheduled %d tests, writing the total to keyval.',
                           n_scheduled)
-            d = {constants.SCHEDULED_TEST_COUNT_KEY: n_scheduled,
-                 constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names)}
-            utils.write_keyval(self._results_dir, d)
+            utils.write_keyval(
+                self._results_dir,
+                {constants.SCHEDULED_TEST_COUNT_KEY: n_scheduled,
+                 constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names)})
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
