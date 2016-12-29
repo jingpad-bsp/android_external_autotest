@@ -921,9 +921,9 @@ class Suite(object):
         logging.debug('Discovered %d stable tests.', len(self.stable_tests))
         logging.debug('Discovered %d unstable tests.',
                       len(self.unstable_tests))
-        n_scheduled = 0
 
         Status('INFO', 'Start %s' % self._tag).record_result(record)
+        scheduled_test_names = []
         try:
             tests = self.stable_tests
             if add_experimental:
@@ -932,18 +932,16 @@ class Suite(object):
                         test.name = constants.EXPERIMENTAL_PREFIX + test.name
                     tests.append(test)
 
-            scheduled_test_names = []
             for test in tests:
                 if self._schedule_test(record, test):
                     scheduled_test_names.append(test.name)
 
             # Write the num of scheduled tests and name of them to keyval file.
-            n_scheduled = len(scheduled_test_names)
             logging.debug('Scheduled %d tests, writing the total to keyval.',
-                          n_scheduled)
+                          len(scheduled_test_names))
             utils.write_keyval(
                 self._results_dir,
-                {constants.SCHEDULED_TEST_COUNT_KEY: n_scheduled,
+                {constants.SCHEDULED_TEST_COUNT_KEY: len(scheduled_test_names),
                  constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names)})
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
@@ -954,7 +952,7 @@ class Suite(object):
             self._retry_handler = RetryHandler(
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
-        return n_scheduled
+        return len(scheduled_test_names)
 
 
     def should_report(self, result):
