@@ -454,7 +454,7 @@ class Reporter(object):
 
 
     @classmethod
-    def get_creds_abspath(cls):
+    def _get_creds_abspath(cls):
         """Returns the abspath of the bug filer credentials file.
 
         @return: A path to the oauth2 credentials file.
@@ -468,7 +468,7 @@ class Reporter(object):
             return
         try:
             self._phapi_client = phapi_lib.ProjectHostingApiClient(
-                    self.get_creds_abspath(), self._project_name,
+                    self._get_creds_abspath(), self._project_name,
                     self._monorail_server)
         except phapi_lib.ProjectHostingApiException as e:
             logging.error('Unable to create project hosting api client: %s', e)
@@ -490,7 +490,7 @@ class Reporter(object):
             return self._phapi_client
         raise phapi_lib.ProjectHostingApiException('Project hosting client not '
                 'initialized for project:%s, using auth file: %s' %
-                (self._project_name, self.get_creds_abspath()))
+                (self._project_name, self._get_creds_abspath()))
 
 
     def _get_lab_error_template(self):
