@@ -586,15 +586,33 @@ class Suite(object):
                      name, builds, board, cf_getter, **dargs)
 
 
-    def __init__(self, predicates, tag, builds, board, cf_getter,
-                 run_prod_code=False, afe=None, tko=None, pool=None,
-                 results_dir=None, max_runtime_mins=24*60, timeout_mins=24*60,
-                 file_bugs=False, file_experimental_bugs=False,
-                 suite_job_id=None, ignore_deps=False, extra_deps=[],
-                 priority=priorities.Priority.DEFAULT, forgiving_parser=True,
-                 wait_for_results=True, job_retry=False,
-                 max_retries=sys.maxint, offload_failures_only=False,
-                 test_source_build=None):
+    def __init__(
+            self,
+            predicates,
+            tag,
+            builds,
+            board,
+            cf_getter,
+            run_prod_code=False,
+            afe=None,
+            tko=None,
+            pool=None,
+            results_dir=None,
+            max_runtime_mins=24*60,
+            timeout_mins=24*60,
+            file_bugs=False,
+            file_experimental_bugs=False,
+            suite_job_id=None,
+            ignore_deps=False,
+            extra_deps=[],
+            priority=priorities.Priority.DEFAULT,
+            forgiving_parser=True,
+            wait_for_results=True,
+            job_retry=False,
+            max_retries=sys.maxint,
+            offload_failures_only=False,
+            test_source_build=None
+    ):
         """
         Constructor
 
