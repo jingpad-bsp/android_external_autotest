@@ -933,7 +933,8 @@ class Suite(object):
                     tests.append(test)
 
             for test in tests:
-                if self._schedule_test(record, test):
+                scheduled_job = self._schedule_test(record, test)
+                if scheduled_job is not None:
                     scheduled_test_names.append(test.name)
 
             # Write the num of scheduled tests and name of them to keyval file.
