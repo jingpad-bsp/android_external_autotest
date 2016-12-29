@@ -664,11 +664,6 @@ class Suite(object):
         if extra_deps is None:
             extra_deps = []
 
-        def combined_predicate(test):
-            #pylint: disable-msg=C0111
-            return all((f(test) for f in predicates))
-        self._predicate = combined_predicate
-
         self._tag = tag
         self._builds = builds
         self._board = board
@@ -685,7 +680,7 @@ class Suite(object):
         self._jobs_to_tests = {}
         self._tests = Suite.find_and_parse_tests(
                 self._cf_getter,
-                self._predicate,
+                lambda control_data: all(f(control_data) for f in predicates),
                 self._tag,
                 add_experimental=True,
                 forgiving_parser=forgiving_parser,
@@ -1140,8 +1135,7 @@ class Suite(object):
 
         When this method is called with a file system ControlFileGetter, or
         enable_controls_in_batch is set as false, this function will looks at
-        control files returned by cf_getter.get_control_file_list() for tests
-        that pass self._predicate().
+        control files returned by cf_getter.get_control_file_list() for tests.
 
         If cf_getter is a File system ControlFileGetter, it performs a full
         parse of the root directory associated with the getter. This is the
