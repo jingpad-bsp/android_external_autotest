@@ -743,16 +743,6 @@ class Suite(object):
                   test_name is used to preserve the higher level TEST_NAME
                   name of the job.
         """
-        if self._ignore_deps:
-            job_deps = []
-        else:
-            job_deps = list(test.dependencies)
-
-        job_deps.extend(self._extra_deps)
-        if self._pool:
-            job_deps.append(self._pool)
-        job_deps.append(self._board)
-
         test_obj = self._afe.create_job(
             control_file=test.text,
             name=tools.create_job_name(
@@ -761,7 +751,7 @@ class Suite(object):
                     test.name),
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
-            dependencies=job_deps,
+            dependencies=self._create_job_deps(test),
             keyvals=self._create_keyvals_for_test_job(test, retry_for),
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
@@ -773,6 +763,22 @@ class Suite(object):
 
         test_obj.test_name = test.name
         return test_obj
+
+
+    def _create_job_deps(self, test):
+        """Create job deps list for a test job.
+
+        @returns: A list of dependency strings.
+        """
+        if self._ignore_deps:
+            job_deps = []
+        else:
+            job_deps = list(test.dependencies)
+        job_deps.extend(self._extra_deps)
+        if self._pool:
+            job_deps.append(self._pool)
+        job_deps.append(self._board)
+        return job_deps
 
 
     def _create_keyvals_for_test_job(self, test, retry_for=None):
