@@ -1308,15 +1308,14 @@ def route_rpc_to_master(func):
 
     @wraps(func)
     def replacement(*args, **kwargs):
-        """
-        We need a special care when decorating an RPC that can be called
-        directly using positional arguments. One example is
-        rpc_interface.create_job().
-        rpc_interface.create_job_page_handler() calls the function using
-        positional and keyword arguments.
-        Since frontend.RpcClient.run() takes only keyword arguments for
-        an RPC, positional arguments of the RPC function need to be
-        transformed to key-value pair (dictionary type).
+        """We need special handling when decorating an RPC that can be called
+        directly using positional arguments.
+
+        One example is rpc_interface.create_job().
+        rpc_interface.create_job_page_handler() calls the function using both
+        positional and keyword arguments.  Since frontend.RpcClient.run()
+        takes only keyword arguments for an RPC, positional arguments of the
+        RPC function need to be transformed into keyword arguments.
         """
         kwargs = _convert_to_kwargs_only(func, args, kwargs)
         if server_utils.is_shard():
