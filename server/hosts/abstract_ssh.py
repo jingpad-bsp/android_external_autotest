@@ -162,7 +162,8 @@ class AbstractSSHHost(remote.RemoteHost):
 
         return " ".join('"%s"' % p for p in paths)
 
-    def _make_rsync_cmd(self, sources, dest, delete_dest, preserve_symlinks):
+    def _make_rsync_cmd(self, sources, dest, delete_dest,
+                        preserve_symlinks, safe_symlinks):
         """
         Given a string of source paths and a destination path, produces the
         appropriate rsync command for copying them. Remote paths must be
@@ -175,10 +176,10 @@ class AbstractSSHHost(remote.RemoteHost):
             delete_flag = "--delete"
         else:
             delete_flag = ""
-        if preserve_symlinks:
-            # Preserve only the symlinks that work independently of the
-            # destination.  Dangling symlinks may cause failures later.
-            symlink_flag = "--safe-links"
+        if safe_symlinks:
+            symlink_flag = "-l --safe-links"
+        elif preserve_symlinks:
+            symlink_flag = "-l"
         else:
             symlink_flag = "-L"
         command = ("rsync %s %s --timeout=1800 --rsh='%s' -az --no-o --no-g "
@@ -305,7 +306,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
 
     def get_file(self, source, dest, delete_dest=False, preserve_perm=True,
-                 preserve_symlinks=False, retry=True):
+                 preserve_symlinks=False, retry=True, safe_symlinks=False):
         """
         Copy files from the remote host to a local path.
 
@@ -330,7 +331,8 @@ class AbstractSSHHost(remote.RemoteHost):
                                permissions on files and dirs
                 preserve_symlinks: try to preserve symlinks instead of
                                    transforming them into files/dirs on copy
-
+                safe_symlinks: same as preserve_symlinks, but discard links
+                               that may point outside the copied tree
         Raises:
                 AutoservRunError: the scp command failed
         """
@@ -352,7 +354,8 @@ class AbstractSSHHost(remote.RemoteHost):
                 remote_source = self._encode_remote_paths(source)
                 local_dest = utils.sh_escape(dest)
                 rsync = self._make_rsync_cmd(remote_source, local_dest,
-                                             delete_dest, preserve_symlinks)
+                                             delete_dest, preserve_symlinks,
+                                             safe_symlinks)
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
@@ -458,7 +461,8 @@ class AbstractSSHHost(remote.RemoteHost):
             remote_dest = self._encode_remote_paths([dest])
             try:
                 rsync = self._make_rsync_cmd(local_sources, remote_dest,
-                                             delete_dest, preserve_symlinks)
+                                             delete_dest, preserve_symlinks,
+                                             False)
                 utils.run(rsync)
                 try_scp = False
             except error.CmdError, e:
@@ -844,8 +848,7 @@ class AbstractSSHHost(remote.RemoteHost):
                     raise
                 return
         try:
-            self.get_file(
-                    remote_src_dir, local_dest_dir, preserve_symlinks=True)
+            self.get_file(remote_src_dir, local_dest_dir, safe_symlinks=True)
         except (error.AutotestRunError, error.AutoservRunError,
                 error.AutoservSSHTimeout) as e:
             logging.warning('Collection of %s to local dir %s from host %s '
