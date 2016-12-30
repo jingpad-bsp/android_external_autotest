@@ -785,15 +785,16 @@ class Suite(object):
                           recorded in the new job's keyvals.
         @returns: A keyvals dict for creating the test job.
         """
-        # JOB_BUILD_KEY is default to use CrOS image, if it's not available,
-        # take the first build in the builds dictionary.
+        keyvals = {
+            constants.JOB_BUILD_KEY: self._cros_build,
+            constants.JOB_SUITE_KEY: self._tag,
+            constants.JOB_EXPERIMENTAL_KEY: test.experimental,
+            constants.JOB_BUILDS_KEY: self._builds
+        }
         # test_source_build is saved to job_keyvals so scheduler can retrieve
         # the build name from database when compiling autoserv commandline.
         # This avoid a database change to add a new field in afe_jobs.
-        keyvals={constants.JOB_BUILD_KEY: self._cros_build,
-                 constants.JOB_SUITE_KEY: self._tag,
-                 constants.JOB_EXPERIMENTAL_KEY: test.experimental,
-                 constants.JOB_BUILDS_KEY: self._builds}
+        #
         # Only add `test_source_build` to job keyvals if the build is different
         # from the CrOS build or the job uses more than one build, e.g., both
         # firmware and CrOS will be updated in the dut.
@@ -801,23 +802,23 @@ class Suite(object):
         # compile an autoserv command line to run in a SSP container using
         # previous builds.
         if (self._test_source_build and
-            (self._cros_build != self._test_source_build
-             or len(self._builds) > 1)):
-            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = (
-                    self._test_source_build)
+            (self._cros_build != self._test_source_build or
+             len(self._builds) > 1)):
+            keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = \
+                    self._test_source_build
             for prefix, build in self._builds.iteritems():
                 if prefix == provision.FW_RW_VERSION_PREFIX:
                     keyvals[constants.FWRW_BUILD]= build
                 elif prefix == provision.FW_RO_VERSION_PREFIX:
                     keyvals[constants.FWRO_BUILD] = build
-        # Add suite job id to keyvals so tko parser can read it from keyval file
+        # Add suite job id to keyvals so tko parser can read it from keyval
+        # file.
         if self._suite_job_id:
             keyvals[constants.PARENT_JOB_ID] = self._suite_job_id
+        # We drop the old job's id in the new job's keyval file so that
+        # later our tko parser can figure out the retry relationship and
+        # invalidate the results of the old job in tko database.
         if retry_for:
-            # We drop the old job's id in the new job's keyval file
-            # so that later our tko parser can figure out the retring
-            # relationship and invalidate the results of the old job
-            # in tko database.
             keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
         if self._offload_failures_only:
             keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
