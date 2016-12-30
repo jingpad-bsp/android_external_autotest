@@ -741,12 +741,8 @@ class Suite(object):
         job_deps.extend(self._extra_deps)
         if self._pool:
             job_deps.append(self._pool)
-
-        # TODO(beeps): Completely remove the concept of a metahost.
-        # Currently we use this to distinguish a job scheduled through
-        # the afe from a suite job, as only the latter will get requeued
-        # when a special task fails.
         job_deps.append(self._board)
+
         # JOB_BUILD_KEY is default to use CrOS image, if it's not available,
         # take the first build in the builds dictionary.
         # test_source_build is saved to job_keyvals so scheduler can retrieve
