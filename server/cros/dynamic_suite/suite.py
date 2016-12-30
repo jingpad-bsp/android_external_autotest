@@ -801,7 +801,7 @@ class Suite(object):
             synch_count=test.sync_count,
             require_ssp=test.require_ssp)
 
-        setattr(test_obj, 'test_name', test.name)
+        test_obj.test_name = test.name
 
         return test_obj
 
