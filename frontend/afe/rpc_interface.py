@@ -948,15 +948,37 @@ def create_job_page_handler(name, priority, control_file, control_type,
 
 
 @rpc_utils.route_rpc_to_master
-def create_job(name, priority, control_file, control_type,
-               hosts=(), meta_hosts=(), one_time_hosts=(),
-               atomic_group_name=None, synch_count=None, is_template=False,
-               timeout=None, timeout_mins=None, max_runtime_mins=None,
-               run_verify=False, email_list='', dependencies=(),
-               reboot_before=None, reboot_after=None, parse_failed_repair=None,
-               hostless=False, keyvals=None, drone_set=None, image=None,
-               parent_job_id=None, test_retry=0, run_reset=True,
-               require_ssp=None, args=(), is_cloning=False, **kwargs):
+def create_job(
+        name,
+        priority,
+        control_file,
+        control_type,
+        hosts=(),
+        meta_hosts=(),
+        one_time_hosts=(),
+        atomic_group_name=None,
+        synch_count=None,
+        is_template=False,
+        timeout=None,
+        timeout_mins=None,
+        max_runtime_mins=None,
+        run_verify=False,
+        email_list='',
+        dependencies=(),
+        reboot_before=None,
+        reboot_after=None,
+        parse_failed_repair=None,
+        hostless=False,
+        keyvals=None,
+        drone_set=None,
+        image=None,
+        parent_job_id=None,
+        test_retry=0,
+        run_reset=True,
+        require_ssp=None,
+        args=(),
+        is_cloning=False,
+        **kwargs):
     """\
     Create and enqueue a job.
 
