@@ -737,8 +737,8 @@ class Suite(object):
             job_deps = []
         else:
             job_deps = list(test.dependencies)
-        if self._extra_deps:
-            job_deps.extend(self._extra_deps)
+
+        job_deps.extend(self._extra_deps)
         if self._pool:
             job_deps.append(self._pool)
 
