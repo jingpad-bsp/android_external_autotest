@@ -743,6 +743,40 @@ class Suite(object):
             job_deps.append(self._pool)
         job_deps.append(self._board)
 
+        build = self._builds.get(provision.CROS_VERSION_PREFIX,
+                                 self._builds.values()[0])
+        keyvals = self._create_keyvals_for_test_job(test, retry_for)
+
+        test_obj = self._afe.create_job(
+            control_file=test.text,
+            name=tools.create_job_name(self._test_source_build or build,
+                                       self._tag, test.name),
+            control_type=test.test_type.capitalize(),
+            meta_hosts=[self._board]*test.sync_count,
+            dependencies=job_deps,
+            keyvals=keyvals,
+            max_runtime_mins=self._max_runtime_mins,
+            timeout_mins=self._timeout_mins,
+            parent_job_id=self._suite_job_id,
+            test_retry=test.retries,
+            priority=self._priority,
+            synch_count=test.sync_count,
+            require_ssp=test.require_ssp)
+
+        test_obj.test_name = test.name
+        return test_obj
+
+
+    def _create_keyvals_for_test_job(self, test, retry_for=None):
+        """Create keyvals dict for creating a test job.
+
+        @param test: ControlData object for a test to run.
+        @param retry_for: If the to-be-created job is a retry for an
+                          old job, the afe_job_id of the old job will
+                          be passed in as |retry_for|, which will be
+                          recorded in the new job's keyvals.
+        @returns: A keyvals dict for creating the test job.
+        """
         # JOB_BUILD_KEY is default to use CrOS image, if it's not available,
         # take the first build in the builds dictionary.
         # test_source_build is saved to job_keyvals so scheduler can retrieve
@@ -780,26 +814,7 @@ class Suite(object):
             keyvals[constants.RETRY_ORIGINAL_JOB_ID] = retry_for
         if self._offload_failures_only:
             keyvals[constants.JOB_OFFLOAD_FAILURES_KEY] = True
-
-        test_obj = self._afe.create_job(
-            control_file=test.text,
-            name=tools.create_job_name(self._test_source_build or build,
-                                       self._tag, test.name),
-            control_type=test.test_type.capitalize(),
-            meta_hosts=[self._board]*test.sync_count,
-            dependencies=job_deps,
-            keyvals=keyvals,
-            max_runtime_mins=self._max_runtime_mins,
-            timeout_mins=self._timeout_mins,
-            parent_job_id=self._suite_job_id,
-            test_retry=test.retries,
-            priority=self._priority,
-            synch_count=test.sync_count,
-            require_ssp=test.require_ssp)
-
-        test_obj.test_name = test.name
-
-        return test_obj
+        return keyvals
 
 
     def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
