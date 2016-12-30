@@ -1333,18 +1333,9 @@ def _convert_to_kwargs_only(func, args, kwargs):
 
     This is best illustrated with an example.  Given:
 
-        def foo(a, b=None, **kwargs): pass
-
-    If foo is called like `foo(1, 2, c=3)`, this would correspond to:
-
-        args = (1, 2)
-        kwargs = {'c': 3}
-
-    Calling `_convert_to_kwargs(foo, (1, 2), {'c': 3})` would return:
-
-        {'a': 1, 'b': 2, 'c': 3}
-
-    This could then be passed to foo as a keyword arguments dict:
+    def foo(a, b, **kwargs):
+        pass
+    _to_kwargs(foo, (1, 2), {'c': 3})  # corresponding to foo(1, 2, c=3)
 
         foo(**kwargs)
 
@@ -1354,31 +1345,14 @@ def _convert_to_kwargs_only(func, args, kwargs):
 
     @returns: kwargs dict
     """
-    # inspect.getcallargs() is a useful utility to achieve the goal,
-    # however, we need an additional effort when an RPC function has
-    # **kwargs argument.
-    # Let's say we have a following form of RPC function.
-    #
-    # def rpcfunc(a, b, **kwargs)
-    #
-    # When we call the function like "rpcfunc(1, 2, id=3, name='mk')",
-    # inspect.getcallargs() returns a dictionary like below.
-    #
-    # {'a':1, 'b':2, 'kwargs': {'id':3, 'name':'mk'}}
-    #
-    # This is an incorrect form of arguments to pass to the rpc function.
-    # Instead, the dictionary should be like this.
-    #
-    # {'a':1, 'b':2, 'id':3, 'name':'mk'}
-
     argspec = inspect.getargspec(func)
-    funcargs = inspect.getcallargs(func, *args, **kwargs)
-    kwargs = dict()
-    for k, v in funcargs.iteritems():
-        if argspec.keywords and k == argspec.keywords:
-            kwargs.update(v)
-        else:
-            kwargs[k] = v
+    # callargs looks like {'a': 1, 'b': 2, 'kwargs': {'c': 3}}
+    callargs = inspect.getcallargs(func, *args, **kwargs)
+    if argspec.keywords is None:
+        kwargs = {}
+    else:
+        kwargs = callargs.pop(argspec.keywords)
+    kwargs.update(callargs)
     return kwargs
 
 
