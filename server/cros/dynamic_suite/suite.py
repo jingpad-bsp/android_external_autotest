@@ -745,7 +745,6 @@ class Suite(object):
 
         build = self._builds.get(provision.CROS_VERSION_PREFIX,
                                  self._builds.values()[0])
-        keyvals = self._create_keyvals_for_test_job(test, retry_for)
 
         test_obj = self._afe.create_job(
             control_file=test.text,
@@ -754,7 +753,7 @@ class Suite(object):
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
             dependencies=job_deps,
-            keyvals=keyvals,
+            keyvals=self._create_keyvals_for_test_job(test, retry_for),
             max_runtime_mins=self._max_runtime_mins,
             timeout_mins=self._timeout_mins,
             parent_job_id=self._suite_job_id,
