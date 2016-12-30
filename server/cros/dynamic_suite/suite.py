@@ -720,6 +720,16 @@ class Suite(object):
         return filter(lambda t: t.experimental, self.tests)
 
 
+    @property
+    def _cros_build(self):
+        """Return the CrOS build or the first build in the builds dict."""
+        # TODO(ayatane): Note that the builds dict isn't ordered.  I'm not
+        # sure what the implications of this are, but it's probably not a
+        # good thing.
+        return self._builds.get(provision.CROS_VERSION_PREFIX,
+                                self._builds.values()[0])
+
+
     def _create_job(self, test, retry_for=None):
         """
         Thin wrapper around frontend.AFE.create_job().
@@ -743,8 +753,7 @@ class Suite(object):
             job_deps.append(self._pool)
         job_deps.append(self._board)
 
-        build = self._builds.get(provision.CROS_VERSION_PREFIX,
-                                 self._builds.values()[0])
+        build = self._cros_build
 
         test_obj = self._afe.create_job(
             control_file=test.text,
@@ -781,8 +790,7 @@ class Suite(object):
         # test_source_build is saved to job_keyvals so scheduler can retrieve
         # the build name from database when compiling autoserv commandline.
         # This avoid a database change to add a new field in afe_jobs.
-        build = self._builds.get(provision.CROS_VERSION_PREFIX,
-                                 self._builds.values()[0])
+        build = self._cros_build
         keyvals={constants.JOB_BUILD_KEY: build,
                  constants.JOB_SUITE_KEY: self._tag,
                  constants.JOB_EXPERIMENTAL_KEY: test.experimental,
@@ -1025,10 +1033,8 @@ class Suite(object):
                 if self.should_report(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
-                    # Use the CrOS build for bug filing. If CrOS build is not
-                    # specified, use the first build in the builds dictionary.
-                    build = self._builds.get(provision.CROS_VERSION_PREFIX,
-                                             self._builds.values()[0])
+                    # Use the CrOS build for bug filing.
+                    build = self._cros_build
                     failure = reporting.TestBug(build,
                             site_utils.get_chrome_version(job_views),
                             self._tag,
