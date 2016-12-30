@@ -853,33 +853,17 @@ class Suite(object):
             # dependency on a board that exists, but for which
             # there's no hardware.
             #
-            # As of this writing, the particular case we
-            # want looks like this:
-            #  1) e.problem_keys is a dictionary
-            #  2) e.problem_keys['meta_hosts'] exists as
-            #     the only key in the dictionary.
-            #  3) e.problem_keys['meta_hosts'] matches this
-            #     pattern: "Label "board:.*" not found"
-            #
-            # We check for conditions 1) and 2) on the
-            # theory that they're relatively immutable.
-            # We don't check condition 3) because it seems
-            # likely to be a maintenance burden, and for the
-            # times when we're wrong, being right shouldn't
-            # matter enough (we _hope_).
-            #
             # If we don't recognize the error, we pass
             # the buck to the outer try in this function,
             # which immediately fails the suite.
-            if (not isinstance(e.problem_keys, dict) or
-                    len(e.problem_keys) != 1 or
-                    'meta_hosts' not in e.problem_keys):
+            if _is_nonexistent_board_error(e):
+                logging.debug('Validation error: %s', str(e))
+                logging.debug('Assuming label not found')
+                Status('TEST_NA', test.name, e.problem_keys.values()[0],
+                       begin_time_str=begin_time_str).record_all(record)
+                return None
+            else:
                 raise e
-            logging.debug('Validation error: %s', str(e))
-            logging.debug('Assuming label not found')
-            Status('TEST_NA', test.name, e.problem_keys.values()[0],
-                   begin_time_str=begin_time_str).record_all(record)
-            return None
         except (error.RPCException, proxy.JSONRPCException) as e:
             if retry_for:
                 # Mark that we've attempted to retry the old job.
@@ -1289,3 +1273,29 @@ class Suite(object):
         return [s[0] for s in
                 sorted(similarities.items(), key=operator.itemgetter(1),
                        reverse=True)][:count]
+
+
+def _is_nonexistent_board_error(e):
+    """Return True if error is caused by nonexistent board label.
+
+    As of this writing, the particular case we want looks like this:
+
+     1) e.problem_keys is a dictionary
+     2) e.problem_keys['meta_hosts'] exists as the only key
+        in the dictionary.
+     3) e.problem_keys['meta_hosts'] matches this pattern:
+        "Label "board:.*" not found"
+
+    We check for conditions 1) and 2) on the
+    theory that they're relatively immutable.
+    We don't check condition 3) because it seems
+    likely to be a maintenance burden, and for the
+    times when we're wrong, being right shouldn't
+    matter enough (we _hope_).
+
+    @param e: proxy.ValidationError instance
+    @returns: boolean
+    """
+    return (isinstance(e.problem_keys, dict)
+            and len(e.problem_keys) == 1
+            and 'meta_hosts' in e.problem_keys)
