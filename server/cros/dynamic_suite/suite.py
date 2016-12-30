@@ -742,8 +742,8 @@ class Suite(object):
         if self._pool:
             job_deps.append(self._pool)
 
-        # TODO(beeps): Comletely remove the concept of a metahost.
-        # Currently we use this to distinguis a job scheduled through
+        # TODO(beeps): Completely remove the concept of a metahost.
+        # Currently we use this to distinguish a job scheduled through
         # the afe from a suite job, as only the latter will get requeued
         # when a special task fails.
         job_deps.append(self._board)
