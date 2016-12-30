@@ -1302,6 +1302,10 @@ def route_rpc_to_master(func):
 
     @returns: A function replacing the RPC func.
     """
+    argspec = inspect.getargspec(func)
+    if argspec.varargs is not None:
+        raise Exception('RPC function must not have *args.')
+
     @wraps(func)
     def replacement(*args, **kwargs):
         """
@@ -1331,9 +1335,6 @@ def route_rpc_to_master(func):
 
         {'a':1, 'b':2, 'id':3, 'name':'mk'}
         """
-        argspec = inspect.getargspec(func)
-        if argspec.varargs is not None:
-            raise Exception('RPC function must not have *args.')
         funcargs = inspect.getcallargs(func, *args, **kwargs)
         kwargs = dict()
         for k, v in funcargs.iteritems():
@@ -1348,6 +1349,7 @@ def route_rpc_to_master(func):
                     user=thread_local.get_user())
             return afe.run(func.func_name, **kwargs)
         return func(**kwargs)
+
     return replacement
 
 
