@@ -953,8 +953,7 @@ class Suite(object):
                           len(scheduled_test_names))
             utils.write_keyval(
                 self._results_dir,
-                {constants.SCHEDULED_TEST_COUNT_KEY: len(scheduled_test_names),
-                 constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names)})
+                self._make_scheduled_tests_keyvals(scheduled_test_names))
         except Exception:  # pylint: disable=W0703
             logging.error(traceback.format_exc())
             Status('FAIL', self._tag,
@@ -965,6 +964,19 @@ class Suite(object):
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
         return len(scheduled_test_names)
+
+
+    def _make_scheduled_tests_keyvals(self, scheduled_test_names):
+        """Make a keyvals dict to write for scheduled test names.
+
+        @param scheduled_test_names: A list of scheduled test name strings.
+
+        @returns: A keyvals dict.
+        """
+        return {
+            constants.SCHEDULED_TEST_COUNT_KEY: len(scheduled_test_names),
+            constants.SCHEDULED_TEST_NAMES_KEY: repr(scheduled_test_names),
+        }
 
 
     def should_report(self, result):
