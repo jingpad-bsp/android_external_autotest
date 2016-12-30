@@ -753,12 +753,12 @@ class Suite(object):
             job_deps.append(self._pool)
         job_deps.append(self._board)
 
-        build = self._cros_build
-
         test_obj = self._afe.create_job(
             control_file=test.text,
-            name=tools.create_job_name(self._test_source_build or build,
-                                       self._tag, test.name),
+            name=tools.create_job_name(
+                    self._test_source_build or self._cros_build,
+                    self._tag,
+                    test.name),
             control_type=test.test_type.capitalize(),
             meta_hosts=[self._board]*test.sync_count,
             dependencies=job_deps,
@@ -790,8 +790,7 @@ class Suite(object):
         # test_source_build is saved to job_keyvals so scheduler can retrieve
         # the build name from database when compiling autoserv commandline.
         # This avoid a database change to add a new field in afe_jobs.
-        build = self._cros_build
-        keyvals={constants.JOB_BUILD_KEY: build,
+        keyvals={constants.JOB_BUILD_KEY: self._cros_build,
                  constants.JOB_SUITE_KEY: self._tag,
                  constants.JOB_EXPERIMENTAL_KEY: test.experimental,
                  constants.JOB_BUILDS_KEY: self._builds}
@@ -802,7 +801,8 @@ class Suite(object):
         # compile an autoserv command line to run in a SSP container using
         # previous builds.
         if (self._test_source_build and
-            (build != self._test_source_build or len(self._builds) > 1)):
+            (self._cros_build != self._test_source_build
+             or len(self._builds) > 1)):
             keyvals[constants.JOB_TEST_SOURCE_BUILD_KEY] = (
                     self._test_source_build)
             for prefix, build in self._builds.iteritems():
@@ -1033,9 +1033,7 @@ class Suite(object):
                 if self.should_report(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
-                    # Use the CrOS build for bug filing.
-                    build = self._cros_build
-                    failure = reporting.TestBug(build,
+                    failure = reporting.TestBug(self._cros_build,
                             site_utils.get_chrome_version(job_views),
                             self._tag,
                             result)
