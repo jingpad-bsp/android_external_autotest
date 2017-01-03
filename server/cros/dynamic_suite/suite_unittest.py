@@ -58,13 +58,13 @@ class _RetryHandlerShouldRetryMeta(type):
             @param spec: _ShouldRetryTestSpec instance.
             @returns: test method function.
             """
-            test_doc = 'Test should_retry with %r' % (spec,)
+            test_doc = 'Test _should_retry with %r' % (spec,)
             def test_method(self):
                 """Test method."""
                 status = make_status_stub(spec)
                 handler = RetryHandler({})
                 with make_handler_patch(handler, spec):
-                    got = handler.should_retry(status)
+                    got = handler._should_retry(status)
                 self.assertEqual(got, spec.expected)
             test_method.__name__ = name
             test_method.__doc__ = test_doc
@@ -182,7 +182,7 @@ class RetryHandlerShouldRetryTest(unittest.TestCase):
          if retry_map['status_id']['state'] != _NOT_ATTEMPTED
          or not retry_map['status_id']['retry_max'] > 0),
 
-        # Case where should_retry() is True
+        # Case where _should_retry() is True
         (_ShouldRetryTestSpec(
             max_reached=False,
             status_id='status_id',
