@@ -834,12 +834,16 @@ class Suite(object):
     def _schedule_test(self, record, test, retry_for=None, ignore_errors=False):
         """Schedule a single test and return the job.
 
-        Schedule a single test by creating a job.
-        And then update relevant data structures that are used to
-        keep track of all running jobs.
+        Schedule a single test by creating a job, and then update relevant
+        data structures that are used to keep track of all running jobs.
 
-        Emit TEST_NA if it failed to schedule the test due to
-        NoEligibleHostException or a non-existent board label.
+        Emits a TEST_NA status log entry if it failed to schedule the test due
+        to NoEligibleHostException or a non-existent board label.
+
+        Returns a frontend.Job object if the test is successfully scheduled.
+        If scheduling failed due to NoEligibleHostException or a non-existent
+        board label, returns None.  If ignore_errors is True, all unknown
+        errors return None, otherwise the errors are raised as-is.
 
         @param record: A callable to use for logging.
                        prototype: record(base_job.status_log_entry)
@@ -851,12 +855,7 @@ class Suite(object):
                              the error and will return None.
                              If False, rpc errors will be raised.
 
-        @returns: A frontend.Job object if the test is successfully scheduled.
-                  Returns None if scheduling failed due to
-                  NoEligibleHostException or a non-existent board label.
-                  Returns None if it encounters other rpc errors we don't know
-                  how to handle and ignore_errors is True.
-
+        @returns: A frontend.Job object or None
         """
         msg = 'Scheduling %s' % test.name
         if retry_for:
