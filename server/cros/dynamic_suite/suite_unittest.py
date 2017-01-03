@@ -9,14 +9,11 @@
 
 import collections
 from collections import OrderedDict
-import contextlib
-import itertools
 import os
 import shutil
 import tempfile
 import unittest
 
-import mock
 import mox
 
 import common
@@ -40,160 +37,6 @@ from autotest_lib.server.cros.dynamic_suite.fakes import FakeJob
 from autotest_lib.server.cros.dynamic_suite.suite import RetryHandler
 from autotest_lib.server.cros.dynamic_suite.suite import Suite
 from autotest_lib.site_utils import phapi_lib
-
-
-class _RetryHandlerShouldRetryMeta(type):
-    """Metaclass for generating tests for RetryHandler.should_retry().
-
-    Tests are generated using permutations of input values and expected
-    results, which come from a list of _ShouldRetryTestSpec instances assigned
-    to the `tests` class attribute in the class definition.
-    """
-
-    def __new__(cls, name, bases, dct):
-        def make_test_method(name, spec):
-            """Make test method for the given test spec.
-
-            @param name: Name of test method.
-            @param spec: _ShouldRetryTestSpec instance.
-            @returns: test method function.
-            """
-            test_doc = 'Test _should_retry with %r' % (spec,)
-            def test_method(self):
-                """Test method."""
-                status = make_status_stub(spec)
-                handler = RetryHandler({})
-                with make_handler_patch(handler, spec):
-                    got = handler._should_retry(status)
-                self.assertEqual(got, spec.expected)
-            test_method.__name__ = name
-            test_method.__doc__ = test_doc
-            return test_method
-
-        def make_status_stub(spec):
-            """Make a stub Status instance.
-
-            @param spec: _ShouldRetryTestSpec instance.
-            @returns: Status stub instance.
-            """
-            status = mock.create_autospec(job_status.Status, instance=True)
-            status.id = spec.status_id
-            status.test_executed = spec.test_executed
-            status.is_worse_than.return_value = spec.is_worse_than
-            return status
-
-        @contextlib.contextmanager
-        def make_handler_patch(handler, spec):
-            """Make a mock patch context for RetryHandler.
-
-            @param handler: RetryHandler instance.
-            @param spec: _ShouldRetryTestSpec instance.
-            @returns: test method function.
-            """
-            with mock.patch.multiple(handler, _suite_max_reached=mock.DEFAULT,
-                                     _retry_map=spec.retry_map) as mocks:
-                mocks['_suite_max_reached'].return_value = spec.max_reached
-                yield mocks
-
-        for i, spec in enumerate(dct['tests']):
-            test_name = 'test_should_retry_%d' % i
-            test_method = make_test_method(test_name, spec)
-            dct[test_name] = test_method
-        return type.__new__(cls, name, bases, dct)
-
-
-_ShouldRetryTestSpec = collections.namedtuple(
-    '_ShouldRetryTestSpec',
-    ['max_reached',
-     'status_id',
-     'test_executed',
-     'is_worse_than',
-     'retry_map',
-     'expected'])
-_NOT_ATTEMPTED = RetryHandler.States.NOT_ATTEMPTED
-_RETRY_MAP_PERMUTATIONS = [
-    {'status_id': {
-        'state': state,
-        'retry_max': retry_max}}
-    for state in RetryHandler.States.values
-    for retry_max in (-1, 0, 1)
-]
-
-
-class RetryHandlerShouldRetryTest(unittest.TestCase):
-    """Tests for RetryHandler.should_retry().
-
-    See _RetryHandlerShouldRetryMeta for how the tests are generated.
-    """
-    __metaclass__ = _RetryHandlerShouldRetryMeta
-    tests = list(itertools.chain(
-        # Cases where max_reached=True
-        (_ShouldRetryTestSpec(
-            max_reached=True,
-            status_id='status_id',
-            test_executed=test_executed,
-            is_worse_than=is_worse_than,
-            retry_map=retry_map,
-            expected=False)
-         for test_executed in (True, False)
-         for is_worse_than in (True, False)
-         for retry_map in _RETRY_MAP_PERMUTATIONS),
-
-        # Cases where test_executed=False
-        (_ShouldRetryTestSpec(
-            max_reached=False,
-            status_id='status_id',
-            test_executed=False,
-            is_worse_than=is_worse_than,
-            retry_map=retry_map,
-            expected=False)
-         for is_worse_than in (True, False)
-         for retry_map in _RETRY_MAP_PERMUTATIONS),
-
-        # Cases where is_worse_than=False
-        (_ShouldRetryTestSpec(
-            max_reached=False,
-            status_id='status_id',
-            test_executed=True,
-            is_worse_than=False,
-            retry_map=retry_map,
-            expected=False)
-         for retry_map in _RETRY_MAP_PERMUTATIONS),
-
-        # Cases where status_id not in retry_map
-        [_ShouldRetryTestSpec(
-            max_reached=False,
-            status_id='status_id',
-            test_executed=True,
-            is_worse_than=True,
-            retry_map={},
-            expected=False)],
-
-        # Cases where status state is not _NOT_ATTEMPTED or retry_max greater
-        # than zero.
-        (_ShouldRetryTestSpec(
-            max_reached=False,
-            status_id='status_id',
-            test_executed=True,
-            is_worse_than=True,
-            retry_map=retry_map,
-            expected=False)
-         for retry_map in _RETRY_MAP_PERMUTATIONS
-         if retry_map['status_id']['state'] != _NOT_ATTEMPTED
-         or not retry_map['status_id']['retry_max'] > 0),
-
-        # Case where _should_retry() is True
-        (_ShouldRetryTestSpec(
-            max_reached=False,
-            status_id='status_id',
-            test_executed=True,
-            is_worse_than=True,
-            retry_map=retry_map,
-            expected=True)
-         for retry_map in _RETRY_MAP_PERMUTATIONS
-         if retry_map['status_id']['state'] == _NOT_ATTEMPTED
-         and retry_map['status_id']['retry_max'] > 0),
-    ))
 
 
 class SuiteTest(mox.MoxTestBase):
