@@ -864,26 +864,17 @@ class Suite(object):
         begin_time_str = datetime.datetime.now().strftime(time_utils.TIME_FMT)
         try:
             job = self._create_job(test, retry_for=retry_for)
-        except error.NoEligibleHostException:
-            logging.debug('%s not applicable for this board/pool. '
-                          'Emitting TEST_NA.', test.name)
-            Status('TEST_NA', test.name,
-                   'Skipping:  test not supported on this board.',
-                   begin_time_str=begin_time_str).record_all(record)
-            return None
-        except proxy.ValidationError as e:
-            # The goal here is to treat a dependency on a
-            # non-existent board label the same as a
-            # dependency on a board that exists, but for which
-            # there's no hardware.
-            #
-            # If we don't recognize the error, we pass
-            # the buck to the outer try in this function,
-            # which immediately fails the suite.
-            if _is_nonexistent_board_error(e):
-                logging.debug('Validation error: %s', str(e))
-                logging.debug('Assuming label not found')
-                Status('TEST_NA', test.name, e.problem_keys.values()[0],
+        except (error.NoEligibleHostException, proxy.ValidationError) as e:
+            if (isinstance(e, error.NoEligibleHostException)
+                or (isinstance(e, proxy.ValidationError)
+                    and _is_nonexistent_board_error(e))):
+                # Treat a dependency on a non-existent board label the same as
+                # a dependency on a board that exists, but for which there's no
+                # hardware.
+                logging.debug('%s not applicable for this board/pool. '
+                              'Emitting TEST_NA.', test.name)
+                Status('TEST_NA', test.name,
+                       'Skipping:  test not supported on this board/pool.',
                        begin_time_str=begin_time_str).record_all(record)
                 return None
             else:
