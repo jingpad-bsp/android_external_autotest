@@ -30,7 +30,6 @@ class AppRTCParameters(object):
         @return: Audio parameter string like "audio=googEchoCancellation=False,..."
 
         """
-        param_str = 'audio='
         audio_params = []
         for key, value in self.audio.iteritems():
             audio_params.append('%s=%s' % (key, 'true' if value else 'false'))
@@ -46,7 +45,7 @@ class AppRTCParameters(object):
         """
         param_str = '?debug=%s' % self.debug
         param_str += '&'
-        param_str += self._get_audio_parameter_string()
+        param_str += 'audio=' + self._get_audio_parameter_string()
         return param_str
 
 
@@ -74,6 +73,7 @@ class AppRTCController(object):
         """Loads a AppRTC webpage in a new tab with loopback enabled."""
         room_name = str(uuid.uuid4())
         url = self.BASE_URL + room_name + self.param.get_parameter_string()
+        logging.debug('Open AppRTC loopback page %s', url)
         tab_desc = self.browser_facade.new_tab(url)
         self.click_join_button(tab_desc)
         # After clicking join button, it takes some time to actually join the
