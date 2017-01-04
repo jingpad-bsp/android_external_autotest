@@ -67,7 +67,11 @@ TELEMETRY_AFDO_BENCHMARKS = (
 
 # List of boards where this test can be run.  Currently, it needs a
 # machines with at least 4GB of memory or 2GB of /tmp.
-VALID_BOARDS = ['samus', 'link', 'lumpy']
+# This must be consistent with chromite.
+GCC_BOARDS = ['samus', 'link', 'lumpy']
+
+# Should be disjoint with GCC_BOARDS
+LLVM_BOARDS = ['chell']
 
 class telemetry_AFDOGenerate(test.test):
     """
@@ -88,7 +92,8 @@ class telemetry_AFDOGenerate(test.test):
         """
         self._host = host
         host_board = host.get_board().split(':')[1]
-        if not host_board in VALID_BOARDS:
+
+        if not (host_board in LLVM_BOARDS or host_board in GCC_BOARDS):
             raise error.TestFail(
                     'This test cannot be run on board %s' % host_board)
 
@@ -310,11 +315,23 @@ class telemetry_AFDOGenerate(test.test):
         @raises error.TestFail if upload failed.
         @returns nothing.
         """
-        GS_DEST = 'gs://chromeos-prebuilt/afdo-job/canonicals/%s'
+        GS_GCC_DEST = 'gs://chromeos-prebuilt/afdo-job/canonicals/%s'
+        GS_LLVM_DEST = 'gs://chromeos-prebuilt/afdo-job/llvm/%s'
         GS_TEST_DEST = 'gs://chromeos-throw-away-bucket/afdo-job/canonicals/%s'
         GS_ACL = 'project-private'
 
-        gs_dest = GS_TEST_DEST if self._gs_test_location else GS_DEST
+        board = self._host.get_board().split(':')[1]
+
+        if self._gs_test_location:
+            gs_dest = GS_TEST_DEST
+        elif board in GCC_BOARDS:
+            gs_dest = GS_GCC_DEST
+        elif board in LLVM_BOARDS:
+            gs_dest = GS_LLVM_DEST
+        else:
+            raise error.TestFail(
+                    'This test cannot be run on board %s' % board)
+
         remote_file = gs_dest % remote_basename
 
         logging.info('About to upload to GS: %s', remote_file)
