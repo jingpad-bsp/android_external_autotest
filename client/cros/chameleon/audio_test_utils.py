@@ -258,8 +258,9 @@ def examine_audio_diagnostics(path):
             if search_result:
                 num_underruns = int(search_result.group(1))
                 if num_underruns != 0:
-                    error_msgs.append('Found nonzero underrun at line %d: %s',
-                                      line_number, line)
+                    error_msgs.append(
+                            'Found nonzero underrun at line %d: %s' % (
+                                    line_number, line))
 
             # TODO(cychiang) add other check like maximum client reply delay.
             line_number = line_number + 1
