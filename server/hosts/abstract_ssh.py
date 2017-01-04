@@ -729,6 +729,16 @@ class AbstractSSHHost(remote.RemoteHost):
         os.remove(self.known_hosts_file)
 
 
+    def restart_master_ssh(self):
+        """
+        Stop and restart the ssh master connection.  This is meant as a last
+        resort when ssh commands fail and we don't understand why.
+        """
+        logging.debug('Restarting master ssh connection')
+        self._cleanup_master_ssh()
+        self.start_master_ssh(timeout=30)
+
+
     def _cleanup_master_ssh(self):
         """
         Release all resources (process, temporary directory) used by an active
