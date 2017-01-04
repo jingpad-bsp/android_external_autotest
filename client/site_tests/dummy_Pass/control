@@ -16,9 +16,4 @@ DOC = """
 This is a helper test that will succeed.
 """
 
-from chromite.lib import metrics
-
-m = 'chromeos/autotest/infra_benchmark/dummy_pass/duration'
-with metrics.SecondsTimer(m, fields={'success': False}) as c:
-    job.run_test('dummy_Pass')
-    c['success'] = True
+job.run_test('dummy_Pass')
