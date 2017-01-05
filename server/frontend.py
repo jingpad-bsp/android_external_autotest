@@ -463,16 +463,6 @@ class _FirmwareVersionMap(_SuffixHackVersionMap):
 
 
 class AFE(RpcClient):
-    def __init__(self, user=None, server=None, print_log=True, debug=False,
-                 reply_debug=False, job=None):
-        self.job = job
-        super(AFE, self).__init__(path='/afe/server/noauth/rpc/',
-                                  user=user,
-                                  server=server,
-                                  print_log=print_log,
-                                  debug=debug,
-                                  reply_debug=reply_debug)
-
 
     # Known image types for stable version mapping objects.
     # CROS_IMAGE_TYPE - Mappings for Chrome OS images.
@@ -491,6 +481,17 @@ class AFE(RpcClient):
         FIRMWARE_IMAGE_TYPE: _FirmwareVersionMap,
         ANDROID_IMAGE_TYPE: _AndroidVersionMap
     }
+
+
+    def __init__(self, user=None, server=None, print_log=True, debug=False,
+                 reply_debug=False, job=None):
+        self.job = job
+        super(AFE, self).__init__(path='/afe/server/noauth/rpc/',
+                                  user=user,
+                                  server=server,
+                                  print_log=print_log,
+                                  debug=debug,
+                                  reply_debug=reply_debug)
 
 
     def get_stable_version_map(self, image_type):
