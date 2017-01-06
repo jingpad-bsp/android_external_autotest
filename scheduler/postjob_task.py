@@ -313,7 +313,7 @@ class FinalReparseTask(SelfThrottledPostJobTask):
 
     def _generate_command(self, results_dir):
         return [_parser_path, '--write-pidfile', '--record-duration',
-                '-l', '2', '-r', '-o', results_dir]
+                '--suite-report', '-l', '2', '-r', '-o', results_dir]
 
 
     @property
