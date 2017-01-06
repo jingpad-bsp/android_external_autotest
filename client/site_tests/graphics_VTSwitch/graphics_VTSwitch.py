@@ -6,7 +6,8 @@ import logging
 import os
 import time
 
-from autotest_lib.client.bin import test, utils
+from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
@@ -66,6 +67,10 @@ class graphics_VTSwitch(test.test):
                  num_iterations=2,
                  similarity_percent_threshold=95,
                  difference_percent_threshold=5):
+
+        # Check for chromebook type devices
+        if not utils.get_board_type() == 'CHROMEBOOK':
+            raise error.TestNAError('DUT is not Chromebook. Test Skipped.')
 
         self._num_errors = 0
         keyvals = {}
