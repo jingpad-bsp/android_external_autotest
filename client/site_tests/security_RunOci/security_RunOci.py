@@ -121,8 +121,7 @@ class security_RunOci(test.test):
         rootfs_path = os.path.join(td.name, 'rootfs')
         os.mkdir(rootfs_path)
         os.chown(rootfs_path, 10000, 10000)
-        os_root = utils.system_output('rootdev')
-        utils.run(['mount', os_root, rootfs_path])
+        utils.run(['mount', "--bind", "/", rootfs_path])
         ret = self.run_test_in_dir(run_oci_args, argv, expected, td.name)
         utils.run(['umount', '-f', rootfs_path])
         return ret
