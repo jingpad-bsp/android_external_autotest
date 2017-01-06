@@ -6,6 +6,7 @@ from autotest_lib.client.common_lib import utils
 
 AUTHOR = 'Chrome OS team'
 NAME = 'telemetry_Benchmarks.page_cycler_v2.typical_25'
+ATTRIBUTES = 'suite:crosbolt_perf_nightly'
 TIME = 'LONG'
 TEST_CATEGORY = 'Benchmark'
 TEST_CLASS = 'performance'
