@@ -2,12 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AUTHOR = "jamescook"
+AUTHOR = "jamescook@chromium.org, mustash-team@google.com"
 NAME = "desktopui_MashLogin"
 PURPOSE = "Verify chrome --mash (for mustash) starts and logs in."
 CRITERIA = "Fails if chrome --mash does not start."
-# TODO(jamescook): Move to bvt-cq if stable on wmatrix. http://crbug.com/670036
-ATTRIBUTES="suite:bvt-perbuild"
+ATTRIBUTES = "suite:bvt-cq"
+JOB_RETRIES = 2
 TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "desktopui"
@@ -16,8 +16,8 @@ TEST_TYPE = "client"
 DOC = """
 chrome --mash has significant differences in its initialization vs.
 both regular chrome on devices and chrome on Linux desktop. This
-test just verifies chrome can start up. If it fails, please contact
-jamescook@ or mustash-team@.
+test verifies chrome can start up and log in. If it fails, please contact
+mustash-team@google.com.
 """
 
 job.run_test('desktopui_MashLogin')
