@@ -522,8 +522,7 @@ class AbstractSSHHost(remote.RemoteHost):
         """
         ctimeout = min(timeout, connect_timeout or timeout)
         try:
-            self.run(base_cmd, timeout=timeout, connect_timeout=ctimeout,
-                     ssh_failure_retry_ok=True)
+            self.run(base_cmd, timeout=timeout, connect_timeout=ctimeout)
         except error.AutoservSSHTimeout:
             msg = "Host (ssh) verify timed out (timeout = %d)" % timeout
             raise error.AutoservSSHTimeout(msg)
