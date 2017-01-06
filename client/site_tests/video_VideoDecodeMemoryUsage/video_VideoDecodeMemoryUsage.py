@@ -98,7 +98,7 @@ def _get_kernel_memory_usage():
 
 def get_gem_path_from_gpu(gpu):
     if 'mali' in gpu:
-        if utils.get_cpu_soc_family == 'exynos5':
+        if utils.get_cpu_soc_family() == 'exynos5':
             return 'exynos5'
     if gpu in open(_AMD_PCI_IDS_FILE_PATH).read():
         return 'amdgpu'
