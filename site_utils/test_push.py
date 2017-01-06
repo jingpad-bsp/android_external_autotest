@@ -581,7 +581,7 @@ def main():
         # Use daemon flag will kill child processes when parent process fails.
         use_daemon = not arguments.continue_on_failure
         # Verify all the DUTs at the beginning of testing push.
-        reverify_all_push_duts(arguments.pool)
+        #reverify_all_push_duts(arguments.pool)
         time.sleep(15) # Wait 15 secs for the verify test to start.
         check_dut_inventory(arguments.num_duts)
         queue = multiprocessing.Queue()
@@ -653,7 +653,7 @@ def main():
         raise
     finally:
         # Reverify all the hosts
-        reverify_all_push_duts(arguments.pool)
+        #reverify_all_push_duts(arguments.pool)
 
     message = ('\nAll tests are completed successfully, the prod branch of the '
                'following repos ready to be pushed to the hash list below.\n'
