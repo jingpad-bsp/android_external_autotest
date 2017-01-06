@@ -385,15 +385,15 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             serial = self.adb_serial
         elif function == FASTBOOT_CMD:
             serial = self.fastboot_serial
-            function = 'timeout --signal=%d %d %s' % (signal.SIGKILL,
-                                                      timeout + 1, function)
         else:
             raise NotImplementedError('Mode %s is not supported' % function)
 
         if function != ADB_CMD and shell:
             raise error.CmdError('shell option is only applicable to `adb`.')
 
-        cmd = '%s%s ' % ('sudo -n ' if require_sudo else '', function)
+        client_side_cmd = 'timeout --signal=%d %d %s' % (signal.SIGKILL,
+                                                         timeout + 1, function)
+        cmd = '%s%s ' % ('sudo -n ' if require_sudo else '', client_side_cmd)
 
         if serial:
             cmd += '-s %s ' % serial
