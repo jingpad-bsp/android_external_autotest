@@ -1029,23 +1029,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         return board
 
 
-    def get_build(self):
-        """Retrieve the current build for this Host from the AFE.
-
-        Looks through this host's labels in the AFE to determine its build.
-        This method is replaced by afe_utils.get_build. It's kept here to
-        maintain backwards compatibility for test control files in older CrOS
-        builds (R48, R49 etc.) still call host.get_build, e.g.,
-        `provision_AutoUpdate.double`.
-        TODO(sbasi): Once R50 falls into release branch, this method can be
-        removed.
-
-        @returns The current build or None if it could not find it or if there
-                 were multiple build labels assigned to this host.
-        """
-        return afe_utils.get_build(self)
-
-
     def servo_install(self, image_url=None, usb_boot_timeout=USB_BOOT_TIMEOUT,
                       install_timeout=INSTALL_TIMEOUT):
         """
