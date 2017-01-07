@@ -182,22 +182,6 @@ def get_stable_android_version(board):
     return _ANDROID_VERSION_MAP.get_version(board)
 
 
-def lookup_job_repo_url(host):
-    """Looks up the job_repo_url for the host.
-
-    The method is kept for backwards compatibility with test
-    autoupdate_EndToEndTest in existing builds. It should not be used for new
-    code.
-    TODO(dshi): Update autoupdate_EndToEndTest to use get_host_attribute after
-    lab is updated. After R50 is in stable channel, this method can be removed.
-
-    @param host: A Host object to lookup for job_repo_url.
-
-    @returns Host attribute `job_repo_url` of the given host.
-    """
-    return get_host_attribute(host, host.job_repo_url_attribute)
-
-
 def get_host_attribute(host, attribute, use_local_value=True):
     """Looks up the value of host attribute for the host.
 
