@@ -260,7 +260,8 @@ class ServoHost(ssh_host.SSHHost):
 
     def run(self, command, timeout=3600, ignore_status=False,
             stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS,
-            connect_timeout=30, options='', stdin=None, verbose=True, args=()):
+            connect_timeout=30, ssh_failure_retry_ok=False,
+            options='', stdin=None, verbose=True, args=()):
         """Run a command on the servo host.
 
         Extends method `run` in SSHHost. If the servo host is a remote device,
@@ -279,6 +280,9 @@ class ServoHost(ssh_host.SSHHost):
                                 Ignored if host is 'localhost'.
         @param options: String with additional ssh command options
                         Ignored if host is 'localhost'.
+        @param ssh_failure_retry_ok: when True and ssh connection failure is
+                                     suspected, OK to retry command (but not
+                                     compulsory, and likely not needed here)
         @param stdin: Stdin to pass (a string) to the executed command.
         @param verbose: Log the commands.
         @param args: Sequence of strings to pass as arguments to command by
