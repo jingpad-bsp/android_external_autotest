@@ -695,7 +695,10 @@ class Servo(object):
         if servo_version.startswith('servo_v2'):
             self._programmer = firmware_programmer.ProgrammerV2(self)
             self._programmer_rw = firmware_programmer.ProgrammerV2RwOnly(self)
-        elif servo_version.startswith('servo_v3'):
+        # Both servo v3 and v4 use the same programming methods so just leverage
+        # ProgrammerV3 for servo v4 as well.
+        elif (servo_version.startswith('servo_v3') or
+              servo_version.startswith('servo_v4')):
             self._programmer = firmware_programmer.ProgrammerV3(self)
             self._programmer_rw = firmware_programmer.ProgrammerV3RwOnly(self)
         else:
