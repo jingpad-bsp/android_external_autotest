@@ -651,7 +651,7 @@ def main():
                      'Error occurred during test:\n\n%s\n\n' %
                      (updated_repo_msg, str(e)) + '\n'.join(run_suite_output)))
         raise
-    finally:
+    #finally:
         # Reverify all the hosts
         #reverify_all_push_duts(arguments.pool)
 
