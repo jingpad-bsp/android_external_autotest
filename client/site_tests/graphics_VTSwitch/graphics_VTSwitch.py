@@ -11,29 +11,27 @@ from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import chrome
 from autotest_lib.client.cros.graphics import graphics_utils
+from autotest_lib.client.cros.image_comparison import pdiff_image_comparer
 from autotest_lib.client.cros.input_playback import input_playback
 
 def get_percent_difference(file1, file2):
     """
-    Performs byte-by-byte comparison of two files, given by their paths |file1|
-    and |file2|.  Returns difference as a percentage of the total file size.  If
-    one file is larger than the other, the difference is a percentage of
-    |file1|.
+    Performs pixel comparison of two files, given by their paths |file1|
+    and |file2| using terminal tool 'perceptualdiff' and returns percentage
+    difference of the total file size.
+
+    @param file1: path to image
+    @param file2: path to secondary image
+    @return: percentage difference of total file size.
+    @raise ValueError: if image dimensions are not the same
+    @raise OSError: if file does not exist or cannot be opened.
+
     """
-    files = (file1, file2)
-    sizes = {}
-    for filename in files:
-        if not os.path.exists(filename):
-            raise error.TestFail('Failed: Could not find file \'%s\'.' %
-                                 filename)
-        sizes[filename] = os.path.getsize(filename)
-        if sizes[filename] == 0:
-            raise error.TestFail('Failed: File \'%s\' has zero size.' %
-                                 filename)
-
-    diff_bytes = int(utils.system_output('cmp -l %s %s | wc -l' % files))
-
-    return round(100. * diff_bytes / sizes[file1])
+    # Using pdiff image comparer to compare the two images. This class
+    # invokes the terminal tool perceptualdiff.
+    pdi = pdiff_image_comparer.PdiffImageComparer()
+    diff_bytes = pdi.compare(file1, file2)[0]
+    return round(100. * diff_bytes / os.path.getsize(file1))
 
 
 class graphics_VTSwitch(test.test):
