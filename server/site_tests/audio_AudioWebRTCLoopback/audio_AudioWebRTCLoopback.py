@@ -135,11 +135,15 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
         logging.info('Saving recorded data to %s', recorded_file)
         linein.save_file(recorded_file)
 
-        audio_test_utils.check_recorded_frequency(
-                golden_file, linein, check_artifacts=check_quality)
-
         diagnostic_path = os.path.join(
                 self.resultsdir,
                 'audio_diagnostics.txt.after_recording')
         logging.info('Examine diagnostic file at %s', diagnostic_path)
-        audio_test_utils.examine_audio_diagnostics(diagnostic_path)
+        diag_warning_msg = audio_test_utils.examine_audio_diagnostics(
+                diagnostic_path)
+        if diag_warning_msg:
+            logging.warning(diag_warning_msg)
+
+        # Raise error.TestFail if there is issue.
+        audio_test_utils.check_recorded_frequency(
+                golden_file, linein, check_artifacts=check_quality)
