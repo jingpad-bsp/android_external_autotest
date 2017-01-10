@@ -14,6 +14,7 @@
 
 import logging
 import os
+import re
 
 from autotest_lib.client.common_lib import error
 from autotest_lib.server import utils
@@ -48,11 +49,11 @@ class cheets_GTS(tradefed_test.TradefedTest):
         """
         gts_tradefed = os.path.join(
                 self._android_gts,
-                'android-xts',
+                'android-gts',
                 'tools',
-                'xts-tradefed')
+                'gts-tradefed')
         logging.info('GTS-tradefed path: %s', gts_tradefed)
-        gts_tradefed_args = ['run', 'xts', '--package', target_package]
+        gts_tradefed_args = ['run', 'gts', '--module', target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
         output = self._run(
                 gts_tradefed,
@@ -65,9 +66,8 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # Parse stdout to obtain datetime IDs of directories into which tradefed
         # wrote result xml files and logs.
         datetime_id = self._parse_tradefed_datetime(output)
-        repository = os.path.join(self._android_gts, 'android-xts',
-                'repository')
-        autotest = os.path.join(self.resultsdir, 'android-xts')
+        repository = os.path.join(self._android_gts, 'android-gts')
+        autotest = os.path.join(self.resultsdir, 'android-gts')
         self._collect_logs(repository, datetime_id, autotest)
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
@@ -80,6 +80,77 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
         # All test has passed successfully, here.
         logging.info('The test has passed successfully.')
+
+    def _parse_tradefed_datetime(self, result):
+        """This parses the tradefed datetime object from the GTS output.
+        :param result: the tradefed result object
+        :return: the datetime
+        """
+        #TODO(dhaddock): Merge this into tradefed_test when N is working
+        match = re.search(r': Starting invocation for .+ (\S+) on device',
+                          result.stdout)
+        datetime_id = match.group(1)
+        logging.info('Tradefed identified results and logs with %s.',
+                     datetime_id)
+        return datetime_id
+
+    def _parse_result(self, result, waivers=None):
+        """Check the result from the tradefed output.
+
+        This extracts the test pass/fail/executed list from the output of
+        tradefed. It is up to the caller to handle inconsistencies.
+
+        @param result: The result object from utils.run.
+        @param waivers: a set() of tests which are permitted to fail.
+        """
+        # TODO(dhaddock): This function overrides the parent version while GTS
+        # uses the updated version with modules and new output.
+        # This will be merged into the tradefed_test.py class eventually.
+        match = re.search(r': Invocation finished in (.*). PASSED: (\d+), '
+                          r'FAILED: (\d+), '
+                          r'NOT EXECUTED: (\d+), MODULES: ('
+                          r'\d+) of (\d+)', result.stdout)
+
+        if not match:
+            raise error.Test('Test log does not contain a summary.')
+
+        passed = int(match.group(2))
+        failed = int(match.group(3))
+        not_executed = int(match.group(4))
+
+        match = re.search(r'Starting .+ with (\d+(?:,\d+)?) tests',
+                          result.stdout)
+
+        if match and match.group(1):
+            tests = int(match.group(1).replace(',', ''))
+        else:
+            # Unfortunately this happens. Assume it made no other mistakes.
+            logging.warning('Tradefed forgot to print number of tests.')
+            tests = passed + failed + not_executed
+        # TODO(rohitbm): make failure parsing more robust by extracting the list
+        # of failing tests instead of searching in the result blob. As well as
+        # only parse for waivers for the running ABI.
+        if waivers:
+            for testname in waivers:
+                # TODO(dhaddock): Find a more robust way to apply waivers.
+                fail_count = result.stdout.count(testname + ' FAIL')
+                if fail_count:
+                    if fail_count > 2:
+                        raise error.TestFail('Error: There are too many '
+                                             'failures found in the output to '
+                                             'be valid for applying waivers. '
+                                             'Please check output.')
+                    failed -= fail_count
+                    # To maintain total count consistency.
+                    passed += fail_count
+                    logging.info('Waived failure for %s %d time(s)',
+                                 testname, fail_count)
+        logging.info('tests=%d, passed=%d, failed=%d, not_executed=%d',
+                     tests, passed, failed, not_executed)
+        if failed < 0:
+            raise error.TestFail('Error: Internal waiver book keeping has '
+                                 'become inconsistent.')
+        return (tests, passed, failed, not_executed)
 
     def run_once(self, target_package=None):
         """Runs GTS target package exactly once."""
