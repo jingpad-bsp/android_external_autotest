@@ -139,13 +139,8 @@ def _stage_ssp(parser):
     """
     machines_list = _get_machines(parser)
     if bool(parser.options.lab):
-        machine_dict_list = []
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        for machine in machines_list:
-            afe_host = afe.get_hosts(hostname=machine)[0]
-            machine_dict_list.append({'hostname': machine,
-                                      'afe_host': afe_host})
-        machines_list = machine_dict_list
+        machines_list = server_job.get_machine_dicts(
+                machines_list, parser.options.lab)
 
     # If test_source_build is not specified, default to use server-side test
     # code from build specified in --image.
