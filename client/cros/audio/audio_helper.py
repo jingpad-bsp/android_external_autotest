@@ -88,12 +88,16 @@ def set_volume_levels(volume, capture):
     @param capture: The capture gain to set.
     """
     logging.info('Setting volume level to %d', volume)
-    utils.system('/usr/bin/cras_test_client --volume %d' % volume)
-    logging.info('Setting capture gain to %d', capture)
-    utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
-    utils.system('/usr/bin/cras_test_client --dump_server_info')
-    utils.system('/usr/bin/cras_test_client --mute 0')
-    utils.system('amixer -c 0 contents')
+    try:
+        utils.system('/usr/bin/cras_test_client --volume %d' % volume)
+        logging.info('Setting capture gain to %d', capture)
+        utils.system('/usr/bin/cras_test_client --capture_gain %d' % capture)
+        utils.system('/usr/bin/cras_test_client --dump_server_info')
+        utils.system('/usr/bin/cras_test_client --mute 0')
+        utils.system('amixer -c 0 contents')
+    except error.CmdError, e:
+        raise error.TestError(
+                '*** Can not tune volume through CRAS. *** (' + str(e) + ')')
 
 def loopback_latency_check(**args):
     """Checks loopback latency.
