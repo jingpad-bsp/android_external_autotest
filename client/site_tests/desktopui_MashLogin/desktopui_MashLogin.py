@@ -4,7 +4,7 @@
 
 import logging
 
-from autotest_lib.client.bin import site_utils, test
+from autotest_lib.client.bin import site_utils, test, utils
 from autotest_lib.client.common_lib.cros import chrome
 
 
@@ -23,6 +23,14 @@ class desktopui_MashLogin(test.test):
         if site_utils.get_board_type() not in ['CHROMEBOOK', 'CHROMEBASE']:
             logging.warning('chrome --mash requires a display, skipping test.')
             return
+
+        # The test is sometimes flaky on these boards. Mash doesn't target
+        # hardware this old, so skip the test. http://crbug.com/679213
+        boards_to_skip = ['x86-mario', 'x86-alex', 'x86-alex_he', 'x86-zgb',
+                          'x86-zgb_he']
+        if utils.get_current_board() in boards_to_skip:
+          logging.warning('Skipping test run on this board.')
+          return
 
         # GPU info collection via devtools SystemInfo.getInfo does not work
         # under mash due to differences in how the GPU process is configured.
