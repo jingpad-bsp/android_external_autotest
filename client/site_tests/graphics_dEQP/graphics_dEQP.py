@@ -558,10 +558,10 @@ class graphics_dEQP(test.test):
             # TODO(ihf): Delete this once hasty expectations have been
             # checked in.
             if self._gpu_type.startswith('tegra'):
-                raise error.TestWarn('Failed: %d/%d tests failed on tegra.' %
-                                     (test_failures, test_count))
-            raise error.TestFail('Failed: %d/%d tests failed.' %
-                                 (test_failures, test_count))
+                raise error.TestWarn('Failed: on %s %d/%d tests failed.' % (
+                                     self._gpu_type, test_failures, test_count))
+            raise error.TestFail('Failed: on %s %d/%d tests failed.' %
+                                 (self._gpu_type, test_failures, test_count))
         if test_skipped > 0:
-            raise error.TestFail('Failed: %d tests skipped, %d passes' %
-                                 (test_skipped, test_passes))
+            raise error.TestFail('Failed: on %s %d tests skipped, %d passes' %
+                                 (self._gpu_type, test_skipped, test_passes))
