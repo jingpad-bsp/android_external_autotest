@@ -17,7 +17,7 @@ It fails if any of these are not running at the time of the test.
 
 NETWORK_CRITICAL_PROCESSES = [
     'dbus-daemon',
-    'netfilter-queue',
+    'netfilter-queue|conntrackd',
     'shill',
     'udevd|systemd-udevd',
     'update_engine',
