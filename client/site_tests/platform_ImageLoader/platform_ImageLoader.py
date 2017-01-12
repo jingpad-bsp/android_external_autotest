@@ -47,6 +47,7 @@ class platform_ImageLoader(test.test):
             self.BUS_INTERFACE,
             self.BUS_PATH,
             self.REGISTER_COMPONENT,
+            timeout_seconds=20,
             user=self.USER,
             args=args).response
 
