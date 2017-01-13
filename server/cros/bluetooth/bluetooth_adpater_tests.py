@@ -846,7 +846,7 @@ class BluetoothAdapterTests(test.test):
 
         method_name = 'test_connection_by_device'
         connection_by_device = False
-        adapter_address = self.bluetooth_hid_facade.address
+        adapter_address = self.bluetooth_facade.address
         try:
             device.ConnectToRemoteAddress(adapter_address)
             connection_by_device = True
@@ -857,7 +857,7 @@ class BluetoothAdapterTests(test.test):
 
         connection_seen_by_adapter = False
         device_address = device.address
-        device_is_connected = self.bluetooth_hid_facade.device_is_connected
+        device_is_connected = self.bluetooth_facade.device_is_connected
         try:
             utils.poll_for_condition(
                     condition=lambda: device_is_connected(device_address),
@@ -906,7 +906,7 @@ class BluetoothAdapterTests(test.test):
 
         disconnection_seen_by_adapter = False
         device_address = device.address
-        device_is_connected = self.bluetooth_hid_facade.device_is_connected
+        device_is_connected = self.bluetooth_facade.device_is_connected
         try:
             utils.poll_for_condition(
                     condition=lambda: not device_is_connected(device_address),
@@ -1628,7 +1628,7 @@ class BluetoothAdapterTests(test.test):
         Typically, the run_once() method would look like:
 
         factory = remote_facade_factory.RemoteFacadeFactory(host)
-        self.bluetooth_hid_facade = factory.create_bluetooth_hid_facade()
+        self.bluetooth_facade = factory.create_bluetooth_hid_facade()
 
         self.test_bluetoothd_running()
         # ...

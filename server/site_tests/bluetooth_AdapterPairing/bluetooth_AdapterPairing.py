@@ -46,7 +46,7 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
         """
         self.host = host
         factory = remote_facade_factory.RemoteFacadeFactory(host)
-        self.bluetooth_hid_facade = factory.create_bluetooth_hid_facade()
+        self.bluetooth_facade = factory.create_bluetooth_hid_facade()
 
         pass_count = 0
         self.total_fails = {}
@@ -54,7 +54,7 @@ class bluetooth_AdapterPairing(BluetoothAdapterTests):
             self.fails = []
 
             # Get the device object and query some important properties.
-            device = self.get_device(host, device_type)
+            device = self.get_device(device_type)
 
             # Reset the adapter to forget previously paired devices if any.
             self.test_reset_on_adapter()
