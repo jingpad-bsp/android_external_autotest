@@ -334,23 +334,6 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
                 self._get_board_from_afe())
 
 
-    def lookup_job_repo_url(self):
-        """Looks up the job_repo_url for the host.
-
-        This is kept for backwards compatibility as AU test code in older
-        branch does not use server-side packaging and calls this method through
-        the host object.
-
-        TODO(dshi): Once R50 falls off the stable branch, we should remove this
-        method.
-
-        @returns job_repo_url from AFE or None if not found.
-
-        @raises KeyError if the host does not have a job_repo_url
-        """
-        return afe_utils.get_host_attribute(self, ds_constants.JOB_REPO_URL)
-
-
     def verify_job_repo_url(self, tag=''):
         """
         Make sure job_repo_url of this host is valid.
