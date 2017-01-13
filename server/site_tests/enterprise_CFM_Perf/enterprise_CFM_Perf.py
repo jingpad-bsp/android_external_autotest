@@ -63,8 +63,8 @@ class enterprise_CFM_Perf(test.test):
 
     def enroll_device_and_start_hangout(self):
         """Enroll device into CFM and start hangout session."""
-        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        hangout_name = 'auto-hangout-' + current_time
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        hangout_name = current_date + '-cfm-perf'
 
         self.cfm_facade.enroll_device()
         self.cfm_facade.restart_chrome_for_cfm()
