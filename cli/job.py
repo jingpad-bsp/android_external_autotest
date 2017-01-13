@@ -21,6 +21,7 @@ See topic_common.py for a High Level Design and Algorithm.
 import getpass, re
 from autotest_lib.cli import topic_common, action_common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import priorities
 
 
 class job(topic_common.atest):
@@ -259,10 +260,9 @@ class job_create_or_clone(action_common.atest_create, job):
         super(job_create_or_clone, self).__init__()
         self.hosts = []
         self.data_item_key = 'name'
-        self.parser.add_option('-p', '--priority', help='Job priority (low, '
-                               'medium, high, urgent), default=medium',
-                               type='choice', choices=('low', 'medium', 'high',
-                               'urgent'), default='medium')
+        self.parser.add_option('-p', '--priority',
+                               help='Job priority (int)', type='int',
+                               default=priorities.Priority.DEFAULT)
         self.parser.add_option('-b', '--labels',
                                help='Comma separated list of labels '
                                'to get machine list from.', default='')
@@ -316,15 +316,14 @@ class job_create_or_clone(action_common.atest_create, job):
         options, leftover = super(job_create_or_clone, self).parse(
                 [host_info, job_info, oth_info, label_info] + parse_info,
                 req_items='jobname')
-        self.data = {}
+        self.data = {
+            'priority': options.priority,
+        }
         jobname = getattr(self, 'jobname')
         if len(jobname) > 1:
             self.invalid_syntax('Too many arguments specified, only expected '
                                 'to receive job name: %s' % jobname)
         self.jobname = jobname[0]
-
-        if options.priority:
-            self.data['priority'] = options.priority.capitalize()
 
         if self.one_time_hosts:
             self.data['one_time_hosts'] = self.one_time_hosts
@@ -356,7 +355,7 @@ class job_create_or_clone(action_common.atest_create, job):
 
 
 class job_create(job_create_or_clone):
-    """atest job create [--priority <Low|Medium|High|Urgent>]
+    """atest job create [--priority <int>]
     [--synch_count] [--control-file </path/to/cfile>]
     [--on-server] [--test <test1,test2>]
     [--mlist </path/to/machinelist>] [--machine <host1 host2 host3>]
@@ -526,7 +525,7 @@ class job_create(job_create_or_clone):
 
 
 class job_clone(job_create_or_clone):
-    """atest job clone [--priority <Low|Medium|High|Urgent>]
+    """atest job clone [--priority <int>]
     [--mlist </path/to/machinelist>] [--machine <host1 host2 host3>]
     [--labels <list of labels of machines to run on>]
     [--one-time-hosts <hosts>] [--email <email>]

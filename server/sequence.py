@@ -11,6 +11,7 @@ import os
 
 import common
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import priorities
 from autotest_lib.server import utils
 from autotest_lib.server.cros.dynamic_suite import control_file_getter
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers
@@ -144,7 +145,7 @@ parallel_simple(run, machines)
             afe.create_job(
                     self.child_control_file(),
                     name=child_job_name,
-                    priority='Medium',
+                    priority=priorities.Priority.DEFAULT,
                     control_type=control_data.CONTROL_TYPE.SERVER,
                     hosts=[hostname], meta_hosts=(), one_time_hosts=(),
                     atomic_group_name=None, synch_count=None, is_template=False,
