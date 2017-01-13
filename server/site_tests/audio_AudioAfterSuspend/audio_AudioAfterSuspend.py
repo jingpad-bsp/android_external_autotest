@@ -40,6 +40,9 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
         """
         logging.debug('Plugging' if plug_state else 'Unplugging')
         jack_plugger = self.audio_board.get_jack_plugger()
+        if jack_plugger == None:
+            logging.debug('Jack plugger is NOT present!')
+            return
         if plug_state:
             jack_plugger.plug()
         else:
@@ -183,7 +186,7 @@ class audio_AudioAfterSuspend(audio_test.AudioTest):
             should be defined in chameleon_audio_ids
         @param recorder: recorder widget entity
             should be defined in chameleon_audio_ids
-        @param plug_configs: audio channel plug unplug sequence
+        @param plug_status: audio channel plug unplug sequence
 
         """
         if (recorder == chameleon_audio_ids.CrosIds.INTERNAL_MIC and
