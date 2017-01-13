@@ -403,10 +403,12 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
     def _send_records_to_master_helper(
         self, jobs, hqes, shard_hostname='host1',
         exception_to_throw=error.UnallowedRecordsSentToMaster, aborted=False):
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
-                                          control_file='foo',
-                                          control_type=SERVER,
-                                          test_retry=10, hostless=True)
+        job_id = rpc_interface.create_job(
+                name='dummy',
+                priority=self._PRIORITY,
+                control_file='foo',
+                control_type=SERVER,
+                test_retry=10, hostless=True)
         job = models.Job.objects.get(pk=job_id)
         shard = models.Shard.objects.create(hostname='host1')
         job.shard = shard
@@ -493,7 +495,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
 
 
     def _createJobForLabel(self, label):
-        job_id = rpc_interface.create_job(name='dummy', priority='Medium',
+        job_id = rpc_interface.create_job(name='dummy', priority=self._PRIORITY,
                                           control_file='foo',
                                           control_type=CLIENT,
                                           meta_hosts=[label.name],
