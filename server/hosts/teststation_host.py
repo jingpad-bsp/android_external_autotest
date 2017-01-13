@@ -162,10 +162,3 @@ class TestStationHost(base_classes.Host):
             # Delete the destination file if download failed.
             self.run('rm -f "%s"' % dest_file)
             raise
-
-    def close(self):
-        if not self._is_closed:
-            self._is_closed = True
-            super(TestStationHost, self).close()
-        else:
-            logging.debug('Teststaion already closed.')
