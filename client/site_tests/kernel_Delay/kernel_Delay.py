@@ -26,7 +26,10 @@ class kernel_Delay(test.test):
     GOVERNOR_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
     SETSPEED_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_setspeed'
     CUR_FREQ_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_cur_freq'
-    CPUFREQ_AVAIL_PATH = (
+    CPUFREQ_AVAIL_GOVERNORS_PATH = (
+            '/sys/devices/system/cpu/cpu0/cpufreq/'
+            'scaling_available_governors')
+    CPUFREQ_AVAIL_FREQS_PATH = (
             '/sys/devices/system/cpu/cpu0/cpufreq/'
             'scaling_available_frequencies')
 
@@ -182,6 +185,32 @@ class kernel_Delay(test.test):
                 if 'FAIL' in line:
                     raise error.TestFail('udelay failed: %s' % line)
 
+    def _test_all_delays(self):
+        """
+        Test udelay() over all configured delays.
+
+        """
+        for usecs in self.DELAYS:
+            self._test_udelay(usecs)
+
+    def _test_userspace(self):
+        """
+        Test udelay() using userspace governor.
+
+        """
+        logging.info('testing with userspace governor')
+        with open(self.CPUFREQ_AVAIL_FREQS_PATH, 'r') as f:
+            available_freqs = [int(x) for x in f.readline().split()]
+
+        max_freq = max(available_freqs)
+        min_freq = min(available_freqs)
+        logging.info('cpu frequency max %d min %d', max_freq, min_freq)
+
+        freqs = [ min_freq, max_freq ]
+        for freq in freqs:
+            self._set_freq(freq)
+            self._test_all_delays()
+            self._check_freq(freq)
 
     def run_once(self):
         kernel_ver = os.uname()[2]
@@ -199,20 +228,16 @@ class kernel_Delay(test.test):
         initial_governors = self._get_governors()
         initial_quiet_governor = self._get_quiet_governor()
 
-        with open(self.CPUFREQ_AVAIL_PATH, 'r') as f:
-            available_freqs = [int(x) for x in f.readline().split()]
+        with open(self.CPUFREQ_AVAIL_GOVERNORS_PATH, 'r') as f:
+            available_governors = set(f.readline().split())
+        logging.info('governors: %s', ' '.join(available_governors))
 
-        max_freq = max(available_freqs)
-        min_freq = min(available_freqs)
-        logging.info('cpu frequency max %d min %d', max_freq, min_freq)
-
-        freqs = [ min_freq, max_freq ]
         try:
-            for freq in freqs:
-                self._set_freq(freq)
-                for usecs in self.DELAYS:
-                    self._test_udelay(usecs)
-                self._check_freq(freq)
+            if 'userspace' in available_governors:
+                self._test_userspace()
+            else:
+                logging.warning('testing with existing governor')
+                self._test_all_delays()
         finally:
             self._reset_freq(initial_governors, initial_quiet_governor)
             utils.unload_module(self.MODULE_NAME)
