@@ -839,8 +839,8 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         # attached.
         #self.adb_run('kill-server')
         # |close| the associated teststation as well.
+        super(ADBHost, self).close()
         self.teststation.close()
-        return super(ADBHost, self).close()
 
 
     def syslog(self, message, tag='autotest'):
