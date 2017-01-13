@@ -109,7 +109,7 @@ INVALID_GS_CHAR_RANGE = [(0x00, 0x1F), (0x7F, 0x84), (0x86, 0xFF)]
 
 # Maximum number of files in the folder.
 MAX_FILE_COUNT = 500
-FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs']
+FOLDERS_NEVER_ZIP = ['debug', 'ssp_logs', 'autoupdate_logs']
 LIMIT_FILE_COUNT = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_limit_file_count', type=bool, default=False)
 
