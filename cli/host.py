@@ -154,6 +154,7 @@ class host_list(action_common.atest_list, host):
 
 
     def execute(self):
+        """Execute 'atest host list'."""
         filters = {}
         check_results = {}
         if self.hosts:
@@ -194,6 +195,10 @@ class host_list(action_common.atest_list, host):
 
 
     def output(self, results):
+        """Print output of 'atest host list'.
+
+        @param results: the results to be printed.
+        """
         if results:
             # Remove the platform from the labels.
             for result in results:
@@ -213,6 +218,7 @@ class host_stat(host):
     usage_action = 'stat'
 
     def execute(self):
+        """Execute 'atest host stat'."""
         results = []
         # Convert wildcards into real host stats.
         existing_hosts = []
@@ -243,6 +249,10 @@ class host_stat(host):
 
 
     def output(self, results):
+        """Print output of 'atest host stat'.
+
+        @param results: the results to be printed.
+        """
         for stats, acls, labels, attributes in results:
             print '-'*5
             self.print_fields(stats,
@@ -275,6 +285,7 @@ class host_jobs(host):
 
 
     def execute(self):
+        """Execute 'atest host jobs'."""
         results = []
         real_hosts = []
         for host in self.hosts:
@@ -305,6 +316,10 @@ class host_jobs(host):
 
 
     def output(self, results):
+        """Print output of 'atest host jobs'.
+
+        @param results: the results to be printed.
+        """
         for host, jobs in results:
             print '-'*5
             print 'Hostname: %s' % host
@@ -314,6 +329,7 @@ class host_jobs(host):
                                                 'status'])
 
 class BaseHostModCreate(host):
+    """The base class for host_mod and host_create"""
     # Matches one attribute=value pair
     attribute_regex = r'(?P<attribute>\w+)=(?P<value>.+)?'
 
@@ -389,8 +405,9 @@ class BaseHostModCreate(host):
                     raise topic_common.CliError('Attribute must be in key=value '
                                                 'syntax.')
                 elif m.group('attribute') in self.attributes:
-                    raise topic_common.CliError('Multiple values provided for '
-                                                'attribute %s.' % attribute)
+                    raise topic_common.CliError(
+                            'Multiple values provided for attribute '
+                            '%s.' % m.group('attribute'))
                 self.attributes[m.group('attribute')] = m.group('value')
 
         self.platform = options.platform
@@ -511,6 +528,7 @@ class host_mod(BaseHostModCreate):
 
 
     def execute(self):
+        """Execute 'atest host mod'."""
         successes = []
         for host in self.execute_rpc('get_hosts', hostname__in=self.hosts):
             self.host_ids[host['hostname']] = host['id']
@@ -548,6 +566,10 @@ class host_mod(BaseHostModCreate):
 
 
     def output(self, hosts):
+        """Print output of 'atest host mod'.
+
+        @param hosts: the host list to be printed.
+        """
         for msg in self.messages:
             self.print_wrapped(msg, hosts)
 
@@ -643,8 +665,13 @@ class host_create(BaseHostModCreate):
                     adb_serial = self.attributes.get('serials')
                     host_dut = hosts.create_host(machine,
                                                  adb_serial=adb_serial)
+
                 host_info = HostInfo(host, host_dut.get_platform(),
                                      host_dut.get_labels())
+                # Clean host to make sure nothing left after calling it,
+                # e.g. tunnels.
+                if hasattr(host_dut, 'close'):
+                    host_dut.close()
             else:
                 # Can't ping the host, use default information.
                 host_info = HostInfo(host, None, [])
@@ -685,6 +712,7 @@ class host_create(BaseHostModCreate):
 
 
     def execute(self):
+        """Execute 'atest host create'."""
         successful_hosts = []
         for host in self.hosts:
             try:
@@ -704,6 +732,10 @@ class host_create(BaseHostModCreate):
 
 
     def output(self, hosts):
+        """Print output of 'atest host create'.
+
+        @param hosts: the added host list to be printed.
+        """
         self.print_wrapped('Added host', hosts)
 
 

@@ -727,7 +727,8 @@ class AbstractSSHHost(remote.RemoteHost):
         super(AbstractSSHHost, self).close()
         self.rpc_server_tracker.disconnect_all()
         self._cleanup_master_ssh()
-        os.remove(self.known_hosts_file)
+        if os.path.exists(self.known_hosts_file):
+            os.remove(self.known_hosts_file)
 
 
     def restart_master_ssh(self):
