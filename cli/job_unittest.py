@@ -13,6 +13,7 @@ import common
 from autotest_lib.cli import cli_mock, job
 from autotest_lib.client.common_lib.test_utils import mock
 from autotest_lib.client.common_lib import control_data
+from autotest_lib.client.common_lib import priorities
 
 CLIENT = control_data.CONTROL_TYPE_NAMES.CLIENT
 SERVER = control_data.CONTROL_TYPE_NAMES.SERVER
@@ -28,7 +29,7 @@ class job_unittest(cli_mock.cli_unittest):
                 u'name': u'test_job0',
                 u'control_type': SERVER,
                 u'priority':
-                u'Medium',
+                priorities.Priority.DEFAULT,
                 u'owner': u'user0',
                 u'created_on':
                 u'2008-07-08 17:45:44',
@@ -40,7 +41,7 @@ class job_unittest(cli_mock.cli_unittest):
                 u'name': u'test_job1',
                 u'control_type': CLIENT,
                 u'priority':
-                u'High',
+                priorities.Priority.DEFAULT,
                 u'owner': u'user0',
                 u'created_on':
                 u'2008-07-08 12:17:47',
@@ -49,7 +50,7 @@ class job_unittest(cli_mock.cli_unittest):
 
 
     values_template = [{u'id': 180,          # Valid job
-                        u'priority': u'Low',
+                        u'priority': priorities.Priority.DEFAULT,
                         u'name': u'test_job0',
                         u'owner': u'Cringer',
                         u'invalid': False,
@@ -58,7 +59,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 2},
                        {u'id': 338,          # Valid job
-                        u'priority': 'High',
+                        u'priority': priorities.Priority.DEFAULT,
                         u'name': u'test_job1',
                         u'owner': u'Fisto',
                         u'invalid': False,
@@ -67,7 +68,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 1},
                        {u'id': 339,          # Valid job
-                        u'priority': 'Medium',
+                        u'priority': priorities.Priority.DEFAULT,
                         u'name': u'test_job2',
                         u'owner': u'Roboto',
                         u'invalid': False,
@@ -76,7 +77,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 1},
                        {u'id': 340,          # Invalid job priority
-                        u'priority': u'Uber',
+                        u'priority': priorities.Priority.DEFAULT,
                         u'name': u'test_job3',
                         u'owner': u'Panthor',
                         u'invalid': True,
@@ -85,7 +86,7 @@ class job_unittest(cli_mock.cli_unittest):
                         u'status_counts': {u'Queued': 1},
                         u'synch_count': 2},
                        {u'id': 350,          # Invalid job created_on
-                        u'priority': 'Medium',
+                        u'priority': priorities.Priority.DEFAULT,
                         u'name': u'test_job4',
                         u'owner': u'Icer',
                         u'invalid': True,
@@ -149,7 +150,7 @@ class job_list_unittest(job_unittest):
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-28 12:42:52',
                               u'timeout': 144,
@@ -170,7 +171,7 @@ class job_list_unittest(job_unittest):
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-28 12:42:52',
                               u'timeout': 144,
@@ -192,7 +193,7 @@ class job_list_unittest(job_unittest):
                               u'name': u'mytest',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-28 12:42:52',
                               u'timeout': 144,
@@ -247,7 +248,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
                                        u'synchronizing': 0,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -268,7 +269,7 @@ class job_stat_unittest(job_unittest):
                               u'name': u'test_on_meta_hosts',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-30 22:15:43',
                               u'timeout': 144,
@@ -286,7 +287,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -307,7 +308,7 @@ class job_stat_unittest(job_unittest):
                               u'name': u'test_on_meta_hosts',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-30 22:15:43',
                               u'timeout': 144,
@@ -333,7 +334,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -359,7 +360,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -382,7 +383,7 @@ class job_stat_unittest(job_unittest):
                               u'name': u'test',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-30 22:15:43',
                               u'timeout': 144,
@@ -408,7 +409,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -434,7 +435,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -457,7 +458,7 @@ class job_stat_unittest(job_unittest):
                               u'name': u'test_on_meta_hosts',
                               u'control_type': CLIENT,
                               u'run_verify': 1,
-                              u'priority': u'Medium',
+                              u'priority': priorities.Priority.DEFAULT,
                               u'owner': u'user0',
                               u'created_on': u'2008-07-30 22:15:43',
                               u'timeout': 144,
@@ -475,7 +476,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -493,7 +494,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -511,7 +512,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -529,7 +530,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -555,7 +556,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_on_meta_hosts',
                                        u'control_type': CLIENT,
                                        u'run_verify': 1,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-07-30 22:15:43',
                                        u'timeout': 144,
@@ -584,7 +585,7 @@ class job_stat_unittest(job_unittest):
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -616,7 +617,7 @@ class job_stat_unittest(job_unittest):
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -636,7 +637,7 @@ class job_stat_unittest(job_unittest):
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -657,7 +658,7 @@ class job_stat_unittest(job_unittest):
                              u'name': u'job0',
                              u'control_type': SERVER,
                              u'priority':
-                             u'Medium',
+                             priorities.Priority.DEFAULT,
                              u'owner': u'user0',
                              u'created_on':
                              u'2008-07-08 17:45:44',
@@ -671,7 +672,7 @@ class job_stat_unittest(job_unittest):
                              u'name': u'mytest',
                              u'control_type': CLIENT,
                              u'priority':
-                             u'High',
+                             priorities.Priority.DEFAULT,
                              u'owner': u'user0',
                              u'created_on': u'2008-07-08 12:17:47',
                              u'synch_count': 1,
@@ -693,7 +694,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
                                        u'synchronizing': 0,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -717,7 +718,7 @@ class job_stat_unittest(job_unittest):
                                        u'name': u'test_sleep',
                                        u'control_type': SERVER,
                                        u'synchronizing': 0,
-                                       u'priority': u'Medium',
+                                       u'priority': priorities.Priority.DEFAULT,
                                        u'owner': u'user0',
                                        u'created_on': u'2008-03-18 11:27:29',
                                        u'synch_count': 1,
@@ -725,7 +726,7 @@ class job_stat_unittest(job_unittest):
                               u'active': 0,
                               u'id': 101084}])],
                      out_words_ok=['job0', 'mytest', 'Aborted', 'Queued',
-                                   'Failed', 'Medium', 'High'])
+                                   'Failed', str(priorities.Priority.DEFAULT)])
 
 
 class job_create_unittest(cli_mock.cli_unittest):
@@ -735,7 +736,8 @@ class job_create_unittest(cli_mock.cli_unittest):
 
     trivial_ctrl_file = 'print "Hello"\n'
 
-    data = {'priority': 'Medium', 'control_file': ctrl_file, 'hosts': ['host0'],
+    data = {'priority': priorities.Priority.DEFAULT, 'control_file': ctrl_file,
+            'hosts': ['host0'],
             'name': 'test_job0', 'control_type': CLIENT, 'email_list': '',
             'meta_hosts': [], 'synch_count': 1, 'dependencies': [],
             'require_ssp': False}
@@ -1181,7 +1183,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     'email_list': u'',
                     'max_runtime_mins': 28800,
                     'parse_failed_repair': True,
-                    'priority': u'Medium',
+                    'priority': priorities.Priority.DEFAULT,
                     'reboot_after': u'Always',
                     'reboot_before': u'If dirty',
                     'run_verify': True,
@@ -1364,7 +1366,7 @@ class job_abort_unittest(cli_mock.cli_unittest):
     results = [{u'status_counts': {u'Aborted': 1}, u'control_file':
                 u"job.run_test('sleeptest')\n", u'name': u'test_job0',
                 u'control_type': SERVER, u'priority':
-                u'Medium', u'owner': u'user0', u'created_on':
+                priorities.Priority.DEFAULT, u'owner': u'user0', u'created_on':
                 u'2008-07-08 17:45:44', u'synch_count': 2, u'id': 180}]
 
     def test_execute_job_abort(self):
