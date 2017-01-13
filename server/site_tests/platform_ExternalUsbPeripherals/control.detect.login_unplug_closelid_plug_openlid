@@ -50,8 +50,7 @@ def run(machine):
 
     action_sequence = str(args_dict.get("action_sequence", default_actions))
 
-    usb_list = ["\"Chicony Electronics Co., Ltd\"",
-                "\"Kingston Technology Company Inc.\"",
+    usb_list = ["\"Kingston Technology Company Inc.\"",
                 "\"Alcor Micro Corp.\"",
                 "\"Microsoft Corp.|C-Media Electronics, Inc. Audio Adapter\"",
                ]
