@@ -334,3 +334,33 @@ class global_config_class(object):
 # insure the class is a singleton.  Now the symbol global_config
 # will point to the one and only one instace of the class
 global_config = global_config_class()
+
+
+class FakeGlobalConfig(object):
+    """Fake replacement for global_config singleton object.
+
+    Unittest will want to fake the global_config so that developers'
+    shadow_config doesn't leak into unittests. Provide a fake object for that
+    purpose.
+
+    """
+    # pylint: disable=missing-docstring
+
+    def __init__(self):
+        self._config_info = {}
+
+
+    def set_config_value(self, section, key, value):
+        self._config_info[(section, key)] = value
+
+
+    def get_config_value(self, section, key, type=str,
+                         default=None, allow_blank=False):
+        identifier = (section, key)
+        if identifier not in self._config_info:
+            return default
+        return self._config_info[identifier]
+
+
+    def parse_config_file(self):
+        pass
