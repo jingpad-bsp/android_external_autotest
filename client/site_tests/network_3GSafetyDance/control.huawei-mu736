@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSafetyDance.mu736"
+NAME = "network_3GSafetyDance.huawei-mu736"
 PURPOSE = "Stress-test all connman 3G operations."
 CRITERIA = """
 This test will fail if any DBus call times out or flimflam crashes.
@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:mu736"
+DEPENDENCIES = "modem:huawei-mu736"
 
 DOC = """
   Stress-tests all connman 3G operations.
@@ -25,4 +25,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GSafetyDance', test_env=test_env, tag='mu736')
+job.run_test('network_3GSafetyDance', test_env=test_env, tag='huawei-mu736')
