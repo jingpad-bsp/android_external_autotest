@@ -25,27 +25,6 @@ class NullMethodObject(object):
         for method_name in self._NULL_METHODS:
             setattr(self, method_name, null_method)
 
-class MockGlobalConfig(object):
-    def __init__(self):
-        self._config_info = {}
-
-
-    def set_config_value(self, section, key, value):
-        self._config_info[(section, key)] = value
-
-
-    def get_config_value(self, section, key, type=str,
-                         default=None, allow_blank=False):
-        identifier = (section, key)
-        if identifier not in self._config_info:
-            return default
-        return self._config_info[identifier]
-
-
-    def parse_config_file(self):
-        pass
-
-
 # the SpecialTask names here must match the suffixes used on the SpecialTask
 # results directories
 _PidfileType = enum.Enum('verify', 'cleanup', 'repair', 'job', 'gather',
@@ -351,7 +330,7 @@ class SchedulerFunctionalTest(unittest.TestCase,
 
 
     def _set_stubs(self):
-        self.mock_config = MockGlobalConfig()
+        self.mock_config = global_config.FakeGlobalConfig()
         self.god.stub_with(global_config, 'global_config', self.mock_config)
 
         self.mock_drone_manager = MockDroneManager()
