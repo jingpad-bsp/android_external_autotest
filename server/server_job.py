@@ -78,6 +78,31 @@ def _get_site_job_data_dummy(job):
     return {}
 
 
+def get_machine_dicts(machine_names, in_lab, host_attributes=None):
+    """Converts a list of machine names to list of dicts.
+
+    @param machine_names: A list of machine names.
+    @param in_lab: A boolean indicating whether we're running in lab.
+    @param host_attributes: Optional list of host attributes to add for each
+            host.
+    @returns: A list of dicts. Each dict has the following keys:
+            'hostname': Name of the machine originally in machine_names (str).
+            'afe_host': A frontend.Host object for the machine, or a stub if
+                    in_lab is false.
+    """
+    machine_dict_list = []
+    afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
+    for machine in machine_names:
+        afe_host_in_lab = None
+        if in_lab:
+            afe_host_in_lab = afe.get_hosts(hostname=machine)[0]
+        afe_host = afe_host_in_lab or server_utils.EmptyAFEHost()
+        if host_attributes:
+            afe_host.attributes.update(host_attributes)
+        machine_dict_list.append({'hostname' : machine, 'afe_host' : afe_host})
+    return machine_dict_list
+
+
 class status_indenter(base_job.status_indenter):
     """Provide a simple integer-backed status indenter."""
     def __init__(self):
@@ -296,18 +321,8 @@ class base_server_job(base_job.base_job):
 
         self.parent_job_id = parent_job_id
         self.in_lab = in_lab
-        afe = frontend_wrappers.RetryingAFE(timeout_min=5, delay_sec=10)
-        self.machine_dict_list = []
-        for machine in self.machines:
-            afe_host_in_lab = None
-            if self.in_lab:
-                afe_host_in_lab = afe.get_hosts(hostname=machine)[0]
-            afe_host = afe_host_in_lab or server_utils.EmptyAFEHost()
-            if host_attributes:
-                afe_host.attributes.update(host_attributes)
-            self.machine_dict_list.append(
-                    {'hostname' : machine,
-                     'afe_host' : afe_host})
+        self.machine_dict_list = get_machine_dicts(
+                self.machines, self.in_lab, host_attributes)
 
         # TODO(jrbarnette) The harness attribute is only relevant to
         # client jobs, but it's required to be present, or we will fail
