@@ -175,17 +175,13 @@ def create_host(machine, host_class=None, connectivity_class=None, **args):
     # TODO(kevcheng): get rid of the host detection using host attributes.
     host_class = (host_class
                   or OS_HOST_DICT.get(afe_host.attributes.get('os_type'))
-                  or OS_HOST_DICT.get(host_os))
-
-    if host_class:
-        classes = [host_class, connectivity_class]
-    else:
-        classes = [_detect_host(connectivity_class, hostname, **args),
-                   connectivity_class]
+                  or OS_HOST_DICT.get(host_os)
+                  or _detect_host(connectivity_class, hostname, **args))
 
     # create a custom host class for this machine and return an instance of it
-    host_class = type("%s_host" % hostname, tuple(classes), {})
-    host_instance = host_class(hostname, **args)
+    classes = (host_class, connectivity_class)
+    custom_host_class = type("%s_host" % hostname, classes, {})
+    host_instance = custom_host_class(hostname, **args)
 
     # call job_start if this is the first time this host is being used
     if hostname not in _started_hostnames:
