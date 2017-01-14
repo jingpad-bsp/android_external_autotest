@@ -12,11 +12,35 @@ cost in lines of code.
 """
 
 from ctypes import *
+import exceptions
 import mmap
 import os
 import subprocess
 
 from PIL import Image
+
+# drmModeConnection enum
+DRM_MODE_CONNECTED         = 1
+DRM_MODE_DISCONNECTED      = 2
+DRM_MODE_UNKNOWNCONNECTION = 3
+
+DRM_MODE_CONNECTOR_Unknown     = 0
+DRM_MODE_CONNECTOR_VGA         = 1
+DRM_MODE_CONNECTOR_DVII        = 2
+DRM_MODE_CONNECTOR_DVID        = 3
+DRM_MODE_CONNECTOR_DVIA        = 4
+DRM_MODE_CONNECTOR_Composite   = 5
+DRM_MODE_CONNECTOR_SVIDEO      = 6
+DRM_MODE_CONNECTOR_LVDS        = 7
+DRM_MODE_CONNECTOR_Component   = 8
+DRM_MODE_CONNECTOR_9PinDIN     = 9
+DRM_MODE_CONNECTOR_DisplayPort = 10
+DRM_MODE_CONNECTOR_HDMIA       = 11
+DRM_MODE_CONNECTOR_HDMIB       = 12
+DRM_MODE_CONNECTOR_TV          = 13
+DRM_MODE_CONNECTOR_eDP         = 14
+DRM_MODE_CONNECTOR_VIRTUAL     = 15
+DRM_MODE_CONNECTOR_DSI         = 16
 
 
 class DrmVersion(Structure):
@@ -121,6 +145,30 @@ class DrmModeResources(Structure):
         return crtc
 
 
+class DrmModeModeInfo(Structure):
+    """
+    A DRM modesetting mode info.
+    """
+
+    _fields_ = [
+        ("clock", c_uint),
+        ("hdisplay", c_ushort),
+        ("hsync_start", c_ushort),
+        ("hsync_end", c_ushort),
+        ("htotal", c_ushort),
+        ("hskew", c_ushort),
+        ("vdisplay", c_ushort),
+        ("vsync_start", c_ushort),
+        ("vsync_end", c_ushort),
+        ("vtotal", c_ushort),
+        ("vscan", c_ushort),
+        ("vrefresh", c_uint),
+        ("flags", c_uint),
+        ("type", c_uint),
+        ("name", c_char * 32),
+    ]
+
+
 class DrmModeCrtc(Structure):
     """
     A DRM modesetting CRTC.
@@ -134,7 +182,8 @@ class DrmModeCrtc(Structure):
         ("width", c_uint),
         ("height", c_uint),
         ("mode_valid", c_int),
-        # XXX incomplete struct!
+        ("mode", DrmModeModeInfo),
+        ("gamma_size", c_int),
     ]
 
     _fd = None
@@ -167,6 +216,72 @@ class DrmModeCrtc(Structure):
         else:
             raise RuntimeError("CRTC %d doesn't have a framebuffer!" %
                                self.crtc_id)
+
+
+class DrmModeEncoder(Structure):
+    """
+    A DRM modesetting encoder.
+    """
+
+    _fields_ = [
+        ("encoder_id", c_uint),
+        ("encoder_type", c_uint),
+        ("crtc_id", c_uint),
+        ("possible_crtcs", c_uint),
+        ("possible_clones", c_uint),
+    ]
+
+    _fd = None
+    _l = None
+
+    def __repr__(self):
+        return "<Encoder (%d)>" % self.encoder_id
+
+    def __del__(self):
+        if self._l:
+            self._l.drmModeFreeEncoder(self)
+
+
+class DrmModeConnector(Structure):
+    """
+    A DRM modesetting connector.
+    """
+
+    _fields_ = [
+        ("connector_id", c_uint),
+        ("encoder_id", c_uint),
+        ("connector_type", c_uint),
+        ("connector_type_id", c_uint),
+        ("connection", c_uint), # drmModeConnection enum
+        ("mmWidth", c_uint),
+        ("mmHeight", c_uint),
+        ("subpixel", c_uint), # drmModeSubPixel enum
+        ("count_modes", c_int),
+        ("modes", POINTER(DrmModeModeInfo)),
+        ("count_propts", c_int),
+        ("props", POINTER(c_uint)),
+        ("prop_values", POINTER(c_ulonglong)),
+        ("count_encoders", c_int),
+        ("encoders", POINTER(c_uint)),
+    ]
+
+    _fd = None
+    _l = None
+
+    def __repr__(self):
+        return "<Connector (%d)>" % self.connector_id
+
+    def __del__(self):
+        if self._l:
+            self._l.drmModeFreeConnector(self)
+
+    def isInternal(self):
+        return (self.connector_type == DRM_MODE_CONNECTOR_LVDS or
+                self.connector_type == DRM_MODE_CONNECTOR_eDP or
+                self.connector_type == DRM_MODE_CONNECTOR_DSI)
+
+    def isConnected(self):
+        return self.connection == DRM_MODE_CONNECTED
 
 
 class drm_mode_map_dumb(Structure):
@@ -267,7 +382,12 @@ def loadDRM():
     return types of functions.
     """
 
-    l = cdll.LoadLibrary("libdrm.so")
+    l = None
+
+    try:
+        l = cdll.LoadLibrary("libdrm.so")
+    except OSError:
+        l = cdll.LoadLibrary("libdrm.so.2") # ubuntu doesn't have libdrm.so
 
     l.drmGetVersion.argtypes = [c_int]
     l.drmGetVersion.restype = POINTER(DrmVersion)
@@ -286,6 +406,18 @@ def loadDRM():
 
     l.drmModeFreeCrtc.argtypes = [POINTER(DrmModeCrtc)]
     l.drmModeFreeCrtc.restype = None
+
+    l.drmModeGetEncoder.argtypes = [c_int, c_uint]
+    l.drmModeGetEncoder.restype = POINTER(DrmModeEncoder)
+
+    l.drmModeFreeEncoder.argtypes = [POINTER(DrmModeEncoder)]
+    l.drmModeFreeEncoder.restype = None
+
+    l.drmModeGetConnector.argtypes = [c_int, c_uint]
+    l.drmModeGetConnector.restype = POINTER(DrmModeConnector)
+
+    l.drmModeFreeConnector.argtypes = [POINTER(DrmModeConnector)]
+    l.drmModeFreeConnector.restype = None
 
     l.drmModeGetFB.argtypes = [c_int, c_uint]
     l.drmModeGetFB.restype = POINTER(DrmModeFB)
@@ -347,6 +479,37 @@ class DRM(object):
             return r
 
         return None
+
+    def getCrtc(self, crtc_id):
+        c_ptr = self._l.drmModeGetCrtc(self._fd, crtc_id)
+        if c_ptr:
+            c = c_ptr.contents
+            c._fd = self._fd
+            c._l = self._l
+            return c
+
+        return None
+
+    def getEncoder(self, encoder_id):
+        e_ptr = self._l.drmModeGetEncoder(self._fd, encoder_id)
+        if e_ptr:
+            e = e_ptr.contents
+            e._fd = self._fd
+            e._l = self._l
+            return e
+
+        return None
+
+    def getConnector(self, connector_id):
+        c_ptr = self._l.drmModeGetConnector(self._fd, connector_id)
+        if c_ptr:
+            c = c_ptr.contents
+            c._fd = self._fd
+            c._l = self._l
+            return c
+
+        return None
+
 
 
 def drmFromPath(path):
@@ -435,16 +598,82 @@ def crtcScreenshot(crtc_id=None):
     Take a screenshot, returning an image object.
 
     @param crtc_id: The CRTC to screenshot.
+                    None for first found CRTC with mode set
+                    or "internal" for crtc connected to internal LCD
+                    or "external" for crtc connected to external display
+                    or "usb" "evdi" or "udl" for crtc with valid mode on evdi or
+                    udl display
+                    or DRM integer crtc_id
     """
 
     global _drm
+
     if not _drm:
-        paths = ["/dev/dri/" + n for n in os.listdir("/dev/dri")]
-        for p in paths:
-            d = drmFromPath(p)
-            if d.resources() and d.resources().count_crtcs > 0:
-                _drm = d
-                break
+        paths = [
+            "/dev/dri/" + n
+            for n in filter(lambda x: x.startswith("card"),
+                            os.listdir("/dev/dri"))
+        ]
+
+        if crtc_id == "usb" or crtc_id == "evdi" or crtc_id == "udl":
+            for p in paths:
+                d = drmFromPath(p)
+                v = d.version()
+
+                if crtc_id == v.name:
+                    _drm = d
+                    break
+
+                if crtc_id == "usb" and (v.name == "evdi" or v.name == "udl"):
+                    _drm = d
+                    break
+
+        elif crtc_id == "internal" or crtc_id == "external":
+            internal = crtc_id == "internal"
+            for p in paths:
+                d = drmFromPath(p)
+                if d.resources() is None:
+                    continue
+                if d.resources() and d.resources().count_connectors > 0:
+                    for c in xrange(0, d.resources().count_connectors):
+                        connector = d.getConnector(d.resources().connectors[c])
+                        if (internal == connector.isInternal()
+                            and connector.isConnected()
+                            and connector.encoder_id != 0):
+                            e = d.getEncoder(connector.encoder_id)
+                            crtc = d.getCrtc(e.crtc_id)
+                            if crtc.mode_valid:
+                                crtc_id = crtc.crtc_id
+                                _drm = d
+                                break
+                if _drm:
+                    break
+
+        elif crtc_id is None or crtc_id == 0:
+            for p in paths:
+                d = drmFromPath(p)
+                if d.resources() is None:
+                    continue
+                for c in xrange(0, d.resources().count_crtcs):
+                    crtc = d.getCrtc(d.resources().crtcs[c])
+                    if crtc.mode_valid:
+                        crtc_id = d.resources().crtcs[c]
+                        _drm = d
+                        break
+                if _drm:
+                    break
+
+        else:
+            for p in paths:
+                d = drmFromPath(p)
+                if d.resources() is None:
+                    continue
+                for c in xrange(0, d.resources().count_crtcs):
+                    if crtc_id == d.resources().crtcs[c]:
+                        _drm = d
+                        break
+                if _drm:
+                    break
 
     if _drm:
         crtc = _drm.resources().getCrtcRobust(crtc_id)
