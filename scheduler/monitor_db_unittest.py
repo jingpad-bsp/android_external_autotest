@@ -96,6 +96,9 @@ class BaseSchedulerTest(unittest.TestCase,
 
 
     def _set_monitor_stubs(self):
+        self.mock_config = global_config.FakeGlobalConfig()
+        self.god.stub_with(global_config, 'global_config', self.mock_config)
+
         # Clear the instance cache as this is a brand new database.
         scheduler_models.DBObject._clear_instance_cache()
 
@@ -419,8 +422,7 @@ class DispatcherSchedulingTest(BaseSchedulerTest):
     def test_no_execution_subdir_not_found(self):
         """Reproduce bug crosbug.com/334353 and recover from it."""
 
-        global_config.global_config.override_config_value(
-                'SCHEDULER', 'drones', 'localhost')
+        self.mock_config.set_config_value('SCHEDULER', 'drones', 'localhost')
 
         job = self._create_job(hostless=True)
 
