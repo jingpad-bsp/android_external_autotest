@@ -39,6 +39,7 @@ class firmware_ECBootTime(FirmwareTest):
         else:
             boot_anchors = ["\[([0-9\.]+) power state 1 = S5",
                             "\[([0-9\.]+) power state 3 = S0"]
+
         # regular expression to say that EC is ready. For systems that
         # run out of ram there is a second boot where the PMIC is
         # asked to power cycle the EC to be 100% sure (I wish) that
@@ -50,6 +51,13 @@ class firmware_ECBootTime(FirmwareTest):
             ec_ready = ["(?ms)UART.*UART.*?\[([0-9.]+) "]
         else:
             ec_ready = ["([0-9.]+) Inits done"]
+
+        # Really before sending the power on console command, we should wait
+        # until the console task is ready to receive input.  The console task
+        # prints a string when it's ready to do so, so let's search for that
+        # too.
+        ec_ready.append("Console is enabled")
+
         power_cmd = "powerbtn" if self.faft_config.ec_has_powerbtn_cmd else \
                     "power on"
         # Try the EC reboot command several times in case the console
@@ -71,6 +79,8 @@ class firmware_ECBootTime(FirmwareTest):
             self.host.wait_up(timeout=30)
             raise error.TestFail("Unable to reboot EC cleanly, " +
                                  "Please try removing AC power")
+        logging.debug("reboot: %r", reboot)
+
         power_press = self.ec.send_command_get_output(
             power_cmd, boot_anchors)
         reboot_time = float(reboot[0][1])
