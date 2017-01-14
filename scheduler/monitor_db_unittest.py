@@ -113,9 +113,6 @@ class BaseSchedulerTest(unittest.TestCase,
         self.god.stub_with(monitor_db, '_db_manager', connection_manager)
         self.god.stub_with(monitor_db, '_db', self._database)
 
-        # These tests only make sense if hosts are acquired inline with the
-        # rest of the tick.
-        self.god.stub_with(monitor_db, '_inline_host_acquisition', True)
         self.god.stub_with(monitor_db.BaseDispatcher,
                            '_get_pending_queue_entries',
                            self._get_pending_hqes)
@@ -136,12 +133,19 @@ class BaseSchedulerTest(unittest.TestCase,
     def setUp(self):
         self._frontend_common_setup()
         self._set_monitor_stubs()
+        self._set_global_config_values()
         self._dispatcher = monitor_db.Dispatcher()
 
 
     def tearDown(self):
         self._database.disconnect()
         self._frontend_common_teardown()
+
+
+    def _set_global_config_values(self):
+        """Set global_config values to suit unittest needs."""
+        self.mock_config.set_config_value(
+                'SCHEDULER', 'inline_host_acquisition', True)
 
 
     def _update_hqe(self, set, where=''):
