@@ -264,6 +264,7 @@ class LabelRetriever(object):
                             if self._is_known_label(l)])
         new_labels = set(self.get_labels(host))
 
+        # TODO(pprabhu) Replace this update logic using AfeHostInfoBackend.
         # Remove old labels.
         labels_to_remove = list(old_labels & (known_labels - new_labels))
         if labels_to_remove:
