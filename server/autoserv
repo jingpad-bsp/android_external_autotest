@@ -140,7 +140,8 @@ def _stage_ssp(parser):
     machines_list = _get_machines(parser)
     if bool(parser.options.lab):
         machines_list = server_job.get_machine_dicts(
-                machines_list, parser.options.lab)
+                machines_list, parser.options.lab,
+                parser.options.host_attributes)
 
     # If test_source_build is not specified, default to use server-side test
     # code from build specified in --image.
