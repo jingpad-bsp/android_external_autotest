@@ -242,10 +242,10 @@ def examine_audio_diagnostics(path):
 
     @param path: Path to audio diagnostic file.
 
-    @raise: error.TestFail if there is unexpected result.
+    @returns: Warning messages or ''.
 
     """
-    error_msgs = []
+    warning_msgs = []
     line_number = 1
 
     underrun_pattern = re.compile('num_underruns: (\d*)')
@@ -258,18 +258,19 @@ def examine_audio_diagnostics(path):
             if search_result:
                 num_underruns = int(search_result.group(1))
                 if num_underruns != 0:
-                    error_msgs.append(
-                            'Found nonzero underrun at line %d: %s' % (
-                                    line_number, line))
+                    warning_msgs.append(
+                            'Found %d underrun at line %d: %s' % (
+                                    num_underruns, line_number, line))
 
             # TODO(cychiang) add other check like maximum client reply delay.
             line_number = line_number + 1
 
-    if error_msgs:
-        raise error.TestFail('Found issue in audio diganostics result : %s',
-                             '\n'.join(error_msgs))
+    if warning_msgs:
+        return ('Found issue in audio diganostics result : %s' %
+                '\n'.join(warning_msgs))
 
     logging.info('audio_diagnostic result looks fine')
+    return ''
 
 
 @contextmanager
