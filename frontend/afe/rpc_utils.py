@@ -884,16 +884,34 @@ def get_create_job_common_args(local_args):
     return dict(item for item in local_args.iteritems() if item[0] in arg_names)
 
 
-def create_job_common(name, priority, control_type, control_file=None,
-                      hosts=(), meta_hosts=(), one_time_hosts=(),
-                      atomic_group_name=None, synch_count=None,
-                      is_template=False, timeout=None, timeout_mins=None,
-                      max_runtime_mins=None, run_verify=True, email_list='',
-                      dependencies=(), reboot_before=None, reboot_after=None,
-                      parse_failed_repair=None, hostless=False, keyvals=None,
-                      drone_set=None, parameterized_job=None,
-                      parent_job_id=None, test_retry=0, run_reset=True,
-                      require_ssp=None):
+def create_job_common(
+        name,
+        priority,
+        control_type,
+        control_file=None,
+        hosts=(),
+        meta_hosts=(),
+        one_time_hosts=(),
+        atomic_group_name=None,
+        synch_count=None,
+        is_template=False,
+        timeout=None,
+        timeout_mins=None,
+        max_runtime_mins=None,
+        run_verify=True,
+        email_list='',
+        dependencies=(),
+        reboot_before=None,
+        reboot_after=None,
+        parse_failed_repair=None,
+        hostless=False,
+        keyvals=None,
+        drone_set=None,
+        parameterized_job=None,
+        parent_job_id=None,
+        test_retry=0,
+        run_reset=True,
+        require_ssp=None):
     #pylint: disable-msg=C0111
     """
     Common code between creating "standard" jobs and creating parameterized jobs
