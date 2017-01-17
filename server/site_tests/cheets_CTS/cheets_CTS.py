@@ -43,7 +43,9 @@ _CTS_URI = {
 
 @contextlib.contextmanager
 def pushd(d):
-    """Defines pushd."""
+    """Defines pushd.
+    @param d: the directory to change to.
+    """
     current = os.getcwd()
     os.chdir(d)
     try:
@@ -96,6 +98,13 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 shutil.rmtree(path)
             self._safe_makedirs(path)
 
+    def _install_plan(self, plan):
+        logging.info('Install plan: %s', plan)
+        plans_dir = os.path.join(self._android_cts, 'android-cts',
+                'repository', 'plans')
+        src_plan_file = os.path.join(self.bindir, 'plans', '%s.xml' % plan)
+        shutil.copy(src_plan_file, plans_dir)
+
     def _push_media(self):
         """Downloads, caches and pushed media files to DUT."""
         media = self._install_bundle(_CTS_URI['media'])
@@ -113,33 +122,48 @@ class cheets_CTS(tradefed_test.TradefedTest):
 
     def _tradefed_run_command(self,
                               package=None,
-                              derivedplan=None,
-                              session_id=None):
+                              plan=None,
+                              session_id=None,
+                              test_class=None,
+                              test_method=None):
+
         """Builds the CTS tradefed 'run' command line.
 
-        There should be exactly one parameter which is not None:
+        There are five different usages:
+
+        1. Test a package: assign the package name via |package|.
+        2. Test a plan: assign the plan name via |plan|.
+        3. Continue a session: assign the session ID via |session_id|.
+        4. Run all test cases of a class: assign the class name via
+           |test_class|.
+        5. Run a specific test case: assign the class name and method name in
+           |test_class| and |test_method|.
+
         @param package: the name of test package to be run.
-        @param derivedplan: name of derived plan to retry.
+        @param plan: name of the plan to be run.
         @param session_id: tradefed session id to continue.
+        @param test_class: the name of the class of which all test cases will
+                           be run.
+        @param test_name: the name of the method of |test_class| to be run.
+                          Must be used with |test_class|.
         @return: list of command tokens for the 'run' command.
         """
         if package is not None:
             cmd = ['run', 'cts', '--package', package]
-        elif derivedplan is not None:
-            cmd = ['run', 'cts', '--plan', derivedplan]
+        elif plan is not None:
+            cmd = ['run', 'cts', '--plan', plan]
         elif session_id is not None:
             cmd = ['run', 'cts', '--continue-session', '%d' % session_id]
+        elif test_class is not None:
+            cmd = ['run', 'cts', '-c', test_class]
+            if test_method is not None:
+                cmd += ['-m', test_method]
         else:
             raise error.TestFail('Error: Need to provide an argument.')
         # Automated media download is broken, so disable it. Instead we handle
         # this explicitly via _push_media(). This has the benefit of being
         # cached on the dev server. b/27245577
         cmd.append('--skip-media-download')
-        # Only push media for tests that need it. b/29371037
-        if self._needs_push_media:
-            self._push_media()
-            # copy_media.sh is not lazy, but we try to be.
-            self._needs_push_media = False
 
         # If we are running outside of the lab we can collect more data.
         if not utils.is_in_container():
@@ -194,19 +218,6 @@ class cheets_CTS(tradefed_test.TradefedTest):
         self._collect_logs(tradefed, datetime_id, autotest)
         return self._parse_result(output, self.waivers_and_manual_tests)
 
-    def _tradefed_run(self, package):
-        """Executes 'tradefed run |package|' command.
-
-        @param package: the name of test package to be run.
-        @return: tuple of (tests, pass, fail, notexecuted) counts.
-        """
-        # The list command is not required. It allows the reader to inspect the
-        # tradefed state when examining the autotest logs.
-        commands = [
-                ['list', 'results'],
-                self._tradefed_run_command(package=package)]
-        return self._run_cts_tradefed(commands)
-
     def _tradefed_continue(self, session_id, datetime_id=None):
         """Continues a previously started session.
 
@@ -222,18 +233,18 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 self._tradefed_run_command(session_id=session_id)]
         return self._run_cts_tradefed(commands, datetime_id)
 
-    def _tradefed_retry(self, package, session_id):
+    def _tradefed_retry(self, test_name, session_id):
         """Retries failing tests in session.
 
         It is assumed that there are no notexecuted tests of session_id,
         otherwise some tests will be missed and never run.
 
-        @param package: the name of test package to be run.
+        @param test_name: the name of test to be retried.
         @param session_id: tradefed session id to retry.
         @return: tuple of (new session_id, tests, pass, fail, notexecuted).
         """
         # Creating new test plan for retry.
-        derivedplan = 'retry.%s.%s' % (package, session_id)
+        derivedplan = 'retry.%s.%s' % (test_name, session_id)
         logging.info('Retrying failures using derived plan %s.', derivedplan)
         # The list commands are not required. It allows the reader to inspect
         # the tradefed state when examining the autotest logs.
@@ -243,7 +254,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
                         % session_id, '-r', 'fail'],
                 ['list', 'plans'],
                 ['list', 'results'],
-                self._tradefed_run_command(derivedplan=derivedplan)]
+                self._tradefed_run_command(plan=derivedplan)]
         tests, passed, failed, notexecuted = self._run_cts_tradefed(commands)
         # TODO(ihf): Consider if diffing/parsing output of "list results" for
         # new session_id might be more reliable. For now just assume simple
@@ -267,12 +278,27 @@ class cheets_CTS(tradefed_test.TradefedTest):
         return retry
 
     def run_once(self,
-                 target_package,
+                 target_package=None,
+                 target_plan=None,
+                 target_class=None,
+                 target_method=None,
+                 needs_push_media=False,
                  max_retry=None,
                  timeout=_CTS_TIMEOUT_SECONDS):
-        """Runs CTS |target_package| once, but with several retries.
+        """Runs the specified CTS once, but with several retries.
+
+        There are four usages:
+        1. Test the whole package named |target_package|.
+        2. Test with a plan named |target_plan|.
+        3. Run all the test cases of class named |target_class|.
+        4. Run a specific test method named |target_method| of class
+           |target_class|.
 
         @param target_package: the name of test package to run.
+        @param target_plan: the name of the test plan to run.
+        @param target_class: the name of the class to be tested.
+        @param target_method: the name of the method to be tested.
+        @param needs_push_media: need to push test media streams.
         @param max_retry: number of retry steps before reporting results.
         @param timeout: time after which tradefed can be interrupted.
         """
@@ -280,29 +306,54 @@ class cheets_CTS(tradefed_test.TradefedTest):
         self._timeout = timeout
         if self._get_release_channel == 'stable':
             self._timeout += 3600
-        # Retries depend on target_package and channel.
+        # Retries depend on channel.
         self._max_retry = max_retry
         if not self._max_retry:
             self._max_retry = self._get_channel_retry()
-        self.summary = ''
         session_id = 0
-        # Don't download media for tests that don't need it. b/29371037
-        if target_package.startswith('android.mediastress'):
-            self._needs_push_media = True
 
         steps = -1  # For historic reasons the first iteration is not counted.
         total_tests = 0
         self.summary = ''
+        if target_package is not None:
+            test_name = 'package.%s' % target_package
+            test_command = self._tradefed_run_command(package=target_package)
+        elif target_plan is not None:
+            test_name = 'plan.%s' % target_plan
+            test_command = self._tradefed_run_command(plan=target_plan)
+        elif target_class is not None:
+            test_name = 'testcase.%s' % target_class
+            if target_method is not None:
+                test_name += '.' + target_method
+            test_command = self._tradefed_run_command(
+                test_class=target_class, test_method=target_method)
+        else:
+            raise error.TestFail(
+                'Error: should assign a package, a plan, or a class name')
+
         # Unconditionally run CTS package until we see some tests executed.
         while steps < self._max_retry and total_tests == 0:
             with self._login_chrome():
                 self._ready_arc()
+
+                # Only push media for tests that need it. b/29371037
+                if needs_push_media:
+                    self._push_media()
+                    # copy_media.sh is not lazy, but we try to be.
+                    needs_push_media = False
+
                 # Start each valid iteration with a clean repository. This
                 # allows us to track session_id blindly.
                 self._clean_repository()
-                logging.info('Running %s:', target_package)
-                tests, passed, failed, notexecuted = self._tradefed_run(
-                        target_package)
+                if target_plan is not None:
+                    self._install_plan(target_plan)
+                logging.info('Running %s:', test_name)
+
+                # The list command is not required. It allows the reader to
+                # inspect the tradefed state when examining the autotest logs.
+                commands = [['list', 'results'], test_command]
+                tests, passed, failed, notexecuted = self._run_cts_tradefed(
+                        commands)
                 logging.info('RESULT: tests=%d, passed=%d, failed=%d, '
                         'notexecuted=%d', tests, passed, failed, notexecuted)
                 self.summary += ('run(t=%d, p=%d, f=%d, ne=%d)' %
@@ -321,7 +372,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
                                   'this is transient. Retry after reboot.')
                 # An internal self-check. We really should never hit this.
                 if tests != passed + failed + notexecuted:
-                   raise error.TestFail('Error: Test count inconsistent. %s' %
+                    raise error.TestFail('Error: Test count inconsistent. %s' %
                                         self.summary)
                 # Keep track of global counts as each continue/retry step below
                 # works on local failures.
@@ -393,10 +444,10 @@ class cheets_CTS(tradefed_test.TradefedTest):
                     steps += 1
                     self._ready_arc()
                     logging.info('Retrying failures of %s with session_id %d:',
-                            target_package, session_id)
+                            test_name, session_id)
                     previously_failed = failed
                     session_id, tests, passed, failed, notexecuted = self._tradefed_retry(
-                            target_package, session_id)
+                            test_name, session_id)
                     # Unfortunately tradefed sometimes encounters an error
                     # running the tests for instance timing out on downloading
                     # the media files. Check for this condition and give it one
@@ -405,7 +456,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
                             tests == passed + failed + notexecuted):
                         logging.warning('Tradefed inconsistency - retrying.')
                         session_id, tests, passed, failed, notexecuted = self._tradefed_retry(
-                                target_package, session_id)
+                                test_name, session_id)
                     total_passed += passed
                     logging.info('RESULT: total_tests=%d, total_passed=%d, step'
                             '(tests=%d, passed=%d, failed=%d, notexecuted=%d)',
