@@ -111,7 +111,7 @@ class RemoteFacadeProxy(object):
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
                 if type(value) is str and value.startswith('Traceback'):
                     raise Exception('RPC error: %s\n%s' % (name, value))
-                logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
+                logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
                 return value
             except (socket.error,
                     xmlrpclib.ProtocolError,
@@ -127,7 +127,7 @@ class RemoteFacadeProxy(object):
                 value = getattr(self._xmlrpc_proxy, name)(*args, **dargs)
                 if type(value) is str and value.startswith('Traceback'):
                     raise Exception('RPC error: %s\n%s' % (name, value))
-                logging.info('RPC %s returns %s.', rpc, pprint.pformat(value))
+                logging.debug('RPC %s returns %s.', rpc, pprint.pformat(value))
                 return value
         except:
             logging.error(
