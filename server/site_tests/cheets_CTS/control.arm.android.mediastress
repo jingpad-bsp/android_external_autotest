@@ -24,6 +24,7 @@ def run_CTS(machine):
         iterations=1,
         tag='android.mediastress',
         target_package='android.mediastress',
+        needs_push_media=True,
         bundle='arm',
         timeout=28800)
 
