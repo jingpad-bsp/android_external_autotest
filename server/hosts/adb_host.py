@@ -802,6 +802,11 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         is logically the end/stop of the logcat log.
         """
         super(ADBHost, self).stop_loggers()
+
+        # When called from atest and tools like it there will be no job.
+        if not self.job:
+            return
+
         # Record logcat log to a temporary file on the teststation.
         tmp_dir = self.teststation.get_tmp_dir()
         logcat_filename = LOGCAT_FILE_FMT % self.adb_serial
