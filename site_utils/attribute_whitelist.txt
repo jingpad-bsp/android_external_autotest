@@ -17,6 +17,7 @@ suite:android_wifi_connect
 suite:android_wifi_sanity
 suite:android_wifi_interop
 suite:android_wifi_iot_ent
+suite:android_wifi_scanner
 suite:another_suite
 suite:arc-bvt-cq
 suite:arc-bvt-perbuild
