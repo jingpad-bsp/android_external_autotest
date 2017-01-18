@@ -97,19 +97,6 @@ class CreateHostUnittests(unittest.TestCase):
         paramiko_host.ParamikoHost = self._orig_paramiko_host
 
 
-    def _gen_machine_dict(self, hostname='localhost', labels=[], attributes={}):
-        """Generate a machine dictionary with the specified parameters.
-
-        @param hostname: hostname of machine
-        @param labels: list of host labels
-        @param attributes: dict of host attributes
-
-        @return: machine dict with mocked AFE Host object.
-        """
-        afe_host = base_label_unittest.MockAFEHost(labels, attributes)
-        return {'hostname': hostname, 'afe_host': afe_host}
-
-
     def test_use_specified(self):
         """Confirm that the specified host and connectivity classes are used."""
         machine = _gen_machine_dict()
