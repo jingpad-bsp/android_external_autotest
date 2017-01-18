@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = 'bmahadev, krisr, gmoturu'
-NAME = 'android_wifi_iot'
+NAME = 'android_wifi_iot_ent'
 PURPOSE = 'Test Android WiFi IOT and Enterprise'
 TIME = 'MEDIUM'
 TEST_TYPE = 'Server'
