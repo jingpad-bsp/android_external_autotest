@@ -58,6 +58,8 @@ _SDK_TOOLS_FILES = ['aapt']
 # To stabilize adb behavior, we use dynamically linked adb.
 _ADB_DIR = ('gs://chromeos-arc-images/builds/'
         'git_mnc-dr-arc-dev-linux-cheets_arm-user/3554341')
+# TODO(ihf): Make this the path below as it seems to work locally.
+#       'git_mnc-dr-arc-dev-linux-static_sdk_tools/3554341')
 _ADB_FILES = ['adb']
 
 _ADB_POLLING_INTERVAL_SECONDS = 1
@@ -163,6 +165,9 @@ class TradefedTest(test.test):
             cache_root = _TRADEFED_CACHE_CONTAINER
         else:
             cache_root = _TRADEFED_CACHE_LOCAL
+        # Quick sanity check and spew of java version installed on the server.
+        utils.run('java', args=('-version',), ignore_status=False, verbose=True,
+                  stdout_tee=utils.TEE_TO_LOGS, stderr_tee=utils.TEE_TO_LOGS)
         # The content of the cache survives across jobs.
         self._safe_makedirs(cache_root)
         self._tradefed_cache = os.path.join(cache_root, 'cache')
