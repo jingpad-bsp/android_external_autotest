@@ -1049,7 +1049,37 @@ def create_job(
 
     if image is None:
         return rpc_utils.create_job_common(
-                **rpc_utils.get_create_job_common_args(locals()))
+                **rpc_utils.get_create_job_common_args(dict(
+                    name=name,
+                    priority=priority,
+                    control_file=control_file,
+                    control_type=control_type,
+                    hosts=hosts,
+                    meta_hosts=meta_hosts,
+                    one_time_hosts=one_time_hosts,
+                    atomic_group_name=atomic_group_name,
+                    synch_count=synch_count,
+                    is_template=is_template,
+                    timeout=timeout,
+                    timeout_mins=timeout_mins,
+                    max_runtime_mins=max_runtime_mins,
+                    run_verify=run_verify,
+                    email_list=email_list,
+                    dependencies=dependencies,
+                    reboot_before=reboot_before,
+                    reboot_after=reboot_after,
+                    parse_failed_repair=parse_failed_repair,
+                    hostless=hostless,
+                    keyvals=keyvals,
+                    drone_set=drone_set,
+                    image=image,
+                    parent_job_id=parent_job_id,
+                    test_retry=test_retry,
+                    run_reset=run_reset,
+                    require_ssp=require_ssp,
+                    args=args,
+                    is_cloning=is_cloning,
+                    kwargs=kwargs)))
 
     # Translate the image name, in case its a relative build name.
     ds = dev_server.ImageServer.resolve(image)
