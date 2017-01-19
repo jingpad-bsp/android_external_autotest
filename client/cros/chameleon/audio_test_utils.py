@@ -679,3 +679,30 @@ def compare_recorded_correlation(golden_file, recorder, parameters=None):
             golden_file.get_binary(), golden_file.data_format,
             recorder.get_binary(), recorder.data_format, recorder.channel_map,
             parameters)
+
+
+def check_and_set_chrome_active_node_types(audio_facade, output_type=None,
+                                           input_type=None):
+   """Check the target types are available, and set them to be active nodes.
+
+   @param audio_facade: An AudioFacadeNative or AudioFacadeAdapter object.
+   @output_type: An output node type defined in cras_utils.CRAS_NODE_TYPES.
+                 None to skip.
+   @input_type: An input node type defined in cras_utils.CRAS_NODE_TYPES.
+                 None to skip.
+
+   @raises: error.TestError if the expected node type is missing. We use
+            error.TestError here because usually this step is not the main
+            purpose of the test, but a setup step.
+
+   """
+   output_types, input_types = audio_facade.get_plugged_node_types()
+   logging.debug('Plugged types: output: %r, input: %r',
+                 output_types, input_types)
+   if output_type and output_type not in output_types:
+       raise error.TestError(
+               'Target output type %s not present' % output_type)
+   if input_type and input_type not in input_types:
+       raise error.TestError(
+               'Target input type %s not present' % input_type)
+   audio_facade.set_chrome_active_node_type(output_type, input_type)
