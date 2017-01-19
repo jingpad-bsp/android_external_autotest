@@ -125,7 +125,6 @@ class AndroidArtifacts(object):
     # (os, board) = 'artifacts'
     DEFAULT_ARTIFACTS_MAP = {
         ('android', 'default'): [BOOTLOADER_IMAGE, RADIO_IMAGE, ZIP_IMAGE],
-        ('android', 'bat_land'): [ZIP_IMAGE],
         ('brillo', 'default'):  [ZIP_IMAGE, VENDOR_PARTITIONS],
         ('emulated_brillo', 'default'): [TARGET_FILES, DTB],
     }
