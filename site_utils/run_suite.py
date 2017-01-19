@@ -72,7 +72,6 @@ from autotest_lib.server.cros.dynamic_suite import tools
 from autotest_lib.site_utils import diagnosis_utils
 from autotest_lib.site_utils import job_overhead
 
-
 CONFIG = global_config.global_config
 
 _DEFAULT_AUTOTEST_INSTANCE = CONFIG.get_config_value(
@@ -1698,6 +1697,8 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
             logging.info('The suite job has another %s till timeout.',
                             job_timer.timeout_hours - job_timer.elapsed_time())
         time.sleep(10)
+    logging.info('%s Suite job is finished.',
+                 diagnosis_utils.JobTimer.format_time(datetime.now()))
     # For most cases, ResultCollector should be able to determine whether
     # a suite has timed out by checking information in the test view.
     # However, occationally tko parser may fail on parsing the
@@ -1717,6 +1718,8 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
     original_suite_name = get_original_suite_name(options.name,
                                                     options.suite_args)
     # Start collecting test results.
+    logging.info('%s Start collectint test results and dump them to json.',
+                 diagnosis_utils.JobTimer.format_time(datetime.now()))
     TKO = frontend_wrappers.RetryingTKO(server=instance_server,
                                         timeout_min=options.afe_timeout_mins,
                                         delay_sec=options.delay_sec)
@@ -1740,6 +1743,8 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
         # Also do not record stats if is_aborted is None, indicating
         # aborting status is unknown yet.
         if collector.is_aborted == False:
+            logging.info('%s Gathering timing stats for the suite job.',
+                         diagnosis_utils.JobTimer.format_time(datetime.now()))
             collector.gather_timing_stats()
 
         if collector.is_aborted == True and is_suite_timeout:
@@ -1759,7 +1764,9 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
                                 RETURN_CODES.get_string(old_code),
                                 RETURN_CODES.get_string(code))
 
-        logging.info('\nAttempting to display pool info: %s', options.pool)
+        logging.info('\n %s Attempting to display pool info: %s',
+                     diagnosis_utils.JobTimer.format_time(datetime.now()),
+                     options.pool)
         try:
             # Add some jitter to make up for any latency in
             # aborting the suite or checking for results.
@@ -1775,7 +1782,8 @@ def _handle_job_wait(afe, job_id, options, job_timer, is_real_time):
         logging.info('Reason: %s', return_message)
         output_dict['return_message'] = return_message
 
-    logging.info('\nOutput below this line is for buildbot consumption:')
+    logging.info('\n %s Output below this line is for buildbot consumption:',
+                 diagnosis_utils.JobTimer.format_time(datetime.now()))
     log_buildbot_links(logging.info, collector._buildbot_links)
     return SuiteResult(code, output_dict)
 
