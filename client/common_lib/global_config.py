@@ -15,6 +15,7 @@ provides access to global configuration file
 
 __author__ = 'raphtee@google.com (Travis Miller)'
 
+import collections
 import ConfigParser
 import os
 import re
@@ -106,6 +107,24 @@ class global_config_class(object):
             raise ConfigError(msg)
         else:
             return default
+
+
+    def get_section_as_dict(self, section):
+        """Return a dict mapping section options to values.
+
+        This is useful if a config section is being used like a
+        dictionary.  If the section is missing, return an empty dict.
+
+        This returns an OrderedDict, preserving the order of the options
+        in the section.
+
+        @param section: Section to get.
+        @return: OrderedDict
+        """
+        if self.config.has_section(section):
+            return collections.OrderedDict(self.config.items(section))
+        else:
+            return collections.OrderedDict()
 
 
     def get_section_values(self, section):

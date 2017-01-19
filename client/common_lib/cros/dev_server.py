@@ -217,6 +217,31 @@ def _get_storage_server_for_artifacts(artifacts=None):
     return _get_image_storage_server()
 
 
+def _reverse_lookup_from_config(address):
+    """Look up hostname for the given IP address.
+
+    This uses the hostname-address map from the config file.
+
+    If multiple hostnames map to the same IP address, the first one
+    defined in the configuration file takes precedence.
+
+    @param address: IP address string
+    @returns: hostname string, or original input if not found
+    """
+    for hostname, addr in _get_hostname_addr_map().iteritems():
+        if addr == address:
+            return hostname
+    return address
+
+
+def _get_hostname_addr_map():
+    """Get hostname address mapping from config.
+
+    @return: dict mapping server hostnames to addresses
+    """
+    return CONFIG.get_section_as_dict('HOSTNAME_ADDR_MAP')
+
+
 def _get_dev_server_list():
     return CONFIG.get_config_value('CROS', 'dev_server', type=list, default=[])
 
@@ -256,6 +281,17 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
     return inner_decorator
 
 
+def get_hostname(url):
+    """Get the hostname portion of a URL
+
+    schema://hostname:port/path
+
+    @param url: a Url string
+    @return: a hostname string
+    """
+    return urlparse.urlparse(url).hostname
+
+
 class DevServer(object):
     """Base class for all DevServer-like server stubs.
 
@@ -288,16 +324,31 @@ class DevServer(object):
         return self._devserver
 
 
-    @staticmethod
-    def get_server_name(url):
-        """Strip the http:// prefix and port from a url.
+    @property
+    def hostname(self):
+        """Return devserver hostname parsed from the devserver URL.
 
-        @param url: A url of a server.
+        Note that this is likely parsed from the devserver URL from
+        shadow_config.ini, meaning that the "hostname" part of the
+        devserver URL is actually an IP address.
 
-        @return the server name without http:// prefix and port.
-
+        @return hostname string
         """
-        return urlparse.urlparse(url).hostname
+        return get_hostname(self.url())
+
+
+    @property
+    def resolved_hostname(self):
+        """Return devserver hostname, resolved from its IP address.
+
+        Unlike the hostname property, this property attempts to look up
+        the proper hostname from the devserver IP address.  If lookup
+        fails, then fall back to whatever the hostname property would
+        have returned.
+
+        @return hostname string
+        """
+        return _reverse_lookup_from_config(self.hostname)
 
 
     @staticmethod
@@ -410,7 +461,7 @@ class DevServer(object):
         @return: True if devserver is healthy. Return False otherwise.
 
         """
-        server_name = DevServer.get_server_name(devserver)
+        server_name = get_hostname(devserver)
         c = metrics.Counter('chromeos/autotest/devserver/devserver_healthy')
         reason = ''
         healthy = False
@@ -539,7 +590,7 @@ class DevServer(object):
         devservers = (cls.get_unrestricted_devservers() if unrestricted_only
                       else cls.servers())
         for server in devservers:
-            server_name = cls.get_server_name(server)
+            server_name = get_hostname(server)
             server_names[server_name] = server
             all_devservers.append(server_name)
         devservers = utils.get_servers_in_same_subnet(ip, mask_bits,
@@ -563,7 +614,7 @@ class DevServer(object):
 
         devservers = []
         for server in cls.servers():
-            server_name = cls.get_server_name(server)
+            server_name = get_hostname(server)
             if not utils.get_restricted_subnet(server_name, restricted_subnets):
                 devservers.append(server)
         return devservers
@@ -712,8 +763,7 @@ class CrashServer(DevServer):
         except ImportError:
             logging.warning("Can't 'import requests' to connect to dev server.")
             return ''
-        server_name = self.get_server_name(self.url())
-        f = {'dev_server': server_name}
+        f = {'dev_server': self.resolved_hostname}
         c = metrics.Counter('chromeos/autotest/crashserver/symbolicate_dump')
         c.increment(fields=f)
         # Symbolicate minidump.
@@ -808,7 +858,7 @@ class ImageServerBase(DevServer):
 
         @return the results of this call.
         """
-        hostname = urlparse.urlparse(call).hostname
+        hostname = get_hostname(call)
         ssh_call = 'ssh %s \'curl "%s"\'' % (hostname, utils.sh_escape(call))
         timeout_seconds = timeout if timeout else DEVSERVER_SSH_TIMEOUT_MINS*60
         try:
@@ -1004,7 +1054,6 @@ class ImageServerBase(DevServer):
         logging.info('Staging artifacts on devserver %s: %s',
                      self.url(), staging_info)
         success = False
-        server_name = self.get_server_name(self.url())
         try:
             arguments = {'archive_url': archive_url,
                          'artifacts': artifacts_arg,
@@ -1015,7 +1064,7 @@ class ImageServerBase(DevServer):
             # metric field (as it stands it is a not-very-well-controlled
             # string).
             f = {'artifacts': artifacts_arg,
-                 'dev_server': server_name}
+                 'dev_server': self.resolved_hostname}
             with metrics.SecondsTimer(
                     'chromeos/autotest/devserver/stage_artifact_duration',
                     fields=f):
@@ -1030,7 +1079,7 @@ class ImageServerBase(DevServer):
         finally:
             f = {'success': success,
                  'artifacts': artifacts_arg,
-                 'dev_server': server_name}
+                 'dev_server': self.resolved_hostname}
             metrics.Counter('chromeos/autotest/devserver/stage_artifact'
                             ).increment(fields=f)
 
@@ -1083,7 +1132,6 @@ class ImageServerBase(DevServer):
             kwargs.update(kwargs_build_info)
 
         logging.info('trigger_download starts for %s', build)
-        server_name = self.get_server_name(self.url())
         try:
             response = self.call_and_wait(call_name='stage', **kwargs)
             logging.info('trigger_download finishes for %s', build)
@@ -1919,7 +1967,7 @@ class ImageServer(ImageServerBase):
             # Add a field |error| here. Current error's pattern is manually
             # specified in _EXCEPTION_PATTERNS.
             raised_error = self._classify_exceptions(error_list)
-            f = {'dev_server': ImageServer.get_server_name(self.url()),
+            f = {'dev_server': self.resolved_hostname,
                  'success': is_au_success,
                  'board': board,
                  'build_type': build_type,
