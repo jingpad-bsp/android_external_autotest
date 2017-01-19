@@ -112,8 +112,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensure that a failure to stage the desired build fails the RPC."""
         self._setupDevserver()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndRaise(
                 dev_server.DevServerException())
@@ -130,13 +129,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn(None)
         self.mox.ReplayAll()
@@ -152,13 +148,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensure that a failure to get needed control file fails the RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndRaise(error.NoControlFileList())
         self.mox.ReplayAll()
@@ -200,13 +193,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensure that failure to schedule the suite job fails the RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
 
@@ -224,13 +214,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
 
@@ -250,13 +237,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
 
@@ -275,13 +259,10 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensures that success results in a successful RPC."""
         self._mockDevServerGetter()
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
         self.getter.get_control_file_contents_by_name(
             self._SUITE_NAME).AndReturn('f')
 
@@ -303,8 +284,7 @@ class SiteRpcInterfaceTest(mox.MoxTestBase,
         """Ensure we can supply the control file to create_suite_job."""
         self._mockDevServerGetter(get_control_file=False)
 
-        self.dev_server.url().AndReturn('mox_url')
-        self.dev_server.get_server_name(mox.IgnoreArg()).AndReturn('mox_url')
+        self.dev_server.hostname = 'mox_url'
         self.dev_server.stage_artifacts(
                 image=self._BUILD, artifacts=['test_suites']).AndReturn(True)
         self.dev_server.url().AndReturn('mox_url')

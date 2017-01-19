@@ -69,7 +69,7 @@ def _get_control_file_by_build(build, ds, suite_name):
     @return the contents of the desired control file.
     """
     getter = control_file_getter.DevServerGetter.create(build, ds)
-    devserver_name = ds.get_server_name(ds.url())
+    devserver_name = ds.hostname
     timer = autotest_stats.Timer('control_files.parse.%s.%s' %
                                  (devserver_name.replace('.', '_'),
                                   suite_name.rsplit('.')[-1]))
@@ -126,7 +126,7 @@ def _stage_build_artifacts(build, hostname=None):
     # on the dev server. However set synchronous to False to allow other
     # components to be downloaded in the background.
     ds = dev_server.resolve(build, hostname=hostname)
-    ds_name = ds.get_server_name(ds.url())
+    ds_name = ds.hostname
     timings[constants.DOWNLOAD_STARTED_TIME] = formatted_now()
     timer = autotest_stats.Timer('control_files.stage.%s' % (
             ds_name.replace('.', '_')))
@@ -652,7 +652,7 @@ def _initialize_control_file_getter(build):
     # Stage the test artifacts.
     try:
         ds = dev_server.ImageServer.resolve(build)
-        ds_name = ds.get_server_name(ds.url())
+        ds_name = ds.hostname
         build = ds.translate(build)
     except dev_server.DevServerException as e:
         raise ValueError('Could not resolve build %s: %s' %

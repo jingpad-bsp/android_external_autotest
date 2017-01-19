@@ -209,8 +209,7 @@ class TelemetryRunner(object):
         """
         telemetry_cmd = []
         if self._devserver:
-            devserver_hostname = dev_server.DevServer.get_server_name(
-                    self._devserver.url())
+            devserver_hostname = self._devserver.hostname
             telemetry_cmd.extend(['ssh', devserver_hostname])
 
         if self._telemetry_on_dut:
@@ -250,8 +249,7 @@ class TelemetryRunner(object):
         devserver_hostname = ''
         if perf_results_dir:
             if self._devserver:
-                devserver_hostname = dev_server.DevServer.get_server_name(
-                        self._devserver.url()) + ':'
+                devserver_hostname = self._devserver.hostname + ':'
             if self._telemetry_on_dut:
                 src = ('root@%s:%s/results-chart.json' %
                        (self._host.hostname, DUT_CHROME_ROOT))

@@ -676,7 +676,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         else:
             build = update_url
         devserver = dev_server.resolve(build, self.hostname)
-        server_name = dev_server.ImageServer.get_server_name(devserver.url())
+        server_name = devserver.hostname
 
         try:
             board, build_type, milestone, _ = server_utils.ParseBuildName(build)
@@ -802,7 +802,7 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
         logging.debug('Update URL is %s', update_url)
 
         # Report provision stats.
-        server_name = dev_server.ImageServer.get_server_name(update_url)
+        server_name = dev_server.get_hostname(update_url)
         (metrics.Counter('chromeos/autotest/provision/install')
          .increment(fields={'devserver': server_name}))
 
