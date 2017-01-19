@@ -19,10 +19,9 @@ BUG_TEMPLATE = {
     'labels': ['OS-Chrome', 'VideoTestFailure'],
     'cc': ['chromeos-video-test-failures@google.com'],
 }
-ARC_MODE = 'enabled'
 
 DOC = """
 This test verify the media elements and video sanity.
 """
 
-job.run_test('video_VideoSanity', video_file='720.mp4', arc_mode=ARC_MODE)
+job.run_test('video_VideoSanity', video_file='720.mp4', arc_mode=True)
