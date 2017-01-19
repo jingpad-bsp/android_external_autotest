@@ -112,11 +112,13 @@ class cheets_CTS(tradefed_test.TradefedTest):
         cts_media = os.path.join(media, base)
         copy_media = os.path.join(cts_media, 'copy_media.sh')
         with pushd(cts_media):
+            logging.info('sh -e %s all', copy_media)
             self._run(
-                'source',
-                args=(copy_media, 'all'),
+                'sh',
+                args=('-e', copy_media, 'all'),
                 timeout=7200,  # Wait at most 2h for download of media files.
                 verbose=True,
+                ignore_status=False,
                 stdout_tee=utils.TEE_TO_LOGS,
                 stderr_tee=utils.TEE_TO_LOGS)
 
@@ -203,6 +205,7 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 args=tuple(command),
                 timeout=self._timeout,
                 verbose=True,
+                ignore_status=False,
                 # Make sure to tee tradefed stdout/stderr to autotest logs
                 # continuously during the test run.
                 stdout_tee=utils.TEE_TO_LOGS,
