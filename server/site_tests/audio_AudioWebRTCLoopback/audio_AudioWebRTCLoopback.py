@@ -97,9 +97,13 @@ class audio_AudioWebRTCLoopback(audio_test.AudioTest):
                 audio_test_utils.dump_cros_audio_logs(
                         host, audio_facade, self.resultsdir, 'after_binding')
 
-                # Checks the nodes selected by Chrome are correct.
+                # Checks headphone and USB nodes are plugged.
+                # Let Chrome select the proper I/O nodes.
                 # Input is USB, output is headphone.
-                audio_facade.set_chrome_active_node_type('HEADPHONE', 'USB')
+                audio_test_utils.check_and_set_chrome_active_node_types(
+                        audio_facade=audio_facade,
+                        output_type='HEADPHONE',
+                        input_type='USB')
 
                 logging.info('Setting playback data on Chameleon')
                 usb_out.set_playback_data(golden_file)
