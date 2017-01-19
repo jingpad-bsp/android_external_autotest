@@ -63,7 +63,7 @@ class platform_Flashrom(FirmwareTest):
         # $ mosys eeprom map | grep RW_SECTION_B
         # host_firmware | RW_SECTION_B | 0x005f0000 | 0x003f0000 | static
         output = self.run_cmd('mosys eeprom map | grep %s' % fmap)
-        fmap_data = output[0].split(' | ')
+        fmap_data = map(lambda s:s.strip(), output[0].split('|'))
         logging.info('fmap %s', fmap_data)
         return (int(fmap_data[2], 16), int(fmap_data[3], 16))
 
