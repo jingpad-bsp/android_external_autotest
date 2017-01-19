@@ -857,12 +857,6 @@ def create_parameterized_job(
                                                                 (param value,
                                                                  param type)
     """
-    # Save the values of the passed arguments here. What we're going to do with
-    # them is pass them all to rpc_utils.get_create_job_common_args(), which
-    # will extract the subset of these arguments that apply for
-    # rpc_utils.create_job_common(), which we then pass in to that function.
-    args = locals()
-
     # Set up the parameterized job configs
     test_obj = models.Test.smart_get(test)
     control_type = test_obj.test_type
@@ -906,9 +900,31 @@ def create_parameterized_job(
             raise Exception('Extra parameters remain: %r' % parameters)
 
         return rpc_utils.create_job_common(
-                parameterized_job=parameterized_job.id,
-                control_type=control_type,
-                **rpc_utils.get_create_job_common_args(args))
+                **rpc_utils.get_create_job_common_args(dict(
+                    name=name,
+                    priority=priority,
+                    control_type=control_type,
+                    hosts=hosts,
+                    meta_hosts=meta_hosts,
+                    one_time_hosts=one_time_hosts,
+                    atomic_group_name=atomic_group_name,
+                    synch_count=synch_count,
+                    is_template=is_template,
+                    timeout=timeout,
+                    timeout_mins=timeout_mins,
+                    max_runtime_mins=max_runtime_mins,
+                    run_verify=run_verify,
+                    email_list=email_list,
+                    dependencies=dependencies,
+                    reboot_before=reboot_before,
+                    reboot_after=reboot_after,
+                    parse_failed_repair=parse_failed_repair,
+                    hostless=hostless,
+                    keyvals=keyvals,
+                    drone_set=drone_set,
+                    parameterized_job=parameterized_job.id,
+                    run_reset=run_reset,
+                    require_ssp=require_ssp)))
     except:
         parameterized_job.delete()
         raise
