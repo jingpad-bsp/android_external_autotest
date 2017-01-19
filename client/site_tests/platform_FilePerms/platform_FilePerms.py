@@ -83,7 +83,7 @@ class platform_FilePerms(test.test):
         '/run/lock': {'type': 'tmpfs', 'options': standard_rw_options},
         '/run/imageloader/PepperFlashPlayer': {
             'type': 'squashfs',
-            'options': ['ro', 'nodev', 'nosuid', 'mode=755']},
+            'options': ['ro', 'nodev', 'nosuid']},
         '/sys': {'type': 'sysfs', 'options': standard_rw_options},
         '/sys/fs/cgroup': {
             'type': 'tmpfs',
