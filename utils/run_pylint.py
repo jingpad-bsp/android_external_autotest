@@ -32,7 +32,7 @@ major, minor, release = pylint_version.split('.')
 pylint_version = float("%s.%s" % (major, minor))
 
 # some files make pylint blow up, so make sure we ignore them
-BLACKLIST = ['/contrib/*', '/frontend/afe/management.py']
+BLACKLIST = ['/site-packages/*', '/contrib/*', '/frontend/afe/management.py']
 
 # patch up the logilab module lookup tools to understand autotest_lib.* trash
 import logilab.common.modutils
