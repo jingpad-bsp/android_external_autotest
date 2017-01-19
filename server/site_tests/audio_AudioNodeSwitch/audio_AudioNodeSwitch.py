@@ -113,7 +113,7 @@ class audio_AudioNodeSwitch(audio_test.AudioTest):
             hdmi_port.apply_edid(edid_lib.Edid.from_file(edid_path))
             time.sleep(self._APPLY_EDID_DELAY)
             hdmi_port.set_plug(True)
-            time.sleep(self._PLUG_DELAY)
+            time.sleep(self._PLUG_DELAY * 2)
 
             audio_test_utils.check_audio_nodes(self.audio_facade,
                                                (['HDMI'], None))
