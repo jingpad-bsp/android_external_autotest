@@ -7,10 +7,9 @@ import shutil
 import logging
 
 from autotest_lib.client.bin import test, utils
-from autotest_lib.client.common_lib.cros import chrome
+from autotest_lib.client.common_lib.cros import chrome, arc_common
 from autotest_lib.client.cros.video import constants
 from autotest_lib.client.cros.video import native_html5_player
-
 
 class video_VideoSanity(test.test):
     """This test verify the media elements and video sanity.
@@ -22,19 +21,35 @@ class video_VideoSanity(test.test):
     version = 2
 
 
-    def run_once(self, video_file, arc_mode=None):
+    def run_once(self, video_file, arc_mode=False):
         """
         Tests whether the requested video is playable
 
         @param video_file: Sample video file to be played in Chrome.
 
         """
-        boards_to_skip = ['x86-mario', 'x86-zgb']
+        blacklist = [
+            # (board, arc_mode) # None means don't care
+            ('x86-mario', None),
+            ('x86-zgb', None),
+            # The result on elm and oak is flaky in arc mode.
+            # TODO(wuchengli): remove them once crbug.com/679864 is fixed.
+            ('elm', True),
+            ('oak', True)]
+
         dut_board = utils.get_current_board()
-        if dut_board in boards_to_skip:
-            logging.info("Skipping test run on this board.")
-            return
-        with chrome.Chrome(arc_mode=arc_mode) as cr:
+        for (blacklist_board, blacklist_arc_mode) in blacklist:
+            if blacklist_board == dut_board:
+                if blacklist_arc_mode is None or blacklist_arc_mode == arc_mode:
+                    logging.info("Skipping test run on this board.")
+                    return
+                break
+
+        if arc_mode:
+            arc_mode_str = arc_common.ARC_MODE_ENABLED
+        else:
+            arc_mode_str = arc_common.ARC_MODE_DISABLED
+        with chrome.Chrome(arc_mode=arc_mode_str) as cr:
              shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
              video_path = os.path.join(constants.CROS_VIDEO_DIR,
                                        'files', video_file)
