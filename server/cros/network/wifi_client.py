@@ -383,7 +383,7 @@ class WiFiClient(site_linux_system.LinuxSystem):
                 adb_utils.install_apk_from_build(
                         self.host,
                         server_constants.SL4A_APK,
-                        server_constants.SL4A_PACKAGE,
+                        server_constants.SL4A_ARTIFACT,
                         package_name=server_constants.SL4A_PACKAGE)
 
             self._shill_proxy = get_xmlrpc_proxy(self.host)
