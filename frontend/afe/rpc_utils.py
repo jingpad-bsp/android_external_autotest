@@ -937,6 +937,9 @@ def create_job_common(
     # convert hostnames & meta hosts to host/label objects
     host_objects = models.Host.smart_get_bulk(hosts)
     _validate_host_job_sharding(host_objects)
+    for host in one_time_hosts:
+        this_host = models.Host.create_one_time_host(host)
+        host_objects.append(this_host)
 
     metahost_objects = []
     meta_host_labels_by_name = {label.name: label for label in label_objects}
@@ -974,10 +977,6 @@ def create_job_common(
                      (synch_count, atomic_group.max_number_of_machines)})
     else:
         atomic_group = None
-
-    for host in one_time_hosts:
-        this_host = models.Host.create_one_time_host(host)
-        host_objects.append(this_host)
 
     options = dict(name=name,
                    priority=priority,
