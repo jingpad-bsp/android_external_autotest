@@ -28,6 +28,7 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
     DELAY_BEFORE_RECORD_SECONDS = 0.5
     RECORD_SECONDS = 5
     DELAY_AFTER_BINDING = 0.5
+    SILENCE_WAIT = 5
 
     def run_once(self, host, check_quality=False):
         """Running basic headphone audio tests.
@@ -84,6 +85,11 @@ class audio_AudioBasicHeadphone(audio_test.AudioTest):
             recorder.start_recording()
 
             time.sleep(self.RECORD_SECONDS)
+
+            if check_quality:
+                # Add a silence while recording to detect audio
+                # spikes after playback.
+                time.sleep(self.SILENCE_WAIT)
 
             recorder.stop_recording()
             logging.info('Stopped recording from Chameleon.')
