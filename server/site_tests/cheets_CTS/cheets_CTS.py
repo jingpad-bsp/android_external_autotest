@@ -76,7 +76,6 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 'tools',
                 'cts-tradefed')
         logging.info('CTS-tradefed path: %s', self._cts_tradefed)
-        self._needs_push_media = False
 
         # Load waivers and manual tests so TF doesn't re-run them.
         self.waivers_and_manual_tests = self._get_expected_failures(
@@ -305,6 +304,12 @@ class cheets_CTS(tradefed_test.TradefedTest):
         @param max_retry: number of retry steps before reporting results.
         @param timeout: time after which tradefed can be interrupted.
         """
+        # Don't download media for tests that don't need it. b/29371037
+        # TODO(ihf): This can be removed once the control file generator is
+        # aware of this constraint.
+        if target_package.startswith('android.mediastress'):
+            needs_push_media = True
+
         # On dev and beta channels timeouts are sharp, lenient on stable.
         self._timeout = timeout
         if self._get_release_channel == 'stable':
