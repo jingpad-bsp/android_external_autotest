@@ -873,17 +873,6 @@ def bucket_hosts_by_shard(host_objs, rpc_hostnames=False):
     return shard_host_map
 
 
-def get_create_job_common_args(local_args):
-    """
-    Returns a dict containing only the args that apply for create_job_common
-
-    Returns a subset of local_args, which contains only the arguments that can
-    be passed in to create_job_common().
-    """
-    arg_names, _, _, _ = inspect.getargspec(create_job_common)
-    return dict(item for item in local_args.iteritems() if item[0] in arg_names)
-
-
 def create_job_common(
         name,
         priority,
