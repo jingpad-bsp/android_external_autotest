@@ -529,6 +529,11 @@
     "dashboard_test_name": "tab_switching.top_10"
   },
   {
+    "autotest_name": "telemetry_Benchmarks.tab_switching.typical_25",
+    "master_name": "ChromeOSPerf",
+    "dashboard_test_name": "tab_switching.typical_25"
+  },
+  {
     "autotest_name": "telemetry_Benchmarks.webrtc.peerconnection",
     "master_name": "ChromeOSPerf",
     "dashboard_test_name": "webrtc.peerconnection"
