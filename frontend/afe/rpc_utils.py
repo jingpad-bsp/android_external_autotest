@@ -406,6 +406,13 @@ def check_atomic_group_create_job(synch_count, host_objects, metahost_objects,
 
     @raises model_logic.ValidationError - When an issue is found.
     """
+    if synch_count and synch_count > atomic_group.max_number_of_machines:
+        raise model_logic.ValidationError(
+            {'atomic_group_name' :
+             'You have requested a synch_count (%d) greater than the '
+             'maximum machines in the requested Atomic Group (%d).' %
+             (synch_count, atomic_group.max_number_of_machines)})
+
     # If specific host objects were supplied with an atomic group, verify
     # that there are enough to satisfy the synch_count.
     minimum_required = synch_count or 1
@@ -969,12 +976,6 @@ def create_job_common(
                     {'one_time_hosts':
                      'One time hosts cannot be used with an Atomic Group.'})
         atomic_group = models.AtomicGroup.smart_get(atomic_group_name)
-        if synch_count and synch_count > atomic_group.max_number_of_machines:
-            raise model_logic.ValidationError(
-                    {'atomic_group_name' :
-                     'You have requested a synch_count (%d) greater than the '
-                     'maximum machines in the requested Atomic Group (%d).' %
-                     (synch_count, atomic_group.max_number_of_machines)})
     else:
         atomic_group = None
 
