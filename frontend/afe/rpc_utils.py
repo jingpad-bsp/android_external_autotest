@@ -1031,16 +1031,21 @@ def _validate_host_job_sharding(host_objects):
 
 def _allowed_hosts_for_master_job(host_objects):
     """Check that the hosts are allowed for a job on master."""
-    shard_host_map = bucket_hosts_by_shard(host_objects)
-    num_shards = len(shard_host_map)
     # We disallow the following jobs on master:
     #   num_shards > 1: this is a job spanning across multiple shards.
     #   num_shards == 1 but number of hosts on shard is less
     #   than total number of hosts: this is a job that spans across
     #   one shard and the master.
-    return not (num_shards > 1
-                or (num_shards == 1
-                    and len(shard_host_map.values()[0]) != len(host_objects)))
+    shard_host_map = bucket_hosts_by_shard(host_objects)
+    num_shards = len(shard_host_map)
+    if num_shards > 1:
+        return False
+    if num_shards == 1:
+        hosts_on_shard = shard_host_map.values()[0]
+        assert len(hosts_on_shard) <= len(host_objects)
+        return len(hosts_on_shard) == len(host_objects)
+    else:
+        return True
 
 
 def encode_ascii(control_file):
