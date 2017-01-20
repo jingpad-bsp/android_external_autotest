@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "Chrome OS Team"
-NAME = "power_SuspendStress.bare"
+NAME = "power_SuspendStress.4hours"
 ATTRIBUTES = "suite:jailed_build"
 PURPOSE = "Run repeated iterations of suspend/resume to find rare errors."
 TIME = "MEDIUM"
