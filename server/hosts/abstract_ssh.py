@@ -5,6 +5,7 @@ import subprocess
 from multiprocessing import Lock
 from autotest_lib.client.common_lib import autotemp, error
 from autotest_lib.server import utils, autotest
+from autotest_lib.server.hosts import host_info
 from autotest_lib.server.hosts import remote
 from autotest_lib.server.hosts import rpc_server_tracker
 from autotest_lib.client.common_lib.global_config import global_config
@@ -27,7 +28,7 @@ class AbstractSSHHost(remote.RemoteHost):
 
     def _initialize(self, hostname, user="root", port=22, password="",
                     is_client_install_supported=True, afe_host=None,
-                    *args, **dargs):
+                    host_info_store=None, *args, **dargs):
         super(AbstractSSHHost, self)._initialize(hostname=hostname,
                                                  *args, **dargs)
         """
@@ -38,6 +39,8 @@ class AbstractSSHHost(remote.RemoteHost):
         @param is_client_install_supported: Boolean to indicate if we can
                 install autotest on the host.
         @param afe_host: The host object attained from the AFE (get_hosts).
+        @param host_info_store: Optional host_info.CachingHostInfoStore object
+                to obtain / update host information.
         """
         # IP address is retrieved only on demand. Otherwise the host
         # initialization will fail for host is not online.
@@ -63,6 +66,8 @@ class AbstractSSHHost(remote.RemoteHost):
         self._lock = Lock()
 
         self._afe_host = afe_host or utils.EmptyAFEHost()
+        self.host_info_store = (host_info_store or
+                                host_info.InMemoryHostInfoStore())
 
     @property
     def ip(self):
