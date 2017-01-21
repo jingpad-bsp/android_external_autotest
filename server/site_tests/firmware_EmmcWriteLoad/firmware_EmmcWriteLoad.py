@@ -33,18 +33,18 @@ class firmware_EmmcWriteLoad(FirmwareTest):
             r'mmc[0-9]+: Timeout waiting for hardware interrupt', re.MULTILINE)
 
     def initialize(self, host, cmdline_args, ec_wp=None):
-      dict_args = utils.args_to_dict(cmdline_args)
-      self.minutes_to_run = int(dict_args.get('minutes_to_run', 5))
-      super(firmware_EmmcWriteLoad, self).initialize(
-              host, cmdline_args, ec_wp=ec_wp)
+        dict_args = utils.args_to_dict(cmdline_args)
+        self.minutes_to_run = int(dict_args.get('minutes_to_run', 5))
+        super(firmware_EmmcWriteLoad, self).initialize(
+            host, cmdline_args, ec_wp=ec_wp)
 
-      self.assert_test_image_in_usb_disk()
-      self.switcher.setup_mode('dev')
-      self.setup_usbkey(usbkey=True, host=False)
+        self.assert_test_image_in_usb_disk()
+        self.switcher.setup_mode('dev')
+        self.setup_usbkey(usbkey=True, host=False)
 
-      self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()
-      logging.info(
-              'Original dev_boot_usb value: %s', str(self.original_dev_boot_usb))
+        self.original_dev_boot_usb = self.faft_client.system.get_dev_boot_usb()
+        logging.info('Original dev_boot_usb value: %s',
+                     str(self.original_dev_boot_usb))
 
 
     def read_dmesg(self, filename):
@@ -58,35 +58,43 @@ class firmware_EmmcWriteLoad(FirmwareTest):
         return utils.read_file(filename)
 
     def check_for_emmc_error(self, dmesg, error_regex):
-      """Check the current dmesg output for the specified error message regex.
+        """Check the current dmesg output for the specified error message regex.
 
-      @param dmesg: Contents of the dmesg buffer.
-      @param error_regex: The regex to check for the error.
+        @param dmesg: Contents of the dmesg buffer.
+        @param error_regex: The regex to check for the error.
 
-      @return True if error found.
-      """
-      for line in dmesg.splitlines():
-        if error_regex.search(dmesg):
-          return True
+        @return True if error found.
+        """
+        for line in dmesg.splitlines():
+            if error_regex.search(line):
+                return True
 
-      return False
+        return False
 
     def install_chrome_os(self):
-      """Runs the install command in a continuous loop. """
-      install = 'while true; do %s; done' % self.INSTALL_COMMAND
-      self.install_process = self._client.run_background(install)
+        """Runs the install command in a continuous loop. """
+        install = 'while true; do %s; done' % self.INSTALL_COMMAND
+        self.install_process = self._client.run_background(install)
 
     def poll_for_emmc_error(self, dmesg_file, poll_seconds=20):
-        end_time = datetime.datetime.now() +
-                datetime.timedelta(minutes=self.minutes_to_run)
+        """Continuously polls the contents of dmesg for the emmc failure message
+
+        @param dmesg_file: Contents of the dmesg buffer.
+        @param poll_seconds: Time to wait before checking dmesg again.
+
+        @return True if error found.
+        """
+        end_time = datetime.datetime.now() + \
+                   datetime.timedelta(minutes=self.minutes_to_run)
 
         while datetime.datetime.now() <= end_time:
-          dmesg = self.read_dmesg(dmesg_file)
-          contains_error = self.check_for_emmc_error(
-              dmesg, self.ERROR_MESSAGE_REGEX)
-          if contains_error:
-            raise error.TestFail('eMMC error found. Dmesg output: %s' % dmesg)
-          time.sleep(poll_seconds)
+            dmesg = self.read_dmesg(dmesg_file)
+            contains_error = self.check_for_emmc_error(dmesg,
+                                                       self.ERROR_MESSAGE_REGEX)
+            if contains_error:
+                raise error.TestFail('eMMC error found. Dmesg output: %s' %
+                                     dmesg)
+            time.sleep(poll_seconds)
 
     def cleanup(self):
         self.ensure_internal_device_boot()
@@ -117,8 +125,8 @@ class firmware_EmmcWriteLoad(FirmwareTest):
         dmesg_filename = os.path.join(self.resultsdir, 'dmesg')
 
         logging.info('===== Starting OS install loop. =====')
-        logging.info(
-            '===== Running install for %s minutes. =====' % self.minutes_to_run)
+        logging.info('===== Running install for %s minutes. =====',
+                     self.minutes_to_run)
         self.install_chrome_os()
 
         self.poll_for_emmc_error(dmesg_file=dmesg_filename)
