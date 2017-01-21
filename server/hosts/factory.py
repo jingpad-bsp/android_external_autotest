@@ -74,10 +74,18 @@ def _get_host_arguments(machine):
     hostname, user, password, port = server_utils.parse_machine(hostname, user,
                                                                 password, port)
 
-    return {'hostname': hostname, 'afe_host': afe_host, 'user': user,
-            'password': password, 'port': int(port),
+    host_args = {
+            'hostname': hostname,
+            'afe_host': afe_host,
+            'user': user,
+            'password': password,
+            'port': int(port),
             'ssh_verbosity_flag': ssh_verbosity_flag,
-            'ssh_options': ssh_options}
+            'ssh_options': ssh_options,
+    }
+    if isinstance(machine, dict) and 'host_info_store' in machine:
+        host_args['host_info_store'] = machine['host_info_store']
+    return host_args
 
 
 def _detect_host(connectivity_class, hostname, **args):
