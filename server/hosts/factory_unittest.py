@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import mock
 import unittest
 
 import common
@@ -57,10 +58,12 @@ def _gen_machine_dict(hostname='localhost', labels=[], attributes={}):
     @param labels: list of host labels
     @param attributes: dict of host attributes
 
-    @return: machine dict with mocked AFE Host object.
+    @return: machine dict with mocked AFE Host object and fake AfeStore.
     """
     afe_host = base_label_unittest.MockAFEHost(labels, attributes)
-    return {'hostname': hostname, 'afe_host': afe_host}
+    return {'hostname': hostname,
+            'afe_host': afe_host,
+            'host_info_store': mock.sentinel.dummy}
 
 
 class CreateHostUnittests(unittest.TestCase):
@@ -195,6 +198,7 @@ class CreateHostUnittests(unittest.TestCase):
         host_obj = factory.create_host(machine, foo='bar')
         self.assertEqual(host_obj._init_args['hostname'], 'localhost')
         self.assertTrue('afe_host' in host_obj._init_args)
+        self.assertTrue('host_info_store' in host_obj._init_args)
         self.assertEqual(host_obj._init_args['foo'], 'bar')
 
 
@@ -260,6 +264,7 @@ class CreateTestbedUnittests(unittest.TestCase):
         testbed_obj = factory.create_testbed(machine, foo='bar')
         self.assertEqual(testbed_obj._init_args['hostname'], 'localhost')
         self.assertTrue('afe_host' in testbed_obj._init_args)
+        self.assertTrue('host_info_store' in testbed_obj._init_args)
         self.assertEqual(testbed_obj._init_args['foo'], 'bar')
 
 
