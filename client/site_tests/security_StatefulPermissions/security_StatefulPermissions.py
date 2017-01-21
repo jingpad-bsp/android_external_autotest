@@ -59,6 +59,7 @@ class security_StatefulPermissions(test.test):
                      "debugd": [],
                      "dhcp": ["/encrypted/var/lib/dhcpcd"],
                      "dlm": ["/encrypted/var/log/displaylink"],
+                     "imageloaderd": ["/encrypted/var/lib/imageloader"],
                      "input": [],
                      "ipsec": [],
                      "lp": [],
