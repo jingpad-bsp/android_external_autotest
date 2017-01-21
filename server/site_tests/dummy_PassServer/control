@@ -16,8 +16,13 @@ DOC = """
 This is a helper test that will succeed.
 """
 
+from chromite.lib import metrics
+
 def run(machine):
     job.run_test('dummy_PassServer',
                  host=hosts.create_host(machine))
 
-parallel_simple(run, machines)
+m = 'chromeos/autotest/infra_benchmark/dummy_pass_server/duration'
+with metrics.SecondsTimer(m, fields={'success': False}) as c:
+    parallel_simple(run, machines)
+    c['success'] = True
