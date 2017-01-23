@@ -11,31 +11,30 @@
 #include <sys/timex.h>
 
 /* This program is expected to run under android alt-syscall. */
-int main()
-{
-	struct timex buf;
-	int ret;
+int main(void) {
+  struct timex buf;
+  int ret;
 
-	/* Test read operation. Should succeed (i.e. not returning -1). */
-	memset(&buf, 0, sizeof(buf));
-	ret = clock_adjtime(CLOCK_REALTIME, &buf);
-	if (ret == -1)
-		return 1;
+  /* Test read operation. Should succeed (i.e. not returning -1). */
+  memset(&buf, 0, sizeof(buf));
+  ret = clock_adjtime(CLOCK_REALTIME, &buf);
+  if (ret == -1)
+    return 1;
 
-	/* Test with nullptr buffer. Should fail with EFAULT. */
-	ret = clock_adjtime(CLOCK_REALTIME, NULL);
-	if (ret != -1 || errno != EFAULT)
-		return 2;
+  /* Test with nullptr buffer. Should fail with EFAULT. */
+  ret = clock_adjtime(CLOCK_REALTIME, NULL);
+  if (ret != -1 || errno != EFAULT)
+    return 2;
 
-	/*
-	 * Test a write operation. Under android alt-syscall, should fail with
-	 * EPERM.
-	 */
-	buf.modes = ADJ_MAXERROR;
-	ret = clock_adjtime(CLOCK_REALTIME, &buf);
-	if (ret != -1 || errno != EPERM)
-		return 3;
+  /*
+   * Test a write operation. Under android alt-syscall, should fail with
+   * EPERM.
+   */
+  buf.modes = ADJ_MAXERROR;
+  ret = clock_adjtime(CLOCK_REALTIME, &buf);
+  if (ret != -1 || errno != EPERM)
+    return 3;
 
-	/* Passed successfully */
-	return 0;
+  /* Passed successfully */
+  return 0;
 }
