@@ -41,7 +41,7 @@ _DL_CTS = 'https://dl.google.com/dl/android/cts/'
 _CTS_URI = {
     'arm' : _DL_CTS + 'android-cts-6.0_r12-linux_x86-arm.zip',
     'x86' : _DL_CTS + 'android-cts-6.0_r12-linux_x86-x86.zip',
-    'media' : _DL_CTS + 'android-cts-media-1.1.zip'
+    'media' : _DL_CTS + 'android-cts-media-1.2.zip'
 }
 
 
@@ -114,7 +114,17 @@ class cheets_CTS(tradefed_test.TradefedTest):
         cts_media = os.path.join(media, base)
         copy_media = os.path.join(cts_media, 'copy_media.sh')
         with pushd(cts_media):
-            logging.info('sh -e %s all', copy_media)
+            try:
+                self._run('file', args=('/bin/sh',), verbose=True,
+                          ignore_status=True, timeout=60,
+                          stdout_tee=utils.TEE_TO_LOGS,
+                          stderr_tee=utils.TEE_TO_LOGS)
+                self._run('sh', args=('--version',), verbose=True,
+                          ignore_status=True, timeout=60,
+                          stdout_tee=utils.TEE_TO_LOGS,
+                          stderr_tee=utils.TEE_TO_LOGS)
+            except:
+                logging.warning('Could not obtain sh version.')
             self._run(
                 'sh',
                 args=('-e', copy_media, 'all'),
