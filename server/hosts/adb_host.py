@@ -1900,4 +1900,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         for f in files:
             logging.debug('DUT native crash file produced: %s', f)
             dest = os.path.join(crash_dir, os.path.basename(f))
-            self.get_file(source=f, dest=dest)
+            # We've had cases where the crash file on the DUT has permissions
+            # "000". Let's override permissions to make them sane for the user
+            # collecting the crashes.
+            self.get_file(source=f, dest=dest, preserve_perm=False)
