@@ -667,6 +667,10 @@ class BluetoothAdapterTests(test.test):
                 device_discovered = True
             except utils.TimeoutError as e:
                 logging.error('test_discover_device: %s', e)
+            except Exception as e:
+                logging.error('test_discover_device: %s', e)
+                err = 'bluetoothd probably crashed. Check out /var/log/messages'
+                logging.error(err)
             except:
                 logging.error('test_discover_device: unexpected error')
 
