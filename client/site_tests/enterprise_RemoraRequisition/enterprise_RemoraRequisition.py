@@ -38,7 +38,8 @@ class enterprise_RemoraRequisition(test.test):
             logging.warn('No credentials found - exiting test.')
             return
 
-        with chrome.Chrome(auto_login=False) as cr:
+        with chrome.Chrome(auto_login=False,
+                           disable_gaia_services=False) as cr:
             enrollment.RemoraEnrollment(cr.browser, user_id, password)
             # Timeout to allow for the device to stablize and go back to the
             # login screen before proceeding.
