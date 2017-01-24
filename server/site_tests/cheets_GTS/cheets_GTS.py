@@ -53,7 +53,9 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 'tools',
                 'gts-tradefed')
         logging.info('GTS-tradefed path: %s', gts_tradefed)
-        gts_tradefed_args = ['run', 'gts', '--module', target_package]
+        #TODO(dhaddock): remove --skip-device-info with GTS 4.1_r2 (b/32889514)
+        gts_tradefed_args = ['run', 'gts', '--skip-device-info', '--module',
+                             target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
         output = self._run(
                 gts_tradefed,
