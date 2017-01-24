@@ -110,7 +110,8 @@ class NativeHtml5Player(video_player.VideoPlayer):
         Determines if the video has any errors
 
         """
-        return self.tab.WaitForJavaScriptExpression('errorDetected();', 30)
+        return self.tab.WaitForJavaScriptExpression('errorDetected();',
+                                                    timeout=30)
 
 
     def reload_page(self):
@@ -157,4 +158,4 @@ class NativeHtml5Player(video_player.VideoPlayer):
 
         """
         cmd = "%s.ended" % self.video_id
-        self.tab.WaitForJavaScriptExpression(cmd, self.duration() * 2)
+        self.tab.WaitForJavaScriptExpression(cmd, timeout=(self.duration() * 2))

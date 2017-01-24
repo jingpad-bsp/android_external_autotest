@@ -213,7 +213,8 @@ def find_opt_in_extension_page(browser):
             '(termsPage.isManaged_ || termsPage.state_ == LoadState.LOADED)']
     try:
         for condition in js_code_did_start_conditions:
-            extension_main_page.WaitForJavaScriptExpression(condition, 60.0)
+            extension_main_page.WaitForJavaScriptExpression(condition,
+                                                            timeout=60)
     except Exception, e:
         raise error.TestError('Error waiting for "%s": "%s".' % (condition, e))
 
@@ -241,7 +242,7 @@ def navigate_opt_in_extension(extension_main_page):
     """
     try:
         extension_main_page.WaitForJavaScriptExpression(
-            js_code_is_lso_section_active, 120)
+            js_code_is_lso_section_active, timeout=120)
     except Exception, e:
         raise error.TestFail('Error occured while waiting for lso session. '
                              'Make sure gaia login was used.')
@@ -255,7 +256,7 @@ def navigate_opt_in_extension(extension_main_page):
             .hasAttribute('disabled')
     """
     web_views[0].WaitForJavaScriptExpression(
-            js_code_is_sign_in_button_enabled, 60.0)
+            js_code_is_sign_in_button_enabled, timeout=60)
 
     js_code_click_sign_in = """
         sign_in_button_element = document.getElementById('submit_approve_access');
@@ -276,7 +277,7 @@ def wait_for_opt_in_to_complete(extension_main_page):
     SIGN_IN_TIMEOUT = 120
     try:
         extension_main_page.WaitForJavaScriptExpression('!appWindow',
-                                                        SIGN_IN_TIMEOUT)
+                                                        timeout=SIGN_IN_TIMEOUT)
     except Exception, e:
         js_read_error_message = """
             err = appWindow.contentWindow.document.getElementById(
