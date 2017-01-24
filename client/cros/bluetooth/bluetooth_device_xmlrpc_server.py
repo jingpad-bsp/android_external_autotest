@@ -719,17 +719,27 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
         return True
 
 
-    @xmlrpc_server.dbus_safe(False)
     def has_device(self, address):
         """Checks if the device with a given address exists.
 
         @param address: Address of the device.
 
-        @returns: True if there is a device with that address.
-                  False otherwise.
+        @returns: True if there is an interface object with that address.
+                  False if the device is not found.
+
+        @raises: Exception if a D-Bus error is encountered.
 
         """
-        return self._find_device(address) != None
+        result = self._find_device(address)
+        logging.debug('has_device result: %s', str(result))
+
+        # The result being False indicates that there is a D-Bus error.
+        if result is False:
+            raise Exception('dbus.Interface error')
+
+        # Return True if the result is not None, e.g. a D-Bus interface object;
+        # False otherwise.
+        return bool(result)
 
 
     @xmlrpc_server.dbus_safe(False)
@@ -756,7 +766,7 @@ class BluetoothDeviceXmlRpcDelegate(xmlrpc_server.XmlRpcDelegate):
                 obj = self._system_bus.get_object(
                         self.BLUEZ_SERVICE_NAME, path)
                 return dbus.Interface(obj, self.BLUEZ_DEVICE_IFACE)
-        logging.error('Device not found')
+        logging.info('Device not found')
         return None
 
 
