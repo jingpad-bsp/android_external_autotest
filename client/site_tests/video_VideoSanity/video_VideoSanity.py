@@ -49,7 +49,8 @@ class video_VideoSanity(test.test):
             arc_mode_str = arc_common.ARC_MODE_ENABLED
         else:
             arc_mode_str = arc_common.ARC_MODE_DISABLED
-        with chrome.Chrome(arc_mode=arc_mode_str) as cr:
+        with chrome.Chrome(arc_mode=arc_mode_str,
+                           init_network_controller=True) as cr:
              shutil.copy2(constants.VIDEO_HTML_FILEPATH, self.bindir)
              video_path = os.path.join(constants.CROS_VIDEO_DIR,
                                        'files', video_file)

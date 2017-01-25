@@ -79,7 +79,8 @@ class Chrome(object):
                  disable_gaia_services=True, disable_default_apps = True,
                  auto_login=True, gaia_login=False,
                  username=None, password=None, gaia_id=None,
-                 arc_mode=None, disable_arc_opt_in=True):
+                 arc_mode=None, disable_arc_opt_in=True,
+                 init_network_controller=True):
         """
         Constructor of telemetry wrapper.
 
@@ -189,7 +190,8 @@ class Chrome(object):
                               i, repr(e))
                 if i == num_tries-1:
                     raise
-        self._browser.platform.network_controller.InitializeIfNeeded()
+        if init_network_controller:
+          self._browser.platform.network_controller.InitializeIfNeeded()
 
     def __enter__(self):
         return self
