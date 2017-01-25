@@ -1014,6 +1014,8 @@ class Suite(object):
 
         if self._file_bugs:
             bug_reporter = reporting.Reporter()
+        else:
+            bug_reporter = reporting.NullReporter()
         try:
             if self._suite_job_id:
                 results_generator = job_status.wait_for_child_results(
