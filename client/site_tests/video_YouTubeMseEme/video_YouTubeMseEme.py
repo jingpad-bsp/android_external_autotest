@@ -46,7 +46,7 @@ class video_YouTubeMseEme(test.test):
         @param event_name: A string to denote the name of the event to check.
         """
         self.tab.WaitForJavaScriptExpression(
-             'window.__eventReporter["%s"] === true;' % event_name, 5)
+             'window.__eventReporter["%s"] === true;' % event_name, timeout=5)
 
 
     def load_javascript(self, sub_path):
