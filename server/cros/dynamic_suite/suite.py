@@ -989,7 +989,7 @@ class Suite(object):
                 result.is_worse_than(job_status.Status('GOOD', '', 'reason')))
 
 
-    def wait(self, record, bug_template={}):
+    def wait(self, record, bug_template=None):
         """
         Polls for the job statuses, using |record| to print status when each
         completes.
@@ -1008,6 +1008,9 @@ class Suite(object):
         # module.
         from autotest_lib.server.cros.dynamic_suite import reporting
         from autotest_lib.server.cros.dynamic_suite import reporting_utils
+
+        if bug_template is None:
+            bug_template = {}
 
         if self._file_bugs:
             bug_reporter = reporting.Reporter()
