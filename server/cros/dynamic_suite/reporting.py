@@ -616,7 +616,7 @@ class Reporter(object):
                          issue_id, comment, label_update, status)
 
 
-    def find_issue_by_marker(self, marker):
+    def _find_issue_by_marker(self, marker):
         """
         Queries the tracker to find if there is a bug filed for this issue.
 
@@ -720,7 +720,7 @@ class Reporter(object):
         @return An Issue instance, representing an open issue that is a
                 duplicate of the one being searched for.
         """
-        issue = self.find_issue_by_marker(marker)
+        issue = self._find_issue_by_marker(marker)
         if not issue or issue.state == constants.ISSUE_OPEN:
             return issue
 

@@ -95,7 +95,7 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call CreateTrackerIssue when an Issue search
         returns None.
         """
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         client = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
@@ -103,7 +103,7 @@ class ReportingTest(mox.MoxTestBase):
                                                    mox.IgnoreArg())
         client.create_issue(mox.IgnoreArg()).AndReturn(
             {'id': self._FAKE_ISSUE_ID})
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
         reporting.TestBug.summary().AndReturn('')
 
@@ -120,7 +120,7 @@ class ReportingTest(mox.MoxTestBase):
         Confirms that we call AppendTrackerIssueById with the same issue
         returned by the issue search.
         """
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
         issue = self.mox.CreateMock(phapi_lib.Issue)
@@ -132,7 +132,7 @@ class ReportingTest(mox.MoxTestBase):
                                                    mox.IgnoreArg(),
                                                    mox.IgnoreArg())
         client.update_issue(self._FAKE_ISSUE_ID, mox.IgnoreArg())
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             issue)
 
         reporting.TestBug.summary().AndReturn('')
@@ -164,10 +164,10 @@ class ReportingTest(mox.MoxTestBase):
                     return False
             return True
 
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
         self.mox.StubOutWithMock(reporting.TestBug, 'summary')
 
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
         reporting.TestBug.summary().AndReturn('Summary')
 
@@ -187,11 +187,11 @@ class ReportingTest(mox.MoxTestBase):
 
     def testGenericBugCanBeFiled(self):
         """Test that we can use a Bug object to file a bug report."""
-        self.mox.StubOutWithMock(reporting.Reporter, 'find_issue_by_marker')
+        self.mox.StubOutWithMock(reporting.Reporter, '_find_issue_by_marker')
 
         bug = reporting.Bug('title', 'summary', 'marker')
 
-        reporting.Reporter.find_issue_by_marker(mox.IgnoreArg()).AndReturn(
+        reporting.Reporter._find_issue_by_marker(mox.IgnoreArg()).AndReturn(
             None)
 
         mock_host = phapi_lib.ProjectHostingApiClient(mox.IgnoreArg(),
@@ -235,7 +235,7 @@ class ReportingTest(mox.MoxTestBase):
 
 
 class FindIssueByMarkerTests(mox.MoxTestBase):
-    """Tests the find_issue_by_marker function."""
+    """Tests the _find_issue_by_marker function."""
 
     def setUp(self):
         super(FindIssueByMarkerTests, self).setUp()
@@ -261,7 +261,7 @@ class FindIssueByMarkerTests(mox.MoxTestBase):
                                                       mox.IgnoreArg())
 
         self.mox.ReplayAll()
-        result = reporting.Reporter().find_issue_by_marker(None)
+        result = reporting.Reporter()._find_issue_by_marker(None)
         self.assertTrue(result is None)
 
 
