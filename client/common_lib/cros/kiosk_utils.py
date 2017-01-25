@@ -48,7 +48,7 @@ def config_riseplayer(browser, ext_id, app_config_id):
     try:
         kiosk_webview_context.WaitForJavaScriptExpression(
                 verify_app_config_id,
-                DEFAULT_TIMEOUT)
+                timeout=DEFAULT_TIMEOUT)
     except exceptions.TimeoutException:
         raise error.TestFail('Error in configuring Rise Player with id: %s'
                              % app_config_id)
