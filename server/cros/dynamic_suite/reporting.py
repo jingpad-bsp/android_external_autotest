@@ -843,7 +843,7 @@ class Reporter(object):
             return ''
 
 
-    def report(self, bug, bug_template={}, ignore_duplicate=False):
+    def report(self, bug, bug_template=None, ignore_duplicate=False):
         """Report an issue to the bug tracker.
 
         If this issue has happened before, post a comment on the
@@ -865,6 +865,9 @@ class Reporter(object):
                     bug, the count is 1.  If we could not file a bug for some
                     reason, the count is 0.
         """
+        if bug_template is None:
+            bug_template = {}
+
         if not self._check_tracker():
             logging.error("Can't file %s", bug.title())
             return ReportResult(None, 0)
