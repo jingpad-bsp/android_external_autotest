@@ -923,6 +923,34 @@ class Reporter(object):
         return ReportResult(bug_id, bug_count)
 
 
+class NullReporter(object):
+    """Null object for bug reporter."""
+
+    def report(self, bug, bug_template=None, ignore_duplicate=False):
+        """Report an issue to the bug tracker.
+
+        If this issue has happened before, post a comment on the
+        existing bug about it occurring again, and update the
+        'autofiled-count' label.  If this is a new issue, create a
+        new bug for it.
+
+        @param bug          A Bug instance about the issue.
+        @param bug_template A template dictionary specifying the
+                            default bug filing options for an issue
+                            with this suite.
+        @param ignore_duplicate  If True, when a duplicate is found,
+                                 simply ignore the new one rather than
+                                 posting an update.
+        @return   A ReportResult namedtuple containing:
+
+                  - the issue id as a string or None
+                  - the number of times the bug has been updated.  For a new
+                    bug, the count is 1.  If we could not file a bug for some
+                    reason, the count is 0.
+        """
+        return ReportResult(None, 0)
+
+
 # TODO(beeps): Move this to server/site_utils after crbug.com/281906 is fixed.
 def submit_generic_bug_report(*args, **kwargs):
     """
