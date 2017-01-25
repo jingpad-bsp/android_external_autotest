@@ -276,7 +276,7 @@ class FacadeResource(object):
         if tab_descriptor not in self._tabs:
             raise RuntimeError('There is no tab for %s' % tab_descriptor)
         self._tabs[tab_descriptor].WaitForJavaScriptExpression(
-                expression, timeout)
+                expression, timeout=timeout)
 
 
     def execute_javascript(self, tab_descriptor, statement, timeout):
@@ -289,7 +289,7 @@ class FacadeResource(object):
         if tab_descriptor not in self._tabs:
             raise RuntimeError('There is no tab for %s' % tab_descriptor)
         self._tabs[tab_descriptor].ExecuteJavaScript(
-                statement, timeout)
+                statement, timeout=timeout)
 
 
     def evaluate_javascript(self, tab_descriptor, expression, timeout):
@@ -303,4 +303,4 @@ class FacadeResource(object):
         if tab_descriptor not in self._tabs:
             raise RuntimeError('There is no tab for %s' % tab_descriptor)
         return self._tabs[tab_descriptor].EvaluateJavaScript(
-                expression, timeout)
+                expression, timeout=timeout)

@@ -61,7 +61,7 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
 
         # Wait until list.reload() is defined on bmm page.
         tab.WaitForJavaScriptExpression(
-            "typeof bmm.list.reload == 'function'", 60)
+            "typeof bmm.list.reload == 'function'", timeout=60)
         time.sleep(1)  # Allow JS to run after reload function is defined.
 
         # Check if add-new-bookmark menu command has disabled property.
