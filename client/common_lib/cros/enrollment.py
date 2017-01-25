@@ -11,7 +11,8 @@ from autotest_lib.client.common_lib.cros import chrome
 def _ExecuteOobeCmd(browser, cmd):
     logging.info('Invoking ' + cmd)
     oobe = browser.oobe
-    oobe.WaitForJavaScriptExpression('typeof Oobe !== \'undefined\'', 10)
+    oobe.WaitForJavaScriptExpression('typeof Oobe !== \'undefined\'',
+                                     timeout=10)
     oobe.ExecuteJavaScript(cmd)
 
 

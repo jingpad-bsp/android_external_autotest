@@ -106,7 +106,7 @@ class DisplayFacadeNative(object):
                     "typeof options.DisplayOptions !== 'undefined' &&"
                     "typeof options.DisplayOptions.instance_ !== 'undefined' &&"
                     "typeof options.DisplayOptions.instance_"
-                    "       .displays_ !== 'undefined'", timeout)
+                    "       .displays_ !== 'undefined'", timeout=timeout)
 
         if not tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_.displays_.length > %d"
@@ -122,7 +122,7 @@ class DisplayFacadeNative(object):
                 "         .displays_[%(index)d].id !== 'undefined' &&"
                 "typeof options.DisplayOptions.instance_"
                 "         .displays_[%(index)d].resolutions !== 'undefined'"
-                % {'index': display_index}, timeout)
+                % {'index': display_index}, timeout=timeout)
 
 
     def _evaluate_display_expression(self, expression, display_index):
@@ -590,7 +590,7 @@ class DisplayFacadeNative(object):
         )
         extension.WaitForJavaScriptExpression(
                 "__status == 'Done'",
-                web_contents.DEFAULT_WEB_CONTENTS_TIMEOUT)
+                timeout=web_contents.DEFAULT_WEB_CONTENTS_TIMEOUT)
         return True
 
 
@@ -699,8 +699,9 @@ class DisplayFacadeNative(object):
         # 2. DELAY_TIME: extra wait time for timeout.
         tab.WaitForJavaScriptExpression(
                 'window.count == color_sequence.length',
-                (len(color_sequence) / self.MINIMUM_REFRESH_RATE_EXPECTED)
-                + self.DELAY_TIME)
+                timeout=(
+                    (len(color_sequence) / self.MINIMUM_REFRESH_RATE_EXPECTED)
+                    + self.DELAY_TIME))
         return tab.EvaluateJavaScript("window.timestamp_list")
 
 

@@ -26,7 +26,7 @@ def get_cfm_webview_context(browser, ext_id):
             "document.querySelector('webview') ? 'WEBVIEW' : 'NOWEBVIEW'")
 
         if tagName == "WEBVIEW":
-            def webview_context():
+            def _webview_context():
                 try:
                     wb_contexts = context.GetWebviewContexts()
                     if len(wb_contexts) == 1:
@@ -35,7 +35,7 @@ def get_cfm_webview_context(browser, ext_id):
                     pass
                 return None
             return utils.poll_for_condition(
-                    webview_context,
+                    _webview_context,
                     exception=error.TestFail('Hangouts webview not available.'),
                     timeout=DEFAULT_TIMEOUT,
                     sleep_interval=1)
@@ -48,7 +48,7 @@ def wait_for_kiosk_ext(browser, ext_id):
     @param ext_id: Extension id of the hangouts app.
     @return extension contexts.
     """
-    def kiosk_ext_contexts():
+    def _kiosk_ext_contexts():
         try:
             ext_contexts = browser.extensions.GetByExtensionId(ext_id)
             if len(ext_contexts) > 1:
@@ -57,7 +57,7 @@ def wait_for_kiosk_ext(browser, ext_id):
             pass
         return []
     return utils.poll_for_condition(
-            kiosk_ext_contexts,
+            _kiosk_ext_contexts,
             exception=error.TestFail('Kiosk app failed to launch'),
             timeout=DEFAULT_TIMEOUT,
             sleep_interval=1)
@@ -70,7 +70,7 @@ def wait_for_telemetry_commands(webview_context):
     """
     webview_context.WaitForJavaScriptExpression(
             "typeof window.hrOobIsStartPageForTest == 'function'",
-            DEFAULT_TIMEOUT)
+            timeout=DEFAULT_TIMEOUT)
     logging.info('Hotrod telemetry commands available for testing.')
 
 
@@ -81,7 +81,8 @@ def wait_for_oobe_start_page(webview_context):
     @param webview_context: Context for hangouts webview.
     """
     webview_context.WaitForJavaScriptExpression(
-            "window.hrOobIsStartPageForTest() === true;", DEFAULT_TIMEOUT)
+            "window.hrOobIsStartPageForTest() === true;",
+            timeout=DEFAULT_TIMEOUT)
     logging.info('Reached oobe start page')
 
 

@@ -52,7 +52,8 @@ class power_FlashVideoSuspend(test.test):
         tab.WaitForDocumentReadyStateToBeInteractiveOrBetter()
         logging.info('video url is %s', video_url)
         tab.EvaluateJavaScript('play("%s")' % video_url)
-        tab.WaitForJavaScriptExpression('typeof player != "undefined"', 10)
+        tab.WaitForJavaScriptExpression('typeof player != "undefined"',
+                                        timeout=10)
 
         self.check_video_is_playing(tab)
 

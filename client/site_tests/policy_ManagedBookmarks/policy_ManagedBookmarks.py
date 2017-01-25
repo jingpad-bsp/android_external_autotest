@@ -130,7 +130,7 @@ class policy_ManagedBookmarks(enterprise_policy_base.EnterprisePolicyTest):
 
         # Wait until list.reload() is defined on page.
         tab.WaitForJavaScriptExpression(
-            "typeof bmm.list.reload == 'function'", 60)
+            "typeof bmm.list.reload == 'function'", timeout=60)
         time.sleep(1)  # Allow JS to run after function is defined.
         return tab
 

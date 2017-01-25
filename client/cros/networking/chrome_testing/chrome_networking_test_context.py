@@ -75,7 +75,7 @@ class ChromeNetworkingTestContext(object):
 
     def _ensure_network_test_extension_is_ready(self):
         self.network_test_extension.WaitForJavaScriptExpression(
-            "typeof chromeTesting != 'undefined'", 30)
+            "typeof chromeTesting != 'undefined'", timeout=30)
 
     def _get_extension(self, path):
         if self._chrome is None:
