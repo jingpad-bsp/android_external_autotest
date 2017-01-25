@@ -1050,8 +1050,8 @@ class SuiteTest(mox.MoxTestBase):
                 test_to_retry, retry_for=self._FAKE_JOB_ID).AndRaise(
                 error.RPCException('Expected during test'))
         # Do not file a bug.
-        self.mox.StubOutWithMock(self.suite, 'should_report')
-        self.suite.should_report(mox.IgnoreArg()).AndReturn(False)
+        self.mox.StubOutWithMock(self.suite, '_should_report')
+        self.suite._should_report(mox.IgnoreArg()).AndReturn(False)
 
         self.mox.ReplayAll()
 
