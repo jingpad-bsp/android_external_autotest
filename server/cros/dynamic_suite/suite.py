@@ -9,7 +9,6 @@ import logging
 import operator
 import os
 import re
-import traceback
 import sys
 
 import common
@@ -945,7 +944,7 @@ class Suite(object):
                 self._results_dir,
                 self._make_scheduled_tests_keyvals(scheduled_test_names))
         except Exception:  # pylint: disable=W0703
-            logging.error(traceback.format_exc())
+            logging.exception('Exception while scheduling suite')
             Status('FAIL', self._tag,
                    'Exception while scheduling suite').record_result(record)
 
@@ -1034,7 +1033,7 @@ class Suite(object):
                     bug_template=bug_template)
 
         except Exception:  # pylint: disable=W0703
-            logging.error(traceback.format_exc())
+            logging.exception('Exception waiting for results')
             Status('FAIL', self._tag,
                    'Exception waiting for results').record_result(record)
 
