@@ -969,7 +969,7 @@ class Suite(object):
         }
 
 
-    def should_report(self, result):
+    def _should_report(self, result):
         """
         Returns True if this failure requires to be reported.
 
@@ -1044,7 +1044,7 @@ class Suite(object):
                 # TODO (fdeng): If the suite times out before a retry could
                 # finish, we would lose the chance to file a bug for the
                 # original job.
-                if self.should_report(result):
+                if self._should_report(result):
                     job_views = self._tko.run('get_detailed_test_views',
                                               afe_job_id=result.id)
                     failure = reporting.TestBug(self._cros_build,
