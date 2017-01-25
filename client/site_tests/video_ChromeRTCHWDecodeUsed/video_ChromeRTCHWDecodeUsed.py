@@ -68,7 +68,8 @@ class video_ChromeRTCHWDecodeUsed(test.test):
         # Start chrome with test flags.
         EXTRA_BROWSER_ARGS.append(FAKE_FILE_ARG % local_path)
         with chrome.Chrome(extra_browser_args=EXTRA_BROWSER_ARGS,
-                           arc_mode=arc_mode) as cr:
+                           arc_mode=arc_mode,
+                           init_network_controller=True) as cr:
             # Open WebRTC loopback page.
             cr.browser.platform.SetHTTPServerDirectories(self.bindir)
             self.start_loopback(cr)

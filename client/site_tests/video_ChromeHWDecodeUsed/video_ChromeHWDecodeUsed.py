@@ -52,7 +52,8 @@ class video_ChromeHWDecodeUsed(test.test):
         if self.is_skipping_test(codec):
             raise error.TestNAError('Skipping test run on this board.')
 
-        with chrome.Chrome(arc_mode=arc_mode) as cr:
+        with chrome.Chrome(arc_mode=arc_mode,
+                           init_network_controller=True) as cr:
             # This will execute for MSE video by accesing shaka player
             if is_mse:
                  tab1 = cr.browser.tabs.New()
