@@ -458,7 +458,7 @@ class ChangeDir(object):
 def _sync_chromiumos_repo():
     """Update ~chromeos-test/chromiumos repo."""
     print('Updating ~chromeos-test/chromiumos')
-    with ChangeDir('~chromeos-test/chromiumos'):
+    with ChangeDir(os.path.expanduser('~chromeos-test/chromiumos')):
         ret = subprocess.call(['repo', 'sync'])
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
