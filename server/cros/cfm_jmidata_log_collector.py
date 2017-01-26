@@ -28,9 +28,9 @@ def GetDataFromLogs(testcase, data_type, log_lines):
         'framerate_received': helper.GetVideoIncomingFramerateReceivedList,
         'framerate_sent': helper.GetVideoOutgoingFramerateSentList,
         'framerate_decoded': helper.GetVideoIncomingFramerateDecodedList,
-        'frames_decoded':helper.GetVideoIncomingFramesDecodedList,
-        'frames_encoded':helper.GetVideoOutgoingFramesEncodedList,
-        'average_encode_time':helper.GetVideoEncodeTimeList,
+        'frames_decoded': helper.GetVideoIncomingFramesDecodedList,
+        'frames_encoded': helper.GetVideoOutgoingFramesEncodedList,
+        'average_encode_time': helper.GetVideoEncodeTimeList,
         'framerate_to_renderer': helper.GetVideoIncomingFramerateList,
         'framerate_outgoing': helper.GetVideoOutgoingFramerateInputList,
         'video_sent_frame_width': helper.GetVideoSentFrameWidthList,
@@ -39,31 +39,20 @@ def GetDataFromLogs(testcase, data_type, log_lines):
         'video_received_frame_height': helper.GetVideoReceivedFrameHeightList,
         'cpu_adaptation': helper.GetCPULimitedResolutionList,
         'bandwidth_adaptation': helper.GetBandwidthLimitedResolutionList,
-        'adaptation_changes':helper.GetVideoAdaptationChangeList,
+        'adaptation_changes': helper.GetVideoAdaptationChangeList,
         'video_packets_sent': helper.GetVideoPacketsSentList,
         'video_packets_lost': helper.GetVideoPacketsLostList,
-        'video_encode_cpu_usage':helper.GetVideoEncodeCpuUsagePercentList,
+        'video_encode_cpu_usage': helper.GetVideoEncodeCpuUsagePercentList,
         'num_active_vid_in_streams':
                 helper.GetNumberOfActiveIncomingVideoStreams,
-        'cpu_processors':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().NUM_PROCESSORS),
-        'cpu_percent':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().TOTAL_CPU),
-        'browser_cpu_percent':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().BROWSER_CPU),
-        'gpu_cpu_percent':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().GPU_CPU),
-        'nacl_effects_cpu_percent':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().NACL_EFFECTS_CPU),
-        'renderer_cpu_percent':
-                lambda: helper.GetCpuUsageList(
-                        helper.GetCpuUsageType().RENDERER_CPU),
+        'cpu_processors': helper.GetNumOfProcessors,
+        'cpu_percent': helper.GetTotalCpuPercentage,
+        'browser_cpu_percent': helper.GetBrowserCpuPercentage,
+        'gpu_cpu_percent': helper.GetGpuCpuPercentage,
+        'nacl_effects_cpu_percent': helper.GetNaclEffectsCpuPercentage,
+        'renderer_cpu_percent': helper.GetRendererCpuPercentage,
     }
+
 
     data_array = data_type_to_func_map[data_type]()
     logging.info('Data Type: %s, Data Array: %s', data_type, str(data_array))
