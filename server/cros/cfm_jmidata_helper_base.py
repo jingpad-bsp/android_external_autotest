@@ -106,5 +106,20 @@ class JMIDataHelperBase(object):
     def GetCpuUsageList(self, cpu_type):
         raise NotImplementedError
 
-    def GetCpuUsageType(self):
+    def GetNumOfProcessors(self):
+        raise NotImplementedError
+
+    def GetTotalCpuPercentage(self):
+        raise NotImplementedError
+
+    def GetBrowserCpuPercentage(self):
+        raise NotImplementedError
+
+    def GetGpuCpuPercentage(self):
+        raise NotImplementedError
+
+    def GetNaclEffectsCpuPercentage(self):
+        raise NotImplementedError
+
+    def GetRendererCpuPercentage(self):
         raise NotImplementedError
