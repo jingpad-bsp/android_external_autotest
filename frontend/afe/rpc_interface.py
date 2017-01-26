@@ -1,4 +1,4 @@
-# pylint: disable-msg=C0111
+# pylint: disable=missing-docstring
 
 """\
 Functions to expose over the RPC interface.
@@ -40,7 +40,6 @@ from django.db.models import Count
 import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import priorities
-from autotest_lib.client.common_lib.cros import dev_server
 # TODO(akeshet): Replace with monarch stats once we know how to instrument rpc
 # server with ts_mon.
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
@@ -1061,66 +1060,8 @@ def create_job(
     """
     if args:
         control_file = tools.inject_vars({'args': args}, control_file)
-
-    if image is None:
-        return rpc_utils.create_job_common(
-                name=name,
-                priority=priority,
-                control_type=control_type,
-                control_file=control_file,
-                hosts=hosts,
-                meta_hosts=meta_hosts,
-                one_time_hosts=one_time_hosts,
-                atomic_group_name=atomic_group_name,
-                synch_count=synch_count,
-                is_template=is_template,
-                timeout=timeout,
-                timeout_mins=timeout_mins,
-                max_runtime_mins=max_runtime_mins,
-                run_verify=run_verify,
-                email_list=email_list,
-                dependencies=dependencies,
-                reboot_before=reboot_before,
-                reboot_after=reboot_after,
-                parse_failed_repair=parse_failed_repair,
-                hostless=hostless,
-                keyvals=keyvals,
-                drone_set=drone_set,
-                parent_job_id=parent_job_id,
-                test_retry=test_retry,
-                run_reset=run_reset,
-                require_ssp=require_ssp)
-
-    # Translate the image name, in case its a relative build name.
-    ds = dev_server.ImageServer.resolve(image)
-    image = ds.translate(image)
-
-    # When image is supplied use a known parameterized test already in the
-    # database to pass the OS image path from the front end, through the
-    # scheduler, and finally to autoserv as the --image parameter.
-
-    # The test autoupdate_ParameterizedJob is in afe_autotests and used to
-    # instantiate a Test object and from there a ParameterizedJob.
-    known_test_obj = models.Test.smart_get('autoupdate_ParameterizedJob')
-    known_parameterized_job = models.ParameterizedJob.objects.create(
-            test=known_test_obj)
-
-    # autoupdate_ParameterizedJob has a single parameter, the image parameter,
-    # stored in the table afe_test_parameters.  We retrieve and set this
-    # instance of the parameter to the OS image path.
-    image_parameter = known_test_obj.testparameter_set.get(test=known_test_obj,
-                                                           name='image')
-    known_parameterized_job.parameterizedjobparameter_set.create(
-            test_parameter=image_parameter, parameter_value=image,
-            parameter_type='string')
-
-    # TODO(crbug.com/502638): save firmware build etc to parameterized_job.
-
-    # By passing a parameterized_job to create_job_common the job entry in
-    # the afe_jobs table will have the field parameterized_job_id set.
-    # The scheduler uses this id in the afe_parameterized_jobs table to
-    # match this job to our known test, and then with the
-    # afe_parameterized_job_parameters table to get the actual image path.
+    if image:
+        dependencies += (provision.image_version_to_label(image),)
     return rpc_utils.create_job_common(
             name=name,
             priority=priority,
@@ -1144,7 +1085,6 @@ def create_job(
             hostless=hostless,
             keyvals=keyvals,
             drone_set=drone_set,
-            parameterized_job=known_parameterized_job.id,
             parent_job_id=parent_job_id,
             test_retry=test_retry,
             run_reset=run_reset,
