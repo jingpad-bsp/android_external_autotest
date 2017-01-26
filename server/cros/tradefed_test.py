@@ -288,7 +288,7 @@ class TradefedTest(test.test):
         has finished booting.
         """
         def intent_helper_running():
-            result = self._run('adb', args=('shell', 'pgrep',
+            result = self._run('adb', args=('shell', 'pgrep', '-f',
                                             'org.chromium.arc.intent_helper'))
             return bool(result.stdout)
         utils.poll_for_condition(
