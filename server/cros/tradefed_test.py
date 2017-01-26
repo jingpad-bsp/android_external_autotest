@@ -22,6 +22,7 @@ import contextlib
 import errno
 import glob
 import hashlib
+import lockfile
 import logging
 import os
 import pipes
@@ -40,16 +41,6 @@ from autotest_lib.server import autotest
 from autotest_lib.server import test
 from autotest_lib.server import utils
 from autotest_lib.site_utils import lxc
-
-try:
-    import lockfile
-except ImportError:
-    if utils.is_in_container():
-        # Ensure the container has the required packages installed.
-        lxc.install_packages(python_packages=['lockfile'])
-        import lockfile
-    else:
-        raise
 
 
 _SDK_TOOLS_DIR = ('gs://chromeos-arc-images/builds/'
@@ -160,8 +151,6 @@ class TradefedTest(test.test):
         self._install_paths = []
         # Tests in the lab run within individual lxc container instances.
         if utils.is_in_container():
-            # Ensure the container has the required packages installed.
-            lxc.install_packages(packages=['unzip', 'default-jre'])
             cache_root = _TRADEFED_CACHE_CONTAINER
         else:
             cache_root = _TRADEFED_CACHE_LOCAL
