@@ -211,7 +211,7 @@ class Suspender(object):
         for retry in xrange(retries + 1):
             early_wakeup = False
             if os.path.exists(self.HWCLOCK_FILE):
-                match = re.search(r'(.+) (-?[0-9.]+) seconds',
+                match = re.search(r'(.+\w)\s+(-?[0-9.]+) seconds',
                                   utils.read_file(self.HWCLOCK_FILE), re.DOTALL)
                 if match:
                     timeval = time.strptime(match.group(1),
