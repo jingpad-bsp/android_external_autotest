@@ -1052,15 +1052,6 @@ class Suite(object):
         @param bug_template: A template dictionary specifying the default bug
                              filing options for failures in this suite.
         """
-        # reporting modules have dependency on external packages, e.g., httplib2
-        # Such dependency can cause issue to any module tries to import suite.py
-        # without building site-packages first. Since the reporting modules are
-        # only used in this function, move the imports here avoid the
-        # requirement of building site packages to use other functions in this
-        # module.
-        from autotest_lib.server.cros.dynamic_suite import reporting
-        from autotest_lib.server.cros.dynamic_suite import reporting_utils
-
         result.record_all(record)
         if job_status.is_for_infrastructure_fail(result):
             self._remember_provided_job_id(result)
@@ -1078,20 +1069,7 @@ class Suite(object):
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
-            # Try to merge with bug template in test control file.
-            template = reporting_utils.BugTemplate(bug_template)
-            try:
-                test_data = self._jobs_to_tests[result.id]
-                merged_template = template.finalize_bug_template(
-                        test_data.bug_template)
-            except AttributeError:
-                # Test control file does not have bug template defined.
-                merged_template = template.bug_template
-            except reporting_utils.InvalidBugTemplateException as e:
-                merged_template = {}
-                logging.error('Merging bug templates failed with '
-                              'error: %s An empty bug template will '
-                              'be used.', e)
+            merged_template = self._get_bug_template(result, bug_template)
 
             # File bug when failure is one of the _FILE_BUG_SUITES,
             # otherwise send an email to the owner anc cc.
@@ -1113,8 +1091,49 @@ class Suite(object):
                         logging.error('Unable to log bug keyval for:%s',
                                       result.test_name)
             else:
+                # reporting modules have dependency on external
+                # packages, e.g., httplib2 Such dependency can cause
+                # issue to any module tries to import suite.py without
+                # building site-packages first. Since the reporting
+                # modules are only used in this function, move the
+                # imports here avoid the requirement of building site
+                # packages to use other functions in this module.
+                from autotest_lib.server.cros.dynamic_suite import reporting
+
                 reporting.send_email(self._get_test_bug(result),
                                      merged_template)
+
+
+    def _get_bug_template(self, result, bug_template):
+        """Get BugTemplate for test job.
+
+        @param result: Status instance for job.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
+        @returns: BugTemplate instance
+        """
+        # reporting modules have dependency on external packages, e.g., httplib2
+        # Such dependency can cause issue to any module tries to import suite.py
+        # without building site-packages first. Since the reporting modules are
+        # only used in this function, move the imports here avoid the
+        # requirement of building site packages to use other functions in this
+        # module.
+        from autotest_lib.server.cros.dynamic_suite import reporting_utils
+
+        # Try to merge with bug template in test control file.
+        template = reporting_utils.BugTemplate(bug_template)
+        try:
+            test_data = self._jobs_to_tests[result.id]
+            return template.finalize_bug_template(
+                    test_data.bug_template)
+        except AttributeError:
+            # Test control file does not have bug template defined.
+            return template.bug_template
+        except reporting_utils.InvalidBugTemplateException as e:
+            logging.error('Merging bug templates failed with '
+                          'error: %s An empty bug template will '
+                          'be used.', e)
+            return {}
 
 
     def _get_test_bug(self, result):
