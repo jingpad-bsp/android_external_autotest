@@ -310,15 +310,19 @@ class InputPlayback(object):
         for fw_filename in fw_filenames:
             fw_path = os.path.join(device_dir, fw_filename)
             if os.path.exists(fw_path):
+                if fw_id:
+                    logging.warning('Found new potential fw_id when previous '
+                                    'value was %s!', fw_id)
                 fw_id = self._get_contents_of_file(fw_path)
-                break
 
         hw_filenames = ['hw_version', 'product_id', 'board_id']
         for hw_filename in hw_filenames:
             hw_path = os.path.join(device_dir, hw_filename)
             if os.path.exists(hw_path):
+                if hw_id:
+                    logging.warning('Found new potential hw_id when previous '
+                                    'value was %s!', hw_id)
                 hw_id = self._get_contents_of_file(hw_path)
-                break
 
         # Hw_ids for Weida and 2nd gen Synaptics are different.
         if not hw_id:
