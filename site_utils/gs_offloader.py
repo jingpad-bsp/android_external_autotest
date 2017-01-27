@@ -120,7 +120,7 @@ GS_OFFLOADER_MULTIPROCESSING = global_config.global_config.get_config_value(
 D = '[0-9][0-9]'
 TIMESTAMP_PATTERN = '%s%s.%s.%s_%s.%s.%s' % (D, D, D, D, D, D, D)
 CTS_RESULT_PATTERN = 'testResult.xml'
-GTS_RESULT_PATTERN = 'xtsTestResult.xml'
+GTS_RESULT_PATTERN = 'test_result.xml'
 # Google Storage bucket URI to store results in.
 DEFAULT_CTS_RESULTS_GSURI = global_config.global_config.get_config_value(
         'CROS', 'cts_results_server', default='')
@@ -337,7 +337,7 @@ def correct_results_folder_permission(dir_entry):
 def upload_testresult_files(dir_entry, multiprocessing):
     """Upload test results to separate gs buckets.
 
-    Upload testResult.xml.gz/xtsTestResult.xml.gz file to cts_results_bucket.
+    Upload testResult.xml.gz/test_result.xml.gz file to cts_results_bucket.
     Upload timestamp.zip to cts_apfe_bucket.
 
     @param dir_entry: Path to the results folder.
@@ -418,7 +418,8 @@ def _upload_files(host, path, result_pattern, multiprocessing):
         logging.debug('Upload %s to %s ', zip_file, cts_apfe_gs_path)
 
     for test_result_file in glob.glob(os.path.join(path, result_pattern)):
-        # gzip test_result_file(testResult.xml/xtsTestResult.xml)
+        # gzip test_result_file(testResult.xml/test_result.xml)
+
         test_result_file_gz =  '%s.gz' % test_result_file
         with open(test_result_file, 'r') as f_in, (
                 gzip.open(test_result_file_gz, 'w')) as f_out:
@@ -427,7 +428,7 @@ def _upload_files(host, path, result_pattern, multiprocessing):
                 multiprocessing, test_result_file_gz, test_result_gs_path)))
         logging.debug('Zip and upload %s to %s',
                       test_result_file_gz, test_result_gs_path)
-        # Remove test_result_file_gz(estResult.xml.gz/xtsTestResult.xml.gz)
+        # Remove test_result_file_gz(testResult.xml.gz/test_result.xml.gz)
         os.remove(test_result_file_gz)
 
 
