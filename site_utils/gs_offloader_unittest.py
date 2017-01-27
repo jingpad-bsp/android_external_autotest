@@ -1020,7 +1020,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         cts_result_folder = os.path.join(
                 host_folder, 'cheets_CTS.android.dpi', 'results', 'cts-results')
         gts_result_folder = os.path.join(
-                host_folder, 'cheets_GTS.google.admin', 'results', 'android-xts')
+                host_folder, 'cheets_GTS.google.admin', 'results', 'android-gts')
         timestamp_str = '2016.04.28_01.41.44'
         timestamp_cts_folder = os.path.join(cts_result_folder, timestamp_str)
         timestamp_gts_folder = os.path.join(gts_result_folder, timestamp_str)
@@ -1045,7 +1045,7 @@ class OffloadDirectoryTests(_TempResultsDirTestBase):
         # Create xml file_path.
         cts_result_file = os.path.join(timestamp_cts_folder, 'testResult.xml')
         cts_result_file_2 = os.path.join(timestamp_cts_folder_2, 'testResult.xml')
-        gts_result_file = os.path.join(timestamp_gts_folder, 'xtsTestResult.xml')
+        gts_result_file = os.path.join(timestamp_gts_folder, 'test_result.xml')
 
         for file_path in [cts_zip_file, cts_zip_file_2, gts_zip_file,
                           cts_result_file, cts_result_file_2, gts_result_file]:
