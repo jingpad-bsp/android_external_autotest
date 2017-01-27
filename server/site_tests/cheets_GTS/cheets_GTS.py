@@ -148,11 +148,16 @@ class cheets_GTS(tradefed_test.TradefedTest):
         failed = int(match.group(3))
         not_executed = int(match.group(4))
 
-        match = re.search(r'Starting .+ with (\d+(?:,\d+)?) tests',
-                          result.stdout)
+        # Some tests may be split into several groups. E.g. per architecture as
+        # follows;
+        #   Starting x86 GtsAccountsHostTestCases with 3 tests
+        #   Starting armeabi-v7a GtsAccountsHostTestCases with 3 tests
+        group_list = re.findall(r'Starting .+ with (\d+(?:,\d+)?) tests',
+                                result.stdout)
 
-        if match and match.group(1):
-            tests = int(match.group(1).replace(',', ''))
+        if group_list:
+            tests = sum(int(num_tests.replace(',', ''))
+                        for num_tests in group_list)
         else:
             # Unfortunately this happens. Assume it made no other mistakes.
             logging.warning('Tradefed forgot to print number of tests.')
