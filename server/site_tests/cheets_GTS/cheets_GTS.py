@@ -65,19 +65,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 # already during the test run.
                 stdout_tee=utils.TEE_TO_LOGS,
                 stderr_tee=utils.TEE_TO_LOGS)
-
-        if not self._device_found(output):
-            logging.info('Device not found in time by GTS. Retrying.')
-            logging.debug(output.stdout)
-            output = self._run(
-                gts_tradefed,
-                args=gts_tradefed_args,
-                verbose=True,
-                # Make sure to tee tradefed stdout/stderr to autotest logs
-                # already during the test run.
-                stdout_tee=utils.TEE_TO_LOGS,
-                stderr_tee=utils.TEE_TO_LOGS)
-
         # Parse stdout to obtain datetime IDs of directories into which tradefed
         # wrote result xml files and logs.
         datetime_id = self._parse_tradefed_datetime(output)
@@ -96,17 +83,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # All test has passed successfully, here.
         logging.info('The test has passed successfully.')
 
-    def _device_found(self, result):
-        """Checks that GTS connected succesfully to a DUT during the run.
-        :param result: the result object
-        :return: True if the DUT was connected during the test
-        """
-        match = re.search(r"CommandScheduler: No available device matching "
-                          r"the config's requirements for cmd id",
-                          result.stdout)
-
-        return match is None
-
     def _parse_tradefed_datetime(self, result):
         """This parses the tradefed datetime object from the GTS output.
         :param result: the tradefed result object
@@ -115,10 +91,6 @@ class cheets_GTS(tradefed_test.TradefedTest):
         #TODO(dhaddock): Merge this into tradefed_test when N is working
         match = re.search(r': Starting invocation for .+ (\S+) on device',
                           result.stdout)
-
-        if not match:
-            raise error.TestFail('Could not parse a datetime object from the '
-                                 'output. Did the test run? Check the logs.')
         datetime_id = match.group(1)
         logging.info('Tradefed identified results and logs with %s.',
                      datetime_id)
