@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import enum, json
+import json
 
 from autotest_lib.server.cros import cfm_jmidata_helper_base
 
@@ -35,14 +35,12 @@ FRAMES_ENCODED = u'framesEncoded'
 VIDEO_PACKETS_LOST = u'packetsLost'
 VIDEO_PACKETS_SENT = u'packetsSent'
 
-
-class CpuUsageType(enum.Enum):
-    BROWSER_CPU = u'browserCpuUsage'
-    GPU_CPU = u'gpuCpuUsage'
-    NUM_PROCESSORS = u'numOfProcessors'
-    NACL_EFFECTS_CPU = u'pluginCpuUsage'
-    RENDERER_CPU = u'tabCpuUsage'
-    TOTAL_CPU = u'totalCpuUsage'
+BROWSER_CPU = u'browserCpuUsage'
+GPU_CPU = u'gpuCpuUsage'
+NUM_PROCESSORS = u'numOfProcessors'
+NACL_EFFECTS_CPU = u'pluginCpuUsage'
+RENDERER_CPU = u'tabCpuUsage'
+TOTAL_CPU = u'totalCpuUsage'
 
 
 class JMIDataV3Helper(cfm_jmidata_helper_base.JMIDataHelperBase):
@@ -68,7 +66,6 @@ class JMIDataV3Helper(cfm_jmidata_helper_base.JMIDataHelperBase):
             for i in range(AV_INDEX, len(json_arr)):
                 if json_arr[i] and jmi_type in json_arr[i]:
                     jmi_obj = json_arr[i][jmi_type]
-                    #print jmi_obj
                     this_is_audio = (AUDIO_INPUT in jmi_obj or
                                      AUDIO_OUTPUT in jmi_obj)
                     if this_is_audio == is_audio and key in jmi_obj:
@@ -206,7 +203,7 @@ class JMIDataV3Helper(cfm_jmidata_helper_base.JMIDataHelperBase):
     def GetCpuUsageList(self, cpu_type):
         """Retrieves cpu usage data from JMI data.
 
-        @param cpu_type: Enum of type CpuUsageType.
+        @param cpu_type: Cpu usage type.
         @returns List containing CPU usage data.
         """
         data_list = []
@@ -216,15 +213,30 @@ class JMIDataV3Helper(cfm_jmidata_helper_base.JMIDataHelperBase):
                 if json_arr[i] and GLOBAL in json_arr[i]:
                     global_obj = json_arr[i][GLOBAL]
                     # Some values in JMIDataV3 are set to 'null'.
-                    if cpu_type.value == u'numOfProcessors':
-                        return global_obj[cpu_type.value]
-                    elif (cpu_type.value in global_obj and
-                            self.IsFloat(global_obj[cpu_type.value])):
-                        data_list.append(float(global_obj[cpu_type.value]))
+                    if cpu_type == u'numOfProcessors':
+                        return global_obj[cpu_type]
+                    elif (cpu_type in global_obj and
+                            self.IsFloat(global_obj[cpu_type])):
+                        data_list.append(float(global_obj[cpu_type]))
         return data_list
 
-    def GetCpuUsageType(self):
-        return CpuUsageType
+    def GetNumOfProcessors(self):
+        return self.GetCpuUsageList(NUM_PROCESSORS)
+
+    def GetTotalCpuPercentage(self):
+        return self.GetCpuUsageList(TOTAL_CPU)
+
+    def GetBrowserCpuPercentage(self):
+        return self.GetCpuUsageList(BROWSER_CPU)
+
+    def GetGpuCpuPercentage(self):
+        return self.GetCpuUsageList(GPU_CPU)
+
+    def GetNaclEffectsCpuPercentage(self):
+        return self.GetCpuUsageList(NACL_EFFECTS_CPU)
+
+    def GetRendererCpuPercentage(self):
+        return self.GetCpuUsageList(RENDERER_CPU)
 
     def IsFloat(self, value):
         try:
