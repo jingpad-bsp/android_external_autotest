@@ -1078,8 +1078,6 @@ class Suite(object):
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
-            failure = self._get_test_bug(result)
-
             # Try to merge with bug template in test control file.
             template = reporting_utils.BugTemplate(bug_template)
             try:
@@ -1098,8 +1096,9 @@ class Suite(object):
             # File bug when failure is one of the _FILE_BUG_SUITES,
             # otherwise send an email to the owner anc cc.
             if self._tag in _FILE_BUG_SUITES:
-                bug_id, bug_count = bug_reporter.report(failure,
-                                                        merged_template)
+                bug_id, bug_count = bug_reporter.report(
+                        self._get_test_bug(result),
+                        merged_template)
 
                 # We use keyvals to communicate bugs filed with
                 # run_suite.
@@ -1114,7 +1113,8 @@ class Suite(object):
                         logging.error('Unable to log bug keyval for:%s',
                                       result.test_name)
             else:
-                reporting.send_email(failure, merged_template)
+                reporting.send_email(self._get_test_bug(result),
+                                     merged_template)
 
 
     def _get_test_bug(self, result):
