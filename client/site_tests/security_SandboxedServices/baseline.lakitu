@@ -4,6 +4,7 @@ device_policy_m,root,root,No,No,No
 ensure_gke_dock,root,root,No,No,No
 first-boot,root,root,No,No,No
 install_custom_,root,root,No,No,No
+get_metadata_va,root,root,No,No,No
 onboot,root,root,No,No,No
 systemd-journal,root,root,No,No,No
 systemd-logind,root,root,No,No,No
