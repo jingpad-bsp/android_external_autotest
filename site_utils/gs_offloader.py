@@ -567,10 +567,9 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                 stdout_file.seek(0)
                 stderr_file.seek(0)
                 stderr_content = stderr_file.read()
-                logging.error('Error occurred when offloading %s:',
-                              dir_entry)
-                logging.error('Stdout:\n%s \nStderr:\n%s',
-                              stdout_file.read(), stderr_content)
+                logging.warning('Error occurred when offloading %s:', dir_entry)
+                logging.warning('Stdout:\n%s \nStderr:\n%s', stdout_file.read(),
+                                stderr_content)
                 # Some result files may have wrong file permission. Try
                 # to correct such error so later try can success.
                 # TODO(dshi): The code is added to correct result files
