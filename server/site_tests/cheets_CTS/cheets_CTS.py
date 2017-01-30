@@ -177,13 +177,14 @@ class cheets_CTS(tradefed_test.TradefedTest):
         @return: list of command tokens for the 'run' command.
         """
         if package is not None:
-            cmd = ['run', 'cts', '--package', package]
+            cmd = ['run', 'commandAndExit', 'cts', '--package', package]
         elif plan is not None:
-            cmd = ['run', 'cts', '--plan', plan]
+            cmd = ['run', 'commandAndExit', 'cts', '--plan', plan]
         elif session_id is not None:
-            cmd = ['run', 'cts', '--continue-session', '%d' % session_id]
+            cmd = ['run', 'commandAndExit', 'cts', '--continue-session',
+                   '%d' % session_id]
         elif test_class is not None:
-            cmd = ['run', 'cts', '-c', test_class]
+            cmd = ['run', 'commandAndExit', 'cts', '-c', test_class]
             if test_method is not None:
                 cmd += ['-m', test_method]
         else:
