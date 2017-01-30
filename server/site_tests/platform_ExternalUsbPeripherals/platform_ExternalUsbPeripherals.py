@@ -282,7 +282,6 @@ class platform_ExternalUsbPeripherals(test.test):
         self.fail_reasons = list()
         self.action_step = None
 
-        self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         self.host.servo.switch_usbkey('dut')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
         time.sleep(_WAIT_DELAY)
