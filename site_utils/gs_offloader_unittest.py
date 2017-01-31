@@ -18,13 +18,12 @@ import unittest
 import mox
 
 import common
-import gs_offloader
-import job_directories
-
 from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
 from autotest_lib.scheduler import email_manager
+from autotest_lib.site_utils import gs_offloader
+from autotest_lib.site_utils import job_directories
 from autotest_lib.tko import models
 
 # Test value to use for `days_old`, if nothing else is required.
