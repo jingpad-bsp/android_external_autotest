@@ -156,9 +156,6 @@ def repo_sync(update_push_servers=False):
     else:
         print('Updating server to prod branch')
         subprocess.check_output(['git', 'checkout', 'cros/prod'])
-    # Remove .pyc files via pyclean, which is a package on all ubuntu server.
-    print('Removing .pyc files')
-    subprocess.check_output(['pyclean', '.', '-q'])
 
 
 def discover_update_commands():
@@ -463,9 +460,6 @@ def _sync_chromiumos_repo():
     print('Updating ~chromeos-test/chromiumos')
     with ChangeDir(os.path.expanduser('~chromeos-test/chromiumos')):
         ret = subprocess.call(['repo', 'sync'])
-        # Remove .pyc files via pyclean, which is a package on all ubuntu server
-        print('Removing .pyc files')
-        subprocess.check_output(['pyclean', '.', '-q'])
     if ret != 0:
         print('Update failed, exited with status: %d' % ret)
 
