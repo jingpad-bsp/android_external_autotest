@@ -57,14 +57,16 @@ class cheets_GTS(tradefed_test.TradefedTest):
         gts_tradefed_args = ['run', 'commandAndExit', 'gts',
                              '--skip-device-info', '--module', target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
-        output = self._run(
-                gts_tradefed,
-                args=gts_tradefed_args,
-                verbose=True,
-                # Make sure to tee tradefed stdout/stderr to autotest logs
-                # already during the test run.
-                stdout_tee=utils.TEE_TO_LOGS,
-                stderr_tee=utils.TEE_TO_LOGS)
+        with tradefed_test.adb_keepalive(self._get_adb_target(),
+                                         self._install_paths):
+            output = self._run(
+                    gts_tradefed,
+                    args=gts_tradefed_args,
+                    verbose=True,
+                    # Make sure to tee tradefed stdout/stderr to autotest logs
+                    # already during the test run.
+                    stdout_tee=utils.TEE_TO_LOGS,
+                    stderr_tee=utils.TEE_TO_LOGS)
         # Parse stdout to obtain datetime IDs of directories into which tradefed
         # wrote result xml files and logs.
         datetime_id = self._parse_tradefed_datetime(output)
