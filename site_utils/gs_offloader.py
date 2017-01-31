@@ -534,6 +534,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                     shutil.rmtree(dir_entry)
 
         except TimeoutException:
+            m_timeout = 'chromeos/autotest/errors/gs_offloader/timed_out_count'
+            metrics.Counter(m_timeout).increment()
             # If we finished the call to Popen(), we may need to
             # terminate the child process.  We don't bother calling
             # process.poll(); that inherently races because the child
@@ -555,6 +557,9 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
             # crbug.com/536151
             if e.errno == errno.EACCES:
                 correct_results_folder_permission(dir_entry)
+            m_permission_error = ('chromeos/autotest/errors/gs_offloader/'
+                                  'wrong_permissions_count')
+            metrics.Counter(m_permission_error).increment()
         finally:
             signal.alarm(0)
             if error:
