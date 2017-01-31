@@ -11,7 +11,6 @@ import select
 import tempfile
 import time
 
-from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import file_utils
 from autotest_lib.client.common_lib.cros import arc_common
@@ -221,13 +220,13 @@ def find_opt_in_extension_page(browser):
     return extension_main_page
 
 
-def navigate_opt_in_extension(extension_main_page):
+def opt_in_and_wait_for_completion(extension_main_page):
     """
-    Step through the user input of the opt-in extension.
+    Step through the user input of the opt-in extension and wait for completion.
 
     @param extension_main_page: opt-in extension object.
 
-    @raises error.TestFail if problem found.
+    @raises error.TestFail if opt-in doesn't complete after timeout.
 
     """
     js_code_click_agree = """
@@ -237,43 +236,6 @@ def navigate_opt_in_extension(extension_main_page):
     """
     extension_main_page.ExecuteJavaScript(js_code_click_agree)
 
-    js_code_is_lso_section_active = """
-        !appWindow.contentWindow.document.getElementById('lso').hidden
-    """
-    try:
-        extension_main_page.WaitForJavaScriptExpression(
-            js_code_is_lso_section_active, timeout=120)
-    except Exception, e:
-        raise error.TestFail('Error occured while waiting for lso session. '
-                             'Make sure gaia login was used.')
-
-    web_views = utils.poll_for_condition(
-            extension_main_page.GetWebviewContexts, timeout=60,
-            exception=error.TestError('WebviewContexts error during opt in!'))
-
-    js_code_is_sign_in_button_enabled = """
-        !document.getElementById('submit_approve_access')
-            .hasAttribute('disabled')
-    """
-    web_views[0].WaitForJavaScriptExpression(
-            js_code_is_sign_in_button_enabled, timeout=60)
-
-    js_code_click_sign_in = """
-        sign_in_button_element = document.getElementById('submit_approve_access');
-        sign_in_button_element.click();
-    """
-    web_views[0].ExecuteJavaScript(js_code_click_sign_in)
-
-
-def wait_for_opt_in_to_complete(extension_main_page):
-    """
-    Wait for opt-in app to close (i.e. complete sign in).
-
-    @param extension_main_page: opt-in extension object.
-
-    @raises error.TestFail if opt-in doesn't complete after timeout.
-
-    """
     SIGN_IN_TIMEOUT = 120
     try:
         extension_main_page.WaitForJavaScriptExpression('!appWindow',
@@ -311,6 +273,5 @@ def opt_in(browser):
     if not enable_arc_setting(browser):
         return
     extension_main_page = find_opt_in_extension_page(browser)
-    navigate_opt_in_extension(extension_main_page)
-    wait_for_opt_in_to_complete(extension_main_page)
+    opt_in_and_wait_for_completion(extension_main_page)
     logging.info(_OPT_IN_FINISH)
