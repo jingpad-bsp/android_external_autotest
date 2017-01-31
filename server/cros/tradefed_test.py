@@ -34,6 +34,7 @@ import tempfile
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
+from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import afe_utils
@@ -140,6 +141,38 @@ def lock(filename):
         logging.info('Released cache lock.')
 
 
+@contextlib.contextmanager
+def adb_keepalive(target, extra_paths):
+    """A context manager that keeps the adb connection alive.
+
+    AdbKeepalive will spin off a new process that will continuously poll for
+    adb's connected state, and will attempt to reconnect if it ever goes down.
+    This is the only way we can currently recover safely from (intentional)
+    reboots.
+
+    @param target: the hostname and port of the DUT.
+    @param extra_paths: any additional components to the PATH environment
+                        variable.
+    """
+    from autotest_lib.client.common_lib.cros import adb_keepalive as module
+    # |__file__| returns the absolute path of the compiled bytecode of the
+    # module. We want to run the original .py file, so we need to change the
+    # extension back.
+    script_filename = module.__file__.replace('.pyc', '.py')
+    job = base_utils.BgJob([script_filename, target],
+                           nickname='adb_keepalive', stderr_level=logging.DEBUG,
+                           stdout_tee=base_utils.TEE_TO_LOGS,
+                           stderr_tee=base_utils.TEE_TO_LOGS,
+                           extra_paths=extra_paths)
+
+    try:
+        yield
+    finally:
+        # The adb_keepalive.py script runs forever until SIGTERM is sent.
+        base_utils.nuke_subprocess(job.sp)
+        base_utils.join_bg_jobs([job])
+
+
 class TradefedTest(test.test):
     """Base class to prepare DUT to run tests via tradefed."""
     version = 1
@@ -192,6 +225,9 @@ class TradefedTest(test.test):
         """
         return _ChromeLogin(self._host)
 
+    def _get_adb_target(self):
+        return '{}:{}'.format(self._host.hostname, self._host.port)
+
     def _try_adb_connect(self):
         """Attempts to connect to adb on the DUT.
 
@@ -200,7 +236,7 @@ class TradefedTest(test.test):
         # This may fail return failure due to a race condition in adb connect
         # (b/29370989). If adb is already connected, this command will
         # immediately return success.
-        hostport = '{}:{}'.format(self._host.hostname, self._host.port)
+        hostport = self._get_adb_target()
         result = self._run(
                 'adb',
                 args=('connect', hostport),
@@ -260,6 +296,9 @@ class TradefedTest(test.test):
 
         # This starts adbd.
         self._android_shell('setprop sys.usb.config mtp,adb')
+
+        # Also let it be automatically started upon reboot.
+        self._android_shell('setprop persist.sys.usb.config mtp,adb')
 
         # adbd may take some time to come up. Repeatedly try to connect to adb.
         utils.poll_for_condition(lambda: self._try_adb_connect(),
