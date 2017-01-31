@@ -135,7 +135,9 @@ a1598f7
         @param run_cmd: Mock of subprocess call used.
         """
         dsl.repo_sync()
-        run_cmd.assert_called_with(['git', 'checkout', 'cros/prod'])
+        expect_cmds = [mock.call(['git', 'checkout', 'cros/prod']),
+                       mock.call(['pyclean', '.', '-q'])]
+        run_cmd.assert_has_calls(expect_cmds)
 
     @mock.patch('subprocess.check_output', autospec=True)
     def test_repo_sync_for_push_servers(self, run_cmd):
@@ -144,7 +146,9 @@ a1598f7
         @param run_cmd: Mock of subprocess call used.
         """
         dsl.repo_sync(update_push_servers=True)
-        run_cmd.assert_called_with(['git', 'checkout', 'cros/master'])
+        expect_cmds = [mock.call(['git', 'checkout', 'cros/master']),
+                       mock.call(['pyclean', '.', '-q'])]
+        run_cmd.assert_has_calls(expect_cmds)
 
     def test_discover_commands_and_services(self):
         """Test deploy_server_local.discover_update_commands and
