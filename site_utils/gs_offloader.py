@@ -241,8 +241,8 @@ def sanitize_dir(dir_entry):
                                            sanitized_name)
                 renames.append((orig_path, rename_path))
     for src, dest in renames:
-        logging.warn('Invalid character found. Renaming %s to %s.',
-                     src, dest)
+        logging.warning('Invalid character found. Renaming %s to %s.', src,
+                        dest)
         shutil.move(src, dest)
 
 
@@ -271,8 +271,7 @@ def limit_file_count(dir_entry):
     try:
         count = int(count)
     except ValueError, TypeError:
-        logging.warn('Fail to get the file count in folder %s.',
-                     dir_entry)
+        logging.warning('Fail to get the file count in folder %s.', dir_entry)
         return
     if count < MAX_FILE_COUNT:
         return
