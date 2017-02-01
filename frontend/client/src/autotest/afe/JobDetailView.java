@@ -69,7 +69,6 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
     public interface JobDetailListener {
         public void onHostSelected(String hostId);
         public void onCloneJob(JSONValue result);
-        public void onCreateRecurringJob(int id);
     }
 
     protected class ChildJobsListener {
@@ -95,7 +94,6 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
     protected SimpleFilter jobFilter = new SimpleFilter();
     protected Button abortButton = new Button("Abort job");
     protected Button cloneButton = new Button("Clone job");
-    protected Button recurringButton = new Button("Create recurring job");
     protected Frame tkoResultsFrame = new Frame();
 
     protected JobDetailListener listener;
@@ -332,13 +330,6 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
         });
         addWidget(cloneButton, "view_clone");
 
-        recurringButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                createRecurringJob();
-            }
-        });
-        addWidget(recurringButton, "view_recurring");
-
         tkoResultsFrame.getElement().setAttribute("scrolling", "no");
         addWidget(tkoResultsFrame, "tko_results");
 
@@ -457,10 +448,6 @@ public class JobDetailView extends DetailView implements TableWidgetFactory {
                 listener.onCloneJob(result);
             }
         });
-    }
-
-    private void createRecurringJob() {
-        listener.onCreateRecurringJob(jobId);
     }
 
     private String getResultsURL(int jobId) {
