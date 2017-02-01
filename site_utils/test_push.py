@@ -657,7 +657,8 @@ def main():
 
     message = ('\nAll tests are completed successfully, the prod branch of the '
                'following repos ready to be pushed to the hash list below.\n'
-               '%s' % updated_repo_msg)
+               '%s\n\n\nInstructions for pushing to prod are available at '
+               'https://goto.google.com/autotest-to-prod' % updated_repo_msg)
     print message
     # Send out email about test completed successfully.
     if arguments.email:
