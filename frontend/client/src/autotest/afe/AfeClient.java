@@ -4,7 +4,6 @@ import autotest.afe.HostDetailView.HostDetailListener;
 import autotest.afe.HostListView.HostListListener;
 import autotest.afe.JobDetailView.JobDetailListener;
 import autotest.afe.JobListView.JobSelectListener;
-import autotest.afe.RecurringView.RecurringSelectListener;
 import autotest.afe.UserPreferencesView.UserPreferencesListener;
 import autotest.afe.create.CreateJobViewPresenter.JobCreateListener;
 import autotest.afe.create.CreateJobViewTab;
@@ -26,7 +25,6 @@ import com.google.gwt.user.client.Window.Location;
 public class AfeClient implements EntryPoint {
     private JobListView jobList;
     private JobDetailView jobDetail;
-    private RecurringView recurringView;
     private CreateJobViewTab createJob;
     private HostListView hostListView;
     private HostDetailView hostDetailView;
@@ -91,18 +89,6 @@ public class AfeClient implements EntryPoint {
                 // the mode will be reset.
                 createJob.cloneJob(cloneInfo);
             }
-
-            public void onCreateRecurringJob(int jobId) {
-                recurringView.ensureInitialized();
-                recurringView.createRecurringJob(jobId);
-                mainTabPanel.selectTabView(recurringView);
-            }
-        });
-
-        recurringView = new RecurringView(new RecurringSelectListener() {
-            public void onRecurringSelected(int jobId) {
-                showJob(jobId);
-            }
         });
 
         createJob = AfeUtils.factory.getCreateJobView(jobCreateListener);
@@ -125,7 +111,7 @@ public class AfeClient implements EntryPoint {
             }
         });
 
-        TabView[] tabViews = new TabView[] {jobList, jobDetail, recurringView, createJob,
+        TabView[] tabViews = new TabView[] {jobList, jobDetail, createJob,
                                             hostListView, hostDetailView, userPreferencesView};
         for (TabView tabView : tabViews) {
             mainTabPanel.addTabView(tabView);
