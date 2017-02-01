@@ -243,14 +243,18 @@ class platform_ToolchainOptions(test.test):
                                                   pie_whitelist))
 
         # Verify ELFs don't include TEXTRELs.
-        textrel_cmd = ("(%s {} | grep -q statically) ||"
-                       "%s -d {} 2>&1 | "
-                       "(egrep -q \"0x0+16..TEXTREL\"; [ $? -ne 0 ])"
-                       % (FILE_CMD, readelf_cmd))
-        textrel_whitelist = os.path.join(self.bindir, "textrel_whitelist")
-        option_sets.append(self.create_and_filter("TEXTREL",
-                                                  textrel_cmd,
-                                                  textrel_whitelist))
+        # FIXME: Remove the i?86 filter after the bug is fixed.
+        # crbug.com/686926
+        if (utils.get_current_kernel_arch() not in
+                ('i%d86' % i for i in xrange(3,7))):
+            textrel_cmd = ("(%s {} | grep -q statically) ||"
+                           "%s -d {} 2>&1 | "
+                           "(egrep -q \"0x0+16..TEXTREL\"; [ $? -ne 0 ])"
+                           % (FILE_CMD, readelf_cmd))
+            textrel_whitelist = os.path.join(self.bindir, "textrel_whitelist")
+            option_sets.append(self.create_and_filter("TEXTREL",
+                                                      textrel_cmd,
+                                                      textrel_whitelist))
 
         # Verify all binaries have non-exec STACK program header.
         stack_cmd = ("%s -lW {} 2>&1 | "
