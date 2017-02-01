@@ -40,6 +40,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
 
         self.waivers = self._get_expected_failures('expectations')
 
+
     def _run_gts_tradefed(self, target_package):
         """This tests runs the GTS(XTS) tradefed binary and collects results.
 
@@ -47,6 +48,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
                 set, full GTS set will run.
         @raise TestFail: when a test failure is detected.
         """
+        self._target_package = target_package
         gts_tradefed = os.path.join(
                 self._android_gts,
                 'android-gts',
@@ -55,7 +57,8 @@ class cheets_GTS(tradefed_test.TradefedTest):
         logging.info('GTS-tradefed path: %s', gts_tradefed)
         #TODO(dhaddock): remove --skip-device-info with GTS 4.1_r2 (b/32889514)
         gts_tradefed_args = ['run', 'commandAndExit', 'gts',
-                             '--skip-device-info', '--module', target_package]
+                             '--skip-device-info', '--module',
+                             self._target_package]
         # Run GTS via tradefed and obtain stdout, sterr as output.
         with tradefed_test.adb_keepalive(self._get_adb_target(),
                                          self._install_paths):
@@ -73,6 +76,7 @@ class cheets_GTS(tradefed_test.TradefedTest):
         repository = os.path.join(self._android_gts, 'android-gts')
         autotest = os.path.join(self.resultsdir, 'android-gts')
         self._collect_logs(repository, datetime_id, autotest)
+
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.
         tests, passed, failed, not_executed = self._parse_result(output,
@@ -126,29 +130,35 @@ class cheets_GTS(tradefed_test.TradefedTest):
         # follows;
         #   Starting x86 GtsAccountsHostTestCases with 3 tests
         #   Starting armeabi-v7a GtsAccountsHostTestCases with 3 tests
-        group_list = re.findall(r'Starting .+ with (\d+(?:,\d+)?) tests',
+        group_list = re.findall(r'Starting (.+) %s with (\d+(?:,\d+)?) tests' %
+                                self._target_package,
                                 result.stdout)
 
+        abis = []
         if group_list:
-            tests = sum(int(num_tests.replace(',', ''))
+            tests = sum(int(num_tests[1].replace(',', ''))
                         for num_tests in group_list)
+            abis = [abi[0] for abi in group_list]
         else:
             # Unfortunately this happens. Assume it made no other mistakes.
             logging.warning('Tradefed forgot to print number of tests.')
             tests = passed + failed + not_executed
         # TODO(rohitbm): make failure parsing more robust by extracting the list
-        # of failing tests instead of searching in the result blob. As well as
-        # only parse for waivers for the running ABI.
+        # of failing tests instead of searching in the result blob.
         if waivers:
             for testname in waivers:
-                # TODO(dhaddock): Find a more robust way to apply waivers.
-                fail_count = result.stdout.count(testname + ' FAIL')
+                fail_count = result.stdout.count(testname + ' fail')
                 if fail_count:
-                    if fail_count > 2:
-                        raise error.TestFail('Error: There are too many '
-                                             'failures found in the output to '
-                                             'be valid for applying waivers. '
-                                             'Please check output.')
+                    # For arm only, we repeat the test cases with output like
+                    # Starting armeabi-v7a GtsPlacementTestCases with 12 tests
+                    # Continuing armeabi-v7a GtsPlacementTestcase with 12 tests
+                    if abis == ['armeabi-v7a']:
+                        fail_count /= 2
+                    if fail_count > len(abis):
+                        raise error.TestFail('Error: Found %d failures for %s '
+                                             'but there are only %d abis: %s' %
+                                             (fail_count, testname, len(abis),
+                                             abis))
                     failed -= fail_count
                     # To maintain total count consistency.
                     passed += fail_count
