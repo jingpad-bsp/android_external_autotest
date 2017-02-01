@@ -82,6 +82,9 @@ GEM_OBJECTS_PATH = {'amdgpu'    : AMDGPU_GEM_OBJECTS_PATH,
 # "432 objects, 272699392 bytes"
 GEM_OBJECTS_RE = re.compile('(\d+)\s+objects,\s+(\d+)\s+bytes')
 
+# To parse the content of amdgpu_gem_info.
+# Example : bo[0x000000af]   1024kB
+AMDGPU_GEM_OBJECTS_RE = re.compile(r'(bo\[\w+\])\s+(\d+)')
 # The default sleep time, in seconds.
 SLEEP_TIME = 1.5
 
@@ -116,10 +119,19 @@ def _get_graphics_memory_usage():
         raise error.TestFail('Error: gem_path for gpu "%s" not specified.' % gpu)
     try:
         with open(path, 'r') as input:
-            for line in input:
-                result = GEM_OBJECTS_RE.match(line)
-                if result:
-                    return int(result.group(2)) / 1024 # in KB
+            if gem_path is 'amdgpu':
+                usage = 0
+                for line in input:
+                    result = AMDGPU_GEM_OBJECTS_RE.match(line)
+                    if result:
+                        usage += int(result.group(2))
+                if usage:
+                    return usage  # in KB
+            else :
+                for line in input:
+                    result = GEM_OBJECTS_RE.match(line)
+                    if result:
+                        return int(result.group(2)) / 1024 # in KB
     except IOError as e:
         if e.errno == os.errno.ENOENT: # no such file
             logging.warning('graphics memory info is not available.')
