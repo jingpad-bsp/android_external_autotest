@@ -247,7 +247,8 @@ def __get_mount_info(mount_point, allow_fail=False):
     """Get information about the active mount at a given mount point."""
     cryptohomed_path = '/proc/$(pgrep cryptohomed)/mounts'
     try:
-        logging.info(utils.system_output('cat %s' % cryptohomed_path))
+        logging.debug("Active cryptohome mounts:\n" +
+                      utils.system_output('cat %s' % cryptohomed_path))
         mount_line = utils.system_output(
             'grep %s %s' % (mount_point, cryptohomed_path),
             ignore_status=allow_fail)
