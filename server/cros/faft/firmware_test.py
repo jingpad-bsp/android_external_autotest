@@ -179,14 +179,6 @@ class FirmwareTest(FAFTBase):
         self._restore_ec_write_protect()
         self._restore_gbb_flags()
         self._start_service('update-engine')
-        # FAFT client stopped tcsd or trunksd at startup. Restart it.
-        # Only one is present, so start the one known to initctl.
-        status = self.faft_client.system.run_shell_command_get_output(
-            'initctl status trunksd') or ['']
-        if status[0].startswith('trunksd'):
-            self._start_service('trunksd')
-        else:
-            self._start_service('tcsd')
         self._remove_faft_lockfile()
         self._record_servo_log()
         self._record_faft_client_log()
