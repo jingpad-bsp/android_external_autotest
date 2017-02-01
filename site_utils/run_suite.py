@@ -91,8 +91,6 @@ SEVERITY = {RETURN_CODES.OK: 0,
             RETURN_CODES.SUITE_TIMEOUT: 2,
             RETURN_CODES.INFRA_FAILURE: 3,
             RETURN_CODES.ERROR: 4}
-ANDROID_BUILD_REGEX = r'.+/.+/P?([0-9]+|LATEST)'
-ANDROID_TESTBED_BUILD_REGEX = ANDROID_BUILD_REGEX + '(,|(#[0-9]+))'
 
 
 def get_worse_code(code1, code2):
@@ -1525,12 +1523,8 @@ def _make_builds_from_options(options):
     """
     builds = {}
     if options.build:
-        if re.match(ANDROID_TESTBED_BUILD_REGEX, options.build, re.I):
-            builds[provision.TESTBED_BUILD_VERSION_PREFIX] = options.build
-        elif re.match(ANDROID_BUILD_REGEX, options.build, re.I):
-            builds[provision.ANDROID_BUILD_VERSION_PREFIX] = options.build
-        else:
-            builds[provision.CROS_VERSION_PREFIX] = options.build
+        prefix = provision.get_version_label_prefix(options.build)
+        builds[prefix] = options.build
     if options.firmware_rw_build:
         builds[provision.FW_RW_VERSION_PREFIX] = options.firmware_rw_build
     if options.firmware_ro_build:
@@ -1553,7 +1547,6 @@ def create_suite(afe, options):
         'create_suite_job',
         name=options.name,
         board=options.board,
-        build=options.build,
         builds=_make_builds_from_options(options),
         test_source_build=options.test_source_build,
         check_hosts=not options.no_wait,

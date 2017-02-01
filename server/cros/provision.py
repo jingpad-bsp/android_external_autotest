@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 
+import re
 import sys
 
 import common
@@ -16,6 +17,9 @@ TESTBED_BUILD_VERSION_PREFIX = 'testbed-version'
 FW_RW_VERSION_PREFIX = 'fwrw-version'
 FW_RO_VERSION_PREFIX = 'fwro-version'
 
+_ANDROID_BUILD_REGEX = r'.+/.+/P?([0-9]+|LATEST)'
+_ANDROID_TESTBED_BUILD_REGEX = _ANDROID_BUILD_REGEX + '(,|(#[0-9]+))'
+
 # Special label to skip provision and run reset instead.
 SKIP_PROVISION = 'skip_provision'
 
@@ -25,6 +29,52 @@ FLAKY_DEVSERVER_ATTEMPTS = 2
 
 
 ### Helpers to convert value to label
+def get_version_label_prefix(image):
+    """
+    Determine a version label prefix from a given image name.
+
+    Parses `image` to determine what kind of image it refers
+    to, and returns the corresponding version label prefix.
+
+    Known version label prefixes are:
+      * `CROS_VERSION_PREFIX` for Chrome OS version strings.
+        These images have names like `cave-release/R57-9030.0.0`.
+      * `ANDROID_BUILD_VERSION_PREFIX` for Android build versions
+        These images have names like
+        `git_mnc-release/shamu-userdebug/2457013`.
+      * `TESTBED_BUILD_VERSION_PREFIX` for Android testbed version
+        specifications.  These are either comma separated lists of
+        Android versions, or an Android version with a suffix like
+        '#2', indicating two devices running the given build.
+
+    @param image: The image name to be parsed.
+    @returns: A string that is the prefix of version labels for the type
+              of image identified by `image`.
+
+    """
+    if re.match(_ANDROID_TESTBED_BUILD_REGEX, image, re.I):
+        return TESTBED_BUILD_VERSION_PREFIX
+    elif re.match(_ANDROID_BUILD_REGEX, image, re.I):
+        return ANDROID_BUILD_VERSION_PREFIX
+    else:
+        return CROS_VERSION_PREFIX
+
+
+def image_version_to_label(image):
+    """
+    Return a version label appropriate to the given image name.
+
+    The type of version label is as determined described for
+    `get_version_label_prefix()`, meaning the label will identify a
+    CrOS, Android, or Testbed version.
+
+    @param image: The image name to be parsed.
+    @returns: A string that is the appropriate label name.
+
+    """
+    return get_version_label_prefix(image) + ':' + image
+
+
 def cros_version_to_label(image):
     """
     Returns the proper label name for a ChromeOS build of |image|.
