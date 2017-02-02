@@ -200,8 +200,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         return result.exit_status == 0
 
 
-    # TODO(garnold) Remove the 'serials' argument once all clients are made to
-    # not use it.
     def _initialize(self, hostname='localhost', serials=None,
                     adb_serial=None, fastboot_serial=None,
                     teststation=None, *args, **dargs):
@@ -836,14 +834,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         Called as the test ends. Will return the device to USB mode and kill
         the ADB server.
         """
-        # TODO(sbasi) Originally, we would kill the server after each test to
-        # reduce the opportunity for bad server state to hang around.
-        # Unfortunately, there is a period of time after each kill during which
-        # the Android device becomes unusable, and if we start the next test
-        # too quickly, we'll get an error complaining about no ADB device
-        # attached.
-        #self.adb_run('kill-server')
-        # |close| the associated teststation as well.
         super(ADBHost, self).close()
         self.teststation.close()
 
@@ -888,7 +878,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def verify_software(self):
         """Verify working software on an adb_host.
 
-        TODO (crbug.com/532222): Actually implement this method.
         """
         # Check if adb and fastboot are present.
         self.teststation.run('which adb')
@@ -900,13 +889,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             # Make sure ro.boot.hardware and ro.build.product match.
             hardware = self._run_output_with_retry('getprop ro.boot.hardware')
             product = self._run_output_with_retry('getprop ro.build.product')
-            # TODO(sbasi) b/32337862: Remove msm8996 and qcom exemption once
-            # msm8996 and qcom devices are properly configured with the
-            # correct product id.
-            if hardware == 'msm8996':
-                return
-            if hardware == 'qcom':
-                return
             if hardware != product:
                 raise error.AutoservHostError('ro.boot.hardware: %s does not '
                                               'match to ro.build.product: %s' %
@@ -1146,9 +1128,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
 
     def get_platform(self):
         """Determine the correct platform label for this host.
-
-        TODO (crbug.com/536250): Figure out what we want to do for adb_host's
-                                 get_platform.
 
         @returns a string representing this host's platform.
         """
@@ -1615,6 +1594,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
             return []
         return result.stdout.splitlines()
 
+
     @retry.retry(error.GenericHostRunError,
                  timeout_min=DISABLE_PACKAGE_VERIFICATION_TIMEOUT_MIN)
     def disable_package_verification(self):
@@ -1628,6 +1608,7 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
         self.run('am broadcast -a '
                  'com.google.gservices.intent.action.GSERVICES_OVERRIDE -e '
                  'global:package_verifier_enable 0')
+
 
     @retry.retry(error.GenericHostRunError, timeout_min=APK_INSTALL_TIMEOUT_MIN)
     def install_apk(self, apk, force_reinstall=True):
@@ -1828,9 +1809,6 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
     def _enable_native_crash_logging(self):
         """Enable native (non-Java) crash logging.
         """
-        # TODO(b/30820403): Enable Brillo native crash logging.
-        # if self.get_os_type() == OS_TYPE_BRILLO:
-        #     self._enable_brillo_native_crash_logging()
         if self.get_os_type() == OS_TYPE_ANDROID:
             self._enable_android_native_crash_logging()
 
