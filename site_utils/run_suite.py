@@ -1414,29 +1414,36 @@ class ResultCollector(object):
         output_dict = {}
         tests_dict = output_dict.setdefault('tests', {})
         for v in self._test_views:
-          test_name = v.get_testname()
-          test_info = tests_dict.setdefault(test_name, {})
-          test_info.update({
-              'status': v['status'],
-              'attributes': v.get_control_file_attributes() or list(),
-              'reason': v['reason'],
-              'retry_count': self._retry_counts.get(v['test_idx'], 0),
-              })
+            test_name = v.get_testname()
+            test_info = tests_dict.setdefault(test_name, {})
+            test_info.update({
+                'status': v['status'],
+                'attributes': v.get_control_file_attributes() or list(),
+                'reason': v['reason'],
+                'retry_count': self._retry_counts.get(v['test_idx'], 0),
+                })
+            # For aborted test, the control file will not be parsed and thus
+            # fail to get the attributes info. Therefore, the subsystems the
+            # abort test testing will be missing. For this case, we will assume
+            # the aborted test will test all subsystems, set subsystem:default.
+            if (test_info['status'] == 'ABORT' and
+                not any('subsystem:' in a for a in test_info['attributes'])):
+                test_info['attributes'].append('subsystem:default')
 
         # Write the links to test logs into the |tests_dict| of |output_dict|.
         # For test whose status is not 'GOOD', the link is also buildbot_link.
         for link in self._web_links:
-          test_name = link.anchor.strip()
-          test_info = tests_dict.get(test_name)
-          if test_info:
-            test_info['link_to_logs'] = link.url
-            # Write the wmatrix link into the dict.
-            if link in self._buildbot_links and link.testname:
-              test_info['wmatrix_link'] \
-                  = reporting_utils.link_retry_url(link.testname)
-            # Write the bug url into the dict.
-            if link.bug_id:
-              test_info['bug_url'] = link.bug_url
+            test_name = link.anchor.strip()
+            test_info = tests_dict.get(test_name)
+            if test_info:
+                test_info['link_to_logs'] = link.url
+                # Write the wmatrix link into the dict.
+                if link in self._buildbot_links and link.testname:
+                    test_info['wmatrix_link'] \
+                        = reporting_utils.link_retry_url(link.testname)
+                # Write the bug url into the dict.
+                if link.bug_id:
+                    test_info['bug_url'] = link.bug_url
 
         # Write the suite timings into |output_dict|
         timings = self.timings
