@@ -68,8 +68,7 @@ class FrontendTestMixin(object):
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
                     synchronous=False, hostless=False,
                     drone_set=None, control_file='control',
-                    parameterized_job=None, owner='autotest_system',
-                    parent_job_id=None):
+                    owner='autotest_system', parent_job_id=None):
         """
         Create a job row in the test database.
 
@@ -110,8 +109,7 @@ class FrontendTestMixin(object):
             synch_count=synch_count, created_on=created_on,
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,
-            parameterized_job=parameterized_job, parent_job=parent_job,
-            require_ssp=None)
+            parent_job=parent_job, require_ssp=None)
 
         # Update the job's dependencies to include the metahost.
         for metahost_label in metahosts:
