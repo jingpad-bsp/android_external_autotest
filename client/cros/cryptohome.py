@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, gobject, logging, os, random, re, shutil, string
+import dbus, gobject, logging, os, random, re, shutil, string, time
 from dbus.mainloop.glib import DBusGMainLoop
 
 import common, constants
@@ -13,6 +13,7 @@ from autotest_lib.client.cros.cros_disks import DBusClient
 CRYPTOHOME_CMD = '/usr/sbin/cryptohome'
 GUEST_USER_NAME = '$guest'
 UNAVAILABLE_ACTION = 'Unknown action or no action given.'
+MOUNT_RETRY_COUNT = 20
 
 class ChromiumOSError(error.TestError):
     """Generic error for ChromiumOS-specific exceptions."""
@@ -207,7 +208,20 @@ def mount_vault(user, password, create=False):
     # Ensure that the vault exists in the shadow directory.
     user_hash = get_user_hash(user)
     if not os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
-        raise ChromiumOSError('Cryptohome vault not found after mount.')
+        retry = 0
+        mounted = False
+        while retry < MOUNT_RETRY_COUNT and not mounted:
+            time.sleep(1)
+            logging.info("Retry " + str(retry + 1))
+            __run_cmd(' '.join(args))
+            # TODO: Remove this additional call to get_user_hash(user) when
+            # crbug.com/690994 is fixed
+            user_hash = get_user_hash(user)
+            if os.path.exists(os.path.join(constants.SHADOW_ROOT, user_hash)):
+                mounted = True
+            retry += 1
+        if not mounted:
+            raise ChromiumOSError('Cryptohome vault not found after mount.')
     # Ensure that the vault is mounted.
     if not is_vault_mounted(
             user=user,
