@@ -31,7 +31,6 @@ import java.util.Set;
  */
 public class AfeUtils {
     public static final String PLATFORM_SUFFIX = " (platform)";
-    public static final String ATOMIC_GROUP_SUFFIX = " (atomic group)";
     public static final String REINSTALL_TEST_NAME = "autoupdate:repair";
 
     public static final ClassFactory factory = new SiteClassFactory();
@@ -67,10 +66,6 @@ public class AfeUtils {
             JSONObject label = labels.get(i).isObject();
             String name = label.get("name").isString().stringValue();
             boolean labelIsPlatform = label.get("platform").isBoolean().booleanValue();
-            JSONObject atomicGroup = label.get("atomic_group").isObject();
-            if (atomicGroup != null) {
-                name += ATOMIC_GROUP_SUFFIX;
-            }
             if (onlyPlatforms && labelIsPlatform ||
                 onlyNonPlatforms && !labelIsPlatform) {
                     result.add(name);
@@ -96,10 +91,6 @@ public class AfeUtils {
         String name = labelName;
         if (name.endsWith(PLATFORM_SUFFIX)) {
             int nameLength = name.length() - PLATFORM_SUFFIX.length();
-            name = name.substring(0, nameLength);
-        }
-        if (name.endsWith(ATOMIC_GROUP_SUFFIX)) {
-            int nameLength = name.length() - ATOMIC_GROUP_SUFFIX.length();
             name = name.substring(0, nameLength);
         }
         return name;
