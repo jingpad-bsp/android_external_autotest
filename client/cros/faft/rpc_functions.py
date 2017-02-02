@@ -640,6 +640,14 @@ class RPCFunctions(object):
         """Retrieve tpm kernel data key version."""
         return self._tpm_handler.get_kernel_key_version()
 
+    def _tpm_stop_daemon(self):
+        """Stop tpm related daemon."""
+        return self._tpm_handler.stop_daemon()
+
+    def _tpm_restart_daemon(self):
+        """Restart tpm related daemon which was stopped by stop_daemon()."""
+        return self._tpm_handler.restart_daemon()
+
     def _cgpt_get_attributes(self):
         """Get kernel attributes."""
         rootdev = self._system_get_root_dev()
