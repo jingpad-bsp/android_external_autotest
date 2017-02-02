@@ -1,4 +1,5 @@
-import atexit, datetime, os, tempfile, unittest
+import datetime
+
 import common
 from autotest_lib.frontend import setup_test_environment
 from autotest_lib.frontend import thread_local
@@ -7,6 +8,7 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.test_utils import mock
 
 class FrontendTestMixin(object):
+    # pylint: disable=missing-docstring
     def _fill_in_test_data(self):
         """Populate the test database with some hosts and labels."""
         if models.DroneSet.drone_sets_enabled():
@@ -68,8 +70,6 @@ class FrontendTestMixin(object):
         if setup_tables:
             setup_test_environment.set_up()
         global_config.global_config.override_config_value(
-                'AUTOTEST_WEB', 'parameterized_jobs', 'False')
-        global_config.global_config.override_config_value(
                 'SERVER', 'rpc_logging', 'False')
         if fill_data and setup_tables:
             self._fill_in_test_data()
@@ -84,8 +84,7 @@ class FrontendTestMixin(object):
     def _create_job(self, hosts=[], metahosts=[], priority=0, active=False,
                     synchronous=False, atomic_group=None, hostless=False,
                     drone_set=None, control_file='control',
-                    parameterized_job=None, owner='autotest_system',
-                    parent_job_id=None):
+                    owner='autotest_system', parent_job_id=None):
         """
         Create a job row in the test database.
 
@@ -131,8 +130,7 @@ class FrontendTestMixin(object):
             synch_count=synch_count, created_on=created_on,
             reboot_before=model_attributes.RebootBefore.NEVER,
             drone_set=drone_set, control_file=control_file,
-            parameterized_job=parameterized_job, parent_job=parent_job,
-            require_ssp=None)
+            parent_job=parent_job, require_ssp=None)
 
         # Update the job's dependencies to include the metahost.
         for metahost_label in metahosts:
