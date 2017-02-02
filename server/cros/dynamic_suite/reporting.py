@@ -990,6 +990,5 @@ def send_email(bug, bug_template):
             creds_path=site_utils.get_creds_abspath(EMAIL_CREDS_FILE))
         success = True
     finally:
-        (metrics.Counter('/chrome/infra/chromeos'
-                         '/autotest/errors/send_bug_email')
+        (metrics.Counter('chromeos/autotest/errors/send_bug_email')
          .increment(fields={'success': success}))
