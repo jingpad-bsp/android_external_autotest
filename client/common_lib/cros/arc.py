@@ -518,9 +518,6 @@ class ArcTest(test.test):
         # verification on the server side through Play Store.  This suppress a
         # consent dialog from the system.
         adb_shell('settings put secure package_verifier_user_consent -1')
-        # TODO(30310952): Remove the workaround below to a Phonesky bug.
-        adb_shell('am broadcast -a com.google.gservices.intent.action.GSERVICES_OVERRIDE '
-                  '-e finsky.platform_anti_malware_enabled false')
         adb_shell('settings put global package_verifier_enable 0')
         adb_shell('settings put secure install_non_market_apps 1')
 
@@ -587,9 +584,6 @@ class ArcTest(test.test):
             adb_uninstall(self._FULL_PKG_NAME_UIAUTOMATOR)
         adb_shell('settings put secure install_non_market_apps 0')
         adb_shell('settings put global package_verifier_enable 1')
-        # TODO(30310952): Remove the workaround below to a Phonesky bug.
-        adb_shell('am broadcast -a com.google.gservices.intent.action.GSERVICES_OVERRIDE '
-                  '--esn finsky.platform_anti_malware_enabled')
         adb_shell('settings put secure package_verifier_user_consent 0')
 
         remove_android_file(_ANDROID_ADB_KEYS_PATH)
