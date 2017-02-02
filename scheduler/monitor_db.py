@@ -358,8 +358,6 @@ class BaseDispatcher(object):
             with breakdown_timer.Step('trigger_refresh'):
                 self._log_tick_msg('Starting _drone_manager.trigger_refresh')
                 _drone_manager.trigger_refresh()
-            with breakdown_timer.Step('schedule_delay_tasks'):
-                self._schedule_delay_tasks()
             with breakdown_timer.Step('schedule_running_host_queue_entries'):
                 self._schedule_running_host_queue_entries()
             with breakdown_timer.Step('schedule_special_tasks'):
@@ -908,15 +906,6 @@ class BaseDispatcher(object):
 
 
     @_calls_log_tick_msg
-    def _schedule_delay_tasks(self):
-        for entry in scheduler_models.HostQueueEntry.fetch(
-                where='status = "%s"' % models.HostQueueEntry.Status.WAITING):
-            task = entry.job.schedule_delayed_callback_task(entry)
-            if task:
-                self.add_agent_task(task)
-
-
-    @_calls_log_tick_msg
     def _find_aborting(self):
         """
         Looks through the afe_host_queue_entries for an aborted entry.
@@ -1217,9 +1206,6 @@ class AbstractQueueTask(agent_task.AgentTask, agent_task.TaskWithJobKeyvals):
         queued_key, queued_time = self._job_queued_keyval(self.job)
         keyval_dict = self.job.keyval_dict()
         keyval_dict[queued_key] = queued_time
-        group_name = self.queue_entries[0].get_group_name()
-        if group_name:
-            keyval_dict['host_group_name'] = group_name
         self._write_keyvals_before_job(keyval_dict)
         for queue_entry in self.queue_entries:
             queue_entry.set_status(models.HostQueueEntry.Status.RUNNING)

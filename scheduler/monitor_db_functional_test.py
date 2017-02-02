@@ -7,7 +7,7 @@ from autotest_lib.database import database_connection
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils, models
 from autotest_lib.frontend.afe import model_attributes
-from autotest_lib.scheduler import drone_manager, email_manager, host_scheduler
+from autotest_lib.scheduler import drone_manager, email_manager
 from autotest_lib.scheduler import monitor_db, scheduler_models
 from autotest_lib.scheduler import scheduler_config
 from autotest_lib.scheduler import scheduler_lib
@@ -800,19 +800,6 @@ class SchedulerFunctionalTest(unittest.TestCase,
         # recover an HQE that was in pre-job verify
         self._test_recover_verifying_hqe_helper(models.SpecialTask.Task.VERIFY,
                                                 _PidfileType.VERIFY)
-
-
-    def test_recover_pending_hqes_with_group(self):
-        # recover a group of HQEs that are in Pending, in the same group (e.g.,
-        # in a job with atomic hosts)
-        job = self._create_job(hosts=[1,2], atomic_group=1)
-        job.save()
-
-        job.hostqueueentry_set.all().update(status=HqeStatus.PENDING)
-
-        self._initialize_test()
-        for queue_entry in job.hostqueueentry_set.all():
-            self.assertEquals(queue_entry.status, HqeStatus.STARTING)
 
 
     def test_recover_parsing(self):
