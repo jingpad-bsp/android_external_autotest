@@ -5,7 +5,7 @@ from chromite.lib import metrics
 from autotest_lib.server import utils
 from autotest_lib.server.cros import provision
 
-DURATION_METRIC = '/chrome/infra/chromeos/autotest/autoserv/reset_duration'
+DURATION_METRIC = 'chromeos/autotest/autoserv/reset_duration'
 
 
 # A string of the form 'label1,label2:value,label3'.
