@@ -20,7 +20,7 @@ See topic_common.py for a High Level Design and Algorithm.
 from autotest_lib.cli import topic_common, action_common
 
 
-class site_suite(topic_common.atest):
+class suite(topic_common.atest):
     """Suite class
     atest suite [create] [options]"""
     usage_action = '[create]'
@@ -28,18 +28,18 @@ class site_suite(topic_common.atest):
     msg_items = ''
 
 
-class site_suite_help(site_suite):
+class suite_help(suite):
     """Just here to get the atest logic working.
     Usage is set by its parent"""
     pass
 
 
-class site_suite_create(action_common.atest_create, site_suite):
+class suite_create(action_common.atest_create, suite):
     """Class containing the code for creating a suite."""
     msg_items = 'suite_id'
 
     def __init__(self):
-        super(site_suite_create, self).__init__()
+        super(suite_create, self).__init__()
 
         self.parser.add_option('-b', '--board', help='Board to test. Required.',
                                metavar='BOARD')
@@ -100,7 +100,7 @@ class site_suite_create(action_common.atest_create, site_suite):
                 attribute_name='delay_minutes',
                 inline_option='delay_minutes')
 
-        options, leftover = site_suite.parse(
+        options, leftover = suite.parse(
             self,
             [suite_info, board_info, build_info, pool_info, num_info,
              check_info, bugs_info, wait_for_results_info, delay_minutes_info],
