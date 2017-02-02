@@ -7,18 +7,37 @@ Copyright Andy Whitcroft, Martin J. Bligh 2006
 
 # pylint: disable=missing-docstring
 
-import copy, os, re, shutil, sys, time, traceback, types, glob
-import logging, getpass, weakref
+import copy
 from datetime import datetime
+import getpass
+import glob
+import logging
+import os
+import re
+import shutil
+import sys
+import time
+import traceback
+import types
+import weakref
+
+import common
 from autotest_lib.client.bin import client_logging_config
-from autotest_lib.client.bin import utils, parallel
-from autotest_lib.client.bin import profilers, harness
-from autotest_lib.client.bin import sysinfo, test, local_host
+from autotest_lib.client.bin import harness
+from autotest_lib.client.bin import local_host
+from autotest_lib.client.bin import parallel
 from autotest_lib.client.bin import partition as partition_lib
+from autotest_lib.client.bin import profilers
+from autotest_lib.client.bin import sysinfo
+from autotest_lib.client.bin import test
+from autotest_lib.client.bin import utils
+from autotest_lib.client.common_lib import barrier
 from autotest_lib.client.common_lib import base_job
-from autotest_lib.client.common_lib import error, barrier, logging_manager
-from autotest_lib.client.common_lib import base_packages, packages
+from autotest_lib.client.common_lib import base_packages
+from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import logging_manager
+from autotest_lib.client.common_lib import packages
 from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.tools import html_report
 
