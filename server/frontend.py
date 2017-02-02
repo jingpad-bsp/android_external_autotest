@@ -138,7 +138,7 @@ class TKO(RpcClient):
 
 
     @metrics.SecondsTimerDecorator(
-        '/chrome/infra/chromeos/autotest/tko/get_job_status_duration')
+            'chromeos/autotest/tko/get_job_status_duration')
     def get_job_test_statuses_from_db(self, job_id):
         """Get job test statuses from the database.
 
