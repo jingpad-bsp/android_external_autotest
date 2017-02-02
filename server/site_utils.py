@@ -615,7 +615,7 @@ def parse_job_name(name):
     Suite job created by run_suite follows the naming convention of:
     [build]-test_suites/control.[suite]
     For example: lumpy-release/R46-7272.0.0-test_suites/control.bvt
-    The naming convention is defined in site_rpc_interface.create_suite_job.
+    The naming convention is defined in rpc_interface.create_suite_job.
 
     Test job created by suite job follows the naming convention of:
     [build]/[suite]/[test name]

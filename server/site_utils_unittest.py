@@ -6,7 +6,7 @@ import unittest
 
 import common
 from autotest_lib.frontend import setup_django_lite_environment
-from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.frontend.afe import rpc_interface
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import tools
 
@@ -42,7 +42,7 @@ class SiteUtilsUnittests(unittest.TestCase):
             else:
                 expected_info['build_version'] = build_parts[2]
             suite_job_name = ('%s-%s' %
-                    (build, site_rpc_interface.canonicalize_suite_name(suite)))
+                    (build, rpc_interface.canonicalize_suite_name(suite)))
             info = site_utils.parse_job_name(suite_job_name)
             self.assertEqual(info, expected_info, '%s failed to be parsed to '
                              '%s' % (suite_job_name, expected_info))
