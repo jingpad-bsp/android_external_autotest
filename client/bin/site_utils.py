@@ -1189,3 +1189,22 @@ def is_python_package_installed(package):
     except ImportError:
         logging.warn('Python package %s is not installed.', package)
         return False
+
+
+def run_sql_cmd(server, user, password, command, database=''):
+    """Run the given sql command against the specified database.
+
+    @param server: Hostname or IP address of the MySQL server.
+    @param user: User name to log in the MySQL server.
+    @param password: Password to log in the MySQL server.
+    @param command: SQL command to run.
+    @param database: Name of the database to run the command. Default to empty
+                     for command that does not require specifying database.
+
+    @return: The stdout of the command line.
+    """
+    cmd = ('mysql -u%s -p%s --host %s %s -e "%s"' %
+           (user, password, server, database, command))
+    # Set verbose to False so the command line won't be logged, as it includes
+    # database credential.
+    return utils.run(cmd, verbose=False).stdout
