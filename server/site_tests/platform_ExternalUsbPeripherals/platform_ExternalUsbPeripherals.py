@@ -11,7 +11,6 @@ from autotest_lib.client.common_lib import error
 _WAIT_DELAY = 15
 _LONG_TIMEOUT = 200
 _SUSPEND_TIME = 30
-_WAKE_PRESS_IN_SEC = 0.2
 _CRASH_PATHS = [CrashTest._SYSTEM_CRASH_DIR.replace("/crash",""),
                 CrashTest._FALLBACK_USER_CRASH_DIR.replace("/crash",""),
                 CrashTest._USER_CRASH_DIRS.replace("/crash","")]
@@ -124,7 +123,6 @@ class platform_ExternalUsbPeripherals(test.test):
         @param boot_id: boot id obtained prior to suspending
 
         """
-        self.host.servo.power_key(_WAKE_PRESS_IN_SEC)
         self.host.test_wait_for_resume(boot_id, _LONG_TIMEOUT)
         logging.debug('--- Resumed')
         self.suspend_status = False
