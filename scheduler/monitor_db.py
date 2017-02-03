@@ -26,7 +26,7 @@ from chromite.lib import ts_mon_config
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import utils
-from autotest_lib.frontend.afe import models, rpc_utils
+from autotest_lib.frontend.afe import models
 from autotest_lib.scheduler import agent_task, drone_manager
 from autotest_lib.scheduler import email_manager, gc_stats, host_scheduler
 from autotest_lib.scheduler import monitor_db_cleanup, prejob_task
@@ -353,8 +353,6 @@ class BaseDispatcher(object):
             with breakdown_timer.Step('trigger_refresh'):
                 self._log_tick_msg('Starting _drone_manager.trigger_refresh')
                 _drone_manager.trigger_refresh()
-            with breakdown_timer.Step('process_recurring_runs'):
-                self._process_recurring_runs()
             with breakdown_timer.Step('schedule_delay_tasks'):
                 self._schedule_delay_tasks()
             with breakdown_timer.Step('schedule_running_host_queue_entries'):
@@ -1079,48 +1077,6 @@ class BaseDispatcher(object):
         ).set(num_agent_processes)
         logging.info('%d running processes. %d added this tick.',
                      num_agent_processes, num_started_this_tick)
-
-
-    @_calls_log_tick_msg
-    def _process_recurring_runs(self):
-        recurring_runs = models.RecurringRun.objects.filter(
-            start_date__lte=datetime.datetime.now())
-        for rrun in recurring_runs:
-            # Create job from template
-            job = rrun.job
-            info = rpc_utils.get_job_info(job)
-            options = job.get_object_dict()
-
-            host_objects = info['hosts']
-            one_time_hosts = info['one_time_hosts']
-            metahost_objects = info['meta_hosts']
-            dependencies = info['dependencies']
-            atomic_group = info['atomic_group']
-
-            for host in one_time_hosts or []:
-                this_host = models.Host.create_one_time_host(host.hostname)
-                host_objects.append(this_host)
-
-            try:
-                rpc_utils.create_new_job(owner=rrun.owner.login,
-                                         options=options,
-                                         host_objects=host_objects,
-                                         metahost_objects=metahost_objects,
-                                         atomic_group=atomic_group)
-
-            except Exception, ex:
-                logging.exception(ex)
-                #TODO send email
-
-            if rrun.loop_count == 1:
-                rrun.delete()
-            else:
-                if rrun.loop_count != 0: # if not infinite loop
-                    # calculate new start_date
-                    difference = datetime.timedelta(seconds=rrun.loop_period)
-                    rrun.start_date = rrun.start_date + difference
-                    rrun.loop_count -= 1
-                    rrun.save()
 
 
     def _log_tick_msg(self, msg):
