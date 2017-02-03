@@ -371,6 +371,19 @@ def send_keycode(keycode):
     adb_shell('input keyevent {}'.format(keycode))
 
 
+def get_android_sdk_version():
+    """Returns the Android SDK version.
+
+    This function can be called before Android container boots.
+    """
+    with open('/etc/lsb-release') as f:
+        values = dict(line.split('=', 1) for line in f.read().splitlines())
+    try:
+        return int(values['CHROMEOS_ARC_ANDROID_SDK_VERSION'])
+    except (KeyError, ValueError):
+        raise error.TestError('Could not determine Android SDK version')
+
+
 class ArcTest(test.test):
     """ Base class of ARC Test.
 
