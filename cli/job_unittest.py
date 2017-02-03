@@ -758,29 +758,6 @@ class job_create_unittest(cli_mock.cli_unittest):
                      out_words_no=['Uploading', 'Done'])
 
 
-    def test_execute_create_job_with_atomic_group(self):
-        data = dict(self.data)
-        data['atomic_group_name'] = 'my-atomic-group'
-        data['control_type'] = SERVER
-        mock_ctrl_file = 'mock control file'
-        data['control_file'] = mock_ctrl_file
-        data['synch_count'] = 2
-        data['hosts'] = []
-        self.run_cmd(argv=['atest', 'job', 'create', '-t', 'mocktest',
-                           'test_job0', '--ignore_site_file',
-                           '-G', 'my-atomic-group'],
-                     rpcs=[('generate_control_file',
-                            {'tests': ['mocktest']},
-                            True,
-                            {'control_file' : mock_ctrl_file,
-                             'synch_count' : 2,
-                             'is_server' : True,
-                             'dependencies' : []}),
-                           ('create_job', data, True, 180)],
-                     out_words_ok=['test_job0', 'Created'],
-                     out_words_no=['Uploading', 'Done'])
-
-
     def test_execute_create_job_with_control(self):
         file_temp = cli_mock.create_file(self.ctrl_file)
         self.run_cmd(argv=['atest', 'job', 'create', '-f', file_temp.name,
@@ -1191,7 +1168,6 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     'timeout_mins': 480}
 
     local_hosts = [{u'acls': [u'acl0'],
-                    u'atomic_group': None,
                     u'attributes': {},
                     u'dirty': False,
                     u'hostname': u'host0',
@@ -1207,7 +1183,6 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     u'status': u'Ready',
                     u'synch_id': None},
                    {u'acls': [u'acl0'],
-                    u'atomic_group': None,
                     u'attributes': {},
                     u'dirty': False,
                     u'hostname': u'host1',
@@ -1244,9 +1219,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': True},
                             True,
-                            {u'atomic_group_name': None,
-                             u'hosts': [{u'acls': [u'acl0'],
-                                         u'atomic_group': None,
+                            {u'hosts': [{u'acls': [u'acl0'],
                                          u'attributes': {},
                                          u'dirty': False,
                                          u'hostname': u'host0',
@@ -1274,8 +1247,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': True},
                             True,
-                            {u'atomic_group_name': None,
-                             u'hosts': self.local_hosts,
+                            {u'hosts': self.local_hosts,
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {}}),
                            ('create_job', self.job_data_cloned, True, 43)],
@@ -1290,8 +1262,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': True},
                             True,
-                            {u'atomic_group_name': None,
-                             u'hosts': [],
+                            {u'hosts': [],
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {u'type0': 1,
                                                    u'type1': 4}}),
@@ -1307,7 +1278,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': True},
                             True,
-                            {u'atomic_group_name': None,
+                            {
                              u'hosts': self.local_hosts,
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {u'type0': 1,
@@ -1338,8 +1309,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': False},
                             True,
-                            {u'atomic_group_name': None,
-                             u'hosts': self.local_hosts,
+                            {u'hosts': self.local_hosts,
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {}}),
                            ('create_job', self.job_data_cloned, True, 43)],
@@ -1354,8 +1324,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                      rpcs=[('get_info_for_clone', {'id': '42',
                                                    'preserve_metahosts': False},
                             True,
-                            {u'atomic_group_name': None,
-                             u'hosts': self.local_hosts,
+                            {u'hosts': self.local_hosts,
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {}}),
                            ('create_job', self.job_data_cloned, True, 43)],
