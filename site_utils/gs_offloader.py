@@ -26,6 +26,11 @@ import subprocess
 import sys
 import tempfile
 import time
+try:
+    # Does not exist, nor is needed, on moblab.
+    import psutil
+except ImportError:
+    psutil = None
 
 from optparse import OptionParser
 
@@ -34,13 +39,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import utils
 from autotest_lib.site_utils import job_directories
 from autotest_lib.tko import models
-
-try:
-    # Does not exist, nor is needed, on moblab.
-    import psutil
-except ImportError:
-    psutil = None
-
 import job_directories
 import pubsub_utils
 from autotest_lib.client.common_lib import global_config, site_utils
