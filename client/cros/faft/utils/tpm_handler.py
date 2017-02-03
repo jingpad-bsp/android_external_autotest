@@ -74,28 +74,15 @@ class TpmHandler(object):
                     1, [0x4c, 0x57, 0x52, 0x47])),
             'bios': TpmNvRam(FW_NV_ADDRESS, 10, 2)
             }
+        self.trunksd_started = False
+        self.tcsd_started = False
 
     def init(self, os_if):
         self.os_if = os_if
-        cmd = 'initctl status tcsd || initctl status trunksd'
-        status = self.os_if.run_shell_command_get_output(cmd) or ['']
-        # Expected status is like ['trunksd start/running, process 2375']
-        trunksd_started = status[0].startswith('trunksd start/running')
-        if trunksd_started:
-            self.os_if.run_shell_command('stop trunksd')
-        else:
-            tcsd_started = status[0].startswith('tcsd start/running')
-            if tcsd_started:
-                self.os_if.run_shell_command('stop tcsd')
-
+        self.stop_daemon()
         for nvram in self.nvrams.itervalues():
             nvram.init(self.os_if)
-
-        # Restart the daemon
-        if trunksd_started:
-            self.os_if.run_shell_command('start trunksd')
-        elif tcsd_started:
-            self.os_if.run_shell_command('start tcsd')
+        self.restart_daemon()
 
     def get_fw_version(self):
         return self.nvrams['bios'].get_body_version()
@@ -108,3 +95,28 @@ class TpmHandler(object):
 
     def get_kernel_key_version(self):
         return self.nvrams['kernel'].get_key_version()
+
+    def stop_daemon(self):
+        """Stop TPM related daemon."""
+        if self.trunksd_started or self.tcsd_started:
+            raise TpmError('Called stop_daemon() before')
+
+        cmd = 'initctl status tcsd || initctl status trunksd'
+        status = self.os_if.run_shell_command_get_output(cmd) or ['']
+        # Expected status is like ['trunksd start/running, process 2375']
+        self.trunksd_started = status[0].startswith('trunksd start/running')
+        if self.trunksd_started:
+            self.os_if.run_shell_command('stop trunksd')
+        else:
+            self.tcsd_started = status[0].startswith('tcsd start/running')
+            if self.tcsd_started:
+                self.os_if.run_shell_command('stop tcsd')
+
+    def restart_daemon(self):
+        """Restart TPM related daemon which was stopped by stop_daemon()."""
+        if self.trunksd_started:
+            self.os_if.run_shell_command('start trunksd')
+            self.trunksd_started = False
+        elif self.tcsd_started:
+            self.os_if.run_shell_command('start tcsd')
+            self.tcsd_started = False
