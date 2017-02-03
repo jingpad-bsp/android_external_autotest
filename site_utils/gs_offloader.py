@@ -46,6 +46,7 @@ from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
 
 from chromite.lib import parallel
+from chromite.lib import ts_mon_config
 
 
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
@@ -905,14 +906,16 @@ def main():
 
     signal.signal(signal.SIGALRM, timeout_handler)
 
-    offloader = Offloader(options)
-    if not options.delete_only:
-        wait_for_gs_write_access(offloader.gs_uri)
-    while True:
-        offloader.offload_once()
-        if options.offload_once:
-            break
-        time.sleep(SLEEP_TIME_SECS)
+    with ts_mon_config.SetupTsMonGlobalState('gs_offloader', indirect=True,
+                                             short_lived=False):
+        offloader = Offloader(options)
+        if not options.delete_only:
+            wait_for_gs_write_access(offloader.gs_uri)
+        while True:
+            offloader.offload_once()
+            if options.offload_once:
+                break
+            time.sleep(SLEEP_TIME_SECS)
 
 
 if __name__ == '__main__':
