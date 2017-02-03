@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import glob, logging, os, re, shutil, time
-from autotest_lib.client.bin import site_utils, utils
+from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.cros import upstart
@@ -143,7 +143,7 @@ def has_battery():
         # TODO(tbroch) if/when 'power:battery' param is reliable
         # remove board type logic.  Also remove verbose mosys call.
         _NO_BATTERY_BOARD_TYPE = ['CHROMEBOX', 'CHROMEBIT', 'CHROMEBASE']
-        board_type = site_utils.get_board_type()
+        board_type = utils.get_board_type()
         if board_type in _NO_BATTERY_BOARD_TYPE:
             logging.warn('Do NOT believe type %s has battery. '
                          'See debug for mosys details', board_type)
