@@ -78,20 +78,20 @@ def _run_test_complete_on_exit(f):
 class status_indenter(base_job.status_indenter):
     """Provide a status indenter that is backed by job._record_prefix."""
     def __init__(self, job_):
-        self.job = weakref.proxy(job_)  # avoid a circular reference
+        self._job = weakref.proxy(job_)  # avoid a circular reference
 
 
     @property
     def indent(self):
-        return self.job._record_indent
+        return self._job._record_indent
 
 
     def increment(self):
-        self.job._record_indent += 1
+        self._job._record_indent += 1
 
 
     def decrement(self):
-        self.job._record_indent -= 1
+        self._job._record_indent -= 1
 
 
 class base_client_job(base_job.base_job):
