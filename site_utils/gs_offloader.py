@@ -36,14 +36,15 @@ from optparse import OptionParser
 
 import common
 from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.site_utils import job_directories
-from autotest_lib.tko import models
-import job_directories
-import pubsub_utils
-from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
+from autotest_lib.site_utils import job_directories
+from autotest_lib.site_utils import pubsub_utils
+from autotest_lib.tko import models
+
 from chromite.lib import parallel
 
 
