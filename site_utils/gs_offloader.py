@@ -510,17 +510,12 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                 if process.returncode == 0:
                     dir_size = get_directory_size_kibibytes(dir_entry)
 
-                    counter.increment('kibibytes_transferred_total',
-                                      dir_size)
-                    metadata = {
-                        '_type': METADATA_TYPE,
-                        'size_KB': dir_size,
-                        'result_dir': dir_entry,
-                        'drone': socket.gethostname().replace('.', '_')
-                    }
-                    autotest_stats.Gauge(STATS_KEY, metadata=metadata).send(
-                            'kibibytes_transferred', dir_size)
-                    counter.increment('jobs_offloaded')
+                    m_offload_count = (
+                            'chromeos/autotest/gs_offloader/jobs_offloaded')
+                    metrics.Counter(m_offload_count).increment()
+                    m_offload_size = ('chromeos/autotest/gs_offloader/'
+                                      'kilobytes_transferred')
+                    metrics.Counter(m_offload_size).increment_by(dir_size)
 
                     if pubsub_topic:
                         message = _create_test_result_notification(
