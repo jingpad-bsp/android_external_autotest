@@ -85,8 +85,10 @@ class firmware_TPMNotCorruptedDevMode(FirmwareTest):
         """
         self.ensure_internal_device_boot()
         logging.info('Reading tpmc data.')
+        self.faft_client.tpm.stop_daemon()
         tpmc_output = self.faft_client.system.run_shell_command_get_output(
             'tpmc read 0x1008 0x0d')
+        self.faft_client.tpm.restart_daemon()
 
         logging.info('===== TPMC OUTPUT: %s =====' % tpmc_output)
         if self.check_tpmc(tpmc_output):
