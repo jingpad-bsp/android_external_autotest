@@ -872,26 +872,23 @@ class base_server_job(base_job.base_job):
             else:
                 self.record('GOOD', subdir, testname, 'completed successfully')
 
-        result, exc_info = self._run_group(testname, subdir, group_func)
-        if exc_info and isinstance(exc_info[1], error.TestBaseException):
+        try:
+            result = self._run_group(testname, subdir, group_func)
+        except error.TestBaseException as e:
             return False
-        elif exc_info:
-            raise exc_info[0], exc_info[1], exc_info[2]
         else:
             return True
 
 
     def _run_group(self, name, subdir, function, *args, **dargs):
-        """\
-        Underlying method for running something inside of a group.
-        """
+        """Underlying method for running something inside of a group."""
         result, exc_info = None, None
         try:
             self.record('START', subdir, name)
             result = function(*args, **dargs)
         except error.TestBaseException as e:
             self.record("END %s" % e.exit_status, subdir, name)
-            exc_info = sys.exc_info()
+            raise
         except Exception as e:
             err_msg = str(e) + '\n'
             err_msg += traceback.format_exc()
@@ -900,25 +897,29 @@ class base_server_job(base_job.base_job):
         else:
             self.record('END GOOD', subdir, name)
 
-        return result, exc_info
+        return result
 
 
     def run_group(self, function, *args, **dargs):
         """\
-        function:
-                subroutine to run
-        *args:
-                arguments for the function
+        @param function: subroutine to run
+        @returns: (result, exc_info). When the call succeeds, result contains
+                the return value of |function| and exc_info is None. If
+                |function| raises an exception, exc_info contains the tuple
+                returned by sys.exc_info(), and result is None.
         """
 
         name = function.__name__
-
         # Allow the tag for the group to be specified.
         tag = dargs.pop('tag', None)
         if tag:
             name = tag
 
-        return self._run_group(name, None, function, *args, **dargs)[0]
+        try:
+            result = self._run_group(name, None, function, *args, **dargs)[0]
+        except error.TestBaseException:
+            return None, sys.exc_info()
+        return result, None
 
 
     def run_op(self, op, op_func, get_kernel_func):
