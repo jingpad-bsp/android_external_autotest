@@ -630,7 +630,15 @@ class RPCFunctions(object):
 
     def _tpm_get_firmware_datakey_version(self):
         """Retrieve tpm firmware data key version."""
-        return self._tpm_handler.get_fw_body_version()
+        return self._tpm_handler.get_fw_key_version()
+
+    def _tpm_get_kernel_version(self):
+        """Retrieve tpm kernel body version."""
+        return self._tpm_handler.get_kernel_version()
+
+    def _tpm_get_kernel_datakey_version(self):
+        """Retrieve tpm kernel data key version."""
+        return self._tpm_handler.get_kernel_key_version()
 
     def _cgpt_get_attributes(self):
         """Get kernel attributes."""
