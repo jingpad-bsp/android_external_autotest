@@ -108,7 +108,6 @@ KEYS_TO_NAMES_EN = {'hostname': 'Host',
                     'synch_count': 'Sync Count',
                     'max_number_of_machines': 'Max. hosts to use',
                     'parse_failed_repair': 'Include failed repair results',
-                    'atomic_group.name': 'Atomic Group Name',
                     'shard': 'Shard',
                     }
 
@@ -254,7 +253,7 @@ class atest(object):
     Should only be instantiated by itself for usage
     references, otherwise, the <topic> objects should
     be used."""
-    msg_topic = ('[acl|host|job|label|shard|atomicgroup|test|user|server|'
+    msg_topic = ('[acl|host|job|label|shard|test|user|server|'
                  'stable_version]')
     usage_action = '[action]'
     msg_items = ''
