@@ -45,6 +45,7 @@ from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
 
+from chromite.lib import metrics
 from chromite.lib import parallel
 from chromite.lib import ts_mon_config
 
@@ -781,11 +782,18 @@ class Offloader(object):
 
         """
         self._add_new_jobs()
+        self._report_current_jobs_count()
         with parallel.BackgroundTaskRunner(
                 self._offload_func, processes=self._processes) as queue:
             for job in self._open_jobs.values():
                 job.enqueue_offload(queue, self._upload_age_limit)
         self._update_offload_results()
+
+
+    def _report_current_jobs_count(self):
+        """Report the number of outstanding jobs to monarch."""
+        metrics.Gauge('chromeos/autotest/gs_offloader/current_jobs_count').set(
+                len(self._open_jobs))
 
 
 def parse_options():
