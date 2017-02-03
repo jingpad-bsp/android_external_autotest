@@ -1645,32 +1645,6 @@ def get_num_host_queue_entries_and_special_tasks(host, start_time=None,
             + get_host_num_special_tasks(**filter_data_special_tasks))
 
 
-# recurring run
-
-def get_recurring(**filter_data):
-    return rpc_utils.prepare_rows_as_nested_dicts(
-            models.RecurringRun.query_objects(filter_data),
-            ('job', 'owner'))
-
-
-def get_num_recurring(**filter_data):
-    return models.RecurringRun.query_count(filter_data)
-
-
-def delete_recurring_runs(**filter_data):
-    to_delete = models.RecurringRun.query_objects(filter_data)
-    to_delete.delete()
-
-
-def create_recurring_run(job_id, start_date, loop_period, loop_count):
-    owner = models.User.current_user().login
-    job = models.Job.objects.get(id=job_id)
-    return job.create_recurring_job(start_date=start_date,
-                                    loop_period=loop_period,
-                                    loop_count=loop_count,
-                                    owner=owner)
-
-
 # other
 
 def echo(data=""):
@@ -1769,7 +1743,6 @@ def get_static_data():
                                    "Stopped": "Other host(s) failed verify",
                                    "Parsing": "Awaiting parse of final results",
                                    "Gathering": "Gathering log files",
-                                   "Template": "Template job for recurring run",
                                    "Waiting": "Waiting for scheduler action",
                                    "Archiving": "Archiving results",
                                    "Resetting": "Resetting hosts"}
