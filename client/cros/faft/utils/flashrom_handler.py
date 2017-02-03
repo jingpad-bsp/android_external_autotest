@@ -132,6 +132,7 @@ class FlashromHandler(object):
         self.os_if = os_if
         self.pub_key_file = pub_key_file
         self.dev_key_path = dev_key_path
+        self.new_image()
 
     def new_image(self, image_file=None):
         """Parse the full flashrom image and store sections into files.
