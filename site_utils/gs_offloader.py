@@ -324,6 +324,8 @@ def correct_results_folder_permission(dir_entry):
     """
     if not dir_entry:
         return
+
+    logging.info('Trying to correct file permission of %s.', dir_entry)
     try:
         subprocess.check_call(
                 ['sudo', '-n', 'chown', '-R', str(os.getuid()), dir_entry])
@@ -556,7 +558,6 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
             # 'Permission denied'. Details can be found in
             # crbug.com/536151
             if e.errno == errno.EACCES:
-                logging.warn('Try to correct file permission of %s.', dir_entry)
                 correct_results_folder_permission(dir_entry)
         finally:
             signal.alarm(0)
@@ -578,8 +579,6 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                 # clean up these files, following code and function
                 # correct_results_folder_permission can be deleted.
                 if 'CommandException: Error opening file' in stderr_content:
-                    logging.warn('Try to correct file permission of %s.',
-                                 dir_entry)
                     correct_results_folder_permission(dir_entry)
             if stdout_file:
                 stdout_file.close()
