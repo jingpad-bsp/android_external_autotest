@@ -757,6 +757,7 @@ class Offloader(object):
         failed_jobs = [j for j in self._open_jobs.values() if
                        j.get_failure_time()]
         self._send_reporting_failure_email(failed_jobs)
+        self._report_failed_jobs_count(failed_jobs)
 
 
     def _send_reporting_failure_email(self, failed_jobs):
@@ -802,6 +803,15 @@ class Offloader(object):
         """Report the number of outstanding jobs to monarch."""
         metrics.Gauge('chromeos/autotest/gs_offloader/current_jobs_count').set(
                 len(self._open_jobs))
+
+
+    def _report_failed_jobs_count(self, failed_jobs):
+        """Report the number of outstanding failed offload jobs to monarch.
+
+        @param: List of failed jobs.
+        """
+        metrics.Gauge('chromeos/autotest/gs_offloader/failed_jobs_count').set(
+                len(failed_jobs))
 
 
 def parse_options():
