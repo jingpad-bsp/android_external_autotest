@@ -1639,22 +1639,6 @@ class Job(dbmodels.Model, model_logic.ModelExtensions):
                              is_template=is_template)
 
 
-    def create_recurring_job(self, start_date, loop_period, loop_count, owner):
-        """Creates a recurring job.
-
-        @param start_date: The starting date of the job.
-        @param loop_period: How often to re-run the job, in seconds.
-        @param loop_count: The re-run count.
-        @param owner: The owner of the job.
-        """
-        rec = RecurringRun(job=self, start_date=start_date,
-                           loop_period=loop_period,
-                           loop_count=loop_count,
-                           owner=User.objects.get(login=owner))
-        rec.save()
-        return rec.id
-
-
     def user(self):
         """Gets the user of this job, or None if it doesn't exist."""
         try:
@@ -1998,33 +1982,6 @@ class AbortedHostQueueEntry(dbmodels.Model, model_logic.ModelExtensions):
     class Meta:
         """Metadata for class AbortedHostQueueEntry."""
         db_table = 'afe_aborted_host_queue_entries'
-
-
-class RecurringRun(dbmodels.Model, model_logic.ModelExtensions):
-    """\
-    job: job to use as a template
-    owner: owner of the instantiated template
-    start_date: Run the job at scheduled date
-    loop_period: Re-run (loop) the job periodically
-                 (in every loop_period seconds)
-    loop_count: Re-run (loop) count
-    """
-
-    job = dbmodels.ForeignKey(Job)
-    owner = dbmodels.ForeignKey(User)
-    start_date = dbmodels.DateTimeField()
-    loop_period = dbmodels.IntegerField(blank=True)
-    loop_count = dbmodels.IntegerField(blank=True)
-
-    objects = model_logic.ExtendedManager()
-
-    class Meta:
-        """Metadata for class RecurringRun."""
-        db_table = 'afe_recurring_run'
-
-    def __unicode__(self):
-        return u'RecurringRun(job %s, start %s, period %s, count %s)' % (
-            self.job.id, self.start_date, self.loop_period, self.loop_count)
 
 
 class SpecialTask(dbmodels.Model, model_logic.ModelExtensions):
