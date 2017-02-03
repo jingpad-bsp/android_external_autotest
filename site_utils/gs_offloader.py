@@ -754,18 +754,26 @@ class Offloader(object):
 
         """
         self._remove_offloaded_jobs()
-        if self._have_reportable_errors():
-            # N.B. We include all jobs that have failed at least once,
-            # which may include jobs that aren't otherwise reportable.
-            failed_jobs = [j for j in self._open_jobs.values()
-                           if j.get_failure_time()]
-            logging.debug('Currently there are %d jobs with offload '
-                          'failures', len(failed_jobs))
-            if time.time() >= self._next_report_time:
-                logging.debug('Reporting failures by e-mail')
-                report_offload_failures(failed_jobs)
-                self._next_report_time = (
-                        time.time() + REPORT_INTERVAL_SECS)
+        failed_jobs = [j for j in self._open_jobs.values() if
+                       j.get_failure_time()]
+        self._send_reporting_failure_email(failed_jobs)
+
+
+    def _send_reporting_failure_email(self, failed_jobs):
+        """Send email alerts for failed uploads.
+
+        @param failed_jobs: The list of failed _JobDirectory objects.
+        """
+        if not self._have_reportable_errors():
+            return
+
+        logging.debug('Currently there are %d jobs with offload '
+                        'failures', len(failed_jobs))
+        if time.time() >= self._next_report_time:
+            logging.debug('Reporting failures by e-mail')
+            report_offload_failures(failed_jobs)
+            self._next_report_time = (
+                    time.time() + REPORT_INTERVAL_SECS)
 
 
     def offload_once(self):
