@@ -364,7 +364,7 @@ class job_create(job_create_or_clone):
     [--noverify] [--timeout <timeout>] [--max_runtime <max runtime>]
     [--one-time-hosts <hosts>] [--email <email>]
     [--dependencies <labels this job is dependent on>]
-    [--atomic_group <atomic group name>] [--parse-failed-repair <option>]
+    [--parse-failed-repair <option>]
     [--image <http://path/to/image>] [--require-ssp]
     job_name
 
@@ -389,9 +389,6 @@ class job_create(job_create_or_clone):
 
         self.parser.add_option('-d', '--dependencies', help='Comma separated '
                                'list of labels this job is dependent on.',
-                               default='')
-        self.parser.add_option('-G', '--atomic_group', help='Name of an Atomic '
-                               'Group to schedule this job on.',
                                default='')
 
         self.parser.add_option('-B', '--reboot_before',
@@ -436,10 +433,9 @@ class job_create(job_create_or_clone):
                 parse_info=[deps_info])
 
         if (len(self.hosts) == 0 and not self.one_time_hosts
-            and not options.labels and not options.atomic_group):
-            self.invalid_syntax('Must specify at least one machine '
-                                'or an atomic group '
-                                '(-m, -M, -b, -G or --one-time-hosts).')
+            and not options.labels):
+            self.invalid_syntax('Must specify at least one machine.'
+                                '(-m, -M, -b or --one-time-hosts).')
         if not options.control_file and not options.test:
             self.invalid_syntax('Must specify either --test or --control-file'
                                 ' to create a job.')
@@ -481,9 +477,6 @@ class job_create(job_create_or_clone):
             self.data['timeout_mins'] = options.timeout_mins
         if options.max_runtime:
             self.data['max_runtime_mins'] = options.max_runtime
-
-        if options.atomic_group:
-            self.data['atomic_group_name'] = options.atomic_group
 
         self.data['dependencies'] = self.dependencies
 
