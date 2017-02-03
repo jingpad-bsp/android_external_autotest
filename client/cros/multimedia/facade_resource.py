@@ -275,7 +275,7 @@ class FacadeResource(object):
         """
         if tab_descriptor not in self._tabs:
             raise RuntimeError('There is no tab for %s' % tab_descriptor)
-        self._tabs[tab_descriptor].WaitForJavaScriptExpression(
+        self._tabs[tab_descriptor].WaitForJavaScriptCondition(
                 expression, timeout=timeout)
 
 

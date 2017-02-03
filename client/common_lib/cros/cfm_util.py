@@ -68,7 +68,7 @@ def wait_for_telemetry_commands(webview_context):
 
     @param webview_context: Context for hangouts webview.
     """
-    webview_context.WaitForJavaScriptExpression(
+    webview_context.WaitForJavaScriptCondition(
             "typeof window.hrOobIsStartPageForTest == 'function'",
             timeout=DEFAULT_TIMEOUT)
     logging.info('Hotrod telemetry commands available for testing.')
@@ -80,7 +80,7 @@ def wait_for_oobe_start_page(webview_context):
 
     @param webview_context: Context for hangouts webview.
     """
-    webview_context.WaitForJavaScriptExpression(
+    webview_context.WaitForJavaScriptCondition(
             "window.hrOobIsStartPageForTest() === true;",
             timeout=DEFAULT_TIMEOUT)
     logging.info('Reached oobe start page')
