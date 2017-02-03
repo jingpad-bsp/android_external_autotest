@@ -77,18 +77,25 @@ class TpmHandler(object):
 
     def init(self, os_if):
         self.os_if = os_if
-        status = self.os_if.run_shell_command_get_output(
-            'initctl status tcsd') or ['']
-        if status[0].startswith('tcsd start/running'):
-            self.os_if.run_shell_command('stop tcsd')
-
-        status = self.os_if.run_shell_command_get_output(
-            'initctl status trunksd') or ['']
-        if status[0].startswith('trunksd start/running'):
+        cmd = 'initctl status tcsd || initctl status trunksd'
+        status = self.os_if.run_shell_command_get_output(cmd) or ['']
+        # Expected status is like ['trunksd start/running, process 2375']
+        trunksd_started = status[0].startswith('trunksd start/running')
+        if trunksd_started:
             self.os_if.run_shell_command('stop trunksd')
+        else:
+            tcsd_started = status[0].startswith('tcsd start/running')
+            if tcsd_started:
+                self.os_if.run_shell_command('stop tcsd')
 
         for nvram in self.nvrams.itervalues():
             nvram.init(self.os_if)
+
+        # Restart the daemon
+        if trunksd_started:
+            self.os_if.run_shell_command('start trunksd')
+        elif tcsd_started:
+            self.os_if.run_shell_command('start tcsd')
 
     def get_fw_version(self):
         return self.nvrams['bios'].get_body_version()
