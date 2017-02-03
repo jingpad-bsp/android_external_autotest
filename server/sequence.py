@@ -148,7 +148,7 @@ parallel_simple(run, machines)
                     priority=priorities.Priority.DEFAULT,
                     control_type=control_data.CONTROL_TYPE.SERVER,
                     hosts=[hostname], meta_hosts=(), one_time_hosts=(),
-                    atomic_group_name=None, synch_count=None, is_template=False,
+                    synch_count=None, is_template=False,
                     timeout_mins=timeout_mins + (i + 1) * runtime_mins,
                     max_runtime_mins=runtime_mins,
                     run_verify=False, email_list='', dependencies=(),
