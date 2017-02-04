@@ -431,7 +431,7 @@ class base_client_job(base_job.base_job):
         # check if gcc is installed on the system.
         try:
             utils.system('which gcc')
-        except error.CmdError, e:
+        except error.CmdError:
             raise NotAvailableError('gcc is required by this job and is '
                                     'not available on the system')
 
@@ -499,9 +499,9 @@ class base_client_job(base_job.base_job):
                 group_func: Actual test run function
                 timeout: Test timeout
         """
-        group, testname = self.pkgmgr.get_package_name(url, 'test')
+        _group, testname = self.pkgmgr.get_package_name(url, 'test')
         testname, subdir, tag = self._build_tagged_test_name(testname, dargs)
-        outputdir = self._make_test_outputdir(subdir)
+        self._make_test_outputdir(subdir)
 
         timeout = dargs.pop('timeout', None)
         if timeout:
