@@ -60,7 +60,7 @@ class policy_EditBookmarksEnabled(enterprise_policy_base.EnterprisePolicyTest):
         tab = self.navigate_to_url('chrome://bookmarks/#1')
 
         # Wait until list.reload() is defined on bmm page.
-        tab.WaitForJavaScriptExpression(
+        tab.WaitForJavaScriptCondition(
             "typeof bmm.list.reload == 'function'", timeout=60)
         time.sleep(1)  # Allow JS to run after reload function is defined.
 
