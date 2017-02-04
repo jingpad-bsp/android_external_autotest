@@ -276,8 +276,13 @@ class DevServerTest(mox.MoxTestBase):
     def testResolveWithFailureURLError(self):
         """Ensure we rehash on a failed ping using http on a bad_host after
         urlerror."""
-        # Retry mock just return the original method.
+        # Set retry.retry to retry_mock for just returning the original
+        # method for this test. This is to save waiting time for real retry,
+        # which is defined by dev_server.DEVSERVER_SSH_TIMEOUT_MINS.
+        # Will reset retry.retry to real retry at the end of this test.
+        real_retry = retry.retry
         retry.retry = retry_mock
+
         self.mox.StubOutWithMock(dev_server, '_get_dev_server_list')
         bad_host, good_host = 'http://bad_host:99', 'http://good_host:8080'
         dev_server._get_dev_server_list().MultipleTimes().AndReturn(
@@ -299,6 +304,8 @@ class DevServerTest(mox.MoxTestBase):
         host = dev_server.ImageServer.resolve(0) # Using 0 as it'll hash to 0.
         self.assertEquals(host.url(), good_host)
         self.mox.VerifyAll()
+
+        retry.retry = real_retry
 
 
     def testResolveWithManyDevservers(self):
