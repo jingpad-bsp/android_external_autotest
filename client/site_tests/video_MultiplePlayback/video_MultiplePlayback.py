@@ -57,8 +57,8 @@ class video_MultiplePlayback(test.test):
                 os.path.join(self.bindir, 'video.html')))
 
         # Waiting for test video to load.
-        tab1.WaitForJavaScriptExpression('testvideo.currentTime < 1.0',
-                                         timeout=5)
+        tab1.WaitForJavaScriptCondition('testvideo.currentTime < 1.0',
+                                        timeout=5)
 
         tab2 = browser.tabs.New()
         tab2.Navigate(browser.platform.http_server.UrlOf(
