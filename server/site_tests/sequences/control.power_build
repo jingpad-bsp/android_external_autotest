@@ -42,7 +42,6 @@ def _iterate_tests(client, machine):
     client_at.run_test('power_StatsCPUIdle', tag=tag)
     client_at.run_test('power_StatsUSB', tag=tag)
     client_at.run_test('power_Resume', tag=tag)
-    client_at.run_test('power_x86Settings',tag=tag)
 
     # Tests that are only run on battery power here.
     client_at.run_test('power_Backlight', tag=tag)
