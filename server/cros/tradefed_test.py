@@ -34,7 +34,7 @@ import tempfile
 import urlparse
 
 from autotest_lib.client.bin import utils as client_utils
-from autotest_lib.client.common_lib import base_utils
+from autotest_lib.client.common_lib import utils as common_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.server import autotest
@@ -167,18 +167,18 @@ def adb_keepalive(target, extra_paths):
     # module. We want to run the original .py file, so we need to change the
     # extension back.
     script_filename = module.__file__.replace('.pyc', '.py')
-    job = base_utils.BgJob([script_filename, target],
+    job = common_utils.BgJob([script_filename, target],
                            nickname='adb_keepalive', stderr_level=logging.DEBUG,
-                           stdout_tee=base_utils.TEE_TO_LOGS,
-                           stderr_tee=base_utils.TEE_TO_LOGS,
+                           stdout_tee=common_utils.TEE_TO_LOGS,
+                           stderr_tee=common_utils.TEE_TO_LOGS,
                            extra_paths=extra_paths)
 
     try:
         yield
     finally:
         # The adb_keepalive.py script runs forever until SIGTERM is sent.
-        base_utils.nuke_subprocess(job.sp)
-        base_utils.join_bg_jobs([job])
+        common_utils.nuke_subprocess(job.sp)
+        common_utils.join_bg_jobs([job])
 
 
 @contextlib.contextmanager
