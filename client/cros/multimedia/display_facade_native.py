@@ -101,7 +101,7 @@ class DisplayFacadeNative(object):
         @raise TimeoutException when the operation is timed out.
         """
 
-        tab.WaitForJavaScriptExpression(
+        tab.WaitForJavaScriptCondition(
                     "typeof options !== 'undefined' &&"
                     "typeof options.DisplayOptions !== 'undefined' &&"
                     "typeof options.DisplayOptions.instance_ !== 'undefined' &&"
@@ -115,7 +115,7 @@ class DisplayFacadeNative(object):
                     + str(tab.EvaluateJavaScript(
                     "options.DisplayOptions.instance_.displays_.length")))
 
-        tab.WaitForJavaScriptExpression(
+        tab.WaitForJavaScriptCondition(
                 "typeof options.DisplayOptions.instance_"
                 "         .displays_[%(index)d] !== 'undefined' &&"
                 "typeof options.DisplayOptions.instance_"
@@ -588,7 +588,7 @@ class DisplayFacadeNative(object):
                 % (target_bounds['left'], target_bounds['top'],
                    target_bounds['left'], target_bounds['top'])
         )
-        extension.WaitForJavaScriptExpression(
+        extension.WaitForJavaScriptCondition(
                 "__status == 'Done'",
                 timeout=web_contents.DEFAULT_WEB_CONTENTS_TIMEOUT)
         return True
@@ -697,7 +697,7 @@ class DisplayFacadeNative(object):
         #    rate will decrease by half, so here we set it to be a
         #    little less than 30 (= 60/2) to make it more tolerant.
         # 2. DELAY_TIME: extra wait time for timeout.
-        tab.WaitForJavaScriptExpression(
+        tab.WaitForJavaScriptCondition(
                 'window.count == color_sequence.length',
                 timeout=(
                     (len(color_sequence) / self.MINIMUM_REFRESH_RATE_EXPECTED)

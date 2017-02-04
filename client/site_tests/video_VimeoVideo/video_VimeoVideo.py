@@ -34,7 +34,7 @@ class video_VimeoVideo(test.test):
 
     def _wait_for_player(self):
         """Wait for the player to load."""
-        self._tab.WaitForJavaScriptExpression(
+        self._tab.WaitForJavaScriptCondition(
                 'typeof vimeo_player !== \'undefined\'',
                 timeout=self._WAIT_TIMEOUT_S)
 
@@ -55,7 +55,7 @@ class video_VimeoVideo(test.test):
 
     def _video_current_time(self):
         "Returns current video time."""
-        self._tab.WaitForJavaScriptExpression(
+        self._tab.WaitForJavaScriptCondition(
                 'typeof vimeo_player.duration == \'number\'',
                 timeout=self._WAIT_TIMEOUT_S)
         return float(self._tab.EvaluateJavaScript('vimeo_player.duration'))

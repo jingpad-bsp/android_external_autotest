@@ -45,7 +45,7 @@ class video_YouTubeMseEme(test.test):
 
         @param event_name: A string to denote the name of the event to check.
         """
-        self.tab.WaitForJavaScriptExpression(
+        self.tab.WaitForJavaScriptCondition(
              'window.__eventReporter["%s"] === true;' % event_name, timeout=5)
 
 
