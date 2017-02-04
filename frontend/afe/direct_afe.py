@@ -14,14 +14,5 @@ class directAFE(frontend.AFE):
     making RPC calls to an RPC server.
     """
     def run(self, call, **dargs):
-        func = None
-
-        try:
-            func = rpc_interface.__getattribute__(call)
-        except AttributeError:
-            pass
-
-        if not func:
-            raise AttributeError('No function %s in rpc_interface' % call)
-
+        func = rpc_interface.__getattribute__(call)
         return func(**dargs)
