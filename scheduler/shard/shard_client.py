@@ -82,7 +82,7 @@ On the client side, this will happen:
    The heartbeat request will also contain the ids of incomplete jobs and the
    ids of all hosts. This is used to not send objects repeatedly. For more
    information on this and alternatives considered
-   see site_rpc_interface.shard_heartbeat.
+   see rpc_interface.shard_heartbeat.
 """
 
 
@@ -262,7 +262,7 @@ class ShardClient(object):
     def _heartbeat_packet(self):
         """Construct the heartbeat packet.
 
-        See site_rpc_interface for a more detailed description of the heartbeat.
+        See rpc_interface for a more detailed description of the heartbeat.
 
         @return: A heartbeat packet.
         """
