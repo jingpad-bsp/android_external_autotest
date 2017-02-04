@@ -212,8 +212,8 @@ def find_opt_in_extension_page(browser):
             '(termsPage.isManaged_ || termsPage.state_ == LoadState.LOADED)']
     try:
         for condition in js_code_did_start_conditions:
-            extension_main_page.WaitForJavaScriptExpression(condition,
-                                                            timeout=60)
+            extension_main_page.WaitForJavaScriptCondition(condition,
+                                                           timeout=60)
     except Exception, e:
         raise error.TestError('Error waiting for "%s": "%s".' % (condition, e))
 
@@ -238,8 +238,8 @@ def opt_in_and_wait_for_completion(extension_main_page):
 
     SIGN_IN_TIMEOUT = 120
     try:
-        extension_main_page.WaitForJavaScriptExpression('!appWindow',
-                                                        timeout=SIGN_IN_TIMEOUT)
+        extension_main_page.WaitForJavaScriptCondition('!appWindow',
+                                                       timeout=SIGN_IN_TIMEOUT)
     except Exception, e:
         js_read_error_message = """
             err = appWindow.contentWindow.document.getElementById(

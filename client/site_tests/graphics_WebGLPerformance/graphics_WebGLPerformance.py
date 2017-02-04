@@ -64,8 +64,8 @@ class graphics_WebGLPerformance(test.test):
         tab.WaitForDocumentReadyStateToBeComplete()
 
         # Wait for test completion.
-        tab.WaitForJavaScriptExpression('time_ms_geom_mean > 0.0',
-                                        timeout=self._test_duration_secs)
+        tab.WaitForJavaScriptCondition('time_ms_geom_mean > 0.0',
+                                       timeout=self._test_duration_secs)
 
         # Get the geometric mean of individual runtimes.
         time_ms_geom_mean = tab.EvaluateJavaScript('time_ms_geom_mean')
