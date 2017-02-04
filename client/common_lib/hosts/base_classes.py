@@ -504,7 +504,7 @@ class Host(object):
         @param path: path to check
 
         @return: bool(path exists)"""
-        result = self.run('ls "%s" > /dev/null' % utils.sh_escape(path),
+        result = self.run('test -e "%s"' % utils.sh_escape(path),
                           ignore_status=True)
         return result.exit_status == 0
 

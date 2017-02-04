@@ -511,14 +511,12 @@ class CrosHost(abstract_ssh.AbstractSSHHost):
 
         # Reboot to complete stateful update.
         self.reboot(timeout=self.REBOOT_TIMEOUT, wait=True)
-        check_file_cmd = 'test -f %s; echo $?'
-        for folder in folders_to_check:
-            test_file_path = os.path.join(folder, test_file)
-            result = self.run(check_file_cmd % test_file_path,
-                              ignore_status=True)
-            if result.exit_status == 1:
-                return False
-        return True
+
+        # After stateful update and a reboot, all of the test_files shouldn't
+        # exist any more. Otherwise the stateful update is failed.
+        return not any(
+            self.path_exists(os.path.join(folder, test_file))
+            for folder in folders_to_check)
 
 
     def _post_update_processing(self, updater, expected_kernel=None):
