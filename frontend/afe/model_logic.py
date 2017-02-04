@@ -169,7 +169,10 @@ class ExtendedManager(dbmodels.Manager):
         rhs_where.relabel_aliases({rhs_table: alias})
         compiler = join_to_query.query.get_compiler(using=join_to_query.db)
         initial_clause, values = compiler.as_sql()
-        all_clauses = (initial_clause,)
+        # initial_clause is compiled from `join_to_query`, which is a SELECT
+        # query returns at most one record. For it to be used in WHERE clause,
+        # it must be converted to a boolean value using EXISTS.
+        all_clauses = ('EXISTS (%s)' % initial_clause,)
         if hasattr(join_to_query.query, 'extra_where'):
             all_clauses += join_to_query.query.extra_where
         info['where_clause'] = (
