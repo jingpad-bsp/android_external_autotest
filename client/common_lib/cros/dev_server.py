@@ -71,6 +71,9 @@ DEVSERVER_SSH_TIMEOUT_MINS = 1
 # Error message for invalid devserver response.
 ERR_MSG_FOR_INVALID_DEVSERVER_RESPONSE = 'Proxy Error'
 
+# Error message for devserver call timedout.
+ERR_MSG_FOR_TIMED_OUT_CALL = 'timeout'
+
 # The timeout minutes for waiting a devserver staging.
 DEVSERVER_IS_STAGING_RETRY_MIN = 100
 
@@ -263,20 +266,40 @@ def remote_devserver_call(timeout_min=DEVSERVER_IS_STAGING_RETRY_MIN,
 
     def inner_decorator(method):
         label = method.__name__ if hasattr(method, '__name__') else None
-        @retry.retry((urllib2.URLError, error.CmdError,
-                      DevServerOverloadException),
-                     timeout_min=timeout_min,
-                     exception_to_raise=exception_to_raise,
-                     label=label)
-        def wrapper(*args, **kwargs):
-            """This wrapper actually catches the HTTPError."""
-            try:
-                return method(*args, **kwargs)
-            except urllib2.HTTPError as e:
-                error_markup = e.read()
-                raise DevServerException(_strip_http_message(error_markup))
+        def metrics_wrapper(*args, **kwargs):
+            @retry.retry((urllib2.URLError, error.CmdError,
+                          DevServerOverloadException),
+                         timeout_min=timeout_min,
+                         exception_to_raise=exception_to_raise,
+                        label=label)
+            def wrapper():
+                """This wrapper actually catches the HTTPError."""
+                try:
+                    return method(*args, **kwargs)
+                except urllib2.HTTPError as e:
+                    error_markup = e.read()
+                    raise DevServerException(_strip_http_message(error_markup))
 
-        return wrapper
+            try:
+                return wrapper()
+            except Exception as e:
+                if ERR_MSG_FOR_TIMED_OUT_CALL in str(e):
+                    dev_server = None
+                    if args and isinstance(args[0], DevServer):
+                        dev_server = args[0].hostname
+                    elif 'devserver' in kwargs:
+                        dev_server = get_hostname(kwargs['devserver'])
+
+                    logging.debug('RPC call %s has timed out on devserver %s.',
+                                  label, dev_server)
+                    c = metrics.Counter(
+                            'chromeos/autotest/devserver/call_timeout')
+                    c.increment(fields={'dev_server': dev_server,
+                                        'healthy': label})
+
+                raise
+
+        return metrics_wrapper
 
     return inner_decorator
 
@@ -393,12 +416,12 @@ class DevServer(object):
         """
         call = DevServer._build_call(devserver, 'check_health')
         @remote_devserver_call(timeout_min=timeout_min)
-        def make_call():
+        def get_load(devserver=devserver):
             """Inner method that makes the call."""
             return cls.run_call(call, timeout=timeout_min*60)
 
         try:
-            return json.load(cStringIO.StringIO(make_call()))
+            return json.load(cStringIO.StringIO(get_load(devserver=devserver)))
         except Exception as e:
             logging.error('Devserver call failed: "%s", timeout: %s seconds,'
                           ' Error: %s', call, timeout_min * 60, e)
