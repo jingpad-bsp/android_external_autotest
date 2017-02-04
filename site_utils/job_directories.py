@@ -212,6 +212,10 @@ class _JobDirectory(object):
     return True
 
 
+NO_OFFLOAD_README = """These results have been deleted rather than offloaded.
+This is the expected behavior for passing jobs from the Commit Queue."""
+
+
 class RegularJobDirectory(_JobDirectory):
   """Subclass of _JobDirectory for regular test jobs."""
 
@@ -228,7 +232,12 @@ class RegularJobDirectory(_JobDirectory):
       with open(path, 'r') as f:
         gs_off_instructions = json.load(f)
       if gs_off_instructions.get(constants.GS_OFFLOADER_NO_OFFLOAD):
-        shutil.rmtree(os.path.dirname(path))
+        dirname = os.path.dirname(path)
+        shutil.rmtree(dirname)
+        os.mkdir(dirname)
+        breadcrumb_name = os.path.join(dirname, 'logs-removed-readme.txt')
+        with open(breadcrumb_name, 'w') as f:
+          f.write(NO_OFFLOAD_README)
 
     # Finally check if there's anything left to offload.
     if not os.listdir(self._dirname):
