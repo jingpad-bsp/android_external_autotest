@@ -31,7 +31,6 @@ import java.util.Set;
  */
 public class AfeUtils {
     public static final String PLATFORM_SUFFIX = " (platform)";
-    public static final String REINSTALL_TEST_NAME = "autoupdate:repair";
 
     public static final ClassFactory factory = new SiteClassFactory();
 
@@ -244,77 +243,6 @@ public class AfeUtils {
                 if (onSuccess != null) {
                     onSuccess.doCallback(null);
                 }
-            }
-        });
-    }
-
-    private static void scheduleReinstallHelper(JSONArray hosts, JSONObject controlInfo,
-                                                final String messagePrefix,
-                                                final JobCreateListener listener) {
-        String name = "reinstall_" + hosts.get(0).isString().stringValue();
-        if (hosts.size() > 1) {
-            name += "_etc";
-        }
-
-        // Get the option for "Never"
-        JSONValue rebootBefore = staticData.getData("reboot_before_options").isArray().get(0);
-        JSONValue rebootAfter = staticData.getData("reboot_after_options").isArray().get(0);
-
-        JSONObject args = new JSONObject();
-        args.put("name", new JSONString(name));
-        args.put("priority", staticData.getData("default_priority"));
-        args.put("control_file", controlInfo.get("control_file"));
-        args.put("control_type", new JSONString(TestSelector.SERVER_TYPE));
-        args.put("synch_count", controlInfo.get("synch_count"));
-        args.put("timeout_mins", staticData.getData("job_timeout_mins_default"));
-        args.put("max_runtime_mins", staticData.getData("job_max_runtime_mins_default"));
-        args.put("run_verify", JSONBoolean.getInstance(false));
-        args.put("parse_failed_repair", JSONBoolean.getInstance(true));
-        args.put("reboot_before", rebootBefore);
-        args.put("reboot_after", rebootAfter);
-        args.put("hosts", hosts);
-
-        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-        rpcProxy.rpcCall("create_job", args, new JsonRpcCallback() {
-            @Override
-            public void onSuccess(JSONValue result) {
-                NotifyManager.getInstance().showMessage(messagePrefix + " scheduled for reinstall");
-                if (listener != null) {
-                    listener.onJobCreated((int) result.isNumber().doubleValue());
-                }
-            }
-        });
-    }
-
-    public static void scheduleReinstall(final JSONArray hosts, final String messagePrefix,
-                                         final JobCreateListener listener) {
-        // Find the test
-        JSONArray tests = staticData.getData("tests").isArray();
-        JSONObject reinstallTest = null;
-        for (int i = 0; i < tests.size(); i++) {
-            JSONObject test = tests.get(i).isObject();
-            if (test.get("name").isString().stringValue().equals(REINSTALL_TEST_NAME)) {
-                reinstallTest = test;
-                break;
-            }
-        }
-
-        if (reinstallTest == null) {
-            NotifyManager.getInstance().showError("No test found: " + REINSTALL_TEST_NAME);
-            return;
-        }
-
-        JSONObject params = new JSONObject();
-        JSONArray array = new JSONArray();
-        JsonRpcProxy rpcProxy = JsonRpcProxy.getProxy();
-
-        array.set(0, reinstallTest.get("id"));
-        params.put("tests", array);
-        rpcProxy.rpcCall("generate_control_file", params, new JsonRpcCallback() {
-            @Override
-            public void onSuccess(JSONValue controlInfo) {
-                scheduleReinstallHelper(hosts, controlInfo.isObject(),
-                                        messagePrefix, listener);
             }
         });
     }
