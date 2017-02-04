@@ -8,7 +8,7 @@ This module contains the generic CLI processing
 See topic_common.py for a High Level Design and Algorithm.
 
 This file figures out the topic and action from the 2 first arguments
-on the command line and imports the site_<topic> or <topic> module.
+on the command line and imports the <topic> module.
 
 It then creates a <topic>_<action> object, and calls it parses),
 execute() and output() methods.
@@ -21,9 +21,6 @@ import os, sys, re, traceback
 import common
 from autotest_lib.cli import topic_common
 from autotest_lib.server import utils
-
-# Topics that no longer user site_ files
-MERGED_TOPICS = ['host']
 
 
 def main():
@@ -54,21 +51,9 @@ def main():
         sys.argv.insert(1, '-h')
         syntax_obj.parse()
 
-    # The ignore flag should *only* be used by unittests.
-    ignore_site = '--ignore_site_file' in sys.argv
-    if ignore_site:
-        sys.argv.remove('--ignore_site_file')
-
-    # Ignore site logic for topics that have been merged
-    # TODO(jgiorgi): remove all site logic and this hack
-    ignore_site = ignore_site or topic in MERGED_TOPICS
-
     # Import the topic specific file
     cli_dir = os.path.abspath(os.path.dirname(__file__))
-    if (not ignore_site and
-        os.path.exists(os.path.join(cli_dir, 'site_%s.py' % topic))):
-        topic = 'site_%s' % topic
-    elif not os.path.exists(os.path.join(cli_dir, '%s.py' % topic)):
+    if not os.path.exists(os.path.join(cli_dir, '%s.py' % topic)):
         syntax_obj.invalid_syntax('Invalid topic %s' % topic)
     topic_module = common.setup_modules.import_module(topic,
                                                       'autotest_lib.cli')

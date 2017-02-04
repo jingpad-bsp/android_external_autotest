@@ -120,7 +120,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_list_all_no_labels(self):
-        self.run_cmd(argv=['atest', 'host', 'list', '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'list'],
                      rpcs=[('get_hosts', {},
                             True,
                             [{u'status': u'Ready',
@@ -152,7 +152,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_list_all_with_labels(self):
-        self.run_cmd(argv=['atest', 'host', 'list', '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'list'],
                      rpcs=[('get_hosts', {},
                             True,
                             [{u'status': u'Ready',
@@ -185,8 +185,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_list_filter_one_host(self):
-        self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'list', 'host1'],
                      rpcs=[('get_hosts', {'hostname__in': ['host1']},
                             True,
                             [{u'status': u'Ready',
@@ -210,7 +209,7 @@ class host_list_unittest(cli_mock.cli_unittest):
     def test_execute_list_filter_two_hosts(self):
         mfile = cli_mock.create_file('host2')
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '--mlist', mfile.name, '--ignore_site_file'],
+                           '--mlist', mfile.name],
                      # This is a bit fragile as the list order may change...
                      rpcs=[('get_hosts', {'hostname__in': ['host2', 'host1']},
                             True,
@@ -248,7 +247,7 @@ class host_list_unittest(cli_mock.cli_unittest):
     def test_execute_list_filter_two_hosts_one_not_found(self):
         mfile = cli_mock.create_file('host2')
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '--mlist', mfile.name, '--ignore_site_file'],
+                           '--mlist', mfile.name],
                      # This is a bit fragile as the list order may change...
                      rpcs=[('get_hosts', {'hostname__in': ['host2', 'host1']},
                             True,
@@ -273,7 +272,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_two_hosts_none_found(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           'host1', 'host2', '--ignore_site_file'],
+                           'host1', 'host2'],
                      # This is a bit fragile as the list order may change...
                      rpcs=[('get_hosts', {'hostname__in': ['host2', 'host1']},
                             True,
@@ -285,7 +284,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_label(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label3', '--ignore_site_file'],
+                           '-b', 'label3'],
                      rpcs=[('get_hosts', {'labels__name__in': ['label3']},
                             True,
                             [{u'status': u'Ready',
@@ -320,7 +319,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_multi_labels(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label3,label2', '--ignore_site_file'],
+                           '-b', 'label3,label2'],
                      rpcs=[('get_hosts', {'multiple_labels': ['label2',
                                                               'label3']},
                             True,
@@ -355,8 +354,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_three_labels(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label3,label2, label4',
-                           '--ignore_site_file'],
+                           '-b', 'label3,label2, label4'],
                      rpcs=[('get_hosts', {'multiple_labels': ['label2',
                                                               'label3',
                                                               'label4']},
@@ -381,8 +379,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_wild_labels(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label*',
-                           '--ignore_site_file'],
+                           '-b', 'label*'],
                      rpcs=[('get_hosts',
                             {'labels__name__startswith': 'label'},
                             True,
@@ -406,7 +403,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_multi_labels_no_results(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-b', 'label3,label2, ', '--ignore_site_file'],
+                           '-b', 'label3,label2, '],
                      rpcs=[('get_hosts', {'multiple_labels': ['label2',
                                                               'label3']},
                             True,
@@ -418,7 +415,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_label_and_hosts(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '-b', 'label3', 'host2', '--ignore_site_file'],
+                           '-b', 'label3', 'host2'],
                      rpcs=[('get_hosts', {'labels__name__in': ['label3'],
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -454,7 +451,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_label_and_hosts_none(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '-b', 'label3', 'host2', '--ignore_site_file'],
+                           '-b', 'label3', 'host2'],
                      rpcs=[('get_hosts', {'labels__name__in': ['label3'],
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -466,7 +463,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_status(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '-s', 'Ready', '--ignore_site_file'],
+                           '-s', 'Ready'],
                      rpcs=[('get_hosts', {'status__in': ['Ready']},
                             True,
                             [{u'status': u'Ready',
@@ -502,7 +499,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_status_and_hosts(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '-s', 'Ready', 'host2', '--ignore_site_file'],
+                           '-s', 'Ready', 'host2'],
                      rpcs=[('get_hosts', {'status__in': ['Ready'],
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -539,7 +536,7 @@ class host_list_unittest(cli_mock.cli_unittest):
     def test_execute_list_filter_status_and_hosts_none(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
                            '--status', 'Repair',
-                           'host2', '--ignore_site_file'],
+                           'host2'],
                      rpcs=[('get_hosts', {'status__in': ['Repair'],
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -552,7 +549,7 @@ class host_list_unittest(cli_mock.cli_unittest):
     def test_execute_list_filter_statuses_and_hosts_none(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
                            '--status', 'Repair',
-                           'host2', '--ignore_site_file'],
+                           'host2'],
                      rpcs=[('get_hosts', {'status__in': ['Repair'],
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -564,7 +561,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_locked(self):
         self.run_cmd(argv=['atest', 'host', 'list', 'host1',
-                           '--locked', 'host2', '--ignore_site_file'],
+                           '--locked', 'host2'],
                      rpcs=[('get_hosts', {'locked': True,
                                           'hostname__in': ['host2', 'host1']},
                             True,
@@ -600,7 +597,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 
     def test_execute_list_filter_unlocked(self):
         self.run_cmd(argv=['atest', 'host', 'list',
-                           '--unlocked', '--ignore_site_file'],
+                           '--unlocked'],
                      rpcs=[('get_hosts', {'locked': False},
                             True,
                             [{u'status': u'Ready',
@@ -636,8 +633,7 @@ class host_list_unittest(cli_mock.cli_unittest):
 class host_stat_unittest(cli_mock.cli_unittest):
     def test_execute_stat_two_hosts(self):
         # The order of RPCs between host1 and host0 could change...
-        self.run_cmd(argv=['atest', 'host', 'stat', 'host0', 'host1',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'stat', 'host0', 'host1'],
                      rpcs=[('get_hosts', {'hostname': 'host1'},
                             True,
                             [{u'status': u'Ready',
@@ -714,7 +710,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
 
     def test_execute_stat_one_bad_host_verbose(self):
         self.run_cmd(argv=['atest', 'host', 'stat', 'host0',
-                           'host1', '-v', '--ignore_site_file'],
+                           'host1', '-v'],
                      rpcs=[('get_hosts', {'hostname': 'host1'},
                             True,
                             []),
@@ -765,8 +761,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_stat_one_bad_host(self):
-        self.run_cmd(argv=['atest', 'host', 'stat', 'host0', 'host1',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'stat', 'host0', 'host1'],
                      rpcs=[('get_hosts', {'hostname': 'host1'},
                             True,
                             []),
@@ -818,8 +813,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
 
     def test_execute_stat_wildcard(self):
         # The order of RPCs between host1 and host0 could change...
-        self.run_cmd(argv=['atest', 'host', 'stat', 'ho*',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'stat', 'ho*'],
                      rpcs=[('get_hosts', {'hostname__startswith': 'ho'},
                             True,
                             [{u'status': u'Ready',
@@ -892,8 +886,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
 
     def test_execute_stat_wildcard_and_host(self):
         # The order of RPCs between host1 and host0 could change...
-        self.run_cmd(argv=['atest', 'host', 'stat', 'ho*', 'newhost0',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'stat', 'ho*', 'newhost0'],
                      rpcs=[('get_hosts', {'hostname': 'newhost0'},
                             True,
                             [{u'status': u'Ready',
@@ -1006,8 +999,7 @@ class host_stat_unittest(cli_mock.cli_unittest):
 
 class host_jobs_unittest(cli_mock.cli_unittest):
     def test_execute_jobs_one_host(self):
-        self.run_cmd(argv=['atest', 'host', 'jobs', 'host0',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'jobs', 'host0'],
                      rpcs=[('get_host_queue_entries',
                             {'host__hostname': 'host0', 'query_limit': 20,
                              'sort_by': ['-job__id']},
@@ -1068,8 +1060,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_jobs_wildcard(self):
-        self.run_cmd(argv=['atest', 'host', 'jobs', 'ho*',
-                           '--ignore_site_file'],
+        self.run_cmd(argv=['atest', 'host', 'jobs', 'ho*'],
                      rpcs=[('get_hosts', {'hostname__startswith': 'ho'},
                             True,
                             [{u'status': u'Ready',
@@ -1205,8 +1196,7 @@ class host_jobs_unittest(cli_mock.cli_unittest):
 
 
     def test_execute_jobs_one_host_limit(self):
-        self.run_cmd(argv=['atest', 'host', 'jobs', 'host0',
-                           '--ignore_site_file', '-q', '10'],
+        self.run_cmd(argv=['atest', 'host', 'jobs', 'host0', '-q', '10'],
                      rpcs=[('get_host_queue_entries',
                             {'host__hostname': 'host0', 'query_limit': 10,
                              'sort_by': ['-job__id']},
