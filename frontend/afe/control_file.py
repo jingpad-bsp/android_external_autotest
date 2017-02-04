@@ -7,8 +7,11 @@ __author__ = 'showard@google.com (Steve Howard)'
 import re, os
 
 import common
+from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.frontend.afe import model_logic
-from autotest_lib.frontend.afe import site_rpc_interface
+from autotest_lib.server.cros.dynamic_suite import control_file_getter
+from autotest_lib.server.cros.dynamic_suite import suite as SuiteBase
 import frontend.settings
 
 AUTOTEST_DIR = os.path.abspath(os.path.join(
@@ -85,7 +88,7 @@ def _get_tests_stanza(tests, is_server, prepend=None, append=None,
     if not append:
         append = []
     if test_source_build:
-        raw_control_files = site_rpc_interface.get_test_control_files_by_build(
+        raw_control_files = _get_test_control_files_by_build(
                 tests, test_source_build)
     else:
         raw_control_files = [_read_control_file(test) for test in tests]
@@ -196,3 +199,58 @@ def generate_control(tests, is_server=False, profilers=(),
                                            client_control_file,
                                            test_source_build)
     return control_file_text
+
+
+def _get_test_control_files_by_build(tests, build, ignore_invalid_tests=False):
+    """Get the test control files that are available for the specified build.
+
+    @param tests A sequence of test objects to run.
+    @param build: unique name by which to refer to the image.
+    @param ignore_invalid_tests: flag on if unparsable tests are ignored.
+
+    @return: A sorted list of all tests that are in the build specified.
+    """
+    raw_control_files = []
+    # shortcut to avoid staging the image.
+    if not tests:
+        return raw_control_files
+
+    cfile_getter = _initialize_control_file_getter(build)
+    if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+        control_file_info_list = cfile_getter.get_suite_info()
+
+    for test in tests:
+        # Read and parse the control file
+        if SuiteBase.ENABLE_CONTROLS_IN_BATCH:
+            control_file = control_file_info_list[test.path]
+        else:
+            control_file = cfile_getter.get_control_file_contents(
+                    test.path)
+        raw_control_files.append(control_file)
+    return raw_control_files
+
+
+def _initialize_control_file_getter(build):
+    """Get the remote control file getter.
+
+    @param build: unique name by which to refer to a remote build image.
+
+    @return: A control file getter object.
+    """
+    # Stage the test artifacts.
+    try:
+        ds = dev_server.ImageServer.resolve(build)
+        ds_name = ds.hostname
+        build = ds.translate(build)
+    except dev_server.DevServerException as e:
+        raise ValueError('Could not resolve build %s: %s' %
+                         (build, e))
+
+    try:
+        ds.stage_artifacts(image=build, artifacts=['test_suites'])
+    except dev_server.DevServerException as e:
+        raise error.StageControlFileFailure(
+                'Failed to stage %s on %s: %s' % (build, ds_name, e))
+
+    # Collect the control files specified in this build
+    return control_file_getter.DevServerGetter.create(build, ds)
