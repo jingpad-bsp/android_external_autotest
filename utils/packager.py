@@ -8,7 +8,7 @@ import logging, optparse, os, shutil, sys, tempfile
 import common
 from autotest_lib.client.common_lib import utils as client_utils
 from autotest_lib.client.common_lib import global_config, error
-from autotest_lib.client.common_lib import base_packages, packages
+from autotest_lib.client.common_lib import packages
 from autotest_lib.server import utils as server_utils
 
 c = global_config.global_config
@@ -102,7 +102,7 @@ def process_packages(pkgmgr, pkg_type, pkg_names, src_dir,
             temp_dir = tempfile.mkdtemp()
             try:
                 try:
-                    base_packages.check_diskspace(temp_dir)
+                    packages.check_diskspace(temp_dir)
                 except error.RepoDiskFullError, e:
                     msg = ("Temporary directory for packages %s does not have "
                            "enough space available: %s" % (temp_dir, e))
@@ -151,7 +151,7 @@ def process_all_packages(pkgmgr, client_dir, remove=False):
     # Directory where all are kept
     temp_dir = tempfile.mkdtemp()
     try:
-        base_packages.check_diskspace(temp_dir)
+        packages.check_diskspace(temp_dir)
     except error.RepoDiskFullError, e:
         print ("Temp destination for packages is full %s, aborting upload: %s"
                % (temp_dir, e))

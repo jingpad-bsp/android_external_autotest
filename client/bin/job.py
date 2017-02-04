@@ -33,7 +33,7 @@ from autotest_lib.client.bin import test
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import barrier
 from autotest_lib.client.common_lib import base_job
-from autotest_lib.client.common_lib import base_packages
+from autotest_lib.client.common_lib import packages
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import logging_manager
@@ -434,8 +434,8 @@ class base_client_job(base_job.base_job):
         # if we are not using the repos)
         try:
             checksum_file_path = os.path.join(self.pkgmgr.pkgmgr_dir,
-                                              base_packages.CHECKSUM_FILE)
-            self.pkgmgr.fetch_pkg(base_packages.CHECKSUM_FILE,
+                                              packages.CHECKSUM_FILE)
+            self.pkgmgr.fetch_pkg(packages.CHECKSUM_FILE,
                                   checksum_file_path, use_checksum=False)
         except error.PackageFetchError:
             # packaging system might not be working in this case
