@@ -46,7 +46,7 @@ def config_riseplayer(browser, ext_id, app_config_id):
             """ % app_config_id
     #Verify that Risepplayer successfully validates the display id.
     try:
-        kiosk_webview_context.WaitForJavaScriptExpression(
+        kiosk_webview_context.WaitForJavaScriptCondition(
                 verify_app_config_id,
                 timeout=DEFAULT_TIMEOUT)
     except exceptions.TimeoutException:
