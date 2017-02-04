@@ -9,6 +9,7 @@ Copyright Andy Whitcroft, Martin J. Bligh 2006
 
 import copy, os, re, shutil, sys, time, traceback, types, glob
 import logging, getpass, weakref
+from datetime import datetime
 from autotest_lib.client.bin import client_logging_config
 from autotest_lib.client.bin import utils, parallel
 from autotest_lib.client.bin import profilers, harness
@@ -18,6 +19,7 @@ from autotest_lib.client.common_lib import base_job
 from autotest_lib.client.common_lib import error, barrier, logging_manager
 from autotest_lib.client.common_lib import base_packages, packages
 from autotest_lib.client.common_lib import global_config
+from autotest_lib.client.cros import cros_logging
 from autotest_lib.client.tools import html_report
 
 GLOBAL_CONFIG = global_config.global_config
@@ -56,8 +58,8 @@ def _run_test_complete_on_exit(f):
 
 class status_indenter(base_job.status_indenter):
     """Provide a status indenter that is backed by job._record_prefix."""
-    def __init__(self, job):
-        self.job = weakref.proxy(job)  # avoid a circular reference
+    def __init__(self, job_):
+        self.job = weakref.proxy(job_)  # avoid a circular reference
 
 
     @property
@@ -1203,8 +1205,41 @@ def runjob(control, drop_caches, options):
     myjob.complete(0)
 
 
-site_job = utils.import_site_class(
-    __file__, "autotest_lib.client.bin.site_job", "site_job", base_client_job)
+class job(base_client_job):
 
-class job(site_job):
-    pass
+    def __init__(self, *args, **kwargs):
+        base_client_job.__init__(self, *args, **kwargs)
+
+
+    def run_test(self, url, *args, **dargs):
+        log_pauser = cros_logging.LogRotationPauser()
+        passed = False
+        try:
+            log_pauser.begin()
+            passed = base_client_job.run_test(self, url, *args, **dargs)
+            if not passed:
+                # Save the VM state immediately after the test failure.
+                # This is a NOOP if the the test isn't running in a VM or
+                # if the VM is not properly configured to save state.
+                _group, testname = self.pkgmgr.get_package_name(url, 'test')
+                now = datetime.now().strftime('%I:%M:%S.%f')
+                checkpoint_name = '%s-%s' % (testname, now)
+                utils.save_vm_state(checkpoint_name)
+        finally:
+            log_pauser.end()
+        return passed
+
+
+    def reboot(self):
+        self.reboot_setup()
+        self.harness.run_reboot()
+
+        # sync first, so that a sync during shutdown doesn't time out
+        utils.system('sync; sync', ignore_status=True)
+
+        utils.system('reboot </dev/null >/dev/null 2>&1 &')
+        self.quit()
+
+
+    def require_gcc(self):
+        return False
