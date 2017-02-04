@@ -5,8 +5,9 @@
 import collections, logging, os, re, shutil, time
 
 from autotest_lib.client.bin import utils
-from autotest_lib.client.common_lib import error
+from autotest_lib.client.common_lib import base_utils, error
 from autotest_lib.client.cros import cros_logging, sys_power
+from autotest_lib.client.cros.power_utils import PowerPrefChanger
 #pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -87,9 +88,18 @@ class Suspender(object):
     # File written by powerd_suspend containing the hwclock time at resume.
     HWCLOCK_FILE = '/var/run/power_manager/root/hwclock-on-resume'
 
+    # File read by powerd to decide on the state to suspend (mem or freeze).
+    _SUSPEND_STATE_PREF_FILE = 'suspend_to_idle'
+
     def __init__(self, logdir, method=sys_power.do_suspend,
-                 throw=False, device_times=False):
-        """Prepare environment for suspending."""
+                 throw=False, device_times=False, suspend_state=''):
+        """
+        Prepare environment for suspending.
+        @param suspend_state: Suspend state to enter into. It can be
+                              'mem' or 'freeze' or an empty string. If
+                              the suspend state is an empty string,
+                              system suspends to the default pref.
+        """
         self.disconnect_3G_time = 0
         self.successes = []
         self.failures = []
@@ -99,6 +109,7 @@ class Suspender(object):
         self._reset_pm_print_times = False
         self._restart_tlsdated = False
         self._log_file = None
+        self._suspend_state = suspend_state
         if device_times:
             self.device_times = []
 
@@ -137,6 +148,25 @@ class Suspender(object):
                 logging.error('Could not disconnect: %s.', status)
                 self.disconnect_3G_time = -1
 
+        self._configure_suspend_state()
+
+    def _configure_suspend_state(self):
+        """Configure the suspend state as requested."""
+        if self._suspend_state:
+            available_suspend_states = utils.read_one_line('/sys/power/state')
+            if self._suspend_state not in available_suspend_states:
+                raise error.TestNAError('Invalid suspend state: ' +
+                                        self._suspend_state)
+            cmd = 'check_powerd_config --suspend_to_idle'
+            result = base_utils.run(cmd, ignore_status=True)
+            current_state = 'freeze' if result == 0 else 'mem'
+            # Check the current state. If it is same as the one requested,
+            # we don't want to call PowerPrefChanger(restarts powerd).
+            if self._suspend_state == current_state:
+                return
+            should_freeze = '1' if self._suspend_state == 'freeze' else '0'
+            new_prefs = {self._SUSPEND_STATE_PREF_FILE: should_freeze}
+            self._power_pref_changer = PowerPrefChanger(new_prefs)
 
     def _set_pm_print_times(self, on):
         """Enable/disable extra suspend timing output from powerd to syslog."""
@@ -416,7 +446,6 @@ class Suspender(object):
             raise sys_power.SuspendFailure('Unidentified problem.')
         return False
 
-
     def suspend(self, duration=10, ignore_kernel_warns=False):
         """
         Do a single suspend for 'duration' seconds. Estimates the amount of time
@@ -526,6 +555,8 @@ class Suspender(object):
                 utils.system('initctl start tlsdated')
             if self._reset_pm_print_times:
                 self._set_pm_print_times(False)
+        if hasattr(self, '_power_pref_changer'):
+            self._power_pref_changer.finalize()
 
 
     def __del__(self):

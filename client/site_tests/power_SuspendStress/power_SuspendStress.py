@@ -14,7 +14,8 @@ class power_SuspendStress(test.test):
     version = 1
 
     def initialize(self, duration, idle=False, init_delay=0, min_suspend=0,
-                   min_resume=0, check_connection=False, iterations=None):
+                   min_resume=0, check_connection=False, iterations=None,
+                   suspend_state=''):
         """
         Entry point.
 
@@ -30,6 +31,9 @@ class power_SuspendStress(test.test):
                 used for testing is up after resume. Otherwsie we reboot.
         @param iterations: number of times to attempt suspend.  If !=None has
                 precedence over duration.
+        @param suspend_state: Force to suspend to a specific
+                state ("mem" or "freeze"). If the string is empty, suspend
+                state is left to the default pref on the system.
         """
         self._endtime = time.time()
         if duration:
@@ -39,6 +43,7 @@ class power_SuspendStress(test.test):
         self._min_resume = min_resume
         self._check_connection = check_connection
         self._iterations = iterations
+        self._suspend_state = suspend_state
         self._method = sys_power.idle_suspend if idle else sys_power.do_suspend
 
     def _done(self):
@@ -50,7 +55,8 @@ class power_SuspendStress(test.test):
     def run_once(self):
         time.sleep(self._init_delay)
         self._suspender = power_suspend.Suspender(
-                self.resultsdir, method=self._method)
+                self.resultsdir, method=self._method,
+                suspend_state=self._suspend_state)
         # Find the interface which is used for most communication.
         if self._check_connection:
             with open('/proc/net/route') as fh:
