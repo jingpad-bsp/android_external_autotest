@@ -71,8 +71,6 @@ from autotest_lib.site_utils import server_manager_utils
 from autotest_lib.site_utils import stable_version_utils
 
 
-_timer = autotest_stats.Timer('rpc_interface')
-
 _CONFIG = global_config.global_config
 
 # Relevant CrosDynamicSuiteExceptions are defined in client/common_lib/error.py.
@@ -643,7 +641,6 @@ def get_tests(**filter_data):
         models.Test.list_objects(filter_data))
 
 
-@_timer.decorate
 def get_tests_status_counts_by_job_name_label(job_name_prefix, label_name):
     """Gets the counts of all passed and failed tests from the matching jobs.
 
@@ -1854,8 +1851,8 @@ def _get_control_file_by_suite(suite_name):
     @returns: Control file contents as string.
     """
     getter = control_file_getter.FileSystemGetter(
-        [_CONFIG.get_config_value('SCHEDULER',
-                                  'drone_installation_directory')])
+            [_CONFIG.get_config_value('SCHEDULER',
+                                      'drone_installation_directory')])
     return getter.get_control_file_contents_by_name(suite_name)
 
 
