@@ -17,6 +17,7 @@ from autotest_lib.client.common_lib import base_utils
 from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import lsbrelease_utils
+from autotest_lib.client.common_lib.cros.graphite import stats_es_mock
 from autotest_lib.client.cros import constants
 
 
@@ -977,3 +978,8 @@ def poll_for_condition(condition,
             raise TimeoutError(desc)
 
         time.sleep(sleep_interval)
+
+
+class metrics_mock(stats_es_mock.mock_class_base):
+    """mock class for metrics in case chromite is not installed."""
+    pass
