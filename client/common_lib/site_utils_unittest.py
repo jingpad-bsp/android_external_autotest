@@ -12,6 +12,8 @@ from autotest_lib.client.common_lib import utils
 from autotest_lib.client.common_lib.test_utils import mock
 
 
+metrics = utils.metrics_mock
+
 def test_function(arg1, arg2, arg3, arg4=4, arg5=5, arg6=6):
     """Test global function.
     """
@@ -288,6 +290,43 @@ class GetBuiltinEthernetNicNameTest(unittest.TestCase):
         eth = utils.get_built_in_ethernet_nic_name()
         self.assertEqual('eth1', eth)
         self.god.check_playback()
+
+
+class  MockMetricsTest(unittest.TestCase):
+    """Test metrics mock class can handle various metrics calls."""
+
+    def test_Counter(self):
+        """Test the mock class can create an instance and call any method.
+        """
+        c = metrics.Counter('counter')
+        c.increment(fields={'key': 1})
+
+
+    def test_Context(self):
+        """Test the mock class can handle context class.
+        """
+        test_value = None
+        with metrics.SecondsTimer('context'):
+            test_value = 'called_in_context'
+        self.assertEqual('called_in_context', test_value)
+
+
+    def test_decorator(self):
+        """Test the mock class can handle decorator.
+        """
+        class TestClass(object):
+
+            def __init__(self):
+                self.value = None
+
+        test_value = TestClass()
+        test_value.value = None
+        @metrics.SecondsTimerDecorator('decorator')
+        def test(arg):
+            arg.value = 'called_in_decorator'
+
+        test(test_value)
+        self.assertEqual('called_in_decorator', test_value.value)
 
 
 if __name__ == "__main__":
