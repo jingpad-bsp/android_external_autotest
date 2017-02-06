@@ -593,6 +593,18 @@ def delete_files(dir_entry, dest_path, job_complete_time):
     shutil.rmtree(dir_entry)
 
 
+def _format_job_for_failure_reporting(job):
+    """Formats a _JobDirectory for reporting / logging.
+
+    @param job: The _JobDirectory to format.
+    """
+    d = datetime.datetime.fromtimestamp(job.get_failure_time())
+    data = (d.strftime(ERROR_EMAIL_TIME_FORMAT),
+            job.get_failure_count(),
+            job.get_job_directory())
+    return ERROR_EMAIL_DIRECTORY_FORMAT % data
+
+
 def report_offload_failures(joblist):
     """Generate e-mail notification for failed offloads.
 
@@ -600,13 +612,7 @@ def report_offload_failures(joblist):
 
     @param joblist List of jobs to be reported in the message.
     """
-    def _format_job(job):
-        d = datetime.datetime.fromtimestamp(job.get_failure_time())
-        data = (d.strftime(ERROR_EMAIL_TIME_FORMAT),
-                job.get_failure_count(),
-                job.get_job_directory())
-        return ERROR_EMAIL_DIRECTORY_FORMAT % data
-    joblines = [_format_job(job) for job in joblist]
+    joblines = [_format_job_for_failure_reporting(job) for job in joblist]
     joblines.sort()
     email_subject = ERROR_EMAIL_SUBJECT_FORMAT % socket.gethostname()
     email_message = ERROR_EMAIL_REPORT_FORMAT + ''.join(joblines)
