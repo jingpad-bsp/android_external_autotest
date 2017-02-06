@@ -11,7 +11,7 @@
 
 # profiler support in control file generation
 >>> cf_info = rpc_interface.generate_control_file(
-...     tests=['sleeptest'],
+...     client_control_file='print "Hi"\n',
 ...     profilers=['oprofile', 'iostat'])
 >>> print cf_info['control_file']
 def step_init():
@@ -28,7 +28,9 @@ def step1():
     job.profilers.add('iostat')
 <BLANKLINE>
 def step2():
-    job.run_test('testname')
+    print "Hi"
+<BLANKLINE>
+    return locals()
 <BLANKLINE>
 def step3():
     job.profilers.delete('oprofile')
@@ -38,7 +40,7 @@ def step4():
 
 # profile_only=False support in control file generation
 >>> cf_info = rpc_interface.generate_control_file(
-...     tests=['sleeptest'],
+...     client_control_file='print "Hi"\n',
 ...     profilers=['oprofile'],
 ...     profile_only=False)
 >>> print cf_info['control_file']
@@ -55,14 +57,16 @@ def step1():
     job.profilers.add('oprofile')
 <BLANKLINE>
 def step2():
-    job.run_test('testname')
+    print "Hi"
+<BLANKLINE>
+    return locals()
 <BLANKLINE>
 def step3():
     job.profilers.delete('oprofile')
 
 # profile_only=True support in control file generation
 >>> cf_info = rpc_interface.generate_control_file(
-...     tests=['sleeptest'],
+...     client_control_file='print "Hi"\n',
 ...     profilers=['iostat'],
 ...     profile_only=True)
 >>> print cf_info['control_file']
@@ -79,25 +83,12 @@ def step1():
     job.profilers.add('iostat')
 <BLANKLINE>
 def step2():
-    job.run_test('testname')
+    print "Hi"
+<BLANKLINE>
+    return locals()
 <BLANKLINE>
 def step3():
     job.profilers.delete('iostat')
-
-# server-side control file generation
->>> rpc_interface.modify_test('sleeptest', test_type='Server')
->>> cf_info = rpc_interface.generate_control_file(tests=['sleeptest'])
->>> print cf_info['control_file'] #doctest: +NORMALIZE_WHITESPACE
-def step_init():
-    step0()
-<BLANKLINE>
-def step0():
-    job.run_test('testname')
-<BLANKLINE>
-step_init()
-<BLANKLINE>
->>> cf_info['is_server']
-True
 
 # test that multiline quoted strings are not indented
 >>> import common
