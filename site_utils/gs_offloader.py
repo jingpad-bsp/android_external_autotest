@@ -485,9 +485,6 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
             upload_signal_filename = '%s/%s/.GS_UPLOADED' % (
                     RESULTS_DIR, dir_entry)
             if not os.path.isfile(upload_signal_filename):
-                counter = autotest_stats.Counter(STATS_KEY)
-                counter.increment('jobs_offload_started')
-
                 sanitize_dir(dir_entry)
                 if DEFAULT_CTS_RESULTS_GSURI:
                     upload_testresult_files(dir_entry, multiprocessing)
