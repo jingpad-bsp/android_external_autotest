@@ -122,8 +122,12 @@ class security_StatefulPermissions(test.test):
             # android-root not found, so don't prune anything
             return ""
 
+        # On ecryptfs backend, the Android data path is
+        # /home/.shadow/hash/vault/root/ENCRYPTED<android-data>/...
+        # while on ext4crypto backend, it is:
+        # /home/.shadow/hash/mount/ENCRYPTED<root>/ENCRYPTED<android-data>/...
         cmd = "-regextype posix-extended -regex STATEFUL_ROOT/home/.shadow/"
-        cmd += "[[:alnum:]]{40}/vault/root/[^/]*/[^/]* "
+        cmd += "[[:alnum:]]{40}/(vault/root|mount/[^/]*)/[^/]*/[^/]* "
         cmd += "-uid {0} \\( -gid {1} -o -gid {2} \\) -prune -o ".format(
                 aroot_uid + self._AID_SYSTEM,
                 aroot_uid + self._AID_SYSTEM, aroot_uid + self._AID_CACHE)
