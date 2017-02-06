@@ -285,7 +285,7 @@ class InputPlayback(object):
         return fw_id, hw_id
 
 
-    def _find_device_ids(self, device_dir, input_type):
+    def _find_device_ids(self, device_dir, input_type, name):
         """Find the fw_id and hw_id for the given device directory.
 
         Finding fw_id and hw_id applicable only for touchpads, touchscreens,
@@ -293,6 +293,7 @@ class InputPlayback(object):
 
         @param device_dir: the device directory.
         @param input_type: string of input type.
+        @param name: string of input name.
 
         @returns: firmware id, hardware id
 
@@ -332,11 +333,11 @@ class InputPlayback(object):
 
             if os.path.isfile(product_path):
                 product = self._get_contents_of_file(product_path)
-                if input_type == 'touchscreen': # Weida ts, e.g. sumo.
+                if name.startswith('WD'): # Weida ts, e.g. sumo
                     if os.path.isfile(vendor_path):
                         vendor = self._get_contents_of_file(vendor_path)
                         hw_id = vendor + product
-                else: # Synaptics tp: e.g. heli, lulu.
+                else: # Synaptics tp or ts, e.g. heli, lulu, setzer
                     hw_id = product
 
         if not fw_id:
@@ -402,8 +403,8 @@ class InputPlayback(object):
                 device_dir = os.path.join(class_folder, 'device', 'device')
                 if os.path.exists(device_dir):
                     new_device.device_dir = device_dir
-                    fw_id, hw_id = self._find_device_ids(device_dir, input_type)
-                    new_device.fw_id, new_device.hw_id = fw_id, hw_id
+                    new_device.fw_id, new_device.hw_id = self._find_device_ids(
+                            device_dir, input_type, new_device.name)
 
                 if new_device.emulated:
                     self._emulated_device = new_device
