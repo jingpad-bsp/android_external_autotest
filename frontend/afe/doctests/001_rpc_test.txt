@@ -15,6 +15,9 @@
 ...   user.access_level = 100
 ...   user.save()
 ...   thread_local.set_user(user)
+...   user2 = models.User(login='showard')
+...   user2.access_level = 1
+...   user2.save()
 ...
 >>> from autotest_lib.frontend.afe import model_logic
 
@@ -166,9 +169,6 @@ True
 
 
 # users...
->>> rpc_interface.add_user(login='showard')
-2
->>> rpc_interface.modify_user('showard', access_level=1)
 >>> data = rpc_interface.get_users(login='showard')
 >>> data == [{'id': 2,
 ...           'login': 'showard',
@@ -177,9 +177,6 @@ True
 ...           'reboot_after': 'Never',
 ...           'drone_set': None,
 ...           'show_experimental': False}]
-True
->>> rpc_interface.delete_user('showard')
->>> rpc_interface.get_users(login='showard') == []
 True
 
 # acl groups...
@@ -199,7 +196,7 @@ True
 >>> data == [{'id': 1,
 ...           'name': 'Everyone',
 ...           'description': '',
-...           'users': ['debug_user'],
+...           'users': ['debug_user', 'showard'],
 ...           'hosts': []}]
 True
 
@@ -304,8 +301,6 @@ u'label2'
 >>> [acl_group['name'] for acl_group in data]
 [u'Everyone']
 
->>> rpc_interface.add_user(login='showard', access_level=0)
-2
 >>> rpc_interface.add_acl_group(name='my_group')
 2
 
