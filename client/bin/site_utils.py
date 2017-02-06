@@ -23,6 +23,12 @@ _AMD_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/amd_pci_ids.json'
 _INTEL_PCI_IDS_FILE_PATH = '/usr/local/autotest/bin/intel_pci_ids.json'
 _UI_USE_FLAGS_FILE_PATH = '/etc/ui_use_flags.txt'
 
+# Command to check if a package is installed. If the package is not installed
+# the command shall fail.
+_CHECK_PACKAGE_INSTALLED_COMMAND =(
+        "dpkg-query -W -f='${Status}\n' %s | head -n1 | awk '{print $3;}' | "
+        "grep -q '^installed$'")
+
 pciid_to_amd_architecture = {}
 pciid_to_intel_architecture = {}
 
@@ -1156,4 +1162,30 @@ def is_vm():
     except error.CmdError:
         logging.warn('Package virt-what is not installed, default to assume '
                      'it is not a virtual machine.')
+        return False
+
+
+def is_package_installed(package):
+    """Check if a package is installed already.
+
+    @return: True if the package is already installed, otherwise return False.
+    """
+    try:
+        utils.run(_CHECK_PACKAGE_INSTALLED_COMMAND % package)
+        return True
+    except error.CmdError:
+        logging.warn('Package %s is not installed.', package)
+        return False
+
+
+def is_python_package_installed(package):
+    """Check if a Python package is installed already.
+
+    @return: True if the package is already installed, otherwise return False.
+    """
+    try:
+        __import__(package)
+        return True
+    except ImportError:
+        logging.warn('Python package %s is not installed.', package)
         return False
