@@ -67,6 +67,7 @@ REPORT_INTERVAL_SECS = 60 * 60
 
 # Location of Autotest results on disk.
 RESULTS_DIR = '/usr/local/autotest/results'
+FAILED_OFFLOADS_FILE = os.path.join(RESULTS_DIR, 'FAILED_OFFLOADS')
 
 # Hosts sub-directory that contains cleanup, verify and repair jobs.
 HOSTS_SUB_DIR = 'hosts'
@@ -90,6 +91,17 @@ Check %s to triage the issue.
 First failure       Count   Directory name
 =================== ======  ==============================
 ''' % ERROR_EMAIL_HELPER_URL
+# --+----1----+----  ----+  ----+----1----+----2----+----3
+
+FAILED_OFFLOADS_FILE_HEADER = '''
+This is the list of gs_offloader failed jobs.
+Last offloader attempt at %s failed to offload %d files.
+Check http://go/cros-triage-gsoffloader to triage the issue
+
+
+First failure       Count   Directory name
+=================== ======  ==============================
+'''
 # --+----1----+----  ----+  ----+----1----+----2----+----3
 
 ERROR_EMAIL_DIRECTORY_FORMAT = '%19s  %5d  %-1s\n'
@@ -756,6 +768,7 @@ class Offloader(object):
                        j.get_failure_time()]
         self._send_reporting_failure_email(failed_jobs)
         self._report_failed_jobs_count(failed_jobs)
+        self._log_failed_jobs_locally(failed_jobs)
 
 
     def _send_reporting_failure_email(self, failed_jobs):
@@ -795,6 +808,28 @@ class Offloader(object):
             for job in self._open_jobs.values():
                 job.enqueue_offload(queue, self._upload_age_limit)
         self._update_offload_results()
+
+
+    def _log_failed_jobs_locally(self, failed_jobs,
+                                 log_file=FAILED_OFFLOADS_FILE):
+        """Updates a local file listing all the failed jobs.
+
+        The dropped file can be used by the developers to list jobs that we have
+        failed to upload.
+
+        @param failed_jobs: A list of failed _JobDirectory objects.
+        @param log_file: The file to log the failed jobs to.
+        """
+        now = datetime.datetime.now()
+        now_str = now.strftime(ERROR_EMAIL_TIME_FORMAT)
+        formatted_jobs = [_format_job_for_failure_reporting(job)
+                            for job in failed_jobs]
+        formatted_jobs.sort()
+
+        with open(log_file, 'w') as logfile:
+            logfile.write(FAILED_OFFLOADS_FILE_HEADER %
+                          (now_str, len(failed_jobs)))
+            logfile.writelines(formatted_jobs)
 
 
     def _report_current_jobs_count(self):

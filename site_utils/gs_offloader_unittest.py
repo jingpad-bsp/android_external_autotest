@@ -1440,6 +1440,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self._offloader = gs_offloader.Offloader(_get_options([]))
         self.mox.StubOutWithMock(email_manager.manager,
                                  'send_email')
+        self.mox.StubOutWithMock(self._offloader, '_log_failed_jobs_locally')
         self.mox.StubOutWithMock(logging, 'debug')
 
 
@@ -1532,6 +1533,18 @@ class ReportingTests(_TempResultsDirTestBase):
         self.mox.ResetAll()
 
 
+    def _expect_failed_jobs(self, failed_jobs):
+        """Mock expected call to log the failed jobs on local disk.
+
+        TODO(crbug.com/686904): The fact that we have to mock an internal
+        function for this test is evidence that we need to pull out the local
+        file formatter in its own object in a future CL.
+
+        @param failed_jobs: The list of jobs being logged as failed.
+        """
+        self._offloader._log_failed_jobs_locally(failed_jobs)
+
+
     def test_no_jobs(self):
         """Test `_update_offload_results()` with no open jobs.
 
@@ -1541,6 +1554,7 @@ class ReportingTests(_TempResultsDirTestBase):
 
         """
         self._expect_log_message({}, False)
+        self._expect_failed_jobs([])
         self._run_update_no_report({})
 
 
@@ -1556,6 +1570,7 @@ class ReportingTests(_TempResultsDirTestBase):
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_complete()
         self._expect_log_message({}, False)
+        self._expect_failed_jobs([])
         self._run_update_no_report({})
 
 
@@ -1572,6 +1587,7 @@ class ReportingTests(_TempResultsDirTestBase):
             self._add_job(d)
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, False)
+        self._expect_failed_jobs([])
         self._run_update_no_report(new_jobs)
 
 
@@ -1588,6 +1604,7 @@ class ReportingTests(_TempResultsDirTestBase):
             self._add_job(d).set_incomplete()
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, False)
+        self._expect_failed_jobs(mox.IgnoreArg())
         self._run_update_no_report(new_jobs)
 
 
@@ -1607,6 +1624,7 @@ class ReportingTests(_TempResultsDirTestBase):
         self._offloader._next_report_time += _MARGIN_SECS
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, True)
+        self._expect_failed_jobs(mox.IgnoreArg())
         self._run_update_no_report(new_jobs)
 
 
@@ -1623,6 +1641,7 @@ class ReportingTests(_TempResultsDirTestBase):
             self._add_job(d).set_reportable()
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, True)
+        self._expect_failed_jobs(mox.IgnoreArg())
         self._run_update_with_report(new_jobs)
 
 
@@ -1642,6 +1661,7 @@ class ReportingTests(_TempResultsDirTestBase):
             self._add_job(d).set_incomplete()
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, True)
+        self._expect_failed_jobs(mox.IgnoreArg())
         self._run_update_with_report(new_jobs)
 
 
