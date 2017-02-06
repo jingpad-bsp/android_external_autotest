@@ -178,10 +178,11 @@ def main(args):
         print 'Fail to clone prod branch. Error:\n%s\n' % e
         raise
     except subprocess.CalledProcessError as e:
-        print 'Deploy fails when running a subprocess cmd :\n%s\n' % e.output
+        print ('Deploy fails when running a subprocess cmd :\n%s\n'
+               'Below is the push log:\n%s\n' % (e.output, update_log))
         raise
     except Exception as e:
-        print 'Deploy fails with error:\n%s\n' % e
+        print 'Deploy fails with error:\n%s\nPush log:\n%s\n' % (e, update_log)
         raise
 
     # When deploy succeeds, print the update_log.
