@@ -21,7 +21,10 @@ class _UpdateVerifier(hosts.Verifier):
     """
 
     def verify(self, host):
-        if host.is_in_lab():
+        # First, only run this verifier if the host is in the physical lab.
+        # Secondly, skip if the test is being run by test_that, because subnet
+        # restrictions can cause the update to fail.
+        if host.is_in_lab() and host.job and host.job.in_lab:
             host.update_image(wait_for_update=False)
 
     @property
