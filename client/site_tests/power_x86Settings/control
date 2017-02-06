@@ -4,8 +4,6 @@
 
 AUTHOR = "Chrome OS Team"
 NAME = "power_x86Settings"
-ATTRIBUTES = "suite:power_build"
-ATTRIBUTES = "suite:power_build"
 PURPOSE = "Verify that power realted settings are set correctly."
 CRITERIA = """
 This test will fail if any of the power related settings aren't set to
