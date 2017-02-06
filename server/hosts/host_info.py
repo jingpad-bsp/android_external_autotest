@@ -31,6 +31,10 @@ class HostInfo(object):
 
     __slots__ = ['labels', 'attributes']
 
+    # Constants related to exposing labels as more semantic properties.
+    _BOARD_PREFIX = 'board'
+    _OS_PREFIX = 'os'
+
     def __init__(self, labels=None, attributes=None):
         """
         @param labels: (optional list) labels to set on the HostInfo.
@@ -53,12 +57,47 @@ class HostInfo(object):
         for label_prefix in [provision.CROS_VERSION_PREFIX,
                             provision.ANDROID_BUILD_VERSION_PREFIX,
                             provision.TESTBED_BUILD_VERSION_PREFIX]:
-            full_label_prefix = label_prefix + ':'
-            build_labels = [label for label in self.labels
-                            if label.startswith(full_label_prefix)]
+            build_labels = self._get_stripped_labels_with_prefix(label_prefix)
             if build_labels:
-                return build_labels[0][len(full_label_prefix):]
+                return build_labels[0]
         return None
+
+
+    @property
+    def board(self):
+        """Retrieve the board label value for the host.
+
+        @returns: The (stripped) board label, or None if no label is found.
+        """
+        boards = self._get_stripped_labels_with_prefix(self._BOARD_PREFIX)
+        return boards[0] if boards else None
+
+
+    @property
+    def os(self):
+        """Retrieve the os for the host.
+
+        @returns The os (str) or None if no os label exists. Returns the first
+                matching os if mutiple labels are found.
+        """
+        os_list = self._get_stripped_labels_with_prefix(self._OS_PREFIX)
+        return os_list[0] if os_list else None
+
+
+    def _get_stripped_labels_with_prefix(self, prefix):
+        """Search for labels with the prefix and remove the prefix.
+
+        e.g.
+            prefix = blah
+            labels = ['blah:a', 'blahb', 'blah:c', 'doo']
+            returns: ['a', 'c']
+
+        @returns: A list of stripped labels. [] in case of no match.
+        """
+        full_prefix = prefix + ':'
+        prefix_len = len(full_prefix)
+        return [label[prefix_len:] for label in self.labels
+                if label.startswith(full_prefix)]
 
 
     def __str__(self):

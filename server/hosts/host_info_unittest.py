@@ -64,6 +64,31 @@ class HostInfoTest(unittest.TestCase):
         self.assertEqual(self.info.build, 'ab1')
 
 
+    def test_os_no_match(self):
+        """Use proper prefix to search for os information."""
+        self.info.labels = ['something_else', 'cros-version:hana',
+                            'os_without_colon']
+        self.assertIsNone(self.info.os)
+
+    def test_os_returns_first_match(self):
+        """Return the first matching os label."""
+        self.info.labels = ['os:linux', 'os:windows', 'os_corrupted_label']
+        self.assertEqual(self.info.os, 'linux')
+
+
+    def test_board_no_match(self):
+        """Use proper prefix to search for board information."""
+        self.info.labels = ['something_else', 'cros-version:hana', 'os:blah',
+                            'board_my_board_no_colon']
+        self.assertIsNone(self.info.board)
+
+
+    def test_board_returns_first_match(self):
+        """Return the first matching board label."""
+        self.info.labels = ['board_corrupted', 'board:walk', 'board:bored']
+        self.assertEqual(self.info.board, 'walk')
+
+
 class InMemoryHostInfoStoreTest(unittest.TestCase):
     """Basic tests for CachingHostInfoStore using InMemoryHostInfoStore."""
 
