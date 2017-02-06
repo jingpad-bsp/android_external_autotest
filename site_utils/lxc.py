@@ -308,17 +308,31 @@ def install_package_precheck(packages):
                      'skipped.', packages)
         return False
 
+    if not utils.is_in_container():
+        raise error.ContainerError('Package installation is only supported '
+                                   'when test is running inside container.')
+
     return True
 
 
 @metrics.SecondsTimerDecorator('%s/install_packages_duration' % STATS_KEY)
 @retry.retry(error.CmdError, timeout_min=30)
-def install_packages(packages=[], python_packages=[]):
+def install_packages(packages=[], python_packages=[], force_latest=False):
     """Install the given package inside container.
+
+    !!! WARNING !!!
+    This call may introduce several minutes of delay in test run. The best way
+    to avoid such delay is to update the base container used for the test run.
+    File a bug for infra deputy to update the base container with the new
+    package a test requires.
 
     @param packages: A list of names of the packages to install.
     @param python_packages: A list of names of the python packages to install
                             using pip.
+    @param force_latest: True to force to install the latest version of the
+                         package. Default to False, which means skip installing
+                         the package if it's installed already, even with an old
+                         version.
 
     @raise error.ContainerError: If package is attempted to be installed outside
                                  a container.
@@ -328,9 +342,16 @@ def install_packages(packages=[], python_packages=[]):
     if not install_package_precheck(packages or python_packages):
         return
 
-    if not utils.is_in_container():
-        raise error.ContainerError('Package installation is only supported '
-                                   'when test is running inside container.')
+    # If force_latest is False, only install packages that are not already
+    # installed.
+    if not force_latest:
+        packages = [p for p in packages if not utils.is_package_installed(p)]
+        python_packages = [p for p in python_packages
+                           if not utils.is_python_package_installed(p)]
+        if not packages and not python_packages:
+            logging.debug('All packages are installed already, skip reinstall.')
+            return
+
     # Always run apt-get update before installing any container. The base
     # container may have outdated cache.
     utils.run('sudo apt-get update')
