@@ -4,12 +4,14 @@ sql generating and list cleanup library functions that are used
 by both the reporting cli and web interface.
 """
 
-import sys, os, re
+import os
+import re
+import sys
 
-tko = os.path.dirname(__file__)
-sys.path.insert(0, tko)
-
-import display, frontend, db
+import common
+from autotest_lib.tko import db
+from autotest_lib.tko import display
+from autotest_lib.tko import frontend
 
 db = db.db()
 
