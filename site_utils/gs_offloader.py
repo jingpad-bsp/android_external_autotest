@@ -56,8 +56,6 @@ GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
 STATS_KEY = 'gs_offloader.%s' % socket.gethostname().replace('.', '_')
 METADATA_TYPE = 'result_dir_size'
 
-timer = autotest_stats.Timer(STATS_KEY)
-
 # Nice setting for process, the higher the number the lower the priority.
 NICENESS = 10
 
@@ -468,7 +466,8 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
 
     @return offload_dir function to perform the offload.
     """
-    @timer.decorate
+    @metrics.SecondsTimerDecorator(
+            'chromeos/autotest/gs_offloader/job_offload_duration')
     def offload_dir(dir_entry, dest_path, job_complete_time):
         """Offload the specified directory entry to Google storage.
 
