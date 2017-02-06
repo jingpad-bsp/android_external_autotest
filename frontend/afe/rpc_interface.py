@@ -614,28 +614,6 @@ def get_num_hosts(multiple_labels=(), exclude_only_if_needed_labels=False,
 
 # tests
 
-def add_test(name, test_type, path, author=None, dependencies=None,
-             experimental=True, run_verify=None, test_class=None,
-             test_time=None, test_category=None, description=None,
-             sync_count=1):
-    return models.Test.add_object(name=name, test_type=test_type, path=path,
-                                  author=author, dependencies=dependencies,
-                                  experimental=experimental,
-                                  run_verify=run_verify, test_time=test_time,
-                                  test_category=test_category,
-                                  sync_count=sync_count,
-                                  test_class=test_class,
-                                  description=description).id
-
-
-def modify_test(id, **data):
-    models.Test.smart_get(id).update_object(data)
-
-
-def delete_test(id):
-    models.Test.smart_get(id).delete()
-
-
 def get_tests(**filter_data):
     return rpc_utils.prepare_for_serialization(
         models.Test.list_objects(filter_data))
