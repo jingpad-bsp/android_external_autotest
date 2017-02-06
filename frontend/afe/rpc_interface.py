@@ -672,18 +672,6 @@ def get_profilers(**filter_data):
 
 # users
 
-def add_user(login, access_level=None):
-    return models.User.add_object(login=login, access_level=access_level).id
-
-
-def modify_user(id, **data):
-    models.User.smart_get(id).update_object(data)
-
-
-def delete_user(id):
-    models.User.smart_get(id).delete()
-
-
 def get_users(**filter_data):
     return rpc_utils.prepare_for_serialization(
         models.User.list_objects(filter_data))
