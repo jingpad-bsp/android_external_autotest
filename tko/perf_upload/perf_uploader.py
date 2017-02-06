@@ -13,7 +13,12 @@ must be logged in with an @google.com account to view chromeOS perf data there.
 
 """
 
-import httplib, json, os, re, urllib, urllib2
+import httplib
+import json
+import os
+import re
+import urllib
+import urllib2
 
 import common
 from autotest_lib.client.cros import constants
