@@ -39,7 +39,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib.cros.graphite import autotest_stats
 from autotest_lib.scheduler import email_manager
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
@@ -52,9 +51,6 @@ from chromite.lib import ts_mon_config
 
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
         'CROS', 'gs_offloading_enabled', type=bool, default=True)
-
-STATS_KEY = 'gs_offloader.%s' % socket.gethostname().replace('.', '_')
-METADATA_TYPE = 'result_dir_size'
 
 # Nice setting for process, the higher the number the lower the priority.
 NICENESS = 10
