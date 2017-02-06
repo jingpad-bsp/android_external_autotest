@@ -15,9 +15,11 @@ import traceback
 import common
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
+from autotest_lib.server import site_utils
 from autotest_lib.server.cros.dynamic_suite import constants
 from autotest_lib.site_utils import job_overhead
 from autotest_lib.site_utils import sponge_utils
@@ -27,8 +29,8 @@ from autotest_lib.tko.perf_upload import perf_uploader
 
 
 _ParseOptions = collections.namedtuple(
-    'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report'])
-
+    'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
+                     'datastore_creds', 'export_to_gcloud_path'])
 
 def parse_args():
     """Parse args."""
@@ -65,10 +67,22 @@ def parse_args():
                       default=False)
     parser.add_option("--suite-report",
                       help=("Allows parsing job to attempt to create a suite "
-                            "timing report, if it detects that the job being "
+                            "timeline report, if it detects that the job being "
                             "parsed is a suite job."),
                       dest="suite_report", action="store_true",
                       default=False)
+    parser.add_option("--datastore-creds",
+                      help=("The path to gcloud datastore credentials file, "
+                            "which will be used to upload suite timeline "
+                            "report to gcloud. If not specified, the one "
+                            "defined in shadow_config will be used."),
+                      dest="datastore_creds", action="store", default=None)
+    parser.add_option("--export-to-gcloud-path",
+                      help=("The path to export_to_gcloud script. Please find "
+                            "chromite path on your server. The script is under "
+                            "chromite/bin/."),
+                      dest="export_to_gcloud_path", action="store",
+                      default=None)
     options, args = parser.parse_args()
 
     # we need a results directory
@@ -77,6 +91,26 @@ def parse_args():
                          "be provided")
         parser.print_help()
         sys.exit(1)
+
+    if not options.datastore_creds:
+        gcloud_creds = global_config.global_config.get_config_value(
+            'GCLOUD', 'cidb_datastore_writer_creds', default=None)
+        options.datastore_creds = (site_utils.get_creds_abspath(gcloud_creds)
+                                   if gcloud_creds else None)
+
+    if not options.export_to_gcloud_path:
+        export_script = 'chromiumos/chromite/bin/export_to_gcloud'
+        # If it is a lab server, the script is under ~chromeos-test/
+        if os.path.exists(os.path.expanduser('~chromeos-test/%s' %
+                                             export_script)):
+            path = os.path.expanduser('~chromeos-test/%s' % export_script)
+        # If it is a local workstation, it is probably under ~/
+        elif os.path.exists(os.path.expanduser('~/%s' % export_script)):
+            path = os.path.expanduser('~/%s' % export_script)
+        # If it is not found anywhere, the default will be set to None.
+        else:
+            path = None
+        options.export_to_gcloud_path = path
 
     # pass the options back
     return options, args
@@ -212,6 +246,8 @@ def parse_one(db, jobname, path, parse_options):
     mail_on_failure = parse_options.mail_on_failure
     dry_run = parse_options.dry_run
     suite_report = parse_options.suite_report
+    datastore_creds = parse_options.datastore_creds
+    export_to_gcloud_path = parse_options.export_to_gcloud_path
 
     tko_utils.dprint("\nScanning %s (%s)" % (jobname, path))
     old_job_idx = db.find_job(jobname)
@@ -377,9 +413,22 @@ def parse_one(db, jobname, path, parse_options):
             subprocess.check_output(dump_cmd, shell=True)
             tko_utils.dprint('Successfully finish dumping suite timing report')
 
-        #TODO(shuqianz), add code to upload the event.log to datastore later
+            if (datastore_creds and export_to_gcloud_path
+                and os.path.exists(export_to_gcloud_path)):
+                upload_cmd = ("%s %s %s" %
+                              (export_to_gcloud_path, datastore_creds,
+                               timing_log))
+                tko_utils.dprint('Start exporting timeline report to gcloud')
+                subprocess.check_output(upload_cmd, shell=True)
+                tko_utils.dprint('Successfully export timeline report to '
+                                 'gcloud')
+            else:
+                tko_utils.dprint('DEBUG: skip exporting suite timeline to '
+                                 'gcloud, because either gcloud creds or '
+                                 'export_to_gcloud script is not found.')
     except Exception as e:
-        tko_utils.dprint("WARNING: fail to dump suit report. Error:\n%s" % e)
+        tko_utils.dprint("WARNING: fail to dump/export suite report. "
+                         "Error:\n%s" % e)
 
     # Mark GS_OFFLOADER_NO_OFFLOAD in gs_offloader_instructions at the end of
     # the function, so any failure, e.g., db connection error, will stop
@@ -513,7 +562,9 @@ def main():
 
     options, args = parse_args()
     parse_options = _ParseOptions(options.reparse, options.mailit,
-                                  options.dry_run, options.suite_report)
+                                  options.dry_run, options.suite_report,
+                                  options.datastore_creds,
+                                  options.export_to_gcloud_path)
     results_dir = os.path.abspath(args[0])
     assert os.path.exists(results_dir)
 
