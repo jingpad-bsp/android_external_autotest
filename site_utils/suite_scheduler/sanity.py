@@ -20,6 +20,7 @@ _WHITELISTED_SUITES = (
     'arc-weekly',
     'crosbolt_arc_perf',
     'crosbolt_arc_perf_nightly',
+    'crosbolt_arc_perf_perbuild',
 )
 
 def CheckControlFileExistence(tasks):
