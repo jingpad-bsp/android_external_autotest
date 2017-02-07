@@ -1199,7 +1199,7 @@ class Suite(object):
 
 
     @staticmethod
-    def find_all_tests(cf_getter, suite_name='', add_experimental=False,
+    def _find_all_tests(cf_getter, suite_name='', add_experimental=False,
                        forgiving_parser=True, run_prod_code=False):
         """
         Function to scan through all tests and find all tests.
@@ -1278,8 +1278,8 @@ class Suite(object):
         return tests
 
 
-    @staticmethod
-    def find_and_parse_tests(cf_getter, predicate, suite_name='',
+    @classmethod
+    def find_and_parse_tests(cls, cf_getter, predicate, suite_name='',
                              add_experimental=False, forgiving_parser=True,
                              run_prod_code=False):
         """
@@ -1314,9 +1314,9 @@ class Suite(object):
                 file text added in |text| attribute. Results are sorted based
                 on the TIME setting in control file, slowest test comes first.
         """
-        tests = Suite.find_all_tests(cf_getter, suite_name, add_experimental,
-                                     forgiving_parser,
-                                     run_prod_code=run_prod_code)
+        tests = cls._find_all_tests(cf_getter, suite_name, add_experimental,
+                                    forgiving_parser,
+                                    run_prod_code=run_prod_code)
         logging.debug('Parsed %s control files.', len(tests))
         tests = [test for test in tests.itervalues() if predicate(test)]
         tests.sort(key=lambda t:
@@ -1325,8 +1325,8 @@ class Suite(object):
         return tests
 
 
-    @staticmethod
-    def find_possible_tests(cf_getter, predicate, suite_name='', count=10):
+    @classmethod
+    def find_possible_tests(cls, cf_getter, predicate, suite_name='', count=10):
         """
         Function to scan through all tests and find possible tests.
 
@@ -1348,9 +1348,9 @@ class Suite(object):
         @return list of top names that similar to the given test, sorted by
                 match ratio.
         """
-        tests = Suite.find_all_tests(cf_getter, suite_name,
-                                     add_experimental=True,
-                                     forgiving_parser=True)
+        tests = cls._find_all_tests(cf_getter, suite_name,
+                                    add_experimental=True,
+                                    forgiving_parser=True)
         logging.debug('Parsed %s control files.', len(tests))
         similarities = {}
         for test in tests.itervalues():
