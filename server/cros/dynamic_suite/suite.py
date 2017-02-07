@@ -1066,9 +1066,7 @@ class Suite(object):
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
-            # File bug when failure is one of the _FILE_BUG_SUITES,
-            # otherwise send an email to the owner anc cc.
-            if self._tag in _FILE_BUG_SUITES:
+            if self._should_file_bugs:
                 bug_id, bug_count = bug_reporter.report(
                         self._get_test_bug(result),
                         self._get_bug_template(result, bug_template))
@@ -1152,6 +1150,17 @@ class Suite(object):
                 site_utils.get_chrome_version(job_views),
                 self._tag,
                 result)
+
+
+    @property
+    def _should_file_bugs(self):
+        """Return whether bugs should be filed.
+
+        @returns: bool
+        """
+        # File bug when failure is one of the _FILE_BUG_SUITES,
+        # otherwise send an email to the owner anc cc.
+        return self._tag in _FILE_BUG_SUITES
 
 
     def abort(self):
