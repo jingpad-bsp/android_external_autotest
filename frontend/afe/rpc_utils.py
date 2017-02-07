@@ -110,13 +110,10 @@ def gather_unique_dicts(dict_iterable):
     """\
     Pick out unique objects (by ID) from an iterable of object dicts.
     """
-    id_set = set()
-    result = []
+    objects = collections.OrderedDict()
     for obj in dict_iterable:
-        if obj['id'] not in id_set:
-            id_set.add(obj['id'])
-            result.append(obj)
-    return result
+        objects.setdefault(obj['id'], obj)
+    return objects.values()
 
 
 def extra_job_status_filters(not_yet_run=False, running=False, finished=False):
