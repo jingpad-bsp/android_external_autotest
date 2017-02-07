@@ -901,7 +901,7 @@ class Suite(object):
                 logging.debug('Job %d created to retry job %d. '
                               'Have retried for %d time(s)',
                               job.id, retry_for, retry_count)
-            self._remember_provided_job_id(job)
+            self._remember_job_keyval(job)
             return job
 
 
@@ -1053,10 +1053,7 @@ class Suite(object):
                              filing options for failures in this suite.
         """
         result.record_all(record)
-        if job_status.is_for_infrastructure_fail(result):
-            self._remember_provided_job_id(result)
-        elif isinstance(result, Status):
-            self._remember_test_status_job_id(result)
+        self._remember_job_keyval(result)
 
         if self._job_retry and self._retry_handler.should_retry(result):
             new_job = self._schedule_test(
@@ -1167,16 +1164,12 @@ class Suite(object):
             self._afe.run('abort_host_queue_entries', job__id__in=job_ids)
 
 
-    # TODO(ayatane): This is identical to _remember_test_status_job_id.  It
-    # suggests that we can factor out a job-like interface that both jobs and
-    # statuses support so we can merge the two methods to work on job-like
-    # objects.  This deduplication can probably be applied to other places.
-    def _remember_provided_job_id(self, job):
+    def _remember_job_keyval(self, job):
         """
         Record provided job as a suite job keyval, for later referencing.
 
-        @param job: some representation of a job, including id, test_name
-                    and owner
+        @param job: some representation of a job that has the attributes:
+                    id, test_name, and owner
         """
         if self._results_dir and job.id and job.owner and job.test_name:
             job_id_owner = '%s-%s' % (job.id, job.owner)
@@ -1185,24 +1178,6 @@ class Suite(object):
             utils.write_keyval(
                 self._results_dir,
                 {hashlib.md5(job.test_name).hexdigest(): job_id_owner})
-
-    # TODO(ayatane): This is identical to _remember_provided_job_id.  See that
-    # method for details.
-    def _remember_test_status_job_id(self, status):
-        """
-        Record provided status as a test status keyval, for later referencing.
-
-        @param status: Test status, including properties such as id, test_name
-                       and owner.
-        """
-        if (self._results_dir
-                and status.id and status.owner and status.test_name):
-            test_id_owner = '%s-%s' % (status.id, status.owner)
-            logging.debug('Adding status keyval for %s=%s',
-                          status.test_name, test_id_owner)
-            utils.write_keyval(
-                self._results_dir,
-                {hashlib.md5(status.test_name).hexdigest(): test_id_owner})
 
 
     @staticmethod
