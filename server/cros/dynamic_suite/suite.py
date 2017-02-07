@@ -1066,14 +1066,12 @@ class Suite(object):
         # finish, we would lose the chance to file a bug for the
         # original job.
         if self._should_report(result):
-            merged_template = self._get_bug_template(result, bug_template)
-
             # File bug when failure is one of the _FILE_BUG_SUITES,
             # otherwise send an email to the owner anc cc.
             if self._tag in _FILE_BUG_SUITES:
                 bug_id, bug_count = bug_reporter.report(
                         self._get_test_bug(result),
-                        merged_template)
+                        self._get_bug_template(result, bug_template))
 
                 # We use keyvals to communicate bugs filed with
                 # run_suite.
@@ -1097,8 +1095,9 @@ class Suite(object):
                 # packages to use other functions in this module.
                 from autotest_lib.server.cros.dynamic_suite import reporting
 
-                reporting.send_email(self._get_test_bug(result),
-                                     merged_template)
+                reporting.send_email(
+                        self._get_test_bug(result),
+                        self._get_bug_template(result, bug_template))
 
 
     def _get_bug_template(self, result, bug_template):
