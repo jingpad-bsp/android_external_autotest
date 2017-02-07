@@ -692,6 +692,8 @@ class Suite(object):
     def stable_tests(self):
         """
         |self.tests|, filtered for non-experimental tests.
+
+        @returns: list
         """
         return filter(lambda t: not t.experimental, self.tests)
 
@@ -700,6 +702,8 @@ class Suite(object):
     def unstable_tests(self):
         """
         |self.tests|, filtered for experimental tests.
+
+        @returns: list
         """
         return filter(lambda t: t.experimental, self.tests)
 
@@ -910,14 +914,7 @@ class Suite(object):
         Status('INFO', 'Start %s' % self._tag).record_result(record)
         scheduled_test_names = []
         try:
-            tests = self.stable_tests
-            if add_experimental:
-                for test in self.unstable_tests:
-                    if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
-                        test.name = constants.EXPERIMENTAL_PREFIX + test.name
-                    tests.append(test)
-
-            for test in tests:
+            for test in self._get_tests_to_schedule(add_experimental):
                 scheduled_job = self._schedule_test(record, test)
                 if scheduled_job is not None:
                     scheduled_test_names.append(test.name)
@@ -938,6 +935,21 @@ class Suite(object):
                     initial_jobs_to_tests=self._jobs_to_tests,
                     max_retries=self._max_retries)
         return len(scheduled_test_names)
+
+
+    def _get_tests_to_schedule(self, add_experimental=True):
+        """Return a list of tests to be scheduled for this suite.
+
+        @param add_experimental: schedule experimental tests as well, or not.
+        @returns: list of tests (ControlData objects)
+        """
+        tests = self.stable_tests
+        if add_experimental:
+            for test in self.unstable_tests:
+                if not test.name.startswith(constants.EXPERIMENTAL_PREFIX):
+                    test.name = constants.EXPERIMENTAL_PREFIX + test.name
+                tests.append(test)
+        return tests
 
 
     def _make_scheduled_tests_keyvals(self, scheduled_test_names):
