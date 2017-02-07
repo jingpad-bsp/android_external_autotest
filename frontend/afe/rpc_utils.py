@@ -39,7 +39,7 @@ def prepare_for_serialization(objects):
     """
     if (isinstance(objects, list) and len(objects) and
         isinstance(objects[0], dict) and 'id' in objects[0]):
-        objects = gather_unique_dicts(objects)
+        objects = _gather_unique_dicts(objects)
     return _prepare_data(objects)
 
 
@@ -106,7 +106,7 @@ def raw_http_response(response_data, content_type=None):
     return response
 
 
-def gather_unique_dicts(dict_iterable):
+def _gather_unique_dicts(dict_iterable):
     """\
     Pick out unique objects (by ID) from an iterable of object dicts.
     """
