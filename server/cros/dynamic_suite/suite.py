@@ -662,7 +662,7 @@ class Suite(object):
         self._pool = pool
         self._jobs = []
         self._jobs_to_tests = {}
-        self.tests = Suite.find_and_parse_tests(
+        self.tests = self.find_and_parse_tests(
                 self._cf_getter,
                 lambda control_data: all(f(control_data) for f in predicates),
                 self._tag,
