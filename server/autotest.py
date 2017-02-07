@@ -520,7 +520,7 @@ class BaseAutotest(installable_object.InstallableObject):
                             *args, **dargs)
 
 
-class _BaseRun(object):
+class _Run(object):
     """
     Represents a run of autotest control file.  This class maintains
     all the state necessary as an autotest control file is executed.
@@ -1244,10 +1244,6 @@ SiteAutotest = client_utils.import_site_class(
     BaseAutotest)
 
 
-_SiteRun = client_utils.import_site_class(
-    __file__, "autotest_lib.server.site_autotest", "_SiteRun", _BaseRun)
-
-
 SiteClientLogger = client_utils.import_site_class(
     __file__, "autotest_lib.server.site_autotest", "SiteClientLogger",
     BaseClientLogger)
@@ -1258,8 +1254,4 @@ class Autotest(SiteAutotest):
 
 
 class client_logger(SiteClientLogger):
-    pass
-
-
-class _Run(_SiteRun):
     pass
