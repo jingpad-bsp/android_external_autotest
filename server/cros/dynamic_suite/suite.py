@@ -1067,22 +1067,7 @@ class Suite(object):
         # original job.
         if self._should_report(result):
             if self._should_file_bugs:
-                bug_id, bug_count = bug_reporter.report(
-                        self._get_test_bug(result),
-                        self._get_bug_template(result, bug_template))
-
-                # We use keyvals to communicate bugs filed with
-                # run_suite.
-                if bug_id is not None:
-                    bug_keyvals = tools.create_bug_keyvals(
-                            result.id, result.test_name,
-                            (bug_id, bug_count))
-                    try:
-                        utils.write_keyval(self._results_dir,
-                                           bug_keyvals)
-                    except ValueError:
-                        logging.error('Unable to log bug keyval for:%s',
-                                      result.test_name)
+                self._file_bug(result, bug_reporter, bug_template)
             else:
                 # reporting modules have dependency on external
                 # packages, e.g., httplib2 Such dependency can cause
@@ -1161,6 +1146,31 @@ class Suite(object):
         # File bug when failure is one of the _FILE_BUG_SUITES,
         # otherwise send an email to the owner anc cc.
         return self._tag in _FILE_BUG_SUITES
+
+
+    def _file_bug(self, result, bug_reporter, bug_template):
+        """File a bug for a test job result.
+
+        @param result: Status instance for job.
+        @param bug_reporter: Reporter instance for reporting bugs.
+        @param bug_template: A template dictionary specifying the default bug
+                             filing options for failures in this suite.
+        """
+        bug_id, bug_count = bug_reporter.report(
+                self._get_test_bug(result),
+                self._get_bug_template(result, bug_template))
+
+        # We use keyvals to communicate bugs filed with run_suite.
+        if bug_id is not None:
+            bug_keyvals = tools.create_bug_keyvals(
+                    result.id, result.test_name,
+                    (bug_id, bug_count))
+            try:
+                utils.write_keyval(self._results_dir,
+                                   bug_keyvals)
+            except ValueError:
+                logging.error('Unable to log bug keyval for:%s',
+                              result.test_name)
 
 
     def abort(self):
