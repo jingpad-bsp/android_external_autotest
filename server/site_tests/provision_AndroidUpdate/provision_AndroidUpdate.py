@@ -64,8 +64,9 @@ class provision_AndroidUpdate(test.test):
             raise error.TestFail('No build provided and this is not a repair '
                                  ' job.')
 
+        info = host.host_info_store.get()
         # If the host is already on the correct build, we have nothing to do.
-        if not force and afe_utils.get_build(host) == value:
+        if not force and info.build == value:
             # We can't raise a TestNA, as would make sense, as that makes
             # job.run_test return False as if the job failed.  However, it'd
             # still be nice to get this into the status.log, so we manually
@@ -74,24 +75,21 @@ class provision_AndroidUpdate(test.test):
                             'Host already running %s' % value)
             return
 
-        os_type = afe_utils.get_os(host)
-        board = afe_utils.get_board(host)
-        logging.debug('Host %s is board type: %s', host, board)
-
+        logging.debug('Host %s is board type: %s', host, info.board)
         if repair:
             # TODO(kevcheng): remove the board.split() line when all android
             # devices have their board label updated to have no android in
             # there.
-            board = board.split('-')[-1]
+            board = info.board.split('-')[-1]
             value = afe_utils.get_stable_android_version(board)
             if not value:
                 raise error.TestFail('No stable version assigned for board: '
                                      '%s' % board)
 
         if not isinstance(host, testbed.TestBed):
-            url, _ = host.stage_build_for_install(value, os_type=os_type)
+            url, _ = host.stage_build_for_install(value, os_type=info.os)
             logging.debug('Installing image from: %s', url)
-            args = {'build_url': url, 'os_type': os_type}
+            args = {'build_url': url, 'os_type': info.os}
         else:
             logging.debug('Installing image: %s', value)
             args = {'image': value}
