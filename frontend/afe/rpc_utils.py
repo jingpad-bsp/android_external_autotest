@@ -234,7 +234,7 @@ def get_host_query(multiple_labels, exclude_only_if_needed_labels,
         assert 'extra_args' not in filter_data
         filter_data['extra_args'] = extra_host_filters(multiple_labels)
         return models.Host.query_objects(filter_data, initial_query=query)
-    except models.Label.DoesNotExist as e:
+    except models.Label.DoesNotExist:
         return models.Host.objects.none()
 
 
