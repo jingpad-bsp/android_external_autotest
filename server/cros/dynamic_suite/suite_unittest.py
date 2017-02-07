@@ -468,7 +468,7 @@ class SuiteTest(mox.MoxTestBase):
         """
         record_job_id = suite and suite._results_dir
         if record_job_id:
-            self.mox.StubOutWithMock(suite, '_remember_provided_job_id')
+            self.mox.StubOutWithMock(suite, '_remember_job_keyval')
         recorder.record_entry(
             StatusContains.CreateFromStrings('INFO', 'Start %s' % self._TAG),
             log_in_subdir=False)
@@ -520,7 +520,7 @@ class SuiteTest(mox.MoxTestBase):
                 fake_job = FakeJob(id=n)
                 job_mock.AndReturn(fake_job)
                 if record_job_id:
-                    suite._remember_provided_job_id(fake_job)
+                    suite._remember_job_keyval(fake_job)
                 n += 1
 
 
