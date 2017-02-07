@@ -11,9 +11,14 @@ import base_event, board_enumerator, build_event, deduping_scheduler
 import task, timed_event
 
 import common
+from autotest_lib.client.common_lib import utils
 from autotest_lib.server import utils
 
-from chromite.lib import metrics
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 POOL_SIZE = 32
 

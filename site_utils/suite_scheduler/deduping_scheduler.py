@@ -12,7 +12,11 @@ from autotest_lib.client.common_lib import global_config
 from autotest_lib.server import site_utils
 from autotest_lib.server.cros import provision
 from autotest_lib.server.cros.dynamic_suite import frontend_wrappers, reporting
-from chromite.lib import metrics
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = site_utils.metrics_mock
 
 
 CONFIG = global_config.global_config

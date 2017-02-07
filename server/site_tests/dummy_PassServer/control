@@ -16,7 +16,13 @@ DOC = """
 This is a helper test that will succeed.
 """
 
-from chromite.lib import metrics
+from autotest_lib.client.common_lib import utils
+
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
+
 
 def run(machine):
     job.run_test('dummy_PassServer',

@@ -20,7 +20,6 @@ import os
 import re
 
 import common
-from chromite.lib import metrics
 
 from autotest_lib.frontend.afe import rpc_client_lib
 from autotest_lib.client.common_lib import control_data
@@ -29,6 +28,10 @@ from autotest_lib.client.common_lib import priorities
 from autotest_lib.client.common_lib import utils
 from autotest_lib.tko import db
 
+try:
+    from chromite.lib import metrics
+except ImportError:
+    metrics = utils.metrics_mock
 
 try:
     from autotest_lib.server.site_common import site_utils as server_utils
