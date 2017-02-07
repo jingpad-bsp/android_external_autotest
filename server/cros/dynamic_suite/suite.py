@@ -276,7 +276,7 @@ class Suite(object):
 
 
     @staticmethod
-    def create_ds_getter(build, devserver):
+    def _create_ds_getter(build, devserver):
         """
         @param build: the build on which we're running this suite.
         @param devserver: the devserver which contains the build.
@@ -461,8 +461,8 @@ class Suite(object):
                                                  b=test_file_pattern).ratio()))
 
 
-    @staticmethod
-    def list_all_suites(build, devserver, cf_getter=None):
+    @classmethod
+    def list_all_suites(cls, build, devserver, cf_getter=None):
         """
         Parses all ControlData objects with a SUITE tag and extracts all
         defined suite names.
@@ -475,7 +475,7 @@ class Suite(object):
         @return list of suites
         """
         if cf_getter is None:
-            cf_getter = Suite.create_ds_getter(build, devserver)
+            cf_getter = cls._create_ds_getter(build, devserver)
 
         suites = set()
         predicate = lambda t: hasattr(t, 'suite')
@@ -514,8 +514,8 @@ class Suite(object):
         return test_source_build
 
 
-    @staticmethod
-    def create_from_predicates(predicates, builds, board, devserver,
+    @classmethod
+    def create_from_predicates(cls, predicates, builds, board, devserver,
                                cf_getter=None, name='ad_hoc_suite',
                                run_prod_code=False, **dargs):
         """
@@ -546,17 +546,17 @@ class Suite(object):
         """
         if cf_getter is None:
             if run_prod_code:
-                cf_getter = Suite.create_fs_getter(_AUTOTEST_DIR)
+                cf_getter = cls.create_fs_getter(_AUTOTEST_DIR)
             else:
                 build = Suite.get_test_source_build(builds, **dargs)
-                cf_getter = Suite.create_ds_getter(build, devserver)
+                cf_getter = cls._create_ds_getter(build, devserver)
 
         return Suite(predicates,
                      name, builds, board, cf_getter, run_prod_code, **dargs)
 
 
-    @staticmethod
-    def create_from_name(name, builds, board, devserver, cf_getter=None,
+    @classmethod
+    def create_from_name(cls, name, builds, board, devserver, cf_getter=None,
                          **dargs):
         """
         Create a Suite using a predicate based on the SUITE control file var.
@@ -578,8 +578,8 @@ class Suite(object):
         @return a Suite instance.
         """
         if cf_getter is None:
-            build = Suite.get_test_source_build(builds, **dargs)
-            cf_getter = Suite.create_ds_getter(build, devserver)
+            build = cls.get_test_source_build(builds, **dargs)
+            cf_getter = cls._create_ds_getter(build, devserver)
 
         return Suite([Suite.name_in_tag_predicate(name)],
                      name, builds, board, cf_getter, **dargs)
