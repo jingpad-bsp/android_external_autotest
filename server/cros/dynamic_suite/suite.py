@@ -344,21 +344,6 @@ class Suite(object):
 
 
     @staticmethod
-    def not_in_blacklist_predicate(blacklist):
-        """Returns predicate that takes a control file and looks for its
-        path to not be in given blacklist.
-
-        @param blacklist: A list of strings both paths on control_files that
-                          should be blacklisted.
-
-        @return a callable that takes a ControlData and looks for it to be
-                absent from blacklist.
-        """
-        return lambda t: hasattr(t, 'path') and \
-                         not any(b.endswith(t.path) for b in blacklist)
-
-
-    @staticmethod
     def test_name_equals_predicate(test_name):
         """Returns predicate that matched based on a test's name.
 
