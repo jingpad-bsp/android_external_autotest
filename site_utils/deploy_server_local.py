@@ -152,10 +152,12 @@ def repo_sync(update_push_servers=False):
     subprocess.check_output(['repo', 'sync'])
     if update_push_servers:
         print('Updating push servers, checkout cros/master')
-        subprocess.check_output(['git', 'checkout', 'cros/master'])
+        subprocess.check_output(['git', 'checkout', 'cros/master'],
+                                stderr=subprocess.STDOUT)
     else:
         print('Updating server to prod branch')
-        subprocess.check_output(['git', 'checkout', 'cros/prod'])
+        subprocess.check_output(['git', 'checkout', 'cros/prod'],
+                                stderr=subprocess.STDOUT)
     # Remove .pyc files via pyclean, which is a package on all ubuntu server.
     print('Removing .pyc files')
     subprocess.check_output(['pyclean', '.', '-q'])
@@ -251,7 +253,7 @@ def restart_service(service_name, dryrun=False):
     if dryrun:
         print('Skip: %s' % ' '.join(cmd))
     else:
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, stderr=subprocess.STDOUT)
 
 
 def service_status(service_name):
@@ -462,7 +464,7 @@ def _sync_chromiumos_repo():
     """Update ~chromeos-test/chromiumos repo."""
     print('Updating ~chromeos-test/chromiumos')
     with ChangeDir(os.path.expanduser('~chromeos-test/chromiumos')):
-        ret = subprocess.call(['repo', 'sync'])
+        ret = subprocess.call(['repo', 'sync'], stderr=subprocess.STDOUT)
         # Remove .pyc files via pyclean, which is a package on all ubuntu server
         print('Removing .pyc files')
         subprocess.check_output(['pyclean', '.', '-q'])
