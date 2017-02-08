@@ -267,7 +267,8 @@ class platform_ExternalUsbPeripherals(test.test):
 
 
     def run_once(self, host, client_autotest, action_sequence, repeat,
-                 usb_list=None, usb_checks=None, crash_check=False):
+                 usb_list=None, usb_checks=None,
+                 crash_check=False, stress_rack=False):
         self.client_autotest = client_autotest
         self.host = host
         self.autotest_client = autotest.Autotest(self.host)
@@ -281,7 +282,10 @@ class platform_ExternalUsbPeripherals(test.test):
         self.action_step = None
 
         self.host.servo.switch_usbkey('dut')
-        self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
+        if (stress_rack):
+            self.host.servo.set('usb_mux_sel1', 'dut_sees_usbkey')
+        else:
+            self.host.servo.set('usb_mux_sel1', 'servo_sees_usbkey')
         self.host.servo.set('usb_mux_sel3', 'dut_sees_usbkey')
         time.sleep(_WAIT_DELAY)
 
