@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemControl.e362"
+NAME = "network_3GModemControl.novatel-e362"
 PURPOSE = "Verify commands sent to a modem manager are reflected in flimflam."
 CRITERIA = """
 This test will fail if modem manager state differs from flimflam state.
@@ -13,7 +13,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:e362, modem_repair"
+DEPENDENCIES = "modem:novatel-e362, modem_repair"
 
 # The E362 modems may fail while connecting and disconnecting.  These
 # failures go away if the test is retried.  See crbug.com/224026,
@@ -38,6 +38,6 @@ from autotest_lib.client.cros.cellular import test_environment
 # to True.
 test_env = test_environment.CellularOTATestEnvironment()
 job.run_test('network_3GModemControl', test_env=test_env, autoconnect=False,
-             slow_connect=True, tag='no-autoconnect-e362')
+             slow_connect=True, tag='no-autoconnect-novatel-e362')
 job.run_test('network_3GModemControl', test_env=test_env, autoconnect=True,
-             slow_connect=True, tag='autoconnect-e362')
+             slow_connect=True, tag='autoconnect-novatel-e362')

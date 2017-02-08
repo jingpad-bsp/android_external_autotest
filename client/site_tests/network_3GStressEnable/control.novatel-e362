@@ -3,26 +3,23 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GSafetyDance.e362"
-PURPOSE = "Stress-test all connman 3G operations."
+NAME = "network_3GStressEnable.novatel-e362"
+PURPOSE = "Stress-test Connman enable/disable"
 CRITERIA = """
-This test will fail if any DBus call times out or flimflam crashes.
+This test fails if flimflam ever fails to respond to a DBus message or crashes.
 """
 ATTRIBUTES = "suite:network3g"
 TIME = "SHORT"
 TEST_CATEGORY = "Stress"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:e362"
+DEPENDENCIES = "modem:novatel-e362"
 
 DOC = """
-  Stress-tests all connman 3G operations.
-
-  This test runs a long series of 3G operations in pseudorandom order. All of
-  these 3G operations must return a convincing result (EINPROGRESS or no error).
+  Stress-tests enabling and disabling a technology at short intervals.
 """
 
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GSafetyDance', test_env=test_env, tag='e362')
+job.run_test('network_3GStressEnable', tag='novatel-e362', test_env=test_env)
