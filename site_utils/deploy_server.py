@@ -3,7 +3,9 @@
 from __future__ import print_function
 
 import argparse
+import logging
 import multiprocessing.pool
+import os
 import subprocess
 import sys
 import time
@@ -121,6 +123,10 @@ def parse_arguments(args):
             help='Force to run update commands for afe, tko, build_externals')
     parser.add_argument('--dryrun', action='store_true',
             help='Don\'t actually run remote commands.')
+    parser.add_argument('--logfile', action='store',
+            default='/tmp/deployment.log',
+            help='Path to the file to save the deployment log to. Default is '
+                 '/tmp/deployment.log')
     parser.add_argument('args', nargs=argparse.REMAINDER,
             help=('<server>, <server> ... -- <remote_arg>, <remote_arg> ...'))
 
@@ -216,16 +222,20 @@ def update_in_parallel(servers, options):
     for server, success, output in results:
         if options.dryrun:
             print('Dry run, updating server %s is skipped.' % server)
-        elif success:
-            print('Successfully updated server %s.' % server)
-            if options.verbose:
-                print(output)
-                print()
         else:
-            error = ('Failed to update server %s.\nError: %s' %
-                     (server, output))
-            print(error)
-            failed_servers.append(server)
+            if success:
+                msg = ('Successfully updated server %s' % server)
+                if options.verbose:
+                    print(output)
+                    print()
+            else:
+                msg = ('Failed to update server %s.\nError: %s' %
+                       (server, output.strip()))
+                print(msg)
+                failed_servers.append(server)
+            # Write the result into logfile.
+            with open(options.logfile, 'a') as f:
+                f.write(msg)
 
     return failed_servers
 
@@ -237,6 +247,11 @@ def main(args):
     @returns The system exit code.
     """
     options = parse_arguments(args[1:])
+    # Remove all the handlers from the root logger to get rid of the handlers
+    # introduced by the import packages.
+    logging.getLogger().handlers = []
+    logging.basicConfig(level=logging.DEBUG
+                        if options.verbose else logging.INFO)
 
     print('Retrieving server status...')
     sorted_servers = discover_servers(options.afe, set(options.servers or []))
@@ -251,6 +266,10 @@ def main(args):
         i += 1
     print()
 
+    if os.path.exists(options.logfile):
+        os.remove(options.logfile)
+    print ('Start updating, push logs of every server will be saved '
+           'at %s' % options.logfile)
     failed = []
     skipped = []
     for servers in sorted_servers:
