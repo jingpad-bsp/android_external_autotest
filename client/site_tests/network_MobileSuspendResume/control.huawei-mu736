@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume.mu736"
+NAME = "network_MobileSuspendResume.huawei-mu736"
 PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify
@@ -16,7 +16,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:mu736"
+DEPENDENCIES = "modem:huawei-mu736"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
@@ -24,6 +24,6 @@ DOC = """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_MobileSuspendResume',
-             autoconnect=False, tag='autoconnect_off-mu736')
+             autoconnect=False, tag='autoconnect_off-huawei-mu736')
 job.run_test('network_MobileSuspendResume',
-             autoconnect=True, tag='autoconnect_on-mu736')
+             autoconnect=True, tag='autoconnect_on-huawei-mu736')

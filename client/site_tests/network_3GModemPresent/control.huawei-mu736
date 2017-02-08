@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GModemPresent.mu736"
+NAME = "network_3GModemPresent.huawei-mu736"
 PURPOSE = "Verify 3G modem is visible to Flimflam."
 CRITERIA = """
 This test will fail if neither Cromo nor ModemManager is exporting a modem
@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:mu736"
+DEPENDENCIES = "modem:huawei-mu736"
 
 DOC = """
   Tests that a 3G modem is available.
@@ -27,4 +27,4 @@ DOC = """
 from autotest_lib.client.cros.cellular import test_environment
 
 test_env = test_environment.CellularOTATestEnvironment()
-job.run_test('network_3GModemPresent', test_env=test_env, tag='mu736')
+job.run_test('network_3GModemPresent', test_env=test_env, tag='huawei-mu736')
