@@ -114,7 +114,8 @@ def googlesh_runner(host, **kwargs):
         @raises CalledProcessError: If there was a non-0 return code.
         """
         out = subprocess.check_output(['googlesh', '-s', '-uchromeos-test',
-                                       '-m%s' % host, '%s' % cmd])
+                                       '-m%s' % host, '%s' % cmd],
+                                      stderr=subprocess.STDOUT)
         return out
     return runner
 

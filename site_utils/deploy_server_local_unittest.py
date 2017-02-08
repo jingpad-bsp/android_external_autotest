@@ -135,7 +135,7 @@ a1598f7
         @param run_cmd: Mock of subprocess call used.
         """
         dsl.repo_sync()
-        expect_cmds = [mock.call(['git', 'checkout', 'cros/prod']),
+        expect_cmds = [mock.call(['git', 'checkout', 'cros/prod'], stderr=-2),
                        mock.call(['pyclean', '.', '-q'])]
         run_cmd.assert_has_calls(expect_cmds)
 
@@ -146,7 +146,7 @@ a1598f7
         @param run_cmd: Mock of subprocess call used.
         """
         dsl.repo_sync(update_push_servers=True)
-        expect_cmds = [mock.call(['git', 'checkout', 'cros/master']),
+        expect_cmds = [mock.call(['git', 'checkout', 'cros/master'], stderr=-2),
                        mock.call(['pyclean', '.', '-q'])]
         run_cmd.assert_has_calls(expect_cmds)
 
@@ -198,7 +198,8 @@ a1598f7
         """
         # Standard call.
         dsl.restart_service('foobar')
-        run_cmd.assert_called_with(['sudo', 'service', 'foobar', 'restart'])
+        run_cmd.assert_called_with(['sudo', 'service', 'foobar', 'restart'],
+                                   stderr=-2)
 
     @mock.patch('subprocess.check_output', autospec=True)
     def test_restart_status(self, run_cmd):
