@@ -13,7 +13,6 @@ from autotest_lib.server import adb_utils
 from autotest_lib.server import constants
 from autotest_lib.server.cros import dnsname_mangler
 from autotest_lib.server.hosts import adb_host
-from autotest_lib.site_utils import sponge_utils
 
 DEFAULT_ACTS_INTERNAL_DIRECTORY = 'tools/test/connectivity/acts'
 
@@ -607,18 +606,6 @@ class ActsTestResults(object):
         """
         if self.results_dir:
             self.test_station.get_file(self.results_dir, local_dir)
-
-    def upload_to_sponge(self, test):
-        """Uploads the results to sponge.
-
-        @param test: The autotest test object to upload.
-        """
-        if self.results_dir:
-            self.report_to_autotest(test)
-            summary_file = os.path.join(test.resultsdir,
-                                        'test_run_summary.json')
-            sponge_utils.upload_results_in_test(
-                test, acts_summary=summary_file)
 
     def report_to_autotest(self, test):
         """Reports the results to an autotest test object.
