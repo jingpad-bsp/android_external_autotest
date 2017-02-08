@@ -8,5 +8,5 @@ from autotest_lib.server.cros.faft.config import brain
 
 class Values(brain.Values):
     """Inherit overrides from Brain."""
-    pass
+    delay_reboot_to_ping = 60
 
