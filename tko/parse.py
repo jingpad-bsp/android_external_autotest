@@ -13,9 +13,9 @@ import sys
 import traceback
 
 import common
+from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import mail, pidfile
 from autotest_lib.client.common_lib import utils
-from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros.graphite import autotest_es
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.tko import models as tko_models
@@ -26,7 +26,6 @@ from autotest_lib.site_utils import sponge_utils
 from autotest_lib.tko import db as tko_db, utils as tko_utils
 from autotest_lib.tko import models, parser_lib
 from autotest_lib.tko.perf_upload import perf_uploader
-
 
 _ParseOptions = collections.namedtuple(
     'ParseOptions', ['reparse', 'mail_on_failure', 'dry_run', 'suite_report',
@@ -313,6 +312,18 @@ def parse_one(db, jobname, path, parse_options):
                 db.delete('tko_test_attributes', where)
                 db.delete('tko_test_labels_tests', {'test_id': test_idx})
                 db.delete('tko_tests', where)
+
+    job.build = None
+    job.board = None
+    job.build_version = None
+    job.suite = None
+    if job.label:
+        label_info = site_utils.parse_job_name(job.label)
+        if label_info:
+            job.build = label_info.get('build', None)
+            job.build_version = label_info.get('build_version', None)
+            job.board = label_info.get('board', None)
+            job.suite = label_info.get('suite', None)
 
     # Upload job details to Sponge.
     if not dry_run:
