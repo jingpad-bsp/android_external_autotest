@@ -1155,7 +1155,6 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         self.assertTrue(self._queue.empty())
         self.assertEqual(self._job.get_failure_count(), 0)
         self.assertEqual(self._job.get_failure_time(), 0)
-        self.assertFalse(self._job.is_reportable())
 
 
     def _offload_expired_once(self, days_old, count):
@@ -1182,15 +1181,12 @@ class JobDirectoryOffloadTests(_TempResultsDirTestBase):
         """
         t0 = time.time()
         self._offload_expired_once(days_old, 1)
-        self.assertFalse(self._job.is_reportable())
         t1 = self._job.get_failure_time()
         self.assertLessEqual(t1, time.time())
         self.assertGreaterEqual(t1, t0)
         self._offload_expired_once(days_old, 2)
-        self.assertTrue(self._job.is_reportable())
         self.assertEqual(self._job.get_failure_time(), t1)
         self._offload_expired_once(days_old, 3)
-        self.assertTrue(self._job.is_reportable())
         self.assertEqual(self._job.get_failure_time(), t1)
 
 
@@ -1374,8 +1370,7 @@ class JobStateTests(_TempResultsDirTestBase):
     """Tests for job state predicates.
 
     This tests for the expected results from the
-    `is_offloaded()` and `is_reportable()` predicate
-    methods.
+    `is_offloaded()` predicate method.
 
     """
 
@@ -1389,7 +1384,6 @@ class JobStateTests(_TempResultsDirTestBase):
         """
         job = self.make_job(self.REGULAR_JOBLIST[0])
         self.assertFalse(job.is_offloaded())
-        self.assertFalse(job.is_reportable())
 
 
     def test_incomplete_job(self):
@@ -1403,7 +1397,6 @@ class JobStateTests(_TempResultsDirTestBase):
         job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_incomplete()
         self.assertFalse(job.is_offloaded())
-        self.assertFalse(job.is_reportable())
 
 
     def test_reportable_job(self):
@@ -1417,7 +1410,6 @@ class JobStateTests(_TempResultsDirTestBase):
         job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_reportable()
         self.assertFalse(job.is_offloaded())
-        self.assertTrue(job.is_reportable())
 
 
     def test_completed_job(self):
@@ -1431,7 +1423,6 @@ class JobStateTests(_TempResultsDirTestBase):
         job = self.make_job(self.REGULAR_JOBLIST[0])
         job.set_complete()
         self.assertTrue(job.is_offloaded())
-        self.assertFalse(job.is_reportable())
 
 
 class ReportingTests(_TempResultsDirTestBase):
