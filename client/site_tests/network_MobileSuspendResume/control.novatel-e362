@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_MobileSuspendResume.e362"
+NAME = "network_MobileSuspendResume.novatel-e362"
 PURPOSE = "Test 3g modem state after suspend/resume"
 CRITERIA = """
     Check the 3g state of the device after suspend and resume.  Verify
@@ -16,7 +16,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:e362"
+DEPENDENCIES = "modem:novatel-e362"
 
 DOC = """
     Verify that 3g can be enabled under all suspend/resume situations.
@@ -24,6 +24,6 @@ DOC = """
 
 # Run all scenarios twice, first with autoconnect off, then with it on
 job.run_test('network_MobileSuspendResume',
-             autoconnect=False, tag='autoconnect_off-e362')
+             autoconnect=False, tag='autoconnect_off-novatel-e362')
 job.run_test('network_MobileSuspendResume',
-             autoconnect=True, tag='autoconnect_on-e362')
+             autoconnect=True, tag='autoconnect_on-novatel-e362')
