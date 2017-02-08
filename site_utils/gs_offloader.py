@@ -39,7 +39,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib import site_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.scheduler import email_manager
 from autotest_lib.site_utils import job_directories
 from autotest_lib.site_utils import pubsub_utils
 from autotest_lib.tko import models
@@ -76,22 +75,6 @@ LOG_LOCATION = '/usr/local/autotest/logs/'
 LOG_FILENAME_FORMAT = 'gs_offloader_%s_log_%s.txt'
 LOG_TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
 LOGGING_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-
-# pylint: disable=E1120
-NOTIFY_ADDRESS = global_config.global_config.get_config_value(
-        'SCHEDULER', 'notify_email', default='')
-
-ERROR_EMAIL_HELPER_URL = 'http://go/cros-triage-gsoffloader'
-ERROR_EMAIL_SUBJECT_FORMAT = 'GS Offloader notifications from %s'
-ERROR_EMAIL_REPORT_FORMAT = '''\
-gs_offloader is failing to offload results directories.
-
-Check %s to triage the issue.
-
-First failure       Count   Directory name
-=================== ======  ==============================
-''' % ERROR_EMAIL_HELPER_URL
-# --+----1----+----  ----+  ----+----1----+----2----+----3
 
 FAILED_OFFLOADS_FILE_HEADER = '''
 This is the list of gs_offloader failed jobs.
@@ -617,21 +600,6 @@ def _format_job_for_failure_reporting(job):
     return FAILED_OFFLOADS_LINE_FORMAT % data
 
 
-def report_offload_failures(joblist):
-    """Generate e-mail notification for failed offloads.
-
-    The e-mail report will include data from all jobs in `joblist`.
-
-    @param joblist List of jobs to be reported in the message.
-    """
-    joblines = [_format_job_for_failure_reporting(job) for job in joblist]
-    joblines.sort()
-    email_subject = ERROR_EMAIL_SUBJECT_FORMAT % socket.gethostname()
-    email_message = ERROR_EMAIL_REPORT_FORMAT + ''.join(joblines)
-    email_manager.manager.send_email(NOTIFY_ADDRESS, email_subject,
-                                     email_message)
-
-
 def wait_for_gs_write_access(gs_uri):
     """Verify and wait until we have write access to Google Storage.
 
@@ -668,8 +636,6 @@ class Offloader(object):
         offloaded.
       * _open_jobs: a dictionary mapping directory paths to Job
         objects.
-      * _next_report_time:  Earliest time that we should send e-mail
-        if there are failures to be reported.
     """
 
     def __init__(self, options):
@@ -704,7 +670,6 @@ class Offloader(object):
         assert self._jobdir_classes
         self._processes = options.parallelism
         self._open_jobs = {}
-        self._next_report_time = time.time()
         self._pusub_topic = None
 
 
@@ -738,18 +703,6 @@ class Offloader(object):
                       removed_job_count, len(self._open_jobs))
 
 
-    def _have_reportable_errors(self):
-        """Return whether any jobs need reporting via e-mail.
-
-        @return True if there are reportable jobs in `self._open_jobs`,
-                or False otherwise.
-        """
-        for job in self._open_jobs.values():
-            if job.is_reportable():
-                return True
-        return False
-
-
     def _update_offload_results(self):
         """Check and report status after attempting offload.
 
@@ -766,26 +719,8 @@ class Offloader(object):
         self._remove_offloaded_jobs()
         failed_jobs = [j for j in self._open_jobs.values() if
                        j.get_failure_time()]
-        self._send_reporting_failure_email(failed_jobs)
         self._report_failed_jobs_count(failed_jobs)
         self._log_failed_jobs_locally(failed_jobs)
-
-
-    def _send_reporting_failure_email(self, failed_jobs):
-        """Send email alerts for failed uploads.
-
-        @param failed_jobs: The list of failed _JobDirectory objects.
-        """
-        if not self._have_reportable_errors():
-            return
-
-        logging.debug('Currently there are %d jobs with offload '
-                        'failures', len(failed_jobs))
-        if time.time() >= self._next_report_time:
-            logging.debug('Reporting failures by e-mail')
-            report_offload_failures(failed_jobs)
-            self._next_report_time = (
-                    time.time() + REPORT_INTERVAL_SECS)
 
 
     def offload_once(self):
