@@ -26,11 +26,6 @@ import subprocess
 import sys
 import tempfile
 import time
-try:
-    # Does not exist, nor is needed, on moblab.
-    import psutil
-except ImportError:
-    psutil = None
 
 from optparse import OptionParser
 
@@ -46,6 +41,11 @@ from autotest_lib.tko import models
 from chromite.lib import metrics
 from chromite.lib import parallel
 from chromite.lib import ts_mon_config
+try:
+    # Does not exist, nor is needed, on moblab.
+    import psutil
+except ImportError:
+    psutil = None
 
 
 GS_OFFLOADING_ENABLED = global_config.global_config.get_config_value(
