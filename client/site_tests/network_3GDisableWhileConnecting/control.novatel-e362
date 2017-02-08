@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 AUTHOR = "ChromeOS Team"
-NAME = "network_3GDisableWhileConnecting.e362"
+NAME = "network_3GDisableWhileConnecting.novatel-e362"
 PURPOSE = "Check that the 3G modem can handle a disconnect while connecting."
 CRITERIA = """
 This test will fail if a disconnect request while the modem is
@@ -14,7 +14,7 @@ TIME = "SHORT"
 TEST_CATEGORY = "Functional"
 TEST_CLASS = "network"
 TEST_TYPE = "client"
-DEPENDENCIES = "modem:e362"
+DEPENDENCIES = "modem:novatel-e362"
 
 DOC = """
 Check that the 3G modem can handle a disconnect while connecting.
@@ -30,7 +30,7 @@ job.run_test('network_3GDisableWhileConnecting',
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=0,
              iterations=ITERATIONS_PER_TEST,
-             tag='instant_disable-e362')
+             tag='instant_disable-novatel-e362')
 
 # Since dbus-python emits our calls asynchronously, it is sometimes
 # (often?) the case that the disable arrives before the connect.
@@ -41,4 +41,4 @@ job.run_test('network_3GDisableWhileConnecting',
              delay_before_disable_ms=0,
              disable_delay_per_iteration_ms=int(1000.0 / ITERATIONS_PER_TEST),
              iterations=ITERATIONS_PER_TEST,
-             tag='disable_delay_ramp-e362')
+             tag='disable_delay_ramp-novatel-e362')
