@@ -22,7 +22,8 @@ class TestDeployServer(unittest.TestCase):
         self.assertEqual(
                 {'afe': 'foo', 'servers': [], 'args': [],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                 'force_update': False, 'update_push_servers': False},
+                 'force_update': False, 'logfile': '/tmp/deployment.log',
+                 'update_push_servers': False},
                 vars(results))
 
         # Dryrun, continue
@@ -31,7 +32,8 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': [], 'args': [],
                  'cont': True, 'dryrun': True, 'verbose': False,
-                 'force_update': False, 'update_push_servers': False},
+                 'force_update': False, 'logfile': '/tmp/deployment.log',
+                 'update_push_servers': False},
                 vars(results))
 
         # List some servers
@@ -40,7 +42,8 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': ['dummy', 'bar'], 'args': [],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                 'force_update': False, 'update_push_servers': False},
+                 'force_update': False, 'logfile': '/tmp/deployment.log',
+                 'update_push_servers': False},
                 vars(results))
 
         # List some local args
@@ -49,7 +52,8 @@ class TestDeployServer(unittest.TestCase):
         self.assertDictContainsSubset(
                 {'afe': 'foo', 'servers': [], 'args': ['dummy', 'bar'],
                  'cont': False, 'dryrun': False, 'verbose': False,
-                 'force_update': False, 'update_push_servers': False},
+                 'force_update': False, 'logfile': '/tmp/deployment.log',
+                 'update_push_servers': False},
                  vars(results))
 
         # List everything.
