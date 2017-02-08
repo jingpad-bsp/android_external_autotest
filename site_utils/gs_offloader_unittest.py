@@ -430,72 +430,6 @@ class CommandListTests(unittest.TestCase):
         self._command_list_assertions(job, multi=True)
 
 
-# Below is partial sample of e-mail notification text.  This text is
-# deliberately hard-coded and then parsed to create the test data;
-# the idea is to make sure the actual text format will be reviewed
-# by a human being.
-#
-# first offload      count  directory
-# --+----1----+----  ----+  ----+----1----+----2----+----3
-_SAMPLE_DIRECTORIES_REPORT = '''\
-=================== ======  ==============================
-2014-03-14 15:09:26      1  118-fubar
-2014-03-14 15:19:23      2  117-fubar
-2014-03-14 15:29:20      6  116-fubar
-2014-03-14 15:39:17     24  115-fubar
-2014-03-14 15:49:14    120  114-fubar
-2014-03-14 15:59:11    720  113-fubar
-2014-03-14 16:09:08   5040  112-fubar
-2014-03-14 16:19:05  40320  111-fubar
-'''
-
-
-class EmailTemplateTests(mox.MoxTestBase):
-    """Test the formatting of e-mail notifications."""
-
-    def setUp(self):
-        super(EmailTemplateTests, self).setUp()
-        self.mox.StubOutWithMock(email_manager.manager,
-                                 'send_email')
-        self._joblist = []
-        for line in _SAMPLE_DIRECTORIES_REPORT.split('\n')[1 : -1]:
-            date_, time_, count, dir_ = line.split()
-            job = _MockJobDirectory(dir_)
-            job._offload_count = int(count)
-            timestruct = time.strptime("%s %s" % (date_, time_),
-                                       gs_offloader.ERROR_EMAIL_TIME_FORMAT)
-            job._first_offload_start = time.mktime(timestruct)
-            # enter the jobs in reverse order, to make sure we
-            # test that the output will be sorted.
-            self._joblist.insert(0, job)
-
-
-    def test_email_template(self):
-        """Trigger an e-mail report and check its contents."""
-        # The last line of the report is a separator that we
-        # repeat in the first line of our expected result data.
-        # So, we remove that separator from the end of the of
-        # the e-mail report message.
-        #
-        # The last element in the list returned by split('\n')
-        # will be an empty string, so to remove the separator,
-        # we remove the next-to-last entry in the list.
-        report_lines = gs_offloader.ERROR_EMAIL_REPORT_FORMAT.split('\n')
-        expected_message = ('\n'.join(report_lines[: -2] +
-                                      report_lines[-1 :]) +
-                            _SAMPLE_DIRECTORIES_REPORT)
-        email_manager.manager.send_email(
-            mox.IgnoreArg(), mox.IgnoreArg(), expected_message)
-        self.mox.ReplayAll()
-        gs_offloader.report_offload_failures(self._joblist)
-
-
-    def test_email_url(self):
-        """Check that the expected helper url is in the email header."""
-        self.assertIn(gs_offloader.ERROR_EMAIL_HELPER_URL,
-                      gs_offloader.ERROR_EMAIL_REPORT_FORMAT)
-
-
 class PubSubTest(mox.MoxTestBase):
     """Test the test result notifcation data structure."""
 
@@ -777,6 +711,75 @@ class _TempResultsDirTestBase(mox.MoxTestBase):
             os.mkdir(os.path.join(hostsdir, host))
         for d in self.SPECIAL_JOBLIST:
             os.mkdir(d)
+
+
+class FailedOffloadsLogTest(_TempResultsDirTestBase):
+    """Test the formatting of failed offloads log file."""
+    # Below is partial sample of a failed offload log file.  This text is
+    # deliberately hard-coded and then parsed to create the test data; the idea
+    # is to make sure the actual text format will be reviewed by a human being.
+    #
+    # first offload      count  directory
+    # --+----1----+----  ----+ ----+----1----+----2----+----3
+    _SAMPLE_DIRECTORIES_REPORT = '''\
+    =================== ======  ==============================
+    2014-03-14 15:09:26      1  118-fubar
+    2014-03-14 15:19:23      2  117-fubar
+    2014-03-14 15:29:20      6  116-fubar
+    2014-03-14 15:39:17     24  115-fubar
+    2014-03-14 15:49:14    120  114-fubar
+    2014-03-14 15:59:11    720  113-fubar
+    2014-03-14 16:09:08   5040  112-fubar
+    2014-03-14 16:19:05  40320  111-fubar
+    '''
+
+    def setUp(self):
+        super(FailedOffloadsLogTest, self).setUp()
+        self._offloader = gs_offloader.Offloader(_get_options([]))
+        self._joblist = []
+        for line in self._SAMPLE_DIRECTORIES_REPORT.split('\n')[1 : -1]:
+            date_, time_, count, dir_ = line.split()
+            job = _MockJobDirectory(dir_)
+            job._offload_count = int(count)
+            timestruct = time.strptime("%s %s" % (date_, time_),
+                                       gs_offloader.FAILED_OFFLOADS_TIME_FORMAT)
+            job._first_offload_start = time.mktime(timestruct)
+            # enter the jobs in reverse order, to make sure we
+            # test that the output will be sorted.
+            self._joblist.insert(0, job)
+
+
+    def assert_report_well_formatted(self, report_file):
+        with open(report_file, 'r') as f:
+            report_lines = f.read().split()
+
+        for end_of_header_index in range(len(report_lines)):
+            if report_lines[end_of_header_index].startswith('=='):
+                break
+        self.assertLess(end_of_header_index, len(report_lines),
+                        'Failed to find end-of-header marker in the report')
+
+        relevant_lines = report_lines[end_of_header_index:]
+        expected_lines = self._SAMPLE_DIRECTORIES_REPORT.split()
+        self.assertListEqual(relevant_lines, expected_lines)
+
+
+    def test_failed_offload_log_format(self):
+        """Trigger an e-mail report and check its contents."""
+        log_file = os.path.join(self._resultsroot, 'failed_log')
+        report = self._offloader._log_failed_jobs_locally(self._joblist,
+                                                          log_file=log_file)
+        self.assert_report_well_formatted(log_file)
+
+
+    def test_failed_offload_file_overwrite(self):
+        """Verify that we can saefly overwrite the log file."""
+        log_file = os.path.join(self._resultsroot, 'failed_log')
+        with open(log_file, 'w') as f:
+            f.write('boohoohoo')
+        report = self._offloader._log_failed_jobs_locally(self._joblist,
+                                                          log_file=log_file)
+        self.assert_report_well_formatted(log_file)
 
 
 class OffloadDirectoryTests(_TempResultsDirTestBase):

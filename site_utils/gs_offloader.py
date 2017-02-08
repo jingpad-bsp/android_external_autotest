@@ -104,8 +104,8 @@ First failure       Count   Directory name
 '''
 # --+----1----+----  ----+  ----+----1----+----2----+----3
 
-ERROR_EMAIL_DIRECTORY_FORMAT = '%19s  %5d  %-1s\n'
-ERROR_EMAIL_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+FAILED_OFFLOADS_LINE_FORMAT = '%19s  %5d  %-1s\n'
+FAILED_OFFLOADS_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 USE_RSYNC_ENABLED = global_config.global_config.get_config_value(
         'CROS', 'gs_offloader_use_rsync', type=bool, default=False)
@@ -611,10 +611,10 @@ def _format_job_for_failure_reporting(job):
     @param job: The _JobDirectory to format.
     """
     d = datetime.datetime.fromtimestamp(job.get_failure_time())
-    data = (d.strftime(ERROR_EMAIL_TIME_FORMAT),
+    data = (d.strftime(FAILED_OFFLOADS_TIME_FORMAT),
             job.get_failure_count(),
             job.get_job_directory())
-    return ERROR_EMAIL_DIRECTORY_FORMAT % data
+    return FAILED_OFFLOADS_LINE_FORMAT % data
 
 
 def report_offload_failures(joblist):
@@ -821,7 +821,7 @@ class Offloader(object):
         @param log_file: The file to log the failed jobs to.
         """
         now = datetime.datetime.now()
-        now_str = now.strftime(ERROR_EMAIL_TIME_FORMAT)
+        now_str = now.strftime(FAILED_OFFLOADS_TIME_FORMAT)
         formatted_jobs = [_format_job_for_failure_reporting(job)
                             for job in failed_jobs]
         formatted_jobs.sort()
