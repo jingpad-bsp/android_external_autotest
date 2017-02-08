@@ -18,9 +18,9 @@ import time
 import unittest
 
 import common
-from autotest_lib.site_utils import sponge_utils
-from autotest_lib.tko import models
 
+from autotest_lib.site_utils.sponge_lib import sponge_utils
+from autotest_lib.tko import models
 
 ACTS_SUMMARY_JSON = """
 {
