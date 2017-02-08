@@ -21,7 +21,6 @@ import common
 from autotest_lib.client.common_lib import global_config, site_utils
 from autotest_lib.client.common_lib import time_utils
 from autotest_lib.client.common_lib import utils
-from autotest_lib.scheduler import email_manager
 from autotest_lib.site_utils import gs_offloader
 from autotest_lib.site_utils import job_directories
 from autotest_lib.tko import models
@@ -1441,8 +1440,6 @@ class ReportingTests(_TempResultsDirTestBase):
     def setUp(self):
         super(ReportingTests, self).setUp()
         self._offloader = gs_offloader.Offloader(_get_options([]))
-        self.mox.StubOutWithMock(email_manager.manager,
-                                 'send_email')
         self.mox.StubOutWithMock(self._offloader, '_log_failed_jobs_locally')
         self.mox.StubOutWithMock(logging, 'debug')
 
@@ -1480,57 +1477,21 @@ class ReportingTests(_TempResultsDirTestBase):
             logging.debug(mox.IgnoreArg(), len(new_open_jobs))
 
 
-    def _run_update_no_report(self, new_open_jobs):
-        """Call `_update_offload_results()` expecting no report.
+    def _run_update(self, new_open_jobs):
+        """Call `_update_offload_results()`.
 
         Initial conditions are set up by the caller.  This calls
         `_update_offload_results()` once, and then checks these
         assertions:
-          * The offloader's `_next_report_time` field is unchanged.
           * The offloader's new `_open_jobs` field contains only
             the entries in `new_open_jobs`.
-          * The email_manager's `send_email` stub wasn't called.
 
         @param new_open_jobs A dictionary representing the expected
                              new value of the offloader's
                              `_open_jobs` field.
         """
         self.mox.ReplayAll()
-        next_report_time = self._offloader._next_report_time
         self._offloader._update_offload_results()
-        self.assertEqual(next_report_time,
-                         self._offloader._next_report_time)
-        self.assertEqual(self._offloader._open_jobs, new_open_jobs)
-        self.mox.VerifyAll()
-        self.mox.ResetAll()
-
-
-    def _run_update_with_report(self, new_open_jobs):
-        """Call `_update_offload_results()` expecting an e-mail report.
-
-        Initial conditions are set up by the caller.  This calls
-        `_update_offload_results()` once, and then checks these
-        assertions:
-          * The offloader's `_next_report_time` field is updated
-            to an appropriate new time.
-          * The offloader's new `_open_jobs` field contains only
-            the entries in `new_open_jobs`.
-          * The email_manager's `send_email` stub was called.
-
-        @param new_open_jobs A dictionary representing the expected
-                             new value of the offloader's
-                             `_open_jobs` field.
-        """
-        logging.debug(mox.IgnoreArg())
-        email_manager.manager.send_email(
-            mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
-        self.mox.ReplayAll()
-        t0 = time.time() + gs_offloader.REPORT_INTERVAL_SECS
-        self._offloader._update_offload_results()
-        t1 = time.time() + gs_offloader.REPORT_INTERVAL_SECS
-        next_report_time = self._offloader._next_report_time
-        self.assertGreaterEqual(next_report_time, t0)
-        self.assertLessEqual(next_report_time, t1)
         self.assertEqual(self._offloader._open_jobs, new_open_jobs)
         self.mox.VerifyAll()
         self.mox.ResetAll()
@@ -1551,39 +1512,36 @@ class ReportingTests(_TempResultsDirTestBase):
     def test_no_jobs(self):
         """Test `_update_offload_results()` with no open jobs.
 
-        Initial conditions are an empty `_open_jobs` list and
-        `_next_report_time` in the past.  Expected result is no
-        e-mail report, and an empty `_open_jobs` list.
+        Initial conditions are an empty `_open_jobs` list.
+        Expected result is an empty `_open_jobs` list.
 
         """
         self._expect_log_message({}, False)
         self._expect_failed_jobs([])
-        self._run_update_no_report({})
+        self._run_update({})
 
 
     def test_all_completed(self):
         """Test `_update_offload_results()` with only complete jobs.
 
-        Initial conditions are an `_open_jobs` list consisting of
-        only completed jobs and `_next_report_time` in the past.
-        Expected result is no e-mail report, and an empty
-        `_open_jobs` list.
+        Initial conditions are an `_open_jobs` list consisting of only completed
+        jobs.
+        Expected result is an empty `_open_jobs` list.
 
         """
         for d in self.REGULAR_JOBLIST:
             self._add_job(d).set_complete()
         self._expect_log_message({}, False)
         self._expect_failed_jobs([])
-        self._run_update_no_report({})
+        self._run_update({})
 
 
     def test_none_finished(self):
         """Test `_update_offload_results()` with only unfinished jobs.
 
-        Initial conditions are an `_open_jobs` list consisting of
-        only unfinished jobs and `_next_report_time` in the past.
-        Expected result is no e-mail report, and no change to the
-        `_open_jobs` list.
+        Initial conditions are an `_open_jobs` list consisting of only
+        unfinished jobs.
+        Expected result is no change to the `_open_jobs` list.
 
         """
         for d in self.REGULAR_JOBLIST:
@@ -1591,81 +1549,7 @@ class ReportingTests(_TempResultsDirTestBase):
         new_jobs = self._offloader._open_jobs.copy()
         self._expect_log_message(new_jobs, False)
         self._expect_failed_jobs([])
-        self._run_update_no_report(new_jobs)
-
-
-    def test_none_reportable(self):
-        """Test `_update_offload_results()` with only incomplete jobs.
-
-        Initial conditions are an `_open_jobs` list consisting of
-        only incomplete jobs and `_next_report_time` in the past.
-        Expected result is no e-mail report, and no change to the
-        `_open_jobs` list.
-
-        """
-        for d in self.REGULAR_JOBLIST:
-            self._add_job(d).set_incomplete()
-        new_jobs = self._offloader._open_jobs.copy()
-        self._expect_log_message(new_jobs, False)
-        self._expect_failed_jobs(mox.IgnoreArg())
-        self._run_update_no_report(new_jobs)
-
-
-    def test_report_not_ready(self):
-        """Test `_update_offload_results()` e-mail throttling.
-
-        Initial conditions are an `_open_jobs` list consisting of
-        only reportable jobs but with `_next_report_time` in
-        the future.  Expected result is no e-mail report, and no
-        change to the `_open_jobs` list.
-
-        """
-        # N.B.  This test may fail if its run time exceeds more than
-        # about _MARGIN_SECS seconds.
-        for d in self.REGULAR_JOBLIST:
-            self._add_job(d).set_reportable()
-        self._offloader._next_report_time += _MARGIN_SECS
-        new_jobs = self._offloader._open_jobs.copy()
-        self._expect_log_message(new_jobs, True)
-        self._expect_failed_jobs(mox.IgnoreArg())
-        self._run_update_no_report(new_jobs)
-
-
-    def test_reportable(self):
-        """Test `_update_offload_results()` with reportable jobs.
-
-        Initial conditions are an `_open_jobs` list consisting of
-        only reportable jobs and with `_next_report_time` in
-        the past.  Expected result is an e-mail report, and no
-        change to the `_open_jobs` list.
-
-        """
-        for d in self.REGULAR_JOBLIST:
-            self._add_job(d).set_reportable()
-        new_jobs = self._offloader._open_jobs.copy()
-        self._expect_log_message(new_jobs, True)
-        self._expect_failed_jobs(mox.IgnoreArg())
-        self._run_update_with_report(new_jobs)
-
-
-    def test_reportable_mixed(self):
-        """Test `_update_offload_results()` with a mixture of jobs.
-
-        Initial conditions are an `_open_jobs` list consisting of
-        one reportable jobs and the remainder of the jobs
-        incomplete.  The value of `_next_report_time` is in the
-        past.  Expected result is an e-mail report that includes
-        both the reportable and the incomplete jobs, and no change
-        to the `_open_jobs` list.
-
-        """
-        self._add_job(self.REGULAR_JOBLIST[0]).set_reportable()
-        for d in self.REGULAR_JOBLIST[1:]:
-            self._add_job(d).set_incomplete()
-        new_jobs = self._offloader._open_jobs.copy()
-        self._expect_log_message(new_jobs, True)
-        self._expect_failed_jobs(mox.IgnoreArg())
-        self._run_update_with_report(new_jobs)
+        self._run_update(new_jobs)
 
 
 if __name__ == '__main__':
