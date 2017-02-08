@@ -469,10 +469,10 @@ def get_offload_dir_func(gs_uri, multiprocessing, delete_age, pubsub_topic=None)
                                   database.
 
         """
+        error = False
+        stdout_file = None
+        stderr_file = None
         try:
-            error = False
-            stdout_file = None
-            stderr_file = None
             upload_signal_filename = '%s/%s/.GS_UPLOADED' % (
                     RESULTS_DIR, dir_entry)
             if not os.path.isfile(upload_signal_filename):
