@@ -1400,4 +1400,4 @@ def get_sample_dut(board, pool):
     if not hosts:
         return None
     else:
-        return hosts[0].get_object_dict()['hostname']
+        return hosts[0].hostname
