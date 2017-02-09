@@ -7,7 +7,8 @@ import collections, logging, os, re, shutil, time
 from autotest_lib.client.bin import utils
 from autotest_lib.client.common_lib import base_utils, error
 from autotest_lib.client.cros import cros_logging, sys_power
-from autotest_lib.client.cros.power_utils import PowerPrefChanger
+from autotest_lib.client.cros import power_utils
+from autotest_lib.client.cros import power_status
 #pylint: disable=W0611
 from autotest_lib.client.cros import flimflam_test_path
 import flimflam
@@ -157,16 +158,13 @@ class Suspender(object):
             if self._suspend_state not in available_suspend_states:
                 raise error.TestNAError('Invalid suspend state: ' +
                                         self._suspend_state)
-            cmd = 'check_powerd_config --suspend_to_idle'
-            result = base_utils.run(cmd, ignore_status=True)
-            current_state = 'freeze' if result == 0 else 'mem'
             # Check the current state. If it is same as the one requested,
             # we don't want to call PowerPrefChanger(restarts powerd).
-            if self._suspend_state == current_state:
+            if self._suspend_state == power_utils.get_sleep_state():
                 return
             should_freeze = '1' if self._suspend_state == 'freeze' else '0'
             new_prefs = {self._SUSPEND_STATE_PREF_FILE: should_freeze}
-            self._power_pref_changer = PowerPrefChanger(new_prefs)
+            self._power_pref_changer = power_utils.PowerPrefChanger(new_prefs)
 
     def _set_pm_print_times(self, on):
         """Enable/disable extra suspend timing output from powerd to syslog."""
@@ -458,9 +456,12 @@ class Suspender(object):
         @param duration: time in seconds to do a suspend prior to waking.
         @param ignore_kernel_warns: Ignore kernel errors.  Defaults to false.
         """
+
+        if power_utils.get_sleep_state() == 'freeze':
+            self._s0ix_residency_stats = power_status.S0ixResidencyStats()
+
         try:
             iteration = len(self.failures) + len(self.successes) + 1
-
             # Retry suspend in case we hit a known (whitelisted) bug
             for _ in xrange(10):
                 self._reset_logs()
@@ -518,6 +519,16 @@ class Suspender(object):
                          '%g kernel, %g cpu, %g devices',
                          iteration, kernel_down, total_up, board_up,
                          firmware_up, kernel_up, cpu_up, devices_up)
+
+            if hasattr(self, '_s0ix_residency_stats'):
+                s0ix_residency_secs = \
+                        self._s0ix_residency_stats.\
+                                get_accumulated_residency_secs()
+                if not s0ix_residency_secs:
+                    raise error.TestFail('Sanity check failed: S0ix ' +
+                                         'residency counter did not change.')
+                logging.info('S0ix residency : %d secs.', s0ix_residency_secs)
+
             self.successes.append({
                 'seconds_system_suspend': kernel_down,
                 'seconds_system_resume': total_up,
