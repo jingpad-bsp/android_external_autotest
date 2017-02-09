@@ -21,7 +21,6 @@ from autotest_lib.client.common_lib import error
 from autotest_lib.client.common_lib import global_config
 from autotest_lib.client.common_lib.cros import dev_server
 from autotest_lib.client.common_lib.cros import retry
-from autotest_lib.server import afe_utils
 from autotest_lib.server import autoserv_parser
 from autotest_lib.server import constants as server_constants
 from autotest_lib.server import utils
@@ -1759,14 +1758,12 @@ class ADBHost(abstract_ssh.AbstractSSHHost):
                     ds = dev_server.AndroidBuildServer(devserver_url)
                 else:
                     ds = dev_server.AndroidBuildServer.resolve(image)
+            elif info.build is not None:
+                ds = dev_server.AndroidBuildServer.resolve(info.build, hostname)
             else:
-                labels = afe_utils.get_labels(self, self.VERSION_PREFIX)
-                if not labels:
-                    raise error.AutoservError(
-                            'Failed to stage server-side package. The host has '
-                            'no job_report_url attribute or version label.')
-                image = labels[0][len(self.VERSION_PREFIX + ':'):]
-                ds = dev_server.AndroidBuildServer.resolve(image, hostname)
+                raise error.AutoservError(
+                        'Failed to stage server-side package. The host has '
+                        'no job_report_url attribute or version label.')
 
         branch, target, build_id = utils.parse_launch_control_build(image)
         build_target, _ = utils.parse_launch_control_target(target)
