@@ -70,12 +70,17 @@ class cheets_GTS(tradefed_test.TradefedTest):
                     # already during the test run.
                     stdout_tee=utils.TEE_TO_LOGS,
                     stderr_tee=utils.TEE_TO_LOGS)
+        result_destination = os.path.join(self.resultsdir, 'android-gts')
+
+        # Gather the global log first. Datetime parsing below can abort the test
+        # if tradefed startup had failed. Even then the global log is useful.
+        self._collect_tradefed_global_log(output, result_destination)
+
         # Parse stdout to obtain datetime IDs of directories into which tradefed
         # wrote result xml files and logs.
         datetime_id = self._parse_tradefed_datetime(output)
         repository = os.path.join(self._android_gts, 'android-gts')
-        autotest = os.path.join(self.resultsdir, 'android-gts')
-        self._collect_logs(repository, datetime_id, autotest)
+        self._collect_logs(repository, datetime_id, result_destination)
 
         # Result parsing must come after all other essential operations as test
         # warnings, errors and failures can be raised here.

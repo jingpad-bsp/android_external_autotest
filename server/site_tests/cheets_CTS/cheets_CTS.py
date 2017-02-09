@@ -238,14 +238,17 @@ class cheets_CTS(tradefed_test.TradefedTest):
                 stdout_tee=utils.TEE_TO_LOGS,
                 stderr_tee=utils.TEE_TO_LOGS)
             logging.info('END: ./cts-tradefed %s\n', ' '.join(command))
+        result_destination = os.path.join(self.resultsdir, 'android-cts')
+        # Gather the global log first. Datetime parsing below can abort the test
+        # if tradefed startup had failed. Even then the global log is useful.
+        self._collect_tradefed_global_log(output, result_destination)
         if not datetime_id:
             # Parse stdout to obtain datetime of the session. This is needed to
             # locate result xml files and logs.
             datetime_id = self._parse_tradefed_datetime(output, self.summary)
         # Collect tradefed logs for autotest.
         tradefed = os.path.join(self._android_cts, 'android-cts', 'repository')
-        autotest = os.path.join(self.resultsdir, 'android-cts')
-        self._collect_logs(tradefed, datetime_id, autotest)
+        self._collect_logs(tradefed, datetime_id, result_destination)
         return self._parse_result(output, self.waivers_and_manual_tests)
 
     def _tradefed_continue(self, session_id, datetime_id=None):
