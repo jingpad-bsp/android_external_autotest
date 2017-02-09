@@ -45,6 +45,7 @@ def run(machine):
 
     job.run_test("platform_ExternalUsbPeripherals", host=host,
                  disable_sysinfo=True, client_autotest="desktopui_SimpleLogin",
-                 action_sequence=action_sequence, repeat=repeat, tag="stress")
+                 action_sequence=action_sequence, repeat=repeat,
+                 stress_rack=True, tag="stress")
 
 parallel_simple(run, machines)
