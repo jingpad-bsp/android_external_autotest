@@ -80,7 +80,7 @@ REQUIRES_SELENIUM = set((
     ))
 
 LONG_RUNTIME = set((
-    'base_barrier_unittest.py',
+    'barrier_unittest.py',
     'logging_manager_test.py',
     'task_loop_unittest.py'  # crbug.com/254030
     ))
