@@ -13,7 +13,18 @@ import common
 from autotest_lib.client.common_lib import control_data
 from autotest_lib.frontend import setup_django_environment
 from autotest_lib.frontend.afe import frontend_test_utils
+from autotest_lib.frontend.afe import models
 from autotest_lib.frontend.afe import rpc_utils
+
+
+class DjangoModelTest(unittest.TestCase):
+    """Unit tests for verifying Django behavior."""
+
+    def test_model_equal_by_id(self):
+        """Test that model instances compare equal by id."""
+        x = models.Host(id=10, hostname='foo')
+        y = models.Host(id=10, hostname='bar')
+        self.assertEqual(x, y)
 
 
 class RpcUtilsTest(unittest.TestCase,
