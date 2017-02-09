@@ -8,7 +8,6 @@ import StringIO
 
 from autotest_lib.client.common_lib import error, utils
 from autotest_lib.client.common_lib.cros import dev_server
-from autotest_lib.server import afe_utils
 
 
 TELEMETRY_RUN_BENCHMARKS_SCRIPT = 'tools/perf/run_benchmark'
@@ -150,20 +149,19 @@ class TelemetryRunner(object):
         """Setup Telemetry to use the devserver."""
         logging.debug('Setting up telemetry for devserver testing')
         logging.debug('Grabbing build from AFE.')
-
-        build = afe_utils.get_build(self._host)
-        if not build:
+        info = self._host.host_info_store.get()
+        if not info.build:
             logging.error('Unable to locate build label for host: %s.',
                           self._host.hostname)
             raise error.AutotestError('Failed to grab build for host %s.' %
                                       self._host.hostname)
 
-        logging.debug('Setting up telemetry for build: %s', build)
+        logging.debug('Setting up telemetry for build: %s', info.build)
 
-        self._devserver = dev_server.ImageServer.resolve(build,
-                hostname=self._host.hostname)
-        self._devserver.stage_artifacts(build, ['autotest_packages'])
-        self._telemetry_path = self._devserver.setup_telemetry(build=build)
+        self._devserver = dev_server.ImageServer.resolve(
+                info.build, hostname=self._host.hostname)
+        self._devserver.stage_artifacts(info.build, ['autotest_packages'])
+        self._telemetry_path = self._devserver.setup_telemetry(build=info.build)
 
 
     def _setup_local_telemetry(self):
