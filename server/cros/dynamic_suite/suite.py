@@ -128,7 +128,7 @@ class RetryHandler(object):
                 'retry_max': retry_max}
 
 
-    def suite_max_reached(self):
+    def _suite_max_reached(self):
         """Return whether maximum retry limit for a suite has been reached."""
         return self._max_retries <= 0
 
@@ -156,7 +156,7 @@ class RetryHandler(object):
 
         """
         return (
-            not self.suite_max_reached()
+            not self._suite_max_reached()
             and result.test_executed
             and result.is_worse_than(
                 job_status.Status(self._retry_level, '', 'reason'))
