@@ -77,16 +77,19 @@ class provision_TestbedUpdate(test.test):
             raise error.TestFail('No build provided and this is not a repair '
                                  ' job.')
 
-        # If the host is already on the correct build, we have nothing to do.
-        if not force and (self._builds_to_set(afe_utils.get_build(testbed)) ==
-                          self._builds_to_set(value)):
-            # We can't raise a TestNA, as would make sense, as that makes
-            # job.run_test return False as if the job failed.  However, it'd
-            # still be nice to get this into the status.log, so we manually
-            # emit an INFO line instead.
-            self.job.record('INFO', None, None,
-                            'Testbed already running %s' % value)
-            return
+        if not force:
+            info = testbed.host_info_store.get()
+            # If the host is already on the correct build, we have nothing to
+            # do.
+            if self._builds_to_set(info.build) == self._builds_to_set(value)):
+                # We can't raise a TestNA, as would make sense, as that makes
+                # job.run_test return False as if the job failed.  However, it'd
+                # still be nice to get this into the status.log, so we manually
+                # emit an INFO line instead.
+                self.job.record('INFO', None, None,
+                                'Testbed already running %s' % value)
+                return
+
         try:
             afe_utils.machine_install_and_update_labels(
                     host, image=value)
