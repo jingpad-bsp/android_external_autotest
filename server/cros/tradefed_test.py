@@ -540,6 +540,23 @@ class TradefedTest(test.test):
                 kwargs.get('extra_paths', []) + self._install_paths)
         return utils.run(*args, **kwargs)
 
+    def _collect_tradefed_global_log(self, result, destination):
+        """Collects the tradefed global log.
+
+        @param result: The result object from utils.run.
+        @param destination: Autotest result directory (destination of logs).
+        """
+        match = re.search(r'Saved log to /tmp/(tradefed_global_log_.*\.txt)',
+                          result.stdout)
+        if not match:
+            logging.error('no tradefed_global_log file is found')
+            return
+
+        name = match.group(1)
+        dest = os.path.join(destination, 'logs', 'tmp')
+        self._safe_makedirs(dest)
+        shutil.copy(os.path.join('/tmp', name), os.path.join(dest, name))
+
     def _parse_tradefed_datetime(self, result, summary=None):
         """Get the tradefed provided result ID consisting of a datetime stamp.
 
