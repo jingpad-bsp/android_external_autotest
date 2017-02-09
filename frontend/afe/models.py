@@ -439,7 +439,6 @@ class Host(model_logic.ModelWithInvalid, rdb_model_extensions.AbstractHostModel,
 
     Internal:
     From AbstractHostModel:
-        synch_id: currently unused
         status: string describing status of host
         invalid: true if the host has been deleted
         protection: indicates what can be done to this host during repair

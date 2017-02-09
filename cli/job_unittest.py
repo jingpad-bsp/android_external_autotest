@@ -232,8 +232,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked': False,
                                         u'hostname': u'host0',
                                         u'invalid': True,
-                                        u'id': 4432,
-                                        u'synch_id': None},
+                                        u'id': 4432},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
@@ -318,8 +317,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked_by': None,
                                         u'invalid': False,
                                         u'id': 4833,
-                                        u'protection': u'Repair filesystem only',
-                                        u'synch_id': None},
+                                        u'protection': u'Repair filesystem only'},
                               u'priority': 1,
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
@@ -344,8 +342,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked_by': None,
                                         u'invalid': False,
                                         u'id': 4833,
-                                        u'protection': u'Repair filesystem only',
-                                        u'synch_id': None},
+                                        u'protection': u'Repair filesystem only'},
                               u'priority': 1,
                               u'meta_host': u'Xeon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
@@ -392,8 +389,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked_by': None,
                                         u'invalid': False,
                                         u'id': 4833,
-                                        u'protection': u'Repair filesystem only',
-                                        u'synch_id': None},
+                                        u'protection': u'Repair filesystem only'},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
@@ -418,8 +414,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked_by': None,
                                         u'invalid': False,
                                         u'id': 4833,
-                                        u'protection': u'Repair filesystem only',
-                                        u'synch_id': None},
+                                        u'protection': u'Repair filesystem only'},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
@@ -538,8 +533,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked_by': None,
                                         u'invalid': False,
                                         u'id': 4833,
-                                        u'protection': u'Repair filesystem only',
-                                        u'synch_id': None},
+                                        u'protection': u'Repair filesystem only'},
                               u'priority': 1,
                               u'meta_host': u'Athlon',
                               u'job': {u'control_file': u'def step_init():\n    job.next_step(\'step0\')\n\ndef step0():\n    AUTHOR = "mbligh@google.com (Martin Bligh)"\n    NAME = "Kernbench"\n    TIME = "SHORT"\n    TEST_CLASS = "Kernel"\n    TEST_CATEGORY = "Benchmark"\n    TEST_TYPE = "client"\n    \n    DOC = """\n    A standard CPU benchmark. Runs a kernel compile and measures the performance.\n    """\n    \n    job.run_test(\'kernbench\')',
@@ -598,8 +592,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked': False,
                                         u'hostname': u'host0',
                                         u'invalid': True,
-                                        u'id': 4432,
-                                        u'synch_id': None},
+                                        u'id': 4432},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
@@ -618,8 +611,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked': False,
                                         u'hostname': u'host10',
                                         u'invalid': True,
-                                        u'id': 4432,
-                                        u'synch_id': None},
+                                        u'id': 4432},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
@@ -673,8 +665,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked': False,
                                         u'hostname': u'host0',
                                         u'invalid': True,
-                                        u'id': 4432,
-                                        u'synch_id': None},
+                                        u'id': 4432},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
@@ -697,8 +688,7 @@ class job_stat_unittest(job_unittest):
                                         u'locked': False,
                                         u'hostname': u'host10',
                                         u'invalid': True,
-                                        u'id': 4432,
-                                        u'synch_id': None},
+                                        u'id': 4432},
                               u'priority': 1,
                               u'meta_host': None,
                               u'job': {u'control_file': u"def run(machine):\n\thost = hosts.create_host(machine)\n\tat = autotest.Autotest(host)\n\tat.run_test('sleeptest')\n\nparallel_simple(run, machines)",
@@ -1017,15 +1007,13 @@ class job_create_unittest(cli_mock.cli_unittest):
                               u'locked_by': None, u'invalid': False, u'id': 42,
                               u'labels': [u'label1'], u'platform':
                               u'Warp18_Diskfull', u'protection':
-                              u'Repair software only', u'dirty':
-                              True, u'synch_id': None},
+                              u'Repair software only', u'dirty': True},
                              {u'status': u'Running', u'lock_time': None,
                               u'hostname': u'host2', u'locked': False,
                               u'locked_by': None, u'invalid': False, u'id': 43,
                               u'labels': [u'label2'], u'platform':
                               u'Warp18_Diskfull', u'protection':
-                              u'Repair software only', u'dirty': True,
-                              u'synch_id': None}]),
+                              u'Repair software only', u'dirty': True}]),
                             ('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],
                      out_words_no=['Uploading', 'Done'])
@@ -1044,8 +1032,7 @@ class job_create_unittest(cli_mock.cli_unittest):
                               u'locked_by': None, u'invalid': False, u'id': 42,
                               u'labels': [u'label1'], u'platform':
                               u'Warp18_Diskfull', u'protection':
-                              u'Repair software only', u'dirty':
-                              True, u'synch_id': None}]),
+                              u'Repair software only', u'dirty': True}]),
                             ('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],
                      out_words_no=['Uploading', 'Done'])
@@ -1066,8 +1053,7 @@ class job_create_unittest(cli_mock.cli_unittest):
                               u'locked_by': None, u'invalid': False, u'id': 42,
                               u'labels': [u'label1', u'label,2'], u'platform':
                               u'Warp18_Diskfull', u'protection':
-                              u'Repair software only', u'dirty':
-                              True, u'synch_id': None}]),
+                              u'Repair software only', u'dirty': True}]),
                             ('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],
                      out_words_no=['Uploading', 'Done'])
@@ -1088,8 +1074,7 @@ class job_create_unittest(cli_mock.cli_unittest):
                               u'locked_by': None, u'invalid': False, u'id': 42,
                               u'labels': [u'label1', u'label,2\\', u'label3'],
                               u'platform': u'Warp18_Diskfull', u'protection':
-                              u'Repair software only', u'dirty':
-                              True, u'synch_id': None}]),
+                              u'Repair software only', u'dirty': True}]),
                             ('create_job', data, True, 42)],
                      out_words_ok=['test_job0', 'Created'],
                      out_words_no=['Uploading', 'Done'])
@@ -1157,8 +1142,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     u'other_labels': u'label0, label1',
                     u'platform': u'plat0',
                     u'protection': u'Repair software only',
-                    u'status': u'Ready',
-                    u'synch_id': None},
+                    u'status': u'Ready'},
                    {u'acls': [u'acl0'],
                     u'attributes': {},
                     u'dirty': False,
@@ -1172,8 +1156,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                     u'other_labels': u'label0, label1',
                     u'platform': u'plat0',
                     u'protection': u'Repair software only',
-                    u'status': u'Ready',
-                    u'synch_id': None}]
+                    u'status': u'Ready'}]
 
 
     def setUp(self):
@@ -1209,8 +1192,7 @@ class job_clone_unittest(cli_mock.cli_unittest):
                                          u'other_labels': u'label0, label1',
                                          u'platform': u'plat0',
                                          u'protection': u'Repair software only',
-                                         u'status': u'Ready',
-                                         u'synch_id': None}],
+                                         u'status': u'Ready'}],
                              u'job': self.job_data_clone_info,
                              u'meta_host_counts': {}}),
                            ('create_job', self.job_data_cloned, True, 43)],
