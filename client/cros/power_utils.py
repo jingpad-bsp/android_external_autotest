@@ -122,6 +122,15 @@ def get_power_supply():
 
     return 'power:%s' % psu_str
 
+def get_sleep_state():
+    """
+    Returns the current powerd configuration of the sleep state.
+    Can be "freeze" or "mem".
+    """
+    cmd = 'check_powerd_config --suspend_to_idle'
+    result = base_utils.run(cmd, ignore_status=True)
+    return 'freeze' if result.exit_status == 0 else 'mem'
+
 def has_battery():
     """Determine if DUT has a battery.
 
