@@ -871,7 +871,7 @@ class Host(RpcObject):
 
     Fields:
         status, lock_time, locked_by, locked, hostname, invalid,
-        synch_id, labels, platform, protection, dirty, id
+        labels, platform, protection, dirty, id
     """
     def __repr__(self):
         return 'HOST OBJECT: %s' % self.hostname
