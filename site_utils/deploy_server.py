@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import argparse
 import logging
-import multiprocessing.pool
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -174,6 +174,8 @@ def update_server(inputs):
     start = time.time()
     server = inputs['server']
     status = inputs['status']
+    # Shared list to record the finished server.
+    finished_servers = inputs['finished_servers']
     options = inputs['options']
     print('Updating server %s...' % server)
     if status == 'backup':
@@ -190,6 +192,7 @@ def update_server(inputs):
             try:
                 print('[%s/5] Try to update server %s' % (i, server))
                 output = infra.execute_command(server, cmd)
+                finished_servers.append(server)
                 break
             except subprocess.CalledProcessError as e:
                 print('%s: Command failed with error: %s' % (server, e))
@@ -208,23 +211,42 @@ def update_in_parallel(servers, options):
 
     @returns A list of servers that failed to update.
     """
+    # Create a list to record all the finished servers.
+    manager = multiprocessing.Manager()
+    finished_servers = manager.list()
+
     args = []
     for server, status, _ in servers:
         args.append({'server': server,
                      'status': status,
+                     'finished_servers': finished_servers,
                      'options': options})
     # The update actions run in parallel. If any update failed, we should wait
     # for other running updates being finished. Abort in the middle of an update
     # may leave the server in a bad state.
     pool = multiprocessing.pool.ThreadPool(POOL_SIZE)
     failed_servers = []
-    results = pool.imap_unordered(update_server, args)
-    for server, success, output in results:
+    results = pool.map_async(update_server, args)
+    pool.close()
+
+    # Track the updating progress for current group of servers.
+    incomplete_servers = set()
+    server_names = set([s[0] for s in servers])
+    while not results.ready():
+        incomplete_servers = server_names - set(finished_servers)
+        print('Not finished yet. %d servers in this group. '
+              '%d servers are still running:\n%s\n' %
+              (len(servers), len(incomplete_servers), incomplete_servers))
+        # Check the progress every 1 mins
+        results.wait(60)
+
+    # After update finished, parse the result.
+    for server, success, output in results.get():
         if options.dryrun:
             print('Dry run, updating server %s is skipped.' % server)
         else:
             if success:
-                msg = ('Successfully updated server %s' % server)
+                msg = ('Successfully updated server %s.\n' % server)
                 if options.verbose:
                     print(output)
                     print()
